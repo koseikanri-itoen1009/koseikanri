@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/12/09    1.6   Naoki Fukuda     本番障害#470,#519(移動番号重複チェックcheck_mov_num_proc追加)
  *  2008/12/11    1.7   Yuko  Kawano     本番障害#633(移動実績訂正不具合対応)
  *  2008/12/11    1.8   Naoki Fukuda     本番障害#441
+ *  2008/12/11    1.9   Takao Ohashi     本番障害#672
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1237,13 +1238,13 @@ AS
 --
       -----------------------
       -- for debug
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'LOOP START');
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')mov_num='|| move_data_rec_tbl(gn_rec_idx).mov_num);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')line_number='|| move_data_rec_tbl(gn_rec_idx).line_number);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')item_code='|| move_data_rec_tbl(gn_rec_idx).item_code);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_no='|| move_data_rec_tbl(gn_rec_idx).lot_no);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_out_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_in_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'LOOP START');
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')mov_num='|| move_data_rec_tbl(gn_rec_idx).mov_num);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')line_number='|| move_data_rec_tbl(gn_rec_idx).line_number);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')item_code='|| move_data_rec_tbl(gn_rec_idx).item_code);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_no='|| move_data_rec_tbl(gn_rec_idx).lot_no);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_out_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_in_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity);
       -----------------------
 --
       -- フラグ初期化
@@ -1537,15 +1538,15 @@ AS
 --
       -----------------------
       -- for debug
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'----- 分別LOOP START -----');
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'lv_mov_num_bk='||lv_mov_num_bk);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'lv_err_mov_num='||lv_err_mov_num);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')mov_num='|| move_data_rec_tbl(gn_rec_idx).mov_num);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')line_number='|| move_data_rec_tbl(gn_rec_idx).line_number);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')item_code='|| move_data_rec_tbl(gn_rec_idx).item_code);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_no='|| move_data_rec_tbl(gn_rec_idx).lot_no);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_out_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity);
-      --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_in_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'----- 分別LOOP START -----');
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'lv_mov_num_bk='||lv_mov_num_bk);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'lv_err_mov_num='||lv_err_mov_num);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')mov_num='|| move_data_rec_tbl(gn_rec_idx).mov_num);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')line_number='|| move_data_rec_tbl(gn_rec_idx).line_number);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')item_code='|| move_data_rec_tbl(gn_rec_idx).item_code);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_no='|| move_data_rec_tbl(gn_rec_idx).lot_no);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_out_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_in_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity);
       -----------------------
 --
       -- 初期化
@@ -1561,13 +1562,13 @@ AS
 --
           -----------------------
           -- for debug
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'--- NORMAL DATA ---');
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')mov_num='|| move_data_rec_tbl(gn_rec_idx).mov_num);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')line_number='|| move_data_rec_tbl(gn_rec_idx).line_number);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')item_code='|| move_data_rec_tbl(gn_rec_idx).item_code);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_no='|| move_data_rec_tbl(gn_rec_idx).lot_no);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_out_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_in_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'--- NORMAL DATA ---');
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')mov_num='|| move_data_rec_tbl(gn_rec_idx).mov_num);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')line_number='|| move_data_rec_tbl(gn_rec_idx).line_number);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')item_code='|| move_data_rec_tbl(gn_rec_idx).item_code);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_no='|| move_data_rec_tbl(gn_rec_idx).lot_no);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_out_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_in_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity);
           -----------------------
 --
           -- tmpに格納
@@ -1583,13 +1584,13 @@ AS
 --
           -----------------------
           -- for debug
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'--- ERROR DATA ---');
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')mov_num='|| move_data_rec_tbl(gn_rec_idx).mov_num);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')line_number='|| move_data_rec_tbl(gn_rec_idx).line_number);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')item_code='|| move_data_rec_tbl(gn_rec_idx).item_code);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_no='|| move_data_rec_tbl(gn_rec_idx).lot_no);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_out_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_in_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'--- ERROR DATA ---');
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')mov_num='|| move_data_rec_tbl(gn_rec_idx).mov_num);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')line_number='|| move_data_rec_tbl(gn_rec_idx).line_number);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')item_code='|| move_data_rec_tbl(gn_rec_idx).item_code);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_no='|| move_data_rec_tbl(gn_rec_idx).lot_no);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_out_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'move_data_rec_tbl('||to_char(gn_rec_idx)||')lot_in_actual_quantity='|| move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity);
           -----------------------
 --
           -- スキップ件数(移動番号単位)
@@ -1625,7 +1626,7 @@ AS
 --
           ---------
           -- for debug
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'エラー移動番号格納 lv_err_mov_num='||lv_err_mov_num);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'エラー移動番号格納 lv_err_mov_num='||lv_err_mov_num);
           ---------
 --
           err_mov_tmp_rec_tbl(ln_tmp_idx).mov_num := move_data_rec_tbl(gn_rec_idx).mov_num;
@@ -1956,10 +1957,10 @@ AS
           IF ( move_target_tbl(gn_rec_idx).mov_type = gv_c_move_type_y ) THEN
 --
           --for debug
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'-------------  積送あり   -----------------');
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'mov_line_id = '|| move_target_tbl(gn_rec_idx).mov_line_id);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'item_id='||to_char(move_target_tbl(gn_rec_idx).item_id));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'lot_id='||to_char(move_target_tbl(gn_rec_idx).lot_id));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'-------------  積送あり   -----------------');
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'mov_line_id = '|| move_target_tbl(gn_rec_idx).mov_line_id);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'item_id='||to_char(move_target_tbl(gn_rec_idx).item_id));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'lot_id='||to_char(move_target_tbl(gn_rec_idx).lot_id));
 --
             ----------------------------------
             -- 出庫元情報
@@ -2152,15 +2153,15 @@ AS
           -- 2008/04/08 Modify Start
           -----------------------
           -- for debug
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_pnd_trans_qty = '|| to_char(ln_out_pnd_trans_qty));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_pnd_trans_qty = '|| to_char(ln_in_pnd_trans_qty));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_cmp_trans_qty = '|| to_char(ln_out_cmp_trans_qty));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty = '|| to_char(ln_in_cmp_trans_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_pnd_trans_qty = '|| to_char(ln_out_pnd_trans_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_pnd_trans_qty = '|| to_char(ln_in_pnd_trans_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_cmp_trans_qty = '|| to_char(ln_out_cmp_trans_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty = '|| to_char(ln_in_cmp_trans_qty));
 --
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_out_trans_date = '|| to_char(ld_out_trans_date,'yyyy/mm/dd'));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_in_trans_date = '|| to_char(ld_in_trans_date,'yyyy/mm/dd'));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'actual_ship_date = '|| to_char(move_target_tbl(gn_rec_idx).actual_ship_date,'yyyy/mm/dd'));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'actual_arrival_date = '|| to_char(move_target_tbl(gn_rec_idx).actual_arrival_date,'yyyy/mm/dd'));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_out_trans_date = '|| to_char(ld_out_trans_date,'yyyy/mm/dd'));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_in_trans_date = '|| to_char(ld_in_trans_date,'yyyy/mm/dd'));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'actual_ship_date = '|| to_char(move_target_tbl(gn_rec_idx).actual_ship_date,'yyyy/mm/dd'));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'actual_arrival_date = '|| to_char(move_target_tbl(gn_rec_idx).actual_arrival_date,'yyyy/mm/dd'));
           -----------------------
 --
             ---------------------------------------------------------
@@ -2181,14 +2182,14 @@ AS
             THEN
 --
             -- for debug -------------------------------------------
-            --FND_FILE.PUT_LINE(FND_FILE.LOG,'【1】保留トラン出庫と入庫、完了トランの出庫と入庫が同じ');
-            --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_pnd_trans_qty = '|| to_char(ABS(ln_out_pnd_trans_qty)));
-            --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_pnd_trans_qty = '|| to_char(ABS(ln_in_pnd_trans_qty)));
-            --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_cmp_trans_qty = '|| to_char(ABS(ln_out_cmp_trans_qty)));
-            --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty = '|| to_char(ABS(ln_in_cmp_trans_qty)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG,'【1】保留トラン出庫と入庫、完了トランの出庫と入庫が同じ');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_pnd_trans_qty = '|| to_char(ABS(ln_out_pnd_trans_qty)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_pnd_trans_qty = '|| to_char(ABS(ln_in_pnd_trans_qty)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_cmp_trans_qty = '|| to_char(ABS(ln_out_cmp_trans_qty)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty = '|| to_char(ABS(ln_in_cmp_trans_qty)));
 --
-            --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty = '|| to_char(ABS(ln_in_cmp_trans_qty)));
-            --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty = '|| to_char(ABS(ln_in_cmp_trans_qty)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty = '|| to_char(ABS(ln_in_cmp_trans_qty)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty = '|| to_char(ABS(ln_in_cmp_trans_qty)));
             -- for debug -------------------------------------------
 --
               --===========================================================
@@ -2200,7 +2201,7 @@ AS
               THEN
 --
               -- for debug
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【2】実績(保留トラン)の日付と移動ヘッダアドオンの実績日が異なる');
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【2】実績(保留トラン)の日付と移動ヘッダアドオンの実績日が異なる');
 --
               -- 2008/04/14 modify start
               --  -----------------------------------------------------------------
@@ -2211,10 +2212,10 @@ AS
               --  THEN
 --
               -- for debug
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【2-1】ld_out_trans_date='|| to_char(ld_out_trans_date,'yyyy/mm/dd'));
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【2-1】ld_a_out_trans_date='|| to_char(ld_a_out_trans_date,'yyyy/mm/dd'));
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【2-1】ld_in_trans_date='|| to_char(ld_in_trans_date,'yyyy/mm/dd'));
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【2-1】ld_a_in_trans_date='|| to_char(ld_a_in_trans_date,'yyyy/mm/dd'));
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【2-1】ld_out_trans_date='|| to_char(ld_out_trans_date,'yyyy/mm/dd'));
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【2-1】ld_a_out_trans_date='|| to_char(ld_a_out_trans_date,'yyyy/mm/dd'));
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【2-1】ld_in_trans_date='|| to_char(ld_in_trans_date,'yyyy/mm/dd'));
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【2-1】ld_a_in_trans_date='|| to_char(ld_a_in_trans_date,'yyyy/mm/dd'));
 --
                 --=============================================================
                 -- 実績(保留トラン)と実績訂正(完了トラン)の取引日が異なる場合
@@ -2227,8 +2228,8 @@ AS
                 -- 2008/04/14 modify end
 --
               -- for debug
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【3】実績(保留トラン)の数量と実績訂正(完了トラン)の実績日が異なる');
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【4】実績訂正情報格納  start');
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【3】実績(保留トラン)の数量と実績訂正(完了トラン)の実績日が異なる');
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【4】実績訂正情報格納  start');
 --
                   -- 実績黒数量が0でない場合
                   IF (ln_out_pnd_trans_qty <> 0) THEN
@@ -2256,7 +2257,7 @@ AS
                   END IF;
 --
                 -- for debug
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【5】実績訂正情報格納  end');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,'【5】実績訂正情報格納  end');
                   -----------------------------------------------------------------
                   -- 黒情報
                   -- 移動ロット詳細の数量が0の場合(実績登録しない)
@@ -2265,22 +2266,22 @@ AS
                     NULL;
 --
                   -- for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【6】移動ロット詳細の数量が0');
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'何もしない');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【6】移動ロット詳細の数量が0');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'何もしない');
 --
                   -----------------------------------------------------------------
                   -- 移動ロット詳細の数量が0以外の場合(実績登録する)
                   ELSE
 --
                   -- for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【7】移動ロット詳細の数量が0じゃない');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【7】移動ロット詳細の数量が0じゃない');
 --
                     -- 実績(保留トラン)の数量が0の場合は前回0実績計上されているから保留トランにデータなし
                     -- 倉庫組織会社情報がないため取得する
                     IF (ln_out_pnd_trans_qty = 0) THEN
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【8】実績(保留トラン)の数量が0だから組織情報取得');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【8】実績(保留トラン)の数量が0だから組織情報取得');
 --
                       BEGIN
                         -- 変数初期化
@@ -2363,14 +2364,14 @@ AS
                     END;
 --
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【9】組織情報取得  END');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【9】組織情報取得  END');
 --
                     -----------------------------------------------------------------
                     -- 組織、会社、倉庫情報が取得できた場合
                     IF (ln_err_flg = 0) THEN
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【10】実績登録用に格納 start');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【10】実績登録用に格納 start');
 --
                       -- 実績登録用レコードにデータを格納
                       move_api_rec_tbl(ln_idx_move).orgn_code              := lv_from_orgn_code;
@@ -2393,7 +2394,7 @@ AS
                     END IF;
 --
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【11】実績登録用に格納 end');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【11】実績登録用に格納 end');
 --
                   -----------------------------------------------------
                   -- 実績(保留トラン)の数量が0でない場合
@@ -2402,7 +2403,7 @@ AS
                   ELSE
 --
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【12】組織情報あるから  データだけ格納 START');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【12】組織情報あるから  データだけ格納 START');
 --
                     -- 実績登録用レコードにデータを格納
                     move_api_rec_tbl(ln_idx_move).orgn_code              := lv_out_orgn_code;
@@ -2423,7 +2424,7 @@ AS
                     ln_idx_move := ln_idx_move + 1;
 --
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【13】組織情報あるから  データだけ格納 End');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【13】組織情報あるから  データだけ格納 End');
 --
                   END IF;
 --
@@ -2445,7 +2446,7 @@ AS
               THEN
 --
               -- for debug
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【14a 実績(保留トラン)と実績訂正(完了トラン)の取引日が同じ】');
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【14a 実績(保留トラン)と実績訂正(完了トラン)の取引日が同じ】');
 --
                 ---------------------------------------------------------------
                 -- 実績(保留トラン)と実績訂正(完了トラン)の数量が同じ場合
@@ -2455,7 +2456,7 @@ AS
                 THEN
 --
                 -- for debug
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【14b 実績(保留トラン)と実績訂正(完了トラン)の数量が同じ】');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,'【14b 実績(保留トラン)と実績訂正(完了トラン)の数量が同じ】');
 --
                   -- 2008/04/15 modify start
                   -- 何もしない
@@ -2466,12 +2467,12 @@ AS
                     -- 何もしない
                     NULL;
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【14c ロット詳細の実績数量が0  何もしない】');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【14c ロット詳細の実績数量が0  何もしない】');
 --
                   -- ロット詳細の実績数量が0以外の場合
                   ELSE
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【14c ロット詳細の実績数量が0じゃない  黒作成】');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【14c ロット詳細の実績数量が0じゃない  黒作成】');
 --
                     -- 黒作成
                     move_api_rec_tbl(ln_idx_move).orgn_code              := lv_out_orgn_code;
@@ -2499,7 +2500,7 @@ AS
                 ---------------------------------------------------------------
                 ELSE
                   -- for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【14】黒数量と赤数量が違う場合');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【14】黒数量と赤数量が違う場合');
 --
                   -- 2008/04/14 modify start
                   -- 赤作成
@@ -2507,7 +2508,7 @@ AS
                   IF (ln_out_pnd_trans_qty <> 0) THEN
 --
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【14-1】赤作成  格納 start');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【14-1】赤作成  格納 start');
 --
                     -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
                     adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
@@ -2530,7 +2531,7 @@ AS
                     ln_idx_adji := ln_idx_adji + 1;
 --
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【14-1】赤作成  格納 end');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【14-1】赤作成  格納 end');
 --
                   END IF;
                   -- 2008/04/14 modify end
@@ -2543,20 +2544,20 @@ AS
                     -- 何もしない
                     NULL;
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【15】移動ロット詳細の数量が0');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【15】移動ロット詳細の数量が0');
 --
                   -----------------------------------------------------------------
                   -- 移動ロット詳細の数量が0以外の場合(実績登録する)
                   ELSE
                     --for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【16】移動ロット詳細の数量が0以外');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【16】移動ロット詳細の数量が0以外');
 --
                     -- 実績(保留トラン)の数量が0の場合は前回0実績計上されているから保留トランにデータなし
                     -- 倉庫組織会社情報がないため取得する
                     IF (ln_out_pnd_trans_qty = 0) THEN
 --
                       --for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【17】実績(保留トラン)の数量が0だから組織情報取得');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【17】実績(保留トラン)の数量が0だから組織情報取得');
 --
                       BEGIN
                         -- 変数初期化
@@ -2639,13 +2640,13 @@ AS
                       END;
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【18】組織情報取得 END');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【18】組織情報取得 END');
 --
                       -----------------------------------------------------------------
                       -- 組織、会社、倉庫情報が取得できた場合
                       IF (ln_err_flg = 0) THEN
                         --for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【19】実績登録用格納 start');
+                        FND_FILE.PUT_LINE(FND_FILE.LOG,'【19】実績登録用格納 start');
 --
                         -- 実績登録用レコードにデータを格納
                         move_api_rec_tbl(ln_idx_move).orgn_code              := lv_from_orgn_code;
@@ -2661,12 +2662,13 @@ AS
                         move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
                         move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
                         move_api_rec_tbl(ln_idx_move).attribute1             := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+
 --
                         -- インクリメント
                         ln_idx_move := ln_idx_move + 1;
 --
                         --for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【20】実績登録用格納 end');
+                        FND_FILE.PUT_LINE(FND_FILE.LOG,'【20】実績登録用格納 end');
 --
                       END IF;
 --
@@ -2676,7 +2678,7 @@ AS
                     -----------------------------------------------------
                     ELSE
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【21】実績登録用格納 start');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【21】実績登録用格納 start');
 --
                       -- 実績登録用レコードにデータを格納
                       move_api_rec_tbl(ln_idx_move).orgn_code              := lv_out_orgn_code;
@@ -2697,7 +2699,7 @@ AS
                       ln_idx_move := ln_idx_move + 1;
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【22】実績登録用格納 end');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【22】実績登録用格納 end');
 --
                     END IF;
 --
@@ -2712,424 +2714,463 @@ AS
             -- →数量が変更されているデータのみ処理対象にする
             --===========================================================
             ELSE
-              --for debug
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【23】保留トランの日付とアドオンの実績日が同じ');
---
-              ------------------------------------------------------------------
-              -- ロット詳細アドオンの数量と実績(保留トラン)の数量が同じ場合
-              -- →ロット詳細アドオンの数量が変更されていない
-              ------------------------------------------------------------------
-              IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = ABS(ln_out_pnd_trans_qty)) THEN
---
-                -- 何もしない
+-- add start 1.9
+              IF((move_target_tbl(gn_rec_idx).lot_out_actual_quantity = move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity) 
+                AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity = move_target_tbl(gn_rec_idx).lot_in_bf_act_quantity))
+              THEN
                 NULL;
-                --for debug
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【24】ロット詳細アドオン数量と実績(保留トラン)の数量が同じ');
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【24-1】何もしない');
---
-              ------------------------------------------------------------------
-              -- ロット詳細アドオンの数量と実績(保留トラン)の数量が異なる場合
-              -- →ロット詳細アドオンの数量が変更されている
-              ------------------------------------------------------------------
               ELSE
---
+-- add end 1.9
                 --for debug
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【25】ロット詳細アドオンの数量と実績(保留トラン)の数量が異なる');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,'【23】保留トランの日付とアドオンの実績日が同じ');
 --
-                --================================================================
-                -- 実績(保留トラン)の数量と実績訂正(完了トラン)の数量が異なる場合
-                --================================================================
-                -- 2008/4/14 modify start
-                --  IF (ABS(ln_out_pnd_trans_qty) <> ABS(ln_out_cmp_trans_qty))    -- 出庫数
-                --  AND (ABS(ln_in_pnd_trans_qty)  <> ABS(ln_in_cmp_trans_qty))    -- 入庫数
-                --  THEN
+                ------------------------------------------------------------------
+                -- ロット詳細アドオンの数量と実績(保留トラン)の数量が同じ場合
+                -- →ロット詳細アドオンの数量が変更されていない
+                ------------------------------------------------------------------
+                IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = ABS(ln_out_pnd_trans_qty)) THEN
 --
-                IF (TRUNC(ld_out_trans_date) <> TRUNC(ld_a_out_trans_date))  -- 出庫日 実績と実績訂正
-                OR (TRUNC(ld_in_trans_date)  <> TRUNC(ld_a_in_trans_date))  -- 入庫日 実績と実績訂正
-                OR ld_a_out_trans_date IS NULL
-                OR ld_a_in_trans_date IS NULL
-                THEN
+                  -- 何もしない
+                  NULL;
+                  --for debug
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【24】ロット詳細アドオン数量と実績(保留トラン)の数量が同じ');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【24-1】何もしない');
+--
+                ------------------------------------------------------------------
+                -- ロット詳細アドオンの数量と実績(保留トラン)の数量が異なる場合
+                -- →ロット詳細アドオンの数量が変更されている
+                ------------------------------------------------------------------
+                ELSE
 --
                   --for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【26】実績(保留トラン)と実績訂正(完了トラン)の実績日が異なる');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【25】ロット詳細アドオンの数量と実績(保留トラン)の数量が異なる');
 --
-                  ------------------------------------------------------------------
-                  -- 実績(保留トラン)の数量が0でない場合
-                  -- 赤作る
-                  ------------------------------------------------------------------
-                  IF ( ABS(ln_out_pnd_trans_qty) <> 0 ) THEN
+                  --================================================================
+                  -- 実績(保留トラン)の数量と実績訂正(完了トラン)の数量が異なる場合
+                  --================================================================
+                  -- 2008/4/14 modify start
+                  --  IF (ABS(ln_out_pnd_trans_qty) <> ABS(ln_out_cmp_trans_qty))    -- 出庫数
+                  --  AND (ABS(ln_in_pnd_trans_qty)  <> ABS(ln_in_cmp_trans_qty))    -- 入庫数
+                  --  THEN
 --
-                    --for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【27】実績(保留トラン)の数量が0でない 赤作る');
---
-                    -- 実績訂正作成情報格納
-                    -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
-                    adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
-                    adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
-                    adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                    adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
-                    adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_pnd_trans_qty);
-                    adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_pnd_trans_qty);
-                    adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
-                    adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
-                    adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
-                    adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
-                    adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
---
-                    -- インクリメント
-                    ln_idx_adji := ln_idx_adji + 1;
---
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【28】赤作る END');
---
-                  END IF;
---
-                  ------------------------------------------------------------------
-                  -- 黒情報
-                  -- 移動ロット詳細の数量が0の場合(実績登録しない)
-                  IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN
-                    -- 何もしない
-                    NULL;
+                  IF (TRUNC(ld_out_trans_date) <> TRUNC(ld_a_out_trans_date))  -- 出庫日 実績と実績訂正
+                  OR (TRUNC(ld_in_trans_date)  <> TRUNC(ld_a_in_trans_date))  -- 入庫日 実績と実績訂正
+                  OR ld_a_out_trans_date IS NULL
+                  OR ld_a_in_trans_date IS NULL
+                  THEN
 --
                     --for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【29】移動ロット詳細の数量が0だよ');
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【29-1】何もしない');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【26】実績(保留トラン)と実績訂正(完了トラン)の実績日が異なる');
 --
-                  -- 移動ロット詳細の数量が0以外の場合(実績登録する)
-                  ELSE
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【30】移動ロット詳細の数量が0以外だよ');
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【31】実績登録用格納  START');
+                    ------------------------------------------------------------------
+                    -- 実績(保留トラン)の数量が0でない場合
+                    -- 赤作る
+                    ------------------------------------------------------------------
+                    IF ( ABS(ln_out_pnd_trans_qty) <> 0 ) THEN
 --
-                    BEGIN
-                      -- 変数初期化
-                      lv_from_orgn_code := NULL;
-                      lv_from_co_code   := NULL;
-                      lv_from_whse_code := NULL;
-                      lv_to_orgn_code   := NULL;
-                      lv_to_co_code     := NULL;
-                      lv_to_whse_code   := NULL;
-                      ln_err_flg        := 0;
+                      --for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【27】実績(保留トラン)の数量が0でない 赤作る');
 --
-                      -- 組織,会社,倉庫の取得カーソルオープン
-                      OPEN xxcmn_locations_cur(
-                                move_target_tbl(gn_rec_idx).shipped_locat_id    -- 出庫元
-                               ,move_target_tbl(gn_rec_idx).ship_to_locat_id ); -- 入庫先
---
-                      <<xxcmn_locations_cur_loop>>
-                      LOOP
-                        FETCH xxcmn_locations_cur
-                        INTO  lv_from_orgn_code       -- 組織コード(出庫用)
-                             ,lv_from_co_code         -- 会社コード(出庫用)
-                             ,lv_from_whse_code       -- 倉庫コード(出庫用)
-                             ,lv_to_orgn_code         -- 組織コード(入庫用)
-                             ,lv_to_co_code           -- 会社コード(入庫用)
-                             ,lv_to_whse_code         -- 倉庫コード(入庫用)
-                             ;
-                        EXIT WHEN xxcmn_locations_cur%NOTFOUND;
---
-                      END LOOP xxcmn_locations_cur_loop;
---
-                      -- カーソルクローズ
-                      CLOSE xxcmn_locations_cur;
---
-                    EXCEPTION
-                      WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
-                        -- エラーフラグ
-                        ln_err_flg  := 1;
-                        IF (xxcmn_locations_cur%ISOPEN) THEN
-                          -- カーソルクローズ
-                          CLOSE xxcmn_locations_cur;
-                        END IF;
-                        -- エラーメッセージ内容
-                        lv_err_msg_value
-                                := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
---
-                        lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
-                                                              gv_c_msg_57a_006, -- データ取得エラー
-                                                              gv_c_tkn_msg,     -- トークンMSG
-                                                              lv_err_msg_value  -- トークン値
-                                                              );
-                        -- エラー内容格納
-                        out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
-                        -- エラー移動番号PLSQL表に格納
-                        err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
-                        err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
---
-                      WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
-                        -- エラーフラグ
-                        ln_err_flg  := 1;
---
-                        IF (xxcmn_locations_cur%ISOPEN) THEN
-                          -- カーソルクローズ
-                          CLOSE xxcmn_locations_cur;
-                        END IF;
-                        -- エラーメッセージ内容
-                        lv_err_msg_value
-                                := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
---
-                        lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
-                                                              gv_c_msg_57a_006, -- データ取得エラー
-                                                              gv_c_tkn_msg,     -- トークンMSG
-                                                              lv_err_msg_value  -- トークン値
-                                                              );
-                        -- エラー内容格納
-                        out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
-                        -- エラー移動番号PLSQL表に格納
-                        err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
-                        err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
---
-                    END;
---
-                    -- 組織、会社、倉庫情報が取得できた場合
-                    IF (ln_err_flg = 0) THEN
-                        -- 実績登録用レコードにデータを格納
-                      move_api_rec_tbl(ln_idx_move).orgn_code              := lv_from_orgn_code;
-                      move_api_rec_tbl(ln_idx_move).item_no                := move_target_tbl(gn_rec_idx).item_code;
-                      move_api_rec_tbl(ln_idx_move).lot_no                 := move_target_tbl(gn_rec_idx).lot_no;
-                      move_api_rec_tbl(ln_idx_move).source_warehouse       := lv_from_whse_code;
-                      move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
-                      move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
-                      move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                      move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                      move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
-                      move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
-                      move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
-                      move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
-                      move_api_rec_tbl(ln_idx_move).attribute1             := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+                      -- 実績訂正作成情報格納
+                      -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
+                      adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                      adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_pnd_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_pnd_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
 --
                       -- インクリメント
-                      ln_idx_move := ln_idx_move + 1;
+                      ln_idx_adji := ln_idx_adji + 1;
+--
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【28】赤作る END');
 --
                     END IF;
 --
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【32】実績登録用格納  END');
---
-                  END IF;
---
-                --================================================================
-                -- 実績(保留トラン)の数量と実績訂正(完了トラン)の数量が同じ場合
-                -- 赤作らない 黒だけ作る
-                --================================================================
-                -- 2008/4/14 modify start
-                --  ELSIF (ABS(ln_out_pnd_trans_qty) = ABS(ln_out_cmp_trans_qty))   -- 出庫数
-                --    AND (ABS(ln_in_pnd_trans_qty)  = ABS(ln_in_cmp_trans_qty))    -- 入庫数
-                --  THEN
---
-                ELSIF (TRUNC(ld_out_trans_date) = TRUNC(ld_a_out_trans_date))  -- 出庫日 実績と実績訂正
-                AND (TRUNC(ld_in_trans_date)  = TRUNC(ld_a_in_trans_date))  -- 入庫日 実績と実績訂正
-                THEN
---
-                  --for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績(保留トラン)と実績訂正(完了トラン)の実績日が同じ');
---
--- 2008/12/11 Y.Kawano Add Start
-                  ------------------------------------------------------------------
-                  -- 実績(保留トラン)の数量が0でない場合
-                  -- 赤作る
-                  ------------------------------------------------------------------
-                  IF ( ABS(ln_out_pnd_trans_qty) <> 0 ) THEN
---
-                    --for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【33-1】実績(保留トラン)の数量が0でない 赤作る');
---
-                    -- 実績訂正作成情報格納
-                    -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
-                    adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
-                    adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
-                    adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                    adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
-                    adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_pnd_trans_qty);
-                    adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_pnd_trans_qty);
-                    adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
-                    adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
-                    adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
-                    adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
-                    adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
---
-                    -- インクリメント
-                    ln_idx_adji := ln_idx_adji + 1;
---
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【28】赤作る END');
---
-                  END IF;
--- 2008/12/11 Y.Kawano Add End
---
-                  IF (ABS(ln_out_pnd_trans_qty) = ABS(ln_out_cmp_trans_qty))   -- 出庫数
-                  AND (ABS(ln_in_pnd_trans_qty) = ABS(ln_in_cmp_trans_qty))    -- 入庫数
-                  THEN
---
-                    --何もしない
-                    NULL;
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【33-1】実績(保留トラン)と実績訂正(完了トラン)の数量も同じ');
-                  -- 黒数量と赤数量が違う場合
-                  ELSE
-                    --for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【33-2】実績(保留トラン)と実績訂正(完了トラン)の数量違う');
-                  -- 2008/04/14 modify end
---
-                    -- 2008/4/14 modify start
+                    ------------------------------------------------------------------
                     -- 黒情報
                     -- 移動ロット詳細の数量が0の場合(実績登録しない)
-                    --IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN
-                    --  -- 何もしない
-                    --  NULL;
-                    --  --for debug
-                    --  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【34】移動ロット詳細の数量が0だから何もしない');
---
-                    -- 移動ロット詳細の数量が0の場合
                     IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN
+                      -- 何もしない
+                      NULL;
 --
-                      -- 2008/4/14 modify start
-                      --実績黒数量 0以外の場合 赤作る
-                      IF (ln_out_pnd_trans_qty <> 0) THEN
-                        --for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【34】赤作る');
+                      --for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【29】移動ロット詳細の数量が0だよ');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【29-1】何もしない');
 --
-                        -- 実績訂正作成情報格納
-                        -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
-                        adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
-                        adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
-                        adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
-                        adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                        adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
-                        adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
-                        adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_pnd_trans_qty);
-                        adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_pnd_trans_qty);
-                        adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
-                        adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
-                        adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
-                        adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
-                        adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
-                        adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
-                        adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+                    -- 移動ロット詳細の数量が0以外の場合(実績登録する)
+                    ELSE
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【30】移動ロット詳細の数量が0以外だよ');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【31】実績登録用格納  START');
+--
+                      BEGIN
+                        -- 変数初期化
+                        lv_from_orgn_code := NULL;
+                        lv_from_co_code   := NULL;
+                        lv_from_whse_code := NULL;
+                        lv_to_orgn_code   := NULL;
+                        lv_to_co_code     := NULL;
+                        lv_to_whse_code   := NULL;
+                        ln_err_flg        := 0;
+--
+                        -- 組織,会社,倉庫の取得カーソルオープン
+                        OPEN xxcmn_locations_cur(
+                                  move_target_tbl(gn_rec_idx).shipped_locat_id    -- 出庫元
+                                 ,move_target_tbl(gn_rec_idx).ship_to_locat_id ); -- 入庫先
+--
+                        <<xxcmn_locations_cur_loop>>
+                        LOOP
+                          FETCH xxcmn_locations_cur
+                          INTO  lv_from_orgn_code       -- 組織コード(出庫用)
+                               ,lv_from_co_code         -- 会社コード(出庫用)
+                               ,lv_from_whse_code       -- 倉庫コード(出庫用)
+                               ,lv_to_orgn_code         -- 組織コード(入庫用)
+                               ,lv_to_co_code           -- 会社コード(入庫用)
+                               ,lv_to_whse_code         -- 倉庫コード(入庫用)
+                               ;
+                          EXIT WHEN xxcmn_locations_cur%NOTFOUND;
+--
+                        END LOOP xxcmn_locations_cur_loop;
+--
+                        -- カーソルクローズ
+                        CLOSE xxcmn_locations_cur;
+--
+                      EXCEPTION
+                        WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                          -- エラーフラグ
+                          ln_err_flg  := 1;
+                          IF (xxcmn_locations_cur%ISOPEN) THEN
+                            -- カーソルクローズ
+                            CLOSE xxcmn_locations_cur;
+                          END IF;
+                          -- エラーメッセージ内容
+                          lv_err_msg_value
+                                  := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+--
+                          lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                                gv_c_msg_57a_006, -- データ取得エラー
+                                                                gv_c_tkn_msg,     -- トークンMSG
+                                                                lv_err_msg_value  -- トークン値
+                                                                );
+                          -- エラー内容格納
+                          out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
+                          -- エラー移動番号PLSQL表に格納
+                          err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
+                          err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+--
+                        WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                          -- エラーフラグ
+                          ln_err_flg  := 1;
+--
+                          IF (xxcmn_locations_cur%ISOPEN) THEN
+                            -- カーソルクローズ
+                            CLOSE xxcmn_locations_cur;
+                          END IF;
+                          -- エラーメッセージ内容
+                          lv_err_msg_value
+                                  := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+--
+                          lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                                gv_c_msg_57a_006, -- データ取得エラー
+                                                                gv_c_tkn_msg,     -- トークンMSG
+                                                                lv_err_msg_value  -- トークン値
+                                                                );
+                          -- エラー内容格納
+                          out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
+                          -- エラー移動番号PLSQL表に格納
+                          err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
+                          err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+--
+                      END;
+--
+                      -- 組織、会社、倉庫情報が取得できた場合
+                      IF (ln_err_flg = 0) THEN
+                          -- 実績登録用レコードにデータを格納
+                        move_api_rec_tbl(ln_idx_move).orgn_code              := lv_from_orgn_code;
+                        move_api_rec_tbl(ln_idx_move).item_no                := move_target_tbl(gn_rec_idx).item_code;
+                        move_api_rec_tbl(ln_idx_move).lot_no                 := move_target_tbl(gn_rec_idx).lot_no;
+                        move_api_rec_tbl(ln_idx_move).source_warehouse       := lv_from_whse_code;
+                        move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
+                        move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
+                        move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
+                        move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+                        move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                        move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
+                        move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
+                        move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
+                        move_api_rec_tbl(ln_idx_move).attribute1             := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
 --
                         -- インクリメント
-                        ln_idx_adji := ln_idx_adji + 1;
+                        ln_idx_move := ln_idx_move + 1;
 --
                       END IF;
 --
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【32】実績登録用格納  END');
+--
                     END IF;
 --
-                    -- 移動ロット詳細の数量が0以外の場合(実績登録する)
-                    IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity <> 0) THEN
+                  --================================================================
+                  -- 実績(保留トラン)の数量と実績訂正(完了トラン)の数量が同じ場合
+                  -- 赤作らない 黒だけ作る
+                  --================================================================
+                  -- 2008/4/14 modify start
+                  --  ELSIF (ABS(ln_out_pnd_trans_qty) = ABS(ln_out_cmp_trans_qty))   -- 出庫数
+                  --    AND (ABS(ln_in_pnd_trans_qty)  = ABS(ln_in_cmp_trans_qty))    -- 入庫数
+                  --  THEN
 --
---                    -- 移動ロット詳細の数量が0以外の場合(実績登録する)
---                    ELSE
-                    -- 2008/4/14 modify end
+                  ELSIF (TRUNC(ld_out_trans_date) = TRUNC(ld_a_out_trans_date))  -- 出庫日 実績と実績訂正
+                  AND (TRUNC(ld_in_trans_date)  = TRUNC(ld_a_in_trans_date))  -- 入庫日 実績と実績訂正
+                  THEN
+--
+                    --for debug
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績(保留トラン)と実績訂正(完了トラン)の実績日が同じ');
+--
+-- 2008/12/11 Y.Kawano Add Start
+                    ------------------------------------------------------------------
+                    -- 実績(保留トラン)の数量が0でない場合
+                    -- 赤作る
+                    ------------------------------------------------------------------
+                    IF ( ABS(ln_out_pnd_trans_qty) <> 0 ) THEN
+--
                       --for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【35】移動ロット詳細の数量が0以外で');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【33-1】実績(保留トラン)の数量が0でない 赤作る');
 --
-                      -------------------------------------------------------------
-                      -- 実績(保留トラン)の数量が0の場合は前回0実績計上されているから保留トランにデータなし
-                      -- 倉庫組織会社情報がないため取得する
-                      -------------------------------------------------------------
-                      IF (ln_out_pnd_trans_qty = 0) THEN
+                      -- 実績訂正作成情報格納
+                      -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
+                      adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                      adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_pnd_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_pnd_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+--
+                      -- インクリメント
+                      ln_idx_adji := ln_idx_adji + 1;
+--
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【28】赤作る END');
+--
+                    END IF;
+-- 2008/12/11 Y.Kawano Add End
+--
+                    IF (ABS(ln_out_pnd_trans_qty) = ABS(ln_out_cmp_trans_qty))   -- 出庫数
+                    AND (ABS(ln_in_pnd_trans_qty) = ABS(ln_in_cmp_trans_qty))    -- 入庫数
+                    THEN
+--
+                      --何もしない
+                      NULL;
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【33-1】実績(保留トラン)と実績訂正(完了トラン)の数量も同じ');
+                    -- 黒数量と赤数量が違う場合
+                    ELSE
+                      --for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【33-2】実績(保留トラン)と実績訂正(完了トラン)の数量違う');
+                    -- 2008/04/14 modify end
+--
+                      -- 2008/4/14 modify start
+                      -- 黒情報
+                      -- 移動ロット詳細の数量が0の場合(実績登録しない)
+                      --IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN
+                      --  -- 何もしない
+                      --  NULL;
+                      --  --for debug
+                      --  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【34】移動ロット詳細の数量が0だから何もしない');
+--
+                      -- 移動ロット詳細の数量が0の場合
+                      IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN
+--
+                        -- 2008/4/14 modify start
+                        --実績黒数量 0以外の場合 赤作る
+                        IF (ln_out_pnd_trans_qty <> 0) THEN
+                          --for debug
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【34】赤作る');
+--
+                          -- 実績訂正作成情報格納
+                          -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
+                          adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                          adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
+                          adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
+                          adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                          adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
+                          adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                          adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_pnd_trans_qty);
+                          adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_pnd_trans_qty);
+                          adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
+                          adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
+                          adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
+                          adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
+                          adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
+                          adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
+                          adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+--
+                          -- インクリメント
+                          ln_idx_adji := ln_idx_adji + 1;
+--
+                        END IF;
+--
+                      END IF;
+--
+                      -- 移動ロット詳細の数量が0以外の場合(実績登録する)
+                      IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity <> 0) THEN
+--
+--                      -- 移動ロット詳細の数量が0以外の場合(実績登録する)
+--                      ELSE
+                      -- 2008/4/14 modify end
                         --for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【36】ln_out_pnd_trans_qty = 0');
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【37】組織情報取得  START');
+                        FND_FILE.PUT_LINE(FND_FILE.LOG,'【35】移動ロット詳細の数量が0以外で');
 --
-                        BEGIN
-                          -- 変数初期化
-                          lv_from_orgn_code := NULL;
-                          lv_from_co_code   := NULL;
-                          lv_from_whse_code := NULL;
-                          lv_to_orgn_code   := NULL;
-                          lv_to_co_code     := NULL;
-                          lv_to_whse_code   := NULL;
-                          ln_err_flg        := 0;
+                        -------------------------------------------------------------
+                        -- 実績(保留トラン)の数量が0の場合は前回0実績計上されているから保留トランにデータなし
+                        -- 倉庫組織会社情報がないため取得する
+                        -------------------------------------------------------------
+                        IF (ln_out_pnd_trans_qty = 0) THEN
+                          --for debug
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【36】ln_out_pnd_trans_qty = 0');
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【37】組織情報取得  START');
 --
-                          -- 組織,会社,倉庫の取得カーソルオープン
-                          OPEN xxcmn_locations_cur(
-                                    move_target_tbl(gn_rec_idx).shipped_locat_id    -- 出庫元
-                                   ,move_target_tbl(gn_rec_idx).ship_to_locat_id ); -- 入庫先
+                          BEGIN
+                            -- 変数初期化
+                            lv_from_orgn_code := NULL;
+                            lv_from_co_code   := NULL;
+                            lv_from_whse_code := NULL;
+                            lv_to_orgn_code   := NULL;
+                            lv_to_co_code     := NULL;
+                            lv_to_whse_code   := NULL;
+                            ln_err_flg        := 0;
 --
-                          <<xxcmn_locations_cur_loop>>
-                          LOOP
-                            FETCH xxcmn_locations_cur
-                            INTO  lv_from_orgn_code       -- 組織コード(出庫用)
-                                 ,lv_from_co_code         -- 会社コード(出庫用)
-                                 ,lv_from_whse_code       -- 倉庫コード(出庫用)
-                                 ,lv_to_orgn_code         -- 組織コード(入庫用)
-                                 ,lv_to_co_code           -- 会社コード(入庫用)
-                                 ,lv_to_whse_code         -- 倉庫コード(入庫用)
-                                 ;
-                            EXIT WHEN xxcmn_locations_cur%NOTFOUND;
+                            -- 組織,会社,倉庫の取得カーソルオープン
+                            OPEN xxcmn_locations_cur(
+                                      move_target_tbl(gn_rec_idx).shipped_locat_id    -- 出庫元
+                                     ,move_target_tbl(gn_rec_idx).ship_to_locat_id ); -- 入庫先
 --
-                          END LOOP xxcmn_locations_cur_loop;
+                            <<xxcmn_locations_cur_loop>>
+                            LOOP
+                              FETCH xxcmn_locations_cur
+                              INTO  lv_from_orgn_code       -- 組織コード(出庫用)
+                                   ,lv_from_co_code         -- 会社コード(出庫用)
+                                   ,lv_from_whse_code       -- 倉庫コード(出庫用)
+                                   ,lv_to_orgn_code         -- 組織コード(入庫用)
+                                   ,lv_to_co_code           -- 会社コード(入庫用)
+                                   ,lv_to_whse_code         -- 倉庫コード(入庫用)
+                                   ;
+                              EXIT WHEN xxcmn_locations_cur%NOTFOUND;
 --
-                          -- カーソルクローズ
-                          CLOSE xxcmn_locations_cur;
+                            END LOOP xxcmn_locations_cur_loop;
 --
-                        EXCEPTION
-                          WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
-                            -- エラーフラグ
-                            ln_err_flg  := 1;
-                            IF (xxcmn_locations_cur%ISOPEN) THEN
-                              -- カーソルクローズ
-                              CLOSE xxcmn_locations_cur;
-                            END IF;
-                            -- エラーメッセージ内容
-                            lv_err_msg_value
-                                  := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+                            -- カーソルクローズ
+                            CLOSE xxcmn_locations_cur;
 --
-                            lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
-                                                                  gv_c_msg_57a_006, -- データ取得エラー
-                                                                  gv_c_tkn_msg,     -- トークンMSG
-                                                                  lv_err_msg_value  -- トークン値
-                                                                  );
-                            -- エラー内容格納
-                            out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
-                            -- エラー移動番号PLSQL表に格納
-                            err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
-                            err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+                          EXCEPTION
+                            WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                              -- エラーフラグ
+                              ln_err_flg  := 1;
+                              IF (xxcmn_locations_cur%ISOPEN) THEN
+                                -- カーソルクローズ
+                                CLOSE xxcmn_locations_cur;
+                              END IF;
+                              -- エラーメッセージ内容
+                              lv_err_msg_value
+                                    := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
 --
-                          WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
-                            -- エラーフラグ
-                            ln_err_flg  := 1;
+                              lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                                    gv_c_msg_57a_006, -- データ取得エラー
+                                                                    gv_c_tkn_msg,     -- トークンMSG
+                                                                    lv_err_msg_value  -- トークン値
+                                                                    );
+                              -- エラー内容格納
+                              out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
+                              -- エラー移動番号PLSQL表に格納
+                              err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
+                              err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                            IF (xxcmn_locations_cur%ISOPEN) THEN
-                              -- カーソルクローズ
-                              CLOSE xxcmn_locations_cur;
-                            END IF;
-                            -- エラーメッセージ内容
-                            lv_err_msg_value
-                                  := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+                            WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                              -- エラーフラグ
+                              ln_err_flg  := 1;
 --
-                            lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
-                                                                  gv_c_msg_57a_006, -- データ取得エラー
-                                                                  gv_c_tkn_msg,     -- トークンMSG
-                                                                  lv_err_msg_value  -- トークン値
-                                                                  );
-                            -- エラー内容格納
-                            out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
-                            -- エラー移動番号PLSQL表に格納
-                            err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
-                            err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+                              IF (xxcmn_locations_cur%ISOPEN) THEN
+                                -- カーソルクローズ
+                                CLOSE xxcmn_locations_cur;
+                              END IF;
+                              -- エラーメッセージ内容
+                              lv_err_msg_value
+                                    := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
 --
-                        END;
-                        --for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【38】組織情報取得  END');
+                              lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                                    gv_c_msg_57a_006, -- データ取得エラー
+                                                                    gv_c_tkn_msg,     -- トークンMSG
+                                                                    lv_err_msg_value  -- トークン値
+                                                                    );
+                              -- エラー内容格納
+                              out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
+                              -- エラー移動番号PLSQL表に格納
+                              err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
+                              err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
 --
-                        -----------------------------------------------------------------
-                        -- 組織、会社、倉庫情報が取得できた場合
-                        IF (ln_err_flg = 0) THEN
+                          END;
+                          --for debug
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【38】組織情報取得  END');
+--
+                          -----------------------------------------------------------------
+                          -- 組織、会社、倉庫情報が取得できた場合
+                          IF (ln_err_flg = 0) THEN
+                            -- for debug
+                            FND_FILE.PUT_LINE(FND_FILE.LOG,'【39】実績格納  START');
+--
+                            -- 実績登録用レコードにデータを格納
+                            move_api_rec_tbl(ln_idx_move).orgn_code              := lv_from_orgn_code;
+                            move_api_rec_tbl(ln_idx_move).item_no                := move_target_tbl(gn_rec_idx).item_code;
+                            move_api_rec_tbl(ln_idx_move).lot_no                 := move_target_tbl(gn_rec_idx).lot_no;
+                            move_api_rec_tbl(ln_idx_move).source_warehouse       := lv_from_whse_code;
+                            move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
+                            move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
+                            move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
+                            move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
+                            move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
+                            move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
+                            move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
+                            move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
+                            move_api_rec_tbl(ln_idx_move).attribute1             := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+--
+                            -- インクリメント
+                            ln_idx_move := ln_idx_move + 1;
+--
+                            --for debug
+                            FND_FILE.PUT_LINE(FND_FILE.LOG,'【40】実績格納  END');
+--
+                          END IF;
+--
+                        -----------------------------------------------------
+                        -- 実績(保留トラン)の数量が0でない場合
+                        -- 前回実績計上されているから倉庫組織会社情報がある
+                        -----------------------------------------------------
+                        ELSE
+--
                           -- for debug
-                          --FND_FILE.PUT_LINE(FND_FILE.LOG,'【39】実績格納  START');
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【41】実績だけ格納  START');
 --
                           -- 実績登録用レコードにデータを格納
-                          move_api_rec_tbl(ln_idx_move).orgn_code              := lv_from_orgn_code;
+                          move_api_rec_tbl(ln_idx_move).orgn_code              := lv_out_orgn_code;
                           move_api_rec_tbl(ln_idx_move).item_no                := move_target_tbl(gn_rec_idx).item_code;
                           move_api_rec_tbl(ln_idx_move).lot_no                 := move_target_tbl(gn_rec_idx).lot_no;
                           move_api_rec_tbl(ln_idx_move).source_warehouse       := lv_from_whse_code;
@@ -3147,39 +3188,9 @@ AS
                           ln_idx_move := ln_idx_move + 1;
 --
                           --for debug
-                          --FND_FILE.PUT_LINE(FND_FILE.LOG,'【40】実績格納  END');
---
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【42】実績だけ格納  end');
                         END IF;
 --
-                      -----------------------------------------------------
-                      -- 実績(保留トラン)の数量が0でない場合
-                      -- 前回実績計上されているから倉庫組織会社情報がある
-                      -----------------------------------------------------
-                      ELSE
---
-                        -- for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【41】実績だけ格納  START');
---
-                        -- 実績登録用レコードにデータを格納
-                        move_api_rec_tbl(ln_idx_move).orgn_code              := lv_out_orgn_code;
-                        move_api_rec_tbl(ln_idx_move).item_no                := move_target_tbl(gn_rec_idx).item_code;
-                        move_api_rec_tbl(ln_idx_move).lot_no                 := move_target_tbl(gn_rec_idx).lot_no;
-                        move_api_rec_tbl(ln_idx_move).source_warehouse       := lv_from_whse_code;
-                        move_api_rec_tbl(ln_idx_move).source_location        := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
-                        move_api_rec_tbl(ln_idx_move).target_warehouse       := lv_to_whse_code;
-                        move_api_rec_tbl(ln_idx_move).target_location        := move_target_tbl(gn_rec_idx).ship_to_locat_code; -- 入庫先
-                        move_api_rec_tbl(ln_idx_move).scheduled_release_date := move_target_tbl(gn_rec_idx).schedule_ship_date;
-                        move_api_rec_tbl(ln_idx_move).scheduled_receive_date := move_target_tbl(gn_rec_idx).schedule_arrival_date;
-                        move_api_rec_tbl(ln_idx_move).actual_release_date    := move_target_tbl(gn_rec_idx).actual_ship_date;    -- 出庫実績日
-                        move_api_rec_tbl(ln_idx_move).actual_receive_date    := move_target_tbl(gn_rec_idx).actual_arrival_date; -- 入庫実績日
-                        move_api_rec_tbl(ln_idx_move).release_quantity1      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
-                        move_api_rec_tbl(ln_idx_move).attribute1             := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
---
-                        -- インクリメント
-                        ln_idx_move := ln_idx_move + 1;
---
-                        --for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【42】実績だけ格納  end');
                       END IF;
 --
                     END IF;
@@ -3187,8 +3198,9 @@ AS
                   END IF;
 --
                 END IF;
---
+-- add start 1.9
               END IF;
+-- add end 1.9
 --
             END IF;
 --
@@ -3201,7 +3213,7 @@ AS
         /*****************************************/
         ELSIF ( move_target_tbl(gn_rec_idx).mov_type = gv_c_move_type_n ) THEN
           --for debug
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'--------------- 積送なし ------------------');
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'--------------- 積送なし ------------------');
 --
           ----------------------------------
           -- 出庫元情報
@@ -3409,19 +3421,19 @@ AS
           ---------------------------------------------------------
           -- 2008/04/08 Modify Start
           -- for debug
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'【1】');
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'mov_line_id='||move_target_tbl(gn_rec_idx).mov_line_id);
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'item_id='||to_char(move_target_tbl(gn_rec_idx).item_id));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'lot_id='||to_char(move_target_tbl(gn_rec_idx).lot_id));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_cmp_trans_qty='||to_char(ln_out_cmp_trans_qty));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty='||to_char(ln_in_cmp_trans_qty));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_cmp_a_trans_qty='||to_char(ln_out_cmp_a_trans_qty));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_a_trans_qty='||to_char(ln_in_cmp_a_trans_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'【1】');
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'mov_line_id='||move_target_tbl(gn_rec_idx).mov_line_id);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'item_id='||to_char(move_target_tbl(gn_rec_idx).item_id));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'lot_id='||to_char(move_target_tbl(gn_rec_idx).lot_id));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_cmp_trans_qty='||to_char(ln_out_cmp_trans_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_trans_qty='||to_char(ln_in_cmp_trans_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_out_cmp_a_trans_qty='||to_char(ln_out_cmp_a_trans_qty));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ln_in_cmp_a_trans_qty='||to_char(ln_in_cmp_a_trans_qty));
           --
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_out_trans_date='||to_char(ld_out_trans_date,'yyyy/mm/dd'));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_in_trans_date=' ||to_char(ld_in_trans_date,'yyyy/mm/dd'));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_a_out_trans_date='||to_char(ld_a_out_trans_date,'yyyy/mm/dd'));
-          --FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_a_in_trans_date=' ||to_char(ld_a_in_trans_date,'yyyy/mm/dd'));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_out_trans_date='||to_char(ld_out_trans_date,'yyyy/mm/dd'));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_in_trans_date=' ||to_char(ld_in_trans_date,'yyyy/mm/dd'));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_a_out_trans_date='||to_char(ld_a_out_trans_date,'yyyy/mm/dd'));
+          FND_FILE.PUT_LINE(FND_FILE.LOG,'ld_a_in_trans_date=' ||to_char(ld_a_in_trans_date,'yyyy/mm/dd'));
 --
           ---------------------------------------------------------
           -- 実績(黒)の出庫と入庫、または訂正(赤)の出庫と入庫が異なる
@@ -3440,7 +3452,7 @@ AS
             AND (ABS(ln_out_cmp_a_trans_qty) = ABS(ln_in_cmp_a_trans_qty)) -- 完了トランの入出庫数が同じ
           THEN
             --for debug
---            FND_FILE.PUT_LINE(FND_FILE.LOG,'【2】実績(黒)の出庫と入庫、または訂正(赤)の出庫と入庫が同じ');
+            FND_FILE.PUT_LINE(FND_FILE.LOG,'【2】実績(黒)の出庫と入庫、または訂正(赤)の出庫と入庫が同じ');
             --===========================================================
             -- 実績(完了トラン)の日付と移動ヘッダアドオンの実績日が異なる場合
             -- →全赤作る
@@ -3450,7 +3462,7 @@ AS
             THEN
 --
               -- for debug
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【3】実績(完了トラン)の日付と移動ヘッダアドオンの実績日が異なる場合');
+              FND_FILE.PUT_LINE(FND_FILE.LOG,'【3】実績(完了トラン)の日付と移動ヘッダアドオンの実績日が異なる場合');
 --
               -- 2008/04/14 modify start
               --  -----------------------------------------------------------------
@@ -3470,13 +3482,13 @@ AS
               THEN
               -- 2008/04/14 modify end
                 -- for debug
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【4】実績と実績訂正の実績日が異なる');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,'【4】実績と実績訂正の実績日が異なる');
 --
                 -- 黒数量が0でない場合
                 IF (ln_out_cmp_trans_qty <> 0) THEN
                   --for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【6】黒数量が0でない');
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【7】実績訂正情報格納 START');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【6】黒数量が0でない');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【7】実績訂正情報格納 START');
 --
                   -----------------------------------------------------------------
                   -- 赤情報
@@ -3501,7 +3513,7 @@ AS
                   ln_idx_adji := ln_idx_adji + 1;
 --
                   --for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【8】実績訂正情報格納 End');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【8】実績訂正情報格納 End');
                 END IF;
 --
                 -----------------------------------------------------------------
@@ -3511,21 +3523,21 @@ AS
                   -- 何もしない
                   NULL;
                   --for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【9】ロット詳細数量=0');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【9】ロット詳細数量=0');
 --
                 -----------------------------------------------------------------
                 -- 移動情報の数量が0でない場合(実績登録する)
                 ELSE
 --
                   --for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【10】ロット詳細数量<>0');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【10】ロット詳細数量<>0');
                   -----------------------------------------------------------------
                   -- 実績(保留トラン)の数量が0の場合は前回0実績計上されているから保留トランにデータなし
                   -- 倉庫組織会社情報がないため取得する
                   -----------------------------------------------------------------
                   IF (ln_out_cmp_trans_qty = 0) THEN
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【11】cmp_qty<>0');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【11】cmp_qty<>0');
 --
                     BEGIN
                       -- 変数初期化
@@ -3611,7 +3623,7 @@ AS
                     -- 組織、会社、倉庫情報が取得できた場合
                     IF (ln_err_flg = 0) THEN
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【12】trni実績格納 START');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【12】trni実績格納 START');
 --
                       -- trni実績登録用レコードにデータを格納
                       trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
@@ -3630,7 +3642,7 @@ AS
                       ln_idx_trni := ln_idx_trni + 1;
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【13】trni実績格納 End');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【13】trni実績格納 End');
 --
                     END IF;
 --
@@ -3640,7 +3652,7 @@ AS
                   -----------------------------------------------------
                   ELSE
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【14】trni実績格納 Start');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【14】trni実績格納 Start');
 --
                     -- trni実績登録用レコードにデータを格納
                     trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
@@ -3659,14 +3671,14 @@ AS
                     ln_idx_trni := ln_idx_trni + 1;
 --
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【15】trni実績格納 End');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【15】trni実績格納 End');
 --
                   END IF;
 --
                 END IF; --移動情報の数量判定
 --
                 -- for debug
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【16】');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,'【16】');
 --
               -- 2008/04/14 modify start
               --  ---------------------------------------------------------------
@@ -3685,14 +3697,14 @@ AS
               THEN
 --
                 -- for debug
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【17】実績と実績訂正の実績日が同じ');
+                FND_FILE.PUT_LINE(FND_FILE.LOG,'【17】実績と実績訂正の実績日が同じ');
 --
                 -- 実績(cmp)と実績訂正(cmp_a)の数量が同じ場合
                 IF (ABS(ln_out_cmp_trans_qty) = ABS(ln_out_cmp_a_trans_qty))   -- 出庫数
                 AND (ABS(ln_in_cmp_trans_qty)  = ABS(ln_in_cmp_a_trans_qty))   -- 入庫数
                 THEN
                   -- for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【18】実績と実績訂正の数量が同じ');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【18】実績と実績訂正の数量が同じ');
 --
                   -- 2008/04/15 modify start
                   -- 何もしない
@@ -3702,16 +3714,16 @@ AS
                     -- 何もしない
                     NULL;
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【18a ロット詳細の実績数量が0  何もしない】');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【18a ロット詳細の実績数量が0  何もしない】');
 --
                   ELSE
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【18b ロット詳細の実績数量が0じゃない  黒作成】');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【18b ロット詳細の実績数量が0じゃない  黒作成】');
 --
                     -- 黒作成
                     -- 実績登録用レコードにデータを格納
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【18c】trni実績格納 Start');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【18c】trni実績格納 Start');
 --
                     -- trni実績登録用レコードにデータを格納
                     trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
@@ -3736,12 +3748,12 @@ AS
                 -- 黒数量と赤数量が違う場合
                 ELSE
                   -- for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【18-1】黒数量と赤数量が違う');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【18-1】黒数量と赤数量が違う');
                   -- 赤作成
                   -- 黒数量が0以外(実績あり)の場合、赤作る
                   IF (ln_out_cmp_trans_qty <> 0) THEN
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【18-2】赤  格納Start');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【18-2】赤  格納Start');
 --
                     -- 赤情報
                     -- 実績訂正情報格納  在庫数量API実行対象レコードにデータを格納
@@ -3765,7 +3777,7 @@ AS
                     ln_idx_adji := ln_idx_adji + 1;
 --
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【18-2】赤  格納End');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【18-2】赤  格納End');
 --
                   END IF;
 --
@@ -3778,20 +3790,20 @@ AS
                     -- 何もしない
                     NULL;
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【20】ロット詳細が0');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【20】ロット詳細が0');
 --
                   -----------------------------------------------------------------
                   -- 移動ロット詳細の数量が0以外の場合(実績登録する)
                   ELSE
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【21】ロット詳細が0以外');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【21】ロット詳細が0以外');
 --
                     -- 実績(cmp)の数量が0の場合は前回0実績計上されているからデータなし
                     -- 倉庫組織会社情報がないため取得する
                     IF (ln_out_cmp_trans_qty = 0) THEN
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【22】ln_out_cmp_trans_qtyが0');
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【23】組織情報取得START');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【22】ln_out_cmp_trans_qtyが0');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【23】組織情報取得START');
 --
                       BEGIN
                         -- 変数初期化
@@ -3874,34 +3886,34 @@ AS
                       END;
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【24】組織情報取得 End');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【24】組織情報取得 End');
                       -----------------------------------------------------------------
                       -- 組織、会社、倉庫情報が取得できた場合
                       IF (ln_err_flg = 0) THEN
+                          -- for debug
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【25】trni実績格納  START');
 --
-                        -- for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【25】trni実績格納  START');
+                          -- trni実績登録用レコードにデータを格納
+                          trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                          trni_api_rec_tbl(ln_idx_trni).from_whse_code := lv_from_whse_code;
+                          trni_api_rec_tbl(ln_idx_trni).to_whse_code   := lv_to_whse_code;
+                          trni_api_rec_tbl(ln_idx_trni).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                          trni_api_rec_tbl(ln_idx_trni).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
+                          trni_api_rec_tbl(ln_idx_trni).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                          trni_api_rec_tbl(ln_idx_trni).trans_qty      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
+                          trni_api_rec_tbl(ln_idx_trni).co_code        := lv_from_co_code;
+                          trni_api_rec_tbl(ln_idx_trni).orgn_code      := lv_from_orgn_code;
+                          trni_api_rec_tbl(ln_idx_trni).trans_date     := move_target_tbl(gn_rec_idx).actual_ship_date; -- 出庫実績日
+                          trni_api_rec_tbl(ln_idx_trni).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
 --
-                        -- trni実績登録用レコードにデータを格納
-                        trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
-                        trni_api_rec_tbl(ln_idx_trni).from_whse_code := lv_from_whse_code;
-                        trni_api_rec_tbl(ln_idx_trni).to_whse_code   := lv_to_whse_code;
-                        trni_api_rec_tbl(ln_idx_trni).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                        trni_api_rec_tbl(ln_idx_trni).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
-                        trni_api_rec_tbl(ln_idx_trni).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
-                        trni_api_rec_tbl(ln_idx_trni).trans_qty      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
-                        trni_api_rec_tbl(ln_idx_trni).co_code        := lv_from_co_code;
-                        trni_api_rec_tbl(ln_idx_trni).orgn_code      := lv_from_orgn_code;
-                        trni_api_rec_tbl(ln_idx_trni).trans_date     := move_target_tbl(gn_rec_idx).actual_ship_date; -- 出庫実績日
-                        trni_api_rec_tbl(ln_idx_trni).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+                          -- インクリメント
+                          ln_idx_trni := ln_idx_trni + 1;
 --
-                        -- インクリメント
-                        ln_idx_trni := ln_idx_trni + 1;
---
-                        -- for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【26】trni実績格納  End');
+                          -- for debug
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【26】trni実績格納  End');
 --
                       END IF;
+                      
 --
                     -----------------------------------------------------
                     -- 実績(cmp)の数量が0でない場合
@@ -3909,7 +3921,7 @@ AS
                     -----------------------------------------------------
                     ELSE
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【27】trni実績格納するだけ  START');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【27】trni実績格納するだけ  START');
 --
                       -- trni実績登録用レコードにデータを格納
                       trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
@@ -3928,7 +3940,7 @@ AS
                       ln_idx_trni := ln_idx_trni + 1;
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【27】trni実績格納するだけ  End');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【27】trni実績格納するだけ  End');
 --
                     END IF;
 --
@@ -3943,269 +3955,88 @@ AS
             -- →数量が変更されているデータのみ処理対象にする
             --===========================================================
             ELSE
-              --for debug
-              --FND_FILE.PUT_LINE(FND_FILE.LOG,'【28】実績(cmp)の日付と移動ヘッダアドオンの実績日が同じ');
---
-              ------------------------------------------------------------------
-              -- ロット詳細アドオンの数量と実績(保留トラン)の数量が同じ場合
-              -- →ロット詳細アドオンの数量が変更されていない
-              ------------------------------------------------------------------
-              IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = ABS(ln_out_cmp_trans_qty)) THEN
-                -- 何もしない
+-- add start 1.9
+              IF ((move_target_tbl(gn_rec_idx).lot_out_actual_quantity = move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity)
+                AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity = move_target_tbl(gn_rec_idx).lot_in_bf_act_quantity))
+              THEN
                 NULL;
---
-                -- for debug
-                FND_FILE.PUT_LINE(FND_FILE.LOG,'【29】ロット詳細アドオンの数量と実績(保留トラン)の数量が同じ');
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【29】何もしない');
---
-              ------------------------------------------------------------------
-              -- ロット詳細アドオンの数量と実績(cmp)の数量が異なる場合
-              -- →ロット詳細アドオンの数量が変更されている
-              ------------------------------------------------------------------
               ELSE
-                -- for debug
-                --FND_FILE.PUT_LINE(FND_FILE.LOG,'【30】ロット詳細アドオンの数量と実績(保留トラン)の数量が違う');
+-- add end 
+                --for debug
+                FND_FILE.PUT_LINE(FND_FILE.LOG,'【28】実績(cmp)の日付と移動ヘッダアドオンの実績日が同じ');
 --
-                --================================================================
-                -- 実績(cmp)の数量と実績訂正(cmp_a)の数量が異なる場合
-                --================================================================
-                -- 2008/4/14 modify start
-                --  IF (ABS(ln_out_cmp_trans_qty) <> ABS(ln_out_cmp_a_trans_qty))    -- 出庫数
-                --  AND (ABS(ln_in_cmp_trans_qty)  <> ABS(ln_in_cmp_a_trans_qty))    -- 入庫数
-                --  THEN
+                ------------------------------------------------------------------
+                -- ロット詳細アドオンの数量と実績(保留トラン)の数量が同じ場合
+                -- →ロット詳細アドオンの数量が変更されていない
+                ------------------------------------------------------------------
+                IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = ABS(ln_out_cmp_trans_qty)) THEN
+                  -- 何もしない
+                  NULL;
 --
-                IF (TRUNC(ld_out_trans_date) <> TRUNC(ld_a_out_trans_date))  -- 出庫日 実績と実績訂正
-                OR (TRUNC(ld_in_trans_date)  <> TRUNC(ld_a_in_trans_date))  -- 入庫日 実績と実績訂正
-                OR ld_a_out_trans_date IS NULL
-                OR ld_a_in_trans_date IS NULL
-                THEN
                   -- for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【31】実績(cmp)と実績訂正(cmp_a)の実績日が異なる');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【29】ロット詳細アドオンの数量と実績(保留トラン)の数量が同じ');
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【29】何もしない');
 --
-                  ------------------------------------------------------------------
-                  -- 実績(cmp)の数量が0でない場合
-                  -- 赤作る
-                  ------------------------------------------------------------------
-                  IF ( ABS(ln_out_cmp_trans_qty) <> 0 ) THEN
+                ------------------------------------------------------------------
+                -- ロット詳細アドオンの数量と実績(cmp)の数量が異なる場合
+                -- →ロット詳細アドオンの数量が変更されている
+                ------------------------------------------------------------------
+                ELSE
+                  -- for debug
+                  FND_FILE.PUT_LINE(FND_FILE.LOG,'【30】ロット詳細アドオンの数量と実績(保留トラン)の数量が違う');
 --
+                  --================================================================
+                  -- 実績(cmp)の数量と実績訂正(cmp_a)の数量が異なる場合
+                  --================================================================
+                  -- 2008/4/14 modify start
+                  --  IF (ABS(ln_out_cmp_trans_qty) <> ABS(ln_out_cmp_a_trans_qty))    -- 出庫数
+                  --  AND (ABS(ln_in_cmp_trans_qty)  <> ABS(ln_in_cmp_a_trans_qty))    -- 入庫数
+                  --  THEN
+--
+                  IF (TRUNC(ld_out_trans_date) <> TRUNC(ld_a_out_trans_date))  -- 出庫日 実績と実績訂正
+                  OR (TRUNC(ld_in_trans_date)  <> TRUNC(ld_a_in_trans_date))  -- 入庫日 実績と実績訂正
+                  OR ld_a_out_trans_date IS NULL
+                  OR ld_a_in_trans_date IS NULL
+                  THEN
                     -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【32】実績(cmp)の数量が0でない');
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績訂正格納 Start');
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【31】実績(cmp)と実績訂正(cmp_a)の実績日が異なる');
 --
-                    -- 実績訂正作成情報格納
-                    -- 在庫数量API実行対象レコードにデータを格納 出庫データ
-                    adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
-                    adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
-                    adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                    adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
-                    adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_cmp_trans_qty);
-                    adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_cmp_trans_qty);
-                    adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
-                    adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
-                    adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
-                    adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
-                    adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
---
-                    -- インクリメント
-                    ln_idx_adji := ln_idx_adji + 1;
---
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績訂正格納 End');
---
-                  END IF;
---
-                  ------------------------------------------------------------------
-                  -- 黒情報
-                  -- 移動ロット詳細の数量が0の場合(実績登録しない)
-                  IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN
-                    -- 何もしない
-                    NULL;
---
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【34】ロット詳細の数量が0');
---
-                  ------------------------------------------------------------------
-                  -- 移動ロット詳細の数量が0以外の場合(実績登録する)
-                  ELSE
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【35】ロット詳細の数量が0じゃない');
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【36】trni実績  格納START');
---
-                    BEGIN
-                      -- 変数初期化
-                      lv_from_orgn_code := NULL;
-                      lv_from_co_code   := NULL;
-                      lv_from_whse_code := NULL;
-                      lv_to_orgn_code   := NULL;
-                      lv_to_co_code     := NULL;
-                      lv_to_whse_code   := NULL;
-                      ln_err_flg        := 0;
---
-                      -- 組織,会社,倉庫の取得カーソルオープン
-                      OPEN xxcmn_locations_cur(
-                                move_target_tbl(gn_rec_idx).shipped_locat_id    -- 出庫元
-                               ,move_target_tbl(gn_rec_idx).ship_to_locat_id ); -- 入庫先
---
-                      <<xxcmn_locations_cur_loop>>
-                      LOOP
-                        FETCH xxcmn_locations_cur
-                        INTO  lv_from_orgn_code       -- 組織コード(出庫用)
-                             ,lv_from_co_code         -- 会社コード(出庫用)
-                             ,lv_from_whse_code       -- 倉庫コード(出庫用)
-                             ,lv_to_orgn_code         -- 組織コード(入庫用)
-                             ,lv_to_co_code           -- 会社コード(入庫用)
-                             ,lv_to_whse_code         -- 倉庫コード(入庫用)
-                             ;
-                        EXIT WHEN xxcmn_locations_cur%NOTFOUND;
---
-                      END LOOP xxcmn_locations_cur_loop;
---
-                      -- カーソルクローズ
-                      CLOSE xxcmn_locations_cur;
---
-                    EXCEPTION
-                      WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
-                        -- エラーフラグ
-                        ln_err_flg  := 1;
-                        IF (xxcmn_locations_cur%ISOPEN) THEN
-                          -- カーソルクローズ
-                          CLOSE xxcmn_locations_cur;
-                        END IF;
-                        -- エラーメッセージ内容
-                        lv_err_msg_value
-                              := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
-
-                        lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
-                                                              gv_c_msg_57a_006, -- データ取得エラー
-                                                              gv_c_tkn_msg,     -- トークンMSG
-                                                              lv_err_msg_value  -- トークン値
-                                                              );
-                        -- エラー内容格納
-                        out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
-                        -- エラー移動番号PLSQL表に格納
-                        err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
-                        err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
---
-                      WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
-                        -- エラーフラグ
-                        ln_err_flg  := 1;
---
-                        IF (xxcmn_locations_cur%ISOPEN) THEN
-                          -- カーソルクローズ
-                          CLOSE xxcmn_locations_cur;
-                        END IF;
-                        -- エラーメッセージ内容
-                        lv_err_msg_value
-                              := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
---
-                        lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
-                                                              gv_c_msg_57a_006, -- データ取得エラー
-                                                              gv_c_tkn_msg,     -- トークンMSG
-                                                              lv_err_msg_value  -- トークン値
-                                                              );
-                        -- エラー内容格納
-                        out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
-                        -- エラー移動番号PLSQL表に格納
-                        err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
-                        err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
---
-                    END;
---
-                    -----------------------------------------------------------------
-                    -- 組織、会社、倉庫情報が取得できた場合
-                    IF (ln_err_flg = 0) THEN
---
-                      -- trni実績登録用レコードにデータを格納
-                      trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
-                      trni_api_rec_tbl(ln_idx_trni).from_whse_code := lv_from_whse_code;
-                      trni_api_rec_tbl(ln_idx_trni).to_whse_code   := lv_to_whse_code;
-                      trni_api_rec_tbl(ln_idx_trni).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                      trni_api_rec_tbl(ln_idx_trni).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元保管倉庫
-                      trni_api_rec_tbl(ln_idx_trni).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
-                      trni_api_rec_tbl(ln_idx_trni).trans_qty      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
-                      trni_api_rec_tbl(ln_idx_trni).co_code    := lv_from_co_code;
-                      trni_api_rec_tbl(ln_idx_trni).orgn_code  := lv_from_orgn_code;
-                      trni_api_rec_tbl(ln_idx_trni).trans_date := move_target_tbl(gn_rec_idx).actual_ship_date; -- 出庫実績日
-                      trni_api_rec_tbl(ln_idx_trni).attribute1 := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
---
-                      -- インクリメント
-                      ln_idx_trni := ln_idx_trni + 1;
+                    ------------------------------------------------------------------
+                    -- 実績(cmp)の数量が0でない場合
+                    -- 赤作る
+                    ------------------------------------------------------------------
+                    IF ( ABS(ln_out_cmp_trans_qty) <> 0 ) THEN
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【36】trni実績  格納End');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【32】実績(cmp)の数量が0でない');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績訂正格納 Start');
+--
+                      -- 実績訂正作成情報格納
+                      -- 在庫数量API実行対象レコードにデータを格納 出庫データ
+                      adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                      adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_cmp_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_cmp_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+--
+                      -- インクリメント
+                      ln_idx_adji := ln_idx_adji + 1;
+--
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績訂正格納 End');
+--
                     END IF;
 --
-                  END IF;
---
-                -- 2008/4/14 modify start
-                --================================================================
-                -- 実績(cmp)の数量と実績訂正(cmp_a)の数量が同じ場合
-                -- 赤作らない 黒だけ作る
-                --================================================================
-                --  ELSIF (ABS(ln_out_cmp_trans_qty) = ABS(ln_out_cmp_a_trans_qty))   -- 出庫数
-                --    AND (ABS(ln_in_cmp_trans_qty)  = ABS(ln_in_cmp_a_trans_qty))    -- 入庫数
-                --  THEN
---
-                ELSIF (TRUNC(ld_out_trans_date) = TRUNC(ld_a_out_trans_date))  -- 出庫日 実績と実績訂正
-                AND (TRUNC(ld_in_trans_date)  = TRUNC(ld_a_in_trans_date))  -- 入庫日 実績と実績訂正
-                THEN
-                  --for debug
-                  --FND_FILE.PUT_LINE(FND_FILE.LOG,'【37】実績と実績訂正の実績日同じ');
---
---2008/12/11 Y.Kawano Add Start
-                  ------------------------------------------------------------------
-                  -- 実績(cmp)の数量が0でない場合
-                  -- 赤作る
-                  ------------------------------------------------------------------
-                  IF ( ABS(ln_out_cmp_trans_qty) <> 0 ) THEN
---
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【32】実績(cmp)の数量が0でない');
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績訂正格納 Start');
---
-                    -- 実績訂正作成情報格納
-                    -- 在庫数量API実行対象レコードにデータを格納 出庫データ
-                    adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
-                    adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
-                    adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                    adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
-                    adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_cmp_trans_qty);
-                    adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_cmp_trans_qty);
-                    adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
-                    adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
-                    adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
-                    adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
-                    adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
-                    adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
---
-                    -- インクリメント
-                    ln_idx_adji := ln_idx_adji + 1;
---
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績訂正格納 End');
---
-                  END IF;
---2008/12/11 Y.Kawano Add Start
---
-                  IF (ABS(ln_out_cmp_trans_qty) = ABS(ln_out_cmp_a_trans_qty))   -- 出庫数
-                  AND (ABS(ln_in_cmp_trans_qty) = ABS(ln_in_cmp_a_trans_qty))    -- 入庫数
-                  THEN
---
-                    NULL;
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【38】実績と実績訂正の数量も同じ');
-                -- 黒数量と赤数量が違う場合
-                  ELSE
-                -- 2008/04/14 modify end
-                    -- for debug
-                    --FND_FILE.PUT_LINE(FND_FILE.LOG,'【39】実績と実績訂正の数量が違う');
                     ------------------------------------------------------------------
                     -- 黒情報
                     -- 移動ロット詳細の数量が0の場合(実績登録しない)
@@ -4214,162 +4045,352 @@ AS
                       NULL;
 --
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【40】ロット詳細の数量が0');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【34】ロット詳細の数量が0');
 --
                     ------------------------------------------------------------------
                     -- 移動ロット詳細の数量が0以外の場合(実績登録する)
                     ELSE
---
                       -- for debug
-                      --FND_FILE.PUT_LINE(FND_FILE.LOG,'【41】ロット詳細の数量が0じゃない');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【35】ロット詳細の数量が0じゃない');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【36】trni実績  格納START');
 --
-                      ------------------------------------------------------------------
-                      -- 実績(cmp)の数量が0の場合は前回0実績計上されているからデータなし
-                      -- 倉庫組織会社情報がないため取得する
-                      ------------------------------------------------------------------
-                      IF (ln_out_cmp_trans_qty = 0) THEN
+                      BEGIN
+                        -- 変数初期化
+                        lv_from_orgn_code := NULL;
+                        lv_from_co_code   := NULL;
+                        lv_from_whse_code := NULL;
+                        lv_to_orgn_code   := NULL;
+                        lv_to_co_code     := NULL;
+                        lv_to_whse_code   := NULL;
+                        ln_err_flg        := 0;
+--
+                        -- 組織,会社,倉庫の取得カーソルオープン
+                        OPEN xxcmn_locations_cur(
+                                  move_target_tbl(gn_rec_idx).shipped_locat_id    -- 出庫元
+                                 ,move_target_tbl(gn_rec_idx).ship_to_locat_id ); -- 入庫先
+--
+                        <<xxcmn_locations_cur_loop>>
+                        LOOP
+                          FETCH xxcmn_locations_cur
+                          INTO  lv_from_orgn_code       -- 組織コード(出庫用)
+                               ,lv_from_co_code         -- 会社コード(出庫用)
+                               ,lv_from_whse_code       -- 倉庫コード(出庫用)
+                               ,lv_to_orgn_code         -- 組織コード(入庫用)
+                               ,lv_to_co_code           -- 会社コード(入庫用)
+                               ,lv_to_whse_code         -- 倉庫コード(入庫用)
+                               ;
+                          EXIT WHEN xxcmn_locations_cur%NOTFOUND;
+--
+                        END LOOP xxcmn_locations_cur_loop;
+--
+                        -- カーソルクローズ
+                        CLOSE xxcmn_locations_cur;
+--
+                      EXCEPTION
+                        WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                          -- エラーフラグ
+                          ln_err_flg  := 1;
+                          IF (xxcmn_locations_cur%ISOPEN) THEN
+                            -- カーソルクローズ
+                            CLOSE xxcmn_locations_cur;
+                          END IF;
+                          -- エラーメッセージ内容
+                          lv_err_msg_value
+                                := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+--
+                          lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                                gv_c_msg_57a_006, -- データ取得エラー
+                                                                gv_c_tkn_msg,     -- トークンMSG
+                                                                lv_err_msg_value  -- トークン値
+                                                                );
+                          -- エラー内容格納
+                          out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
+                          -- エラー移動番号PLSQL表に格納
+                          err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
+                          err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+--
+                        WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                          -- エラーフラグ
+                          ln_err_flg  := 1;
+--
+                          IF (xxcmn_locations_cur%ISOPEN) THEN
+                            -- カーソルクローズ
+                            CLOSE xxcmn_locations_cur;
+                          END IF;
+                          -- エラーメッセージ内容
+                          lv_err_msg_value
+                                := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+--
+                          lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                                gv_c_msg_57a_006, -- データ取得エラー
+                                                                gv_c_tkn_msg,     -- トークンMSG
+                                                                lv_err_msg_value  -- トークン値
+                                                                );
+                          -- エラー内容格納
+                          out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
+                          -- エラー移動番号PLSQL表に格納
+                          err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
+                          err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+--
+                      END;
+--
+                      -----------------------------------------------------------------
+                      -- 組織、会社、倉庫情報が取得できた場合
+                      IF (ln_err_flg = 0) THEN
+--
+                        -- trni実績登録用レコードにデータを格納
+                        trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                        trni_api_rec_tbl(ln_idx_trni).from_whse_code := lv_from_whse_code;
+                        trni_api_rec_tbl(ln_idx_trni).to_whse_code   := lv_to_whse_code;
+                        trni_api_rec_tbl(ln_idx_trni).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                        trni_api_rec_tbl(ln_idx_trni).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元保管倉庫
+                        trni_api_rec_tbl(ln_idx_trni).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                        trni_api_rec_tbl(ln_idx_trni).trans_qty      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
+                        trni_api_rec_tbl(ln_idx_trni).co_code    := lv_from_co_code;
+                        trni_api_rec_tbl(ln_idx_trni).orgn_code  := lv_from_orgn_code;
+                        trni_api_rec_tbl(ln_idx_trni).trans_date := move_target_tbl(gn_rec_idx).actual_ship_date; -- 出庫実績日
+                        trni_api_rec_tbl(ln_idx_trni).attribute1 := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+--
+                        -- インクリメント
+                        ln_idx_trni := ln_idx_trni + 1;
 --
                         -- for debug
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【42】ln_out_cmp_trans_qty = 0');
-                        --FND_FILE.PUT_LINE(FND_FILE.LOG,'【43】組織情報取得 Start');
+                        FND_FILE.PUT_LINE(FND_FILE.LOG,'【36】trni実績  格納End');
+                      END IF;
 --
-                        BEGIN
-                          -- 変数初期化
-                          lv_from_orgn_code := NULL;
-                          lv_from_co_code   := NULL;
-                          lv_from_whse_code := NULL;
-                          lv_to_orgn_code   := NULL;
-                          lv_to_co_code     := NULL;
-                          lv_to_whse_code   := NULL;
-                          ln_err_flg        := 0;
+                    END IF;
 --
-                          -- 組織,会社,倉庫の取得カーソルオープン
-                          OPEN xxcmn_locations_cur(
-                                    move_target_tbl(gn_rec_idx).shipped_locat_id    -- 出庫元
-                                   ,move_target_tbl(gn_rec_idx).ship_to_locat_id ); -- 入庫先
+                  -- 2008/4/14 modify start
+                  --================================================================
+                  -- 実績(cmp)の数量と実績訂正(cmp_a)の数量が同じ場合
+                  -- 赤作らない 黒だけ作る
+                  --================================================================
+                  --  ELSIF (ABS(ln_out_cmp_trans_qty) = ABS(ln_out_cmp_a_trans_qty))   -- 出庫数
+                  --    AND (ABS(ln_in_cmp_trans_qty)  = ABS(ln_in_cmp_a_trans_qty))    -- 入庫数
+                  --  THEN
 --
-                          <<xxcmn_locations_cur_loop>>
-                          LOOP
-                            FETCH xxcmn_locations_cur
-                            INTO  lv_from_orgn_code       -- 組織コード(出庫用)
-                                 ,lv_from_co_code         -- 会社コード(出庫用)
-                                 ,lv_from_whse_code       -- 倉庫コード(出庫用)
-                                 ,lv_to_orgn_code         -- 組織コード(入庫用)
-                                 ,lv_to_co_code           -- 会社コード(入庫用)
-                                 ,lv_to_whse_code         -- 倉庫コード(入庫用)
-                                 ;
-                            EXIT WHEN xxcmn_locations_cur%NOTFOUND;
+                  ELSIF (TRUNC(ld_out_trans_date) = TRUNC(ld_a_out_trans_date))  -- 出庫日 実績と実績訂正
+                  AND (TRUNC(ld_in_trans_date)  = TRUNC(ld_a_in_trans_date))  -- 入庫日 実績と実績訂正
+                  THEN
+                    --for debug
+                    FND_FILE.PUT_LINE(FND_FILE.LOG,'【37】実績と実績訂正の実績日同じ');
 --
-                          END LOOP xxcmn_locations_cur_loop;
+--2008/12/11 Y.Kawano Add Start
+                    ------------------------------------------------------------------
+                    -- 実績(cmp)の数量が0でない場合
+                    -- 赤作る
+                    ------------------------------------------------------------------
+                    IF ( ABS(ln_out_cmp_trans_qty) <> 0 ) THEN
 --
-                          -- カーソルクローズ
-                          CLOSE xxcmn_locations_cur;
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【32】実績(cmp)の数量が0でない');
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績訂正格納 Start');
 --
-                        EXCEPTION
-                          WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
-                            -- エラーフラグ
-                            ln_err_flg  := 1;
-                            IF (xxcmn_locations_cur%ISOPEN) THEN
-                              -- カーソルクローズ
-                              CLOSE xxcmn_locations_cur;
-                            END IF;
-                            -- エラーメッセージ内容
-                            lv_err_msg_value
-                                  := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+                      -- 実績訂正作成情報格納
+                      -- 在庫数量API実行対象レコードにデータを格納 出庫データ
+                      adji_data_rec_tbl(ln_idx_adji).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_whse_code := lv_from_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_whse_code   := lv_to_whse_code;
+                      adji_data_rec_tbl(ln_idx_adji).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                      adji_data_rec_tbl(ln_idx_adji).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_out  := ABS(ln_out_cmp_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).trans_qty_in   := ABS(ln_in_cmp_trans_qty);
+                      adji_data_rec_tbl(ln_idx_adji).from_co_code   := lv_out_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_co_code     := lv_in_co_code;
+                      adji_data_rec_tbl(ln_idx_adji).from_orgn_code := lv_out_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).to_orgn_code   := lv_in_orgn_code;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_out := ld_out_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).trans_date_in  := ld_in_trans_date;
+                      adji_data_rec_tbl(ln_idx_adji).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
 --
-                            lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
-                                                                  gv_c_msg_57a_006, -- データ取得エラー
-                                                                  gv_c_tkn_msg,     -- トークンMSG
-                                                                  lv_err_msg_value  -- トークン値
-                                                                  );
-                            -- エラー内容格納
-                            out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
-                            -- エラー移動番号PLSQL表に格納
-                            err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
-                            err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+                      -- インクリメント
+                      ln_idx_adji := ln_idx_adji + 1;
 --
-                          WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
-                            -- エラーフラグ
-                            ln_err_flg  := 1;
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【33】実績訂正格納 End');
 --
-                            IF (xxcmn_locations_cur%ISOPEN) THEN
-                              -- カーソルクローズ
-                              CLOSE xxcmn_locations_cur;
-                            END IF;
-                            -- エラーメッセージ内容
-                            lv_err_msg_value
-                                  := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+                    END IF;
+--2008/12/11 Y.Kawano Add Start
 --
-                            lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
-                                                                  gv_c_msg_57a_006, -- データ取得エラー
-                                                                  gv_c_tkn_msg,     -- トークンMSG
-                                                                  lv_err_msg_value  -- トークン値
-                                                                  );
-                            -- エラー内容格納
-                            out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
-                            -- エラー移動番号PLSQL表に格納
-                            err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
-                            err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+                    IF (ABS(ln_out_cmp_trans_qty) = ABS(ln_out_cmp_a_trans_qty))   -- 出庫数
+                    AND (ABS(ln_in_cmp_trans_qty) = ABS(ln_in_cmp_a_trans_qty))    -- 入庫数
+                    THEN
 --
-                          END;
+                      NULL;
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【38】実績と実績訂正の数量も同じ');
+                  -- 黒数量と赤数量が違う場合
+                    ELSE
+                    -- 2008/04/14 modify end
+                      -- for debug
+                      FND_FILE.PUT_LINE(FND_FILE.LOG,'【39】実績と実績訂正の数量が違う');
+                      ------------------------------------------------------------------
+                      -- 黒情報
+                      -- 移動ロット詳細の数量が0の場合(実績登録しない)
+                      IF (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0) THEN
+                        -- 何もしない
+                        NULL;
+--
+                        -- for debug
+                        FND_FILE.PUT_LINE(FND_FILE.LOG,'【40】ロット詳細の数量が0');
+--
+                      ------------------------------------------------------------------
+                      -- 移動ロット詳細の数量が0以外の場合(実績登録する)
+                      ELSE
+--
+                        -- for debug
+                        FND_FILE.PUT_LINE(FND_FILE.LOG,'【41】ロット詳細の数量が0じゃない');
+--
+                        ------------------------------------------------------------------
+                        -- 実績(cmp)の数量が0の場合は前回0実績計上されているからデータなし
+                        -- 倉庫組織会社情報がないため取得する
+                        ------------------------------------------------------------------
+                        IF (ln_out_cmp_trans_qty = 0) THEN
 --
                           -- for debug
-                          --FND_FILE.PUT_LINE(FND_FILE.LOG,'【44】組織情報取得 End');
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【42】ln_out_cmp_trans_qty = 0');
+                          FND_FILE.PUT_LINE(FND_FILE.LOG,'【43】組織情報取得 Start');
 --
-                          -----------------------------------------------------------------
-                          -- 組織、会社、倉庫情報が取得できた場合
-                          IF (ln_err_flg = 0) THEN
+                          BEGIN
+                            -- 変数初期化
+                            lv_from_orgn_code := NULL;
+                            lv_from_co_code   := NULL;
+                            lv_from_whse_code := NULL;
+                            lv_to_orgn_code   := NULL;
+                            lv_to_co_code     := NULL;
+                            lv_to_whse_code   := NULL;
+                            ln_err_flg        := 0;
+--
+                            -- 組織,会社,倉庫の取得カーソルオープン
+                            OPEN xxcmn_locations_cur(
+                                      move_target_tbl(gn_rec_idx).shipped_locat_id    -- 出庫元
+                                     ,move_target_tbl(gn_rec_idx).ship_to_locat_id ); -- 入庫先
+--
+                            <<xxcmn_locations_cur_loop>>
+                            LOOP
+                              FETCH xxcmn_locations_cur
+                              INTO  lv_from_orgn_code       -- 組織コード(出庫用)
+                                   ,lv_from_co_code         -- 会社コード(出庫用)
+                                   ,lv_from_whse_code       -- 倉庫コード(出庫用)
+                                   ,lv_to_orgn_code         -- 組織コード(入庫用)
+                                   ,lv_to_co_code           -- 会社コード(入庫用)
+                                   ,lv_to_whse_code         -- 倉庫コード(入庫用)
+                                   ;
+                              EXIT WHEN xxcmn_locations_cur%NOTFOUND;
+--
+                            END LOOP xxcmn_locations_cur_loop;
+--
+                            -- カーソルクローズ
+                            CLOSE xxcmn_locations_cur;
+--
+                          EXCEPTION
+                            WHEN NO_DATA_FOUND THEN                             -- データ取得エラー 
+                              -- エラーフラグ
+                              ln_err_flg  := 1;
+                              IF (xxcmn_locations_cur%ISOPEN) THEN
+                                -- カーソルクローズ
+                                CLOSE xxcmn_locations_cur;
+                              END IF;
+                              -- エラーメッセージ内容
+                              lv_err_msg_value
+                                    := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+--
+                              lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                                    gv_c_msg_57a_006, -- データ取得エラー
+                                                                    gv_c_tkn_msg,     -- トークンMSG
+                                                                    lv_err_msg_value  -- トークン値
+                                                                    );
+                              -- エラー内容格納
+                              out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
+                              -- エラー移動番号PLSQL表に格納
+                              err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
+                              err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+--
+                            WHEN TOO_MANY_ROWS THEN                             -- データ取得エラー 
+                              -- エラーフラグ
+                              ln_err_flg  := 1;
+--
+                              IF (xxcmn_locations_cur%ISOPEN) THEN
+                                -- カーソルクローズ
+                                CLOSE xxcmn_locations_cur;
+                              END IF;
+                              -- エラーメッセージ内容
+                              lv_err_msg_value
+                                    := gv_c_no_data_msg|| move_target_tbl(gn_rec_idx).mov_num;
+--
+                              lv_errmsg := xxcmn_common_pkg.get_msg(gv_c_msg_kbn_inv,
+                                                                    gv_c_msg_57a_006, -- データ取得エラー
+                                                                    gv_c_tkn_msg,     -- トークンMSG
+                                                                    lv_err_msg_value  -- トークン値
+                                                                    );
+                              -- エラー内容格納
+                              out_err_tbl2(gn_rec_idx).out_msg := lv_errmsg;
+                              -- エラー移動番号PLSQL表に格納
+                              err_mov_rec_tbl(gn_rec_idx).mov_hdr_id := move_target_tbl(gn_rec_idx).mov_hdr_id;
+                              err_mov_rec_tbl(gn_rec_idx).mov_num    := move_target_tbl(gn_rec_idx).mov_num;
+--
+                            END;
 --
                             -- for debug
-                            --FND_FILE.PUT_LINE(FND_FILE.LOG,'【45】trni実績格納 START');
+                            FND_FILE.PUT_LINE(FND_FILE.LOG,'【44】組織情報取得 End');
+--
+                            -----------------------------------------------------------------
+                            -- 組織、会社、倉庫情報が取得できた場合
+                            IF (ln_err_flg = 0) THEN
+--
+                              -- for debug
+                              FND_FILE.PUT_LINE(FND_FILE.LOG,'【45】trni実績格納 START');
+--
+                              -- trni実績登録用レコードにデータを格納
+                              trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
+                              trni_api_rec_tbl(ln_idx_trni).from_whse_code := lv_from_whse_code;
+                              trni_api_rec_tbl(ln_idx_trni).to_whse_code   := lv_to_whse_code;
+                              trni_api_rec_tbl(ln_idx_trni).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
+                              trni_api_rec_tbl(ln_idx_trni).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
+                              trni_api_rec_tbl(ln_idx_trni).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
+                              trni_api_rec_tbl(ln_idx_trni).trans_qty      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
+                              trni_api_rec_tbl(ln_idx_trni).co_code        := lv_from_co_code;
+                              trni_api_rec_tbl(ln_idx_trni).orgn_code      := lv_from_orgn_code;
+                              trni_api_rec_tbl(ln_idx_trni).trans_date     := move_target_tbl(gn_rec_idx).actual_ship_date; -- 出庫実績日
+                              trni_api_rec_tbl(ln_idx_trni).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
+--
+                              -- インクリメント
+                              ln_idx_trni := ln_idx_trni + 1;
+--
+                              --for debug
+                              FND_FILE.PUT_LINE(FND_FILE.LOG,'【46】trni実績格納 End');
+--
+                            END IF;
+--
+                          -----------------------------------------------------
+                          -- 実績(cmp)の数量が0でない場合
+                          -- 前回実績計上されているから倉庫組織会社情報がある
+                          -----------------------------------------------------
+                          ELSE
+                            --for debug
+                            FND_FILE.PUT_LINE(FND_FILE.LOG,'【45】trni実績格納するだけ Start');
 --
                             -- trni実績登録用レコードにデータを格納
                             trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
                             trni_api_rec_tbl(ln_idx_trni).from_whse_code := lv_from_whse_code;
                             trni_api_rec_tbl(ln_idx_trni).to_whse_code   := lv_to_whse_code;
                             trni_api_rec_tbl(ln_idx_trni).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                            trni_api_rec_tbl(ln_idx_trni).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元
+                            trni_api_rec_tbl(ln_idx_trni).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元保管倉庫
                             trni_api_rec_tbl(ln_idx_trni).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
                             trni_api_rec_tbl(ln_idx_trni).trans_qty      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
-                            trni_api_rec_tbl(ln_idx_trni).co_code        := lv_from_co_code;
-                            trni_api_rec_tbl(ln_idx_trni).orgn_code      := lv_from_orgn_code;
+                            trni_api_rec_tbl(ln_idx_trni).co_code        := lv_out_co_code;
+                            trni_api_rec_tbl(ln_idx_trni).orgn_code      := lv_out_orgn_code;
                             trni_api_rec_tbl(ln_idx_trni).trans_date     := move_target_tbl(gn_rec_idx).actual_ship_date; -- 出庫実績日
                             trni_api_rec_tbl(ln_idx_trni).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
 --
                             -- インクリメント
                             ln_idx_trni := ln_idx_trni + 1;
 --
-                            --for debug
-                            --FND_FILE.PUT_LINE(FND_FILE.LOG,'【46】trni実績格納 End');
+                            -- for debug
+                            FND_FILE.PUT_LINE(FND_FILE.LOG,'【46】trni実績格納するだけ End');
 --
                           END IF;
---
-                        -----------------------------------------------------
-                        -- 実績(cmp)の数量が0でない場合
-                        -- 前回実績計上されているから倉庫組織会社情報がある
-                        -----------------------------------------------------
-                        ELSE
-                          --for debug
-                          --FND_FILE.PUT_LINE(FND_FILE.LOG,'【45】trni実績格納するだけ Start');
---
-                          -- trni実績登録用レコードにデータを格納
-                          trni_api_rec_tbl(ln_idx_trni).item_no        := move_target_tbl(gn_rec_idx).item_code;
-                          trni_api_rec_tbl(ln_idx_trni).from_whse_code := lv_from_whse_code;
-                          trni_api_rec_tbl(ln_idx_trni).to_whse_code   := lv_to_whse_code;
-                          trni_api_rec_tbl(ln_idx_trni).lot_no         := move_target_tbl(gn_rec_idx).lot_no;
-                          trni_api_rec_tbl(ln_idx_trni).from_location  := move_target_tbl(gn_rec_idx).shipped_locat_code; -- 出庫元保管倉庫
-                          trni_api_rec_tbl(ln_idx_trni).to_location    := move_target_tbl(gn_rec_idx).ship_to_locat_code;
-                          trni_api_rec_tbl(ln_idx_trni).trans_qty      := move_target_tbl(gn_rec_idx).lot_out_actual_quantity;
-                          trni_api_rec_tbl(ln_idx_trni).co_code        := lv_out_co_code;
-                          trni_api_rec_tbl(ln_idx_trni).orgn_code      := lv_out_orgn_code;
-                          trni_api_rec_tbl(ln_idx_trni).trans_date     := move_target_tbl(gn_rec_idx).actual_ship_date; -- 出庫実績日
-                          trni_api_rec_tbl(ln_idx_trni).attribute1     := to_char(move_target_tbl(gn_rec_idx).mov_line_id);
---
-                          -- インクリメント
-                          ln_idx_trni := ln_idx_trni + 1;
---
-                          -- for debug
-                          --FND_FILE.PUT_LINE(FND_FILE.LOG,'【46】trni実績格納するだけ End');
 --
                         END IF;
 --
@@ -4381,7 +4402,9 @@ AS
 --
                 END IF;
 --
-              END IF;
+-- add start 1.9
+               END IF;
+-- add end 1.9
 --
             END IF;
             -- 2008/04/08 Modify End
@@ -4397,6 +4420,9 @@ AS
       -- 実績計上済フラグ = OFF の場合
       /*****************************************************/
       ELSIF ( move_target_tbl(gn_rec_idx).comp_actual_flg = gv_c_ynkbn_n ) THEN
+--
+        -- for debug
+        FND_FILE.PUT_LINE(FND_FILE.LOG,'【1】実績計上済フラグ = OFF Start');
 --
         -- 出庫と入庫で移動実績数量が同数が前提のため出庫数のみで判断
         -- 移動情報の数量が0の場合(実績登録しない)
