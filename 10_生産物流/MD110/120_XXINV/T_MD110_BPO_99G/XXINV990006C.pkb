@@ -7,17 +7,17 @@ AS
  * Description      : 物流構成アドオンのアップロード
  * MD.050           : ファイルアップロード T_MD050_BPO_990
  * MD.070           : 物流構成アドオンのアップロード T_MD070_BPO_99G
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ----------------------- ----------------------------------------------------------
  *  Name                    Description
  * ----------------------- ----------------------------------------------------------
- *  insert_sr_lines_if_proc データ登録 (G-4)
  *  set_data_proc           登録データ設定
- *  check_proc              妥当性チェック (G-3)
- *  get_upload_data_proc    ファイルアップロードインタフェースデータ取得 (G-2)
  *  init_proc               関連データ取得 (G-1)
+ *  get_upload_data_proc    ファイルアップロードインタフェースデータ取得 (G-2)
+ *  check_proc              妥当性チェック (G-3)
+ *  insert_sr_lines_if_proc データ登録 (G-4)
  *  submain                 メイン処理プロシージャ
  *  main                    コンカレント実行ファイル登録プロシージャ
  *
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/02/06    1.0   ORACLE 青木祐介   main 新規作成
  *  2008/04/18    1.1   Oracle 山根 一浩  変更要求No63対応
+ *  2008/07/08    1.2   Oracle 山根 一浩  I_S_192対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -73,6 +74,7 @@ AS
   -- ユーザー定義例外
   -- ===============================
   check_lock_expt           EXCEPTION;     -- ロック取得エラー
+  no_data_if_expt           EXCEPTION;     -- 対象データなし
 --
   PRAGMA EXCEPTION_INIT(check_lock_expt, -54);
 --
@@ -917,7 +919,7 @@ AS
                                             gv_tkn_value,
                                             in_file_id);
       lv_errbuf := lv_errmsg;
-      RAISE global_process_expt;
+      RAISE no_data_if_expt;
     END IF;
 --
     -- **************************************************
@@ -1002,6 +1004,9 @@ AS
     --==============================================================
 --
   EXCEPTION
+    WHEN no_data_if_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_retcode := gv_status_warn;
 --
     WHEN check_lock_expt THEN                           --*** ロック取得エラー ***
       -- エラーメッセージ取得
@@ -1293,6 +1298,13 @@ AS
 --
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
+--
+    -- 2008/07/08 Add ↓
+    ELSIF (lv_retcode = gv_status_warn) THEN
+      ov_retcode := lv_retcode;
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      RETURN;
+    -- 2008/07/08 Add ↑
     END IF;
 --
     -- ===============================

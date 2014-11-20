@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫実績のアップロード
  * MD.050           : ファイルアップロード   T_MD050_BPO_990
  * MD.070           : 入出庫実績のアップロード T_MD070_BPO_99E
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/04/18    1.1   Oracle 山根 一浩  変更要求No63対応
  *  2008/05/07    1.2   Oracle 河野       内部変更要求No82対応
  *  2008/05/28    1.3   Oracle 山根 一浩  変更要求No87対応
+ *  2008/07/08    1.4   Oracle 山根 一浩  I_S_192対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -77,6 +78,7 @@ AS
   -- ===============================
 --
   check_lock_expt           EXCEPTION;     -- ロック取得エラー
+  no_data_if_expt           EXCEPTION;     -- 対象データなし
 --
   PRAGMA EXCEPTION_INIT(check_lock_expt, -54);
 --
@@ -561,7 +563,7 @@ AS
                                             gv_c_tkn_value,
                                             in_file_id);
       lv_errbuf := lv_errmsg;
-      RAISE global_process_expt;
+      RAISE no_data_if_expt;
     END IF;
 --
     -- **************************************************
@@ -714,6 +716,9 @@ AS
     --==============================================================
 --
   EXCEPTION
+    WHEN no_data_if_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_retcode := gv_status_warn;
 --
     WHEN check_lock_expt THEN                           --*** ロック取得エラー ***
       -- エラーメッセージ取得
@@ -1984,6 +1989,13 @@ AS
 --
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
+--
+    -- 2008/07/08 Add ↓
+    ELSIF (lv_retcode = gv_status_warn) THEN
+      ov_retcode := lv_retcode;
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      RETURN;
+    -- 2008/07/08 Add ↑
     END IF;
 --
     -- ===============================
