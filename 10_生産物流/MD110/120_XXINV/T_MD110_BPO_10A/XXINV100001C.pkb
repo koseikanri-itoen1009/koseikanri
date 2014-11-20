@@ -104,6 +104,7 @@ AS
  *  2008/11/13    1.15 Oracle 大橋 孝郎 指摘586,596対応
  *  2008/12/01    1.16 Oracle 大橋 孝郎 本番#155対応
  *  2009/02/17    1.17 Oracle 加波 由香里 本番障害#38対応
+ *  2009/02/27    1.18 Oracle 大橋 孝郎   本番#1240対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -11147,8 +11148,11 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --
     -- *** ローカル・レコード ***
     lr_araigae_data                 araigae_tbl;
+
     t_forecast_interface_tab_ins    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
-    t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
+-- mod start ver1.18
+    t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_designator;
+-- mod end ver1.18
     t_forecast_designator_tab       MRP_FORECAST_INTERFACE_PK.t_forecast_designator;
 --
     -- *** ローカル・レコード ***
@@ -11284,6 +11288,21 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --          EXIT;
 --        END IF;
 ---- 2009/02/17 本番障害#38 DEL End   --
+-- add start ver1.18
+        -- A-4-3 計画商品Forecast名抽出
+        get_f_degi_keikaku( lt_if_data,
+                            ln_data_cnt,
+                            lv_errbuf,
+                            lv_retcode,
+                            lv_errmsg );
+        -- エラーがあったらループ処理中止
+        IF (lv_retcode = gv_status_error) THEN
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          gn_error_cnt := gn_error_cnt + 1;
+          ln_error_flg := 1;
+          EXIT;
+        END IF;
+-- add end ver1.18
 --
       OPEN forecast_araigae_cur(lt_if_data(ln_data_cnt).base_code,lt_if_data(ln_data_cnt).item_code );
 --
@@ -11346,22 +11365,26 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --        t_forecast_interface_tab_del(1).bucket_type           := 1;
 --        t_forecast_interface_tab_del(1).process_status        := 2;
 --        t_forecast_interface_tab_del(1).confidence_percentage := 100;
-        t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
-                          := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;             -- 取引ID
+-- del start ver1.18
+--        t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
+--                          := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;             -- 取引ID
+-- del end ver1.18
         t_forecast_interface_tab_del(gn_del_data_cnt).forecast_designator
                           := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator; -- Forecast名
         t_forecast_interface_tab_del(gn_del_data_cnt).organization_id
                           := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;     -- 組織ID
         t_forecast_interface_tab_del(gn_del_data_cnt).inventory_item_id
                           := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;             -- 品目ID
-        t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;                   -- 数量
+-- del start ver1.18
+/*        t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;                   -- 数量
         t_forecast_interface_tab_del(gn_del_data_cnt).forecast_date
                           := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;   -- 開始日付
         t_forecast_interface_tab_del(gn_del_data_cnt).forecast_end_date
                           := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;     -- 終了日付
         t_forecast_interface_tab_del(gn_del_data_cnt).bucket_type           := 1;
         t_forecast_interface_tab_del(gn_del_data_cnt).process_status        := 2;
-        t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;
+        t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;*/
+-- del end ver1.18
 --
 --        -- Forecast日付データのクリア
 --        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
@@ -11408,7 +11431,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     <<del_serch_error_loop>>
     FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
       -- エラーだった場合
-      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+-- mod start ver1.18
+--      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+      IF ( lb_retcode = FALSE ) THEN
+-- mod end ver1.18
       FND_FILE.PUT_LINE(FND_FILE.LOG,'del_serch_error_loop');
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
                                                       ,gv_msg_10a_045  -- APIエラー
@@ -11416,7 +11442,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
                                                       ,gv_cons_api)    -- 予測API
                                                       ,1
                                                       ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+-- mod start ver1.18
+--        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+        FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
+-- mod end ver1.18
         gn_error_cnt := gn_error_cnt + 1;
         ln_error_flg := 1;
         EXIT;
@@ -11624,7 +11653,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     -- *** ローカル・レコード ***
     lt_if_data    forecast_tbl;
     lr_araigae_data                 araigae_tbl;
-    t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
+-- mod start ver1.18
+--    t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
+    t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_designator;
+-- mod end ver1.18
     t_forecast_interface_tab_ins    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
     t_forecast_designator_tab       MRP_FORECAST_INTERFACE_PK.t_forecast_designator;
 --
@@ -11758,6 +11790,22 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --          EXIT;
 --        END IF;
 -- 2009/02/17 本番障害#38対応 DEL End ----
+-- add start ver1.18
+        -- A-5-3 出荷数制限AForecast名抽出
+        get_f_degi_seigen_a( lt_if_data,
+                             ln_data_cnt,
+                             lv_errbuf,
+                             lv_retcode,
+                             lv_errmsg );
+        lv_err_msg2 := lv_errmsg;
+        -- エラーがあったらループ処理中止
+        IF (lv_retcode = gv_status_error) THEN
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          gn_error_cnt := gn_error_cnt + 1;
+          ln_error_flg := 1;
+          EXIT;
+        END IF;
+-- add end ver1.18
 --
       OPEN forecast_araigae_cur(lt_if_data(ln_data_cnt).item_code);
 --
@@ -11860,22 +11908,26 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --      t_forecast_interface_tab_del(1).bucket_type           := 1;
 --      t_forecast_interface_tab_del(1).process_status        := 2;
 --      t_forecast_interface_tab_del(1).confidence_percentage := 100;
-        t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
-                           := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+-- del start ver1.18
+--        t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
+--                           := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+-- del end ver1.18
         t_forecast_interface_tab_del(gn_del_data_cnt).forecast_designator
                            := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;-- Forecast名
         t_forecast_interface_tab_del(gn_del_data_cnt).organization_id
                            := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;    -- 組織ID
         t_forecast_interface_tab_del(gn_del_data_cnt).inventory_item_id
                            := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;            -- 品目ID
-        t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;        -- 数量
+-- del start ver1.18
+/*        t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;        -- 数量
         t_forecast_interface_tab_del(gn_del_data_cnt).forecast_date
                            := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
         t_forecast_interface_tab_del(gn_del_data_cnt).forecast_end_date
                            := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
         t_forecast_interface_tab_del(gn_del_data_cnt).bucket_type           := 1;
         t_forecast_interface_tab_del(gn_del_data_cnt).process_status        := 2;
-        t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;
+        t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;*/
+-- del end ver1.18
 --
       -- 登録済みデータの削除
 --        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
@@ -11921,14 +11973,20 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
     <<del_serch_error_loop>>
     FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
       -- エラーだった場合
-      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+-- mod start ver1.18
+--      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+      IF ( lb_retcode = FALSE ) THEN
+-- mod end ver1.18
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
                                                       ,gv_msg_10a_045  -- APIエラー
                                                       ,gv_tkn_api_name
                                                       ,gv_cons_api)    -- 予測API
                                                       ,1
                                                       ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+-- mod start ver1.18
+--        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+        FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
+-- mod end ver1.18
         gn_error_cnt := gn_error_cnt + 1;
         ln_error_flg := 1;
         EXIT;
@@ -12138,7 +12196,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --
     -- *** ローカル・レコード ***
     lr_araigae_data                 araigae_tbl;
-    t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
+-- mod start ver1.18
+--    t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
+    t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_designator;
+-- mod end ver1.18
     t_forecast_interface_tab_ins    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
     t_forecast_designator_tab       MRP_FORECAST_INTERFACE_PK.t_forecast_designator;
     lt_if_data    forecast_tbl;
@@ -12274,6 +12335,21 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
 --          EXIT;
 --        END IF;
 -- 2009/02/17 本番障害#38対応 DEL End ----
+-- add start ver1.18
+        -- A-6-3 出荷数制限BForecast名抽出
+        get_f_degi_seigen_b( lt_if_data,
+                             ln_data_cnt,
+                             lv_errbuf,
+                             lv_retcode,
+                             lv_errmsg );
+        -- エラーがあったらループ処理中止
+        IF (lv_retcode = gv_status_error) THEN
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          gn_error_cnt := gn_error_cnt + 1;
+          ln_error_flg := 1;
+          EXIT;
+        END IF;
+-- add end ver1.18
 --
       OPEN forecast_araigae_cur(lt_if_data(ln_data_cnt).item_code);
 --
@@ -12374,22 +12450,26 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
 --      t_forecast_interface_tab_del(1).bucket_type           := 1;
 --      t_forecast_interface_tab_del(1).process_status        := 2;
 --      t_forecast_interface_tab_del(1).confidence_percentage := 100;
-      t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
-                         := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+-- del start ver1.18
+--      t_forecast_interface_tab_del(gn_del_data_cnt).transaction_id
+--                         := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
+-- del end ver1.18
       t_forecast_interface_tab_del(gn_del_data_cnt).forecast_designator
                          := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator;-- Forecast名
       t_forecast_interface_tab_del(gn_del_data_cnt).organization_id
                          := lr_araigae_data(ln_data_cnt2).gv_4f_organization_id;    -- 組織ID
       t_forecast_interface_tab_del(gn_del_data_cnt).inventory_item_id
                          := lr_araigae_data(ln_data_cnt2).gv_4f_item_id;            -- 品目ID
-      t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;        -- 数量
+-- del start ver1.18
+/*      t_forecast_interface_tab_del(gn_del_data_cnt).quantity              := 0;        -- 数量
       t_forecast_interface_tab_del(gn_del_data_cnt).forecast_date
                          := lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active;  -- 開始日付
       t_forecast_interface_tab_del(gn_del_data_cnt).forecast_end_date
                          := lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active;    -- 終了日付
       t_forecast_interface_tab_del(gn_del_data_cnt).bucket_type           := 1;
       t_forecast_interface_tab_del(gn_del_data_cnt).process_status        := 2;
-      t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;
+      t_forecast_interface_tab_del(gn_del_data_cnt).confidence_percentage := 100;*/
+-- del end ver1.18
 --
       -- 登録済みデータの削除
 --        lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
@@ -12435,14 +12515,20 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
     <<del_serch_error_loop>>
     FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
       -- エラーだった場合
-      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+-- mod start ver1.18
+--      IF ( t_forecast_interface_tab_del(ln_data_cnt).process_status <> 5 ) THEN
+      IF ( lb_retcode = FALSE ) THEN
+-- mod end ver1.18
         lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
                                                       ,gv_msg_10a_045  -- APIエラー
                                                       ,gv_tkn_api_name
                                                       ,gv_cons_api)    -- 予測API
                                                       ,1
                                                       ,5000);
-        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+-- mod start ver1.18
+--        FND_FILE.PUT_LINE(FND_FILE.LOG,t_forecast_interface_tab_del(ln_data_cnt).error_message);
+        FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
+-- mod end ver1.18
         gn_error_cnt := gn_error_cnt + 1;
         ln_error_flg := 1;
         EXIT;
