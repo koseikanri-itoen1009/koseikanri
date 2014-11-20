@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSummaryAMImpl
 * 概要説明   : 支給返品要約:検索アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-07-01 1.1  二瓶 大輔    内部変更要求#146対応
 * 2008-08-20 1.2  二瓶 大輔    ST不具合#249対応
 * 2008-10-07 1.3  伊藤ひとみ   統合テスト指摘240対応
+* 2009-01-26 1.4  吉元 強樹    本番#739対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.server;
@@ -878,6 +879,22 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
        {
           // 更新処理
           updateOrderHdr(hdrRow);
+
+// 2009-01-26 v1.4 T.Yoshimoto Add Start 本番#739
+        // 有償金額確定区分が「確定」の場合
+        String fixClass       = (String)hdrRow.getAttribute("FixClass");      // 有償金額確定
+        Number orderHeaderId  = (Number)hdrRow.getAttribute("OrderHeaderId"); // 受注ヘッダアドオンID
+        if (XxpoConstants.FIX_CLASS_ON.equals(fixClass))
+        {
+
+          // 有償金額確定処理を実行します。
+          XxpoUtility.updateFixClass(
+            getOADBTransaction(),
+            orderHeaderId,
+            XxpoConstants.FIX_CLASS_ON);
+        }
+// 2009-01-26 v1.4 T.Yoshimoto Add End 本番#739
+
           // ヘッダ実行フラグをtrueに変更
           hdrExeFlag = true;
        }
@@ -1319,7 +1336,10 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       String sumCapacity         = (String)hdrRow.getAttribute("SumCapacity");           // 積載容積合計
       sumCapacity = XxcmnUtility.commaRemoval(sumCapacity);
       String reqDeptCode         = (String)hdrRow.getAttribute("ReqDeptCode");           // 依頼部署
-      String instDeptCode        = (String)hdrRow.getAttribute("ReqDeptCode");          // 指示部署
+// 2009-01-26 v1.14 T.Yoshimoto Mod Start 本番#739
+      //String instDeptCode        = (String)hdrRow.getAttribute("ReqDeptCode");          // 指示部署
+      String instDeptCode        = (String)hdrRow.getAttribute("InstDeptCode");          // 指示部署
+// 2009-01-26 v1.14 T.Yoshimoto Mod End 本番#739
       Number vendorId            = (Number)hdrRow.getAttribute("VendorId");              // 取引先ID
       String vendorCode          = (String)hdrRow.getAttribute("VendorCode");            // 取引先
       Number shipToId            = (Number)hdrRow.getAttribute("ShipToId");              // 配送先ID
