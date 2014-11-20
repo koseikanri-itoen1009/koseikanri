@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A28C(body)
  * Description      : 顧客一括更新用ＣＳＶダウンロード
  * MD.050           : MD050_CMM_003_A28_顧客一括更新用CSVダウンロード
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2012/03/13    1.6   仁木 重人        障害E_本稼動_09272対応 訪問対象区分の項目追加
  *                                                              情報欄を最終項目に修正
  *  2013/03/29    1.7   仁木 重人        障害E_本稼動_09963追加対応 顧客追加情報、法人情報の項目追加
+ *  2014/03/11    1.8   仁木 重人        障害E_本稼動_11616対応
  *
  *****************************************************************************************/
 --
@@ -455,6 +456,11 @@ AS
                hl.address1                            address1,             --住所1
                hl.address2                            address2,             --住所2
                hl.address3                            address3,             --地区コード
+-- Ver1.8 add start
+               hl.address_lines_phonetic              address_lines_phonetic,
+                                                                            --電話番号
+               hl.address4                            address4,             --FAX
+-- Ver1.8 add end
                hcsu.payment_term_id                   payment_term_id,      --支払条件
                hcsu.attribute2                        payment_term_second,  --第2支払条件
                hcsu.attribute3                        payment_term_third,   --第3支払条件
@@ -528,6 +534,17 @@ AS
 -- 2012/03/13 Ver1.6 E_本稼動_09272 add start by S.Niki
               ,xca.vist_target_div                    vist_target_div       --訪問対象区分
 -- 2012/03/13 Ver1.6 E_本稼動_09272 add end by S.Niki
+-- Ver1.8 add start
+              ,xca.tax_div                            tax_div               --消費税区分
+              ,xca.longitude                          longitude             --ピークカット開始時刻
+              ,xca.calendar_code                      calendar_code         --稼働日カレンダ
+              ,xca.rate                               rate                  --消化計算用掛率
+              ,xca.receiv_discount_rate               receiv_discount_rate  --入金値引率
+              ,xca.conclusion_day1                    conclusion_day1       --消化計算締日1
+              ,xca.conclusion_day2                    conclusion_day2       --消化計算締日2
+              ,xca.conclusion_day3                    conclusion_day3       --消化計算締日3
+              ,xca.store_cust_code                    store_cust_code       --店舗営業用顧客コード
+-- Ver1.8 add end
       FROM     hz_cust_accounts     hca,
                hz_cust_acct_sites   hcas,
                hz_cust_site_uses    hcsu,
@@ -869,95 +886,179 @@ AS
         END LOOP get_payment_term_loop;
       END IF;
 --
-        --出力文字列作成
-        lv_output_str := SUBSTRB(cust_data_rec.customer_class_code,1,2);                               --顧客区分
--- 2009/10/08 Ver1.2 modify start by Shigeto.Niki        
---        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.main_base_code,1,7);       --本部コード
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.main_base_code,1,6);       --本部コード
--- 2009/10/08 Ver1.2 modify end by Shigeto.Niki
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sale_base_code,1,4);       --売上拠点コード
-        lv_output_str := lv_output_str || cv_comma || lv_sales_base_name;                              --売上拠点名称
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_code,1,9);        --顧客コード
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name,1,100);      --顧客名称
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name_kana,1,50);  --顧客名称カナ
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name_ryaku,1,80); --略称
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_status,1,2);      --顧客ステータス
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.approval_reason,1,1);      --中止決済理由
-        lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.approval_date,'YYYY/MM/DD');  --中止決済日
-        lv_output_str := lv_output_str || cv_comma || TO_CHAR(ln_credit_limit);                        --与信限度額
-        lv_output_str := lv_output_str || cv_comma || lv_decide_div;                                   --判定区分
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_invoice_code,1,12);     --売掛コード１（請求書）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_location_code,1,12);    --売掛コード２（事業所）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_others_code,1,12);      --売掛コード３（その他）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_class,1,1);        --請求書印刷区分
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_sycle,1,1);        --請求書発行サイクル
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_form,1,1);         --請求書出力形式
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term,1,8);                    --支払条件
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term_second,1,8);             --第2支払条件
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term_third,1,8);              --第3支払条件
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sales_chain_code,1,9);     --チェーン店コード（販売先）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_sales_kigyou_code,1,6);               --企業コード（販売先）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_chain_code,1,9);  --チェーン店コード（納品先）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_delivery_kigyou_code,1,6);            --企業コード（納品先）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.policy_chain_code,1,30);   --チェーン店コード（営業政策用）
--- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code1,1,9);    --紹介者チェーンコード１
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code2,1,9);    --紹介者チェーンコード２
--- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.chain_store_code,1,4);     --チェーン店コード（ＥＤＩ）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.store_code,1,10);          --店舗コード
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.business_low_type,1,2);    --業態（小分類）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.postal_code,1,7);          --郵便番号
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.state,1,30);               --都道府県
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.city,1,30);                --市・区
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address1,1,240);           --住所1
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address2,1,240);           --住所2
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address3,1,5);             --地区コード
--- 2009/10/20 Ver1.3 add start by Y.Kuboshima
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_code,1,9);         --請求書用コード
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.industry_div,1,2);         --業種
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.bill_base_code,1,4);       --請求拠点
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.receiv_base_code,1,4);     --入金拠点
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_base_code,1,4);   --納品拠点
--- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sales_head_base_code,1,4); --販売先本部担当拠点
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cnvs_base_code,1,4);       --獲得拠点
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cnvs_business_person,1,5); --獲得営業員
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.new_point_div,1,1);        --新規ポイント区分
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.new_point,1,3);            --新規ポイント
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_base_code,1,4);      --紹介拠点
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_person,1,5);         --紹介営業員
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_tdb_code,1,12);                       --TDBコード
-        lv_output_str := lv_output_str || cv_comma || TO_CHAR(lt_approval_date ,cv_date_fmt_std);      --決済日付
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_base_code,1,4);                       --本部担当拠点
--- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.selling_transfer_div,1,4); --売上実績振替
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.card_company,1,9);         --カード会社
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.wholesale_ctrl_code,1,9);  --問屋管理コード
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_price_list,1,240);                    --価格表
--- 2009/10/20 Ver1.3 add end by Y.Kuboshima
--- 2010/04/16 Ver1.4 E_本稼動_02295 add start by Y.Kuboshima
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ship_storage_code,1,10);   --出荷元保管場所
--- 2010/04/16 Ver1.4 E_本稼動_02295 add end by Y.Kuboshima
--- 2012/03/13 Ver1.6 E_本稼動_09272 del start by S.Niki
+-- Ver1.8 mod start
+--        --出力文字列作成
+--        lv_output_str := SUBSTRB(cust_data_rec.customer_class_code,1,2);                               --顧客区分
+---- 2009/10/08 Ver1.2 modify start by Shigeto.Niki        
+----        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.main_base_code,1,7);       --本部コード
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.main_base_code,1,6);       --本部コード
+---- 2009/10/08 Ver1.2 modify end by Shigeto.Niki
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sale_base_code,1,4);       --売上拠点コード
+--        lv_output_str := lv_output_str || cv_comma || lv_sales_base_name;                              --売上拠点名称
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_code,1,9);        --顧客コード
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name,1,100);      --顧客名称
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name_kana,1,50);  --顧客名称カナ
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name_ryaku,1,80); --略称
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_status,1,2);      --顧客ステータス
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.approval_reason,1,1);      --中止決済理由
+--        lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.approval_date,'YYYY/MM/DD');  --中止決済日
+--        lv_output_str := lv_output_str || cv_comma || TO_CHAR(ln_credit_limit);                        --与信限度額
+--        lv_output_str := lv_output_str || cv_comma || lv_decide_div;                                   --判定区分
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_invoice_code,1,12);     --売掛コード１（請求書）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_location_code,1,12);    --売掛コード２（事業所）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_others_code,1,12);      --売掛コード３（その他）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_class,1,1);        --請求書印刷区分
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_sycle,1,1);        --請求書発行サイクル
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_form,1,1);         --請求書出力形式
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term,1,8);                    --支払条件
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term_second,1,8);             --第2支払条件
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term_third,1,8);              --第3支払条件
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sales_chain_code,1,9);     --チェーン店コード（販売先）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_sales_kigyou_code,1,6);               --企業コード（販売先）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_chain_code,1,9);  --チェーン店コード（納品先）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_delivery_kigyou_code,1,6);            --企業コード（納品先）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.policy_chain_code,1,30);   --チェーン店コード（営業政策用）
+---- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code1,1,9);    --紹介者チェーンコード１
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code2,1,9);    --紹介者チェーンコード２
+---- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.chain_store_code,1,4);     --チェーン店コード（ＥＤＩ）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.store_code,1,10);          --店舗コード
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.business_low_type,1,2);    --業態（小分類）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.postal_code,1,7);          --郵便番号
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.state,1,30);               --都道府県
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.city,1,30);                --市・区
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address1,1,240);           --住所1
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address2,1,240);           --住所2
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address3,1,5);             --地区コード
+---- 2009/10/20 Ver1.3 add start by Y.Kuboshima
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_code,1,9);         --請求書用コード
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.industry_div,1,2);         --業種
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.bill_base_code,1,4);       --請求拠点
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.receiv_base_code,1,4);     --入金拠点
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_base_code,1,4);   --納品拠点
+---- Ver1.7 E_本稼動_09963追加対応 add start by S.Niki
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sales_head_base_code,1,4); --販売先本部担当拠点
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cnvs_base_code,1,4);       --獲得拠点
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cnvs_business_person,1,5); --獲得営業員
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.new_point_div,1,1);        --新規ポイント区分
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.new_point,1,3);            --新規ポイント
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_base_code,1,4);      --紹介拠点
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_person,1,5);         --紹介営業員
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_tdb_code,1,12);                       --TDBコード
+--        lv_output_str := lv_output_str || cv_comma || TO_CHAR(lt_approval_date ,cv_date_fmt_std);      --決済日付
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_base_code,1,4);                       --本部担当拠点
+---- Ver1.7 E_本稼動_09963追加対応 add end by S.Niki
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.selling_transfer_div,1,4); --売上実績振替
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.card_company,1,9);         --カード会社
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.wholesale_ctrl_code,1,9);  --問屋管理コード
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_price_list,1,240);                    --価格表
+---- 2009/10/20 Ver1.3 add end by Y.Kuboshima
+---- 2010/04/16 Ver1.4 E_本稼動_02295 add start by Y.Kuboshima
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ship_storage_code,1,10);   --出荷元保管場所
+---- 2010/04/16 Ver1.4 E_本稼動_02295 add end by Y.Kuboshima
+---- 2012/03/13 Ver1.6 E_本稼動_09272 del start by S.Niki
+----        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
+---- 2012/03/13 Ver1.6 E_本稼動_09272 del end by S.Niki
+---- 2011/11/28 Ver1.5 add start by K.Kubo
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_order,1,14);      --配送順（EDI）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_code,1,8);    --EDI地区コード（EDI)
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_name,1,40);   --EDI地区名（EDI）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_kana,1,20);   --EDI地区名カナ（EDI）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.tsukagatazaiko_div,1,2);   --通過在庫型区分（EDI）
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.deli_center_code,1,8);     --EDI納品センターコード
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.deli_center_name,1,20);    --EDI納品センター名
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_forward_number,1,2);   --EDI伝送追番
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cust_store_name,1,30);     --顧客店舗名称
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.torihikisaki_code,1,8);    --取引先コード
+---- 2011/11/28 Ver1.5 add end by K.Kubo
+---- 2012/03/13 Ver1.6 E_本稼動_09272 add start by S.Niki
+--        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.vist_target_div,1,1);      --訪問対象区分
 --        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
--- 2012/03/13 Ver1.6 E_本稼動_09272 del end by S.Niki
--- 2011/11/28 Ver1.5 add start by K.Kubo
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_order,1,14);      --配送順（EDI）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_code,1,8);    --EDI地区コード（EDI)
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_name,1,40);   --EDI地区名（EDI）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_kana,1,20);   --EDI地区名カナ（EDI）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.tsukagatazaiko_div,1,2);   --通過在庫型区分（EDI）
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.deli_center_code,1,8);     --EDI納品センターコード
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.deli_center_name,1,20);    --EDI納品センター名
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_forward_number,1,2);   --EDI伝送追番
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cust_store_name,1,30);     --顧客店舗名称
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.torihikisaki_code,1,8);    --取引先コード
--- 2011/11/28 Ver1.5 add end by K.Kubo
--- 2012/03/13 Ver1.6 E_本稼動_09272 add start by S.Niki
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.vist_target_div,1,1);      --訪問対象区分
-        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information,1,100);                   --情報欄
--- 2012/03/13 Ver1.6 E_本稼動_09272 add end by S.Niki
+---- 2012/03/13 Ver1.6 E_本稼動_09272 add end by S.Niki
+        --出力文字列作成
+        lv_output_str :=                              SUBSTRB(cust_data_rec.customer_class_code          ,1 ,2  );  --顧客区分
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_code                ,1 ,9  );  --顧客コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name                ,1 ,100);  --顧客名称
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name_kana           ,1 ,50 );  --顧客名称カナ
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_name_ryaku          ,1 ,80 );  --略称
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.main_base_code               ,1 ,6  );  --本部コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.postal_code                  ,1 ,7  );  --郵便番号
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.state                        ,1 ,30 );  --都道府県
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.city                         ,1 ,30 );  --市・区
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address1                     ,1 ,240);  --住所1
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address2                     ,1 ,240);  --住所2
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address3                     ,1 ,5  );  --地区コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address_lines_phonetic       ,1 ,30 );  --電話番号
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.address4                     ,1 ,30 );  --FAX
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term                            ,1 ,8  );  --支払条件
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term_second                     ,1 ,8  );  --第2支払条件
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_payment_term_third                      ,1 ,8  );  --第3支払条件
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_price_list                              ,1 ,240);  --価格表
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_invoice_code              ,1 ,12 );  --売掛コード１（請求書）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_location_code             ,1 ,12 );  --売掛コード２（事業所）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ar_others_code               ,1 ,12 );  --売掛コード３（その他）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_form                 ,1 ,1  );  --請求書出力形式
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_sycle                ,1 ,1  );  --請求書発行サイクル
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.customer_status              ,1 ,2  );  --顧客ステータス
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.business_low_type            ,1 ,2  );  --業態（小分類）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.industry_div                 ,1 ,2  );  --業種
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.selling_transfer_div         ,1 ,4  );  --売上実績振替
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.tax_div                      ,1 ,1  );  --消費税区分
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.wholesale_ctrl_code          ,1 ,9  );  --問屋管理コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.ship_storage_code            ,1 ,10 );  --出荷元保管場所
+        lv_output_str := lv_output_str || cv_comma || TO_CHAR(cust_data_rec.approval_date,cv_date_fmt_std );        --中止決済日
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.approval_reason              ,1 ,1  );  --中止決済理由
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.vist_target_div              ,1 ,1  );  --訪問対象区分
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sale_base_code               ,1 ,4  );  --売上拠点コード
+        lv_output_str := lv_output_str || cv_comma || lv_sales_base_name;                                           --売上拠点名称
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_base_code           ,1 ,4  );  --納品拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.bill_base_code               ,1 ,4  );  --請求拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.receiv_base_code             ,1 ,4  );  --入金拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sales_head_base_code         ,1 ,4  );  --販売先本部担当拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.chain_store_code             ,1 ,4  );  --チェーン店コード（ＥＤＩ）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.store_code                   ,1 ,10 );  --店舗コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cust_store_name              ,1 ,30 );  --顧客店舗名称
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.torihikisaki_code            ,1 ,8  );  --取引先コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.sales_chain_code             ,1 ,9  );  --チェーン店コード（販売先）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_sales_kigyou_code                       ,1 ,6  );  --企業コード（販売先）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_chain_code          ,1 ,9  );  --チェーン店コード（納品先）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_delivery_kigyou_code                    ,1 ,6  );  --企業コード（納品先）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.policy_chain_code            ,1 ,30 );  --チェーン店コード（営業政策用）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code1            ,1 ,9  );  --紹介者チェーンコード１
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_chain_code2            ,1 ,9  );  --紹介者チェーンコード２
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_class                ,1 ,1  );  --請求書印刷区分
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.invoice_code                 ,1 ,9  );  --請求書用コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.delivery_order               ,1 ,14 );  --配送順（EDI）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_code            ,1 ,8  );  --EDI地区コード（EDI)
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_name            ,1 ,40 );  --EDI地区名（EDI）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_district_kana            ,1 ,20 );  --EDI地区名カナ（EDI）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.tsukagatazaiko_div           ,1 ,2  );  --通過在庫型区分（EDI）
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.deli_center_code             ,1 ,8  );  --EDI納品センターコード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.deli_center_name             ,1 ,20 );  --EDI納品センター名
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.edi_forward_number           ,1 ,2  );  --EDI伝送追番
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.longitude                    ,1 ,4  );  --ピークカット開始時刻
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.card_company                 ,1 ,9  );  --カード会社
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.calendar_code                ,1 ,10 );  --稼働日カレンダ
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cnvs_base_code               ,1 ,4  );  --獲得拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.cnvs_business_person         ,1 ,5  );  --獲得営業員
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.new_point_div                ,1 ,1  );  --新規ポイント区分
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.new_point                    ,1 ,3  );  --新規ポイント
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_base_code              ,1 ,4  );  --紹介拠点
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.intro_person                 ,1 ,5  );  --紹介営業員
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.rate * 100)          ,1 ,3  );  --消化計算用掛率(消化計算用掛率 * 100)
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.receiv_discount_rate),1 ,4  );  --入金値引率
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.conclusion_day1)     ,1 ,2  );  --消化計算締日1
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.conclusion_day2)     ,1 ,2  );  --消化計算締日2
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(TO_CHAR(cust_data_rec.conclusion_day3)     ,1 ,2  );  --消化計算締日3
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(cust_data_rec.store_cust_code              ,1 ,9  );  --店舗営業用顧客コード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_tdb_code                                ,1 ,12 );  --TDBコード
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lt_base_code                               ,1 ,4  );  --本部担当拠点
+        lv_output_str := lv_output_str || cv_comma || TO_CHAR(ln_credit_limit);                                     --与信限度額
+        lv_output_str := lv_output_str || cv_comma || lv_decide_div;                                                --判定区分
+        lv_output_str := lv_output_str || cv_comma || TO_CHAR(lt_approval_date ,cv_date_fmt_std);                   --決済日付
+        lv_output_str := lv_output_str || cv_comma || SUBSTRB(lv_information                             ,1 ,100);  --情報欄
+-- Ver1.8 mod end
 --
         --文字列出力
         BEGIN

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A29C(body)
  * Description      : 顧客一括更新
  * MD.050           : MD050_CMM_003_A29_顧客一括更新
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2012/04/19    1.8   仁木 重人        障害E_本稼動_09272対応 訪問対象区分の項目追加
  *                                                               情報欄を最終項目に修正
  *  2013/04/17    1.9   中野 徹也        障害E_本稼動_09963追加対応 項目追加および使用制限変更
+ *  2014/04/25    1.10  仁木 重人        障害E_本稼動_11616対応 項目追加
  *
  *****************************************************************************************/
 --
@@ -171,6 +172,18 @@ AS
   cv_mst_intro_per_err_msg    CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00364';                --紹介者マスタチェックエラー
   cv_base_code_err_msg        CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00365';                --本部担当拠点必須エラー
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+-- Ver1.10 add start
+  cv_tel_form_err_msg         CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00373';                --電話番号チェックエラー
+  cv_range_err_msg            CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00374';                --範囲チェックエラー
+  cv_conc_day_rel_err_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00375';                --消化計算締め日相関チェックエラー
+  cv_conc_day_val_err_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00376';                --消化計算締め日妥当性チェックエラー
+  cv_conc_day_lastday_err_msg CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00377';                --消化計算締め日月末日付チェックエラー
+  cv_now_update_err_msg       CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00378';                --現在値更新可否チェックエラー
+  cv_deliv_rel_err_msg        CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00379';                --納品拠点相関チェックエラー
+  cv_ss_code_rel_err1_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00381';                --出荷元保管場所相関チェック１エラー
+  cv_ss_code_rel_err2_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00382';                --出荷元保管場所相関チェック２エラー
+  cv_bz_low_type_err_msg      CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00383';                --業態(小分類)妥当性チェックエラー
+-- Ver1.10 add end
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -348,6 +361,51 @@ AS
   cn_point_min                CONSTANT NUMBER        := 0;                                 --新規ポイント最小値
   cn_point_max                CONSTANT NUMBER        := 999;                               --新規ポイント最大値
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+-- Ver1.10 add start
+  --参照タイプ
+  cv_syohizei_kbn             CONSTANT VARCHAR2(30)  := 'XXCMM_CSUT_SYOHIZEI_KBN';         --参照タイプ・消費税区分
+  cv_peekcut_start_time       CONSTANT VARCHAR2(30)  := 'XXCMM_PEEKCUT_START_TIME';        --参照タイプ・ピークカット開始時刻
+  --メッセージトークン
+  cv_token_min_value          CONSTANT VARCHAR2(30)  := 'MIN_VALUE';                       --最小値
+  cv_token_max_value          CONSTANT VARCHAR2(30)  := 'MAX_VALUE';                       --最大値
+  cv_token_interval           CONSTANT VARCHAR2(30)  := 'INTERVAL';                        --日付間隔
+  cv_token_conc_day1          CONSTANT VARCHAR2(30)  := 'CONC_DAY1';                       --消化計算締め日の項目名1
+  cv_token_conc_day2          CONSTANT VARCHAR2(30)  := 'CONC_DAY2';                       --消化計算締め日の項目名2
+  --項目名
+  cv_address_lines_phonetic   CONSTANT VARCHAR2(10)  := '電話番号';                        --電話番号
+  cv_address4                 CONSTANT VARCHAR2(10)  := 'FAX';                             --FAX
+  cv_sale_base_code           CONSTANT VARCHAR2(30)  := '売上拠点';                        --売上拠点
+  cv_tax_div                  CONSTANT VARCHAR2(30)  := '消費税区分';                      --消費税区分
+  cv_longitude                CONSTANT VARCHAR2(30)  := 'ピークカット開始時刻';            --ピークカット開始時刻
+  cv_bom_calendars            CONSTANT VARCHAR2(30)  := '稼働日カレンダ';                  --稼働日カレンダ
+  cv_bom_calendars_table      CONSTANT VARCHAR2(30)  := 'BOM_CALENDARS';                   --稼働日カレンダ表
+  cv_rate                     CONSTANT VARCHAR2(60)  := '消化計算用掛率';                  --消化計算用掛率
+  cv_rcv_dsct_rate            CONSTANT VARCHAR2(60)  := '入金値引率';                      --入金値引率
+  cv_conclusion_day1          CONSTANT VARCHAR2(60)  := '消化計算締め日1';                 --消化計算締め日1
+  cv_conclusion_day2          CONSTANT VARCHAR2(60)  := '消化計算締め日2';                 --消化計算締め日2
+  cv_conclusion_day3          CONSTANT VARCHAR2(60)  := '消化計算締め日3';                 --消化計算締め日3
+  cv_store_cust_code          CONSTANT VARCHAR2(60)  := '店舗営業用顧客コード';            --店舗営業用顧客コード
+  --値(文字)
+  cv_in_transfer              CONSTANT VARCHAR2(1)   := '1';                               --振替あり
+  cv_gyotai_inshop            CONSTANT VARCHAR2(2)   := '21';                              --業態（小分類）：インショップ
+  cv_gyotai_tosya_tyokuei     CONSTANT VARCHAR2(2)   := '22';                              --業態（小分類）：当社直営店
+  cv_gyotai_nohin_vd          CONSTANT VARCHAR2(2)   := '26';                              --業態（小分類）：納品VD
+  cv_gyotai_syoka_vd          CONSTANT VARCHAR2(2)   := '27';                              --業態（小分類）：消化VD
+  cv_center_stock_order       CONSTANT VARCHAR2(2)   := '12';                              --センタ納品・在庫型・受注
+  cv_center_stock_delivery    CONSTANT VARCHAR2(2)   := '13';                              --センタ納品・在庫型（納品確定）
+  cv_center_no_stock          CONSTANT VARCHAR2(2)   := '24';                              --店舗納品・無し
+  cv_hokan_bunrui_3           CONSTANT VARCHAR2(1)   := '3';                               --保管場所分類
+  cv_dummy_0                  CONSTANT VARCHAR2(1)   := '0';                               --NULLダミー値(文字)
+  --値(数値)
+  cn_rate_min                 CONSTANT NUMBER        := 0;                                 --消化計算用掛率最小値
+  cn_rate_max                 CONSTANT NUMBER        := 999;                               --消化計算用掛率最大値
+  cn_rcv_dsct_rate_min        CONSTANT NUMBER        := 0;                                 --入金値引率最小値
+  cn_rcv_dsct_rate_max        CONSTANT NUMBER        := 99.9;                              --入金値引率最大値
+  cn_conc_day_min             CONSTANT NUMBER        := 1;                                 --消化計算日付最小値
+  cn_conc_day_max             CONSTANT NUMBER        := 30;                                --消化計算日付最大値
+  cn_conclusion_interval      CONSTANT NUMBER        := 5;                                 --消化計算日付間隔
+  cn_dummy_0                  CONSTANT NUMBER        := 0;                                 --NULLダミー値(数値)
+-- Ver1.10 add end
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -474,7 +532,9 @@ AS
     lv_business_low_type     VARCHAR2(100)   := NULL;                     --ローカル変数・小分類
     lv_business_low_mst      xxcmm_cust_accounts.business_low_type%TYPE;  --小分類存在確認用変数
 -- 2010/02/15 Ver1.5 E_本稼動01582 add start by Yutaka.Kuboshima
-    lv_business_low_type_now xxcmm_cust_accounts.business_low_type%TYPE;  --現在設定されている小分類
+-- Ver1.10 del start
+--    lv_business_low_type_now xxcmm_cust_accounts.business_low_type%TYPE;  --現在設定されている小分類
+-- Ver1.10 del end
 -- 2010/02/15 Ver1.5 E_本稼動01582 add end by Yutaka.Kuboshima
 --
     lv_check_status          VARCHAR2(1)     := NULL;                     --項目チェック結果格納用変数
@@ -567,6 +627,55 @@ AS
     lv_sales_head_base_code     VARCHAR2(100)   := NULL;                  --ローカル変数・販売先本部担当拠点
     lv_sales_head_base_code_mst xxcmm_cust_accounts.sales_head_base_code%TYPE; --販売先本部担当拠点確認用変数
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+-- Ver1.10 add start
+    lt_business_low_type_bef    xxcmm_cust_accounts.business_low_type%TYPE;     --現在値・業態(小分類)
+    lt_business_low_type_aft    xxcmm_cust_accounts.business_low_type%TYPE;     --更新値・業態(小分類)
+    lt_sell_trans_div_bef       xxcmm_cust_accounts.selling_transfer_div%TYPE;  --現在値・売上実績振替
+    lt_sell_trans_div_aft       xxcmm_cust_accounts.selling_transfer_div%TYPE;  --更新値・売上実績振替
+    lt_tsukagatazaiko_div_bef   xxcmm_cust_accounts.tsukagatazaiko_div%TYPE;    --現在値・通過在庫型区分
+    lt_tsukagatazaiko_div_aft   xxcmm_cust_accounts.tsukagatazaiko_div%TYPE;    --更新値・通過在庫型区分
+    lt_ship_storage_code_bef    xxcmm_cust_accounts.ship_storage_code%TYPE;     --現在値・出荷元保管場所
+    lt_ship_storage_code_aft    xxcmm_cust_accounts.ship_storage_code%TYPE;     --更新値・出荷元保管場所
+    lt_ship_storage_code_mst    xxcmm_cust_accounts.ship_storage_code%TYPE;     --出荷元保管場所確認用変数
+    lt_chain_store_code_bef     xxcmm_cust_accounts.chain_store_code%TYPE;      --現在値・チェーン店コード(EDI)
+    lt_chain_store_code_aft     xxcmm_cust_accounts.chain_store_code%TYPE;      --更新値・チェーン店コード(EDI)
+    lt_chain_store_code_mst     xxcmm_cust_accounts.chain_store_code%TYPE;      --チェーン店コード(EDI)確認用変数
+    lt_delivery_base_code_bef   xxcmm_cust_accounts.delivery_base_code%TYPE;    --現在値・納品拠点
+    lt_delivery_base_code_aft   xxcmm_cust_accounts.delivery_base_code%TYPE;    --更新値・納品拠点
+    lv_sale_base_code           VARCHAR2(100)   := NULL;                        --ローカル変数・売上拠点
+    lt_sale_base_code_aft       xxcmm_cust_accounts.sale_base_code%TYPE;        --更新値・売上拠点
+    lv_address_lines_phonetic   VARCHAR2(500)   := NULL;                        --ローカル変数・電話番号
+    lv_address4                 VARCHAR2(500)   := NULL;                        --ローカル変数・FAX
+    lv_tax_div                  VARCHAR2(100)   := NULL;                        --ローカル変数・消費税区分
+    lt_tax_div_aft              xxcmm_cust_accounts.tax_div%TYPE;               --更新値・消費税区分
+    lv_longitude                VARCHAR2(100)   := NULL;                        --ローカル変数・ピークカット開始時刻
+    lt_longitude_bef            xxcmm_cust_accounts.longitude%TYPE;             --現在値・ピークカット開始時刻
+    lt_longitude_aft            xxcmm_cust_accounts.longitude%TYPE;             --更新値・ピークカット開始時刻
+    lv_rate                     VARCHAR2(100)   := NULL;                        --ローカル変数・消化計算用掛率
+    lt_rate_bef                 xxcmm_cust_accounts.rate%TYPE;                  --現在値・消化計算用掛率
+    lv_rcv_dsct_rate            VARCHAR2(100)   := NULL;                        --ローカル変数・入金値引率
+    lv_conclusion_day1          VARCHAR2(100)   := NULL;                        --ローカル変数・消化計算締め日1
+    lt_conclusion_day1_bef      xxcmm_cust_accounts.conclusion_day1%TYPE;       --現在値・消化計算締め日1
+    lt_conclusion_day1_aft      xxcmm_cust_accounts.conclusion_day1%TYPE;       --更新値・消化計算締め日1
+    lv_conclusion_day2          VARCHAR2(100)   := NULL;                        --ローカル変数・消化計算締め日2
+    lt_conclusion_day2_bef      xxcmm_cust_accounts.conclusion_day2%TYPE;       --現在値・消化計算締め日2
+    lt_conclusion_day2_aft      xxcmm_cust_accounts.conclusion_day2%TYPE;       --更新値・消化計算締め日2
+    lv_conclusion_day3          VARCHAR2(100)   := NULL;                        --ローカル変数・消化計算締め日3
+    lt_conclusion_day3_bef      xxcmm_cust_accounts.conclusion_day3%TYPE;       --現在値・消化計算締め日3
+    lt_conclusion_day3_aft      xxcmm_cust_accounts.conclusion_day3%TYPE;       --更新値・消化計算締め日3
+    lv_calendar_code            VARCHAR2(100)   := NULL;                        --ローカル変数・稼働日カレンダ
+    lt_calendar_code_aft        xxcmm_cust_accounts.calendar_code%TYPE;         --更新値・稼働日カレンダ
+    lv_store_cust_code          VARCHAR2(100)   := NULL;                        --ローカル変数・店舗営業用顧客コード
+    lt_store_cust_code_aft      xxcmm_cust_accounts.store_cust_code%TYPE;       --更新値・店舗営業用顧客コード
+    --妥当性チェックフラグ
+    lb_bz_low_type_chk_flg      BOOLEAN         DEFAULT TRUE;    --業態(小分類)チェックフラグ
+    lb_sell_trans_chk_flg       BOOLEAN         DEFAULT TRUE;    --売上実績振替チェックフラグ
+    lb_db_code_chk_flg          BOOLEAN         DEFAULT TRUE;    --納品拠点チェックフラグ
+    lb_tsukazaiko_chk_flg       BOOLEAN         DEFAULT TRUE;    --通過在庫型区分チェックフラグ
+    lb_sp_strg_code_chk_flg     BOOLEAN         DEFAULT TRUE;    --出荷元保管場所チェックフラグ
+    lb_cs_code_chk_flg          BOOLEAN         DEFAULT TRUE;    --チェーン店コード(EDI)チェックフラグ
+    lb_conc_day_chk_flg         BOOLEAN         DEFAULT TRUE;    --消化計算締め日チェックフラグ
+-- Ver1.10 add end
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -1095,6 +1204,97 @@ AS
     check_db_intro_base_code_rec  check_db_intro_base_code_cur%ROWTYPE;
 --
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+-- Ver1.10 add start
+    -- 参照タイプチェックカーソル
+    CURSOR check_lookup_type_cur2(
+      iv_lookup_code IN VARCHAR2
+    , iv_lookup_type IN VARCHAR2
+    )
+    IS
+      SELECT flvv.lookup_code  AS lookup_code
+      FROM   fnd_lookup_values_vl  flvv
+      WHERE  flvv.lookup_type   = iv_lookup_type
+      AND    flvv.lookup_code   = iv_lookup_code
+      AND    flvv.enabled_flag  = cv_yes
+      ;
+    -- 参照タイプチェックカーソルレコード型
+    check_lookup_type_rec2  check_lookup_type_cur2%ROWTYPE;
+--
+    -- 顧客追加情報現在値取得カーソル
+    CURSOR get_xca_info_cur(
+      iv_customer_code IN VARCHAR2
+    )
+    IS
+      SELECT xca.ship_storage_code     AS ship_storage_code     --出荷元保管場所
+            ,xca.tsukagatazaiko_div    AS tsukagatazaiko_div    --通過在庫型区分
+            ,xca.chain_store_code      AS chain_store_code      --チェーン店コード(EDI)
+            ,xca.delivery_base_code    AS delivery_base_code    --納品拠点
+            ,xca.business_low_type     AS business_low_type     --業態（小分類）
+            ,xca.selling_transfer_div  AS selling_transfer_div  --売上実績振替
+            ,xca.longitude             AS longitude             --ピークカット開始時刻
+            ,xca.rate                  AS rate                  --消化計算用掛率
+            ,xca.conclusion_day1       AS conclusion_day1       --消化計算締め日1
+            ,xca.conclusion_day2       AS conclusion_day2       --消化計算締め日2
+            ,xca.conclusion_day3       AS conclusion_day3       --消化計算締め日3
+      FROM   hz_cust_accounts     hca
+            ,xxcmm_cust_accounts  xca
+      WHERE  hca.cust_account_id     = xca.customer_id
+      AND    hca.account_number      = iv_customer_code
+      ;
+    -- 顧客追加情報現在値取得カーソルレコード型
+    get_xca_info_rec  get_xca_info_cur%ROWTYPE;
+--
+    -- 稼働日カレンダチェックカーソル
+    CURSOR check_calendar_code_cur(
+      iv_calendar_code IN VARCHAR2
+    )
+    IS
+      SELECT bc.calendar_code   AS calendar_code
+      FROM   bom_calendars  bc
+      WHERE  bc.attribute1    = cv_yes
+      AND    bc.calendar_code = iv_calendar_code
+      ;
+    -- 稼働日カレンダチェックカーソルレコード型
+    check_calendar_code_rec  check_calendar_code_cur%ROWTYPE;
+--
+    -- 店舗営業用顧客コードチェックカーソル
+    CURSOR check_store_cust_code_cur(
+      iv_store_cust_code IN VARCHAR2
+    )
+    IS
+      SELECT hca.account_number  AS store_cust_code
+      FROM   hz_cust_accounts  hca
+      WHERE  hca.customer_class_code  = cv_tenpo_kbn  --'15'(店舗営業)
+      AND    hca.account_number       = iv_store_cust_code
+      ;
+    -- 店舗営業用顧客コードカーソルレコード型
+    check_store_cust_code_rec  check_store_cust_code_cur%ROWTYPE;
+--
+    --出荷元保管場所相関チェックカーソル
+    CURSOR check_ss_code_rel_cur(
+      iv_ship_storage_code    IN VARCHAR2
+     ,iv_chain_store_code     IN VARCHAR2
+    )
+    IS
+      SELECT xca.edi_chain_code  AS chain_store_code
+      FROM   xxcmm_cust_accounts xca
+            ,hz_cust_accounts    hca
+      WHERE  xca.customer_id         = hca.cust_account_id
+        AND  hca.customer_class_code = cv_edi_class  --顧客区分'18'
+        AND  xca.edi_chain_code      = iv_chain_store_code
+        AND  EXISTS (SELECT 'X'
+                     FROM  mtl_secondary_inventories msi
+                          ,mtl_parameters            mp
+                     WHERE msi.organization_id          = mp.organization_id
+                       AND mp.organization_code         = gv_organization_code  --在庫組織
+                       AND msi.attribute12              = xca.edi_chain_code
+                       AND msi.attribute13              = cv_hokan_bunrui_3  --保管場所分類'3'
+                       AND msi.secondary_inventory_name = iv_ship_storage_code
+                    )
+      ;
+    --出荷元保管場所相関チェックカーソル型
+    check_ss_code_rel_rec  check_ss_code_rel_cur%ROWTYPE;
+-- Ver1.10 add end
 --
   BEGIN
 --
@@ -1187,7 +1387,10 @@ AS
         --顧客コード取得
         lv_customer_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                    ,cv_comma
-                                                                   ,5);
+-- Ver1.10 mod start
+--                                                                   ,5);
+                                                                   ,2);
+-- Ver1.10 mod end
         --顧客コードの必須チェック
         IF   (lv_customer_code IS NULL)
           OR (lv_customer_code = cv_null_bar) THEN
@@ -1333,7 +1536,10 @@ AS
         --顧客名称取得
         lv_customer_name := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                    ,cv_comma
-                                                                   ,6);
+-- Ver1.10 mod start
+--                                                                   ,6);
+                                                                   ,3);
+-- Ver1.10 mod end
         --顧客名称の必須チェック
         IF (lv_customer_name = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -1411,7 +1617,10 @@ AS
         --顧客名称カナ取得
         lv_cust_name_kana := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,7);
+-- Ver1.10 mod start
+--                                                                     ,7);
+                                                                     ,4);
+-- Ver1.10 mod end
         --顧客名称カナの型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_cust_name_kana  --項目名称カナ
                                             ,lv_cust_name_kana  --顧客名称カナ
@@ -1489,7 +1698,10 @@ AS
         --略称取得
         lv_cust_name_ryaku := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,8);
+-- Ver1.10 mod start
+--                                                                     ,8);
+                                                                     ,5);
+-- Ver1.10 mod end
 --
         --略称の型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_ryaku            --項目名称カナ
@@ -1532,7 +1744,10 @@ AS
                                                                        ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                       ,30);
-                                                                       ,32);
+-- Ver1.10 mod start
+--                                                                       ,32);
+                                                                       ,25);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2009/10/23 Ver1.2 modify start by Yutaka.Kuboshima
 --        --業態（小分類）の必須チェック
@@ -1646,12 +1861,16 @@ AS
              which  => FND_FILE.LOG
             ,buff   => lv_item_errmsg
           );
+-- Ver1.10 add start
+          --業態(小分類)チェックフラグFALSE
+          lb_bz_low_type_chk_flg := FALSE;
+-- Ver1.10 add end
         END IF;
         -- 顧客区分'10','12','13','14','15','16','17'の場合、エラーチェックを行う
         IF (lv_cust_customer_class IN (cv_kokyaku_kbn, cv_uesama_kbn, cv_trust_corp, cv_urikake_kbn, cv_tenpo_kbn, cv_tonya_kbn, cv_keikaku_kbn)) THEN
           --業態（小分類）の相関チェック
           -- 顧客区分'10'(顧客)、'12'(上様顧客)、'15'(店舗営業)の場合、入力必須
-          IF (lv_business_low_type = cv_null_bar)
+          IF    (lv_business_low_type = cv_null_bar)
             AND (lv_cust_customer_class IN ( cv_kokyaku_kbn, cv_uesama_kbn, cv_tenpo_kbn ) )
           THEN
             lv_check_status := cv_status_error;
@@ -1672,6 +1891,10 @@ AS
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
               ,buff   => gv_out_msg);
+-- Ver1.10 add start
+            --業態(小分類)チェックフラグFALSE
+            lb_bz_low_type_chk_flg := FALSE;
+-- Ver1.10 add end
           END IF;
           --業態（小分類）が-でない場合
           IF (lv_business_low_type <> cv_null_bar) THEN
@@ -1698,15 +1921,146 @@ AS
               FND_FILE.PUT_LINE(
                  which  => FND_FILE.LOG
                 ,buff   => gv_out_msg);
+-- Ver1.10 add start
+              --業態(小分類)チェックフラグFALSE
+              lb_bz_low_type_chk_flg := FALSE;
+-- Ver1.10 add end
+            END IF;
+          END IF;
+-- Ver1.10 add start
+          --業態(小分類)の妥当性チェックOKの場合
+          IF (lb_bz_low_type_chk_flg = TRUE)
+          THEN
+            -- チェック用に顧客追加情報の現在値を取得
+            << get_xca_info_loop >>
+            FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+            LOOP
+              lt_business_low_type_bef  := get_xca_info_rec.business_low_type;
+            END LOOP get_xca_info_loop;
+            --
+            --職責管理フラグが'N'かつ、変更前の値が'21'、'22'、'27'、'24'、'25'の場合は更新不可
+            IF    (gv_resp_flag = cv_no)
+              AND (NVL(lv_business_low_type ,cv_null_bar) <> cv_null_bar)
+              AND (lv_business_low_type <> lt_business_low_type_bef)
+              AND (lt_business_low_type_bef IN ( cv_gyotai_inshop
+                                               , cv_gyotai_tosya_tyokuei
+                                               , cv_gyotai_syoka_vd
+                                               , cv_gyotai_full_syoka_vd
+                                               , cv_gyotai_full_vd ))
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --現在値更新可否チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_now_update_err_msg
+                              ,iv_token_name1  => cv_col_name
+                              ,iv_token_value1 => cv_bus_low_type
+                              ,iv_token_name2  => cv_input_val
+                              ,iv_token_value2 => lt_business_low_type_bef
+                              ,iv_token_name3  => cv_cust_code
+                              ,iv_token_value3 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+                --業態(小分類)チェックフラグFALSE
+                lb_bz_low_type_chk_flg := FALSE;
+            END IF;
+          END IF;
+-- Ver1.10 add end
+        END IF;
+-- 2009/10/23 Ver1.2 modify start by Yutaka.Kuboshima
+-- Ver1.10 add start
+        --業態(小分類)の妥当性チェックOKの場合、更新値を取得
+        IF (lb_bz_low_type_chk_flg = TRUE)
+        THEN
+          --変更値が'-'の場合
+          IF (lv_business_low_type = cv_null_bar)
+          THEN
+            lt_business_low_type_aft := NULL;
+          --変更値がNULLまたは、
+          --顧客区分が'18','19','20','21'の場合
+          ELSIF (lv_business_low_type IS NULL)
+            OR  (lv_cust_customer_class IN ( cv_edi_class
+                                           , cv_hyakkaten_kbn
+                                           , cv_seikyusho_kbn
+                                           , cv_toukatu_kbn))
+          THEN
+            --更新前の値を設定
+            lt_business_low_type_aft := lt_business_low_type_bef;
+          ELSE
+            --CSVの値を設定
+            lt_business_low_type_aft := lv_business_low_type;
+          END IF;
+--
+          --職責管理フラグが'N'の場合
+          IF (gv_resp_flag = cv_no)
+          THEN
+            --顧客区分：12かつ、変更後の値が'21','22','27'の場合
+            IF     (lv_cust_customer_class = cv_uesama_kbn)
+              AND  (lt_business_low_type_aft IN ( cv_gyotai_inshop
+                                                , cv_gyotai_tosya_tyokuei
+                                                , cv_gyotai_syoka_vd ))
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --業態(小分類)妥当性チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_bz_low_type_err_msg
+                              ,iv_token_name1  => cv_input_val
+                              ,iv_token_value1 => lv_cust_customer_class
+                              ,iv_token_name2  => cv_cond_col_val
+                              ,iv_token_value2 => lt_business_low_type_aft
+                              ,iv_token_name3  => cv_cust_code
+                              ,iv_token_value3 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+                --業態(小分類)チェックフラグFALSE
+                lb_bz_low_type_chk_flg := FALSE;
+--
+            --顧客区分：10以外かつ、変更後の値が'21','22','24','25','26','27'の場合
+            ELSIF  (lv_cust_customer_class <> cv_kokyaku_kbn)
+              AND  (lt_business_low_type_aft IN ( cv_gyotai_inshop
+                                                , cv_gyotai_tosya_tyokuei
+                                                , cv_gyotai_full_syoka_vd
+                                                , cv_gyotai_full_vd
+                                                , cv_gyotai_nohin_vd
+                                                , cv_gyotai_syoka_vd ))
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --業態(小分類)妥当性チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_bz_low_type_err_msg
+                              ,iv_token_name1  => cv_input_val
+                              ,iv_token_value1 => lv_cust_customer_class
+                              ,iv_token_name2  => cv_cond_col_val
+                              ,iv_token_value2 => lt_business_low_type_aft
+                              ,iv_token_name3  => cv_cust_code
+                              ,iv_token_value3 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+                --業態(小分類)チェックフラグFALSE
+                lb_bz_low_type_chk_flg := FALSE;
             END IF;
           END IF;
         END IF;
--- 2009/10/23 Ver1.2 modify start by Yutaka.Kuboshima
+-- Ver1.10 add end
 --
         --顧客ステータス取得
         lv_customer_status := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,9);
+-- Ver1.10 mod start
+--                                                                     ,9);
+                                                                     ,24);
+-- Ver1.10 mod end
         --顧客ステータスの必須チェック
         IF (lv_customer_status = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -1784,25 +2138,30 @@ AS
             END IF;
             IF (lv_customer_status = cv_stop_approved) THEN
 -- 2010/02/15 Ver1.5 E_本稼動01582 add start by Yutaka.Kuboshima
-              -- 現在設定されている業態(小分類)を取得
-              << get_business_low_type_loop >>
-              FOR get_business_low_type_rec IN get_business_low_type_cur( ln_cust_id )
-              LOOP
-                lv_business_low_type_now := get_business_low_type_rec.business_low_type;
-              END LOOP get_business_low_type_loop;
-              -- 新しく設定する業態(小分類)がNOT NULL かつ、'-'以外かつ、現在設定されている業態(小分類)と違う場合
-              IF (lv_business_low_type IS NOT NULL)
-                AND (lv_business_low_type <> cv_null_bar)
-                AND (lv_business_low_type_now <> lv_business_low_type)
-              THEN
-                lv_business_low_type_now := lv_business_low_type;
-              END IF;
+-- Ver1.10 del start
+--              -- 現在設定されている業態(小分類)を取得
+--              << get_business_low_type_loop >>
+--              FOR get_business_low_type_rec IN get_business_low_type_cur( ln_cust_id )
+--              LOOP
+--                lv_business_low_type_now := get_business_low_type_rec.business_low_type;
+--              END LOOP get_business_low_type_loop;
+--              -- 新しく設定する業態(小分類)がNOT NULL かつ、'-'以外かつ、現在設定されている業態(小分類)と違う場合
+--              IF (lv_business_low_type IS NOT NULL)
+--                AND (lv_business_low_type <> cv_null_bar)
+--                AND (lv_business_low_type_now <> lv_business_low_type)
+--              THEN
+--                lv_business_low_type_now := lv_business_low_type;
+--              END IF;
+-- Ver1.10 del end
 -- 2010/02/15 Ver1.5 E_本稼動01582 add end by Yutaka.Kuboshima
               --顧客ステータス変更チェック
               xxcmm_cust_sts_chg_chk_pkg.main( ln_cust_id
 -- 2010/02/15 Ver1.5 E_本稼動01582 modify start by Yutaka.Kuboshima
 --                                              ,lv_customer_status
-                                              ,lv_business_low_type_now
+-- Ver1.10 mod start
+--                                              ,lv_business_low_type_now
+                                              ,lt_business_low_type_bef
+-- Ver1.10 mod end
 -- 2010/02/15 Ver1.5 E_本稼動01582 modify end by Yutaka.Kuboshima
                                               ,lv_item_retcode
                                               ,lv_item_errmsg);
@@ -1837,7 +2196,10 @@ AS
         --中止理由取得
         lv_approval_reason := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,10);
+-- Ver1.10 mod start
+--                                                                     ,10);
+                                                                     ,32);
+-- Ver1.10 mod end
         --中止理由が-でない場合
         IF (lv_approval_reason <> cv_null_bar) THEN
           --中止理由存在チェック
@@ -1903,7 +2265,10 @@ AS
         --中止決済日取得
         lv_approval_date := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                    ,cv_comma
-                                                                   ,11);
+-- Ver1.10 mod start
+--                                                                   ,11);
+                                                                   ,31);
+-- Ver1.10 mod end
         --中止決済日がNULLでない場合
         IF (lv_approval_date <> cv_null_bar) THEN
           --中止決済日型・桁数チェック
@@ -2007,7 +2372,10 @@ AS
         --売掛コード１（請求書）取得
         lv_ar_invoice_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,14);
+-- Ver1.10 mod start
+--                                                                     ,14);
+                                                                     ,19);
+-- Ver1.10 mod end
         --売掛コード１（請求書）が-でない場合
         IF (lv_ar_invoice_code <> cv_null_bar) THEN
           --売掛コード１（請求書）存在チェック
@@ -2073,7 +2441,10 @@ AS
         --売掛コード２（事業所）取得
         lv_ar_location_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                       ,cv_comma
-                                                                      ,15);
+-- Ver1.10 mod start
+--                                                                      ,15);
+                                                                      ,20);
+-- Ver1.10 mod end
         --売掛コード２（事業所）が-でない場合
         IF (lv_ar_location_code <> cv_null_bar) THEN
           --売掛コード２（事業所）型・桁数チェック
@@ -2115,7 +2486,10 @@ AS
         --売掛コード３（その他）取得
         lv_ar_others_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                     ,cv_comma
-                                                                    ,16);
+-- Ver1.10 mod start
+--                                                                    ,16);
+                                                                    ,21);
+-- Ver1.10 mod end
         --売掛コード３（その他）が-でない場合
         IF (lv_ar_others_code <> cv_null_bar) THEN
           --売掛コード３（その他）型・桁数チェック
@@ -2241,7 +2615,10 @@ AS
 --
         lv_invoice_class := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                    ,cv_comma
-                                                                   ,17);
+-- Ver1.10 mod start
+--                                                                   ,17);
+                                                                   ,51);
+-- Ver1.10 mod end
         --請求書印刷単位型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_invoice_kbn    --請求書印刷単位
                                             ,lv_invoice_class  --請求書印刷単位
@@ -2332,7 +2709,10 @@ AS
         --請求書発行サイクル取得
         lv_invoice_cycle := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                    ,cv_comma
-                                                                   ,18);
+-- Ver1.10 mod start
+--                                                                   ,18);
+                                                                   ,23);
+-- Ver1.10 mod end
 --
         --請求書発行サイクルが-でない場合
         IF (lv_invoice_cycle <> cv_null_bar) THEN
@@ -2399,7 +2779,10 @@ AS
         --請求書出力形式取得
         lv_invoice_form  := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                    ,cv_comma
-                                                                   ,19);
+-- Ver1.10 mod start
+--                                                                   ,19);
+                                                                   ,22);
+-- Ver1.10 mod end
         --請求書出力形式が-でない場合
         IF (lv_invoice_form <> cv_null_bar) THEN
           --請求書出力形式存在チェック
@@ -2465,7 +2848,10 @@ AS
         --支払条件取得
         lv_payment_term_id := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,20);
+-- Ver1.10 mod start
+--                                                                     ,20);
+                                                                     ,15);
+-- Ver1.10 mod end
 --
         --支払条件の必須チェック
         IF (lv_payment_term_id = cv_null_bar) THEN
@@ -2551,7 +2937,10 @@ AS
         --第2支払条件取得
         lv_payment_term_second := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                          ,cv_comma
-                                                                         ,21);
+-- Ver1.10 mod start
+--                                                                         ,21);
+                                                                         ,16);
+-- Ver1.10 mod end
         --第2支払条件が-でない場合
         IF (lv_payment_term_second <> cv_null_bar) THEN
           --第2支払条件存在チェック
@@ -2619,7 +3008,10 @@ AS
         --第3支払条件取得
         lv_payment_term_third  := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                          ,cv_comma
-                                                                         ,22);
+-- Ver1.10 mod start
+--                                                                         ,22);
+                                                                         ,17);
+-- Ver1.10 mod end
         --第3支払条件が-でない場合
         IF (lv_payment_term_third <> cv_null_bar) THEN
           --第3支払条件存在チェック
@@ -2687,7 +3079,10 @@ AS
         --チェーン店コード（販売先）取得
         lv_sales_chain_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                       ,cv_comma
-                                                                      ,23);
+-- Ver1.10 mod start
+--                                                                      ,23);
+                                                                      ,44);
+-- Ver1.10 mod end
         --チェーン店コード（販売先）の必須チェック
         IF (lv_sales_chain_code = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -2770,7 +3165,10 @@ AS
         --チェーン店コード（納品先）取得
         lv_delivery_chain_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                          ,cv_comma
-                                                                         ,25);
+-- Ver1.10 mod start
+--                                                                         ,25);
+                                                                         ,46);
+-- Ver1.10 mod end
         --チェーン店コード（納品先）の必須チェック
         IF (lv_delivery_chain_code = cv_null_bar) THEN
           lv_check_status := cv_status_error;
@@ -2853,7 +3251,10 @@ AS
         --チェーン店コード（政策用）取得
         lv_policy_chain_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,27);
+-- Ver1.10 mod start
+--                                                                       ,27);
+                                                                       ,48);
+-- Ver1.10 mod end
         --チェーン店コード（政策用）が-でない場合
         IF (lv_policy_chain_code <> cv_null_bar) THEN
           --チェーン店コード（政策用）型・桁数チェック
@@ -2897,7 +3298,10 @@ AS
         --紹介者チェーン1取得
         lv_intro_chain_code1 := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,28);
+-- Ver1.10 mod start
+--                                                                       ,28);
+                                                                       ,49);
+-- Ver1.10 mod end
         --紹介者チェーン1が-でない場合
         IF (lv_intro_chain_code1 <> cv_null_bar) THEN
           --紹介者チェーン1型・桁数チェック
@@ -2939,7 +3343,10 @@ AS
         --紹介者チェーン2取得
         lv_intro_chain_code2 := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,29);
+-- Ver1.10 mod start
+--                                                                       ,29);
+                                                                       ,50);
+-- Ver1.10 mod end
         --紹介者チェーン2が-でない場合
         IF (lv_intro_chain_code2 <> cv_null_bar) THEN
           --紹介者チェーン2型・桁数チェック
@@ -2985,7 +3392,10 @@ AS
                                                                     ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                    ,28);
-                                                                    ,30);
+-- Ver1.10 mod start
+--                                                                    ,30);
+                                                                    ,40);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --チェーン店コード（ＥＤＩ）が-でない場合
         IF (lv_edi_chain_code <> cv_null_bar) THEN
@@ -3014,6 +3424,10 @@ AS
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
               ,buff   => gv_out_msg);
+-- Ver1.10 add start
+            --チェーン店コード(EDI)チェックフラグFALSE
+            lb_cs_code_chk_flg := FALSE;
+-- Ver1.10 add end
           END IF;
           --チェーン店コード（ＥＤＩ）型・桁数チェック
           xxccp_common_pkg2.upload_item_check( cv_edi_chain       --チェーン店コード（ＥＤＩ）
@@ -3048,15 +3462,48 @@ AS
                which  => FND_FILE.LOG
               ,buff   => lv_item_errmsg
             );
+-- Ver1.10 add start
+            --チェーン店コード(EDI)チェックフラグFALSE
+            lb_cs_code_chk_flg := FALSE;
+-- Ver1.10 add end
           END IF;
         END IF;
+-- Ver1.10 add start
+        --チェーン店コード(EDI)の妥当性チェックOKの場合、更新値を取得
+        IF (lb_cs_code_chk_flg = TRUE)
+        THEN
+          -- チェック用に顧客追加情報の現在値を取得
+          << get_xca_info_loop >>
+          FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+          LOOP
+            lt_chain_store_code_bef  := get_xca_info_rec.chain_store_code;
+          END LOOP get_xca_info_loop;
+          --
+          --変更値が'-'の場合
+          IF (lv_edi_chain_code = cv_null_bar)
+          THEN
+            lt_chain_store_code_aft := NULL;
+          --変更値がNULLの場合
+          ELSIF (lv_edi_chain_code IS NULL)
+          THEN
+            --更新前の値を設定
+            lt_chain_store_code_aft := lt_chain_store_code_bef;
+          ELSE
+            --CSVの値を設定
+            lt_chain_store_code_aft := lv_edi_chain_code;
+          END IF;
+        END IF;
+-- Ver1.10 add end
 --
         --店舗コード取得
         lv_store_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                 ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                ,29);
-                                                                ,31);
+-- Ver1.10 mod start
+--                                                                ,31);
+                                                                ,41);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --店舗コードが-でない場合
         IF (lv_store_code <> cv_null_bar) THEN
@@ -3101,7 +3548,10 @@ AS
                                                                  ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                 ,31);
-                                                                 ,33);
+-- Ver1.10 mod start
+--                                                                 ,33);
+                                                                 ,7);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --郵便番号の必須チェック
         IF (lv_postal_code = cv_null_bar) THEN
@@ -3186,7 +3636,10 @@ AS
                                                            ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                           ,32);
-                                                           ,34);
+-- Ver1.10 mod start
+--                                                           ,34);
+                                                           ,8);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --都道府県の必須チェック
         IF (lv_state = cv_null_bar) THEN
@@ -3269,7 +3722,10 @@ AS
                                                           ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                          ,33);
-                                                          ,35);
+-- Ver1.10 mod start
+--                                                          ,35);
+                                                          ,9);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --市・区の必須チェック
         IF (lv_city = cv_null_bar) THEN
@@ -3352,7 +3808,10 @@ AS
                                                               ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                              ,34);
-                                                              ,36);
+-- Ver1.10 mod start
+--                                                              ,36);
+                                                              ,10);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --住所1の必須チェック
         IF (lv_address1 = cv_null_bar) THEN
@@ -3435,7 +3894,10 @@ AS
                                                               ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                              ,35);
-                                                              ,37);
+-- Ver1.10 mod start
+--                                                              ,37);
+                                                              ,11);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --住所2取得が-でない場合
         IF (lv_address2 <> cv_null_bar) THEN
@@ -3501,7 +3963,10 @@ AS
                                                               ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                              ,36);
-                                                              ,38);
+-- Ver1.10 mod start
+--                                                              ,38);
+                                                              ,12);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --地区コードの必須チェック
         IF (lv_address3 = cv_null_bar) THEN
@@ -3610,7 +4075,10 @@ AS
           --与信限度額取得（法人顧客のみ）
           lv_credit_limit := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                     ,cv_comma
-                                                                    ,12);
+-- Ver1.10 mod start
+--                                                                    ,12);
+                                                                    ,78);
+-- Ver1.10 mod end
           --与信限度額の必須チェック
           IF (lv_credit_limit = cv_null_bar) THEN
             lv_check_status := cv_status_error;
@@ -3687,7 +4155,10 @@ AS
           --判定区分取得（法人顧客のみ）
           lv_decide_div := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                   ,cv_comma
-                                                                  ,13);
+-- Ver1.10 mod start
+--                                                                  ,13);
+                                                                  ,79);
+-- Ver1.10 mod end
           --判定区分の必須チェック
           IF (lv_decide_div = cv_null_bar) THEN
             lv_check_status := cv_status_error;
@@ -3774,7 +4245,10 @@ AS
                                                                   ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                  ,37);
-                                                                  ,39);
+-- Ver1.10 mod start
+--                                                                  ,39);
+                                                                  ,52);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --請求書用コード型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_invoice_code   --請求書用コード
@@ -3873,7 +4347,10 @@ AS
                                                                   ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                  ,38);
-                                                                  ,40);
+-- Ver1.10 mod start
+--                                                                  ,40);
+                                                                  ,26);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --業種型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_industry_div   --業種
@@ -3970,7 +4447,10 @@ AS
                                                                     ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                    ,39);
-                                                                    ,41);
+-- Ver1.10 mod start
+--                                                                    ,41);
+                                                                    ,37);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --請求拠点型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_bill_base_code --請求拠点
@@ -4063,7 +4543,10 @@ AS
                                                                       ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                      ,40);
-                                                                      ,42);
+-- Ver1.10 mod start
+--                                                                      ,42);
+                                                                      ,38);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --入金拠点型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_receiv_base_code --入金拠点
@@ -4156,7 +4639,10 @@ AS
                                                                         ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                        ,41);
-                                                                        ,43);
+-- Ver1.10 mod start
+--                                                                        ,43);
+                                                                        ,36);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --納品拠点型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_delivery_base_code --納品拠点
@@ -4191,6 +4677,10 @@ AS
              which  => FND_FILE.LOG
             ,buff   => lv_item_errmsg
           );
+-- Ver1.10 add start
+          --納品拠点チェックフラグFALSE
+          lb_db_code_chk_flg := FALSE;
+-- Ver1.10 add end
         END IF;
         -- 顧客区分'10','12','14'の場合、エラーチェックを行う
         IF (lv_cust_customer_class IN (cv_kokyaku_kbn, cv_uesama_kbn, cv_urikake_kbn)) THEN
@@ -4217,6 +4707,10 @@ AS
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
               ,buff   => gv_out_msg);
+-- Ver1.10 add start
+            --納品拠点チェックフラグFALSE
+            lb_db_code_chk_flg := FALSE;
+-- Ver1.10 add end
           END IF;
           --納品拠点が-でない場合
           IF (lv_delivery_base_code <> cv_null_bar) THEN
@@ -4243,6 +4737,35 @@ AS
               FND_FILE.PUT_LINE(
                  which  => FND_FILE.LOG
                 ,buff   => gv_out_msg);
+-- Ver1.10 add start
+              --納品拠点チェックフラグFALSE
+              lb_db_code_chk_flg := FALSE;
+-- Ver1.10 add end
+            END IF;
+          END IF;
+--
+          --納品拠点の妥当性チェックOKの場合、更新値を取得
+          IF (lb_db_code_chk_flg = TRUE)
+          THEN
+            -- チェック用に顧客追加情報の現在値を取得
+            << get_xca_info_loop >>
+            FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+            LOOP
+              lt_delivery_base_code_bef  := get_xca_info_rec.delivery_base_code;
+            END LOOP get_xca_info_loop;
+            --
+            --変更値が'-'の場合
+            IF (lv_delivery_base_code = cv_null_bar)
+            THEN
+              lt_delivery_base_code_aft := NULL;
+            --変更値がNULLの場合
+            ELSIF (lv_delivery_base_code IS NULL)
+            THEN
+              --更新前の値を設定
+              lt_delivery_base_code_aft := lt_delivery_base_code_bef;
+            ELSE
+              --CSVの値を設定
+              lt_delivery_base_code_aft := lv_delivery_base_code;
             END IF;
           END IF;
         END IF;
@@ -4255,7 +4778,10 @@ AS
           --販売先本部担当拠点取得
           lv_sales_head_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                             ,cv_comma
-                                                                            ,44);
+-- Ver1.10 mod start
+--                                                                            ,44);
+                                                                            ,39);
+-- Ver1.10 mod end
           --
           --CSVに設定された販売先本部担当拠点が任意の値の場合
           IF (lv_sales_head_base_code <> cv_null_bar) THEN
@@ -4295,12 +4821,18 @@ AS
           -- 獲得拠点コード 取得
           lv_cnvs_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                       ,cv_comma
-                                                                      ,45);
+-- Ver1.10 mod start
+--                                                                      ,45);
+                                                                      ,64);
+-- Ver1.10 mod end
 --
           -- 獲得営業員 取得
           lv_cnvs_business_person := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                             ,cv_comma
-                                                                            ,46);
+-- Ver1.10 mod start
+--                                                                            ,46);
+                                                                            ,65);
+-- Ver1.10 mod end
 --
           -- 獲得拠点コード、獲得営業員のチェック
           --
@@ -4818,7 +5350,10 @@ AS
           --新規ポイント区分取得
           lv_new_point_div := xxccp_common_pkg.char_delim_partition(    lv_temp
                                                                        ,cv_comma
-                                                                       ,47);
+-- Ver1.10 mod start
+--                                                                       ,47);
+                                                                       ,66);
+-- Ver1.10 mod end
           --CSVに設定された新規ポイント区分が任意の値の場合
           IF (lv_new_point_div <> cv_null_bar) THEN
             --新規ポイント区分存在チェック
@@ -4857,7 +5392,10 @@ AS
           --新規ポイント取得
           lv_new_point     := xxccp_common_pkg.char_delim_partition(    lv_temp
                                                                        ,cv_comma
-                                                                       ,48);
+-- Ver1.10 mod start
+--                                                                       ,48);
+                                                                       ,67);
+-- Ver1.10 mod end
           --CSVに設定された新規ポイントが任意の値の場合
           IF ( lv_new_point <> cv_null_bar ) THEN
             --新規ポイント型・桁数チェック
@@ -4928,7 +5466,10 @@ AS
           --紹介拠点取得
           lv_intro_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                        ,cv_comma
-                                                                       ,49);
+-- Ver1.10 mod start
+--                                                                       ,49);
+                                                                       ,68);
+-- Ver1.10 mod end
           --CSVに設定された紹介拠点が任意の値の場合
           IF (lv_intro_base_code <> cv_null_bar) THEN
             --紹介拠点存在チェック
@@ -4967,7 +5508,10 @@ AS
           --紹介営業員取得
           lv_intro_business_person := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                              ,cv_comma
-                                                                             ,50);
+-- Ver1.10 mod start
+--                                                                             ,50);
+                                                                             ,69);
+-- Ver1.10 mod end
           --CSVに設定された紹介営業員がNULLの場合
           IF ( lv_intro_business_person IS NULL ) THEN
           --
@@ -5162,7 +5706,10 @@ AS
           --TDBコード取得
           lv_tdb_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                 ,cv_comma
-                                                                ,51);
+-- Ver1.10 mod start
+--                                                                ,51);
+                                                                ,76);
+-- Ver1.10 mod end
           --CSVに設定されたTDBコードが任意の値の場合
           IF ( lv_tdb_code <> cv_null_bar ) THEN
             --TDBコードの型・桁数チェック
@@ -5208,7 +5755,10 @@ AS
           --決裁日付取得
           lv_corp_approval_date := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
-                                                                     ,52);
+-- Ver1.10 mod start
+--                                                                     ,52);
+                                                                     ,80);
+-- Ver1.10 mod end
 --
           --CSVに設定された決裁日付取得が任意の値の場合
           IF ( lv_corp_approval_date <> cv_null_bar ) THEN
@@ -5255,7 +5805,10 @@ AS
           --本部担当拠点取得
           lv_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                  ,cv_comma
-                                                                 ,53);
+-- Ver1.10 mod start
+--                                                                 ,53);
+                                                                 ,77);
+-- Ver1.10 mod end
           --CSVに設定された本部担当拠点が任意の値の場合
           IF (lv_base_code <> cv_null_bar) THEN
             --本部担当拠点存在チェック
@@ -5313,7 +5866,10 @@ AS
                                                                           ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                          ,42);
-                                                                          ,54);
+-- Ver1.10 mod start
+--                                                                          ,54);
+                                                                          ,27);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --売上実績振替型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_selling_transfer_div   --売上実績振替
@@ -5348,6 +5904,10 @@ AS
              which  => FND_FILE.LOG
             ,buff   => lv_item_errmsg
           );
+-- Ver1.10 add start
+          --売上実績振替チェックフラグFALSE
+          lb_sell_trans_chk_flg := FALSE;
+-- Ver1.10 add end
         END IF;
         --売上実績振替が-でない場合
         -- 顧客区分'10','12','13','14','15','16','17'の場合、エラーチェックを行う
@@ -5376,16 +5936,54 @@ AS
               FND_FILE.PUT_LINE(
                  which  => FND_FILE.LOG
                 ,buff   => gv_out_msg);
+-- Ver1.10 add start
+              --売上実績振替チェックフラグFALSE
+              lb_sell_trans_chk_flg := FALSE;
+-- Ver1.10 add end
             END IF;
           END IF;
         END IF;
+-- Ver1.10 add start
+        --売上実績振替の妥当性チェックOKの場合、更新値を取得
+        IF (lb_sell_trans_chk_flg = TRUE)
+        THEN
+          -- チェック用に顧客追加情報の現在値を取得
+          << get_xca_info_loop >>
+          FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+          LOOP
+            lt_sell_trans_div_bef := get_xca_info_rec.selling_transfer_div;
+          END LOOP get_xca_info_loop;
+          --
+          --変更値が'-'の場合
+          IF (lv_selling_transfer_div = cv_null_bar)
+          THEN
+            lt_sell_trans_div_aft := NULL;
+          --変更値がNULLまたは、
+          --顧客区分が'18','19','20','21'の場合
+          ELSIF (lv_selling_transfer_div IS NULL)
+            OR  (lv_cust_customer_class IN ( cv_edi_class
+                                           , cv_hyakkaten_kbn
+                                           , cv_seikyusho_kbn
+                                           , cv_toukatu_kbn))
+          THEN
+            --更新前の値を設定
+            lt_sell_trans_div_aft := lt_sell_trans_div_bef;
+          ELSE
+            --CSVの値を設定
+            lt_sell_trans_div_aft := lv_selling_transfer_div;
+          END IF;
+        END IF;
+-- Ver1.10 add end
         --
         -- カード会社取得
         lv_card_company := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                   ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                  ,43);
-                                                                  ,55);
+-- Ver1.10 mod start
+--                                                                  ,55);
+                                                                  ,62);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --カード会社型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_card_company   --カード会社
@@ -5481,7 +6079,10 @@ AS
                                                                          ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                         ,44);
-                                                                         ,56);
+-- Ver1.10 mod start
+--                                                                         ,56);
+                                                                         ,29);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --問屋管理コード型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_wholesale_ctrl_code   --問屋管理コード
@@ -5553,7 +6154,10 @@ AS
                                                                 ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                ,45);
-                                                                ,57);
+-- Ver1.10 mod start
+--                                                                ,57);
+                                                                ,18);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --価格表型・桁数チェック
         xxccp_common_pkg2.upload_item_check( cv_price_list    --価格表
@@ -5634,7 +6238,10 @@ AS
                                                                          ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                         ,46);
-                                                                         ,58);
+-- Ver1.10 mod start
+--                                                                         ,58);
+                                                                         ,30);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
           --出荷元保管場所型・桁数チェック
           xxccp_common_pkg2.upload_item_check( cv_ship_storage_code    --出荷元保管場所
@@ -5669,6 +6276,10 @@ AS
                which  => FND_FILE.LOG
               ,buff   => lv_item_errmsg
             );
+-- Ver1.10 add start
+            --出荷元保管場所チェックフラグFALSE
+            lb_sp_strg_code_chk_flg := FALSE;
+-- Ver1.10 add end
           END IF;
           -- 顧客区分'10','12','13','14','15','16','17'の場合、エラーチェックを行う
           IF (lv_cust_customer_class IN (cv_kokyaku_kbn, cv_uesama_kbn, cv_trust_corp, cv_urikake_kbn, cv_tenpo_kbn, cv_tonya_kbn, cv_keikaku_kbn)) THEN
@@ -5699,9 +6310,44 @@ AS
                 FND_FILE.PUT_LINE(
                    which  => FND_FILE.LOG
                   ,buff   => gv_out_msg);
+-- Ver1.10 add start
+                --出荷元保管場所チェックフラグFALSE
+                lb_sp_strg_code_chk_flg := FALSE;
+-- Ver1.10 add end
               END IF;
             END IF;
           END IF;
+-- Ver1.10 add start
+          --出荷元保管場所の妥当性チェックOKの場合、更新値を取得
+          IF (lb_sp_strg_code_chk_flg = TRUE)
+          THEN
+            -- チェック用に顧客追加情報の現在値を取得
+            << get_xca_info_loop >>
+            FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+            LOOP
+              lt_ship_storage_code_bef := get_xca_info_rec.ship_storage_code;
+            END LOOP get_xca_info_loop;
+            --
+            --変更値が'-'の場合
+            IF (lv_ship_storage_code = cv_null_bar)
+            THEN
+              lt_ship_storage_code_aft := NULL;
+            --変更値がNULLまたは、
+            --顧客区分が'18','19','20','21'の場合
+            ELSIF (lv_ship_storage_code IS NULL)
+              OR  (lv_cust_customer_class IN ( cv_edi_class
+                                             , cv_hyakkaten_kbn
+                                             , cv_seikyusho_kbn
+                                             , cv_toukatu_kbn))
+            THEN
+              --更新前の値を設定
+              lt_ship_storage_code_aft := lt_ship_storage_code_bef;
+            ELSE
+              --CSVの値を設定
+              lt_ship_storage_code_aft := lv_ship_storage_code;
+            END IF;
+          END IF;
+-- Ver1.10 add end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --        ELSE
 --          -- 職責管理プロファイルが'N'の場合、出荷元保管場所にNULLをセット
@@ -5721,7 +6367,10 @@ AS
 --                                                                    ,48);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                    ,47);
-                                                                    ,59);
+-- Ver1.10 mod start
+--                                                                    ,59);
+                                                                    ,53);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --配送順（EDI） 型・桁数チェック
@@ -5769,7 +6418,10 @@ AS
 --                                                                       ,49);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                       ,48);
-                                                                       ,60);
+-- Ver1.10 mod start
+--                                                                       ,60);
+                                                                       ,54);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区コード（EDI） 型・桁数チェック
@@ -5837,7 +6489,10 @@ AS
 --                                                                       ,50);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                       ,49);
-                                                                       ,61);
+-- Ver1.10 mod start
+--                                                                       ,61);
+                                                                       ,55);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区名（EDI） 型・桁数チェック
@@ -5907,7 +6562,10 @@ AS
 --                                                                       ,51);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                       ,50);
-                                                                       ,62);
+-- Ver1.10 mod start
+--                                                                       ,62);
+                                                                       ,56);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI地区名カナ（EDI） 型・桁数チェック
@@ -5975,7 +6633,10 @@ AS
 --                                                                        ,52);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                        ,51);
-                                                                        ,63);
+-- Ver1.10 mod start
+--                                                                        ,63);
+                                                                        ,57);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --通過在庫型区分（EDI） 型・桁数チェック
@@ -6011,6 +6672,10 @@ AS
              which  => FND_FILE.LOG
             ,buff   => lv_item_errmsg
           );
+-- Ver1.10 add start
+          --通過在庫型区分チェックフラグFALSE
+          lb_tsukazaiko_chk_flg := FALSE;
+-- Ver1.10 add end
         END IF;
 --
         --通過在庫型区分（EDI）に'-'以外の値が入っている場合
@@ -6038,6 +6703,10 @@ AS
             FND_FILE.PUT_LINE(
                which  => FND_FILE.LOG
               ,buff   => gv_out_msg);
+-- Ver1.10 add start
+            --通過在庫型区分チェックフラグFALSE
+            lb_tsukazaiko_chk_flg := FALSE;
+-- Ver1.10 add end
           END IF;
 --
           --通過在庫型区分（EDI） を入力する場合、チェーン店コード(EDI)の入力必須
@@ -6103,7 +6772,138 @@ AS
           FND_FILE.PUT_LINE(
              which  => FND_FILE.LOG
             ,buff   => gv_out_msg);
+-- Ver1.10 add start
+          --通過在庫型区分チェックフラグFALSE
+          lb_tsukazaiko_chk_flg := FALSE;
+-- Ver1.10 add end
         END IF;
+-- Ver1.10 add start
+        --通過在庫型区分の妥当性チェックOKの場合、更新値を取得
+        IF (lb_tsukazaiko_chk_flg = TRUE)
+        THEN
+          -- チェック用に顧客追加情報の現在値を取得
+          << get_xca_info_loop >>
+          FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+          LOOP
+            lt_tsukagatazaiko_div_bef  := get_xca_info_rec.tsukagatazaiko_div;
+          END LOOP get_xca_info_loop;
+          --
+          --変更値が'-'の場合
+          IF (lv_tsukagatazaiko_div = cv_null_bar)
+          THEN
+            lt_tsukagatazaiko_div_aft := NULL;
+          --変更値がNULLの場合
+          ELSIF (lv_tsukagatazaiko_div IS NULL)
+          THEN
+            --更新前の値を設定
+            lt_tsukagatazaiko_div_aft := lt_tsukagatazaiko_div_bef;
+          ELSE
+            --CSVの値を設定
+            lt_tsukagatazaiko_div_aft := lv_tsukagatazaiko_div;
+          END IF;
+--
+          --職責管理フラグが'N'の場合のみチェック
+          IF (gv_resp_flag = cv_no)
+          THEN
+            -- ===========================================
+            -- 納品拠点の相関チェック
+            -- ===========================================
+            --通過在庫型区分、売上実績振替、納品拠点の妥当性チェックOKの場合
+            IF    (lb_sell_trans_chk_flg = TRUE)
+              AND (lb_db_code_chk_flg    = TRUE)
+            THEN
+              --顧客区分が'14'かつ、
+              --売上実績振替が'1'または、通過在庫型区分が'24'以外の場合、入力必須
+              IF     (lv_cust_customer_class = cv_urikake_kbn)
+                AND (
+                     (NVL(lt_sell_trans_div_aft ,cv_dummy_0) = cv_in_transfer)
+                 OR  (NVL(lt_tsukagatazaiko_div_aft ,cv_center_no_stock) <> cv_center_no_stock)
+                    )
+                AND (lt_delivery_base_code_aft IS NULL)
+              THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --納品拠点相関チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_deliv_rel_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg);
+              END IF;
+            END IF;
+--
+            -- ===========================================
+            -- 出荷元保管場所の相関チェック
+            -- ===========================================
+            --通過在庫型区分およびチェーン店(EDI)の妥当性チェックOKの場合
+            IF    (lb_sp_strg_code_chk_flg = TRUE)
+              AND (lb_cs_code_chk_flg      = TRUE)
+            THEN
+              ---------------------------------
+              --出荷元保管場所の相関チェック１
+              ---------------------------------
+              --顧客区分が'10'かつ、チェーン店(EDI)または、通過在庫型区分に値が入力されている場合、入力必須
+              IF     (lv_cust_customer_class = cv_kokyaku_kbn)
+                AND (
+                     (lt_chain_store_code_aft   IS NOT NULL)  --チェーン店(EDI)
+                  OR (lt_tsukagatazaiko_div_aft IS NOT NULL)  --通過在庫型区分
+                    )
+                AND  (lt_ship_storage_code_aft  IS NULL)
+              THEN
+                lv_check_status   := cv_status_error;
+                lv_retcode        := cv_status_error;
+                --出荷元保管場所相関チェック１メッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_ss_code_rel_err1_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg);
+              END IF;
+--
+              ---------------------------------
+              --出荷元保管場所の相関チェック２
+              ---------------------------------
+              --顧客区分が'10'かつ、通過在庫型区分が'12','13'かつ、チェーン店コード(EDI)に値が入力されている場合
+              IF    (lv_cust_customer_class = cv_kokyaku_kbn)
+                AND (NVL(lt_tsukagatazaiko_div_aft ,cv_dummy_0) IN (cv_center_stock_order
+                                                                   ,cv_center_stock_delivery))
+                AND (lt_chain_store_code_aft IS NOT NULL)
+              THEN
+                << check_ss_code_rel_loop >>
+                FOR check_ss_code_rel_rec IN check_ss_code_rel_cur(lt_chain_store_code_aft    --チェーン店コード(EDI)
+                                                                  ,lt_ship_storage_code_aft)  --出荷元保管場所
+                LOOP
+                  lt_chain_store_code_mst  := check_ss_code_rel_rec.chain_store_code;
+                END LOOP check_ss_code_rel_loop;
+                --
+                IF (lt_chain_store_code_mst IS NULL)
+                THEN
+                  lv_check_status   := cv_status_error;
+                  lv_retcode        := cv_status_error;
+                  --出荷元保管場所相関チェック２メッセージ取得
+                  gv_out_msg := xxccp_common_pkg.get_msg(
+                                   iv_application  => gv_xxcmm_msg_kbn
+                                  ,iv_name         => cv_ss_code_rel_err2_msg
+                                  ,iv_token_name1  => cv_cust_code
+                                  ,iv_token_value1 => lv_customer_code
+                                 );
+                  FND_FILE.PUT_LINE(
+                     which  => FND_FILE.LOG
+                    ,buff   => gv_out_msg);
+                END IF;
+              END IF;
+            END IF;
+          END IF;
+        END IF;
+-- Ver1.10 add end
 --
         -- ===========================================
         -- EDI納品センターコードの取得・チェック
@@ -6115,7 +6915,10 @@ AS
 --                                                                      ,53);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                      ,52);
-                                                                      ,64);
+-- Ver1.10 mod start
+--                                                                      ,64);
+                                                                      ,58);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI納品センターコード 型・桁数チェック
@@ -6163,7 +6966,10 @@ AS
 --                                                                      ,54);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                      ,53);
-                                                                      ,65);
+-- Ver1.10 mod start
+--                                                                      ,65);
+                                                                      ,59);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI納品センター名 型・桁数チェック
@@ -6211,7 +7017,10 @@ AS
 --                                                                        ,55);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                        ,54);
-                                                                        ,66);
+-- Ver1.10 mod start
+--                                                                        ,66);
+                                                                        ,60);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --EDI伝送追番 型・桁数チェック
@@ -6259,7 +7068,10 @@ AS
 --                                                                     ,56);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                     ,55);
-                                                                     ,67);
+-- Ver1.10 mod start
+--                                                                     ,67);
+                                                                     ,42);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --顧客店舗名称 型・桁数チェック
@@ -6329,7 +7141,10 @@ AS
 --                                                                       ,57);
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                       ,56);
-                                                                       ,68);
+-- Ver1.10 mod start
+--                                                                       ,68);
+                                                                       ,43);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
 -- 2012/03/13 Ver1.8 E_本稼動_09272 mod end by S.Niki
         --取引先コード 型・桁数チェック
@@ -6389,12 +7204,18 @@ AS
 --
 -- 2011/12/05 Ver1.7 E_本稼動_07553 add end   by K.Kubo
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
+        -- ===========================================
+        -- 訪問対象区分の取得・チェック
+        -- ===========================================
         --訪問対象区分取得
         lv_vist_target_div := xxccp_common_pkg.char_delim_partition(  lv_temp
                                                                      ,cv_comma
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod start by T.Nakano
 --                                                                     ,57);
-                                                                     ,69);
+-- Ver1.10 mod start
+--                                                                     ,69);
+                                                                     ,33);
+-- Ver1.10 mod end
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 mod end by T.Nakano
         --訪問対象区分が-でない場合
         IF (lv_vist_target_div <> cv_null_bar) THEN
@@ -6459,6 +7280,1063 @@ AS
           END IF;
         END IF;
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- Ver1.10 add start
+        -- ===========================================
+        -- 電話番号の取得・チェック
+        -- ===========================================
+        --電話番号取得
+        lv_address_lines_phonetic := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                            ,cv_comma
+                                                                            ,13);
+        --必須項目チェック
+        IF (lv_address_lines_phonetic = cv_null_bar)
+        THEN
+          lv_check_status := cv_status_error;
+          lv_retcode      := cv_status_error;
+          --必須項目エラーメッセージ取得
+          gv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => gv_xxcmm_msg_kbn
+                          ,iv_name         => cv_required_err_msg
+                          ,iv_token_name1  => cv_cust_code
+                          ,iv_token_value1 => lv_customer_code
+                          ,iv_token_name2  => cv_col_name
+                          ,iv_token_value2 => cv_address_lines_phonetic
+                         );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => gv_out_msg);
+        --
+        ELSIF (lv_address_lines_phonetic IS NOT NULL)
+        THEN
+          --型・桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_address_lines_phonetic       --電話番号
+                                              ,lv_address_lines_phonetic       --電話番号
+                                              ,30                --項目長
+                                              ,NULL              --項目長（小数点以下）
+                                              ,cv_null_ng        --必須フラグ
+                                              ,cv_element_vc2    --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf    --エラーバッファ
+                                              ,lv_item_retcode   --エラーコード
+                                              ,lv_item_errmsg);  --エラーメッセージ
+          --型・桁数チェックエラー時
+          IF (lv_item_retcode <> cv_status_normal)
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --型・桁数エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_address_lines_phonetic
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_address_lines_phonetic
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+--
+          --電話番号チェック
+          IF (xxccp_common_pkg.chk_tel_format(lv_address_lines_phonetic) = FALSE)
+          THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --電話番号チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_tel_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_address_lines_phonetic
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_address_lines_phonetic
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+        END IF;
+--
+        -- ===========================================
+        -- FAXの取得・チェック
+        -- ===========================================
+        --FAX取得
+        lv_address4 := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                              ,cv_comma
+                                                              ,14);
+        --NULL以外かつ、'-'でない場合
+        IF (NVL(lv_address4 ,cv_null_bar) <> cv_null_bar)
+        THEN
+          --型・桁数チェック
+          xxccp_common_pkg2.upload_item_check( cv_address4       --FAX
+                                              ,lv_address4       --FAX
+                                              ,30                --項目長
+                                              ,NULL              --項目長（小数点以下）
+                                              ,cv_null_ok        --必須フラグ
+                                              ,cv_element_vc2    --属性（0・検証なし、1、数値、2、日付）
+                                              ,lv_item_errbuf    --エラーバッファ
+                                              ,lv_item_retcode   --エラーコード
+                                              ,lv_item_errmsg);  --エラーメッセージ
+          --型・桁数チェックエラー時
+          IF (lv_item_retcode <> cv_status_normal)
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --型・桁数エラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_val_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_address4
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_address4
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_item_errmsg
+            );
+          END IF;
+--
+          --電話番号チェック
+          IF (xxccp_common_pkg.chk_tel_format(lv_address4) = FALSE)
+          THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --電話番号チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_tel_form_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_address4
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_address4
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+        END IF;
+--
+        -- ===========================================
+        -- 消費税区分の取得・チェック
+        -- ===========================================
+        --顧客区分'10'、'12'、'14'の場合のみ取得・チェック
+        IF (lv_cust_customer_class IN ( cv_kokyaku_kbn
+                                      , cv_uesama_kbn
+                                      , cv_urikake_kbn ) )
+        THEN
+          --消費税区分取得
+          lv_tax_div := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                               ,cv_comma
+                                                               ,28);
+          --相関チェック
+          IF (lv_tax_div = cv_null_bar)
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --相関チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_correlation_err_msg
+                            ,iv_token_name1  => cv_col_name
+                            ,iv_token_value1 => cv_tax_div
+                            ,iv_token_name2  => cv_cond_col_name
+                            ,iv_token_value2 => cv_cust_class
+                            ,iv_token_name3  => cv_cond_col_val
+                            ,iv_token_value3 => lv_cust_customer_class
+                            ,iv_token_name4  => cv_cust_code
+                            ,iv_token_value4 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          --
+          ELSIF (lv_tax_div IS NOT NULL)
+          THEN
+            --参照表存在チェック(使用可能='Y')
+            << check_tax_div_loop >>
+            FOR check_lookup_type_rec2 IN check_lookup_type_cur2( lv_tax_div
+                                                                , cv_syohizei_kbn )
+            LOOP
+              lt_tax_div_aft := check_lookup_type_rec2.lookup_code;
+            END LOOP check_tax_div_loop;
+            --
+            IF (lt_tax_div_aft IS NULL)
+            THEN
+              lv_check_status   := cv_status_error;
+              lv_retcode        := cv_status_error;
+              --参照表存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_lookup_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_tax_div
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_tax_div
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+            END IF;
+          END IF;
+        END IF;
+--
+        -- ===========================================
+        -- 売上拠点の取得・チェック
+        -- ===========================================
+        --顧客区分が'13'、'14'、'16'、'17'の場合のみ取得・チェック
+        IF ( lv_cust_customer_class IN ( cv_trust_corp
+                                       , cv_urikake_kbn
+                                       , cv_tonya_kbn
+                                       , cv_keikaku_kbn ) )
+        THEN
+          --売上拠点取得
+          lv_sale_base_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                      ,cv_comma
+                                                                      ,34);
+          --相関チェック
+          IF (lv_sale_base_code = cv_null_bar)
+          THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --相関チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_correlation_err_msg
+                            ,iv_token_name1  => cv_col_name
+                            ,iv_token_value1 => cv_sale_base_code
+                            ,iv_token_name2  => cv_cond_col_name
+                            ,iv_token_value2 => cv_cust_class
+                            ,iv_token_name3  => cv_cond_col_val
+                            ,iv_token_value3 => lv_cust_customer_class
+                            ,iv_token_name4  => cv_cust_code
+                            ,iv_token_value4 => lv_customer_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          --
+          ELSIF (lv_sale_base_code IS NOT NULL)
+          THEN
+            --値セット存在チェック
+            << check_sale_base_code_loop >>
+            FOR check_flex_value_rec IN check_flex_value_cur( lv_sale_base_code )
+            LOOP
+              lt_sale_base_code_aft := check_flex_value_rec.flex_value;
+            END LOOP check_sale_base_code_loop;
+            --
+            IF (lt_sale_base_code_aft IS NULL)
+            THEN
+              lv_check_status    := cv_status_error;
+              lv_retcode         := cv_status_error;
+              --値セット存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_flex_value_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_sale_base_code
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_sale_base_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          END IF;
+        END IF;
+--
+        -- ===========================================
+        --以降の項目は、顧客区分が'10'の場合のみ取得・チェック
+        -- ===========================================
+        IF (lv_cust_customer_class = cv_kokyaku_kbn )
+        THEN
+          -- チェック用に顧客追加情報の現在値を取得
+          << get_xca_info_loop >>
+          FOR get_xca_info_rec IN get_xca_info_cur( lv_customer_code )
+          LOOP
+            lt_longitude_bef          := get_xca_info_rec.longitude;         --ピークカット開始時刻
+            lt_rate_bef               := get_xca_info_rec.rate;              --消化計算用掛率
+            lt_conclusion_day1_bef    := get_xca_info_rec.conclusion_day1;   --消化計算締め日1
+            lt_conclusion_day2_bef    := get_xca_info_rec.conclusion_day2;   --消化計算締め日2
+            lt_conclusion_day3_bef    := get_xca_info_rec.conclusion_day3;   --消化計算締め日3
+          END LOOP get_xca_info_loop;
+--
+          --業態(小分類)の妥当性チェックOKの場合のみ取得・チェック
+          IF (lb_bz_low_type_chk_flg = TRUE)
+          THEN
+            -- ===========================================
+            -- ピークカット開始時刻の取得・チェック
+            -- ===========================================
+            --ピークカット開始時刻取得
+            lv_longitude := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                   ,cv_comma
+                                                                   ,61);
+            --業態(小分類)が'24'、'25'、'27'の場合、入力必須
+            IF     (lt_business_low_type_aft IN ( cv_gyotai_full_syoka_vd
+                                                , cv_gyotai_full_vd
+                                                , cv_gyotai_syoka_vd ) )
+              AND ((lv_longitude = cv_null_bar)
+               OR  (NVL(lv_longitude ,lt_longitude_bef) IS NULL))
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --相関チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_correlation_err_msg
+                              ,iv_token_name1  => cv_col_name
+                              ,iv_token_value1 => cv_longitude
+                              ,iv_token_name2  => cv_cond_col_name
+                              ,iv_token_value2 => cv_bus_low_type
+                              ,iv_token_name3  => cv_cond_col_val
+                              ,iv_token_value3 => lt_business_low_type_aft
+                              ,iv_token_name4  => cv_cust_code
+                              ,iv_token_value4 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+            --NULL以外かつ、'-'でない場合
+            ELSIF (NVL(lv_longitude, cv_null_bar) <> cv_null_bar)
+            THEN
+              --参照表存在チェック(使用可能='Y')
+              << check_longitude_loop >>
+              FOR check_lookup_type_rec2 IN check_lookup_type_cur2( lv_longitude
+                                                                  , cv_peekcut_start_time )
+              LOOP
+                lt_longitude_aft := check_lookup_type_rec2.lookup_code;
+              END LOOP check_longitude_loop;
+              --
+              IF (lt_longitude_aft IS NULL)
+              THEN
+                lv_check_status   := cv_status_error;
+                lv_retcode        := cv_status_error;
+                --参照表存在チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_lookup_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_col_name
+                                ,iv_token_value2 => cv_longitude
+                                ,iv_token_name3  => cv_input_val
+                                ,iv_token_value3 => lv_longitude
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg);
+              END IF;
+            END IF;
+--
+            -- ===========================================
+            -- 稼働日カレンダの取得・チェック
+            -- ===========================================
+            --業態(小分類)が'24'、'25'、'27'の場合のみ取得・チェック
+            IF (lt_business_low_type_aft IN ( cv_gyotai_full_syoka_vd
+                                            , cv_gyotai_full_vd
+                                            , cv_gyotai_syoka_vd ))
+            THEN
+              --稼働日カレンダ取得
+              lv_calendar_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                         ,cv_comma
+                                                                         ,63);
+              --NULL以外かつ、'-'でない場合
+              IF (NVL(lv_calendar_code ,cv_null_bar) <> cv_null_bar)
+              THEN
+                --マスタ存在チェック
+                << check_calendar_code_loop >>
+                FOR check_calendar_code_rec IN check_calendar_code_cur( lv_calendar_code )
+                LOOP
+                  lt_calendar_code_aft := check_calendar_code_rec.calendar_code;
+                END LOOP check_calendar_code_loop;
+                --
+                IF (lt_calendar_code_aft IS NULL)
+                THEN
+                  lv_check_status    := cv_status_error;
+                  lv_retcode         := cv_status_error;
+                  --マスタ存在チェックエラーメッセージ取得
+                  gv_out_msg := xxccp_common_pkg.get_msg(
+                                   iv_application  => gv_xxcmm_msg_kbn
+                                  ,iv_name         => cv_mst_err_msg
+                                  ,iv_token_name1  => cv_cust_code
+                                  ,iv_token_value1 => lv_customer_code
+                                  ,iv_token_name2  => cv_col_name
+                                  ,iv_token_value2 => cv_bom_calendars
+                                  ,iv_token_name3  => cv_input_val
+                                  ,iv_token_value3 => lv_calendar_code
+                                  ,iv_token_name4  => cv_table
+                                  ,iv_token_value4 => cv_bom_calendars_table
+                                 );
+                  FND_FILE.PUT_LINE(
+                     which  => FND_FILE.LOG
+                    ,buff   => gv_out_msg
+                  );
+                END IF;
+              END IF;
+            END IF;
+--
+            -- ===========================================
+            -- 消化計算用掛率の取得・チェック
+            -- ===========================================
+            --消化計算用掛率取得
+            lv_rate := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                              ,cv_comma
+                                                              ,70);
+            --業態(小分類)が'21'、'22'、'27'の場合、入力必須
+            IF    (lt_business_low_type_aft IN ( cv_gyotai_inshop
+                                               , cv_gyotai_tosya_tyokuei
+                                               , cv_gyotai_syoka_vd ) )
+              AND ((lv_rate = cv_null_bar)
+               OR  (NVL(lv_rate ,lt_rate_bef) IS NULL))
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --相関チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_correlation_err_msg
+                              ,iv_token_name1  => cv_col_name
+                              ,iv_token_value1 => cv_rate
+                              ,iv_token_name2  => cv_cond_col_name
+                              ,iv_token_value2 => cv_bus_low_type
+                              ,iv_token_name3  => cv_cond_col_val
+                              ,iv_token_value3 => lt_business_low_type_aft
+                              ,iv_token_name4  => cv_cust_code
+                              ,iv_token_value4 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg);
+            --NULL以外かつ、'-'でない場合
+            ELSIF (NVL(lv_rate ,cv_null_bar) <> cv_null_bar)
+            THEN
+              --型・桁数チェック
+              xxccp_common_pkg2.upload_item_check( cv_rate           --消化計算用掛率
+                                                  ,lv_rate           --消化計算用掛率
+                                                  ,3                 --項目長
+                                                  ,0                 --項目長（小数点以下）
+                                                  ,cv_null_ok        --必須フラグ
+                                                  ,cv_element_num    --属性（0・検証なし、1、数値、2、日付）
+                                                  ,lv_item_errbuf    --エラーバッファ
+                                                  ,lv_item_retcode   --エラーコード
+                                                  ,lv_item_errmsg);  --エラーメッセージ
+              --型・桁数チェックエラー時
+              IF (lv_item_retcode <> cv_status_normal)
+              THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --型・桁数エラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_val_form_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_col_name
+                                ,iv_token_value2 => cv_rate
+                                ,iv_token_name3  => cv_input_val
+                                ,iv_token_value3 => lv_rate
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => lv_item_errmsg
+                );
+              ELSE
+                --範囲チェック
+                IF  ( (TO_NUMBER(lv_rate) < cn_rate_min)
+                  OR  (TO_NUMBER(lv_rate) > cn_rate_max) )
+                THEN
+                  lv_check_status := cv_status_error;
+                  lv_retcode      := cv_status_error;
+                  --範囲チェックエラーメッセージ取得
+                  gv_out_msg := xxccp_common_pkg.get_msg(
+                                   iv_application  => gv_xxcmm_msg_kbn
+                                  ,iv_name         => cv_range_err_msg
+                                  ,iv_token_name1  => cv_cust_code
+                                  ,iv_token_value1 => lv_customer_code
+                                  ,iv_token_name2  => cv_col_name
+                                  ,iv_token_value2 => cv_rate
+                                  ,iv_token_name3  => cv_input_val
+                                  ,iv_token_value3 => lv_rate
+                                  ,iv_token_name4  => cv_token_min_value
+                                  ,iv_token_value4 => cn_rate_min
+                                  ,iv_token_name5  => cv_token_max_value
+                                  ,iv_token_value5 => cn_rate_max
+                                 );
+                  FND_FILE.PUT_LINE(
+                     which  => FND_FILE.LOG
+                    ,buff   => gv_out_msg
+                  );
+                END IF;
+              END IF;
+            END IF;
+          END IF;
+--
+          -- ===========================================
+          -- 入金値引率の取得・チェック
+          -- ===========================================
+          --入金値引率取得
+          lv_rcv_dsct_rate := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                     ,cv_comma
+                                                                     ,71);
+          --NULL以外かつ、'-'でない場合
+          IF (NVL(lv_rcv_dsct_rate ,cv_null_bar) <> cv_null_bar)
+          THEN
+            --型・桁数チェック
+            xxccp_common_pkg2.upload_item_check( cv_rcv_dsct_rate  --入金値引率
+                                                ,lv_rcv_dsct_rate  --入金値引率
+                                                ,3                 --項目長
+                                                ,1                 --項目長（小数点以下）
+                                                ,cv_null_ok        --必須フラグ
+                                                ,cv_element_num    --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf    --エラーバッファ
+                                                ,lv_item_retcode   --エラーコード
+                                                ,lv_item_errmsg);  --エラーメッセージ
+            --型・桁数チェックエラー時
+            IF (lv_item_retcode <> cv_status_normal)
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --型・桁数チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_val_form_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_rcv_dsct_rate
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_rcv_dsct_rate
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_item_errmsg
+              );
+            ELSE
+              --範囲チェック
+              IF  ( (TO_NUMBER(lv_rcv_dsct_rate) < cn_rcv_dsct_rate_min)
+                OR  (TO_NUMBER(lv_rcv_dsct_rate) > cn_rcv_dsct_rate_max) )
+              THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --範囲チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_range_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_col_name
+                                ,iv_token_value2 => cv_rcv_dsct_rate
+                                ,iv_token_name3  => cv_input_val
+                                ,iv_token_value3 => lv_rcv_dsct_rate
+                                ,iv_token_name4  => cv_token_min_value
+                                ,iv_token_value4 => cn_rcv_dsct_rate_min
+                                ,iv_token_name5  => cv_token_max_value
+                                ,iv_token_value5 => cn_rcv_dsct_rate_max
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+              END IF;
+            END IF;
+          END IF;
+--
+          -- ===========================================
+          -- 消化計算締め日1の取得・チェック
+          -- ===========================================
+          --消化計算締め日1取得
+          lv_conclusion_day1 := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,72);
+          --NULL以外かつ、'-'でない場合
+          IF (NVL(lv_conclusion_day1 ,cv_null_bar) <> cv_null_bar)
+          THEN
+            --型・桁数チェック
+            xxccp_common_pkg2.upload_item_check( cv_conclusion_day1   --消化計算締め日1
+                                                ,lv_conclusion_day1   --消化計算締め日1
+                                                ,2                    --項目長
+                                                ,0                    --項目長（小数点以下）
+                                                ,cv_null_ok           --必須フラグ
+                                                ,cv_element_num       --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf       --エラーバッファ
+                                                ,lv_item_retcode      --エラーコード
+                                                ,lv_item_errmsg);     --エラーメッセージ
+            --型・桁数チェックエラー時
+            IF (lv_item_retcode <> cv_status_normal)
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --型・桁数チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_val_form_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_conclusion_day1
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_conclusion_day1
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_item_errmsg
+              );
+              --消化計算締め日チェックフラグFALSE
+              lb_conc_day_chk_flg := FALSE;
+            ELSE
+              --範囲チェック
+              IF  ( (TO_NUMBER(lv_conclusion_day1) < cn_conc_day_min)
+                OR  (TO_NUMBER(lv_conclusion_day1) > cn_conc_day_max) )
+              THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --範囲チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_range_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_col_name
+                                ,iv_token_value2 => cv_conclusion_day1
+                                ,iv_token_name3  => cv_input_val
+                                ,iv_token_value3 => lv_conclusion_day1
+                                ,iv_token_name4  => cv_token_min_value
+                                ,iv_token_value4 => cn_conc_day_min
+                                ,iv_token_name5  => cv_token_max_value
+                                ,iv_token_value5 => cn_conc_day_max
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+                --消化計算締め日チェックフラグFALSE
+                lb_conc_day_chk_flg := FALSE;
+              END IF;
+            END IF;
+          END IF;
+--
+          -- ===========================================
+          -- 消化計算締め日2の取得・チェック
+          -- ===========================================
+          --消化計算締め日2取得
+          lv_conclusion_day2 := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,73);
+          --NULL以外かつ、'-'でない場合
+          IF (NVL(lv_conclusion_day2 ,cv_null_bar) <> cv_null_bar)
+          THEN
+            --型・桁数チェック
+            xxccp_common_pkg2.upload_item_check( cv_conclusion_day2   --消化計算締め日2
+                                                ,lv_conclusion_day2   --消化計算締め日2
+                                                ,2                    --項目長
+                                                ,0                    --項目長（小数点以下）
+                                                ,cv_null_ok           --必須フラグ
+                                                ,cv_element_num       --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf       --エラーバッファ
+                                                ,lv_item_retcode      --エラーコード
+                                                ,lv_item_errmsg);     --エラーメッセージ
+            --型・桁数チェックエラー時
+            IF (lv_item_retcode <> cv_status_normal)
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --型・桁数チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_val_form_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_conclusion_day2
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_conclusion_day2
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_item_errmsg
+              );
+              --消化計算締め日チェックフラグFALSE
+              lb_conc_day_chk_flg := FALSE;
+            ELSE
+              --範囲チェック
+              IF  ( (TO_NUMBER(lv_conclusion_day2) < cn_conc_day_min)
+                OR  (TO_NUMBER(lv_conclusion_day2) > cn_conc_day_max) )
+              THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --範囲チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_range_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_col_name
+                                ,iv_token_value2 => cv_conclusion_day2
+                                ,iv_token_name3  => cv_input_val
+                                ,iv_token_value3 => lv_conclusion_day2
+                                ,iv_token_name4  => cv_token_min_value
+                                ,iv_token_value4 => cn_conc_day_min
+                                ,iv_token_name5  => cv_token_max_value
+                                ,iv_token_value5 => cn_conc_day_max
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+                --消化計算締め日チェックフラグFALSE
+                lb_conc_day_chk_flg := FALSE;
+              END IF;
+            END IF;
+          END IF;
+--
+          -- ===========================================
+          -- 消化計算締め日3の取得・チェック
+          -- ===========================================
+          --消化計算締め日3取得
+          lv_conclusion_day3 := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,74);
+          --NULL以外かつ、'-'でない場合
+          IF (NVL(lv_conclusion_day3 ,cv_null_bar) <> cv_null_bar)
+          THEN
+            --型・桁数チェック
+            xxccp_common_pkg2.upload_item_check( cv_conclusion_day3   --消化計算締め日3
+                                                ,lv_conclusion_day3   --消化計算締め日3
+                                                ,2                    --項目長
+                                                ,0                    --項目長（小数点以下）
+                                                ,cv_null_ok           --必須フラグ
+                                                ,cv_element_num       --属性（0・検証なし、1、数値、2、日付）
+                                                ,lv_item_errbuf       --エラーバッファ
+                                                ,lv_item_retcode      --エラーコード
+                                                ,lv_item_errmsg);     --エラーメッセージ
+            --型・桁数チェックエラー時
+            IF (lv_item_retcode <> cv_status_normal)
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --型・桁数チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_val_form_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_conclusion_day3
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_conclusion_day3
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_item_errmsg
+              );
+              --消化計算締め日チェックフラグFALSE
+              lb_conc_day_chk_flg := FALSE;
+            ELSE
+              --範囲チェック
+              IF  ( (TO_NUMBER(lv_conclusion_day3) < cn_conc_day_min)
+                OR  (TO_NUMBER(lv_conclusion_day3) > cn_conc_day_max) )
+              THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --範囲チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_range_err_msg
+                                ,iv_token_name1  => cv_cust_code
+                                ,iv_token_value1 => lv_customer_code
+                                ,iv_token_name2  => cv_col_name
+                                ,iv_token_value2 => cv_conclusion_day3
+                                ,iv_token_name3  => cv_input_val
+                                ,iv_token_value3 => lv_conclusion_day3
+                                ,iv_token_name4  => cv_token_min_value
+                                ,iv_token_value4 => cn_conc_day_min
+                                ,iv_token_name5  => cv_token_max_value
+                                ,iv_token_value5 => cn_conc_day_max
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+                --消化計算締め日チェックフラグFALSE
+                lb_conc_day_chk_flg := FALSE;
+              END IF;
+            END IF;
+          END IF;
+--
+          -- ===========================================
+          -- 消化計算締め日の妥当性チェック
+          -- ===========================================
+          --消化計算締め日チェックフラグがTRUEの場合
+          IF (lb_conc_day_chk_flg = TRUE)
+          THEN
+            -- ===========================================
+            --消化計算締め日1の更新値を取得
+            -- ===========================================
+            --設定値が'-'の場合
+            IF (lv_conclusion_day1 = cv_null_bar)
+            THEN
+              lt_conclusion_day1_aft := NULL;
+            --設定値がNULL以外かつ、'-'以外の場合
+            ELSIF (NVL(lv_conclusion_day1 ,cv_null_bar) <> cv_null_bar)
+            THEN
+              lt_conclusion_day1_aft := TO_NUMBER(lv_conclusion_day1);
+            ELSE
+              lt_conclusion_day1_aft := lt_conclusion_day1_bef;
+            END IF;
+            --
+            -- ===========================================
+            --消化計算締め日2の更新値を取得
+            -- ===========================================
+            --設定値が'-'の場合
+            IF (lv_conclusion_day2 = cv_null_bar)
+            THEN
+              lt_conclusion_day2_aft := NULL;
+            --設定値がNULL以外かつ、'-'以外の場合
+            ELSIF (NVL(lv_conclusion_day2 ,cv_null_bar) <> cv_null_bar)
+            THEN
+              lt_conclusion_day2_aft := TO_NUMBER(lv_conclusion_day2);
+            ELSE
+              lt_conclusion_day2_aft := lt_conclusion_day2_bef;
+            END IF;
+            --
+            -- ===========================================
+            --消化計算締め日3の更新値を取得
+            -- ===========================================
+            IF (lv_conclusion_day3 = cv_null_bar)
+            THEN
+              lt_conclusion_day3_aft := NULL;
+            --設定値がNULL以外かつ、'-'以外の場合
+            ELSIF (NVL(lv_conclusion_day3 ,cv_null_bar) <> cv_null_bar)
+            THEN
+              lt_conclusion_day3_aft := TO_NUMBER(lv_conclusion_day3);
+            ELSE
+              lt_conclusion_day3_aft := lt_conclusion_day3_bef;
+            END IF;
+--
+            -- ===========================================
+            -- 消化計算締め日1の相関チェック
+            -- ===========================================
+            IF    (lt_conclusion_day1_aft IS NULL)
+              AND (lt_conclusion_day2_aft IS NOT NULL)
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --消化計算締め日相関チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_conc_day_rel_err_msg
+                              ,iv_token_name1  => cv_token_conc_day1
+                              ,iv_token_value1 => cv_conclusion_day2
+                              ,iv_token_name2  => cv_token_conc_day2
+                              ,iv_token_value2 => cv_conclusion_day1
+                              ,iv_token_name3  => cv_cust_code
+                              ,iv_token_value3 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+--
+            -- ===========================================
+            -- 消化計算締め日2の相関チェック
+            -- ===========================================
+            IF    (lt_conclusion_day2_aft IS NULL)
+              AND (lt_conclusion_day3_aft IS NOT NULL)
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --消化計算締め日相関チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_conc_day_rel_err_msg
+                              ,iv_token_name1  => cv_token_conc_day1
+                              ,iv_token_value1 => cv_conclusion_day3
+                              ,iv_token_name2  => cv_token_conc_day2
+                              ,iv_token_value2 => cv_conclusion_day2
+                              ,iv_token_name3  => cv_cust_code
+                              ,iv_token_value3 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+--
+            -- ===========================================
+            -- 消化計算締め日2の妥当性チェック
+            -- ===========================================
+            IF    (lt_conclusion_day1_aft IS NOT NULL)
+              AND (lt_conclusion_day2_aft IS NOT NULL)
+            THEN
+              --消化計算締め日1と消化計算締め日2の日付間隔チェック
+              IF  lt_conclusion_day2_aft
+                < lt_conclusion_day1_aft + cn_conclusion_interval
+              THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --消化計算締め日妥当性チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_conc_day_val_err_msg
+                                ,iv_token_name1  => cv_token_conc_day1
+                                ,iv_token_value1 => cv_conclusion_day2
+                                ,iv_token_name2  => cv_token_conc_day2
+                                ,iv_token_value2 => cv_conclusion_day1
+                                ,iv_token_name3  => cv_token_interval
+                                ,iv_token_value3 => cn_conclusion_interval
+                                ,iv_token_name4  => cv_cust_code
+                                ,iv_token_value4 => lv_customer_code
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+              END IF;
+            END IF;
+--
+            -- ===========================================
+            -- 消化計算締め日3の妥当性チェック
+            -- ===========================================
+            IF    (lt_conclusion_day2_aft IS NOT NULL)
+              AND (lt_conclusion_day3_aft IS NOT NULL)
+            THEN
+              --消化計算締め日2と消化計算締め日3の日付間隔チェック
+              IF  lt_conclusion_day3_aft
+                < lt_conclusion_day2_aft + cn_conclusion_interval
+              THEN
+                lv_check_status := cv_status_error;
+                lv_retcode      := cv_status_error;
+                --消化計算締め日妥当性チェックエラーメッセージ取得
+                gv_out_msg := xxccp_common_pkg.get_msg(
+                                 iv_application  => gv_xxcmm_msg_kbn
+                                ,iv_name         => cv_conc_day_val_err_msg
+                                ,iv_token_name1  => cv_token_conc_day1
+                                ,iv_token_value1 => cv_conclusion_day3
+                                ,iv_token_name2  => cv_token_conc_day2
+                                ,iv_token_value2 => cv_conclusion_day2
+                                ,iv_token_name3  => cv_token_interval
+                                ,iv_token_value3 => cn_conclusion_interval
+                                ,iv_token_name4  => cv_cust_code
+                                ,iv_token_value4 => lv_customer_code
+                               );
+                FND_FILE.PUT_LINE(
+                   which  => FND_FILE.LOG
+                  ,buff   => gv_out_msg
+                );
+              END IF;
+            END IF;
+--
+            -- ===========================================
+            -- 消化計算締め日の月末日付チェック
+            -- ===========================================
+            --業態(小分類)が消化VDの場合、消化計算締め日1～3の何れかに
+            --月末日付：30が設定されているかチェック
+            IF    (lt_business_low_type_aft = cv_gyotai_syoka_vd )
+              AND (NVL(lt_conclusion_day1_aft ,cn_dummy_0) <> cn_conc_day_max)
+              AND (NVL(lt_conclusion_day2_aft ,cn_dummy_0) <> cn_conc_day_max)
+              AND (NVL(lt_conclusion_day3_aft ,cn_dummy_0) <> cn_conc_day_max)
+            THEN
+              lv_check_status := cv_status_error;
+              lv_retcode      := cv_status_error;
+              --消化計算締め日月末日チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_conc_day_lastday_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          END IF;
+--
+          -- ===========================================
+          -- 店舗営業用顧客コードの取得・チェック
+          -- ===========================================
+          --店舗営業用顧客コード取得
+          lv_store_cust_code := xxccp_common_pkg.char_delim_partition(  lv_temp
+                                                                       ,cv_comma
+                                                                       ,75);
+          --店舗営業用顧客コードが'-'でない場合
+          IF (NVL(lv_store_cust_code ,cv_null_bar) <> cv_null_bar)
+          THEN
+            --マスタ存在チェック
+            << check_store_cust_code_loop >>
+            FOR check_store_cust_code_rec IN check_store_cust_code_cur( lv_store_cust_code )
+            LOOP
+              lt_store_cust_code_aft := check_store_cust_code_rec.store_cust_code;
+            END LOOP check_store_cust_code_loop;
+            --
+            IF (lt_store_cust_code_aft IS NULL)
+            THEN
+              lv_check_status    := cv_status_error;
+              lv_retcode         := cv_status_error;
+              --マスタ存在チェックエラーメッセージ取得
+              gv_out_msg := xxccp_common_pkg.get_msg(
+                               iv_application  => gv_xxcmm_msg_kbn
+                              ,iv_name         => cv_mst_err_msg
+                              ,iv_token_name1  => cv_cust_code
+                              ,iv_token_value1 => lv_customer_code
+                              ,iv_token_name2  => cv_col_name
+                              ,iv_token_value2 => cv_store_cust_code
+                              ,iv_token_name3  => cv_input_val
+                              ,iv_token_value3 => lv_store_cust_code
+                              ,iv_token_name4  => cv_table
+                              ,iv_token_value4 => cv_cust_acct_table
+                             );
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => gv_out_msg
+              );
+            END IF;
+          END IF;
+        END IF;
+-- Ver1.10 add end
         --
         IF (lv_check_status = cv_status_normal) THEN
           BEGIN
@@ -6540,6 +8418,20 @@ AS
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
               ,vist_target_div           --訪問対象区分
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- Ver1.10 add start
+              ,address_lines_phonetic    --電話番号
+              ,address4                  --FAX
+              ,sale_base_code            --売上拠点
+              ,tax_div                   --消費税区分
+              ,longitude                 --ピークカット開始時刻
+              ,calendar_code             --稼働日カレンダ
+              ,rate                      --消化計算用掛率
+              ,receiv_discount_rate      --入金値引率
+              ,conclusion_day1           --消化計算締め日1
+              ,conclusion_day2           --消化計算締め日2
+              ,conclusion_day3           --消化計算締め日3
+              ,store_cust_code           --店舗営業用顧客コード
+-- Ver1.10 add end
               ,created_by
               ,creation_date
               ,last_updated_by
@@ -6627,6 +8519,20 @@ AS
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add start by S.Niki
               ,lv_vist_target_div        --訪問対象区分
 -- 2012/03/13 Ver1.8 E_本稼動_09272 add end by S.Niki
+-- Ver1.10 add start
+              ,lv_address_lines_phonetic      --電話番号
+              ,lv_address4                    --FAX
+              ,lv_sale_base_code              --売上拠点
+              ,lv_tax_div                     --消費税区分
+              ,lv_longitude                   --ピークカット開始時刻
+              ,lv_calendar_code               --稼働日カレンダ
+              ,lv_rate                        --消化計算用掛率
+              ,lv_rcv_dsct_rate               --入金値引率
+              ,lv_conclusion_day1             --消化計算締め日1
+              ,lv_conclusion_day2             --消化計算締め日2
+              ,lv_conclusion_day3             --消化計算締め日3
+              ,lv_store_cust_code             --店舗営業用顧客コード
+-- Ver1.10 add end
               ,fnd_global.user_id
               ,sysdate
               ,fnd_global.user_id
@@ -6660,7 +8566,9 @@ AS
       ln_cust_id               := NULL;
       ln_party_id              := NULL;
       ln_cust_addon_mst        := NULL;
-      lv_business_low_mst      := NULL;
+-- Ver1.10 del start
+--      lv_business_low_mst      := NULL;
+-- Ver1.10 del end
       lv_get_cust_status       := NULL;
       lv_appr_reason_mst       := NULL;
       ln_cust_corp_mst         := NULL;
@@ -6764,6 +8672,55 @@ AS
       lv_sales_head_base_code     := NULL;  --販売先本部担当拠点
       lv_sales_head_base_code_mst := NULL;  --販売先本部担当拠点チェック用
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+-- Ver1.10 add start
+      lt_business_low_type_bef    := NULL;  --現在値・業態(小分類)
+      lt_business_low_type_aft    := NULL;  --更新値・業態(小分類)
+      lt_sell_trans_div_bef       := NULL;  --現在値・売上実績振替
+      lt_sell_trans_div_aft       := NULL;  --更新値・売上実績振替
+      lt_tsukagatazaiko_div_bef   := NULL;  --現在値・通過在庫型区分
+      lt_tsukagatazaiko_div_aft   := NULL;  --更新値・通過在庫型区分
+      lt_ship_storage_code_bef    := NULL;  --現在値・出荷元保管場所
+      lt_ship_storage_code_aft    := NULL;  --更新値・出荷元保管場所
+      lt_ship_storage_code_mst    := NULL;  --出荷元保管場所確認用変数
+      lt_chain_store_code_bef     := NULL;  --現在値・チェーン店コード(EDI)
+      lt_chain_store_code_aft     := NULL;  --更新値・チェーン店コード(EDI)
+      lt_chain_store_code_mst     := NULL;  --チェーン店コード(EDI)確認用変数
+      lt_delivery_base_code_bef   := NULL;  --現在値・納品拠点
+      lt_delivery_base_code_aft   := NULL;  --更新値・納品拠点
+      lv_sale_base_code           := NULL;  --ローカル変数・売上拠点
+      lt_sale_base_code_aft       := NULL;  --更新値・売上拠点
+      lv_address_lines_phonetic   := NULL;  --ローカル変数・電話番号
+      lv_address4                 := NULL;  --ローカル変数・FAX
+      lv_tax_div                  := NULL;  --ローカル変数・消費税区分
+      lt_tax_div_aft              := NULL;  --更新値・消費税区分
+      lv_longitude                := NULL;  --ローカル変数・ピークカット開始時刻
+      lt_longitude_bef            := NULL;  --現在値・ピークカット開始時刻
+      lt_longitude_aft            := NULL;  --更新値・ピークカット開始時刻
+      lv_calendar_code            := NULL;  --ローカル変数・稼働日カレンダ
+      lt_calendar_code_aft        := NULL;  --更新値・稼働日カレンダ
+      lv_rate                     := NULL;  --ローカル変数・消化計算用掛率
+      lt_rate_bef                 := NULL;  --現在値・消化計算用掛率
+      lv_rcv_dsct_rate            := NULL;  --ローカル変数・入金値引率
+      lv_conclusion_day1          := NULL;  --ローカル変数・消化計算締め日1
+      lt_conclusion_day1_bef      := NULL;  --現在値・消化計算締め日1
+      lt_conclusion_day1_aft      := NULL;  --更新値・消化計算締め日1
+      lv_conclusion_day2          := NULL;  --ローカル変数・消化計算締め日2
+      lt_conclusion_day2_bef      := NULL;  --現在値・消化計算締め日2
+      lt_conclusion_day2_aft      := NULL;  --更新値・消化計算締め日2
+      lv_conclusion_day3          := NULL;  --ローカル変数・消化計算締め日3
+      lt_conclusion_day3_bef      := NULL;  --現在値・消化計算締め日3
+      lt_conclusion_day3_aft      := NULL;  --更新値・消化計算締め日3
+      lv_store_cust_code          := NULL;  --ローカル変数・店舗営業用顧客コード
+      lt_store_cust_code_aft      := NULL;  --更新値・店舗営業用顧客コード
+      --妥当性チェックフラグ
+      lb_bz_low_type_chk_flg      := TRUE;  --業態(小分類)チェックフラグ
+      lb_sell_trans_chk_flg       := TRUE;  --売上実績振替チェックフラグ
+      lb_db_code_chk_flg          := TRUE;  --納品拠点チェックフラグ
+      lb_tsukazaiko_chk_flg       := TRUE;  --通過在庫型区分チェックフラグ
+      lb_sp_strg_code_chk_flg     := TRUE;  --出荷元保管場所チェックフラグ
+      lb_cs_code_chk_flg          := TRUE;  --チェーン店コード(EDI)チェックフラグ
+      lb_conc_day_chk_flg         := TRUE;  --消化計算締め日チェックフラグ
+-- Ver1.10 add end
     END LOOP cust_data_wk_loop;
 --
     --データエラー時メッセージ設定（コンカレント出力）
@@ -7068,6 +9025,30 @@ AS
              ,xwcbr.base_code              base_code                 --本部担当拠点
              ,xmc.base_code                addon_base_code           --顧客法人情報・本部担当拠点
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+-- Ver1.10 add start
+             ,xwcbr.address_lines_phonetic address_lines_phonetic    --電話番号
+             ,xwcbr.address4               address4                  --FAX
+             ,xwcbr.tax_div                tax_div                   --消費税区分
+             ,xca.tax_div                  addon_tax_div             --顧客追加情報.消費税区分
+             ,xwcbr.sale_base_code         sale_base_code            --売上拠点
+             ,xca.sale_base_code           addon_sale_base_code      --顧客追加情報.売上拠点
+             ,xwcbr.longitude              longitude                 --ピークカット開始時刻
+             ,xca.longitude                addon_longitude           --顧客追加情報.ピークカット開始時刻
+             ,xwcbr.calendar_code          calendar_code             --稼働日カレンダ
+             ,xca.calendar_code            addon_calendar_code       --顧客追加情報.稼働日カレンダ
+             ,xwcbr.rate                   rate                      --消化計算用掛率
+             ,xca.rate                     addon_rate                --顧客追加情報.消化計算用掛率
+             ,xwcbr.receiv_discount_rate   rcv_dsct_rate             --入金値引率
+             ,xca.receiv_discount_rate     addon_rcv_dsct_rate       --顧客追加情報.入金値引率
+             ,xwcbr.conclusion_day1        conclusion_day1           --消化計算締め日1
+             ,xca.conclusion_day1          addon_conclusion_day1     --顧客追加情報・消化計算締め日1
+             ,xwcbr.conclusion_day2        conclusion_day2           --消化計算締め日2
+             ,xca.conclusion_day2          addon_conclusion_day2     --顧客追加情報・消化計算締め日2
+             ,xwcbr.conclusion_day3        conclusion_day3           --消化計算締め日3
+             ,xca.conclusion_day3          addon_conclusion_day3     --顧客追加情報・消化計算締め日3
+             ,xwcbr.store_cust_code        store_cust_code           --店舗営業用顧客コード
+             ,xca.store_cust_code          addon_store_cust_code     --顧客追加情報.店舗営業用顧客コード
+-- Ver1.10 add end
       FROM    hz_cust_accounts     hca,
               hz_cust_acct_sites   hcas,
               hz_cust_site_uses    hcsu,
@@ -7446,6 +9427,17 @@ AS
         p_location_rec.address2         := cust_data_rec.address2;      --住所2
       END IF;
       p_location_rec.address3           := cust_data_rec.address3;      --地区コード
+-- Ver1.10 add start
+      p_location_rec.address_lines_phonetic
+                                        := cust_data_rec.address_lines_phonetic;
+                                                                        --電話番号
+      IF (cust_data_rec.address4 = cv_null_bar)
+      THEN
+        p_location_rec.address4         := CHR(0);
+      ELSE
+        p_location_rec.address4         := cust_data_rec.address4;      --FAX
+      END IF;
+-- Ver1.10 add end
       ln_location_object_version_num    := cust_data_rec.location_ovn;
       --顧客事業所マスタ更新API呼び出し
       hz_location_v2pub.update_location(
@@ -7475,6 +9467,11 @@ AS
       p_location_rec.address1           := NULL;
       p_location_rec.address2           := NULL;
       p_location_rec.address3           := NULL;
+-- Ver1.10 add start
+      p_location_rec.address_lines_phonetic
+                                        := NULL;  -- 電話番号
+      p_location_rec.address4           := NULL;  -- FAX
+-- Ver1.10 add end
       ln_location_object_version_num    := NULL;
 --
     -- ===============================
@@ -8355,6 +10352,272 @@ AS
     END IF;
 --
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+-- Ver1.10 add start
+    -- ===============================
+    -- 消費税区分
+    -- ===============================
+    --顧客区分が'10'、'12'、'14'の場合
+    IF ( cust_data_rec.customer_class_code IN ( cv_kokyaku_kbn
+                                              , cv_uesama_kbn
+                                              , cv_urikake_kbn ) )
+    THEN
+      --設定値がNULLの場合
+      IF (cust_data_rec.tax_div IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.tax_div := cust_data_rec.addon_tax_div;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.tax_div := cust_data_rec.tax_div;
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.tax_div := cust_data_rec.addon_tax_div;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 売上拠点
+    -- ===============================
+    --顧客区分が'13'、'14'、'16'、'17'の場合
+    IF ( cust_data_rec.customer_class_code IN ( cv_trust_corp
+                                              , cv_urikake_kbn
+                                              , cv_tonya_kbn
+                                              , cv_keikaku_kbn ) )
+    THEN
+      --設定値がNULLの場合
+      IF (cust_data_rec.sale_base_code IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.sale_base_code := cust_data_rec.addon_sale_base_code;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.sale_base_code := cust_data_rec.sale_base_code;
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.sale_base_code := cust_data_rec.addon_sale_base_code;
+    --
+    END IF;
+--
+    -- ===============================
+    -- ピークカット開始時刻
+    -- ===============================
+    --顧客区分が'10'の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF (cust_data_rec.longitude = cv_null_bar)
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.longitude := NULL;
+      --設定値がNULLの場合
+      ELSIF (cust_data_rec.longitude IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.longitude := cust_data_rec.addon_longitude;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.longitude := cust_data_rec.longitude;
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.longitude := cust_data_rec.addon_longitude;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 稼働日カレンダ
+    -- ===============================
+    --顧客区分が'10'の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF (cust_data_rec.calendar_code = cv_null_bar)
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.calendar_code := NULL;
+      --設定値がNULLの場合
+      ELSIF (cust_data_rec.calendar_code IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.calendar_code := cust_data_rec.addon_calendar_code;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.calendar_code := cust_data_rec.calendar_code;
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.calendar_code := cust_data_rec.addon_calendar_code;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 消化計算用掛率
+    -- ===============================
+    --顧客区分「10：顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF (cust_data_rec.rate = cv_null_bar)
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.rate := NULL;
+      --設定値がNULLの場合
+      ELSIF (cust_data_rec.rate IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.rate := cust_data_rec.addon_rate;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.rate := TO_NUMBER(cust_data_rec.rate) / 100;
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.rate := cust_data_rec.addon_rate;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 入金値引率
+    -- ===============================
+    --顧客区分「10：顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF (cust_data_rec.rcv_dsct_rate = cv_null_bar)
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.receiv_discount_rate := NULL;
+      --設定値がNULLの場合
+      ELSIF (cust_data_rec.rcv_dsct_rate IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.receiv_discount_rate := cust_data_rec.addon_rcv_dsct_rate;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.receiv_discount_rate := TO_NUMBER(cust_data_rec.rcv_dsct_rate);
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.receiv_discount_rate := cust_data_rec.addon_rcv_dsct_rate;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 消化計算締め日1
+    -- ===============================
+    --顧客区分「10：顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF (cust_data_rec.conclusion_day1 = cv_null_bar)
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.conclusion_day1 := NULL;
+      --設定値がNULLの場合
+      ELSIF (cust_data_rec.conclusion_day1 IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.conclusion_day1 := cust_data_rec.addon_conclusion_day1;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.conclusion_day1 := TO_NUMBER(cust_data_rec.conclusion_day1);
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.conclusion_day1 := cust_data_rec.addon_conclusion_day1;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 消化計算締め日2
+    -- ===============================
+    --顧客区分「10：顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF (cust_data_rec.conclusion_day2 = cv_null_bar)
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.conclusion_day2 := NULL;
+      --設定値がNULLの場合
+      ELSIF (cust_data_rec.conclusion_day2 IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.conclusion_day2 := cust_data_rec.addon_conclusion_day2;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.conclusion_day2 := TO_NUMBER(cust_data_rec.conclusion_day2);
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.conclusion_day2 := cust_data_rec.addon_conclusion_day2;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 消化計算締め日3
+    -- ===============================
+    --顧客区分「10：顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF (cust_data_rec.conclusion_day3 = cv_null_bar)
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.conclusion_day3 := NULL;
+      --設定値がNULLの場合
+      ELSIF (cust_data_rec.conclusion_day3 IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.conclusion_day3 := cust_data_rec.addon_conclusion_day3;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.conclusion_day3 := TO_NUMBER(cust_data_rec.conclusion_day3);
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.conclusion_day3 := cust_data_rec.addon_conclusion_day3;
+    --
+    END IF;
+--
+    -- ===============================
+    -- 店舗営業用顧客コード
+    -- ===============================
+    --顧客区分「10：顧客」の場合
+    IF ( cust_data_rec.customer_class_code = cv_kokyaku_kbn )
+    THEN
+      --設定値が'-'の場合
+      IF (cust_data_rec.store_cust_code = cv_null_bar)
+      THEN
+        --NULLをセット
+        l_xxcmm_cust_accounts.store_cust_code := NULL;
+      --設定値がNULLの場合
+      ELSIF (cust_data_rec.store_cust_code IS NULL)
+      THEN
+        --更新前の値をセット
+        l_xxcmm_cust_accounts.store_cust_code := cust_data_rec.addon_store_cust_code;
+      ELSE
+        --CSVの項目値をセット
+        l_xxcmm_cust_accounts.store_cust_code := cust_data_rec.store_cust_code;
+      END IF;
+    --更新可能な顧客区分以外の場合
+    ELSE
+      --更新前の値をセット
+      l_xxcmm_cust_accounts.store_cust_code := cust_data_rec.addon_store_cust_code;
+    --
+    END IF;
+-- Ver1.10 add end
     --
     -- ===============================
     -- 顧客追加情報マスタ更新
@@ -8409,6 +10672,18 @@ AS
           ,xca.intro_base_code        = l_xxcmm_cust_accounts.intro_base_code            --紹介拠点コード
           ,xca.intro_business_person  = l_xxcmm_cust_accounts.intro_business_person      --紹介営業員
 -- 2013/04/17 Ver1.9 E_本稼動_09963追加対応 add end by T.Nakano
+-- Ver1.10 add start
+          ,xca.tax_div                = l_xxcmm_cust_accounts.tax_div                    --消費税区分
+          ,xca.sale_base_code         = l_xxcmm_cust_accounts.sale_base_code             --売上拠点
+          ,xca.longitude              = l_xxcmm_cust_accounts.longitude                  --ピークカット開始時刻
+          ,xca.calendar_code          = l_xxcmm_cust_accounts.calendar_code              --稼働日カレンダ
+          ,xca.rate                   = l_xxcmm_cust_accounts.rate                       --消化計算用掛率
+          ,xca.receiv_discount_rate   = l_xxcmm_cust_accounts.receiv_discount_rate       --入金値引率
+          ,xca.conclusion_day1        = l_xxcmm_cust_accounts.conclusion_day1            --消化計算締め日1
+          ,xca.conclusion_day2        = l_xxcmm_cust_accounts.conclusion_day2            --消化計算締め日2
+          ,xca.conclusion_day3        = l_xxcmm_cust_accounts.conclusion_day3            --消化計算締め日3
+          ,xca.store_cust_code        = l_xxcmm_cust_accounts.store_cust_code            --店舗営業用顧客コード
+-- Ver1.10 add end
           ,xca.last_updated_by        = cn_last_updated_by                               --最終更新者
           ,xca.last_update_date       = cd_last_update_date                              --最終更新日
           ,xca.request_id             = cn_request_id                                    --要求ID

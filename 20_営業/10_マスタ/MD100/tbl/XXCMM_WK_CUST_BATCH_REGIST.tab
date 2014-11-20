@@ -4,7 +4,7 @@
  * TABLE Name      : xxcmm_wk_cust_batch_regist
  * Description     : å⁄ãqàÍäáçXêVópÉèÅ[ÉN
  * MD.070          : 
- * Version         : 1.5
+ * Version         : 1.6
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -16,6 +16,7 @@
  *  2011/12/05    1.3  K.Kubo        è·äQE_ñ{â“ìÆ_07553
  *  2012/03/13    1.4  S.Niki        è·äQE_ñ{â“ìÆ_09272
  *  2013/03/29    1.5  T.Nakano      è·äQE_ñ{â“ìÆ_09963í«â¡ëŒâû
+ *  2014/03/18    1.6  S.Niki        è·äQE_ñ{â“ìÆ_11616
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
@@ -56,9 +57,16 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
   ADDRESS1                VARCHAR2(240),
   ADDRESS2                VARCHAR2(240),
   ADDRESS3                VARCHAR2(5),
+-- Ver1.6 add start
+  ADDRESS_LINES_PHONETIC  VARCHAR2(30),
+  ADDRESS4                VARCHAR2(30),
+-- Ver1.6 add end
 -- 2009/10/21 add start by Y.Kuboshima
   INVOICE_CODE            VARCHAR2(9),
   INDUSTRY_DIV            VARCHAR2(2),
+-- Ver1.6 add start
+  SALE_BASE_CODE          VARCHAR2(4),
+-- Ver1.6 add end
   BILL_BASE_CODE          VARCHAR2(4),
   RECEIV_BASE_CODE        VARCHAR2(4),
   DELIVERY_BASE_CODE      VARCHAR2(4),
@@ -97,6 +105,17 @@ CREATE TABLE xxcmm.xxcmm_wk_cust_batch_regist
 -- 2012/03/13 Ver1.4 add start by S.Niki
   VIST_TARGET_DIV         VARCHAR2(1),
 -- 2012/03/13 Ver1.4 add end by S.Niki
+-- Ver1.6 add start
+  TAX_DIV                 VARCHAR2(1),
+  LONGITUDE               VARCHAR2(20),
+  CALENDAR_CODE           VARCHAR2(10),
+  RATE                    VARCHAR2(3),
+  RECEIV_DISCOUNT_RATE    VARCHAR2(4),
+  CONCLUSION_DAY1         VARCHAR2(2),
+  CONCLUSION_DAY2         VARCHAR2(2),
+  CONCLUSION_DAY3         VARCHAR2(2),
+  STORE_CUST_CODE         VARCHAR2(9),
+-- Ver1.6 add end
   CREATED_BY              NUMBER(15,0) NOT NULL,
   CREATION_DATE           DATE NOT NULL,
   LAST_UPDATED_BY         NUMBER(15,0) NOT NULL,
@@ -182,11 +201,21 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.address2 IS 'èZèä2'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.address3 IS 'ínãÊÉRÅ[Éh'
 /
+-- Ver1.6 add start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.address_lines_phonetic IS 'ìdòbî‘çÜ'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.address4               IS 'FAX'
+/
+-- Ver1.6 add end
 -- 2009/10/19 add start by Y.Kuboshima
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.invoice_code IS 'êøãÅèëópÉRÅ[Éh'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.industry_div IS 'ã∆éÌ'
 /
+-- Ver1.6 add start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.sale_base_code IS 'îÑè„ãíì_'
+/
+-- Ver1.6 add end
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.bill_base_code IS 'êøãÅãíì_'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.receiv_base_code IS 'ì¸ã‡ãíì_'
@@ -254,6 +283,26 @@ COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.torihikisaki_code IS 'éÊà¯êÊÉ
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.vist_target_div IS 'ñKñ‚ëŒè€ãÊï™'
 /
 -- 2012/03/13 Ver1.4 add end by S.Niki
+-- Ver1.6 add start
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.tax_div IS 'è¡îÔê≈ãÊï™'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.longitude IS 'ÉsÅ[ÉNÉJÉbÉgäJénéûçè'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.calendar_code IS 'â“ì≠ì˙ÉJÉåÉìÉ_'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.rate IS 'è¡âªåvéZópä|ó¶'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.receiv_discount_rate IS 'ì¸ã‡ílà¯ó¶'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.conclusion_day1 IS 'è¡âªåvéZí˜ì˙1'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.conclusion_day2 IS 'è¡âªåvéZí˜ì˙2'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.conclusion_day3 IS 'è¡âªåvéZí˜ì˙3'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.store_cust_code IS 'ìXï‹âcã∆ópå⁄ãqÉRÅ[Éh'
+/
+-- Ver1.6 add end
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.created_by IS 'çÏê¨é“'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_wk_cust_batch_regist.creation_date IS 'çÏê¨ì˙'
