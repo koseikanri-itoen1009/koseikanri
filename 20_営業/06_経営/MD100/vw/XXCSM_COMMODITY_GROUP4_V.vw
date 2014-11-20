@@ -13,7 +13,8 @@ CREATE OR REPLACE VIEW XXCSM_COMMODITY_GROUP4_V
  ,unit_of_issue
 )
 AS
-  SELECT iimb.item_id                                                opm_item_id                    --OPM品目ID
+  SELECT /*+ INDEX(iv_cmpcst.ccmd CM_CMPT_DTL_U1) */
+         iimb.item_id                                                opm_item_id                    --OPM品目ID
         ,iimb.item_no                                                item_cd                        --品目コード
         ,iimb.item_desc1                                             item_nm                        --品目名称
         ,xicv4.segment1                                              group4_cd                      --政策群コード(4桁)
