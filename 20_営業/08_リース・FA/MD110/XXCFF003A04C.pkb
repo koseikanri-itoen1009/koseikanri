@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A04C(body)
  * Description      : リース契約アップロード
  * MD.050           : MD050_CFF_003_A04_リース契約アップロード.doc
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,8 @@ AS
  *  2009/05/18    1.3   SCS松中俊樹     [障害T1_0721] デリミタ分割データ格納配列の桁数を
  *                                      600桁へ変更。
  *                                      初回設置場所と初回設置先の格納変数を修正
+ *  2009/05/27    1.4   SCS礒崎祐次     [障害T1_1225] 税金コードマスタに
+ *                                      よるマスタチェックの際、有効日の条件を追加する。
   *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3314,7 +3316,14 @@ AS
         INTO   lv_tax_code
         FROM   ap_tax_codes atc
         WHERE  atc.name = xchw_data_rec.tax_code
-        AND    atc.enabled_flag  = cv_const_y;
+--[障害T1_1225] MOD START
+--      AND    atc.enabled_flag  = cv_const_y;
+        AND    atc.enabled_flag  = cv_const_y
+        AND  NVL( atc.start_date, TO_DATE(gr_init_rec.process_date, 'YYYY/MM/DD'))
+          <= gr_init_rec.process_date
+        AND  NVL( atc.inactive_date, TO_DATE('9999/12/31', 'YYYY/MM/DD'))
+          >= gr_init_rec.process_date;
+--[障害T1_1225] MOD START
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           IF (lv_err_flag = cv_const_n) THEN
