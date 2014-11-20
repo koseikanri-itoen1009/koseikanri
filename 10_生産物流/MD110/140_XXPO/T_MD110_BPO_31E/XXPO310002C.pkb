@@ -7,7 +7,7 @@ AS
  * Description      : HHT発注情報IF
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT発注情報IF       T_MD070_BPO_31E
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/04/21    1.1   Oracle 山根 一浩 変更要求No43対応
  *  2008/05/23    1.2   Oracle 藤井 良平 結合テスト不具合（シナリオ4-1）
  *  2008/07/14    1.3   Oracle 椎名 昭圭 仕様不備障害#I_S_001.4,#I_S_192.1.2,#T_S_435対応
+ *  2008/09/01    1.4   Oracle 山根 一浩 T_TE080_BPO_310 指摘9対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -804,11 +805,16 @@ AS
         WHERE  plav.po_header_id = pla.po_header_id
         AND    plav.item_id      = xiv.inventory_item_id
         AND    xiv.item_id       = xic.item_id
+/* 2008/09/01 Mod ↓
 -- 2008/05/23 v1.2 Add
         AND    plav.cancel_flag  = 'N'
 -- 2008/05/23 v1.2 Add
+2008/09/01 Mod ↑ */
         AND    NVL(xic.item_class_code,'0') <> gv_class_code_seihin  -- 製品:5
       )
+-- 2008/09/01 Add ↓
+      AND    pla.cancel_flag  = 'N'
+-- 2008/09/01 Add ↑
       ORDER BY pha.segment1,pla.line_num;
 --
     -- *** ローカル・レコード ***

@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/06/09    1.2  Oracle 野村 正幸  TE080指摘事項対応
  *  2008/06/27    1.3  Oracle 丸下 博宣  内部変更要求144
  *  2008/07/29    1.4  Oracle 山根 一浩  ST障害No484対応
+ *  2008/09/03    1.5  Oracle 野村 正幸  内部変更要求201_203
  *
  *****************************************************************************************/
 --
@@ -187,10 +188,16 @@ AS
     product_class        xxcmn_item_mst_v.product_class%TYPE,               -- 14.商品分類
     conv_unit            xxcmn_item_mst_v.conv_unit%TYPE,                   -- 15.入出庫換算単位
     num_of_cases         xxcmn_item_mst_v.num_of_cases%TYPE,                -- 16.ケース入数
-    base_major_division  xxcmn_parties2_v.base_major_division%TYPE,         -- 17.拠点大分類
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
+--    base_major_division  xxcmn_parties2_v.base_major_division%TYPE,         -- 17.拠点大分類
+    base_major_division  xxcmn_cust_accounts2_v.base_major_division%TYPE,   -- 17.拠点大分類
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
     small_amount_class   xxwsh_ship_method_v.small_amount_class%TYPE,       -- 18.小口区分
     penalty_class        xxwsh_ship_method_v.penalty_class%TYPE,            -- 19.ペナルティ区分
-    setting_amount       xxwip_leaf_trans_deli_chrgs.setting_amount%TYPE    -- 20.単価(便設定金額)
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
+--    setting_amount       xxwip_leaf_trans_deli_chrgs.setting_amount%TYPE    -- 20.単価(便設定金額)
+    setting_amount       xxwip_transfer_fare_inf.price%TYPE                 -- 20.単価(便設定金額)
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
   );
 --
   -- 対象データ情報を格納するテーブル型の定義
@@ -813,13 +820,22 @@ AS
     BULK COLLECT INTO gt_order_inf_tbl
     FROM   xxwsh_order_headers_all      xoha,    -- 受注ヘッダアドオン
            xxwsh_order_lines_all        xola,    -- 受注明細アドオン
-           xxcmn_parties2_v             xpv,     -- パーティ情報VIEW2
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
+--           xxcmn_parties2_v             xpv,     -- パーティ情報VIEW2
+           xxcmn_cust_accounts2_v         xpv,     -- 顧客情報VIEW2
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
            xxcmn_item_mst2_v            ximv,    -- OPM品目情報VIEW
            xxwsh_ship_method_v          xsmv,    -- 配送区分情報VIEW
            xxwsh_oe_transaction_types_v xotv     -- 受注タイプ情報VIEW
     WHERE  xoha.order_header_id       = xola.order_header_id
     AND    xoha.order_type_id         = xotv.transaction_type_id
     AND    xoha.latest_external_flag  = gv_ktg_yes
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
+    AND    xoha.result_deliver_to           IS NOT NULL   -- 出荷先_実績
+    AND    xoha.result_shipping_method_code IS NOT NULL   -- 配送先_実績
+    AND    xoha.result_freight_carrier_code IS NOT NULL   -- 運送業者_実績
+    AND    xoha.arrival_date                IS NOT NULL   -- 着荷日
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
 -- ********** 20080508 内部変更要求 seq#75 MOD START **********
 /***
     AND    xpv.transfer_standard      = '1'      -- 「1:設定振替」
@@ -1177,7 +1193,10 @@ AS
 --
         -- 13.金額
         i_trn_amount_tab(gn_ins_order_inf_cnt) :=
-          gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt);
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
+--          gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt);
+          ROUND(gt_order_inf_tbl(ln_index).setting_amount * i_trn_calc_qry_tab(gn_ins_order_inf_cnt));
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
 --
       -- 存在する場合は振替運賃情報アドオン更新用PL/SQL表に格納
       ELSIF (ln_flg = 1) THEN
@@ -1278,7 +1297,10 @@ AS
 --
         -- 13.金額
         u_trn_amount_tab(gn_upd_order_inf_cnt) :=
-          gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt);
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
+--          gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt);
+          ROUND(gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt));
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
       END IF;
 --
     END LOOP gt_order_inf_tbl_loop;
@@ -2147,7 +2169,10 @@ AS
                xpv.block_name               -- 地区名
         INTO   gt_trans_inf_tbl(ln_index).business_block,
                gt_trans_inf_tbl(ln_index).area_name
-        FROM   xxcmn_parties2_v xpv         -- パーティ情報VIEW2
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
+--        FROM   xxcmn_parties2_v xpv         -- パーティ情報VIEW2
+        FROM   xxcmn_cust_accounts2_v xpv         -- 顧客情報VIEW2
+-- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
         WHERE  xpv.party_number = gt_trans_inf_tbl(ln_index).jurisdicyional_hub
         AND    FND_DATE.STRING_TO_DATE(gt_trans_inf_tbl(ln_index).target_date || '01', 'YYYYMMDD')
 -- ********** 20080508 内部変更要求 seq#75 MOD START **********
