@@ -32,6 +32,7 @@ AS
  *  2009-1-16    1.0   Kenji.Sai        新規作成
  *  2009-2-18    1.1   Kenji.Sai        データ抽出エラーは警告、スキップ処理にする 
  *  2009-05-01   1.2   Tomoko.Mori      T1_0897対応
+ *  2009-05-08   1.3   Tomoko.Mori      T1_0924対応
  *
  *****************************************************************************************/
 -- 
@@ -93,6 +94,9 @@ AS
   cv_tkn_number_02       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00391';  -- 顧客コードなし警告
   cv_tkn_number_03       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00393';  -- データ更新エラー
   cv_tkn_number_04       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00072';  -- データ削除エラー
+  /*20090508_mori_T1_0924 START*/
+  cv_tkn_number_05       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00568';  -- ルートNo削除エラー
+  /*20090508_mori_T1_0924 END*/
 --
   -- トークンコード
   cv_tkn_prof_nm         CONSTANT VARCHAR2(20) := 'PROF_NAME';
@@ -501,8 +505,17 @@ AS
     -- *** ローカル定数 ***
     -- ルート情報テーブル名をローカル変数に代入
     cv_table_name          CONSTANT VARCHAR2(100) := '組織プロファイル拡張テーブル';  -- 組織プロファイル拡張テーブル
+    /*20090508_mori_T1_0924 START*/
+    cv_appl_short_name            CONSTANT VARCHAR2(100)   := 'AR';
+    cv_flexfield_name             CONSTANT VARCHAR2(100)   := 'HZ_ORG_PROFILES_GROUP';
+    cv_flex_cont_route            CONSTANT VARCHAR2(100)   := 'ROUTE';
+    /*20090508_mori_T1_0924 END*/
     -- *** ローカル変数 ***
     lv_msg_code            VARCHAR2(100);                                             -- メッセージコード
+    /*20090508_mori_T1_0924 START*/
+    lv_trgt_route_no              hz_org_profiles_ext_b.c_ext_attr2%TYPE;
+    lv_trgt_route_no_start_date   hz_org_profiles_ext_b.c_ext_attr3%TYPE;
+    /*20090508_mori_T1_0924 END*/
 --
     -- *** ローカル・レコード ***
 --
@@ -517,39 +530,136 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- 共通関数により、ルート情報テーブルのデータ更新を行う
-    xxcso_rtn_rsrc_pkg.regist_route_no(
-                         iv_account_number => io_route_info_rec.account_number,          -- 顧客コード
-                         iv_route_no       => io_route_info_rec.route_no,                -- ルートNo
-                         id_start_date     => TRUNC(io_route_info_rec.input_date,'MM'),  -- 入力日付
-                         ov_errbuf         => lv_errbuf,                             -- ユーザー・エラー・メッセージ
-                         ov_retcode        => lv_retcode,                            -- リターン・コード 
-                         ov_errmsg         => lv_errmsg                              -- エラー・メッセージ
-                       );
+    /*20090508_mori_T1_0924 START*/
+    IF io_route_info_rec.route_no IS NOT NULL THEN
+    -- ルートNoがNULL以外である場合、登録・更新処理を行う
+    /*20090508_mori_T1_0924 END*/
+      -- 共通関数により、ルート情報テーブルのデータ更新を行う
+      xxcso_rtn_rsrc_pkg.regist_route_no(
+                           iv_account_number => io_route_info_rec.account_number,          -- 顧客コード
+                           iv_route_no       => io_route_info_rec.route_no,                -- ルートNo
+                           id_start_date     => TRUNC(io_route_info_rec.input_date,'MM'),  -- 入力日付
+                           ov_errbuf         => lv_errbuf,                             -- ユーザー・エラー・メッセージ
+                           ov_retcode        => lv_retcode,                            -- リターン・コード 
+                           ov_errmsg         => lv_errmsg                              -- エラー・メッセージ
+                         );
 --
-    IF (lv_retcode <> cv_status_normal) THEN
-      -- エラーメッセージ作成
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name                              -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_03                         -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_errmsg                            -- トークンコード1
-                     ,iv_token_value1 => SQLERRM                                  -- SQLERRM
-                     ,iv_token_name2  => cv_tkn_tbl                               -- トークンコード2
-                     ,iv_token_value2 => cv_table_name                            -- エラー発生のテーブル名
-                     ,iv_token_name3  => cv_tkn_sequence                          -- トークンコード3
-                     ,iv_token_value3 => io_route_info_rec.no_seq                 -- シーケンス番号
-                     ,iv_token_name4  => cv_tkn_cstm_cd                           -- トークンコード4
-                     ,iv_token_value4 => io_route_info_rec.account_number         -- 顧客コード
-                     ,iv_token_name5  => cv_tkn_cstm_nm                           -- トークンコード5
-                     ,iv_token_value5 => io_route_info_rec.account_name           -- 顧客名称
-                     ,iv_token_name6  => cv_route_cd                              -- トークンコード6
-                     ,iv_token_value6 => io_route_info_rec.route_no               -- ルートコード
-                     ,iv_token_name7  => cv_tkn_ym                                -- トークンコード7
-                     ,iv_token_value7 => io_route_info_rec.input_date_ymd         -- 入力日付
-                    );
-      lv_errbuf  := lv_errmsg||SQLERRM;  
-      RAISE ins_upd_expt;
+      IF (lv_retcode <> cv_status_normal) THEN
+        -- エラーメッセージ作成
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                              -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_03                         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_errmsg                            -- トークンコード1
+                       ,iv_token_value1 => SQLERRM                                  -- SQLERRM
+                       ,iv_token_name2  => cv_tkn_tbl                               -- トークンコード2
+                       ,iv_token_value2 => cv_table_name                            -- エラー発生のテーブル名
+                       ,iv_token_name3  => cv_tkn_sequence                          -- トークンコード3
+                       ,iv_token_value3 => io_route_info_rec.no_seq                 -- シーケンス番号
+                       ,iv_token_name4  => cv_tkn_cstm_cd                           -- トークンコード4
+                       ,iv_token_value4 => io_route_info_rec.account_number         -- 顧客コード
+                       ,iv_token_name5  => cv_tkn_cstm_nm                           -- トークンコード5
+                       ,iv_token_value5 => io_route_info_rec.account_name           -- 顧客名称
+                       ,iv_token_name6  => cv_route_cd                              -- トークンコード6
+                       ,iv_token_value6 => io_route_info_rec.route_no               -- ルートコード
+                       ,iv_token_name7  => cv_tkn_ym                                -- トークンコード7
+                       ,iv_token_value7 => io_route_info_rec.input_date_ymd         -- 入力日付
+                      );
+        lv_errbuf  := lv_errmsg||SQLERRM;  
+        RAISE ins_upd_expt;
+      END IF;
+    /*20090508_mori_T1_0924 START*/
+    ELSE
+      -- 顧客コードに紐づく、適用年月内のルートコードを取得する
+      BEGIN
+        SELECT    inn_v.trgt_route_no
+                 ,inn_v.trgt_route_no_start_date
+        INTO      lv_trgt_route_no
+                 ,lv_trgt_route_no_start_date
+        FROM
+        (
+          SELECT  hca.account_number
+                 ,(SELECT  hopeb.c_ext_attr2
+                   FROM    hz_org_profiles_ext_b   hopeb
+                   WHERE   hopeb.attr_group_id                                 = rtn_ctx.attr_group_id
+                     AND   hopeb.organization_profile_id                       = hop.organization_profile_id
+                     AND   hopeb.d_ext_attr3                                  <= TRUNC(util.online_sysdate)
+                     AND   NVL(hopeb.d_ext_attr4, TRUNC(util.online_sysdate)) >= TRUNC(util.online_sysdate)
+                     AND   ROWNUM = 1
+                  ) trgt_route_no
+                 ,(SELECT  hopeb.d_ext_attr3
+                   FROM    hz_org_profiles_ext_b   hopeb
+                   WHERE   hopeb.attr_group_id                                 = rtn_ctx.attr_group_id
+                     AND   hopeb.organization_profile_id                       = hop.organization_profile_id
+                     AND   hopeb.d_ext_attr3                                  <= TRUNC(util.online_sysdate)
+                     AND   NVL(hopeb.d_ext_attr4, TRUNC(util.online_sysdate)) >= TRUNC(util.online_sysdate)
+                     AND   ROWNUM = 1
+                  ) trgt_route_no_start_date
+          FROM    hz_cust_accounts          hca
+                 ,hz_parties                hp
+                 ,hz_organization_profiles  hop
+                 ,fnd_application           fa
+                 ,ego_fnd_dsc_flx_ctx_ext   rtn_ctx
+                 ,(SELECT xxcso_util_common_pkg.get_online_sysdate online_sysdate
+                   FROM   DUAL
+                  ) util
+          WHERE   hp.party_id                             = hca.party_id
+            AND   hop.party_id                            = hp.party_id
+            AND   hop.effective_end_date IS NULL
+            AND   fa.application_short_name               = cv_appl_short_name --'AR'
+            AND   rtn_ctx.application_id                  = fa.application_id
+            AND   rtn_ctx.descriptive_flexfield_name      = cv_flexfield_name --'HZ_ORG_PROFILES_GROUP'
+            AND   rtn_ctx.descriptive_flex_context_code   = cv_flex_cont_route --'ROUTE'
+        ) inn_v
+        WHERE inn_v.trgt_route_no IS NOT NULL
+        AND   inn_v.account_number = io_route_info_rec.account_number
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- エラーメッセージ作成
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                              -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_05                         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_errmsg                            -- トークンコード1
+                         ,iv_token_value1 => SQLERRM                                  -- SQLERRM
+                         ,iv_token_name2  => cv_tkn_sequence                          -- トークンコード2
+                         ,iv_token_value2 => io_route_info_rec.no_seq                 -- シーケンス番号
+                         ,iv_token_name3  => cv_tkn_cstm_cd                           -- トークンコード3
+                         ,iv_token_value3 => io_route_info_rec.account_number         -- 顧客コード
+                         ,iv_token_name4  => cv_tkn_cstm_nm                           -- トークンコード4
+                         ,iv_token_value4 => io_route_info_rec.account_name           -- 顧客名称
+                        );
+          lv_errbuf  := lv_errmsg||SQLERRM;  
+          RAISE ins_upd_expt;
+      END;
+      -- 共通関数により、ルート情報テーブルのデータ削除を行う
+      xxcso_rtn_rsrc_pkg.unregist_route_no(
+                           iv_account_number => io_route_info_rec.account_number,      -- 顧客コード
+                           iv_route_no       => lv_trgt_route_no,                      -- ルートNo
+                           id_start_date     => lv_trgt_route_no_start_date,           -- 適用開始年月日
+                           ov_errbuf         => lv_errbuf,                             -- ユーザー・エラー・メッセージ
+                           ov_retcode        => lv_retcode,                            -- リターン・コード 
+                           ov_errmsg         => lv_errmsg                              -- エラー・メッセージ
+                         );
+--
+      IF (lv_retcode <> cv_status_normal) THEN
+        -- エラーメッセージ作成
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                              -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_05                         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_errmsg                            -- トークンコード1
+                       ,iv_token_value1 => SQLERRM                                  -- SQLERRM
+                       ,iv_token_name2  => cv_tkn_sequence                          -- トークンコード2
+                       ,iv_token_value2 => io_route_info_rec.no_seq                 -- シーケンス番号
+                       ,iv_token_name3  => cv_tkn_cstm_cd                           -- トークンコード3
+                       ,iv_token_value3 => io_route_info_rec.account_number         -- 顧客コード
+                       ,iv_token_name4  => cv_tkn_cstm_nm                           -- トークンコード4
+                       ,iv_token_value4 => io_route_info_rec.account_name           -- 顧客名称
+                      );
+        lv_errbuf  := lv_errmsg||SQLERRM;  
+        RAISE ins_upd_expt;
+      END IF;
     END IF;
+    /*20090508_mori_T1_0924 END*/
 --
   EXCEPTION
     -- *** データ登録更新例外ハンドラ ***
