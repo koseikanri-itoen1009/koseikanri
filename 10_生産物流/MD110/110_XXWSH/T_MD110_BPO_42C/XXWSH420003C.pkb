@@ -3,7 +3,7 @@ AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * Package Name     : XXWSH920007C(body)
+ * Package Name     : XXWSH420003C(body)
  * Description      : 出荷依頼/出荷実績作成処理起動処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42C
@@ -39,6 +39,7 @@ AS
   gv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
   gv_msg_cont      CONSTANT VARCHAR2(3) := '.';
   gv_msg_pnt       CONSTANT VARCHAR2(3) := ',';
+  gv_msg_dot       CONSTANT VARCHAR2(3) := '.';
 --
 --################################  固定部 END   ##################################
 --
@@ -81,10 +82,10 @@ AS
   -- ===============================
   gv_pkg_name          CONSTANT VARCHAR2(100) := 'XXWSH420003C';       -- パッケージ名
   --メッセージ番号
-  gv_msg_92a_002       CONSTANT VARCHAR2(15)  := 'APP-XXCMN-10033';    -- パラメータ未入力
-  gv_msg_92a_003       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12857';    -- パラメータ書式
-  gv_msg_92a_004       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12953';    -- FromTo逆転
-  gv_msg_92a_009       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11222';    -- パラメータ書式
+--  gv_msg_92a_002       CONSTANT VARCHAR2(15)  := 'APP-XXCMN-10033';    -- パラメータ未入力
+--  gv_msg_92a_003       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12857';    -- パラメータ書式
+--  gv_msg_92a_004       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12953';    -- FromTo逆転
+--  gv_msg_92a_009       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11222';    -- パラメータ書式
   gv_msg_xxcmn10135    CONSTANT VARCHAR2(100) := 'APP-XXCMN-10135';   -- 要求の発行失敗エラー
   --定数
   gv_mst_normal        CONSTANT VARCHAR2(10)  := '正常終了';
@@ -93,63 +94,74 @@ AS
   gv_cons_item_class   CONSTANT VARCHAR2(100) := '商品区分';
   gv_cons_msg_kbn_wsh  CONSTANT VARCHAR2(5)   := 'XXWSH';              -- メッセージ区分XXWSH
   gv_cons_msg_kbn_cmn  CONSTANT VARCHAR2(5)   := 'XXCMN';              -- メッセージ区分XXCMN
-  gv_cons_deliv_from   CONSTANT VARCHAR2(100) := '出庫日From';
-  gv_cons_deliv_to     CONSTANT VARCHAR2(100) := '出庫日To';
-  gv_cons_t_deliv      CONSTANT VARCHAR2(1)   := '1';                  -- '出荷依頼'
-  gv_cons_biz_t_move   CONSTANT VARCHAR2(2)   := '20';                 -- '移動指示'(文書タイプ)
-  gv_cons_biz_t_deliv  CONSTANT VARCHAR2(2)   := '10';                 -- '出荷依頼'
-  gv_cons_input_param  CONSTANT VARCHAR2(100) := '入力パラメータ値';   -- '入力パラメータ値'
+  -- クイックコード値
+  gv_order_status_04   CONSTANT VARCHAR2(15)  := '04';                 -- 出荷実績計上済み(出荷)
+  gv_order_status_08   CONSTANT VARCHAR2(15)  := '08';                 -- 出荷実績計上済み(支給)
+  gv_yes               CONSTANT VARCHAR2(1)   := 'Y';                  -- YES_NO区分（YES)
+  gv_no                CONSTANT VARCHAR2(1)   := 'N';                  -- YES_NO区分（NO)
+  gv_document_type_10  CONSTANT VARCHAR2(15)  := '10';                 -- 出荷依頼
+  gv_document_type_30  CONSTANT VARCHAR2(15)  := '30';                 -- 支給指示
+  gv_record_type_20    CONSTANT VARCHAR2(15)  := '20';                 -- 出庫実績
+  gv_ship_class_1      CONSTANT VARCHAR2(15)  := '1';                  -- 出荷依頼
+  gv_ship_class_2      CONSTANT VARCHAR2(15)  := '2';                  -- 支給依頼
+  gv_ship_class_3      CONSTANT VARCHAR2(15)  := '3';                  -- 倉替返品
   gv_cons_flg_yes      CONSTANT VARCHAR2(1)   := 'Y';                  -- フラグ 'Y'
   gv_cons_flg_no       CONSTANT VARCHAR2(1)   := 'N';                  -- フラグ 'N'
-  gv_cons_notif_status CONSTANT VARCHAR2(3)   := '40';                 -- 「確定通知済」
-  gv_cons_status       CONSTANT VARCHAR2(2)   := '03';                 -- 「締め済み」
-  gv_cons_lot_ctl      CONSTANT VARCHAR2(1)   := '1';                  -- 「ロット管理品」
-  gv_cons_item_product CONSTANT VARCHAR2(1)   := '5';                  -- 「製品」
-  gv_cons_move_type    CONSTANT VARCHAR2(1)   := '1';                  -- 「積送あり」
-  gv_cons_mov_sts_c    CONSTANT VARCHAR2(2)   := '03';                 -- 「調整中」
-  gv_cons_mov_sts_e    CONSTANT VARCHAR2(2)   := '02';                 -- 「依頼済」
-  gv_cons_order_lines  CONSTANT VARCHAR2(50)  := '受注明細アドオン';
-  gv_cons_instr_lines  CONSTANT VARCHAR2(50)  := '移動依頼/指示明細(アドオン)';
-  gv_cons_error        CONSTANT VARCHAR2(1)   := '1';                  -- 共通関数でのエラー
-  gv_cons_no_judge     CONSTANT VARCHAR2(2)   := '10';                 -- 「未判定」
-  gv_cons_am_auto      CONSTANT VARCHAR2(2)   := '10';                 -- 「自動引当」
-  gv_cons_rec_type     CONSTANT VARCHAR2(2)   := '10';                 -- 「指示」
-  gv_cons_id_drink     CONSTANT VARCHAR2(1)   := '2';                  -- 商品区分・ドリンク
-  gv_cons_id_leaf      CONSTANT VARCHAR2(1)   := '1';                  -- 商品区分・リーフ
-  gv_cons_deliv_fm     CONSTANT VARCHAR2(50)  := '出荷元';             -- 出荷元
-  gv_cons_deliv_tp     CONSTANT VARCHAR2(50)  := '出荷形態';           -- 出荷形態^
-  gv_cons_number       CONSTANT VARCHAR2(50)  := '数値';               -- 数値^
+--  gv_cons_deliv_from   CONSTANT VARCHAR2(100) := '出庫日From';
+--  gv_cons_deliv_to     CONSTANT VARCHAR2(100) := '出庫日To';
+--  gv_cons_t_deliv      CONSTANT VARCHAR2(1)   := '1';                  -- '出荷依頼'
+--  gv_cons_biz_t_move   CONSTANT VARCHAR2(2)   := '20';                 -- '移動指示'(文書タイプ)
+--  gv_cons_biz_t_deliv  CONSTANT VARCHAR2(2)   := '10';                 -- '出荷依頼'
+--  gv_cons_input_param  CONSTANT VARCHAR2(100) := '入力パラメータ値';   -- '入力パラメータ値'
+--  gv_cons_notif_status CONSTANT VARCHAR2(3)   := '40';                 -- 「確定通知済」
+--  gv_cons_status       CONSTANT VARCHAR2(2)   := '03';                 -- 「締め済み」
+--  gv_cons_lot_ctl      CONSTANT VARCHAR2(1)   := '1';                  -- 「ロット管理品」
+--  gv_cons_item_product CONSTANT VARCHAR2(1)   := '5';                  -- 「製品」
+--  gv_cons_move_type    CONSTANT VARCHAR2(1)   := '1';                  -- 「積送あり」
+--  gv_cons_mov_sts_c    CONSTANT VARCHAR2(2)   := '03';                 -- 「調整中」
+--  gv_cons_mov_sts_e    CONSTANT VARCHAR2(2)   := '02';                 -- 「依頼済」
+--  gv_cons_order_lines  CONSTANT VARCHAR2(50)  := '受注明細アドオン';
+--  gv_cons_instr_lines  CONSTANT VARCHAR2(50)  := '移動依頼/指示明細(アドオン)';
+--  gv_cons_error        CONSTANT VARCHAR2(1)   := '1';                  -- 共通関数でのエラー
+--  gv_cons_no_judge     CONSTANT VARCHAR2(2)   := '10';                 -- 「未判定」
+--  gv_cons_am_auto      CONSTANT VARCHAR2(2)   := '10';                 -- 「自動引当」
+--  gv_cons_rec_type     CONSTANT VARCHAR2(2)   := '10';                 -- 「指示」
+--  gv_cons_id_drink     CONSTANT VARCHAR2(1)   := '2';                  -- 商品区分・ドリンク
+--  gv_cons_id_leaf      CONSTANT VARCHAR2(1)   := '1';                  -- 商品区分・リーフ
+--  gv_cons_deliv_fm     CONSTANT VARCHAR2(50)  := '出荷元';             -- 出荷元
+--  gv_cons_deliv_tp     CONSTANT VARCHAR2(50)  := '出荷形態';           -- 出荷形態^
+--  gv_cons_number       CONSTANT VARCHAR2(50)  := '数値';               -- 数値^
   --トークン
-  gv_tkn_parm_name     CONSTANT VARCHAR2(15)  := 'PARM_NAME';          -- パラメータ
-  gv_tkn_param_name    CONSTANT VARCHAR2(15)  := 'PARAM_NAME';         -- パラメータ
-  gv_tkn_parameter     CONSTANT VARCHAR2(15)  := 'PARAMETER';          -- パラメータ名
-  gv_tkn_type          CONSTANT VARCHAR2(15)  := 'TYPE';               -- 書式タイプ
-  gv_tkn_table         CONSTANT VARCHAR2(15)  := 'TABLE';              -- テーブル
-  gv_tkn_err_code      CONSTANT VARCHAR2(15)  := 'ERR_CODE';           -- エラーコード
-  gv_tkn_err_msg       CONSTANT VARCHAR2(15)  := 'ERR_MSG';            -- エラーメッセージ
-  gv_tkn_ship_type     CONSTANT VARCHAR2(15)  := 'SHIP_TYPE';          -- 配送先
-  gv_tkn_item          CONSTANT VARCHAR2(15)  := 'ITEM';               -- 品目
-  gv_tkn_lot           CONSTANT VARCHAR2(15)  := 'LOT';                -- ロットNo
-  gv_tkn_request_type  CONSTANT VARCHAR2(15)  := 'REQUEST_TYPE';       -- 依頼No/移動番号_区分
-  gv_tkn_p_date        CONSTANT VARCHAR2(15)  := 'P_DATE';             -- 製造日
-  gv_tkn_use_by_date   CONSTANT VARCHAR2(15)  := 'USE_BY_DATE';        -- 賞味期限
-  gv_tkn_fix_no        CONSTANT VARCHAR2(15)  := 'FIX_NO';             -- 固有記号
-  gv_tkn_request_no    CONSTANT VARCHAR2(15)  := 'REQUEST_NO';         -- 依頼No
-  gv_tkn_item_no       CONSTANT VARCHAR2(15)  := 'ITEM_NO';            -- 品目コード
-  gv_tkn_reverse_date  CONSTANT VARCHAR2(15)  := 'REVDATE';            -- 逆転日付
-  gv_tkn_arrival_date  CONSTANT VARCHAR2(15)  := 'ARRIVAL_DATE';       -- 着荷日付
-  gv_tkn_ship_to       CONSTANT VARCHAR2(15)  := 'SHIP_TO';            -- 配送先
-  gv_tkn_standard_date CONSTANT VARCHAR2(15)  := 'STANDARD_DATE';      -- 基準日付
-  gv_request_name_ship CONSTANT VARCHAR2(15)  := '依頼No';             -- 依頼No
-  gv_request_name_move CONSTANT VARCHAR2(15)  := '移動番号';           -- 移動番号
-  gv_ship_name_ship    CONSTANT VARCHAR2(15)  := '配送先';             -- 配送先
-  gv_ship_name_move    CONSTANT VARCHAR2(15)  := '入庫先';             -- 入庫先
+--  gv_tkn_parm_name     CONSTANT VARCHAR2(15)  := 'PARM_NAME';          -- パラメータ
+--  gv_tkn_param_name    CONSTANT VARCHAR2(15)  := 'PARAM_NAME';         -- パラメータ
+--  gv_tkn_parameter     CONSTANT VARCHAR2(15)  := 'PARAMETER';          -- パラメータ名
+--  gv_tkn_type          CONSTANT VARCHAR2(15)  := 'TYPE';               -- 書式タイプ
+--  gv_tkn_table         CONSTANT VARCHAR2(15)  := 'TABLE';              -- テーブル
+--  gv_tkn_err_code      CONSTANT VARCHAR2(15)  := 'ERR_CODE';           -- エラーコード
+--  gv_tkn_err_msg       CONSTANT VARCHAR2(15)  := 'ERR_MSG';            -- エラーメッセージ
+--  gv_tkn_ship_type     CONSTANT VARCHAR2(15)  := 'SHIP_TYPE';          -- 配送先
+--  gv_tkn_item          CONSTANT VARCHAR2(15)  := 'ITEM';               -- 品目
+--  gv_tkn_lot           CONSTANT VARCHAR2(15)  := 'LOT';                -- ロットNo
+--  gv_tkn_request_type  CONSTANT VARCHAR2(15)  := 'REQUEST_TYPE';       -- 依頼No/移動番号_区分
+--  gv_tkn_p_date        CONSTANT VARCHAR2(15)  := 'P_DATE';             -- 製造日
+--  gv_tkn_use_by_date   CONSTANT VARCHAR2(15)  := 'USE_BY_DATE';        -- 賞味期限
+--  gv_tkn_fix_no        CONSTANT VARCHAR2(15)  := 'FIX_NO';             -- 固有記号
+--  gv_tkn_request_no    CONSTANT VARCHAR2(15)  := 'REQUEST_NO';         -- 依頼No
+--  gv_tkn_item_no       CONSTANT VARCHAR2(15)  := 'ITEM_NO';            -- 品目コード
+--  gv_tkn_reverse_date  CONSTANT VARCHAR2(15)  := 'REVDATE';            -- 逆転日付
+--  gv_tkn_arrival_date  CONSTANT VARCHAR2(15)  := 'ARRIVAL_DATE';       -- 着荷日付
+--  gv_tkn_ship_to       CONSTANT VARCHAR2(15)  := 'SHIP_TO';            -- 配送先
+--  gv_tkn_standard_date CONSTANT VARCHAR2(15)  := 'STANDARD_DATE';      -- 基準日付
+--  gv_request_name_ship CONSTANT VARCHAR2(15)  := '依頼No';             -- 依頼No
+--  gv_request_name_move CONSTANT VARCHAR2(15)  := '移動番号';           -- 移動番号
+--  gv_ship_name_ship    CONSTANT VARCHAR2(15)  := '配送先';             -- 配送先
+--  gv_ship_name_move    CONSTANT VARCHAR2(15)  := '入庫先';             -- 入庫先
   --プロファイル
-  gv_action_type_ship  CONSTANT VARCHAR2(2)   := '1';                  -- 出荷
-  gv_action_type_move  CONSTANT VARCHAR2(2)   := '3';                  -- 移動
-  gv_base              CONSTANT VARCHAR2(1)   := '1'; -- 拠点
-  gv_wzero             CONSTANT VARCHAR2(2)   := '00';
-  gv_flg_no            CONSTANT VARCHAR2(1)   := 'N';
+--  gv_action_type_ship  CONSTANT VARCHAR2(2)   := '1';                  -- 出荷
+--  gv_action_type_move  CONSTANT VARCHAR2(2)   := '3';                  -- 移動
+--  gv_base              CONSTANT VARCHAR2(1)   := '1'; -- 拠点
+--  gv_wzero             CONSTANT VARCHAR2(2)   := '00';
+--  gv_flg_no            CONSTANT VARCHAR2(1)   := 'N';
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -159,263 +171,46 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gn_total_cnt         NUMBER :=0;       -- 対象件数
-  gd_yyyymmdd_from     DATE;             -- 入力パラメータ出庫日From
-  gd_yyyymmdd_to       DATE;             -- 入力パラメータ出庫日To
-  gv_yyyymmdd_from     VARCHAR2(10);     -- 入力パラメータ出庫日From
-  gv_yyyymmdd_to       VARCHAR2(10);     -- 入力パラメータ出庫日To
+--  gd_yyyymmdd_from     DATE;             -- 入力パラメータ出庫日From
+--  gd_yyyymmdd_to       DATE;             -- 入力パラメータ出庫日To
+--  gv_yyyymmdd_from     VARCHAR2(10);     -- 入力パラメータ出庫日From
+--  gv_yyyymmdd_to       VARCHAR2(10);     -- 入力パラメータ出庫日To
   gn_login_user        NUMBER;           -- ログインID
   gn_created_by        NUMBER;           -- ログインユーザID
   gn_conc_request_id   NUMBER;           -- 要求ID
   gn_prog_appl_id      NUMBER;           -- アプリケーションID
   gn_conc_program_id   NUMBER;           -- プログラムID
-  gt_item_class        xxcmn_lot_status_v.prod_class_code%TYPE;  -- 商品区分
+--  gt_item_class        xxcmn_lot_status_v.prod_class_code%TYPE;  -- 商品区分
 --
-  -- 需要情報のデータを格納するレコード
-  TYPE demand_rec IS RECORD(
-     item_code         xxwsh_order_lines_all.shipping_item_code%TYPE -- 品目(コード) V
+  -- 処理対象となる出庫元を格納する
+  TYPE order_rec IS RECORD(
+     deliver_from      xxwsh_order_headers_all.deliver_from%TYPE     -- 出庫元
    , total_cnt         NUMBER                                        -- 件数
   );
-  TYPE demand_tbl IS TABLE OF demand_rec INDEX BY PLS_INTEGER;
-  gr_demand_tbl  demand_tbl;
+  TYPE order_tbl IS TABLE OF order_rec INDEX BY PLS_INTEGER;
+  gr_demand_tbl  order_tbl;
 --
---
-  /**********************************************************************************
-  * Function Name    : fwd_sql_create
-  * Description      : A-2  SQL文作成関数
-  ***********************************************************************************/
-  FUNCTION fwd_sql_create(
-    iv_action_type     IN  VARCHAR2               -- 処理種別
-  , iv_block1          IN  VARCHAR2 DEFAULT NULL  -- ブロック１
-  , iv_block2          IN  VARCHAR2 DEFAULT NULL  -- ブロック２
-  , iv_block3          IN  VARCHAR2 DEFAULT NULL  -- ブロック３
-  , in_deliver_from_id IN  NUMBER   DEFAULT NULL  -- 出庫元
-  , in_deliver_type    IN  NUMBER   DEFAULT NULL) -- 出庫形態
-  RETURN VARCHAR2
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'fwd_sql_create'; --プログラム名
---
-    -- ===============================
-    -- ユーザー定義例外
-    -- ===============================
-    process_exp               EXCEPTION;     -- 各処理でエラーが発生した場合
-    PRAGMA EXCEPTION_INIT(process_exp, -20001);
--- 
-    -- *** ローカル変数 ***
-    ln_pattern     NUMBER := 0;
-    lv_fwd_sql     VARCHAR2(32767);   -- SQL文格納バッファ
---
-  BEGIN
-    -- ***********
-    -- SQL文組み立て(固定部分)
-    -- ***********
-    lv_fwd_sql  := ' SELECT data.item_no item_code ' -- 品目コード
-                || '      , SUM(data.cnt)  total_cnt ' -- 件数
-                || ' FROM   ( ';
-    -- 処理種別がNullまたは、出荷の場合
-    IF ( ( iv_action_type IS NULL ) OR ( iv_action_type = gv_action_type_ship ) ) THEN
-      -- ***********
-      -- SQL文組み立て(出荷固定部分)
-      -- ***********
-      lv_fwd_sql  := lv_fwd_sql 
-                    || ' SELECT  im2.item_no item_no '              -- 品目(コード)
-                          || ' , COUNT(1)              cnt '          -- 件数
-                    || ' FROM    xxcmn_item_locations2_v        il '  -- OPM保管場所マスタ
-                          || ' , xxwsh_order_headers_all        oh '  -- 受注ヘッダアドオン
-                          || ' , xxcmn_cust_accounts2_v         p  '  -- 顧客情報VIEW
-                          || ' , xxwsh_oe_transaction_types2_v  tt '  -- 受注タイプ
-                          || ' , xxwsh_order_lines_all          ol '  -- 受注明細アドオン
-                          || ' , xxcmn_item_mst2_v              im '  -- OPM品目マスタ
-                          || ' , xxcmn_item_mst2_v              im2 ' -- OPM品目マスタ
-                          || ' , xxcmn_item_categories5_v       ic '  -- カテゴリ情報VIEW
-                    || ' WHERE   il.inventory_location_id = oh.deliver_from_id '
-                    || ' AND     oh.schedule_ship_date   >= TO_DATE( :para_yyyymmdd_from, ''YYYY/MM/DD'') ' 
-                    || ' AND     oh.schedule_ship_date   <= TO_DATE( :para_yyyymmdd_to  , ''YYYY/MM/DD'') '
-                    || ' AND     p.party_number           = oh.head_sales_branch ' 
-                    || ' AND     p.start_date_active     <= oh.schedule_ship_date '
-                    || ' AND     p.end_date_active       >= oh.schedule_ship_date '  
-                    || ' AND     p.customer_class_code    = :para_base '
-                    || ' AND     oh.order_type_id         = tt.transaction_type_id '
-                    || ' AND     tt.shipping_shikyu_class = :para_cons_t_deliv '
-                    || ' AND     oh.req_status            = :para_cons_status '
-                    || ' AND     NVL(oh.notif_status, :para_wzero ) <> :para_cons_notif_status '
-                    || ' AND     oh.latest_external_flag  = :para_cons_flg_yes '
-                    || ' AND     ol.order_header_id       = oh.order_header_id ' 
-                    || ' AND     NVL(ol.delete_flag, :para_flg_no ) <> :para_cons_flg_yes '
-                    || ' AND     il.date_from            <= oh.schedule_ship_date '
-                    || ' AND    ((il.date_to             >= oh.schedule_ship_date) OR (il.date_to IS NULL)) '
-                    || ' AND     tt.start_date_active    <= oh.schedule_ship_date '
-                    || ' AND    ((tt.end_date_active     >= oh.schedule_ship_date) OR (tt.end_date_active IS NULL)) '
-                    || ' AND     im.start_date_active    <= oh.schedule_ship_date '
-                    || ' AND    ((im.end_date_active     >= oh.schedule_ship_date) OR (im.end_date_active IS NULL)) '
-                    || ' AND     ol.automanual_reserve_class IS NULL '
-                    || ' AND     im.item_id              = ic.item_id '
-                    || ' AND     im.item_no              = ol.shipping_item_code '
-                    || ' AND     im.lot_ctl              = :para_cons_lot_ctl ' 
-                    || ' AND     ic.item_class_code      = :para_cons_item_product ' 
-                    || ' AND     ic.prod_class_code      = :para_item_class '
-                    || ' AND     im.parent_item_id       = im2.item_id '
-                    || ' AND     im2.start_date_active   <= oh.schedule_ship_date '
-                    || ' AND    ((im2.end_date_active    >= oh.schedule_ship_date) OR (im2.end_date_active IS NULL)) ';
-  --
-      -- ***********
-      -- SQL文組み立て(出荷変動部分)
-      -- ***********
-      CASE ln_pattern
-        WHEN 1 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND (   ( il.distribution_block IN ( ' || '''' || iv_block1 || '''' || ',' ||
-                                                                                  '''' || iv_block2 || '''' || ',' ||
-                                                                                  '''' || iv_block3 || '''' || '))'
-                                   || '      OR ( oh.deliver_from = ' || in_deliver_from_id || ' ) ) '
-                                   || ' AND oh.order_type_id  =  '    || in_deliver_type;
-        WHEN 2 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND oh.order_type_id  = '     || in_deliver_type ;
-        WHEN 3 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND oh.deliver_from   = '     || in_deliver_from_id
-                                   || ' AND oh.order_type_id  = '     || in_deliver_type ;
-        WHEN 4 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND il.distribution_block IN ( ' || '''' || iv_block1 || '''' || ',' ||
-                                                                            '''' || iv_block2 || '''' || ',' ||
-                                                                            '''' || iv_block3 || '''' || ') '
-                                   || ' AND oh.order_type_id = '      || in_deliver_type ;
-        WHEN 5 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND (   (il.distribution_block IN ( ' || '''' || iv_block1 || '''' || ',' ||
-                                                                                 '''' || iv_block2 || '''' || ',' ||
-                                                                                 '''' || iv_block3 || '''' || '))'
-                                   || '      OR (oh.deliver_from = '  || in_deliver_from_id || ')) ';
-        --WHEN 6 は条件追加なし
-        WHEN 7 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND oh.deliver_from   = '     || in_deliver_from_id ;
-        WHEN 8 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND il.distribution_block IN ( ' || '''' || iv_block1 || '''' || ',' ||
-                                                                            '''' || iv_block2 || '''' || ',' ||
-                                                                            '''' || iv_block3 || '''' || ') ';
-        ELSE NULL;
-      END CASE;
-      -- ***********
-      -- GROUP BY句(出荷)
-      -- ***********
-      lv_fwd_sql := lv_fwd_sql || ' GROUP BY im2.item_no ';
-    END IF;
-    -- 処理種別がNullの場合はUNION句をセット
-    IF ( iv_action_type IS NULL ) THEN
-     lv_fwd_sql := lv_fwd_sql || ' UNION ALL ';
-    END IF;
-    -- 処理種別がNullまたは、移動の場合
-    IF ( ( iv_action_type IS NULL ) OR ( iv_action_type = gv_action_type_move ) ) THEN
-      -- SQL条件パターンチェック
-      -- ***********
-      -- SQL文組み立て(移動固定部分)
-      -- ***********
-      lv_fwd_sql  := lv_fwd_sql 
-                    || ' SELECT im2.item_no item_no '             -- 品目(コード)
-                          || ' , COUNT(1)              cnt '          -- 件数
-                    || ' FROM   xxcmn_item_locations2_v       il '  -- OPM保管場所マスタ
-                         || ' , xxinv_mov_req_instr_headers   ih '  -- 移動依頼/指示ヘッダアドオン
-                         || ' , xxinv_mov_req_instr_lines     ml '  -- 移動依頼/指示明細アドオン
-                         || ' , xxcmn_item_mst2_v             im '  -- OPM品目マスタ
-                         || ' , xxcmn_item_mst2_v             im2'  -- OPM品目マスタ(親品目取得用)
-                         || ' , xxcmn_item_categories5_v      ic '  -- カテゴリ情報VIEW
-                    || ' WHERE  il.inventory_location_id = ih.shipped_locat_id '
-                    || ' AND    ih.mov_type              = :para_cons_move_type '
-                    || ' AND    ih.schedule_ship_date   >= TO_DATE( :para_yyyymmdd_from, ''YYYY/MM/DD'') '
-                    || ' AND    ih.schedule_ship_date   <= TO_DATE( :para_yyyymmdd_to  , ''YYYY/MM/DD'') '
-                    || ' AND   ((ih.status = :para_cons_mov_sts_c ) OR (ih.status = :para_cons_mov_sts_e )) '
-                    || ' AND    NVL(ih.notif_status, :para_wzero ) <> :para_cons_notif_status '
-                    || ' AND    ml.mov_hdr_id = ih.mov_hdr_id '
-                    || ' AND    NVL(ml.delete_flg, :para_flg_no ) <> :para_cons_flg_yes '
-                    || ' AND    il.date_from             <= ih.schedule_ship_date '
-                    || ' AND   ((il.date_to              >= ih.schedule_ship_date) OR (il.date_to IS NULL)) '
-                    || ' AND    im.start_date_active     <= ih.schedule_ship_date '
-                    || ' AND   ((im.end_date_active      >= ih.schedule_ship_date) OR (im.end_date_active IS NULL)) '
-                    || ' AND    ml.automanual_reserve_class IS NULL '
-                    || ' AND    im.item_no         = ml.item_code '
-                    || ' AND    im.item_id         = ic.item_id '
-                    || ' AND    im.lot_ctl         = :para_cons_lot_ctl '
-                    || ' AND    ic.item_class_code = :para_cons_item_product '
-                    || ' AND    ic.prod_class_code = :para_item_class '
-                    || ' AND    im.parent_item_id  = im2.item_id '
-                    || ' AND    im2.start_date_active     <= ih.schedule_ship_date '
-                    || ' AND   ((im2.end_date_active      >= ih.schedule_ship_date) OR (im2.end_date_active IS NULL)) ';
-      -- ***********
-      -- SQL文組み立て(移動変動部分)
-      -- ***********
-      CASE ln_pattern
-        WHEN 5 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND (   (il.distribution_block IN ( ' || '''' || iv_block1 || '''' || ',' ||
-                                                                                 '''' || iv_block2 || '''' || ',' ||
-                                                                                 '''' || iv_block3 || '''' || '))'
-                                   || '      OR (ih.shipped_locat_id = ' || in_deliver_from_id || ')) ';
-        --WHEN 6 は条件追加なし
-        WHEN 7 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND ih.shipped_locat_code   = ' || in_deliver_from_id ;
-        WHEN 8 THEN
-          lv_fwd_sql := lv_fwd_sql || ' AND il.distribution_block IN ( ' || '''' || iv_block1 || '''' || ',' ||
-                                                                            '''' || iv_block2 || '''' || ',' ||
-                                                                            '''' || iv_block3 || '''' || ') ';
-        ELSE NULL;
-      END CASE;
-      -- ***********
-      -- GROUP BY句(移動)
-      -- ***********
-      lv_fwd_sql := lv_fwd_sql || ' GROUP BY im2.item_no ';
-    END IF;
-    -- ***********
-    -- SQL文組み立て(共通固定部分)
-    -- ***********
-    lv_fwd_sql  := lv_fwd_sql || ') data ';
-    -- ***********
-    -- GROUP BY句(共通)
-    -- ***********
-    lv_fwd_sql := lv_fwd_sql || ' GROUP BY data.item_no ';
-    -- ***********
-    -- ORDER BY句(共通)
-    -- ***********
-    lv_fwd_sql := lv_fwd_sql || ' ORDER BY total_cnt desc';
---
-    -- 作成したSQL文を返す
-    RETURN lv_fwd_sql;
---
-  EXCEPTION
-    WHEN process_exp THEN
-      RAISE_APPLICATION_ERROR
-        (-20001,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
---
---###############################  固定例外処理部 START   ###################################
---
-    WHEN OTHERS THEN
-      RAISE_APPLICATION_ERROR
-        (-20000,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
---
---###################################  固定部 END   #########################################
---
-  END fwd_sql_create;
---
-  /**********************************************************************************
-   * Procedure Name   : get_demand_inf_fwd
-   * Description      : A-3  品目コード取得
+  /***********************************************************************************
+   * Procedure Name   : get_order_info
+   * Description      : 受注アドオン情報取得
    ***********************************************************************************/
-  PROCEDURE get_demand_inf_fwd(
-    iv_action_type IN  VARCHAR2            -- 処理種別
-  , iv_fwd_sql     IN  VARCHAR2            -- SQL文
-  , ov_errbuf      OUT NOCOPY VARCHAR2     -- エラー・メッセージ           --# 固定 #
-  , ov_retcode     OUT NOCOPY VARCHAR2     -- リターン・コード             --# 固定 #
-  , ov_errmsg      OUT NOCOPY VARCHAR2)    -- ユーザー・エラー・メッセージ --# 固定 #
+  PROCEDURE get_order_info(
+    ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_demand_inf_fwd'; -- プログラム名
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_order_info'; -- プログラム名
 --
---#####################  固定ローカル変数宣言部 START   ########################
+--##############################  固定ローカル変数宣言部 START   ##################################
 --
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --
---###########################  固定部 END   ####################################
+--#####################################  固定部 END   #############################################
 --
     -- ===============================
     -- ユーザー宣言部
@@ -423,85 +218,54 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
---
+    lv_select1          VARCHAR2(32000) DEFAULT NULL;
+    lv_select2          VARCHAR2(32000) DEFAULT NULL;
+    lv_select_where     VARCHAR2(32000) DEFAULT NULL;
+    lv_select_lock      VARCHAR2(32000) DEFAULT NULL;
+    lv_select_order     VARCHAR2(32000) DEFAULT NULL;
     -- *** ローカル・カーソル ***
     TYPE cursor_type IS REF CURSOR;
     fwd_cur cursor_type;
---
     -- *** ローカル・レコード ***
---
 --
   BEGIN
 --
---##################  固定ステータス初期化部 START   ###################
+--################################  固定ステータス初期化部 START   ################################
 --
     ov_retcode := gv_status_normal;
 --
---###########################  固定部 END   ############################
+--#####################################  固定部 END   #############################################
 --
     -- ***************************************
-    -- ***        実処理の記述             ***
-    -- ***       共通関数の呼び出し        ***
+    -- ***       受注アドオン情報取得      ***
     -- ***************************************
+    lv_select2 := 'SELECT xoha.deliver_from, '
+        ||       '        COUNT(xoha.order_header_id) '
+        ||       ' FROM   xxwsh_order_headers_all      xoha,'
+        ||       '        xxcmn_cust_accounts_v        xcav,'
+        ||       '        xxwsh_oe_transaction_types_v  xottv1,'
+        ||       '        xxcmn_item_locations_v        xilv'
+        ||       ' WHERE  xoha.req_status IN (''' || gv_order_status_04 || ''','''|| gv_order_status_08 || ''')'
+        ||       ' AND    xilv.segment1 = xoha.deliver_from'
+        ||       ' AND    xcav.party_id = xoha.customer_id'
+        ||       ' AND    xottv1.transaction_type_id = xoha.order_type_id'
+        ||       ' AND    NVL(xoha.actual_confirm_class, '''|| gv_no || ''') = ''' || gv_no || ''''
+        ||       ' AND    ((xoha.latest_external_flag = ''' || gv_yes || ''')'
+        ||       ' OR      (xottv1.shipping_shikyu_class = ''' || gv_ship_class_3 || '''))';
 --
-    -- カーソルオープン
-    IF ( iv_action_type = gv_action_type_ship) THEN
-      OPEN fwd_cur FOR iv_fwd_sql USING gv_yyyymmdd_from
-                                      , gv_yyyymmdd_to
-                                      , gv_base
-                                      , gv_cons_t_deliv
-                                      , gv_cons_status
-                                      , gv_wzero
-                                      , gv_cons_notif_status
-                                      , gv_cons_flg_yes
-                                      , gv_flg_no
-                                      , gv_cons_flg_yes
-                                      , gv_cons_lot_ctl
-                                      , gv_cons_item_product
-                                      , gt_item_class;
-    ELSIF ( iv_action_type = gv_action_type_move) THEN
-      OPEN fwd_cur FOR iv_fwd_sql USING
-      -- Add Start
-                                      gv_cons_move_type
-      -- Add End
-                                      , gv_yyyymmdd_from
-                                      , gv_yyyymmdd_to
-                                      , gv_cons_mov_sts_c
-                                      , gv_cons_mov_sts_e
-                                      , gv_wzero
-                                      , gv_cons_notif_status
-                                      , gv_flg_no
-                                      , gv_cons_flg_yes
-                                      , gv_cons_lot_ctl
-                                      , gv_cons_item_product
-                                      , gt_item_class;
-    ELSIF (iv_action_type IS NULL) THEN
-      OPEN fwd_cur FOR iv_fwd_sql USING gv_yyyymmdd_from
-                                      , gv_yyyymmdd_to
-                                      , gv_base
-                                      , gv_cons_t_deliv
-                                      , gv_cons_status
-                                      , gv_wzero
-                                      , gv_cons_notif_status
-                                      , gv_cons_flg_yes
-                                      , gv_flg_no
-                                      , gv_cons_flg_yes
-                                      , gv_cons_lot_ctl
-                                      , gv_cons_item_product
-                                      , gt_item_class
-                                      , gv_cons_move_type
-                                      , gv_yyyymmdd_from
-                                      , gv_yyyymmdd_to
-                                      , gv_cons_mov_sts_c
-                                      , gv_cons_mov_sts_e
-                                      , gv_wzero
-                                      , gv_cons_notif_status
-                                      , gv_flg_no
-                                      , gv_cons_flg_yes
-                                      , gv_cons_lot_ctl
-                                      , gv_cons_item_product
-                                      , gt_item_class;
-    END IF;
+    lv_select2 := lv_select2 
+        ||       ' AND EXISTS ('
+        ||       ' SELECT xola.order_header_id'
+        ||       ' FROM   xxwsh_order_lines_all xola,'
+        ||       '        xxcmn_item_mst_v      ximv'
+        ||       ' WHERE xola.order_header_id = xoha.order_header_id'
+        ||       ' AND   NVL(xola.delete_flag,'''|| gv_no || ''') = ''' || gv_no || ''''
+        ||       ' AND   ximv.item_no  = xola.shipping_item_code )'
+        ||       ' GROUP BY xoha.deliver_from '
+        ||       ' ORDER BY COUNT(xoha.order_header_id) DESC ';
+--
+    FND_FILE.PUT_LINE(FND_FILE.LOG,lv_select2);
+    OPEN fwd_cur FOR lv_select2;
 --
     -- データの一括取得
     FETCH fwd_cur BULK COLLECT INTO gr_demand_tbl;
@@ -514,28 +278,34 @@ AS
 --
   EXCEPTION
 --
---#################################  固定例外処理部 START   ####################################
+--#################################  固定例外処理部 START   #######################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
+      IF fwd_cur%ISOPEN THEN
+        CLOSE fwd_cur ;
+      END IF ;
       ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
-      CLOSE fwd_cur;  -- カーソルクローズ
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      IF fwd_cur%ISOPEN THEN
+        CLOSE fwd_cur ;
+      END IF ;
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
-      CLOSE fwd_cur;  -- カーソルクローズ
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      IF fwd_cur%ISOPEN THEN
+        CLOSE fwd_cur ;
+      END IF ;
+      ov_errbuf  := gv_pkg_name||gv_msg_dot||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
-      CLOSE fwd_cur;  -- カーソルクローズ
 --
---#####################################  固定部 END   ##########################################
+--#####################################  固定部 END   #############################################
 --
-  END get_demand_inf_fwd;
+  END get_order_info;
 --
   /**********************************************************************************
   * Procedure Name   : release_lock
@@ -590,7 +360,7 @@ AS
             AND b.id1 IN (SELECT bb.id1
                          FROM v$session aa, v$lock bb
                          WHERE aa.lockwait = bb.kaddr 
-                         AND aa.module = 'XXWSH920008C')
+                         AND aa.module = 'XXWSH420004C')
             AND b.lmode = 6;
 --
   BEGIN
@@ -670,22 +440,14 @@ AS
 --
     -- *** ローカル変数 ***
     lc_out_param     VARCHAR2(1000);   -- 入力パラメータの処理結果レポート出力用
-    lv_fwd_sql       VARCHAR2(5000);   -- 出荷用SQL文格納バッファ
-    lv_mov_sql       VARCHAR2(5000);   -- 移動用SQL文格納バッファ
---
-    ln_d_cnt         NUMBER := 0;      -- 需要情報ループカウンタ
-    ln_s_cnt         NUMBER := 0;      -- 供給情報ループカウンタ
-    ln_k_cnt         NUMBER := 0;
-    ln_s_max         NUMBER := 0;
-    ln_i_cnt         NUMBER := 0;      -- 需要情報合体用カウンタ
 --
     lv_phase         VARCHAR2(100);
     lv_status        VARCHAR2(100);
     lv_dev_phase     VARCHAR2(100);
     lv_dev_status    VARCHAR2(100);
-    lv_lot_biz_class VARCHAR2(1);      -- ロット逆転処理種別
-    ln_result        NUMBER;           -- 処理結果(0:正常、1:異常)
-    ld_standard_date DATE;             -- 基準日付
+--    lv_lot_biz_class VARCHAR2(1);      -- ロット逆転処理種別
+--    ln_result        NUMBER;           -- 処理結果(0:正常、1:異常)
+--    ld_standard_date DATE;             -- 基準日付
     i                INTEGER := 0;
     TYPE reqid_tab IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;
     reqid_rec reqid_tab;
@@ -715,22 +477,9 @@ AS
 --
 --
     -- ===============================================
-    -- A-2  SQL作成
+    --   処理対象データ取得
     -- ===============================================
-/*
-    lv_fwd_sql := fwd_sql_create(iv_action_type     -- 処理種別
-                               , iv_block1          -- ブロック１
-                               , iv_block2          -- ブロック２
-                               , iv_block3          -- ブロック３
-                               , in_deliver_from_id -- 出庫元
-                               , in_deliver_type);  -- 出庫形態
-    
-    -- ===============================================
-    -- A-3  品目コード取得
-    -- ===============================================
-    get_demand_inf_fwd(iv_action_type -- 処理種別
-                     , lv_fwd_sql     -- SQL文
-                     , lv_errbuf      -- エラー・メッセージ           --# 固定 #
+    get_order_info(    lv_errbuf      -- エラー・メッセージ           --# 固定 #
                      , lv_retcode     -- リターン・コード             --# 固定 #
                      , lv_errmsg);    -- ユーザー・エラー・メッセージ --# 固定 #
     -- エラー処理
@@ -740,25 +489,18 @@ AS
     END IF;
 --
     -- ===============================================
-    -- A-4  品目コードループ
+    --   出庫元ループ
     -- ===============================================
     <<demand_inf_loop>>
     FOR ln_d_cnt IN 1..gn_total_cnt LOOP
       i := i + 1;
       gn_target_cnt := gn_target_cnt + 1;
       reqid_rec(i) := FND_REQUEST.SUBMIT_REQUEST(
-                         application       => 'XXWSH'                           -- アプリケーション短縮名
-                       , program           => 'XXWSH920008C'                    -- プログラム名
-                       , argument1         => iv_item_class                     -- 商品区分
-                       , argument2         => iv_action_type                    -- 処理種別
-                       , argument3         => iv_block1                         -- ブロック１
-                       , argument4         => iv_block2                         -- ブロック２
-                       , argument5         => iv_block3                         -- ブロック３
-                       , argument6         => in_deliver_from_id                -- 出庫元
-                       , argument7         => in_deliver_type                   -- 出庫形態
-                       , argument8         => iv_deliver_date_from              -- 出庫日From
-                       , argument9         => iv_deliver_date_to                -- 出庫日To
-                       , argument10        => gr_demand_tbl(ln_d_cnt).item_code -- 品目コード
+                         application       => 'XXWSH'                              -- アプリケーション短縮名
+                       , program           => 'XXWSH420004C'                       -- プログラム名
+                       , argument1         => NULL                                 -- ブロック
+                       , argument2         => gr_demand_tbl(ln_d_cnt).deliver_from -- 出庫元
+                       , argument3         => NULL                                 -- 依頼No
                          );
       -- エラーの場合
       IF ( reqid_rec(i) = 0 ) THEN
@@ -775,8 +517,9 @@ AS
            RAISE global_process_expt;
        END IF;
 --
-    END LOOP demand_inf_loop; -- 品目コードループ終わり
+    END LOOP demand_inf_loop; -- 出庫元ループ終わり
 --
+/*
     -- ===============================================
     -- ロック暫定対応
     -- ===============================================
@@ -788,6 +531,7 @@ AS
                       , lv_retcode
                       , lv_errmsg);
     END LOOP lock_loop; -- ロック開放ループ終わり
+*/
 --
     -- ===============================================
     -- A-5  コンカレントステータスのチェック
@@ -810,18 +554,18 @@ AS
           -- ステータス:異常
           IF ( lv_dev_status = cv_conc_s_e ) THEN
             ov_retcode := gv_status_error;
-            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:' || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_error);
+            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'出庫元:' || gr_demand_tbl(j).deliver_from || '、件数:' || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_error);
             gn_error_cnt := gn_error_cnt + 1;
           -- ステータス:警告
           ELSIF ( lv_dev_status = cv_conc_s_w ) THEN
             IF ( ov_retcode < 1 ) THEN
               ov_retcode := gv_status_warn;
             END IF;
-            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:'  || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_warn);
+            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'出庫元:' || gr_demand_tbl(j).deliver_from || '、件数:'  || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_warn);
             gn_warn_cnt := gn_warn_cnt + 1;
           -- ステータス:正常
           ELSE
-            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'親品目:' || gr_demand_tbl(j).item_code || '、件数:'  || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_normal);
+            FND_FILE.PUT_LINE (FND_FILE.OUTPUT,'出庫元:' || gr_demand_tbl(j).deliver_from || '、件数:'  || TO_CHAR(gr_demand_tbl(j).total_cnt) || '件、要求ID：' || TO_CHAR(reqid_rec(j)) || '、処理結果：' || gv_msg_part || gv_mst_normal);
             gn_normal_cnt := gn_normal_cnt + 1;
           END IF;
         END IF;
@@ -832,7 +576,6 @@ AS
       END IF;
 --
     END LOOP chk_status;
-*/
 --
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
@@ -1014,31 +757,6 @@ AS
     END IF;
 --
   EXCEPTION
-    WHEN INVALID_NUMBER THEN
-      -- メッセージのセット
-      -- 出荷元に不正データあり
-      IF (lv_retcode = gv_cons_flg_yes) THEN
-        lv_errbuf := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh -- 'XXWSH'
-                                                      ,gv_msg_92a_009      -- パラメータ書式エラー
-                                                      ,gv_tkn_parameter    -- トークン'PARAMETER'
-                                                      ,gv_cons_deliv_fm    -- '出荷元'
-                                                      ,gv_tkn_type         -- トークン'TYPE'
-                                                      ,gv_cons_number)     -- '数値'
-                                                      ,1
-                                                      ,5000);
-      -- 出荷形態に不正データあり
-      ELSE
-        lv_errbuf := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh -- 'XXWSH'
-                                                      ,gv_msg_92a_009      -- パラメータ書式エラー
-                                                      ,gv_tkn_parameter    -- トークン'PARAMETER'
-                                                      ,gv_cons_deliv_tp    -- '出荷形態'
-                                                      ,gv_tkn_type         -- トークン'TYPE'
-                                                      ,gv_cons_number)     -- '数値'
-                                                      ,1
-                                                      ,5000);
-      END IF;
-      errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
-      retcode := gv_status_error;                                            --# 任意 #
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
