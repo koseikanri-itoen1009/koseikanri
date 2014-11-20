@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.7
+ * Version          : 1.8
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -36,6 +36,7 @@ AS
  *  2009/04/08    1.5   K.KIN            T1_0407
  *  2009/04/09    1.6   K.KIN            T1_0423
  *  2009/04/09    1.7   K.KIN            T1_0436
+ *  2009/04/13    1.8   K.KIN            T1_0497
  *
  *****************************************************************************************/
 --
@@ -165,6 +166,11 @@ AS
   cv_blank                  CONSTANT  VARCHAR2(1)  := '';                -- ブランク
   cv_and                    CONSTANT  VARCHAR2(6)  := ' AND ';           -- ブランク
   cv_tkn_key_data           CONSTANT  VARCHAR2(20) := 'KEY_DATA';        -- キー項目
+  cv_tkn_cust_code          CONSTANT  VARCHAR2(20) := 'CUST_CODE';       -- 顧客コード
+  cv_tkn_payment_term1      CONSTANT  VARCHAR2(20) := 'PAYMENT_TERM1';   -- 支払条件１
+  cv_tkn_payment_term2      CONSTANT  VARCHAR2(20) := 'PAYMENT_TERM2';   -- 支払条件２
+  cv_tkn_payment_term3      CONSTANT  VARCHAR2(20) := 'PAYMENT_TERM3';   -- 支払条件３
+  cv_tkn_procedure_name     CONSTANT  VARCHAR2(20) := 'PROCEDURE_NAME';  -- プロシージャ名
 --
   -- フラグ・区分定数
   cv_y_flag                 CONSTANT  VARCHAR2(1)  := 'Y';               -- フラグ値:Y
@@ -1811,6 +1817,16 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               lv_errmsg := xxccp_common_pkg.get_msg(
                               iv_application   => cv_xxcos_short_nm
                             , iv_name          => cv_term_id_msg
+                            , iv_token_name1   => cv_tkn_cust_code
+                            , iv_token_value1  => gt_sales_norm_tbl2( ln_trx_idx ).xchv_cust_id_b
+                            , iv_token_name2   => cv_tkn_payment_term1
+                            , iv_token_value2  => gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id
+                            , iv_token_name3   => cv_tkn_payment_term2
+                            , iv_token_value3  => gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id2
+                            , iv_token_name4   => cv_tkn_payment_term3
+                            , iv_token_value4  => gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id3
+                            , iv_token_name5   => cv_tkn_procedure_name
+                            , iv_token_value5  => cv_prg_name
                           );
               lv_errbuf  := lv_errmsg;
 --
@@ -3213,6 +3229,16 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               lv_errmsg := xxccp_common_pkg.get_msg(
                               iv_application   => cv_xxcos_short_nm
                             , iv_name          => cv_term_id_msg
+                            , iv_token_name1   => cv_tkn_cust_code
+                            , iv_token_value1  => gt_sales_bulk_tbl2( ln_trx_idx ).xchv_cust_id_b
+                            , iv_token_name2   => cv_tkn_payment_term1
+                            , iv_token_value2  => gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id
+                            , iv_token_name3   => cv_tkn_payment_term2
+                            , iv_token_value3  => gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id2
+                            , iv_token_name4   => cv_tkn_payment_term3
+                            , iv_token_value4  => gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id3
+                            , iv_token_name5   => cv_tkn_procedure_name
+                            , iv_token_value5  => cv_prg_name
                           );
               lv_errbuf  := lv_errmsg;
 --
