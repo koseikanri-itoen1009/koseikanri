@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.6
+ * Version                : 1.7
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  convert_quantity                P           EDI帳票向け数量換算関数
  *  get_deliv_slip_flag             F           納品書発行フラグ取得関数
  *  get_deliv_slip_flag_area        F           納品書発行フラグ全体取得関数
+ *  get_salesrep_id                 P           担当営業員取得関数
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -35,6 +36,7 @@ AS
  *  2009/06/23    1.5  K.Kiriu          [T1_1359]EDI帳票向け数量換算関数の追加
  *  2009/10/02    1.6  M.Sano           [0001156]顧客品目抽出条件追加
  *                                      [0001344]顧客品目検索エラー,JANコード検索エラーのパラメータ追加
+ *  2010/04/15    1.7  Y.Goto           [E_本稼動_01719]担当営業員取得関数追加
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -93,6 +95,9 @@ AS
   gv_param_err                                CONSTANT VARCHAR2(2) := '01';   --入力パラメータエラー
   gv_no_data_found_err                        CONSTANT VARCHAR2(2) := '02';   --対象データなしエラー
   --
+/* 2010/04/15 Ver1.7 Add Start */
+  gv_char_y                                   CONSTANT VARCHAR2(1) := 'Y';
+/* 2010/04/15 Ver1.7 Add End   */
   gv_char_n                                   CONSTANT VARCHAR2(1) := 'N';
   gv_char_double_cort                         CONSTANT VARCHAR2(1) := chr( 34 ); --ダブルコーテーション
   gv_char_comma                               CONSTANT VARCHAR2(1) := chr( 44 ); --カンマ
@@ -138,6 +143,24 @@ AS
   ct_msg_bad_calculation_err                  CONSTANT  fnd_new_messages.message_name%TYPE
                                                         := 'APP-XXCOS1-13592';              -- 出荷数量、欠品数量、計算不可エラー
 /* 2009/06/15 Ver1.5 Add End   */
+/* 2010/04/15 Ver1.7 Add Start */
+  ct_msg_parameter_err                        CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-00006';              -- 必須入力パラメータ未設定エラーメッセージ
+  ct_msg_no_data_found                        CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-00064';              -- 取得エラー
+  ct_msg_account_number                       CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-00053';              -- メッセージ用文字列:顧客コード
+  ct_msg_target_date                          CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-13558';              -- メッセージ用文字列:基準日
+  ct_msg_org_id                               CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-00047';              -- メッセージ用文字列:MO:営業単位
+  ct_msg_base_code                            CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-00055';              -- メッセージ用文字列:拠点コード
+  ct_msg_set_employee                         CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-13594';              -- 担当営業員拠点最上位者設定メッセージ
+  ct_msg_unset_employee                       CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-13595';              -- 担当営業員拠点最上位者取得エラー
+/* 2010/04/15 Ver1.7 Add End   */
  -- トークン
   gv_token_name_layout                        CONSTANT VARCHAR2(6)  := 'LAYOUT';
   gv_token_name_in_param                      CONSTANT VARCHAR2(8)  := 'IN_PARAM';
@@ -149,6 +172,13 @@ AS
 --****************************** 2009/04/16 1.4 T.Kitajima ADD START ******************************--
   cv_tkn_item_code                            CONSTANT  VARCHAR2(100) := 'ITEM_CODE';           -- 品目コード
 --****************************** 2009/04/16 1.4 T.Kitajima ADD  ENd  ******************************--
+/* 2010/04/15 Ver1.7 Add Start */
+  cv_tkn_data                                 CONSTANT  VARCHAR2(100) := 'DATA';                -- DATA
+  cv_tkn_base                                 CONSTANT  VARCHAR2(100) := 'BASE';                -- 拠点コード
+  cv_tkn_cust                                 CONSTANT  VARCHAR2(100) := 'CUST';                -- 顧客コード
+  cv_tkn_sdate                                CONSTANT  VARCHAR2(100) := 'SDATE';               -- 基準日
+  cv_tkn_emp                                  CONSTANT  VARCHAR2(100) := 'EMP';                 -- 最上位者従業員番号
+/* 2010/04/15 Ver1.7 Add End   */
   --
   --プロファイルID
   ct_prof_case_uom_code                       CONSTANT  fnd_profile_options.profile_option_name%TYPE
@@ -1568,6 +1598,277 @@ AS
 --###################################  固定部 END   #########################################
 --
   END get_deliv_slip_flag_area;
+--
+/* 2010/04/15 Ver1.7 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : get_salesrep_id
+   * Description      : 担当営業員取得関数
+   ***********************************************************************************/
+  PROCEDURE get_salesrep_id(
+               iv_account_number     IN  VARCHAR2  DEFAULT NULL  --顧客コード
+              ,id_target_date        IN  DATE      DEFAULT NULL  --基準日
+              ,in_org_id             IN  NUMBER    DEFAULT NULL  --営業単位ID
+              ,on_salesrep_id        OUT NOCOPY NUMBER           --担当営業員ID
+              ,ov_employee_number    OUT NOCOPY VARCHAR2         --最上位者従業員番号
+              ,ov_errbuf             OUT NOCOPY VARCHAR2         --エラー・メッセージエラー       #固定#
+              ,ov_retcode            OUT NOCOPY VARCHAR2         --リターン・コード               #固定#
+              ,ov_errmsg             OUT NOCOPY VARCHAR2         --ユーザー・エラー・メッセージ   #固定#
+  )
+  IS
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_prg_name                               CONSTANT VARCHAR2(100) := 'get_salesrep_id';    --プログラム
+    --業務日付
+    cd_process_date                           CONSTANT   DATE        :=  xxccp_common_pkg2.get_process_date;
+    cv_date_format                            CONSTANT VARCHAR2(10)  :=  'YYYY/MM/DD';
+    cv_month_format                           CONSTANT VARCHAR2( 2)  :=  'MM';
+    cv_category_employee                      CONSTANT VARCHAR2( 8)  :=  'EMPLOYEE';
+    cv_resource_group_number                  CONSTANT VARCHAR2(15)  :=  'RS_GROUP_MEMBER';
+    cv_person_type                            CONSTANT VARCHAR2( 3)  :=  'EMP';
+    cd_last_day                               CONSTANT   DATE        :=  TO_DATE( '9999/12/31', cv_date_format );
+    --
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lt_msg_strings                                     fnd_new_messages.message_text%TYPE;      -- メッセージ用文字列
+    lt_sale_base_code                                  xxcmm_cust_accounts.sale_base_code%TYPE; -- 拠点コード
+    lt_salesrep_id                                     jtf_rs_salesreps.salesrep_id%TYPE;       -- 担当営業員ID
+    lt_employee_number                                 per_all_people_f.employee_number%TYPE;   -- 従業員番号
+    --
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    --担当営業員取得
+    CURSOR
+      cur_salesrep_id
+    IS
+    SELECT jrs.salesrep_id               AS salesrep_id               --担当営業員ID
+    FROM   hz_cust_accounts          hca                              --顧客マスタ
+          ,hz_organization_profiles  hop                              --組織プロファイル
+          ,ego_resource_agv          era                              --営業員リソース情報View
+          ,jtf_rs_salesreps          jrs                              --営業担当
+    WHERE  hca.account_number          = iv_account_number            --顧客コード
+    AND    hop.party_id                = hca.party_id
+    AND    era.organization_profile_id = hop.organization_profile_id
+    AND    hop.effective_end_date      IS NULL
+    AND    jrs.salesrep_number         = era.resource_no
+    AND    jrs.org_id                  = in_org_id                    -- 営業単位ID
+    AND    TRUNC( era.resource_s_date )   <= TRUNC( id_target_date )
+    AND    TRUNC( NVL(era.resource_e_date, id_target_date ) )
+                                          >= TRUNC( id_target_date )
+    AND    TRUNC( jrs.start_date_active ) <= TRUNC( id_target_date )
+    AND    TRUNC( NVL(jrs.end_date_active, id_target_date ) )
+                                          >= TRUNC( id_target_date )
+    ORDER BY
+           era.resource_s_date DESC
+    ;
+    --拠点の最上位従業員を取得
+    CURSOR
+      cur_employee_number(
+        lv_sale_base_code            VARCHAR2
+      )
+    IS
+    SELECT jrs.salesrep_id               AS salesrep_id             --担当営業員ID
+          ,papf_n.employee_number        AS employee_number         --従業員番号
+    FROM   per_person_types          pept_n                         --従業員タイプ
+          ,per_periods_of_service    ppos_n                         --従業員サービス
+          ,per_all_assignments_f     paaf_n                         --アサイメント
+          ,per_all_people_f          papf_n                         --従業員
+          ,jtf_rs_resource_extns     jrrx_n                         --リソース
+          ,jtf_rs_group_members      jrgm_n                         --グループメンバー
+          ,jtf_rs_groups_b           jrgb_n                         --リソースグループ
+          ,jtf_rs_role_relations     jrrr                           --役割
+          ,jtf_rs_salesreps          jrs                            --営業担当
+    WHERE jrgb_n.attribute1            = lv_sale_base_code          --拠点コード
+    AND   jrgb_n.group_id              = jrgm_n.group_id
+    AND   jrgm_n.delete_flag           = gv_char_n
+    AND   jrgm_n.resource_id           = jrrx_n.resource_id
+    AND   jrrx_n.category              = cv_category_employee
+    AND   jrrr.role_resource_id        = jrgm_n.group_member_id
+    AND   jrrr.role_resource_type      = cv_resource_group_number
+    AND   jrrr.delete_flag             = gv_char_n
+    AND   jrrr.start_date_active      <= id_target_date
+    AND   NVL( jrrr.end_date_active, id_target_date ) >= id_target_date
+    AND   jrrx_n.source_id             = papf_n.person_id
+    AND   papf_n.person_id             = paaf_n.person_id
+    AND   paaf_n.period_of_service_id  = ppos_n.period_of_service_id
+    AND   ppos_n.actual_termination_date IS NULL
+    AND   papf_n.person_type_id        = pept_n.person_type_id
+    AND   id_target_date BETWEEN papf_n.effective_start_date
+                             AND NVL( papf_n.effective_end_date, cd_last_day )
+    AND   pept_n.system_person_type    = cv_person_type
+    AND   pept_n.active_flag           = gv_char_y
+    AND   jrrx_n.resource_id           = jrs.resource_id
+    AND   jrs.org_id                   = in_org_id                    -- 営業単位ID
+    AND    TRUNC( jrs.start_date_active ) <= TRUNC( id_target_date )
+    AND    TRUNC( NVL( jrs.end_date_active, id_target_date ) )
+                                          >= TRUNC( id_target_date )
+    ORDER BY
+          paaf_n.ass_attribute11                                    -- 職位順
+         ,ppos_n.date_start                                         -- 入社日
+         ,papf_n.employee_number                                    -- 従業員番号
+    ;
+    --
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+  --
+--
+  BEGIN
+--
+    --リターン・コード初期化
+    ov_retcode := cv_status_normal;
+--
+    --顧客コードチェック
+    IF ( iv_account_number IS NULL ) THEN
+      lt_msg_strings := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                  ,iv_name         => ct_msg_account_number
+                                                );
+      lv_errmsg      := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                  ,iv_name         => ct_msg_parameter_err
+                                                  ,iv_token_name1  => gv_token_name_in_param
+                                                  ,iv_token_value1 => lt_msg_strings
+                                                );
+      lv_errbuf      := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --基準日チェック
+    IF ( id_target_date IS NULL ) THEN
+      lt_msg_strings := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                  ,iv_name         => ct_msg_target_date
+                                                );
+      lv_errmsg      := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                  ,iv_name         => ct_msg_parameter_err
+                                                  ,iv_token_name1  => gv_token_name_in_param
+                                                  ,iv_token_value1 => lt_msg_strings
+                                                );
+      lv_errbuf      := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --営業単位IDチェック
+    IF ( in_org_id IS NULL ) THEN
+      lt_msg_strings := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                  ,iv_name         => ct_msg_org_id
+                                                );
+      lv_errmsg      := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                  ,iv_name         => ct_msg_parameter_err
+                                                  ,iv_token_name1  => gv_token_name_in_param
+                                                  ,iv_token_value1 => lt_msg_strings
+                                                );
+      lv_errbuf      := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+    --担当営業員取得
+    OPEN cur_salesrep_id;
+    FETCH cur_salesrep_id INTO lt_salesrep_id;
+    CLOSE cur_salesrep_id;
+    --担当営業員が取得できなかった場合
+    IF ( lt_salesrep_id IS NULL ) THEN
+      BEGIN
+        --基準日の拠点コードを取得
+        SELECT CASE WHEN TRUNC( id_target_date, cv_month_format ) <  TRUNC( cd_process_date, cv_month_format )
+                      THEN xca.past_sale_base_code                        --前月売上拠点コード
+                    WHEN TRUNC( id_target_date ) >= NVL( xca.rsv_sale_base_act_date, cd_last_day )
+                      THEN xca.rsv_sale_base_code                         --予約売上拠点コード
+                    WHEN TRUNC( id_target_date ) <  NVL( xca.rsv_sale_base_act_date, cd_last_day )
+                      THEN xca.sale_base_code                             --売上拠点コード
+                    ELSE
+                      NULL
+               END                           AS sale_base_code            --拠点コード
+        INTO   lt_sale_base_code
+        FROM   xxcmm_cust_accounts       xca                              --顧客追加情報
+        WHERE  xca.customer_code           = iv_account_number            --顧客コード
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          NULL;
+      END;
+      --拠点コードが取得できなかった場合
+      IF ( lt_sale_base_code IS NULL ) THEN
+        lt_msg_strings := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                    ,iv_name         => ct_msg_base_code
+                                                  );
+        lv_errmsg      := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                    ,iv_name         => ct_msg_no_data_found
+                                                    ,iv_token_name1  => cv_tkn_data
+                                                    ,iv_token_value1 => lt_msg_strings
+                                                  );
+        lv_errbuf      := lv_errmsg;
+        RAISE global_api_expt;
+      END IF;
+      --拠点の最上位従業員を取得
+      OPEN cur_employee_number( lt_sale_base_code );
+      FETCH cur_employee_number INTO lt_salesrep_id, lt_employee_number;
+      IF cur_employee_number%NOTFOUND THEN
+        --担当営業員拠点最上位者取得エラーをユーザー・エラー・メッセージに設定
+        lv_errmsg      := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                    ,iv_name         => ct_msg_unset_employee
+                                                    ,iv_token_name1  => cv_tkn_base
+                                                    ,iv_token_value1 => lt_sale_base_code
+                                                    ,iv_token_name2  => cv_tkn_cust
+                                                    ,iv_token_value2 => iv_account_number
+                                                    ,iv_token_name3  => cv_tkn_sdate
+                                                    ,iv_token_value3 => TO_CHAR( id_target_date, cv_date_format )
+                                                  );
+        lv_errbuf      := lv_errmsg;
+        --メッセージを出力項目に設定
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+        ov_retcode := cv_status_warn;
+      ELSE
+        --出力項目に設定
+        on_salesrep_id     := lt_salesrep_id;
+        ov_employee_number := lt_employee_number;
+        --担当営業員拠点最上位者設定メッセージをユーザー・エラー・メッセージに設定
+        lv_errmsg      := xxccp_common_pkg.get_msg(  iv_application  => gv_application
+                                                    ,iv_name         => ct_msg_set_employee
+                                                    ,iv_token_name1  => cv_tkn_base
+                                                    ,iv_token_value1 => lt_sale_base_code
+                                                    ,iv_token_name2  => cv_tkn_cust
+                                                    ,iv_token_value2 => iv_account_number
+                                                    ,iv_token_name3  => cv_tkn_sdate
+                                                    ,iv_token_value3 => TO_CHAR( id_target_date, cv_date_format )
+                                                    ,iv_token_name4  => cv_tkn_emp
+                                                    ,iv_token_value4 => lt_employee_number
+                                                  );
+        lv_errbuf      := lv_errmsg;
+        --メッセージを出力項目に設定
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      END IF;
+      CLOSE cur_employee_number;
+    ELSE
+      --出力項目に設定
+      on_salesrep_id := lt_salesrep_id;
+    END IF;
+--
+  EXCEPTION
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := xxccp_common_pkg.set_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR
+        (-20000,SUBSTRB(gv_pkg_name||gv_cnst_period||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
+--
+--###################################  固定部 END   #########################################
+--
+  END get_salesrep_id;
+  --
+/* 2010/04/15 Ver1.7 Add End */
 --
 END XXCOS_COMMON2_PKG;
 /

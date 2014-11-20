@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2009/12/28    1.17  N.Maeda          [E_本稼動_00683]出荷予定日取得関数による翌稼働日算出の追加。
  *  2010/01/12    1.18  M.Uehara         [E_本稼動_01011]問屋CSV取込時「出荷日」が登録されている場合、受注の出荷予定日に登録。
  *  2010/04/15    1.19  M.Sano           [E_本稼動_02317] 売上拠点の判定条件修正
+ *  2010/04/23    1.20  S.Karikomi       [E_本稼動_01719] 担当営業員取得関数による最上位者従業員取得の追加
  *
  *****************************************************************************************/
 --
@@ -159,6 +160,10 @@ AS
   global_delivery_lt_err_expt       EXCEPTION;                                                       --配送LT取得
   global_item_status_code_expt      EXCEPTION;                                                       --顧客受注可能エラー
   global_insert_expt                EXCEPTION;                                                       --登録エラー
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+  global_get_highest_emp_expt       EXCEPTION;                                                       --最上位者従業員番号取得ハンドラ
+  global_get_salesrep_expt          EXCEPTION;                                                       --共通関数(担当従業員取得)エラー時
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
   --*** 処理対象データロック例外 ***
   global_data_lock_expt             EXCEPTION;
   PRAGMA EXCEPTION_INIT( global_data_lock_expt, -54 );
@@ -328,6 +333,11 @@ AS
   ct_msg_get_kokusai_toomany        CONSTANT  fnd_new_messages.message_name%TYPE
                                               := 'APP-XXCOS1-13853';                                 --国際顧客TOO_MANY_ROWS例外エラーメッセージ
 --****************************** 2009/07/21 1.11 T.Miyata ADD  END   ******************************--
+--
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+  ct_msg_set_emp_highest            CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-13854';                                 --担当営業員最上位者設定メッセージ
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 --
 --****************************** 2009/07/10 1.7 T.Tominaga ADD START ******************************
   ct_msg_get_interval               CONSTANT  fnd_new_messages.message_name%TYPE
@@ -524,6 +534,9 @@ AS
   gv_temp_oder_no                   VARCHAR2(128);                                                   --一時保管用オーダーNo
   gv_temp_line_no                   VARCHAR2(128);                                                   --一時保管場所行番号
   gv_temp_line                      VARCHAR2(128);                                                   --一時保管場所行No
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+  gv_get_highest_emp_flg            VARCHAR2(1);                                                     --最上位者従業員番号取得フラグ
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
   gn_org_id                         NUMBER;                                                          --営業単位
   gn_prod_ou_id                     NUMBER;                                                          --生産営業単位ID
   gn_get_stock_id_ret               NUMBER;                                                          --営業用在庫組織ID(戻り値NUMBER)
@@ -2532,6 +2545,9 @@ AS
    * Description      : <マスタ情報の取得処理>(A-6)
    ***********************************************************************************/
   PROCEDURE get_master_data(
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    in_cnt                     IN  NUMBER,   -- データ数
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
     iv_get_format              IN  VARCHAR2, -- フォーマットパターン
     iv_organization_id         IN  VARCHAR2, -- 組織ID
     in_line_no                 IN  NUMBER,   -- 行NO.
@@ -2557,6 +2573,10 @@ AS
     ov_item_no                 OUT VARCHAR2, -- 品目コード
     on_primary_unit_of_measure OUT VARCHAR2, -- 基準単位
     ov_prod_class_code         OUT VARCHAR2, -- 商品区分
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    on_salesrep_id             OUT NUMBER,   -- 営業担当ID
+    ov_employee_number         OUT VARCHAR2, -- 最上位者従業員番号
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
     ov_errbuf                  OUT VARCHAR2, -- エラー・メッセージ           --# 固定 #
     ov_retcode                 OUT VARCHAR2, -- リターン・コード             --# 固定 #
     ov_errmsg                  OUT VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3277,6 +3297,29 @@ AS
 --
     END IF;
 --
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    -- 営業担当、または最上位者の取得
+    xxcos_common2_pkg.get_salesrep_id(
+                                    on_salesrep_id     =>  on_salesrep_id      --営業担当ID
+                                   ,ov_employee_number =>  ov_employee_number  --最上位者従業員番号
+                                   ,ov_errbuf          =>  lv_errbuf           --エラー・メッセージ
+                                   ,ov_retcode         =>  lv_retcode          --リターンコード
+                                   ,ov_errmsg          =>  lv_errmsg           --ユーザ・エラー・メッセージ
+                                   ,iv_account_number  =>  ov_account_number   --顧客コード
+                                   ,id_target_date     =>  id_request_date     --基準日
+                                   ,in_org_id          =>  gn_org_id           --営業単位ID
+                                  );
+    -- 最上位者を取得した場合
+    IF ( ov_employee_number IS NOT NULL ) THEN
+      gv_get_highest_emp_flg := 'Y';
+      RAISE global_get_highest_emp_expt;
+    END IF;
+    -- 共通関数のリターンコードが正常以外の場合
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      RAISE global_get_salesrep_expt;
+    END IF;
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
+--
   EXCEPTION
 --****************************** 2009/07/21 1.11 T.Miyata ADD START ******************************--
     -- 問屋顧客情報TOO_MANYエラー
@@ -3415,6 +3458,36 @@ AS
                   );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_error;
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    --最上位者従業員番号取得時
+    WHEN global_get_highest_emp_expt THEN
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application   => ct_xxcos_appl_short_name,
+                      iv_name          => ct_msg_set_emp_highest,
+                      iv_token_name1   => cv_tkn_param1,                                --パラメータ１(トークン)
+                      iv_token_value1  => gv_temp_line_no,                              --行番号
+                      iv_token_name2   => cv_tkn_param2,                                --パラメータ２(トークン)
+                      iv_token_value2  => gr_order_work_data(in_cnt)(cn_order_number),  --オーダーNO
+                      iv_token_name3   => cv_tkn_param3,                                --パラメータ３(トークン)
+                      iv_token_value3  => gv_temp_line,                                 --行No    
+                      iv_token_name4   => cv_tkn_err_msg,                               --エラーメッセージ(トークン)
+                      iv_token_value4  => lv_errmsg                                     --共通関数のエラーメッセージ
+                    );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => gv_out_msg
+      );
+      ov_retcode := cv_status_normal;
+    --共通関数(担当従業員取得)エラー時
+    WHEN global_get_salesrep_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := lv_errbuf;
+      ov_retcode := cv_status_warn;
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -4094,6 +4167,9 @@ AS
     in_org_id                IN NUMBER,    -- 組織ID(営業単位)
     id_ordered_date          IN DATE,      -- 受注日(発注日)
     iv_order_type            IN VARCHAR2,  -- 受注タイプ(受注タイプ（通常受注）)
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    in_salesrep_id           IN NUMBER,    -- 営業担当ID
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 /* 2009/07/17 Ver1.10 Mod Start */
 --    in_customer_po_number    IN NUMBER,    -- 顧客PO番号(顧客発注番号)(オーダーNo.)
     iv_customer_po_number    IN VARCHAR2,  -- 顧客PO番号(顧客発注番号)(オーダーNo.)
@@ -4198,6 +4274,9 @@ AS
       gr_order_oif_data(gn_hed_cnt).ordered_date              := id_ordered_date;           --受注日(発注日)
       gr_order_oif_data(gn_hed_cnt).order_type                := iv_order_type;             --受注タイプ(受注タイプ（通常受注）)
       gr_order_oif_data(gn_hed_cnt).context                   := iv_order_type;             --受注タイプ(受注タイプ（通常受注）)
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+      gr_order_oif_data(gn_hed_cnt).salesrep_id               := in_salesrep_id;            --営業担当ID
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 -- *********** 2009/12/04 1.15 N.Maeda MOD START ***********--
       gr_order_oif_data(gn_hed_cnt).customer_po_number        := lv_cust_po_number;                 --顧客PO番号(顧客発注番号)
 --      gr_order_oif_data(gn_hed_cnt).customer_po_number        := gv_seq_no;                 --顧客PO番号(顧客発注番号)(シーケンス設定)
@@ -4245,6 +4324,9 @@ AS
     gr_order_line_oif_data(gn_line_cnt).schedule_ship_date         := id_schedule_ship_date;     --予定出荷日(出荷予定日(SEJ)or 出荷日(国際))
     gr_order_line_oif_data(gn_line_cnt).ordered_quantity           := in_ordered_quantity;       --受注数量(発注バラ数(SEJ) orケース数(国際))
     gr_order_line_oif_data(gn_line_cnt).order_quantity_uom         := iv_order_quantity_uom;     --受注数量単位(基準単位(SEJ) or ケース単位)
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    gr_order_line_oif_data(gn_line_cnt).salesrep_id                := in_salesrep_id;            --営業担当ID
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
     gr_order_line_oif_data(gn_line_cnt).customer_po_number         := gv_seq_no;                 --顧客発注番号(シーケンス)
     gr_order_line_oif_data(gn_line_cnt).customer_line_number       := iv_customer_line_number;   --顧客明細番号(行No.(※設定必要))
 -- *********** 2009/12/04 1.15 N.Maeda MOD START ***********--
@@ -4669,6 +4751,10 @@ AS
     lv_item_no                 VARCHAR2(40);  -- 品目コード
     lv_primary_unit_of_measure VARCHAR2(40);  -- 基準単位
     lv_item_class_code         VARCHAR2(40);  -- 商品区分コード
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    ln_salesrep_id             NUMBER;        -- 営業担当ID
+    lv_employee_number         VARCHAR2(40);  -- 最上位者営業員番号
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 --
     ld_ship_due_date           DATE;          -- 出荷予定日
 --
@@ -4698,6 +4784,9 @@ AS
     gn_warn_cnt     := 0;
     gn_hed_Suc_cnt  := 0;
     gn_line_Suc_cnt := 0;
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    gv_get_highest_emp_flg := NULL;
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 --
     ------------------------------------
     -- 0.ローカル変数の初期化
@@ -4832,6 +4921,9 @@ AS
         -- * get_master_data   マスタ情報の取得処理                       (A-6)
         -- --------------------------------------------------------------------
         get_master_data(
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+          in_cnt                     => i,                          -- データカウンタ
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
           iv_get_format              => iv_get_format_pat,          -- フォーマット
           iv_organization_id         => gn_get_stock_id_ret,        -- 組織ID
           in_line_no                 => lv_line_number,             -- 行NO.
@@ -4854,6 +4946,10 @@ AS
           ov_item_no                 => lv_item_no,                 -- 品目コード
           on_primary_unit_of_measure => lv_primary_unit_of_measure, -- 基準単位
           ov_prod_class_code         => lv_item_class_code,         -- 商品区分コード
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+          on_salesrep_id             => ln_salesrep_id,             -- 営業担当ID
+          ov_employee_number         => lv_employee_number,         -- 最上位者営業員番号
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
           ov_errbuf                  => lv_errbuf,                  -- エラー・メッセージ           --# 固定 #
           ov_retcode                 => lv_retcode,                 -- リターン・コード             --# 固定 #
           ov_errmsg                  => lv_errmsg                   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5002,6 +5098,9 @@ AS
           in_org_id                => gn_org_id,               -- 組織ID(営業単位
           id_ordered_date          => ld_order_date,           -- 受注日(発注日
           iv_order_type            => gt_order_type_name,      -- 受注タイプ(受注タイプ(通常受注)
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+          in_salesrep_id           => ln_salesrep_id,          -- 担当営業ID
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 /* 2009/07/17 Ver1.10 Mod Start */
 --          in_customer_po_number    => lv_order_number,         -- 顧客PO番号(顧客発注番号)(オーダーNo.
           iv_customer_po_number    => lv_order_number,         -- 顧客PO番号(顧客発注番号)(オーダーNo.
@@ -5077,7 +5176,12 @@ AS
     IF ( lv_ret_status != cv_status_normal ) THEN
       ov_retcode := lv_ret_status;
     END IF;
-
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD START ********************* --
+    --最上位者従業員番号取得フラグが'Y'である場合
+    IF ( gv_get_highest_emp_flg = 'Y' ) THEN
+      ov_retcode := cv_status_warn;
+    END IF;
+-- ********************* 2010/04/23 1.20 S.Karikomi ADD  END  ********************* --
 --
   EXCEPTION
 --

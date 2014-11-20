@@ -6,7 +6,7 @@ AS
  * Package Name           : XXCOS_COMMON2_PKG(spec)
  * Description            : 
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.6
+ * Version                : 1.7
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  convert_quantity                P           EDI帳票向け数量換算関数
  *  get_deliv_slip_flag             F           納品書発行フラグ取得関数
  *  get_deliv_slip_flag_area        F           納品書発行フラグ全体取得関数
+ *  get_salesrep_id                 P           担当営業員取得関数
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -35,6 +36,7 @@ AS
  *  2009/06/23    1.5  K.Kiriu          [T1_1359]EDI帳票向け数量換算関数の追加
  *  2009/10/02    1.6  M.Sano           [0001156]顧客品目抽出条件追加
  *                                      [0001344]顧客品目検索エラー,JANコード検索エラーのパラメータ追加
+ *  2010/04/15    1.7  Y.Goto           [E_本稼動_01719]担当営業員取得関数追加
  *
  *****************************************************************************************/
 --
@@ -168,6 +170,22 @@ AS
               ,iv_publish_flag                     IN  VARCHAR2 DEFAULT NULL  --納品書発行フラグ
               )
     RETURN VARCHAR2;
+  --
+--
+  /************************************************************************
+   * Function Name   : get_salesrep_id
+   * Description     : 担当営業員取得関数
+   ************************************************************************/
+  PROCEDURE get_salesrep_id(
+               iv_account_number                   IN  VARCHAR2  DEFAULT NULL  --顧客コード
+              ,id_target_date                      IN  DATE      DEFAULT NULL  --基準日
+              ,in_org_id                           IN  NUMBER    DEFAULT NULL  --営業単位ID
+              ,on_salesrep_id                      OUT NOCOPY NUMBER           --担当営業員ID
+              ,ov_employee_number                  OUT NOCOPY VARCHAR2         --最上位者従業員番号
+              ,ov_errbuf                           OUT NOCOPY VARCHAR2         --エラー・メッセージエラー       #固定#
+              ,ov_retcode                          OUT NOCOPY VARCHAR2         --リターン・コード               #固定#
+              ,ov_errmsg                           OUT NOCOPY VARCHAR2         --ユーザー・エラー・メッセージ   #固定#
+  );
   --
 --
 END XXCOS_COMMON2_PKG;
