@@ -1,0 +1,87 @@
+CREATE TABLE xxcmm.xxcmm_rep_undeal_list (
+  request_id              NUMBER(15,0) NOT NULL,
+  p_customer_status_name  VARCHAR2(30),
+  p_base_cd_name          VARCHAR2(30),
+  base_code               VARCHAR2(4)  NOT NULL,
+  base_cd_name            VARCHAR2(30),
+  customer_code           VARCHAR2(9)  NOT NULL,
+  customer_name           VARCHAR2(360),
+  customer_status         VARCHAR2(2),
+  customer_status_name    VARCHAR2(30),
+  business_high_type      VARCHAR2(2),
+  business_high_type_name VARCHAR2(10),
+  final_call_date         VARCHAR2(10),
+  final_tran_date         VARCHAR2(10),
+  install_code            VARCHAR2(10),
+  inventory_quantity      NUMBER(6,0),
+  change_amount           NUMBER(6,0),
+  balance_amount          NUMBER(9,0),
+  balance_month           VARCHAR2(7),
+  undeal_reason           VARCHAR2(30),
+  stop_approval_reason    VARCHAR2(30),
+  created_by              NUMBER(15,0) NOT NULL,
+  creation_date           DATE         NOT NULL,
+  last_updated_by         NUMBER(15,0) NOT NULL,
+  last_update_date        DATE         NOT NULL,
+  last_update_login       NUMBER(15,0),
+  program_application_id  NUMBER(15,0),
+  program_id              NUMBER(15,0),
+  program_update_date     DATE
+)
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.request_id              IS '要求ID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.p_customer_status_name  IS '顧客ステータス名(パラメータ)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.p_base_cd_name          IS '拠点名(パラメータ)'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.base_code               IS '拠点コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.base_cd_name            IS '拠点名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.customer_code           IS '顧客コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.customer_name           IS '顧客名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.customer_status         IS '顧客ステータス'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.customer_status_name    IS '顧客ステータス名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.business_high_type      IS '業態分類（大分類）'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.business_high_type_name IS '業態分類（大分類）名'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.final_call_date         IS '最終訪問日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.final_tran_date         IS '最終取引日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.install_code            IS '物件コード'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.inventory_quantity      IS '在庫'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.change_amount           IS '釣銭基準額'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.balance_amount          IS '売掛残高'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.balance_month           IS '売掛残高月度'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.undeal_reason           IS '未取引理由'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.stop_approval_reason    IS '中止事由'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.created_by              IS '作成者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.creation_date           IS '作成日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.last_updated_by         IS '最終更新者'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.last_update_date        IS '最終更新日'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.last_update_login       IS '最終更新ﾛｸﾞｲﾝ'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.program_application_id  IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.program_id              IS 'ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID'
+/
+COMMENT ON COLUMN xxcmm.xxcmm_rep_undeal_list.program_update_date     IS 'ﾌﾟﾛｸﾞﾗﾑ更新日'
+/
