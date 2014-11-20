@@ -1,0 +1,1 @@
+CREATE OR REPLACE DIRECTORY XXCOS_OUT_AB_JX_DIR AS '/var/T3/ebsif/outbound/ab_iffile/jx';
