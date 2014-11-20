@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/02/23   1.1    K.Okaguchi       [障害COS_111] 非在庫品目を抽出しないようにする。
  *  2009/02/24   1.2    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/05/28   1.3    S.Kayahara       [障害T1_1176] 単価の導出に端数処理追加
+ *  2009/06/09   1.4    N.Maeda          [障害T1_1401] 端数処理取得テーブル修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -171,20 +172,29 @@ AS
            ,xsel.creation_date                creation_date                     --作成日
            ,xsel.sales_exp_line_id            sales_exp_line_id                 --販売実績明細ID
            ,xsel.sales_class                  sales_class                       --売上区分
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+           ,xchv.bill_tax_round_rule          tax_round_rule
+--****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
     FROM    xxcos_sales_exp_headers xseh
            ,xxcos_sales_exp_lines   xsel
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-           ,hz_cust_accounts                  hca                 
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--           ,hz_cust_accounts                  hca                 
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+           ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
+--****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
     WHERE   (xseh.cancel_correct_class IS NULL
            OR 
              xseh.order_no_hht         IS NULL )
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-    AND     hca.account_number           = xseh.ship_to_customer_code
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--          
+--****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--    AND     hca.account_number           = xseh.ship_to_customer_code
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+    AND     xchv.ship_account_number   = xseh.ship_to_customer_code
+--****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
     AND     xseh.dlv_invoice_class = cv_invoice_class_dliv
     AND     xseh.sales_exp_header_id =  xsel.sales_exp_header_id
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
@@ -221,14 +231,20 @@ AS
            ,xsel.creation_date                creation_date                     --作成日
            ,xsel.sales_exp_line_id            sales_exp_line_id                 --販売実績明細ID
            ,xsel.sales_class                  sales_class                       --売上区分
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+           ,xchv.bill_tax_round_rule          tax_round_rule
+--****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
     FROM    xxcos_sales_exp_headers xseh
            ,xxcos_sales_exp_lines   xsel
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-           ,hz_cust_accounts                  hca                 
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--           ,hz_cust_accounts                  hca                 
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+           ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
+--****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
            ,(SELECT  MAX(xseh.digestion_ln_number) digestion_ln_number
                     ,inl2.order_no_hht
              FROM   xxcos_sales_exp_headers xseh
@@ -255,9 +271,12 @@ AS
              GROUP BY inl2.order_no_hht
             ) inl1
     WHERE   inl1.order_no_hht        = xseh.order_no_hht
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
-    AND     hca.account_number       = xseh.ship_to_customer_code
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--          
+--****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+--    AND     hca.account_number           = xseh.ship_to_customer_code
+----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+    AND     xchv.ship_account_number   = xseh.ship_to_customer_code
+--****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
     AND     inl1.digestion_ln_number = xseh.digestion_ln_number
     AND     xseh.sales_exp_header_id = xsel.sales_exp_header_id
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
