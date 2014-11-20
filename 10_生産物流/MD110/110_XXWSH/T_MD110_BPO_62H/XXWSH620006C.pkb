@@ -7,7 +7,7 @@ AS
  * Description      : 出庫調整表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫調整表 T_MD070_BPO_62H
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/10/22    1.6   Yuko  Kawano     課題#62対応(指示なし実績情報を対象外とする)
  *  2008/10/31    1.7   Hitomi Itou      課題#32対応(単位条件にケース入数 > 0を追加)
  *  2008/11/26    1.8   Naoki Fukuda     本番障害#141対応(確定通知済は出力しないようにする)
+ *  2009/05/28    1.9   Hitomi Itou      本番障害#1398対応(配送先IDをコードで参照する)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -188,7 +189,7 @@ AS
   xcav   xxcmn_cust_accounts2_v%ROWTYPE ;         -- 顧客情報
   xcasv  xxcmn_cust_acct_sites2_v%ROWTYPE ;       -- 顧客サイト情報
   ximv   xxcmn_item_mst2_v%ROWTYPE ;              -- OPM品目情報
-  xicv   xxcmn_item_categories4_v%ROWTYPE ;       -- OPM品目カテゴリ割当情報
+  xicv   xxcmn_item_categories5_v%ROWTYPE ;       -- OPM品目カテゴリ割当情報
   xsmv   xxwsh_ship_method2_v%ROWTYPE ;           -- 配送区分情報
   xlv    xxcmn_lookup_values2_v%ROWTYPE ;         -- クイックコード
   xmrih  xxinv_mov_req_instr_headers%ROWTYPE ;    -- 移動依頼/指示ヘッダ(アドオン)
@@ -641,7 +642,7 @@ AS
         ,xxcmn_cust_accounts2_v         xcav    -- 08:顧客情報(管轄拠点情報)
         ,xxcmn_cust_acct_sites2_v       xcasv   -- 09:顧客サイト情報(出荷先情報)
         ,xxcmn_item_mst2_v              ximv    -- 10:OPM品目情報
-        ,xxcmn_item_categories4_v       xicv    -- 11:OPM品目カテゴリ割当情報
+        ,xxcmn_item_categories5_v       xicv    -- 11:OPM品目カテゴリ割当情報
         ,xxwsh_ship_method2_v           xsmv    -- 12:配送区分情報
         ,xxcmn_lookup_values2_v         xlv1    -- 13:クイックコード(運賃区分)
         ,xxcmn_lookup_values2_v         xlv2    -- 14:クイックコード(警告区分)
@@ -697,7 +698,14 @@ AS
         -- 08:顧客サイト情報(管轄拠点情報)
         AND  xoha.head_sales_branch = xcav.party_number
         -- 09:顧客サイト情報(出荷先情報)
-        AND  xoha.deliver_to_id     = xcasv.party_site_id
+-- 2009/05/28 H.Itou Mod Start 本番障害#1398
+--        AND  xoha.deliver_to_id     = xcasv.party_site_id
+        AND  xoha.deliver_to        = xcasv.party_site_number
+-- 2009/05/28 H.Itou Mod End
+-- 2009/05/28 H.Itou Add Start 本番障害#1398
+        AND   xcasv.party_site_status     = 'A'  -- 有効な出荷先
+        AND   xcasv.cust_acct_site_status = 'A'  -- 有効な出荷先
+-- 2009/05/28 H.Itou Add End
         -- 07:配車配送計画(アドオン)
         AND  xoha.delivery_no       =  xcs.delivery_no(+)
         -- 警告区分関連
@@ -917,7 +925,7 @@ AS
             ,xxcmn_item_locations2_v        xilv2     -- 05:OPM保管場所情報(入庫先)
             ,xxcmn_carriers2_v              xcv       -- 06:運送業者情報
             ,xxcmn_item_mst2_v              ximv      -- 07:OPM品目情報
-            ,xxcmn_item_categories4_v       xicv      -- 08:OPM品目カテゴリ割当情報
+            ,xxcmn_item_categories5_v       xicv      -- 08:OPM品目カテゴリ割当情報
             ,xxwsh_ship_method2_v           xsmv      -- 09:配送区分情報
             ,xxcmn_lookup_values2_v         xlv1      -- 10:クイックコード(運賃区分)
             ,xxcmn_lookup_values2_v         xlv2      -- 11:クイックコード(警告区分)
