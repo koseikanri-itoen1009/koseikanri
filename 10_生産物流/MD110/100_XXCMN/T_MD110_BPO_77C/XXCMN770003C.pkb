@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/12/08    1.14  A.Shiina         本番#562対応
  *  2008/12/11    1.15  N.Yoshida        本番障害580対応
  *  2008/12/12    1.16  N.Yoshida        本番障害669対応
+ *  2009/01/13    1.17  N.Yoshida        本番障害997対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -6401,11 +6402,13 @@ AS
       -- =========================================
       -- 品目ID
       -- =========================================
-      IF ((qty(gc_hamaoka_num)    + qty(gc_rec_kind_num) + qty(gc_rec_whse_num)
-           + qty(gc_rec_etc_num)  + qty(gc_resale_num)   + qty(gc_aband_num)
-           + qty(gc_sample_num)   + qty(gc_admin_num)    + qty(gc_acnt_num)
-           + qty(gc_dis_kind_num) + qty(gc_dis_whse_num) + qty(gc_dis_etc_num)
-           + qty(gc_inv_he_num)) <> cn_zero ) THEN
+-- 2009/01/13 v1.17 DELETE START
+--      IF ((qty(gc_hamaoka_num)    + qty(gc_rec_kind_num) + qty(gc_rec_whse_num)
+--           + qty(gc_rec_etc_num)  + qty(gc_resale_num)   + qty(gc_aband_num)
+--           + qty(gc_sample_num)   + qty(gc_admin_num)    + qty(gc_acnt_num)
+--           + qty(gc_dis_kind_num) + qty(gc_dis_whse_num) + qty(gc_dis_etc_num)
+--           + qty(gc_inv_he_num)) <> cn_zero ) THEN
+-- 2009/01/13 v1.17 DELETE END
 -- 2008/10/22 v1.09 ADD START
         prc_set_xml('T', 'g_line');
 -- 2008/10/22 v1.09 ADD START
@@ -6624,7 +6627,9 @@ AS
 -- 2008/10/22 v1.09 ADD START
         prc_set_xml('T', '/g_line');
 -- 2008/10/22 v1.09 ADD START
-      END IF;
+-- 2009/01/13 v1.17 DELETE START
+--      END IF;
+-- 2009/01/13 v1.17 DELETE END
 --
     END prc_xml_body_add;
 --
