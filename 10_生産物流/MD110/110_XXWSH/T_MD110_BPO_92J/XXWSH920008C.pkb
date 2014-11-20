@@ -6,8 +6,8 @@ AS
  * Package Name     : XXWSH920008C(body)
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
- * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92J
- * Version          : 1.3
+ * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,7 +38,8 @@ AS
  *  2008/11/20   1.0   SCS北寒寺         初回作成
  *  2008/11/28   1.1   Oracle 北寒寺正夫 本番障害246対応
  *  2008/11/29   1.2   SCS宮田           ロック対応
- *  2008/12/02   1.3   SCS二瓶           本番障害#251対応（条件追加) 
+ *  2008/12/02   1.3   SCS二瓶           本番障害#251対応（条件追加）
+ *  2008/12/15   1.4   SCS伊藤           本番障害#645対応（引当可能数取得条件を予定日から実績日に変更）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -950,7 +951,10 @@ AS
     WHERE   mrih.ship_to_locat_id        = in_whse_id
     AND     mrih.comp_actual_flg         = cv_flag_off
     AND     mrih.status                  = cv_status_04
-    AND     mrih.schedule_arrival_date  <= ld_eff_date
+-- 2008/12/15 h.Itou Mod Start 本番障害#645
+--    AND     mrih.schedule_arrival_date  <= ld_eff_date
+    AND     NVL(mrih.actual_arrival_date, mrih.schedule_arrival_date) <= ld_eff_date
+-- 2008/12/15 h.Itou Mod End
     AND     mrih.mov_hdr_id              = mril.mov_hdr_id
     AND     mril.mov_line_id             = mld.mov_line_id
     AND     mril.delete_flg              = cv_flag_off
@@ -1040,7 +1044,10 @@ AS
     WHERE   mrih.shipped_locat_id    = in_whse_id
     AND     mrih.comp_actual_flg     = cv_flag_off
     AND     mrih.status              = cv_status_05
-    AND     mrih.schedule_ship_date <= ld_eff_date
+-- 2008/12/15 h.Itou Mod Start 本番障害#645
+--    AND     mrih.schedule_ship_date <= ld_eff_date
+    AND     NVL(mrih.actual_ship_date, mrih.schedule_ship_date) <= ld_eff_date
+-- 2008/12/15 h.Itou Mod End
     AND     mrih.mov_hdr_id          = mril.mov_hdr_id
     AND     mril.mov_line_id         = mld.mov_line_id
     AND     mril.delete_flg          = cv_flag_off
