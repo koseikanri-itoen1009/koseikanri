@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIシステム用I/F連携機能（INBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.3                                                       ##
+## Version          : 1.4                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -31,6 +31,9 @@
 ##                                       ・SQL Loaderを用ない場合の　　　　　　 ##
 ##                                         業務コンカレントのパラメータは　　　 ##
 ##                                         ファイル名のみ指定        　　　　　 ##
+##  2009/04/03    1.4   Masayuki.Sano    障害番号[T1-0286]                      ##
+##                                       ・処理開始時に"AZBZZAPPS.env"を 　　　 ##
+##                                         読み込むように修正。                 ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -130,40 +133,42 @@ shell_end()
 #===============================================================================
 AZBZZEXECONCSUB()
 {
-  #ログファイルの最終アクセス日時と最終更新日時を処理日に更新
-  touch ${L_logfile}
-  output_log "`/bin/basename ${0}` START"
-
-  #----------------------------------------------------------------------------
-  #EBS関連の定義情報を取得
-  #----------------------------------------------------------------------------
-  #職責などのデフォルト値を取得
-  #・実行ファイルが存在しない⇒戻り値(7)をセットして処理終了
-  output_log "Reading Shell Env File START"
-  if [ -r ${L_envfile} ]
-  then
-    . ${L_envfile}
-    output_log "Reading Shell Env File was Completed"
-  else
-    output_log "Reading Shell Env File was Failed"
-    shell_end ${C_ret_code_eror}
-    return ${?}
-  fi
-  output_log "Reading Shell Env File END"
-
-  #EBS関連の定義情報を取得
-  #・実行ファイルが存在しない⇒戻り値(7)をセットして処理終了
-  output_log "Reading APPS Env File START"
-  if [ -r ${L_appsora} ]
-  then
-    . ${L_appsora}
-    output_log "Reading APPS Env File was Completed"
-  else
-    output_log "Reading APPS Env File was Failed"
-    shell_end ${C_ret_code_eror}
-    return ${?}
-  fi
-  output_log "Reading APPS Env File END"
+#2009/04/03 DELETE BY Masayuki.Sano Ver.1.4 Start
+#  #ログファイルの最終アクセス日時と最終更新日時を処理日に更新
+#  touch ${L_logfile}
+#  output_log "`/bin/basename ${0}` START"
+#
+#  #----------------------------------------------------------------------------
+#  #EBS関連の定義情報を取得
+#  #----------------------------------------------------------------------------
+#  #職責などのデフォルト値を取得
+#  #・実行ファイルが存在しない⇒戻り値(7)をセットして処理終了
+#  output_log "Reading Shell Env File START"
+#  if [ -r ${L_envfile} ]
+#  then
+#    . ${L_envfile}
+#    output_log "Reading Shell Env File was Completed"
+#  else
+#    output_log "Reading Shell Env File was Failed"
+#    shell_end ${C_ret_code_eror}
+#    return ${?}
+#  fi
+#  output_log "Reading Shell Env File END"
+#
+#  #EBS関連の定義情報を取得
+#  #・実行ファイルが存在しない⇒戻り値(7)をセットして処理終了
+#  output_log "Reading APPS Env File START"
+#  if [ -r ${L_appsora} ]
+#  then
+#    . ${L_appsora}
+#    output_log "Reading APPS Env File was Completed"
+#  else
+#    output_log "Reading APPS Env File was Failed"
+#    shell_end ${C_ret_code_eror}
+#    return ${?}
+#  fi
+#  output_log "Reading APPS Env File END"
+#2009/04/03 DELETE BY Masayuki.Sano Ver.1.4 End
 
   #----------------------------------------------------------------------------
   #コンカレント（I/Fファイルのヘッダ・フッタ削除、業務用コンカレント）を実行
@@ -793,6 +798,42 @@ if [ ${#} -lt 2 ]
 then
   exit ${C_ret_code_eror}
 fi
+
+#2009/04/03 ADD BY Masayuki.Sano Ver.1.4 Start
+#===============================================================================
+#1-1.外部設定ファイル(AZBZZAPPS.env)読込処理
+#===============================================================================
+#ログファイルの最終アクセス日時と最終更新日時を処理日に更新
+touch ${L_logfile}
+output_log "`/bin/basename ${0}` START"
+#"AZBZZAPPS.env"を実行
+#・"AZBZZAPPS.env"がない⇒戻り値(7)をセットして処理終了
+output_log "Reading Shell Env File START"
+if [ -r ${L_envfile} ]
+then
+  . ${L_envfile}
+  output_log "Reading Shell Env File was Completed"
+else
+  output_log "Reading Shell Env File was Failed"
+  shell_end ${C_ret_code_eror}
+  return ${?}
+fi
+output_log "Reading Shell Env File END"
+
+#"APPSORA.env"を実行
+#・"APPSORA.env"がない⇒戻り値(7)をセットして処理終了
+output_log "Reading APPS Env File START"
+if [ -r ${L_appsora} ]
+then
+  . ${L_appsora}
+  output_log "Reading APPS Env File was Completed"
+else
+  output_log "Reading APPS Env File was Failed"
+  shell_end ${C_ret_code_eror}
+  return ${?}
+fi
+output_log "Reading APPS Env File END"
+#2009/04/03 ADD BY Masayuki.Sano Ver.1.4 End
 
 #===============================================================================
 #2.設定情報の取得
