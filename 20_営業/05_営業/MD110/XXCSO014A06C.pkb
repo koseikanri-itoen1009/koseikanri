@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009-05-20    1.3   K.Satomura        T1_1082対応
  *  2009-05-28    1.4   K.Satomura        T1_1236対応
  *  2009-06-03    1.5   K.Satomura        T1_1304対応
+ *  2009-06-09    1.6   K.Satomura        T1_1304対応(再修正)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1462,7 +1463,14 @@ AS
                SELECT per.person_id                 person_id
                      ,MAX(per.effective_start_date) max_effective_start_date
                FROM   per_people_f per
+                     /* 2009.06.03 K.Satomura T1_1304対応(再修正) START */
+                     ,per_assignments_f paf
+                     /* 2009.06.03 K.Satomura T1_1304対応(再修正) END */
                WHERE  per.effective_start_date <= gd_process_date_next
+               /* 2009.06.03 K.Satomura T1_1304対応(再修正) START */
+               AND    per.person_id            =  paf.person_id
+               AND    per.effective_start_date =  paf.effective_start_date
+               /* 2009.06.03 K.Satomura T1_1304対応(再修正) END */
                GROUP BY per.person_id
              ) ppf
             /* 2009.06.03 K.Satomura T1_1304対応 END */
