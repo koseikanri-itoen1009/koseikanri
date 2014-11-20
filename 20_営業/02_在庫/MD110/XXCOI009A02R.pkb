@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.9
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/05/29    1.7   H.Sasaki         [T1_1113]伝票番号の桁数を修正
  *  2009/06/03    1.8   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *  2009/07/09    1.9   H.Sasaki         [0000338]SVF起動関数のパラメータ修正
+ *  2009/07/30    2.0   N.Abe            [0000638]単位の取得項目修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -428,7 +429,10 @@ AS
     it_item_code               IN mtl_system_items_b.segment1%TYPE,                    -- 商品
     it_item_name               IN xxcmn_item_mst_b.item_short_name%TYPE,               -- 商品名
     it_slip_no                 IN mtl_material_transactions.attribute1%TYPE,           -- 伝票No
-    it_transaction_qty         IN mtl_material_transactions.transaction_quantity%TYPE, -- 取引数量
+-- == 2009/07/30 V2.0 Modified START   ==================================================================
+--    it_transaction_qty         IN mtl_material_transactions.transaction_quantity%TYPE, -- 取引数量
+    it_transaction_qty         IN mtl_material_transactions.primary_quantity%TYPE,     -- 基準単位数量
+-- == 2009/07/30 V2.0 Modified END   ==================================================================
     iv_trading_cost            IN NUMBER,                  -- 営業原価額
     iv_dlv_cost                IN NUMBER,                  -- 振替運送費
     iv_nodata_msg              IN VARCHAR2,               -- ０件メッセージ
@@ -819,7 +823,10 @@ AS
    * Description      : 数量(C/S)算出処理(A-5)
    ***********************************************************************************/
   PROCEDURE get_cs_data(
-     it_transaction_qty        IN  mtl_material_transactions.transaction_quantity%TYPE  -- 数量
+-- == 2009/07/30 V2.0 Modified START ===============================================================
+--     it_transaction_qty        IN  mtl_material_transactions.transaction_quantity%TYPE  -- 数量
+     it_transaction_qty        IN  mtl_material_transactions.primary_quantity%TYPE      -- 基準単位数量
+-- == 2009/07/30 V2.0 Modified START ===============================================================
     ,it_godds_classification   IN  ic_item_mst_b.attribute11%TYPE                       -- ケース入数
     ,on_cs_qty                 OUT NUMBER                                               -- 数量（CS）
     ,ov_errbuf                 OUT VARCHAR2                                             -- エラー・メッセージ
@@ -1085,7 +1092,10 @@ AS
              ,mmt.inventory_item_id          inventory_item_id          -- 品目ID
              ,msib.segment1                  item_no                    -- 品目コード
              ,ximb.item_short_name           item_short_name            -- 略称
-             ,mmt.transaction_quantity       transaction_qty            -- 取引数量
+-- == 2009/07/30 V2.0 Modified START ===============================================================
+--             ,mmt.transaction_quantity       transaction_qty            -- 取引数量
+             ,mmt.primary_quantity           transaction_qty            -- 基準単位数量
+-- == 2009/07/30 V2.0 Modified END ===============================================================
       FROM    mtl_material_transactions  mmt                            -- 資材取引
              ,mtl_transaction_types      mtt                            -- 取引タイプマスタ
              ,mtl_secondary_inventories  msi1                           -- 保管場所マスタ1
@@ -1142,7 +1152,10 @@ AS
              ,mmt.inventory_item_id           inventory_item_id         -- 品目ID
              ,msib.segment1                   item_no                   -- 品目コード
              ,ximb.item_short_name            item_short_name           -- 略称
-             ,mmt.transaction_quantity        transaction_qty           -- 取引数量
+-- == 2009/07/30 V2.0 Modified START ===============================================================
+--             ,mmt.transaction_quantity        transaction_qty           -- 取引数量
+             ,mmt.primary_quantity            transaction_qty           -- 基準単位数量
+-- == 2009/07/30 V2.0 Modified END   ===============================================================
       FROM    mtl_material_transactions  mmt                            -- 資材取引
              ,mtl_transaction_types      mtt                            -- 取引タイプマスタ
              ,mtl_secondary_inventories  msi                            -- 保管場所マスタ
@@ -1196,7 +1209,10 @@ AS
              ,mmt.inventory_item_id          inventory_item_id          -- 品目ID
              ,msib.segment1                  item_no                    -- 品目コード
              ,ximb.item_short_name           item_short_name            -- 略称
-             ,mmt.transaction_quantity       transaction_qty            -- 取引数量
+-- == 2009/07/30 V2.0 Modified START ===============================================================
+--             ,mmt.transaction_quantity       transaction_qty            -- 取引数量
+             ,mmt.primary_quantity           transaction_qty            -- 基準単位数量
+-- == 2009/07/30 V2.0 Modified END   ===============================================================
       FROM    mtl_material_transactions  mmt                            -- 資材取引
              ,mtl_transaction_types      mtt                            -- 取引タイプマスタ
              ,mtl_secondary_inventories  msi                            -- 保管場所マスタ

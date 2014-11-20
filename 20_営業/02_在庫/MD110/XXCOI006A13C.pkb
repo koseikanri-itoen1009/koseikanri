@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A13C(body)
  * Description      : 棚卸減耗データ作成
  * MD.050           : 棚卸減耗データ作成 <MD050_COI_A13>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/06/03    1.2   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *  2009/06/26    1.3   H.Sasaki         [0000258]棚卸対象外を処理対象とする
  *  2009/07/14    1.4   H.Sasaki         [0000679]棚卸減耗情報抽出カーソルのPT対応
+ *  2009/07/29    1.5   N.Abe            [0000638]単位の取得項目修正
  *
  *****************************************************************************************/
 --
@@ -374,7 +375,10 @@ AS
   PROCEDURE chk_mst_data(
     it_inventory_item_id  IN  mtl_system_items_b.inventory_item_id%TYPE,          -- 1.品目ID
     in_organization_id    IN  NUMBER,                                             -- 2.在庫組織ID
-    ov_primary_unit       OUT VARCHAR2,                                           -- 3.基準単位
+-- == 2009/07/29 V1.5 Modified START ===============================================================
+--    ov_primary_unit       OUT VARCHAR2,                                           -- 3.基準単位
+    ov_primary_uom_code   OUT VARCHAR2,                                           -- 3.基準単位コード
+-- == 2009/07/29 V1.5 Modified END   ===============================================================
     ov_errbuf             OUT VARCHAR2,     --   エラー・メッセージ               --# 固定 #
     ov_retcode            OUT VARCHAR2,     --   リターン・コード                 --# 固定 #
     ov_errmsg             OUT VARCHAR2)     --   ユーザー・エラー・メッセージ     --# 固定 #
@@ -418,6 +422,9 @@ AS
     lt_return_enable      mtl_system_items_b.returnable_flag%TYPE;                --返品可能
     lt_sales_class        ic_item_mst_b.attribute26%TYPE;                         --売上対象区分
     lt_primary_unit       mtl_system_items_b.primary_unit_of_measure%TYPE;        --基準単位
+-- == 2009/07/29 V1.5 Added START ===============================================================
+    lt_inventory_item_id  mtl_system_items_b.inventory_item_id%TYPE;              --品目ID
+-- == 2009/07/29 V1.5 Added END   ===============================================================
 --
     -- *** ローカル・カーソル ***
 --
@@ -456,7 +463,22 @@ AS
     --=============================
     --2.品目ステータス取得
     --=============================
-    xxcoi_common_pkg.get_item_info(
+-- == 2009/07/29 V1.5 Modified START ===============================================================
+--    xxcoi_common_pkg.get_item_info(
+--          iv_item_code            =>  lt_item_code          -- 1 .品目コード
+--         ,in_org_id               =>  in_organization_id    -- 2 .在庫組織ID
+--         ,ov_item_status          =>  lt_item_status        -- 3 .品目ステータス
+--         ,ov_cust_order_flg       =>  lt_cust_order_flg     -- 4 .顧客受注可能フラグ
+--         ,ov_transaction_enable   =>  lt_transaction_enable -- 5 .取引可能
+--         ,ov_stock_enabled_flg    =>  lt_stock_enabled_flg  -- 6 .在庫保有可能フラグ
+--         ,ov_return_enable        =>  lt_return_enable      -- 7 .返品可能
+--         ,ov_sales_class          =>  lt_sales_class        -- 8 .売上対象区分
+--         ,ov_primary_unit         =>  lt_primary_unit       -- 9 .基準単位
+--         ,ov_errbuf               =>  lv_errbuf             -- 10.エラーメッセージ
+--         ,ov_retcode              =>  lv_retcode            -- 11.リターン・コード
+--         ,ov_errmsg               =>  lv_errmsg             -- 12.ユーザー・エラーメッセージ
+--        );
+    xxcoi_common_pkg.get_item_info2(
           iv_item_code            =>  lt_item_code          -- 1 .品目コード
          ,in_org_id               =>  in_organization_id    -- 2 .在庫組織ID
          ,ov_item_status          =>  lt_item_status        -- 3 .品目ステータス
@@ -466,10 +488,13 @@ AS
          ,ov_return_enable        =>  lt_return_enable      -- 7 .返品可能
          ,ov_sales_class          =>  lt_sales_class        -- 8 .売上対象区分
          ,ov_primary_unit         =>  lt_primary_unit       -- 9 .基準単位
-         ,ov_errbuf               =>  lv_errbuf             -- 10.エラーメッセージ
-         ,ov_retcode              =>  lv_retcode            -- 11.リターン・コード
-         ,ov_errmsg               =>  lv_errmsg             -- 12.ユーザー・エラーメッセージ
+         ,on_inventory_item_id    =>  lt_inventory_item_id  -- 10.品目ID
+         ,ov_primary_uom_code     =>  ov_primary_uom_code   -- 11.基準単位コード
+         ,ov_errbuf               =>  lv_errbuf             -- 12.エラーメッセージ
+         ,ov_retcode              =>  lv_retcode            -- 13.リターン・コード
+         ,ov_errmsg               =>  lv_errmsg             -- 14.ユーザー・エラーメッセージ
         );
+-- == 2009/07/29 V1.5 Modified END   ===============================================================
     IF (lv_retcode <> cv_status_normal) THEN
       RAISE global_api_expt;
     END IF;
@@ -499,8 +524,10 @@ AS
       RAISE chk_sales_item_expt;
     END IF;
 --
-    --OUTパラメータに設定
-    ov_primary_unit := lt_primary_unit;
+-- == 2009/07/29 V1.5 Deleted START ===============================================================
+--    --OUTパラメータに設定
+--    ov_primary_unit := lt_primary_unit;
+-- == 2009/07/29 V1.5 Deleted END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -662,15 +689,18 @@ AS
    ***********************************************************************************/
   PROCEDURE ins_tran_interface(
     it_inv_seq            IN  xxcoi_inv_reception_monthly.inv_seq%TYPE,             -- 1.棚卸SEQ
-    it_inventory_item_id  IN  xxcoi_inv_reception_monthly.inventory_item_id%TYPE,   -- 2.インターフェースID
-    in_organization_id    IN  NUMBER,                                               -- 3.取込順
-    in_inv_wear           IN  NUMBER,                                               -- 4.拠点コード
-    it_primary_unit       IN  mtl_system_items_b.primary_unit_of_measure%TYPE,      -- 5.棚卸区分
+    it_inventory_item_id  IN  xxcoi_inv_reception_monthly.inventory_item_id%TYPE,   -- 2.品目ID
+    in_organization_id    IN  NUMBER,                                               -- 3.組織
+    in_inv_wear           IN  NUMBER,                                               -- 4.棚卸減耗数
+-- == 2009/07/29 V1.4 Modified START ===============================================================
+--    it_primary_unit       IN  mtl_system_items_b.primary_unit_of_measure%TYPE,      -- 5.棚卸区分
+    it_primary_uom_code   IN  mtl_system_items_b.primary_uom_code%TYPE,             -- 5.基準単位コード
+-- == 2009/07/29 V1.4 Modified END   ===============================================================
     iv_period_date        IN  VARCHAR2,                                             -- 6.棚卸日
-    it_subinventory_code  IN  xxcoi_inv_reception_monthly.subinventory_code%TYPE,   -- 7.倉庫区分
-    it_tran_id_eki        IN  mtl_transaction_types.transaction_type_id%TYPE,       -- 8.棚卸場所
-    it_tran_id_son        IN  mtl_transaction_types.transaction_type_id%TYPE,       -- 9.品目コード
-    in_disposition_id     IN  NUMBER,                                               --10.ケース数
+    it_subinventory_code  IN  xxcoi_inv_reception_monthly.subinventory_code%TYPE,   -- 7.保管場所
+    it_tran_id_eki        IN  mtl_transaction_types.transaction_type_id%TYPE,       -- 8.棚卸減耗益
+    it_tran_id_son        IN  mtl_transaction_types.transaction_type_id%TYPE,       -- 9.棚卸減耗損
+    in_disposition_id     IN  NUMBER,                                               --10.勘定科目別名ID
     ov_errbuf             OUT VARCHAR2,     --   エラー・メッセージ                 --# 固定 #
     ov_retcode            OUT VARCHAR2,     --   リターン・コード                   --# 固定 #
     ov_errmsg             OUT VARCHAR2)     --   ユーザー・エラー・メッセージ       --# 固定 #
@@ -728,7 +758,7 @@ AS
       ,organization_id          -- 7.在庫組織ID
       ,transaction_quantity     -- 8.取引数量
       ,primary_quantity         -- 9.基準単位数量
-      ,transaction_uom          --10.取引単位
+      ,transaction_uom          --10.取引単位コード
       ,transaction_date         --11.取引日
       ,subinventory_code        --12.保管場所
       ,transaction_type_id      --13.取引タイプID
@@ -752,7 +782,10 @@ AS
       ,in_organization_id                       -- 7.在庫組織ID
       ,in_inv_wear                              -- 8.取引数量
       ,in_inv_wear                              -- 9.基準単位数量
-      ,it_primary_unit                          --10.取引単位
+-- == 2009/07/29 V1.5 Modified START ===============================================================
+--      ,it_primary_unit                          --10.取引単位
+      ,it_primary_uom_code                      --10.基準単位コード
+-- == 2009/07/29 V1.5 Modified END   ===============================================================
       ,LAST_DAY(TO_DATE(iv_period_date, cv_ym)) --11.取引日
       ,it_subinventory_code                     --12.保管場所
       ,DECODE(SIGN(in_inv_wear), -1, it_tran_id_son, it_tran_id_eki)
@@ -971,7 +1004,10 @@ AS
     lt_tran_id_son        mtl_transaction_types.transaction_type_id%TYPE;       --取引タイプID（棚卸減耗損）
     lt_tran_id_eki        mtl_transaction_types.transaction_type_id%TYPE;       --取引タイプID（棚卸減耗益）
     --
-    lt_primary_unit       mtl_system_items_b.primary_unit_of_measure%TYPE;      --基準単位
+-- == 2009/07/29 V1.5 Modified START ===============================================================
+--    lt_primary_unit       mtl_system_items_b.primary_unit_of_measure%TYPE;      --基準単位
+    lt_primary_uom_code   mtl_system_items_b.primary_uom_code%TYPE;             --基準単位コード
+-- == 2009/07/29 V1.5 Modified END   ===============================================================
     ln_disposition_id     NUMBER;
 --
     -- ===============================
@@ -1085,7 +1121,10 @@ AS
       chk_mst_data(
          it_inventory_item_id => get_month_data_rec.inventory_item_id -- 1.品目ID
         ,in_organization_id   => ln_organization_id                   -- 2.在庫組織ID
-        ,ov_primary_unit      => lt_primary_unit                      -- 3.基準単位
+-- == 2009/07/29 V1.5 Modified START ===============================================================
+--        ,ov_primary_unit      => lt_primary_unit                      -- 3.基準単位
+        ,ov_primary_uom_code  => lt_primary_uom_code                  -- 3.基準単位コード
+-- == 2009/07/29 V1.5 Modified END   ===============================================================
         ,ov_errbuf            => lv_errbuf                            -- エラー・メッセージ           --# 固定 #
         ,ov_retcode           => lv_retcode                           -- リターン・コード             --# 固定 #
         ,ov_errmsg            => lv_errmsg);                          -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1124,7 +1163,10 @@ AS
         ,it_inventory_item_id => get_month_data_rec.inventory_item_id -- 2.品目ID
         ,in_organization_id   => ln_organization_id                   -- 3.在庫組織ID
         ,in_inv_wear          => get_month_data_rec.inv_wear          -- 4.棚卸減耗
-        ,it_primary_unit      => lt_primary_unit                      -- 5.基準単位
+-- == 2009/07/29 V1.5 Modified START ===============================================================
+--        ,it_primary_unit      => lt_primary_unit                      -- 5.基準単位
+        ,it_primary_uom_code  => lt_primary_uom_code                  -- 5.基準単位コード
+-- == 2009/07/29 V1.5 Modified END   ===============================================================
         ,iv_period_date       => lv_period_date                       -- 6.在庫会計期間
         ,it_subinventory_code => get_month_data_rec.subinventory_code -- 7.保管場所
         ,it_tran_id_eki       => lt_tran_id_eki                       -- 8.棚卸減耗益
