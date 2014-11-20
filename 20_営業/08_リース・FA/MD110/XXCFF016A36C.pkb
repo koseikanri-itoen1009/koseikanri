@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF016A36C(body)
  * Description      : リース契約明細メンテナンス
  * MD.050           : MD050_CFF_016_A36_リース契約明細メンテナンス.
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/12    1.0   SCSK 古山         新規作成
+ *  2013/07/11    1.1   SCSK 中村         E_本稼動_10871 消費税対応
+ *  2014/01/31    1.2   SCSK 中野         E_本稼動_11242 リース契約明細更新の不具合対応
  *
  *****************************************************************************************/
 --
@@ -155,6 +157,9 @@ AS
   cv_msg_cff_50208       CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50208';  -- (仮)会計期間
   cv_msg_cff_50209       CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50209';  -- (仮)支払計画作成
   cv_msg_cff_50222       CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50222';  -- (仮)照合済フラグ
+-- Add 2013/07/11 Ver.1.1 Start
+  cv_msg_cff_50148       CONSTANT VARCHAR2(20)  := 'APP-XXCFF1-50148';  -- 税金コード
+-- Add 2013/07/11 Ver.1.1 Start
   -- プロファイル
   cv_prof_interval       CONSTANT VARCHAR2(100) := 'XXCOS1_INTERVAL';   -- XXCOS:待機間隔
   cv_prof_max_wait       CONSTANT VARCHAR2(100) := 'XXCOS1_MAX_WAIT';   -- XXCOS:最大待機時間
@@ -183,6 +188,9 @@ AS
      ,first_tax_charge      xxcff_contract_lines.first_tax_charge%TYPE     -- 6 : 初回消費税          (任意)
      ,second_tax_charge     xxcff_contract_lines.second_tax_charge%TYPE    -- 7 : 2回目以降の消費税   (任意)
      ,estimated_cash_price  xxcff_contract_lines.estimated_cash_price%TYPE -- 8 : 見積現金購入価額    (任意)
+-- Add 2013/07/11 Ver.1.1 Start
+     ,tax_code              xxcff_contract_lines.tax_code%TYPE             -- 9 : 税金コード          (任意)
+-- ADd 2013/07/11 Ver.1.1 End
     );
 --
   -- ===============================
@@ -298,6 +306,9 @@ AS
         ,info_sys_if_date                      -- リース管理情報連携日
         ,first_installation_address            -- 初回設置場所
         ,first_installation_place              -- 初回設置先
+-- Add 2013/07/11 Ver.1.1 Start
+        ,tax_code                              -- 税金コード
+-- Add 2013/07/11 Ver.1.1 End
         ,accounting_date                       -- 計上日
         ,accounting_if_flag                    -- 会計ＩＦフラグ
         ,description                           -- 摘要
@@ -351,6 +362,9 @@ AS
         ,xcl.info_sys_if_date                  -- リース管理情報連携日
         ,xcl.first_installation_address        -- 初回設置場所
         ,xcl.first_installation_place          -- 初回設置先
+-- Add 2013/07/11 Ver.1.1 Start
+        ,xcl.tax_code                          -- 税金コード
+-- Add 2013/07/11 Ver.1.1 End
         ,gd_period_close_date                  -- 計上日
         ,cv_acct_if_flag_sent                  -- 会計ＩＦフラグ('2':送信済)
         ,NULL                                  -- 摘要
@@ -691,7 +705,9 @@ AS
           ,xcl.original_cost               = lt_original_cost                -- 取得価額
           ,xcl.calc_interested_rate        = lt_calc_interested_rate         -- 計算利子率
           ,xcl.present_value_discount_rate = lt_present_value_discount_rate  -- 現在価値割引率
-          ,xcl.lease_kind                  = lt_lease_kind                   -- リース種類
+-- Del 2014/01/31 Ver.1.2 Start
+--          ,xcl.lease_kind                  = lt_lease_kind                   -- リース種類
+-- Del 2014/01/31 Ver.1.2 End
           ,xcl.last_updated_by             = cn_last_updated_by              -- 最終更新者
           ,xcl.last_update_date            = cd_last_update_date             -- 最終更新日
           ,xcl.last_update_login           = cn_last_update_login            -- 最終更新ログイン
@@ -863,6 +879,9 @@ AS
              ,xcl.gross_tax_charge        = ln_gross_tax_charge             -- 総額消費税_リース料
              ,xcl.gross_total_charge      = ln_gross_total_charge           -- 総額計_リース料
              ,xcl.estimated_cash_price    = ln_estimated_cash_price         -- 見積現金購入価額
+-- Add 2013/07/11 Ver.1.1 Start
+             ,xcl.tax_code                = NVL(gr_param.tax_code, xcl.tax_code) -- 税金コード
+-- Add 2013/07/11 Ver.1.1 End
              ,xcl.last_updated_by         = cn_last_updated_by              -- 最終更新者
              ,xcl.last_update_date        = cd_last_update_date             -- 最終更新日
              ,xcl.last_update_login       = cn_last_update_login            -- 最終更新ログイン
@@ -1031,6 +1050,9 @@ AS
         ,info_sys_if_date                           -- リース管理情報連携日
         ,first_installation_address                 -- 初回設置場所
         ,first_installation_place                   -- 初回設置先
+-- Add 2013/07/11 Ver.1.1 Start
+        ,tax_code                                   -- 税金コード
+-- Add 2013/07/11 Ver.1.1 End
         ,run_period_name                            -- 実行会計期間
         ,run_line_num                               -- 実行枝番
         ,created_by                                 -- 作成者
@@ -1080,6 +1102,9 @@ AS
         ,xcl.info_sys_if_date
         ,xcl.first_installation_address
         ,xcl.first_installation_place
+-- Add 2013/07/11 Ver.1.1 Start
+        ,xcl.tax_code
+-- Add 2013/07/11 Ver.1.1 End
         ,gt_period_name
         ,lv_run_line_num
         ,xcl.created_by
@@ -1618,6 +1643,9 @@ AS
     iv_first_tax_charge      IN  VARCHAR2,      --   6.初回消費税
     iv_second_tax_charge     IN  VARCHAR2,      --   7.2回目以降の消費税
     iv_estimated_cash_price  IN  VARCHAR2,      --   8.見積現金購入価額
+-- Add 2013/07/11 Ver.1.1 Start
+    iv_tax_code              IN  VARCHAR2,      --   9.税金コード
+-- ADd 2013/07/11 Ver.1.1 End
     ov_errbuf                OUT VARCHAR2,      --   エラー・メッセージ           --# 固定 #
     ov_retcode               OUT VARCHAR2,      --   リターン・コード             --# 固定 #
     ov_errmsg                OUT VARCHAR2)      --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1707,7 +1735,11 @@ AS
        (iv_second_charge IS NULL) AND 
        (iv_first_tax_charge IS NULL) AND 
        (iv_second_tax_charge IS NULL) AND 
-       (iv_estimated_cash_price IS NULL) THEN
+-- Mod 2013/07/11 Ver.1.1 Start
+--       (iv_estimated_cash_price IS NULL) THEN
+       (iv_estimated_cash_price IS NULL) AND
+       (iv_tax_code IS NULL) THEN
+-- Mod 2013/07/11 Ver.1.1 End
       lv_errmsg := xxccp_common_pkg.get_msg(
                       iv_application  => cv_app_name
                      ,iv_name         => cv_msg_xxcff00207
@@ -1868,6 +1900,28 @@ AS
     ELSE
       gr_param.estimated_cash_price := NULL;
     END IF;
+--
+-- Add 2013/07/11 Ver.1.1 Start
+    -- 9 : 税金コード(任意)
+    IF iv_tax_code IS NOT NULL THEN
+      BEGIN
+        gr_param.tax_code := iv_tax_code;
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- エラーメッセージ取得
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name
+                         ,iv_name         => cv_msg_xxcff00200
+                         ,iv_token_name1  => cv_tkn_input
+                         ,iv_token_value1 => cv_msg_cff_50148
+                      );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+    ELSE
+      gr_param.tax_code := NULL;
+    END IF;
+-- ADd 2013/07/11 Ver.1.1 End
 --
     -- =====================================
     -- データの存在チェック
@@ -2147,6 +2201,9 @@ AS
     iv_first_tax_charge       IN    VARCHAR2,        --   6.初回消費税
     iv_second_tax_charge      IN    VARCHAR2,        --   7.2回目以降の消費税
     iv_estimated_cash_price   IN    VARCHAR2,        --   8.見積現金購入価額
+-- Add 2013/07/11 Ver.1.1 Start
+    iv_tax_code               IN    VARCHAR2,        --   9.税金コード
+-- ADd 2013/07/11 Ver.1.1 End
     ov_errbuf                 OUT   VARCHAR2,        --   エラー・メッセージ           --# 固定 #
     ov_retcode                OUT   VARCHAR2,        --   リターン・コード             --# 固定 #
     ov_errmsg                 OUT   VARCHAR2         --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2220,6 +2277,9 @@ AS
       ,iv_first_tax_charge       --   6.初回消費税
       ,iv_second_tax_charge      --   7.2回目以降の消費税
       ,iv_estimated_cash_price   --   8.見積現金購入価額
+-- Add 2013/07/11 Ver.1.1 Start
+      ,iv_tax_code               --   9.税金コード
+-- ADd 2013/07/11 Ver.1.1 End
       ,lv_errbuf                 --   エラー・メッセージ           --# 固定 #
       ,lv_retcode                --   リターン・コード             --# 固定 #
       ,lv_errmsg                 --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2364,7 +2424,11 @@ AS
     iv_second_charge          IN    VARCHAR2,        --   5.2回目以降のリース料
     iv_first_tax_charge       IN    VARCHAR2,        --   6.初回消費税
     iv_second_tax_charge      IN    VARCHAR2,        --   7.2回目以降の消費税
-    iv_estimated_cash_price   IN    VARCHAR2         --   8.見積現金購入価額
+-- Mod 2013/07/11 Ver.1.1 Start
+--    iv_estimated_cash_price   IN    VARCHAR2         --   8.見積現金購入価額
+    iv_estimated_cash_price   IN    VARCHAR2,        --   8.見積現金購入価額
+    iv_tax_code               IN    VARCHAR2         --   9.税金コード
+-- Mod 2013/07/11 Ver.1.1 End
   )
 --
 --###########################  固定部 START   ###########################
@@ -2425,6 +2489,9 @@ AS
       ,iv_first_tax_charge        --   6.初回消費税
       ,iv_second_tax_charge       --   7.2回目以降の消費税
       ,iv_estimated_cash_price    --   8.見積現金購入価額
+-- Add 2013/07/11 Ver.1.1 Start
+      ,iv_tax_code                --   9.税金コード
+-- ADd 2013/07/11 Ver.1.1 End
       ,lv_errbuf                  --   エラー・メッセージ           --# 固定 #
       ,lv_retcode                 --   リターン・コード             --# 固定 #
       ,lv_errmsg                  --   ユーザー・エラー・メッセージ --# 固定 #
