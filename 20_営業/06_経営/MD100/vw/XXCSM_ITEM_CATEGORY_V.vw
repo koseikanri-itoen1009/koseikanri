@@ -1,3 +1,18 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * View Name       : XXCSM_ITEM_CATEGORY_V
+ * Description     : 商品群一覧ビュー
+ * Version         : 1.1
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  XXXX/XX/XX    1.0   XXXXXXXX         新規作成
+ *  2013/03/29    1.1   K.Nakamura       [E_本稼動_10596]無効日判定条件の符号逆転
+ *
+ ****************************************************************************************/
 CREATE OR REPLACE VIEW XXCSM_ITEM_CATEGORY_V
 (
   category_id
@@ -50,7 +65,10 @@ AS
   AND   mcb.category_id = mct.category_id
   AND   mct.language = USERENV('LANG')
   AND   mcb.enabled_flag = 'Y'
-  AND   NVL(mcb.disable_date,xpcdv.process_date) <= xpcdv.process_date
+-- 2013/03/29 Ver1.1 Mod Start
+--  AND   NVL(mcb.disable_date,xpcdv.process_date) <= xpcdv.process_date
+  AND   NVL(mcb.disable_date,xpcdv.process_date) >= xpcdv.process_date
+-- 2013/03/29 Ver1.1 Mod End
   AND   fifs.id_flex_structure_code = 'XXCMN_SGUN_CODE'
   AND   fifs.application_id = 401 
   AND   fifs.id_flex_code = 'MCAT'
