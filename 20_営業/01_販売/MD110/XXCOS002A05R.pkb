@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2010/01/07    1.20  N.Maeda          [E_本稼動_00849] 値引のみデータ対応
  *  2011/03/07    1.21  S.Ochiai         [E_本稼動_06590]オーダー№追加連携対応
  *  2011/07/07    1.22  S.Niki           [E_本稼動_07848]販売実績明細の集約条件修正
+ *  2012/03/30    1.23  Y.Horikawa       [E_本稼動_09039]パフォーマンス改善対応
  *
  *****************************************************************************************/
 --
@@ -994,31 +995,36 @@ AS
                             )
     IS
       SELECT
--- 2009/09/01 Ver.1.15 M.Sano Add Start
+-- 2012/03/30 Ver.1.23 Mod Start
+---- 2009/09/01 Ver.1.15 M.Sano Add Start
+--         /*+
+--           LEADING ( riv.jrrx_n )
+--           INDEX   ( riv.jrgm_n jtf_rs_group_members_n2)
+--           INDEX   ( riv.jrgb_n jtf_rs_groups_b_u1 )
+--           INDEX   ( riv.jrrx_n xxcso_jrre_n02 )
+--           USE_NL  ( riv.papf_n )
+--           USE_NL  ( riv.pept_n )
+--           USE_NL  ( riv.paaf_n )
+--           USE_NL  ( riv.jrgm_n )
+--           USE_NL  ( riv.jrgb_n )
+--           LEADING ( riv.jrrx_o )
+--           INDEX   ( riv.jrrx_o xxcso_jrre_n02 )
+--           INDEX   ( riv.jrgm_o jtf_rs_group_members_n2)
+--           INDEX   ( riv.jrgb_o jtf_rs_groups_b_u1 )
+--           USE_NL  ( riv.papf_o )
+--           USE_NL  ( riv.pept_o )
+--           USE_NL  ( riv.paaf_o )
+--           USE_NL  ( riv.jrgm_o )
+--           USE_NL  ( riv.jrgb_o )
+--           USE_NL  ( riv )
+--           USE_NL  ( disc )
+--           USE_NL  ( infd )
+--         */
+---- 2009/09/01 Ver.1.15 M.Sano Add End
          /*+
-           LEADING ( riv.jrrx_n )
-           INDEX   ( riv.jrgm_n jtf_rs_group_members_n2)
-           INDEX   ( riv.jrgb_n jtf_rs_groups_b_u1 )
-           INDEX   ( riv.jrrx_n xxcso_jrre_n02 )
-           USE_NL  ( riv.papf_n )
-           USE_NL  ( riv.pept_n )
-           USE_NL  ( riv.paaf_n )
-           USE_NL  ( riv.jrgm_n )
-           USE_NL  ( riv.jrgb_n )
-           LEADING ( riv.jrrx_o )
-           INDEX   ( riv.jrrx_o xxcso_jrre_n02 )
-           INDEX   ( riv.jrgm_o jtf_rs_group_members_n2)
-           INDEX   ( riv.jrgb_o jtf_rs_groups_b_u1 )
-           USE_NL  ( riv.papf_o )
-           USE_NL  ( riv.pept_o )
-           USE_NL  ( riv.paaf_o )
-           USE_NL  ( riv.jrgm_o )
-           USE_NL  ( riv.jrgb_o )
-           USE_NL  ( riv )
-           USE_NL  ( disc )
-           USE_NL  ( infd )
+             LEADING(infh disc base parb cust cuac parc tacl gysm gysm1 incl htcl orct ppf cscl riv infd)
          */
--- 2009/09/01 Ver.1.15 M.Sano Add End
+-- 2012/03/30 Ver.1.23 Mod End
          infh.delivery_date                        AS target_date                     -- 対象日付
         ,infh.sales_base_code                      AS base_code                       -- 拠点コード
         ,SUBSTRB( parb.party_name, 1, 40 )         AS base_name                       -- 拠点名称
@@ -1169,6 +1175,11 @@ AS
          ) disc         -- 売上値引額
         ,(
            SELECT
+-- 2012/03/30 Ver.1.23 Add Start
+             /*+
+                 NO_EXPAND INDEX(seh xxcos_sales_exp_headers_n01)
+             */
+-- 2012/03/30 Ver.1.23 Add End
               seh.delivery_date               AS delivery_date                -- 対象日付
 -- 2011/03/07 Ver.1.21 S.Ochiai ADD Start
              ,seh.order_invoice_number        AS order_invoice_number         -- 注文伝票番号
@@ -1226,6 +1237,11 @@ AS
          ) infh         -- ヘッダ情報
         ,(
            SELECT
+-- 2012/03/30 Ver.1.23 Add Start
+             /*+
+                 LEADING(seh xchv)
+             */
+-- 2012/03/30 Ver.1.23 Add End
               seh.delivery_date                      AS delivery_date                   -- 対象日付
 -- 2011/07/07 Ver.1.22 S.Niki ADD Start
              ,seh.order_invoice_number               AS order_invoice_number            -- 注文伝票番号
@@ -2272,28 +2288,30 @@ AS
              ,program_update_date                 -- ﾌﾟﾛｸﾞﾗﾑ更新日
           )
         SELECT
--- 2009/09/01 Ver.1.15 M.Sano Add Start
-           /*+
-             leading ( riv.jrrx_n )
-             index   ( riv.jrgm_n jtf_rs_group_members_n2)
-             index   ( riv.jrgb_n jtf_rs_groups_b_u1 )
-             index   ( riv.jrrx_n xxcso_jrre_n02 )
-             use_nl  ( riv.papf_n )
-             use_nl  ( riv.pept_n )
-             use_nl  ( riv.paaf_n )
-             use_nl  ( riv.jrgm_n )
-             use_nl  ( riv.jrgb_n )
-             leading ( riv.jrrx_o )
-             index   ( riv.jrrx_o xxcso_jrre_n02 )
-             index   ( riv.jrgm_o jtf_rs_group_members_n2)
-             index   ( riv.jrgb_o jtf_rs_groups_b_u1 )
-             use_nl  ( riv.papf_o )
-             use_nl  ( riv.pept_o )
-             use_nl  ( riv.paaf_o )
-             use_nl  ( riv.jrgm_o )
-             use_nl  ( riv.jrgb_o )
-           */
--- 2009/09/01 Ver.1.15 M.Sano Add End
+-- 2012/03/30 Ver.1.23 Del Start
+---- 2009/09/01 Ver.1.15 M.Sano Add Start
+--           /*+
+--             leading ( riv.jrrx_n )
+--             index   ( riv.jrgm_n jtf_rs_group_members_n2)
+--             index   ( riv.jrgb_n jtf_rs_groups_b_u1 )
+--             index   ( riv.jrrx_n xxcso_jrre_n02 )
+--             use_nl  ( riv.papf_n )
+--             use_nl  ( riv.pept_n )
+--             use_nl  ( riv.paaf_n )
+--             use_nl  ( riv.jrgm_n )
+--             use_nl  ( riv.jrgb_n )
+--             leading ( riv.jrrx_o )
+--             index   ( riv.jrrx_o xxcso_jrre_n02 )
+--             index   ( riv.jrgm_o jtf_rs_group_members_n2)
+--             index   ( riv.jrgb_o jtf_rs_groups_b_u1 )
+--             use_nl  ( riv.papf_o )
+--             use_nl  ( riv.pept_o )
+--             use_nl  ( riv.paaf_o )
+--             use_nl  ( riv.jrgm_o )
+--             use_nl  ( riv.jrgb_o )
+--           */
+---- 2009/09/01 Ver.1.15 M.Sano Add End
+-- 2012/03/30 Ver.1.23 Del End
            xxcos_rep_dlv_chk_list_s01.nextval   -- レコードID
           ,pay.payment_date                       -- 対象日付
           ,pay.base_code                          -- 拠点コード
