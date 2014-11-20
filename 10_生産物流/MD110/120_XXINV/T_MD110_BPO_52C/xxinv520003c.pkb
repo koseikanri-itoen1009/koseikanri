@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52C
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,7 @@ AS
  *  chk_recipe             レシピ有無チェックを行うプロシージャ       (A-5)
  *  ins_recipe             レシピ登録を行うプロシージャ               (A-6)
  *  chk_lot                ロット有無チェックを行うプロシージャ       (A-7)
+ *  update_lot             ロット更新を行うプロシージャ
  *  create_lot             ロット作成を行うプロシージャ               (A-8)
  *  create_batch           バッチ作成を行うプロシージャ               (A-9)
  *  input_lot_ins          入力ロット割当追加を行うプロシージャ       (A-10)
@@ -61,6 +62,7 @@ AS
  *  2008/11/11    1.0  Oracle 二瓶 大輔    初回作成
  *  2009/01/15    1.1  SCS    伊藤 ひとみ  指摘2,7対応
  *  2009/02/03    1.2  SCS    伊藤 ひとみ  本番障害#1113対応
+ *  2009/03/03    1.3  SCS    椎名 昭圭    本番障害#1241,#1251対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -103,6 +105,14 @@ AS
 --
 --################################  固定部 END   ##################################
 --
+-- 2009/03/03 v1.3 ADD START
+  -- ===============================
+  -- ユーザー定義例外
+  -- ===============================
+  api_expt               EXCEPTION;     -- API例外
+  deadlock_detected      EXCEPTION;     -- デッドロックエラー
+--
+-- 2009/03/03 v1.3 ADD END
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
@@ -176,6 +186,9 @@ AS
   gv_tkn_ins_formula    CONSTANT VARCHAR2(20)   := 'フォーミュラ登録';
   gv_tkn_ins_recipe     CONSTANT VARCHAR2(20)   := 'レシピ登録';
   gv_tkn_create_lot     CONSTANT VARCHAR2(20)   := 'ロット作成';
+-- 2009/03/03 v1.3 ADD START
+  gv_tkn_update_lot     CONSTANT VARCHAR2(20)   := 'ロット更新';
+-- 2009/03/03 v1.3 ADD END
   gv_tkn_create_bat     CONSTANT VARCHAR2(20)   := 'バッチ作成';
   gv_tkn_input_lot_ins  CONSTANT VARCHAR2(20)   := '入力ロット割当追加';
   gv_tkn_output_lot_ins CONSTANT VARCHAR2(20)   := '出力ロット割当追加';
@@ -251,6 +264,11 @@ AS
   gv_actual             CONSTANT VARCHAR2(1)    := '4';    -- 実績(生産バッチNo指定時)
   gv_actual_new         CONSTANT VARCHAR2(1)    := '5';    -- 実績(生産バッチNo指定なし時)
 --
+-- 2009/03/03 v1.3 ADD START
+  -- OPMロットマスタDFF更新APIバージョン
+  gn_api_version        CONSTANT NUMBER(2,1)    := 1.0;
+--
+-- 2009/03/03 v1.3 ADD START
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -2406,6 +2424,243 @@ AS
 --
   END chk_lot;
 --
+-- 2009/03/03 v1.3 ADD START
+  /**********************************************************************************
+   * Procedure Name   : update_lot
+   * Description      : ロットマスタ更新
+  /*********************************************************************************/
+  PROCEDURE update_lot(
+    ir_masters_rec  IN OUT NOCOPY masters_rec              -- 処理対象レコード
+  , ov_errbuf       OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
+  , ov_retcode      OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
+  , ov_errmsg       OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_lot'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_return_status  VARCHAR2(2);     -- リターンステータス
+    ln_message_count  NUMBER;          -- メッセージカウント
+    lv_msg_date       VARCHAR2(10000); -- メッセージリスト
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+    lr_ic_lots_mst          ic_lots_mst%ROWTYPE;          -- ロットマスタレコード型
+--
+  BEGIN
+    -- リターンコードセット
+    ov_retcode := gv_status_normal;
+--
+    -- ====================================
+    -- OPMロットマスタレコードに値をセット
+    -- ====================================
+    lr_ic_lots_mst.last_updated_by        := FND_GLOBAL.USER_ID;                -- 最終更新者
+    lr_ic_lots_mst.last_update_date       := SYSDATE;                           -- 最終更新日
+--
+    SELECT ilm.attribute1    attribute1
+          ,ilm.attribute2    attribute2
+          ,ilm.attribute3    attribute3
+          ,ilm.attribute4    attribute4
+          ,ilm.attribute5    attribute5
+          ,ilm.attribute6    attribute6
+          ,ilm.attribute7    attribute7
+          ,ilm.attribute8    attribute8
+          ,ilm.attribute9    attribute9
+          ,ilm.attribute10   attribute10
+          ,ilm.attribute11   attribute11
+          ,ilm.attribute12   attribute12
+          ,ilm.attribute13   attribute13
+          ,ilm.attribute14   attribute14
+          ,ilm.attribute15   attribute15
+          ,ilm.attribute16   attribute16
+          ,ilm.attribute17   attribute17
+          ,ilm.attribute18   attribute18
+          ,ilm.attribute19   attribute19
+          ,ilm.attribute20   attribute20
+          ,ilm.attribute21   attribute21
+          ,ilm.attribute22   attribute22
+          ,ilm.attribute23   attribute23
+          ,ilm.attribute24   attribute24
+          ,ilm.attribute25   attribute25
+          ,ilm.attribute26   attribute26
+          ,ilm.attribute27   attribute27
+          ,ilm.attribute28   attribute28
+          ,ilm.attribute29   attribute29
+          ,ilm.attribute30   attribute30
+    INTO   lr_ic_lots_mst.attribute1
+          ,lr_ic_lots_mst.attribute2
+          ,lr_ic_lots_mst.attribute3
+          ,lr_ic_lots_mst.attribute4
+          ,lr_ic_lots_mst.attribute5
+          ,lr_ic_lots_mst.attribute6
+          ,lr_ic_lots_mst.attribute7
+          ,lr_ic_lots_mst.attribute8
+          ,lr_ic_lots_mst.attribute9
+          ,lr_ic_lots_mst.attribute10
+          ,lr_ic_lots_mst.attribute11
+          ,lr_ic_lots_mst.attribute12
+          ,lr_ic_lots_mst.attribute13
+          ,lr_ic_lots_mst.attribute14
+          ,lr_ic_lots_mst.attribute15
+          ,lr_ic_lots_mst.attribute16
+          ,lr_ic_lots_mst.attribute17
+          ,lr_ic_lots_mst.attribute18
+          ,lr_ic_lots_mst.attribute19
+          ,lr_ic_lots_mst.attribute20
+          ,lr_ic_lots_mst.attribute21
+          ,lr_ic_lots_mst.attribute22
+          ,lr_ic_lots_mst.attribute23
+          ,lr_ic_lots_mst.attribute24
+          ,lr_ic_lots_mst.attribute25
+          ,lr_ic_lots_mst.attribute26
+          ,lr_ic_lots_mst.attribute27
+          ,lr_ic_lots_mst.attribute28
+          ,lr_ic_lots_mst.attribute29
+          ,lr_ic_lots_mst.attribute30
+    FROM   ic_lots_mst   ilm -- OPMロットマスタ
+    WHERE  ilm.item_id = ir_masters_rec.from_item_id   -- 品目ID
+    AND    ilm.lot_id  = ir_masters_rec.from_lot_id    -- ロットID
+    ;
+    -- ===============================
+    -- OPMロットマスタロック
+    -- ===============================
+    BEGIN
+      SELECT ilm.item_id       item_id
+            ,ilm.lot_id        lot_id
+            ,ilm.lot_no        lot_no
+      INTO   lr_ic_lots_mst.item_id
+            ,lr_ic_lots_mst.lot_id
+            ,lr_ic_lots_mst.lot_no
+      FROM   ic_lots_mst   ilm -- OPMロットマスタ
+      WHERE  ilm.item_id = ir_masters_rec.to_item_id   -- 品目ID
+      AND    ilm.lot_id  = ir_masters_rec.to_lot_id    -- ロットID
+      FOR UPDATE NOWAIT
+      ;
+--
+    EXCEPTION
+      WHEN DEADLOCK_DETECTED THEN
+        RAISE global_api_expt;
+--
+      WHEN NO_DATA_FOUND THEN
+        RAISE global_api_expt;
+--
+      WHEN TOO_MANY_ROWS THEN
+        RAISE global_api_expt;
+--
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+--
+    -- ===============================
+    -- OPMロットマスタDFF更新
+    -- ===============================
+    GMI_LOTUPDATE_PUB.UPDATE_LOT_DFF(
+      p_api_version       => gn_api_version             -- IN  NUMBER
+     ,p_init_msg_list     => FND_API.G_FALSE            -- IN  VARCHAR2 DEFAULT FND_API.G_FALSE
+     ,p_commit            => FND_API.G_FALSE             -- IN  VARCHAR2 DEFAULT FND_API.G_FALSE
+     ,p_validation_level  => FND_API.G_VALID_LEVEL_FULL -- IN  NUMBER   DEFAULT FND_API.G_VALID_LEVEL_FULL
+     ,x_return_status     => lv_return_status           -- OUT NOCOPY       VARCHAR2
+     ,x_msg_count         => ln_message_count           -- OUT NOCOPY       NUMBER
+     ,x_msg_data          => lv_msg_date                -- OUT NOCOPY       VARCHAR2
+     ,p_lot_rec           => lr_ic_lots_mst             -- IN  ic_lots_mst%ROWTYPE
+    );
+--
+    -- ロット更新処理が成功でない場合
+    IF ( lv_retcode <> gv_ret_sts_success ) THEN
+      -- エラーメッセージログ出力
+      FND_FILE.PUT_LINE(FND_FILE.LOG, 'lv_return_status ='||lv_return_status);
+--
+      xxcmn_common_pkg.put_api_log(
+        ov_errbuf     => lv_errbuf     --   OUT：エラー・メッセージ
+       ,ov_retcode    => lv_retcode    --   OUT：リターン・コード
+       ,ov_errmsg     => lv_errmsg     --   OUT：ユーザー・エラー・メッセージ
+      );
+--
+      -- エラーメッセージを取得
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+                                          , gv_msg_52a_00
+                                          , gv_tkn_api_name
+                                          , gv_tkn_update_lot);
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END IF;
+--
+    -- ===============================
+    -- OPMロットマスタDFFセット
+    -- ===============================
+    ir_masters_rec.lot_attribute1   := lr_ic_lots_mst.attribute1;
+    ir_masters_rec.lot_attribute2   := lr_ic_lots_mst.attribute2;
+    ir_masters_rec.lot_attribute3   := lr_ic_lots_mst.attribute3;
+    ir_masters_rec.lot_attribute4   := lr_ic_lots_mst.attribute4;
+    ir_masters_rec.lot_attribute5   := lr_ic_lots_mst.attribute5;
+    ir_masters_rec.lot_attribute6   := lr_ic_lots_mst.attribute6;
+    ir_masters_rec.lot_attribute7   := lr_ic_lots_mst.attribute7;
+    ir_masters_rec.lot_attribute8   := lr_ic_lots_mst.attribute8;
+    ir_masters_rec.lot_attribute9   := lr_ic_lots_mst.attribute9;
+    ir_masters_rec.lot_attribute10  := lr_ic_lots_mst.attribute10;
+    ir_masters_rec.lot_attribute11  := lr_ic_lots_mst.attribute11;
+    ir_masters_rec.lot_attribute12  := lr_ic_lots_mst.attribute12;
+    ir_masters_rec.lot_attribute13  := lr_ic_lots_mst.attribute13;
+    ir_masters_rec.lot_attribute14  := lr_ic_lots_mst.attribute14;
+    ir_masters_rec.lot_attribute15  := lr_ic_lots_mst.attribute15;
+    ir_masters_rec.lot_attribute16  := lr_ic_lots_mst.attribute16;
+    ir_masters_rec.lot_attribute17  := lr_ic_lots_mst.attribute17;
+    ir_masters_rec.lot_attribute18  := lr_ic_lots_mst.attribute18;
+    ir_masters_rec.lot_attribute19  := lr_ic_lots_mst.attribute19;
+    ir_masters_rec.lot_attribute20  := lr_ic_lots_mst.attribute20;
+    ir_masters_rec.lot_attribute21  := lr_ic_lots_mst.attribute21;
+    ir_masters_rec.lot_attribute22  := lr_ic_lots_mst.attribute22;
+    ir_masters_rec.lot_attribute23  := lr_ic_lots_mst.attribute23;
+    ir_masters_rec.lot_attribute24  := lr_ic_lots_mst.attribute24;
+    ir_masters_rec.lot_attribute25  := lr_ic_lots_mst.attribute25;
+    ir_masters_rec.lot_attribute26  := lr_ic_lots_mst.attribute26;
+    ir_masters_rec.lot_attribute27  := lr_ic_lots_mst.attribute27;
+    ir_masters_rec.lot_attribute28  := lr_ic_lots_mst.attribute28;
+    ir_masters_rec.lot_attribute29  := lr_ic_lots_mst.attribute29;
+    ir_masters_rec.lot_attribute30  := lr_ic_lots_mst.attribute30;
+--
+  EXCEPTION
+    --*** API例外 ***
+    WHEN api_expt THEN
+      ov_retcode := gv_status_error;                                            --# 任意 #
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--###################################  固定部 END   #########################################
+--
+  END update_lot;
+--
+-- 2009/03/03 v1.3 ADD END
   /**********************************************************************************
    * Procedure Name   : create_lot
    * Description      : ロット作成(A-8)
@@ -2577,7 +2832,10 @@ AS
     GMIPAPI.CREATE_LOT(
           p_api_version      => 3.0                        -- APIバージョン番号
         , p_init_msg_list    => FND_API.G_FALSE            -- メッセージ初期化フラグ
-        , p_commit           => FND_API.G_TRUE             -- 自動コミットフラグ
+-- 2009/03/03 v1.3 UPDATE START
+--        , p_commit           => FND_API.G_TRUE             -- 自動コミットフラグ
+        , p_commit           => FND_API.G_FALSE            -- 自動コミットフラグ
+-- 2009/03/03 v1.3 UPDATE END
         , p_validation_level => FND_API.G_VALID_LEVEL_FULL -- 検証レベル
         , p_lot_rec          => lr_lot_rec
         , x_ic_lots_mst_row  => lr_lot_mst
@@ -4780,6 +5038,22 @@ AS
     IF ( lv_retcode = gv_status_error ) THEN
       RAISE global_api_expt;
 --
+-- 2009/03/03 v1.3 ADD START
+    ELSIF (ir_masters_rec.is_info_flg) THEN
+      -- ===============================
+      -- ロット更新
+      -- ===============================
+      update_lot(ir_masters_rec             -- 処理対象レコード
+               , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+               , lv_retcode      -- リターン・コード             --# 固定 #
+               , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+-- 2009/03/03 v1.3 ADD END
     -- ロットが存在しない場合
     ELSIF ( NOT(ir_masters_rec.is_info_flg) ) THEN
 --
@@ -5602,6 +5876,8 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2009/03/03 v1.3 DELETE START
+/*
       -- ===============================
       -- 在庫クローズチェック(A-23)
       -- ===============================
@@ -5617,6 +5893,8 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+*/
+-- 2009/03/03 v1.3 DELETE END
 -- 2009/01/15 H.Itou Del Start 指摘2対応
 --      -- 数量に変更がある場合
 --      IF (lr_masters_rec.trans_qty <> TO_NUMBER(iv_quantity)) THEN
@@ -6092,6 +6370,21 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2009/03/03 v1.3 ADD START
+      -- ===============================
+      -- ロット更新
+      -- ===============================
+      update_lot(lr_masters_rec             -- 処理対象レコード
+               , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+               , lv_retcode      -- リターン・コード             --# 固定 #
+               , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+-- 2009/03/03 v1.3 ADD END
       -- ===============================
       -- 在庫クローズチェック(A-23)
       -- ===============================
