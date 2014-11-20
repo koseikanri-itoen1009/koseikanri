@@ -7,7 +7,7 @@ AS
  * Description      : 標準請求書税込
  * MD.050           : MD050_CFR_003_A15_標準請求書税込
  * MD.070           : MD050_CFR_003_A15_標準請求書税込
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *                                      中間テーブルデータ削除処理コメントアウト削除対応
  *  2009/04/14    1.2  SCS 大川 恵      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
  *  2009/09/10    1.3  SCS 廣瀬 真佐人  [共通課題:IE535] 標準請求書の出力概念変更
+ *  2009/11/20    1.4  SCS 廣瀬 真佐人  [共通課題:IE691] 単独店の請求先名取得元変更
  *
  *****************************************************************************************/
 --
@@ -829,7 +830,10 @@ AS
     IS
      SELECT bill_hzca_1.cust_account_id         AS cash_account_id,         --顧客10ID
             bill_hzca_1.account_number          AS cash_account_number,     --顧客10コード
-            bill_hzpa_1.party_name              AS cash_account_name,       --顧客10顧客名
+-- Modify 2009.11.20 Ver1.4 Start
+--            bill_hzpa_1.party_name              AS cash_account_name,       --顧客10顧客名
+            bill_hzca_1.account_name            AS cash_account_name,       --顧客10顧客名
+-- Modify 2009.11.20 Ver1.4 End
             bill_hzca_1.cust_account_id         AS ship_account_id,         --顧客10顧客ID        
             bill_hzca_1.account_number          AS ship_account_number,     --顧客10顧客コード 
             bill_hzad_1.bill_base_code          AS bill_base_code,          --顧客10請求拠点コード
@@ -950,7 +954,10 @@ AS
     IS
      SELECT bill_hzca_1.cust_account_id         AS bill_account_id,         --顧客10顧客ID        
             bill_hzca_1.account_number          AS bill_account_number,     --顧客10顧客コード 
-            bill_hzpa_1.party_name              AS bill_account_name,       --顧客20顧客名
+-- Modify 2009.11.20 Ver1.4 Start
+--            bill_hzpa_1.party_name              AS bill_account_name,       --顧客20顧客名
+            bill_hzca_1.account_name            AS bill_account_name,       --顧客10顧客名
+-- Modify 2009.11.20 Ver1.4 End
             bill_hzad_1.bill_base_code          AS bill_base_code,          --顧客10請求拠点コード
             bill_hzlo_1.postal_code             AS bill_postal_code,        --顧客10郵便番号            
             bill_hzlo_1.state                   AS bill_state,              --顧客10都道府県            

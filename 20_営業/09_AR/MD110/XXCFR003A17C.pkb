@@ -7,7 +7,7 @@ AS
  * Description      : イセトー請求書データ作成
  * MD.050           : MD050_CFR_003_A17_イセトー請求書データ作成
  * MD.070           : MD050_CFR_003_A17_イセトー請求書データ作成
- * Version          : 1.10
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-02-23    1.00 SCS 白砂 幸世     新規作成
  *  2009-09-29    1.10 SCS 安川 智博     共通課題「IE535」対応
+ *  2009-11-20    1.20 SCS 安川 智博     共通課題「IE691」対応
  *
  *****************************************************************************************/
 --
@@ -1054,7 +1055,10 @@ AS
              ,col101           -- 伝票税抜額(非出力項目)
              ,col102           -- 伝票税額(非出力項目)
              ,col103           -- 入金先顧客コード(非出力項目)
-             ,col104)          -- 入金先顧客名(非出力項目)
+             ,col104           -- 入金先顧客名(非出力項目)
+-- Modify 2009-11-20 Ver1.20 Start
+             ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2009-11-20 Ver1.20 End
             SELECT cn_request_id                                              request_id         -- 要求ID
                   ,TO_NUMBER(NULL)                                            seq                -- 出力順
                   ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
@@ -1152,6 +1156,9 @@ AS
                   ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
                   ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
                   ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+-- Modify 2009-11-20 Ver1.20 Start
+                  ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 Start End
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  hz_cust_accounts               hzca , -- 顧客10顧客マスタ
@@ -1311,7 +1318,10 @@ AS
                ,col101           -- 伝票税抜額(非出力項目)
                ,col102           -- 伝票税額(非出力項目)
                ,col103           -- 入金先顧客コード(非出力項目)
-               ,col104)          -- 入金先顧客名(非出力項目)
+               ,col104           -- 入金先顧客名(非出力項目)
+-- Modify 2009-11-20 Ver1.20 Start
+               ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2009-11-20 Ver1.20 End
               SELECT cn_request_id                                              request_id         -- 要求ID
                     ,TO_NUMBER(NULL)                                            seq                -- 出力順
                     ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
@@ -1409,6 +1419,9 @@ AS
                     ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
                     ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
                     ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+-- Modify 2009-11-20 Ver1.20 Start
+                    ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 End
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    hz_cust_accounts               hzca , -- 顧客20顧客マスタ
@@ -1573,7 +1586,10 @@ AS
                ,col101           -- 伝票税抜額(非出力項目)
                ,col102           -- 伝票税額(非出力項目)
                ,col103           -- 入金先顧客コード(非出力項目)
-               ,col104)          -- 入金先顧客名(非出力項目)
+               ,col104           -- 入金先顧客名(非出力項目)
+-- Modify 2009-11-20 Ver1.20 Start
+               ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2009-11-20 Ver1.20 End
               SELECT cn_request_id                                              request_id         -- 要求ID
                     ,TO_NUMBER(NULL)                                            seq                -- 出力順
                     ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
@@ -1671,6 +1687,9 @@ AS
                     ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
                     ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
                     ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+-- Modify 2009-11-20 Ver1.20 Start
+                    ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 End
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    hz_cust_accounts               hzca , -- 顧客10顧客マスタ
@@ -1818,7 +1837,10 @@ AS
              ,col101           -- 伝票税抜額(非出力項目)
              ,col102           -- 伝票税額(非出力項目)
              ,col103           -- 入金先顧客コード(非出力項目)
-             ,col104)          -- 入金先顧客名(非出力項目)
+             ,col104           -- 入金先顧客名(非出力項目)
+-- Modify 2009-11-20 Ver1.20 Start
+             ,col105)          -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 End
             SELECT cn_request_id                                              request_id         -- 要求ID
                   ,TO_NUMBER(NULL)                                            seq                -- 出力順
                   ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
@@ -1916,6 +1938,9 @@ AS
                   ,SUM(xil.tax_amount)                                              slip_tax         -- 伝票税額
                   ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
                   ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+-- Modify 2009-11-20 Ver1.20 Start
+                  ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 End
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  (SELECT all_account_rec.customer_code ship_cust_code
@@ -2054,7 +2079,10 @@ AS
              ,col101           -- 伝票税抜額(非出力項目)
              ,col102           -- 伝票税額(非出力項目)
              ,col103           -- 入金先顧客コード(非出力項目)
-             ,col104)          -- 入金先顧客名(非出力項目)
+             ,col104           -- 入金先顧客名(非出力項目)
+-- Modify 2009-11-20 Ver1.20 Start
+             ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2009-11-20 Ver1.20 End
             SELECT cn_request_id                                              request_id         -- 要求ID
                   ,TO_NUMBER(NULL)                                            seq                -- 出力順
                   ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
@@ -2152,6 +2180,9 @@ AS
                   ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
                   ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
                   ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+-- Modify 2009-11-20 Ver1.20 Start
+                  ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 End
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                  xxcfr_invoice_lines            xil  , -- 請求明細
                  (SELECT all_account_rec.customer_code ship_cust_code
@@ -2304,7 +2335,10 @@ AS
                ,col101           -- 伝票税抜額(非出力項目)
                ,col102           -- 伝票税額(非出力項目)
                ,col103           -- 入金先顧客コード(非出力項目)
-               ,col104)          -- 入金先顧客名(非出力項目)
+               ,col104           -- 入金先顧客名(非出力項目)
+-- Modify 2009-11-20 Ver1.20 Start
+               ,col105)          -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 End
               SELECT cn_request_id                                              request_id         -- 要求ID
                     ,TO_NUMBER(NULL)                                            seq                -- 出力順
                     ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
@@ -2402,6 +2436,9 @@ AS
                     ,SUM(xil.tax_amount)                                              slip_tax          -- 伝票税額
                     ,get_14account_rec.cash_account_number                            payment_cust_code -- 入金先顧客コード
                     ,get_14account_rec.cash_account_name                              payment_cust_name -- 入金先顧客名
+-- Modify 2009-11-20 Ver1.20 Start
+                    ,all_account_rec.invoice_printing_unit                            invoice_printing_unit -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 End
               FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                    xxcfr_invoice_lines            xil  , -- 請求明細
                    (SELECT all_account_rec.customer_code ship_cust_code
@@ -2549,7 +2586,10 @@ AS
              ,col101           -- 伝票税抜額(非出力項目)
              ,col102           -- 伝票税額(非出力項目)
              ,col103           -- 入金先顧客コード(非出力項目)
-             ,col104)          -- 入金先顧客名(非出力項目)
+             ,col104           -- 入金先顧客名(非出力項目)
+-- Modify 2009-11-20 Ver1.20 Start
+             ,col105)          -- 請求書印刷単位(非出力項目)
+-- Modify 2009-11-20 Ver1.20 End
             SELECT cn_request_id                                              request_id         -- 要求ID
                   ,TO_NUMBER(NULL)                                            seq                -- 出力順
                   ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
@@ -2647,6 +2687,9 @@ AS
                   ,SUM(xil.tax_amount)                                               slip_tax          -- 伝票税額
                   ,NULL                                                              payment_cust_code -- 入金先顧客コード
                   ,NULL                                                              payment_cust_name -- 入金先顧客名
+-- Modify 2009-11-20 Ver1.20 Start
+                  ,all_account_rec.invoice_printing_unit                             invoice_printing_unit -- 請求書印刷単位
+-- Modify 2009-11-20 Ver1.20 End
             FROM xxcfr_invoice_headers          xih  , -- 請求ヘッダ
                   xxcfr_invoice_lines            xil  , -- 請求明細
                   xxcmm_cust_accounts            xxca , -- 顧客10追加情報
@@ -2875,7 +2918,12 @@ AS
             ,hzlo.address1                                              send_address2      -- 住所２
             ,hzlo.address2                                              send_address3      -- 住所３
             ,xxcot.col8                                                 bill_cust_code     -- 顧客コード
-            ,hzpa.party_name                                            bill_cust_name     -- 顧客名
+-- Modify 2009-11-20 Ver1.20 Start
+--            ,hzpa.party_name                                            bill_cust_name     -- 顧客名
+            ,DECODE(xxcot.col105,cv_invoice_printing_unit_n1,hzca.account_name
+                                ,cv_invoice_printing_unit_n4,hzca.account_name
+                                ,hzpa.party_name)                       bill_cust_name     -- 顧客名
+-- Modify 2009-11-20 Ver1.20 End
             ,xffvv.description                                          location_name      -- 拠点名
             ,xxcfr_common_pkg.get_base_target_tel_num(xxcot.col8)       phone_num          -- 電話番号
             ,xxcot.col12                                                object_month       -- 対象年月
@@ -2928,7 +2976,12 @@ AS
                hzlo.address1,                                                              -- 住所２
                hzlo.address2,                                                              -- 住所３
                xxcot.col8,                                                                 -- 顧客コード
+-- Modify 2009-11-20 Ver1.20 Start
                hzpa.party_name,                                                            -- 顧客名
+               DECODE(xxcot.col105,cv_invoice_printing_unit_n1,hzca.account_name
+                                  ,cv_invoice_printing_unit_n4,hzca.account_name
+                                  ,hzpa.party_name),                                       -- 顧客名
+-- Modify 2009-11-20 Ver1.20 End
                xffvv.description,                                                          -- 拠点名
                xxcot.col12,                                                                -- 対象年月
                xxcot.col13,                                                                -- 売掛管理コード連結文字列
