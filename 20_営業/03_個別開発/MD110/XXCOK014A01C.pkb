@@ -6,12 +6,13 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 2.3
+ * Version          : 2.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
  *  Name                 Description
  * -------------------- ------------------------------------------------------------
+ *  udpate_xcbi          販手計算済顧客情報データの更新               (A-15)
  *  update_xsel          販売実績連携結果の更新                       (A-12)
  *  insert_xbce          販手条件エラーテーブルへの登録               (A-11)
  *  insert_xcbs          条件別販手販協テーブルへの登録               (A-10)
@@ -27,6 +28,7 @@ AS
  *  insert_xt0c          条件別販手販協計算顧客情報一時表への登録     (A-6)
  *  get_cust_subdata     条件別販手販協計算日付情報の導出             (A-5)
  *  cust_loop            顧客情報ループ                               (A-4)
+ *  purge_xcbi           販手計算済顧客情報データの削除（保持期間外） (A-14)
  *  purge_xcbs           条件別販手販協データの削除（保持期間外）     (A-2)
  *  init                 初期処理                                     (A-1)
  *  submain              メイン処理プロシージャ
@@ -54,6 +56,7 @@ AS
  *  2009/07/08    2.2   M.Hiruta         [障害0000009] 条件別販手販協計算対象外の販売実績を除外するように修正
  *                                                     桁数超過を防ぐため、電気料（固定/変動）の割戻額を修正
  *  2009/07/16    2.3   K.Yamaguchi      [障害0000756] パフォーマンスを向上させるためSQLを修正
+ *  2009/07/28    2.4   K.Yamaguchi      [障害0000879] パフォーマンスを向上させるためテーブルを追加
  *
  *****************************************************************************************/
   --==================================================
@@ -107,6 +110,10 @@ AS
   cv_msg_cok_10454                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10454';
   cv_msg_cok_10455                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10455';
   cv_msg_cok_10456                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10456';
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD START
+  cv_msg_cok_00103                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00103';
+  cv_msg_cok_10457                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10457';
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD END
   -- トークン
   cv_tkn_close_date                CONSTANT VARCHAR2(30)    := 'CLOSE_DATE';
   cv_tkn_container_type            CONSTANT VARCHAR2(30)    := 'CONTAINER_TYPE';
@@ -243,421 +250,62 @@ AS
   --==================================================
   -- 顧客情報
   CURSOR get_cust_data_cur IS
-    SELECT ship_hca.account_number               AS ship_cust_code             -- 【出荷先】顧客コード
-         , ship_flv1.attribute1                  AS ship_gyotai_tyu            -- 【出荷先】業態（中分類）
-         , ship_xca.business_low_type            AS ship_gyotai_sho            -- 【出荷先】業態（小分類）
-         , ship_xca.delivery_chain_code          AS ship_delivery_chain_code   -- 【出荷先】納品先チェーンコード
-         , bill_hca.account_number               AS bill_cust_code             -- 【請求先】顧客コード
-         , CASE
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-               ship_xcm.term_name
-             ELSE
-               bill_rtt1.name
-           END                                   AS term_name1                 -- 支払条件
-         , CASE
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-               NULL
-             ELSE
-               bill_rtt2.name
-           END                                   AS term_name2                 -- 第2支払条件
-         , CASE
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-               NULL
-             ELSE
-               bill_rtt3.name
-           END                                   AS term_name3                 -- 第3支払条件
-         , CASE
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-               gn_bm_support_period_to
-             ELSE
-               TO_NUMBER( bill_hcsua.attribute8 )
-           END                                   AS settle_amount_cycle        -- 金額確定サイクル
-         , bill_xca.tax_div                      AS tax_div                    -- 消費税区分
-         , bill_avtab.tax_code                   AS tax_code                   -- 税金コード
-         , bill_avtab.tax_rate                   AS tax_rate                   -- 税率
-         , bill_hcsua.tax_rounding_rule          AS tax_rounding_rule          -- 端数処理区分
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi REPAIR START
+--    SELECT ship_hca.account_number               AS ship_cust_code             -- 【出荷先】顧客コード
+--         , ship_flv1.attribute1                  AS ship_gyotai_tyu            -- 【出荷先】業態（中分類）
+--         , ship_xca.business_low_type            AS ship_gyotai_sho            -- 【出荷先】業態（小分類）
+--         , ship_xca.delivery_chain_code          AS ship_delivery_chain_code   -- 【出荷先】納品先チェーンコード
+--         , bill_hca.account_number               AS bill_cust_code             -- 【請求先】顧客コード
 --         , CASE
---             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
---                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
---                  )
---             THEN
---               gv_vendor_dummy_code
---             ELSE
---               ship_xca.contractor_supplier_code
---           END                                   AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
-         , CASE
-             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
-               ship_xca.contractor_supplier_code
-             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
-                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
-                  )
-             THEN
-               gv_vendor_dummy_code
-             ELSE
-               NULL
-           END                                   AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
---         , bm1_pvsa.vendor_site_code             AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm1_pvsa.vendor_site_code
-             ELSE
-               NULL
-           END                                   AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
---         , bm1_pvsa.attribute4                   AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm1_pvsa.attribute4
-             ELSE
-               NULL
-           END                                   AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
---         , ship_xca.bm_pay_supplier_code1        AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
-         , CASE
-             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
-               ship_xca.bm_pay_supplier_code1
-             ELSE
-               NULL
-           END                                   AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
---         , bm2_pvsa.vendor_site_code             AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm2_pvsa.vendor_site_code
-             ELSE
-               NULL
-           END                                   AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm2_pvsa.attribute4
-             ELSE
-               NULL
-           END                                   AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
---         , ship_xca.bm_pay_supplier_code2        AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
-         , CASE
-             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
-               ship_xca.bm_pay_supplier_code2
-             ELSE
-               NULL
-           END                                   AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
---         , bm3_pvsa.vendor_site_code             AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm3_pvsa.vendor_site_code
-             ELSE
-               NULL
-           END                                   AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
---         , bm3_pvsa.attribute4                   AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
-         , CASE
-             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
-               bm3_pvsa.attribute4
-             ELSE
-               NULL
-           END                                   AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
--- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
-         , ship_xca.receiv_discount_rate         AS receiv_discount_rate       -- 入金値引率
-         , NVL2( MAX( ship_xcbs.calc_target_period_to )
-               , MAX( ship_xcbs.calc_target_period_to ) + 1
-               , MIN( xseh.delivery_date )
-           )                                     AS calc_target_period_from    -- 計算対象期間(FROM)
-    FROM xxcos_sales_exp_headers       xseh                -- 販売実績ヘッダ
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---       , xxcos_sales_exp_lines         xsel                -- 販売実績明細
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-       , hz_cust_accounts              ship_hca            -- 【出荷先】顧客マスタ
-       , xxcmm_cust_accounts           ship_xca            -- 【出荷先】顧客追加情報
-       , hz_parties                    ship_hp             -- 【出荷先】顧客パーティ
-       , hz_party_sites                ship_hps            -- 【出荷先】顧客パーティサイト
-       , hz_locations                  ship_hl             -- 【出荷先】顧客事業所
-       , hz_cust_acct_sites_all        ship_hcasa          -- 【出荷先】顧客所在地
-       , hz_cust_site_uses_all         ship_hcsua          -- 【出荷先】顧客使用目的
-       , hz_cust_accounts              bill_hca            -- 【請求先】顧客マスタ
-       , xxcmm_cust_accounts           bill_xca            -- 【請求先】顧客追加情報
-       , hz_parties                    bill_hp             -- 【請求先】顧客パーティ
-       , hz_party_sites                bill_hps            -- 【請求先】顧客パーティサイト
-       , hz_cust_acct_sites_all        bill_hcasa          -- 【請求先】顧客所在地
-       , hz_cust_site_uses_all         bill_hcsua          -- 【請求先】顧客使用目的
-       , po_vendors                    bm1_pv              -- 【ＢＭ１】仕入先マスタ
-       , po_vendor_sites_all           bm1_pvsa            -- 【ＢＭ１】仕入先サイトマスタ
-       , po_vendors                    bm2_pv              -- 【ＢＭ２】仕入先マスタ
-       , po_vendor_sites_all           bm2_pvsa            -- 【ＢＭ２】仕入先サイトマスタ
-       , po_vendors                    bm3_pv              -- 【ＢＭ３】仕入先マスタ
-       , po_vendor_sites_all           bm3_pvsa            -- 【ＢＭ３】仕入先サイトマスタ
-       , xxcok_cond_bm_support         ship_xcbs           -- 条件別販手販協
-       , ra_terms_tl                   bill_rtt1           -- 支払条件マスタ
-       , ra_terms_tl                   bill_rtt2           -- 第2支払条件マスタ
-       , ra_terms_tl                   bill_rtt3           -- 第3支払条件マスタ
-       , fnd_lookup_values             bill_flv1           -- 消費税区分
-       , ar_vat_tax_all_b              bill_avtab          -- 税金マスタ
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---       , fnd_lookup_values             ship_flv1           -- 業態（小分類）
-       , ( SELECT flv_sho.lookup_code AS lookup_code -- 業態（小分類）
-                , flv_sho.attribute1  AS attribute1  -- 業態（中分類）
-           FROM fnd_lookup_values    flv_chu    -- 業態（中分類）
-              , fnd_lookup_values    flv_sho    -- 業態（小分類）
-           WHERE flv_chu.lookup_type = cv_lookup_type_06   -- 業態（中分類）
-             AND flv_sho.lookup_type = cv_lookup_type_03   -- 業態（小分類）
-             AND gd_process_date BETWEEN NVL( flv_chu.start_date_active, gd_process_date )
-                                     AND NVL( flv_chu.end_date_active,   gd_process_date )
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---             AND flv_chu.language            = USERENV( 'LANG' )
-             AND flv_chu.language            = cv_lang
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-             AND (    ( flv_sho.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
-                   OR ( flv_chu.lookup_code <>  cv_gyotai_tyu_vd                      )
-                 )
-             AND flv_chu.enabled_flag        = cv_enable
-             AND flv_sho.enabled_flag        = cv_enable
-             AND gd_process_date BETWEEN NVL( flv_sho.start_date_active, gd_process_date )
-                                     AND NVL( flv_sho.end_date_active,   gd_process_date )
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---             AND flv_sho.language            = USERENV( 'LANG' )
-             AND flv_sho.language            = cv_lang
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-             AND flv_sho.attribute1          = flv_chu.lookup_code
-         )                             ship_flv1           -- 業態（小分類）
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-       , fnd_lookup_values             ship_flv2           -- 実行区分
-       , ( SELECT xcm.install_account_id  AS install_account_id -- 設置先顧客ID
-                , CASE
-                    WHEN (    ( xcm.close_day_code      IS NULL )
-                           OR ( xcm.transfer_day_code   IS NULL )
-                           OR ( xcm.transfer_month_code IS NULL )
-                         )
-                    THEN
-                      gv_default_term_name
-                    ELSE
-                         xcm.close_day_code
-                      || '_'
-                      || xcm.transfer_day_code
-                      || '_'
-                      || CASE
-                           WHEN xcm.transfer_month_code = cv_month_type1 THEN
-                             cv_site_type1
-                           ELSE
-                             cv_site_type2
-                         END
-                  END                     AS term_name          -- 支払条件
-           FROM xxcso_contract_managements  xcm -- 契約管理
-           WHERE xcm.status =  cv_xcm_status_result
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---             AND EXISTS ( SELECT    'X'
-             AND EXISTS ( SELECT /*+ index(xcm2 XXCSO_CONTRACT_MANAGEMENTS_N06) */
-                                 'X'
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-                          FROM xxcso_contract_managements  xcm2  -- 契約管理
-                          WHERE xcm2.status                    =  '1'                -- ステータス：確定済
-                            AND xcm2.install_account_id        = xcm.install_account_id
-                          GROUP BY  xcm2.install_account_id
-                          HAVING MAX( xcm2.contract_number )   = xcm.contract_number
-                 )
-          )                            ship_xcm            -- 契約管理情報
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---    WHERE xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
---      AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
-    WHERE EXISTS ( SELECT 'X'
-                   FROM xxcos_sales_exp_lines xsel  -- 販売実績明細
-                   WHERE xseh.sales_exp_header_id     = xsel.sales_exp_header_id
-                     AND xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
-                     AND ROWNUM = 1
-          )
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
-      AND xseh.delivery_date          <= gd_process_date - gn_bm_support_period_from
-      AND ship_hca.account_number      = xseh.ship_to_customer_code
-      AND ship_hca.customer_class_code = cv_customer_class_customer
-      AND ship_hca.cust_account_id     = ship_xca.customer_id
-      AND ship_hp.party_id             = ship_hca.party_id
-      AND ship_hp.party_id             = ship_hps.party_id
-      AND ship_hl.location_id          = ship_hps.location_id
-      AND ship_hca.cust_account_id     = ship_hcasa.cust_account_id
-      AND ship_hps.party_site_id       = ship_hcasa.party_site_id
-      AND ship_hcasa.org_id            = gn_org_id
-      AND ship_hcasa.cust_acct_site_id = ship_hcsua.cust_acct_site_id
-      AND ship_hcsua.org_id            = gn_org_id
-      AND ship_hcsua.site_use_code     = cv_site_use_code_ship
-      AND bill_hcsua.site_use_id       = ship_hcsua.bill_to_site_use_id
-      AND bill_hcsua.org_id            = gn_org_id
-      AND bill_hcsua.site_use_code     = cv_site_use_code_bill
-      AND bill_hcasa.cust_acct_site_id = bill_hcsua.cust_acct_site_id
-      AND bill_hcasa.org_id            = gn_org_id
-      AND bill_hps.party_site_id       = bill_hcasa.party_site_id
-      AND bill_hca.cust_account_id     = bill_hcasa.cust_account_id
-      AND bill_hp.party_id             = bill_hps.party_id
-      AND bill_hp.party_id             = bill_hca.party_id
-      AND bill_hca.cust_account_id     = bill_xca.customer_id
-      AND bm1_pv.segment1(+)           = ship_xca.contractor_supplier_code
-      AND bm1_pv.vendor_id             = bm1_pvsa.vendor_id(+)
-      AND bm1_pvsa.org_id(+)           = gn_org_id
-      AND bm2_pv.segment1(+)           = ship_xca.bm_pay_supplier_code1
-      AND bm2_pv.vendor_id             = bm2_pvsa.vendor_id(+)
-      AND bm2_pvsa.org_id(+)           = gn_org_id
-      AND bm3_pv.segment1(+)           = ship_xca.bm_pay_supplier_code2
-      AND bm3_pv.vendor_id             = bm3_pvsa.vendor_id(+)
-      AND bm3_pvsa.org_id(+)           = gn_org_id
-      AND ship_hca.cust_account_id     = ship_xcm.install_account_id(+)
-      AND ship_hca.account_number      = ship_xcbs.delivery_cust_code(+)
-      AND ship_xcbs.closing_date(+)   <= gd_process_date
-      AND bill_rtt1.term_id(+)         = bill_hcsua.payment_term_id
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---      AND bill_rtt1.language(+)        = USERENV( 'LANG' )
-      AND bill_rtt1.language(+)        = cv_lang
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-      AND bill_rtt2.term_id(+)         = bill_hcsua.attribute2
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---      AND bill_rtt2.language(+)        = USERENV( 'LANG' )
-      AND bill_rtt2.language(+)        = cv_lang
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-      AND bill_rtt3.term_id(+)         = bill_hcsua.attribute3
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---      AND bill_rtt3.language(+)        = USERENV( 'LANG' )
-      AND bill_rtt3.language(+)        = cv_lang
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-      AND bill_flv1.lookup_code        = bill_xca.tax_div
-      AND bill_flv1.lookup_type        = cv_lookup_type_02      -- 参照タイプ：消費税区分
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---      AND bill_flv1.language           = USERENV( 'LANG' )
-      AND bill_flv1.language           = cv_lang
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-      AND bill_flv1.enabled_flag       = cv_enable
-      AND gd_process_date        BETWEEN NVL( bill_flv1.start_date_active, gd_process_date )
-                                     AND NVL( bill_flv1.end_date_active,   gd_process_date )
-      AND bill_avtab.tax_code          = bill_flv1.attribute1
-      AND bill_avtab.set_of_books_id   = gn_set_of_books_id
-      AND bill_avtab.org_id            = gn_org_id
-      AND bill_avtab.validate_flag     = cv_enable
-      AND gd_process_date        BETWEEN NVL( bill_avtab.start_date, gd_process_date )
-                                     AND NVL( bill_avtab.end_date,   gd_process_date )
-      AND ship_flv1.lookup_code        = ship_xca.business_low_type
--- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
---      AND ship_flv1.lookup_type        = cv_lookup_type_03      -- 参照タイプ：業態(小分類)
---      AND ship_flv1.language           = USERENV( 'LANG' )
---      AND ship_flv1.enabled_flag       = cv_enable
---      AND gd_process_date        BETWEEN NVL( ship_flv1.start_date_active, gd_process_date )
---                                     AND NVL( ship_flv1.end_date_active,   gd_process_date )
---      AND (    ( ship_flv1.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
---            OR ( ship_flv1.attribute1  <> cv_gyotai_tyu_vd                       )
---          )
--- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---      AND ship_flv2.lookup_code        = gv_param_proc_type
-      AND ship_flv2.attribute1         = gv_param_proc_type
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-      AND ship_flv2.lookup_type        = cv_lookup_type_01      -- 参照タイプ：販手販協計算実行区分
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---      AND ship_flv2.language           = USERENV( 'LANG' )
-      AND ship_flv2.language           = cv_lang
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-      AND ship_flv2.enabled_flag       = cv_enable
-      AND gd_process_date        BETWEEN NVL( ship_flv2.start_date_active, gd_process_date )
-                                     AND NVL( ship_flv2.end_date_active,   gd_process_date )
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---      AND (    ( ship_flv2.attribute1  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute1  || '%' )
---            OR ( ship_flv2.attribute2  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute2  || '%' )
---            OR ( ship_flv2.attribute3  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute3  || '%' )
---            OR ( ship_flv2.attribute4  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute4  || '%' )
---            OR ( ship_flv2.attribute5  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute5  || '%' )
---            OR ( ship_flv2.attribute6  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute6  || '%' )
---            OR ( ship_flv2.attribute7  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute7  || '%' )
---            OR ( ship_flv2.attribute8  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute8  || '%' )
---            OR ( ship_flv2.attribute9  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute9  || '%' )
---            OR ( ship_flv2.attribute10 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute10 || '%' )
---            OR ( ship_flv2.attribute11 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute11 || '%' )
---            OR ( ship_flv2.attribute12 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute12 || '%' )
---            OR ( ship_flv2.attribute13 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute13 || '%' )
---            OR ( ship_flv2.attribute14 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute14 || '%' )
---            OR ( ship_flv2.attribute15 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute15 || '%' )
---          )
-      AND ship_hl.address3          LIKE ship_flv2.lookup_code || '%'
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
---    GROUP BY ship_hca.account_number
---           , ship_flv1.attribute1
---           , ship_xca.business_low_type
---           , ship_xca.delivery_chain_code           , bill_hca.account_number
---           , CASE
 ---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
-----               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
---               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
----- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
---                 ship_xcm.term_name
---               ELSE
---                 bill_rtt1.name
---             END
---           , CASE
----- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
-----               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
---               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
----- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
---                 NULL
---               ELSE
---                 bill_rtt2.name
---             END
---           , CASE
----- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
-----               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
---               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
----- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
---                 NULL
---               ELSE
---                 bill_rtt3.name
---             END
---           , CASE
----- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
-----               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
---               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+----             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
 ---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
---                 gn_bm_support_period_to
---               ELSE
---                 TO_NUMBER( bill_hcsua.attribute8 )
---             END
---           , bill_xca.tax_div
---           , bill_avtab.tax_code
---           , bill_avtab.tax_rate
---           , bill_hcsua.tax_rounding_rule
+--               ship_xcm.term_name
+--             ELSE
+--               bill_rtt1.name
+--           END                                   AS term_name1                 -- 支払条件
+--         , CASE
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+--               NULL
+--             ELSE
+--               bill_rtt2.name
+--           END                                   AS term_name2                 -- 第2支払条件
+--         , CASE
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+--               NULL
+--             ELSE
+--               bill_rtt3.name
+--           END                                   AS term_name3                 -- 第3支払条件
+--         , CASE
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+--             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+--               gn_bm_support_period_to
+--             ELSE
+--               TO_NUMBER( bill_hcsua.attribute8 )
+--           END                                   AS settle_amount_cycle        -- 金額確定サイクル
+--         , bill_xca.tax_div                      AS tax_div                    -- 消費税区分
+--         , bill_avtab.tax_code                   AS tax_code                   -- 税金コード
+--         , bill_avtab.tax_rate                   AS tax_rate                   -- 税率
+--         , bill_hcsua.tax_rounding_rule          AS tax_rounding_rule          -- 端数処理区分
 ---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
-----           , CASE
-----               WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
-----                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
-----                    )
-----               THEN
-----                 gv_vendor_dummy_code
-----               ELSE
-----                 ship_xca.contractor_supplier_code
-----             END
-----           , bm1_pvsa.vendor_site_code
-----           , bm1_pvsa.attribute4
-----           , ship_xca.bm_pay_supplier_code1
-----           , bm2_pvsa.vendor_site_code
-----           , bm2_pvsa.attribute4
-----           , ship_xca.bm_pay_supplier_code2
-----           , bm3_pvsa.vendor_site_code
-----           , bm3_pvsa.attribute4
+----         , CASE
+----             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+----                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+----                  )
+----             THEN
+----               gv_vendor_dummy_code
+----             ELSE
+----               ship_xca.contractor_supplier_code
+----           END                                   AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
 --         , CASE
 --             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
 --               ship_xca.contractor_supplier_code
@@ -668,87 +316,708 @@ AS
 --               gv_vendor_dummy_code
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+----         , bm1_pvsa.vendor_site_code             AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
 --         , CASE
 --             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
 --               bm1_pvsa.vendor_site_code
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+----         , bm1_pvsa.attribute4                   AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
 --         , CASE
 --             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
 --               bm1_pvsa.attribute4
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+----         , ship_xca.bm_pay_supplier_code1        AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
 --         , CASE
 --             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
 --               ship_xca.bm_pay_supplier_code1
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+----         , bm2_pvsa.vendor_site_code             AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
 --         , CASE
 --             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
 --               bm2_pvsa.vendor_site_code
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
 --         , CASE
 --             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
 --               bm2_pvsa.attribute4
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+----         , ship_xca.bm_pay_supplier_code2        AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
 --         , CASE
 --             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
 --               ship_xca.bm_pay_supplier_code2
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+----         , bm3_pvsa.vendor_site_code             AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
 --         , CASE
 --             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
 --               bm3_pvsa.vendor_site_code
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+----         , bm3_pvsa.attribute4                   AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
 --         , CASE
 --             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
 --               bm3_pvsa.attribute4
 --             ELSE
 --               NULL
---           END
+--           END                                   AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
 ---- 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+--         , ship_xca.receiv_discount_rate         AS receiv_discount_rate       -- 入金値引率
+--         , NVL2( MAX( ship_xcbs.calc_target_period_to )
+--               , MAX( ship_xcbs.calc_target_period_to ) + 1
+--               , MIN( xseh.delivery_date )
+--           )                                     AS calc_target_period_from    -- 計算対象期間(FROM)
+--    FROM xxcos_sales_exp_headers       xseh                -- 販売実績ヘッダ
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----       , xxcos_sales_exp_lines         xsel                -- 販売実績明細
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+--       , hz_cust_accounts              ship_hca            -- 【出荷先】顧客マスタ
+--       , xxcmm_cust_accounts           ship_xca            -- 【出荷先】顧客追加情報
+--       , hz_parties                    ship_hp             -- 【出荷先】顧客パーティ
+--       , hz_party_sites                ship_hps            -- 【出荷先】顧客パーティサイト
+--       , hz_locations                  ship_hl             -- 【出荷先】顧客事業所
+--       , hz_cust_acct_sites_all        ship_hcasa          -- 【出荷先】顧客所在地
+--       , hz_cust_site_uses_all         ship_hcsua          -- 【出荷先】顧客使用目的
+--       , hz_cust_accounts              bill_hca            -- 【請求先】顧客マスタ
+--       , xxcmm_cust_accounts           bill_xca            -- 【請求先】顧客追加情報
+--       , hz_parties                    bill_hp             -- 【請求先】顧客パーティ
+--       , hz_party_sites                bill_hps            -- 【請求先】顧客パーティサイト
+--       , hz_cust_acct_sites_all        bill_hcasa          -- 【請求先】顧客所在地
+--       , hz_cust_site_uses_all         bill_hcsua          -- 【請求先】顧客使用目的
+--       , po_vendors                    bm1_pv              -- 【ＢＭ１】仕入先マスタ
+--       , po_vendor_sites_all           bm1_pvsa            -- 【ＢＭ１】仕入先サイトマスタ
+--       , po_vendors                    bm2_pv              -- 【ＢＭ２】仕入先マスタ
+--       , po_vendor_sites_all           bm2_pvsa            -- 【ＢＭ２】仕入先サイトマスタ
+--       , po_vendors                    bm3_pv              -- 【ＢＭ３】仕入先マスタ
+--       , po_vendor_sites_all           bm3_pvsa            -- 【ＢＭ３】仕入先サイトマスタ
+--       , xxcok_cond_bm_support         ship_xcbs           -- 条件別販手販協
+--       , ra_terms_tl                   bill_rtt1           -- 支払条件マスタ
+--       , ra_terms_tl                   bill_rtt2           -- 第2支払条件マスタ
+--       , ra_terms_tl                   bill_rtt3           -- 第3支払条件マスタ
+--       , fnd_lookup_values             bill_flv1           -- 消費税区分
+--       , ar_vat_tax_all_b              bill_avtab          -- 税金マスタ
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----       , fnd_lookup_values             ship_flv1           -- 業態（小分類）
+--       , ( SELECT flv_sho.lookup_code AS lookup_code -- 業態（小分類）
+--                , flv_sho.attribute1  AS attribute1  -- 業態（中分類）
+--           FROM fnd_lookup_values    flv_chu    -- 業態（中分類）
+--              , fnd_lookup_values    flv_sho    -- 業態（小分類）
+--           WHERE flv_chu.lookup_type = cv_lookup_type_06   -- 業態（中分類）
+--             AND flv_sho.lookup_type = cv_lookup_type_03   -- 業態（小分類）
+--             AND gd_process_date BETWEEN NVL( flv_chu.start_date_active, gd_process_date )
+--                                     AND NVL( flv_chu.end_date_active,   gd_process_date )
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----             AND flv_chu.language            = USERENV( 'LANG' )
+--             AND flv_chu.language            = cv_lang
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--             AND (    ( flv_sho.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
+--                   OR ( flv_chu.lookup_code <>  cv_gyotai_tyu_vd                      )
+--                 )
+--             AND flv_chu.enabled_flag        = cv_enable
+--             AND flv_sho.enabled_flag        = cv_enable
+--             AND gd_process_date BETWEEN NVL( flv_sho.start_date_active, gd_process_date )
+--                                     AND NVL( flv_sho.end_date_active,   gd_process_date )
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----             AND flv_sho.language            = USERENV( 'LANG' )
+--             AND flv_sho.language            = cv_lang
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--             AND flv_sho.attribute1          = flv_chu.lookup_code
+--         )                             ship_flv1           -- 業態（小分類）
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+--       , fnd_lookup_values             ship_flv2           -- 実行区分
+--       , ( SELECT xcm.install_account_id  AS install_account_id -- 設置先顧客ID
+--                , CASE
+--                    WHEN (    ( xcm.close_day_code      IS NULL )
+--                           OR ( xcm.transfer_day_code   IS NULL )
+--                           OR ( xcm.transfer_month_code IS NULL )
+--                         )
+--                    THEN
+--                      gv_default_term_name
+--                    ELSE
+--                         xcm.close_day_code
+--                      || '_'
+--                      || xcm.transfer_day_code
+--                      || '_'
+--                      || CASE
+--                           WHEN xcm.transfer_month_code = cv_month_type1 THEN
+--                             cv_site_type1
+--                           ELSE
+--                             cv_site_type2
+--                         END
+--                  END                     AS term_name          -- 支払条件
+--           FROM xxcso_contract_managements  xcm -- 契約管理
+--           WHERE xcm.status =  cv_xcm_status_result
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----             AND EXISTS ( SELECT    'X'
+--             AND EXISTS ( SELECT /*+ index(xcm2 XXCSO_CONTRACT_MANAGEMENTS_N06) */
+--                                 'X'
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--                          FROM xxcso_contract_managements  xcm2  -- 契約管理
+--                          WHERE xcm2.status                    =  '1'                -- ステータス：確定済
+--                            AND xcm2.install_account_id        = xcm.install_account_id
+--                          GROUP BY  xcm2.install_account_id
+--                          HAVING MAX( xcm2.contract_number )   = xcm.contract_number
+--                 )
+--          )                            ship_xcm            -- 契約管理情報
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----    WHERE xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+----      AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+--    WHERE EXISTS ( SELECT 'X'
+--                   FROM xxcos_sales_exp_lines xsel  -- 販売実績明細
+--                   WHERE xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+--                     AND xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+--                     AND ROWNUM = 1
+--          )
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+--      AND xseh.delivery_date          <= gd_process_date - gn_bm_support_period_from
+--      AND ship_hca.account_number      = xseh.ship_to_customer_code
+--      AND ship_hca.customer_class_code = cv_customer_class_customer
+--      AND ship_hca.cust_account_id     = ship_xca.customer_id
+--      AND ship_hp.party_id             = ship_hca.party_id
+--      AND ship_hp.party_id             = ship_hps.party_id
+--      AND ship_hl.location_id          = ship_hps.location_id
+--      AND ship_hca.cust_account_id     = ship_hcasa.cust_account_id
+--      AND ship_hps.party_site_id       = ship_hcasa.party_site_id
+--      AND ship_hcasa.org_id            = gn_org_id
+--      AND ship_hcasa.cust_acct_site_id = ship_hcsua.cust_acct_site_id
+--      AND ship_hcsua.org_id            = gn_org_id
+--      AND ship_hcsua.site_use_code     = cv_site_use_code_ship
+--      AND bill_hcsua.site_use_id       = ship_hcsua.bill_to_site_use_id
+--      AND bill_hcsua.org_id            = gn_org_id
+--      AND bill_hcsua.site_use_code     = cv_site_use_code_bill
+--      AND bill_hcasa.cust_acct_site_id = bill_hcsua.cust_acct_site_id
+--      AND bill_hcasa.org_id            = gn_org_id
+--      AND bill_hps.party_site_id       = bill_hcasa.party_site_id
+--      AND bill_hca.cust_account_id     = bill_hcasa.cust_account_id
+--      AND bill_hp.party_id             = bill_hps.party_id
+--      AND bill_hp.party_id             = bill_hca.party_id
+--      AND bill_hca.cust_account_id     = bill_xca.customer_id
+--      AND bm1_pv.segment1(+)           = ship_xca.contractor_supplier_code
+--      AND bm1_pv.vendor_id             = bm1_pvsa.vendor_id(+)
+--      AND bm1_pvsa.org_id(+)           = gn_org_id
+--      AND bm2_pv.segment1(+)           = ship_xca.bm_pay_supplier_code1
+--      AND bm2_pv.vendor_id             = bm2_pvsa.vendor_id(+)
+--      AND bm2_pvsa.org_id(+)           = gn_org_id
+--      AND bm3_pv.segment1(+)           = ship_xca.bm_pay_supplier_code2
+--      AND bm3_pv.vendor_id             = bm3_pvsa.vendor_id(+)
+--      AND bm3_pvsa.org_id(+)           = gn_org_id
+--      AND ship_hca.cust_account_id     = ship_xcm.install_account_id(+)
+--      AND ship_hca.account_number      = ship_xcbs.delivery_cust_code(+)
+--      AND ship_xcbs.closing_date(+)   <= gd_process_date
+--      AND bill_rtt1.term_id(+)         = bill_hcsua.payment_term_id
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----      AND bill_rtt1.language(+)        = USERENV( 'LANG' )
+--      AND bill_rtt1.language(+)        = cv_lang
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--      AND bill_rtt2.term_id(+)         = bill_hcsua.attribute2
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----      AND bill_rtt2.language(+)        = USERENV( 'LANG' )
+--      AND bill_rtt2.language(+)        = cv_lang
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--      AND bill_rtt3.term_id(+)         = bill_hcsua.attribute3
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----      AND bill_rtt3.language(+)        = USERENV( 'LANG' )
+--      AND bill_rtt3.language(+)        = cv_lang
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--      AND bill_flv1.lookup_code        = bill_xca.tax_div
+--      AND bill_flv1.lookup_type        = cv_lookup_type_02      -- 参照タイプ：消費税区分
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----      AND bill_flv1.language           = USERENV( 'LANG' )
+--      AND bill_flv1.language           = cv_lang
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--      AND bill_flv1.enabled_flag       = cv_enable
+--      AND gd_process_date        BETWEEN NVL( bill_flv1.start_date_active, gd_process_date )
+--                                     AND NVL( bill_flv1.end_date_active,   gd_process_date )
+--      AND bill_avtab.tax_code          = bill_flv1.attribute1
+--      AND bill_avtab.set_of_books_id   = gn_set_of_books_id
+--      AND bill_avtab.org_id            = gn_org_id
+--      AND bill_avtab.validate_flag     = cv_enable
+--      AND gd_process_date        BETWEEN NVL( bill_avtab.start_date, gd_process_date )
+--                                     AND NVL( bill_avtab.end_date,   gd_process_date )
+--      AND ship_flv1.lookup_code        = ship_xca.business_low_type
+---- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----      AND ship_flv1.lookup_type        = cv_lookup_type_03      -- 参照タイプ：業態(小分類)
+----      AND ship_flv1.language           = USERENV( 'LANG' )
+----      AND ship_flv1.enabled_flag       = cv_enable
+----      AND gd_process_date        BETWEEN NVL( ship_flv1.start_date_active, gd_process_date )
+----                                     AND NVL( ship_flv1.end_date_active,   gd_process_date )
+----      AND (    ( ship_flv1.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
+----            OR ( ship_flv1.attribute1  <> cv_gyotai_tyu_vd                       )
+----          )
+---- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----      AND ship_flv2.lookup_code        = gv_param_proc_type
+--      AND ship_flv2.attribute1         = gv_param_proc_type
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--      AND ship_flv2.lookup_type        = cv_lookup_type_01      -- 参照タイプ：販手販協計算実行区分
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----      AND ship_flv2.language           = USERENV( 'LANG' )
+--      AND ship_flv2.language           = cv_lang
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--      AND ship_flv2.enabled_flag       = cv_enable
+--      AND gd_process_date        BETWEEN NVL( ship_flv2.start_date_active, gd_process_date )
+--                                     AND NVL( ship_flv2.end_date_active,   gd_process_date )
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----      AND (    ( ship_flv2.attribute1  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute1  || '%' )
+----            OR ( ship_flv2.attribute2  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute2  || '%' )
+----            OR ( ship_flv2.attribute3  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute3  || '%' )
+----            OR ( ship_flv2.attribute4  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute4  || '%' )
+----            OR ( ship_flv2.attribute5  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute5  || '%' )
+----            OR ( ship_flv2.attribute6  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute6  || '%' )
+----            OR ( ship_flv2.attribute7  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute7  || '%' )
+----            OR ( ship_flv2.attribute8  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute8  || '%' )
+----            OR ( ship_flv2.attribute9  IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute9  || '%' )
+----            OR ( ship_flv2.attribute10 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute10 || '%' )
+----            OR ( ship_flv2.attribute11 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute11 || '%' )
+----            OR ( ship_flv2.attribute12 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute12 || '%' )
+----            OR ( ship_flv2.attribute13 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute13 || '%' )
+----            OR ( ship_flv2.attribute14 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute14 || '%' )
+----            OR ( ship_flv2.attribute15 IS NOT NULL AND ship_hl.address3 LIKE ship_flv2.attribute15 || '%' )
+----          )
+--      AND ship_hl.address3          LIKE ship_flv2.lookup_code || '%'
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
+----    GROUP BY ship_hca.account_number
+----           , ship_flv1.attribute1
+----           , ship_xca.business_low_type
+----           , ship_xca.delivery_chain_code           , bill_hca.account_number
+----           , CASE
+------ Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+------               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+------ End 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----                 ship_xcm.term_name
+----               ELSE
+----                 bill_rtt1.name
+----             END
+----           , CASE
+------ Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+------               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+------ End 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----                 NULL
+----               ELSE
+----                 bill_rtt2.name
+----             END
+----           , CASE
+------ Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+------               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+------ End 2009/06/26 Ver_2.1 0000269 M.Hiruta
+----                 NULL
+----               ELSE
+----                 bill_rtt3.name
+----             END
+----           , CASE
+------ Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+------               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+------ End   2009/06/26 Ver_2.1 0000269 M.Hiruta
+----                 gn_bm_support_period_to
+----               ELSE
+----                 TO_NUMBER( bill_hcsua.attribute8 )
+----             END
+----           , bill_xca.tax_div
+----           , bill_avtab.tax_code
+----           , bill_avtab.tax_rate
+----           , bill_hcsua.tax_rounding_rule
+------ 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR START
+------           , CASE
+------               WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+------                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+------                    )
+------               THEN
+------                 gv_vendor_dummy_code
+------               ELSE
+------                 ship_xca.contractor_supplier_code
+------             END
+------           , bm1_pvsa.vendor_site_code
+------           , bm1_pvsa.attribute4
+------           , ship_xca.bm_pay_supplier_code1
+------           , bm2_pvsa.vendor_site_code
+------           , bm2_pvsa.attribute4
+------           , ship_xca.bm_pay_supplier_code2
+------           , bm3_pvsa.vendor_site_code
+------           , bm3_pvsa.attribute4
+----         , CASE
+----             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+----               ship_xca.contractor_supplier_code
+----             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+----                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+----                  )
+----             THEN
+----               gv_vendor_dummy_code
+----             ELSE
+----               NULL
+----           END
+----         , CASE
+----             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               bm1_pvsa.vendor_site_code
+----             ELSE
+----               NULL
+----           END
+----         , CASE
+----             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               bm1_pvsa.attribute4
+----             ELSE
+----               NULL
+----           END
+----         , CASE
+----             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+----               ship_xca.bm_pay_supplier_code1
+----             ELSE
+----               NULL
+----           END
+----         , CASE
+----             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               bm2_pvsa.vendor_site_code
+----             ELSE
+----               NULL
+----           END
+----         , CASE
+----             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               bm2_pvsa.attribute4
+----             ELSE
+----               NULL
+----           END
+----         , CASE
+----             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+----               ship_xca.bm_pay_supplier_code2
+----             ELSE
+----               NULL
+----           END
+----         , CASE
+----             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               bm3_pvsa.vendor_site_code
+----             ELSE
+----               NULL
+----           END
+----         , CASE
+----             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+----               bm3_pvsa.attribute4
+----             ELSE
+----               NULL
+----           END
+------ 2009/07/07 Ver.2.1 [障害0000269] SCS K.Yamaguchi REPAIR END
+----           , ship_xca.receiv_discount_rate
+--    GROUP BY ship_hca.account_number
+--           , ship_flv1.attribute1
+--           , ship_xca.business_low_type
+--           , ship_xca.delivery_chain_code
+--           , bill_hca.account_number
+--           , ship_xcm.term_name
+--           , bill_rtt1.name
+--           , bill_rtt2.name
+--           , bill_rtt3.name
+--           , bill_hcsua.attribute8
+--           , bill_xca.tax_div
+--           , bill_avtab.tax_code
+--           , bill_avtab.tax_rate
+--           , bill_hcsua.tax_rounding_rule
+--           , ship_xca.contractor_supplier_code
+--           , bm1_pvsa.vendor_site_code
+--           , bm1_pvsa.attribute4
+--           , ship_xca.bm_pay_supplier_code1
+--           , bm2_pvsa.vendor_site_code
+--           , bm2_pvsa.attribute4
+--           , ship_xca.bm_pay_supplier_code2
+--           , bm3_pvsa.vendor_site_code
+--           , bm3_pvsa.attribute4
 --           , ship_xca.receiv_discount_rate
-    GROUP BY ship_hca.account_number
-           , ship_flv1.attribute1
-           , ship_xca.business_low_type
-           , ship_xca.delivery_chain_code
-           , bill_hca.account_number
-           , ship_xcm.term_name
-           , bill_rtt1.name
-           , bill_rtt2.name
-           , bill_rtt3.name
-           , bill_hcsua.attribute8
-           , bill_xca.tax_div
-           , bill_avtab.tax_code
-           , bill_avtab.tax_rate
-           , bill_hcsua.tax_rounding_rule
-           , ship_xca.contractor_supplier_code
-           , bm1_pvsa.vendor_site_code
-           , bm1_pvsa.attribute4
-           , ship_xca.bm_pay_supplier_code1
-           , bm2_pvsa.vendor_site_code
-           , bm2_pvsa.attribute4
-           , ship_xca.bm_pay_supplier_code2
-           , bm3_pvsa.vendor_site_code
-           , bm3_pvsa.attribute4
-           , ship_xca.receiv_discount_rate
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
-    ORDER BY bill_hca.account_number
-           , ship_flv1.attribute1
-           , ship_xca.business_low_type
-           , ship_hca.account_number
+---- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR END
+--    ORDER BY bill_hca.account_number
+--           , ship_flv1.attribute1
+--           , ship_xca.business_low_type
+--           , ship_hca.account_number
+--  ;
+    SELECT /*+ ORDERED */
+           ship_hca.account_number                     AS ship_cust_code             -- 【出荷先】顧客コード
+         , gyotai_chu_flvv.lookup_code                 AS ship_gyotai_tyu            -- 【出荷先】業態（中分類）
+         , ship_xca.business_low_type                  AS ship_gyotai_sho            -- 【出荷先】業態（小分類）
+         , ship_xca.delivery_chain_code                AS ship_delivery_chain_code   -- 【出荷先】納品先チェーンコード
+         , bill_hca.account_number                     AS bill_cust_code             -- 【請求先】顧客コード
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 ( SELECT ( CASE
+                              WHEN (   (xcm.close_day_code       IS NULL)
+                                    OR (xcm.transfer_day_code    IS NULL)
+                                    OR (xcm.transfer_month_code  IS NULL)
+                                   )
+                              THEN
+                                gv_default_term_name
+                              ELSE
+                                   xcm.close_day_code
+                                || '_'
+                                || xcm.transfer_day_code
+                                || '_'
+                                || ( CASE
+                                       WHEN xcm.transfer_month_code = cv_month_type1 THEN
+                                         cv_site_type1
+                                       ELSE
+                                         cv_site_type2
+                                     END
+                                   )
+                            END
+                          )
+                   FROM xxcso_contract_managements  xcm
+                   WHERE xcm.contract_management_id = ( SELECT MAX( xcm2.contract_management_id )
+                                                        FROM xxcso_contract_managements  xcm2
+                                                        WHERE xcm2.install_account_id = ship_hca.cust_account_id
+                                                          AND xcm2.status             = cv_xcm_status_result
+                                                      )
+                 )
+               ELSE
+                 ( SELECT rtv.name
+                   FROM ra_terms_vl  rtv
+                   WHERE rtv.term_id = bill_hcsu.payment_term_id
+                 )
+             END
+           )                                           AS term_name1                 -- 支払条件
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 NULL
+               ELSE
+                 ( SELECT rtv.name
+                   FROM ra_terms_vl  rtv
+                   WHERE rtv.term_id = TO_NUMBER( bill_hcsu.attribute2 )
+                 )
+             END
+           )                                           AS term_name2                 -- 第2支払条件
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 NULL
+               ELSE
+                 ( SELECT rtv.name
+                   FROM ra_terms_vl  rtv
+                   WHERE rtv.term_id = TO_NUMBER( bill_hcsu.attribute3 )
+                 )
+             END
+           )                                           AS term_name3                 -- 第3支払条件
+         , (CASE
+              WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                gn_bm_support_period_to
+              ELSE
+                TO_NUMBER( bill_hcsu.attribute8 )
+            END
+           )                                           AS settle_amount_cycle        -- 金額確定サイクル
+         , bill_xca.tax_div                            AS tax_div                    -- 消費税区分
+         , bill_avtb.tax_code                          AS tax_code                   -- 税金コード
+         , bill_avtb.tax_rate                          AS tax_rate                   -- 税率
+         , bill_hcsu.tax_rounding_rule                 AS tax_rounding_rule          -- 端数処理区分
+         , ( CASE
+               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+                 ship_xca.contractor_supplier_code
+               WHEN (     ( gyotai_chu_flvv.lookup_code   <> cv_gyotai_tyu_vd )
+                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+                    )
+               THEN
+                 gv_vendor_dummy_code
+               ELSE
+                 NULL
+             END
+           )                                           AS bm1_vendor_code            -- 【ＢＭ１】仕入先コード
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 ( SELECT pvs.vendor_site_code
+                   FROM po_vendors       pv
+                      , po_vendor_sites  pvs
+                   WHERE pv.segment1        = ship_xca.contractor_supplier_code
+                     AND pvs.vendor_id      = pv.vendor_id
+                 )
+               ELSE
+                 NULL
+             END
+           )                                           AS bm1_vendor_site_code       -- 【ＢＭ１】仕入先サイトコード
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 ( SELECT  pvs.attribute4
+                   FROM po_vendors       pv
+                      , po_vendor_sites  pvs
+                   WHERE pv.segment1        = ship_xca.contractor_supplier_code
+                     AND pvs.vendor_id      = pv.vendor_id
+                 )
+               ELSE
+                 NULL
+             END
+           )                                           AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
+         , ( CASE
+               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+                 ship_xca.bm_pay_supplier_code1
+               ELSE
+                 NULL
+             END
+           )                                           AS bm2_vendor_code            -- 【ＢＭ２】仕入先コード
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 ( SELECT pvs.vendor_site_code
+                   FROM po_vendors       pv
+                      , po_vendor_sites  pvs
+                   WHERE pv.segment1        = ship_xca.bm_pay_supplier_code1
+                     AND pvs.vendor_id      = pv.vendor_id
+                 )
+               ELSE
+                 NULL
+             END
+           )                                           AS bm2_vendor_site_code       -- 【ＢＭ２】仕入先サイトコード
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 ( SELECT pvs.attribute4
+                   FROM po_vendors       pv
+                      , po_vendor_sites  pvs
+                   WHERE pv.segment1        = ship_xca.bm_pay_supplier_code1
+                     AND pvs.vendor_id      = pv.vendor_id
+                 )
+               ELSE
+                 NULL
+             END
+           )                                           AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
+         , ( CASE
+               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+                 ship_xca.bm_pay_supplier_code2
+               ELSE
+                 NULL
+             END
+           )                                           AS bm3_vendor_code            -- 【ＢＭ３】仕入先コード
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 ( SELECT pvs.vendor_site_code
+                   FROM po_vendors       pv
+                      , po_vendor_sites  pvs
+                   WHERE pv.segment1        = ship_xca.bm_pay_supplier_code2
+                     AND pvs.vendor_id      = pv.vendor_id
+                 )
+               ELSE
+                 NULL
+             END
+           )                                           AS bm3_vendor_site_code       -- 【ＢＭ３】仕入先サイトコード
+         , ( CASE
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+                 ( SELECT pvs.attribute4
+                   FROM po_vendors       pv
+                      , po_vendor_sites  pvs
+                   WHERE pv.segment1        = ship_xca.bm_pay_supplier_code2
+                     AND pvs.vendor_id      = pv.vendor_id
+                 )
+               ELSE
+                 NULL
+             END
+           )                                           AS bm3_bm_payment_type        -- 【ＢＭ３】BM支払区分
+         , ship_xca.receiv_discount_rate               AS receiv_discount_rate       -- 入金値引率
+         , ( CASE
+               WHEN ship_xcbi.last_fix_closing_date IS NOT NULL THEN
+                 ship_xcbi.last_fix_closing_date + 1
+               ELSE
+                 ( SELECT MIN( xseh.delivery_date )
+                   FROM xxcos_sales_exp_headers  xseh
+                   WHERE xseh.ship_to_customer_code  = ship_hca.account_number
+                     AND xseh.delivery_date         <= gd_process_date - gn_bm_support_period_from
+                     AND EXISTS ( SELECT  /*+ INDEX(xsel XXCOS_SALES_EXP_LINES_N01) */
+                                          'X'
+                                  FROM xxcos_sales_exp_lines  xsel
+                                  WHERE xsel.sales_exp_header_id     = xseh.sales_exp_header_id
+                                    AND xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+                                    AND ROWNUM = 1
+                         )
+                 )
+               END
+           )                                           AS calc_target_period_from    -- 計算対象期間(FROM)
+    FROM fnd_lookup_values_vl      proc_flvv
+       , hz_locations              ship_hl
+       , hz_party_sites            ship_hps
+       , hz_cust_acct_sites        ship_hcas
+       , hz_cust_accounts          ship_hca
+       , xxcmm_cust_accounts       ship_xca
+       , hz_cust_site_uses         ship_hcsu
+       , xxcok_cust_bm_info        ship_xcbi
+       , hz_cust_site_uses         bill_hcsu
+       , hz_cust_acct_sites        bill_hcas
+       , hz_cust_accounts          bill_hca
+       , xxcmm_cust_accounts       bill_xca
+       , fnd_lookup_values_vl      gyotai_sho_flvv
+       , fnd_lookup_values_vl      gyotai_chu_flvv
+       , fnd_lookup_values_vl      tax_flvv
+       , ar_vat_tax_b              bill_avtb
+    WHERE proc_flvv.lookup_type        = cv_lookup_type_01
+      AND proc_flvv.attribute1         = gv_param_proc_type
+      AND proc_flvv.enabled_flag       = cv_enable
+      AND gd_process_date        BETWEEN NVL( proc_flvv.start_date_active, gd_process_date )
+                                     AND NVL( proc_flvv.end_date_active  , gd_process_date )
+      AND ship_hl.address3          LIKE proc_flvv.lookup_code || '%'
+      AND ship_hps.location_id         = ship_hl.location_id
+      AND ship_hcas.party_site_id      = ship_hps.party_site_id
+      AND ship_hca.cust_account_id     = ship_hcas.cust_account_id
+      AND EXISTS ( SELECT /*+ USE_NL(xseh xsel) INDEX(xsel XXCOS_SALES_EXP_LINES_N01) */
+                          'X'
+                   FROM xxcos_sales_exp_headers  xseh
+                      ,xxcos_sales_exp_lines    xsel
+                   WHERE xseh.ship_to_customer_code  = ship_hca.account_number
+                     AND xseh.delivery_date         <= gd_process_date - gn_bm_support_period_from
+                     AND xseh.delivery_date         >= NVL( ship_xcbi.last_fix_delivery_date, xseh.delivery_date )
+                     AND xsel.sales_exp_header_id    = xseh.sales_exp_header_id
+                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
+                     AND ROWNUM = 1
+          )
+      AND ship_xca.customer_id         = ship_hca.cust_account_id
+      AND ship_hca.customer_class_code = cv_customer_class_customer
+      AND ship_hca.account_number      = ship_xcbi.cust_code(+)
+      AND ship_hcsu.cust_acct_site_id  = ship_hcas.cust_acct_site_id
+      AND ship_hcsu.site_use_code      = cv_site_use_code_ship
+      AND bill_hcsu.site_use_id        = ship_hcsu.bill_to_site_use_id
+      AND bill_hcsu.site_use_code      = cv_site_use_code_bill
+      AND bill_hcas.cust_acct_site_id  = bill_hcsu.cust_acct_site_id
+      AND bill_hca.cust_account_id     = bill_hcas.cust_account_id
+      AND bill_xca.customer_id         = bill_hca.cust_account_id
+      AND gyotai_sho_flvv.lookup_type  = cv_lookup_type_03
+      AND gyotai_sho_flvv.enabled_flag = cv_enable
+      AND gd_process_date        BETWEEN NVL( gyotai_sho_flvv.start_date_active, gd_process_date )
+                                     AND NVL( gyotai_sho_flvv.end_date_active  , gd_process_date )
+      AND gyotai_sho_flvv.lookup_code  = ship_xca.business_low_type
+      AND gyotai_chu_flvv.lookup_type  = cv_lookup_type_06
+      AND gyotai_chu_flvv.enabled_flag = cv_enable
+      AND gd_process_date        BETWEEN NVL( gyotai_chu_flvv.start_date_active, gd_process_date )
+                                     AND NVL( gyotai_chu_flvv.end_date_active  , gd_process_date )
+      AND gyotai_chu_flvv.lookup_code  = gyotai_sho_flvv.attribute1
+      AND (    ( gyotai_sho_flvv.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 ) )
+            OR ( gyotai_chu_flvv.lookup_code <> cv_gyotai_tyu_vd                      )
+          )
+      AND tax_flvv.lookup_type         = cv_lookup_type_02
+      AND tax_flvv.lookup_code         = bill_xca.tax_div
+      AND tax_flvv.enabled_flag        = cv_enable
+      AND gd_process_date        BETWEEN NVL( tax_flvv.start_date_active, gd_process_date )
+                                     AND NVL( tax_flvv.end_date_active  , gd_process_date )
+      AND bill_avtb.tax_code           = tax_flvv.attribute1
+      AND bill_avtb.validate_flag      = cv_enable
+      AND gd_process_date        BETWEEN NVL( bill_avtb.start_date, gd_process_date )
+                                     AND NVL( bill_avtb.end_date  , gd_process_date )
   ;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi REPAIR END
 -- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi REPAIR START
 --  -- 販売実績情報・売価別条件
 --  CURSOR get_sales_data_cur1 IS
@@ -3522,6 +3791,159 @@ AS
   );
   TYPE xcbs_data_ttype             IS TABLE OF xxcok_cond_bm_support%ROWTYPE INDEX BY BINARY_INTEGER;
 --
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD START
+  /**********************************************************************************
+   * Procedure Name   : udpate_xcbi
+   * Description      : 販手計算済顧客情報データの更新(A-15)
+   ***********************************************************************************/
+  PROCEDURE udpate_xcbi(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'udpate_xcbi';      -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    -- エラー時ログ出力用退避変数
+    lt_ship_cust_code              xxcok_tmp_014a01c_custdata.ship_cust_code%TYPE DEFAULT NULL;
+    --==================================================
+    -- ローカルカーソル
+    --==================================================
+    CURSOR xcbi_update_lock_cur
+    IS
+      SELECT xcbi.cust_bm_info_id       AS cust_bm_info_id            -- 販手計算済顧客情報ID
+           , xt0c.ship_cust_code        AS ship_cust_code             -- 顧客コード
+           , xt0c.calc_target_period_to AS calc_target_period_to      -- 締め日
+           , ( SELECT COUNT( 'X' )
+               FROM xxcok_bm_contract_err xbce
+               WHERE xbce.cust_code = xt0c.ship_cust_code
+                 AND ROWNUM = 1
+             )                          AS error_count                -- 販手条件エラーチェック
+      FROM xxcok_cust_bm_info           xcbi               -- 販手販協計算済顧客情報テーブル
+         , xxcok_tmp_014a01c_custdata   xt0c               -- 条件別販手販協計算顧客情報一時表
+      WHERE xcbi.cust_code(+)           = xt0c.ship_cust_code
+        AND xt0c.amount_fix_date        = gd_process_date
+      FOR UPDATE OF xcbi.cust_bm_info_id NOWAIT
+    ;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 販手販協計算済顧客情報データ更新ループ
+    --==================================================
+    << xcbi_update_lock_loop >>
+    FOR xcbi_update_lock_rec IN xcbi_update_lock_cur LOOP
+      lt_ship_cust_code := xcbi_update_lock_rec.ship_cust_code;
+      --==================================================
+      -- 販手販協計算済顧客情報データ更新
+      --==================================================
+      IF( xcbi_update_lock_rec.cust_bm_info_id IS NOT NULL ) THEN
+        UPDATE xxcok_cust_bm_info       xcbi
+        SET xcbi.last_fix_closing_date  = xcbi_update_lock_rec.calc_target_period_to
+          , xcbi.last_fix_delivery_date = CASE
+                                            WHEN xcbi_update_lock_rec.error_count = 0 THEN
+                                              ADD_MONTHS( TRUNC( xcbi_update_lock_rec.calc_target_period_to, 'MM' ), -1 )
+                                            ELSE
+                                              xcbi.last_fix_delivery_date
+                                          END
+          , xcbi.last_updated_by        = cn_last_updated_by
+          , xcbi.last_update_date       = SYSDATE
+          , xcbi.last_update_login      = cn_last_update_login
+          , xcbi.request_id             = cn_request_id
+          , xcbi.program_application_id = cn_program_application_id
+          , xcbi.program_id             = cn_program_id
+          , xcbi.program_update_date    = SYSDATE
+        WHERE xcbi.cust_bm_info_id      = xcbi_update_lock_rec.cust_bm_info_id
+        ;
+      --==================================================
+      --販手販協計算済顧客情報データ登録
+      --==================================================
+      ELSE
+        INSERT INTO xxcok_cust_bm_info(
+          cust_bm_info_id                                   -- 販手計算済顧客情報ID
+        , cust_code                                         -- 顧客コード
+        , last_fix_closing_date                             -- 最終確定締め日
+        , last_fix_delivery_date                            -- 最終確定納品日
+        , created_by                                        -- 作成者
+        , creation_date                                     -- 作成日
+        , last_updated_by                                   -- 最終更新者
+        , last_update_date                                  -- 最終更新日
+        , last_update_login                                 -- 最終更新ログイン
+        , request_id                                        -- 要求ID
+        , program_application_id                            -- コンカレント・プログラム・アプリケーションID
+        , program_id                                        -- コンカレント・プログラムID
+        , program_update_date                               -- プログラム更新日
+        )
+        VALUES(
+          xxcok_cust_bm_info_s01.NEXTVAL                    -- cust_bm_info_id
+        , xcbi_update_lock_rec.ship_cust_code               -- cust_code
+        , xcbi_update_lock_rec.calc_target_period_to        -- last_fix_closing_date
+        , CASE
+            WHEN xcbi_update_lock_rec.error_count = 0 THEN
+              ADD_MONTHS( TRUNC( xcbi_update_lock_rec.calc_target_period_to, 'MM' ), -1 )
+            ELSE
+              NULL
+          END                                               -- last_fix_delivery_date
+        , cn_created_by                                     -- created_by
+        , SYSDATE                                           -- creation_date
+        , cn_last_updated_by                                -- last_updated_by
+        , SYSDATE                                           -- last_update_date
+        , cn_last_update_login                              -- last_update_login
+        , cn_request_id                                     -- request_id
+        , cn_program_application_id                         -- program_application_id
+        , cn_program_id                                     -- program_id
+        , SYSDATE                                           -- program_update_date
+        );
+      END IF;
+    END LOOP xcbi_update_lock_loop;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    -- *** ロック取得エラー ***
+    WHEN resource_busy_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00103
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_ship_cust_code || '】' ); -- debug
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END udpate_xcbi;
+--
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD END
   /**********************************************************************************
    * Procedure Name   : update_xsel
    * Description      : 販売実績連携結果の更新(A-12)
@@ -3582,7 +4004,7 @@ AS
                            AND xbce.item_code           = xsel.item_code
                            AND xbce.container_type_code = NVL( flv.attribute1, cv_container_code_others )
                            AND xbce.selling_price       = xsel.dlv_unit_price
--- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi ADD START
+-- 2009/07/16 Ver.2.3 [障害0000756] SCS K.xYamaguchi ADD START
                            AND ROWNUM = 1
 -- 2009/07/16 Ver.2.3 [障害0000756] SCS K.Yamaguchi ADD END
             )
@@ -5070,10 +5492,12 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_g
       WHERE xbce.cust_code = xbce_delete_lock_rec.cust_code
       ;
     END LOOP xbce_delete_lock_loop;
-    --==================================================
-    -- 削除処理の確定
-    --==================================================
-    COMMIT;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi DELETE START
+--    --==================================================
+--    -- 削除処理の確定
+--    --==================================================
+--    COMMIT;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi DELETE END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -6241,9 +6665,11 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
     ld_bm_support_period_to        DATE           DEFAULT NULL;                 -- 条件別販手販協計算終了日
     ln_period_year                 NUMBER         DEFAULT NULL;                 -- 会計年度
     ld_amount_fix_date             DATE           DEFAULT NULL;                 -- 金額確定日
-    -- ブレイク条件
-    lv_pre_bill_cust_code          hz_cust_accounts.account_number      %TYPE DEFAULT NULL; -- 前レコード【請求先】顧客コード退避
-    lv_pre_ship_gyotai_sho         xxcmm_cust_accounts.business_low_type%TYPE DEFAULT NULL; -- 前レコード【出荷先】業態（小分類）退避
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi DELETE START
+--    -- ブレイク条件
+--    lv_pre_bill_cust_code          hz_cust_accounts.account_number      %TYPE DEFAULT NULL; -- 前レコード【請求先】顧客コード退避
+--    lv_pre_ship_gyotai_sho         xxcmm_cust_accounts.business_low_type%TYPE DEFAULT NULL; -- 前レコード【出荷先】業態（小分類）退避
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi DELETE END
     -- ログ出力用退避項目
     lt_ship_cust_code              hz_cust_accounts.account_number      %TYPE DEFAULT NULL;
 --
@@ -6262,46 +6688,70 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
       DECLARE
         normal_skip_expt           EXCEPTION; -- 処理スキップ
       BEGIN
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi REPAIR START
+--        --==================================================
+--        -- 条件別販手販協計算日付情報の導出
+--        --==================================================
+--        IF(    ( lv_pre_bill_cust_code  IS NULL                              )
+--            OR ( lv_pre_ship_gyotai_sho IS NULL                              )
+--            OR ( lv_pre_bill_cust_code  <> get_cust_data_rec.bill_cust_code  )
+--            OR ( lv_pre_ship_gyotai_sho <> get_cust_data_rec.ship_gyotai_sho )
+--        ) THEN
+--          get_cust_subdata(
+--            ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+--          , ov_retcode                  => lv_retcode                 -- リターン・コード
+--          , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+--          , i_get_cust_data_rec         => get_cust_data_rec          -- 顧客情報レコード
+--          , ov_term_name                => lv_term_name               -- 支払条件
+--          , od_close_date               => ld_close_date              -- 締め日
+--          , od_expect_payment_date      => ld_expect_payment_date     -- 支払予定日
+--          , od_bm_support_period_from   => ld_bm_support_period_from  -- 条件別販手販協計算開始日
+--          , od_bm_support_period_to     => ld_bm_support_period_to    -- 条件別販手販協計算終了日
+--          , on_period_year              => ln_period_year             -- 会計年度
+--          , od_amount_fix_date          => ld_amount_fix_date         -- 金額確定日
+--          );
+--          IF( lv_retcode = cv_status_error ) THEN
+--            lv_end_retcode := cv_status_error;
+--            RAISE global_process_expt;
+--          ELSIF( lv_retcode = cv_status_warn ) THEN
+--            --==================================================
+--            -- ブレイク条件にNULLを設定
+--            -- （エラーが発生した場合は次のレコードで必ず実行する）
+--            --==================================================
+--            lv_pre_bill_cust_code  := NULL;
+--            lv_pre_ship_gyotai_sho := NULL;
+--            RAISE warning_skip_expt;
+--          ELSE
+--            --==================================================
+--            -- ブレイク条件退避
+--            --==================================================
+--            lv_pre_bill_cust_code  := get_cust_data_rec.bill_cust_code;
+--            lv_pre_ship_gyotai_sho := get_cust_data_rec.ship_gyotai_sho;
+--          END IF;
+--        END IF;
         --==================================================
         -- 条件別販手販協計算日付情報の導出
         --==================================================
-        IF(    ( lv_pre_bill_cust_code  IS NULL                              )
-            OR ( lv_pre_ship_gyotai_sho IS NULL                              )
-            OR ( lv_pre_bill_cust_code  <> get_cust_data_rec.bill_cust_code  )
-            OR ( lv_pre_ship_gyotai_sho <> get_cust_data_rec.ship_gyotai_sho )
-        ) THEN
-          get_cust_subdata(
-            ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
-          , ov_retcode                  => lv_retcode                 -- リターン・コード
-          , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
-          , i_get_cust_data_rec         => get_cust_data_rec          -- 顧客情報レコード
-          , ov_term_name                => lv_term_name               -- 支払条件
-          , od_close_date               => ld_close_date              -- 締め日
-          , od_expect_payment_date      => ld_expect_payment_date     -- 支払予定日
-          , od_bm_support_period_from   => ld_bm_support_period_from  -- 条件別販手販協計算開始日
-          , od_bm_support_period_to     => ld_bm_support_period_to    -- 条件別販手販協計算終了日
-          , on_period_year              => ln_period_year             -- 会計年度
-          , od_amount_fix_date          => ld_amount_fix_date         -- 金額確定日
-          );
-          IF( lv_retcode = cv_status_error ) THEN
-            lv_end_retcode := cv_status_error;
-            RAISE global_process_expt;
-          ELSIF( lv_retcode = cv_status_warn ) THEN
-            --==================================================
-            -- ブレイク条件にNULLを設定
-            -- （エラーが発生した場合は次のレコードで必ず実行する）
-            --==================================================
-            lv_pre_bill_cust_code  := NULL;
-            lv_pre_ship_gyotai_sho := NULL;
-            RAISE warning_skip_expt;
-          ELSE
-            --==================================================
-            -- ブレイク条件退避
-            --==================================================
-            lv_pre_bill_cust_code  := get_cust_data_rec.bill_cust_code;
-            lv_pre_ship_gyotai_sho := get_cust_data_rec.ship_gyotai_sho;
-          END IF;
+        get_cust_subdata(
+          ov_errbuf                   => lv_errbuf                  -- エラー・メッセージ
+        , ov_retcode                  => lv_retcode                 -- リターン・コード
+        , ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+        , i_get_cust_data_rec         => get_cust_data_rec          -- 顧客情報レコード
+        , ov_term_name                => lv_term_name               -- 支払条件
+        , od_close_date               => ld_close_date              -- 締め日
+        , od_expect_payment_date      => ld_expect_payment_date     -- 支払予定日
+        , od_bm_support_period_from   => ld_bm_support_period_from  -- 条件別販手販協計算開始日
+        , od_bm_support_period_to     => ld_bm_support_period_to    -- 条件別販手販協計算終了日
+        , on_period_year              => ln_period_year             -- 会計年度
+        , od_amount_fix_date          => ld_amount_fix_date         -- 金額確定日
+        );
+        IF( lv_retcode = cv_status_error ) THEN
+          lv_end_retcode := cv_status_error;
+          RAISE global_process_expt;
+        ELSIF( lv_retcode = cv_status_warn ) THEN
+          RAISE warning_skip_expt;
         END IF;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi REPAIR END
         --==================================================
         -- 条件別販手販協計算顧客情報一時表への登録
         --==================================================
@@ -6376,6 +6826,143 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
       ov_retcode := cv_status_error;
   END cust_loop;
 --
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD START
+  /**********************************************************************************
+   * Procedure Name   : purge_xcbi
+   * Description      : 販手計算済顧客情報データの削除（保持期間外）(A-14)
+   ***********************************************************************************/
+  PROCEDURE purge_xcbi(
+    ov_errbuf                      OUT VARCHAR2        -- エラー・メッセージ
+  , ov_retcode                     OUT VARCHAR2        -- リターン・コード
+  , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
+  )
+  IS
+    --==================================================
+    -- ローカル定数
+    --==================================================
+    cv_prg_name                    CONSTANT VARCHAR2(30) := 'purge_xcbi';             -- プログラム名
+    --==================================================
+    -- ローカル変数
+    --==================================================
+    lv_errbuf                      VARCHAR2(5000) DEFAULT NULL;                 -- エラー・メッセージ
+    lv_retcode                     VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_end_retcode                 VARCHAR2(1)    DEFAULT cv_status_normal;     -- リターン・コード
+    lv_errmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- ユーザー・エラー・メッセージ
+    lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
+    lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
+    ld_start_date                  DATE           DEFAULT NULL;                 -- 業務月月初日
+    --==================================================
+    -- ローカルカーソル
+    --==================================================
+    CURSOR xcbi_parge_lock_cur(
+      id_target_date               IN  DATE
+    )
+    IS
+      SELECT xcbi.cust_bm_info_id       AS cust_bm_info_id
+      FROM xxcok_cust_bm_info      xcbi               -- 販手販協計算済顧客情報テーブル
+         , hz_cust_accounts        hca                -- 顧客マスタ
+         , hz_cust_acct_sites_all  hcas               -- 顧客サイトマスタ
+         , hz_parties              hp                 -- パーティマスタ
+         , hz_party_sites          hps                -- パーティサイトマスタ
+         , hz_locations            hl                 -- 顧客所在地マスタ
+         , fnd_lookup_values       flv                -- 販手販協計算実行区分
+      WHERE xcbi.cust_code                   = hca.account_number
+        AND hca.cust_account_id              = hcas.cust_account_id
+        AND hca.party_id                     = hp.party_id
+        AND hp.party_id                      = hps.party_id
+        AND hcas.party_site_id               = hps.party_site_id
+        AND hps.location_id                  = hl.location_id
+        AND hcas.org_id                      = gn_org_id
+        AND flv.lookup_type                  = cv_lookup_type_01
+        AND flv.attribute1                   = gv_param_proc_type
+        AND flv.language                     = cv_lang
+        AND gd_process_date            BETWEEN NVL( flv.start_date_active, gd_process_date )
+                                           AND NVL( flv.end_date_active  , gd_process_date )
+        AND flv.enabled_flag                 = cv_enable
+        AND hl.address3                   LIKE flv.lookup_code || '%'
+        AND xcbi.last_fix_closing_date       < id_target_date
+      FOR UPDATE OF xcbi.cust_bm_info_id NOWAIT
+    ;
+--
+  BEGIN
+    --==================================================
+    -- ステータス初期化
+    --==================================================
+    lv_end_retcode := cv_status_normal;
+    --==================================================
+    -- 月初日取得
+    --==================================================
+    ld_start_date := ADD_MONTHS( TRUNC( gd_process_date, 'MM' ), - gn_sales_retention_period );
+    --==================================================
+    -- 販手販協計算済顧客情報削除ループ
+    --==================================================
+    << xcbs_parge_lock_loop >>
+    FOR xcbi_parge_lock_rec IN xcbi_parge_lock_cur( ld_start_date ) LOOP
+      --==================================================
+      -- 販手販協計算済顧客情報データ削除
+      --==================================================
+      BEGIN
+        DELETE
+        FROM xxcok_cust_bm_info      xcbi
+        WHERE xcbi.cust_bm_info_id = xcbi_parge_lock_rec.cust_bm_info_id
+        ;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_outmsg  := xxccp_common_pkg.get_msg(
+                          iv_application          => cv_appl_short_name_cok
+                        , iv_name                 => cv_msg_cok_10457
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which                => FND_FILE.OUTPUT
+                        , iv_message              => lv_outmsg
+                        , in_new_line             => 0
+                        );
+          RAISE error_proc_expt;
+      END;
+    END LOOP xcbi_parge_lock_loop;
+    --==================================================
+    -- 出力パラメータ設定
+    --==================================================
+    ov_errbuf  := NULL;
+    ov_errmsg  := NULL;
+    ov_retcode := lv_end_retcode;
+--
+  EXCEPTION
+    --*** ロック取得エラー ***
+    WHEN resource_busy_expt THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00103
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** エラー終了 ***
+    WHEN error_proc_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 処理部共通例外 ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := lv_end_retcode;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END purge_xcbi;
+--
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD END
   /**********************************************************************************
    * Procedure Name   : purge_xcbs
    * Description      : 条件別販手販協データの削除（保持期間外）(A-2)
@@ -6508,10 +7095,12 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
           RAISE error_proc_expt;
       END;
     END LOOP xcbs_parge_lock_loop;
-    --==================================================
-    -- パージ処理の確定
-    --==================================================
-    COMMIT;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi DELETE START
+--    --==================================================
+--    -- パージ処理の確定
+--    --==================================================
+--    COMMIT;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi DELETE END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -6647,6 +7236,7 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
         RAISE error_proc_expt;
       END IF;
     END IF;
+fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO_CHAR( gd_process_date, 'RRRR/MM/DD' ) || '】' ); -- debug
     --==================================================
     -- プロファイル取得(MO: 営業単位)
     --==================================================
@@ -6894,6 +7484,24 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
       lv_end_retcode := cv_status_error;
       RAISE global_process_expt;
     END IF;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD START
+    --==================================================
+    -- 販手計算済顧客情報データの削除（保持期間外）(A-14)
+    --==================================================
+    purge_xcbi(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    END IF;
+    --==================================================
+    -- パージ処理の確定
+    --==================================================
+    COMMIT;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD END
     --==================================================
     -- 条件別販手販協データの削除（未確定金額）(A-3)
     --==================================================
@@ -7028,6 +7636,20 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
       lv_end_retcode := cv_status_error;
       RAISE global_process_expt;
     END IF;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD START
+    --==================================================
+    -- 販手計算済顧客情報データの更新(A-15)
+    --==================================================
+    udpate_xcbi(
+      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+    , ov_retcode              => lv_retcode            -- リターン・コード
+    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      lv_end_retcode := cv_status_error;
+      RAISE global_process_expt;
+    END IF;
+-- 2009/07/28 Ver.2.4 [障害0000879] SCS K.Yamaguchi ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
