@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A10C(body)
  * Description      : 電子帳簿リース取引の情報系システム連携
  * MD.050           : MD050_CFO_019_A10_電子帳簿リース取引の情報系システム連携
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012-09-20    1.0   K.Nakamura       新規作成
+ *  2012-11-26    1.1   K.Nakamura       [E_本稼動_10112対応]T4検証パフォーマンス障害対応
  *
  *****************************************************************************************/
 --
@@ -284,6 +285,9 @@ AS
   gn_set_of_books_id          NUMBER        DEFAULT NULL; -- GL会計帳簿ID
   gn_electric_exec_days       NUMBER        DEFAULT NULL; -- 電子帳簿処理実行日数
   gn_period_chk               NUMBER        DEFAULT NULL; -- 会計期間チェック
+-- 2012/11/26 1.1 K.Nakamura ADD START
+  gn_contract_header_id       NUMBER        DEFAULT NULL; -- 契約内部ID
+-- 2012/11/26 1.1 K.Nakamura ADD END
   gd_process_date             DATE          DEFAULT NULL; -- 業務日付
   gt_next_period_name         xxcfo_lease_control.period_name%TYPE DEFAULT NULL; -- 翌会計期間
   gt_period_name              xxcfo_lease_control.period_name%TYPE DEFAULT NULL; -- 会計期間（チェック用）
@@ -1175,11 +1179,18 @@ AS
     -- 付加情報取得カーソル
     CURSOR get_add_info_cur
     IS
-      SELECT xch.update_reason         AS update_reason -- 更新事由
+-- 2012/11/26 1.1 K.Nakamura MOD START
+--      SELECT xch.update_reason         AS update_reason -- 更新事由
+      SELECT /* INDEX(xch XXCFF_CONTRACT_HISTORIES_PK) */
+             xch.update_reason         AS update_reason -- 更新事由
+-- 2012/11/26 1.1 K.Nakamura MOD END
       FROM   xxcff_contract_histories  xch
       WHERE  xch.contract_line_id = g_data_tab(19)
       AND    xch.period_name      = g_data_tab(44)
       AND    xch.contract_status  = gv_lease_add_data_status
+-- 2012/11/26 1.1 K.Nakamura ADD START
+      AND    xch.contract_header_id = gn_contract_header_id
+-- 2012/11/26 1.1 K.Nakamura ADD END
       ORDER BY xch.history_num DESC
     ;
 --
@@ -1214,6 +1225,11 @@ AS
       g_data_tab(61) := NULL;
     END IF;
     --
+-- 2012/11/26 1.1 K.Nakamura ADD START
+    -- 初期化
+    g_data_update_tab.DELETE;
+    gn_contract_header_id := NULL;
+-- 2012/11/26 1.1 K.Nakamura ADD END
 --
   EXCEPTION
 --
@@ -1890,6 +1906,9 @@ AS
            , NULL                                                       AS data_update_flag            -- データ変更フラグ
            , NULL                                                       AS data_update_info            -- データ変更内容
            , gv_coop_date                                               AS gv_coop_date                -- 連携日時
+-- 2012/11/26 1.1 K.Nakamura ADD START
+           , xch.contract_header_id                                     AS contract_header_id          -- 契約内部ID
+-- 2012/11/26 1.1 K.Nakamura ADD END
       FROM   xxcff_contract_headers xch -- リース契約
            , xxcff_contract_lines   xcl -- リース契約明細
            , xxcff_object_headers   xoh -- リース物件
@@ -1917,7 +1936,13 @@ AS
     CURSOR get_fixed_period_cur( lv_period_name  IN xxcff_pay_planning.period_name%TYPE
                                )
     IS
-      SELECT cv_wait_coop                                               AS chk_coop                    -- 判定
+-- 2012/11/26 1.1 K.Nakamura MOD START
+--      SELECT cv_wait_coop                                               AS chk_coop                    -- 判定
+      SELECT /*+ LEADING(xlwc xoh xcl xpp xch fab xft1)
+                 USE_NL(xch xcl xoh xpp fab xft1)
+              */
+             cv_wait_coop                                               AS chk_coop                    -- 判定
+-- 2012/11/26 1.1 K.Nakamura MOD END
            , fab.asset_id                                               AS asset_id                    -- 資産ID
            , fab.asset_number                                           AS asset_number                -- 資産番号
            , fab.attribute_category_code                                AS attribute_category_code     -- 資産カテゴリ
@@ -2015,6 +2040,9 @@ AS
            , NULL                                                       AS data_update_flag            -- データ変更フラグ
            , NULL                                                       AS data_update_info            -- データ変更内容
            , gv_coop_date                                               AS gv_coop_date                -- 連携日時
+-- 2012/11/26 1.1 K.Nakamura ADD START
+           , xch.contract_header_id                                     AS contract_header_id          -- 契約内部ID
+-- 2012/11/26 1.1 K.Nakamura ADD END
       FROM   xxcff_contract_headers xch -- リース契約
            , xxcff_contract_lines   xcl -- リース契約明細
            , xxcff_object_headers   xoh -- リース物件
@@ -2141,6 +2169,9 @@ AS
            , NULL                                                       AS data_update_flag            -- データ変更フラグ
            , NULL                                                       AS data_update_info            -- データ変更内容
            , gv_coop_date                                               AS gv_coop_date                -- 連携日時
+-- 2012/11/26 1.1 K.Nakamura ADD START
+           , xch.contract_header_id                                     AS contract_header_id          -- 契約内部ID
+-- 2012/11/26 1.1 K.Nakamura ADD END
       FROM   xxcff_contract_headers xch -- リース契約
            , xxcff_contract_lines   xcl -- リース契約明細
            , xxcff_object_headers   xoh -- リース物件
@@ -2246,6 +2277,9 @@ AS
         , g_data_tab(60)         -- データ変更フラグ
         , g_data_tab(61)         -- データ変更内容
         , g_data_tab(62)         -- 連携日時
+-- 2012/11/26 1.1 K.Nakamura ADD START
+        , gn_contract_header_id  -- 契約内部ID
+-- 2012/11/26 1.1 K.Nakamura ADD END
         ;
         --
         -- 初期化（ループ内の判定用リターンコード）
@@ -2380,6 +2414,9 @@ AS
         , g_data_tab(60)         -- データ変更フラグ
         , g_data_tab(61)         -- データ変更内容
         , g_data_tab(62)         -- 連携日時
+-- 2012/11/26 1.1 K.Nakamura ADD START
+        , gn_contract_header_id  -- 契約内部ID
+-- 2012/11/26 1.1 K.Nakamura ADD END
         ;
         --
         -- 初期化（ループ内の判定用リターンコード）
