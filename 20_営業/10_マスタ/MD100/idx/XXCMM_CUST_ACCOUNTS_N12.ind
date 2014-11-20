@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n12
+ON xxcmm.xxcmm_cust_accounts
+( cnvs_date )
+TABLESPACE xxidx2
+/
