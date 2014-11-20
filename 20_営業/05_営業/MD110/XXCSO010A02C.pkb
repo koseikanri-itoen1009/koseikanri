@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *                                         わない)
  *  2009-03-24    1.1   Kazuo.Satomura   システムテスト障害(障害番号T1_0135,0136,0140)
  *  2009-04-02    1.2   Kazuo.Satomura   システムテスト障害(障害番号T1_0227)
+ *  2009-04-08    1.3   Kazuo.Satomura   システムテスト障害(障害番号T1_0287)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -2678,27 +2679,68 @@ AS
     -- ====================================
     BEGIN
       UPDATE xxcmm_cust_accounts xca -- 顧客アドオンマスタ
+      /* 2009.04.08 K.Satomura 障害番号T1_0287対応 START */
+      --SET    xca.contractor_supplier_code = DECODE(xca.business_low_type
+      --                                            /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+      --                                            --,cv_business_low_type, lt_vendor_number1
+      --                                            --,cv_vendor_contact_code1) -- 契約者仕入先コード
+      --                                            ,cv_business_low_type, cv_vendor_contact_code1
+      --                                            ,lt_vendor_number1) -- 契約者仕入先コード
+      --                                            /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
+      --      ,xca.bm_pay_supplier_code1    = DECODE(xca.business_low_type
+      --                                            /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+      --                                            --,cv_business_low_type, lt_vendor_number2
+      --                                            --,cv_vendor_contact_code2) -- 紹介者BM支払仕入先コード１
+      --                                            ,cv_business_low_type, cv_vendor_contact_code2
+      --                                            ,lt_vendor_number2) -- 紹介者BM支払仕入先コード１
+      --                                            /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
+      --      ,xca.bm_pay_supplier_code2    = DECODE(xca.business_low_type
+      --                                            /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
+      --                                            --,cv_business_low_type, lt_vendor_number3
+      --                                            --,cv_vendor_contact_code3) -- 紹介者BM支払仕入先コード２
+      --                                            ,cv_business_low_type, cv_vendor_contact_code3
+      --                                            ,lt_vendor_number3) -- 紹介者BM支払仕入先コード２
+      --                                            /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
       SET    xca.contractor_supplier_code = DECODE(xca.business_low_type
-                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
-                                                  --,cv_business_low_type, lt_vendor_number1
-                                                  --,cv_vendor_contact_code1) -- 契約者仕入先コード
-                                                  ,cv_business_low_type, cv_vendor_contact_code1
+                                                  ,cv_business_low_type,
+                                                    CASE
+                                                      WHEN (
+                                                        SELECT SUM(NVL(sdl.bm1_bm_rate,0)) + SUM(NVL(sdl.bm1_bm_amount,0))
+                                                        FROM   xxcso_sp_decision_lines sdl
+                                                        WHERE  sdl.sp_decision_header_id = it_mst_regist_info_rec.sp_decision_header_id
+                                                      ) <= cn_number_zero THEN
+                                                        NULL
+                                                      ELSE
+                                                        cv_vendor_contact_code1
+                                                    END
                                                   ,lt_vendor_number1) -- 契約者仕入先コード
-                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
             ,xca.bm_pay_supplier_code1    = DECODE(xca.business_low_type
-                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
-                                                  --,cv_business_low_type, lt_vendor_number2
-                                                  --,cv_vendor_contact_code2) -- 紹介者BM支払仕入先コード１
-                                                  ,cv_business_low_type, cv_vendor_contact_code2
+                                                  ,cv_business_low_type,
+                                                    CASE
+                                                      WHEN (
+                                                        SELECT SUM(NVL(sdl.bm2_bm_rate,0)) + SUM(NVL(sdl.bm2_bm_amount,0))
+                                                        FROM   xxcso_sp_decision_lines sdl
+                                                        WHERE  sdl.sp_decision_header_id = it_mst_regist_info_rec.sp_decision_header_id
+                                                      ) <= cn_number_zero THEN
+                                                        NULL
+                                                      ELSE
+                                                        cv_vendor_contact_code2
+                                                    END
                                                   ,lt_vendor_number2) -- 紹介者BM支払仕入先コード１
-                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
             ,xca.bm_pay_supplier_code2    = DECODE(xca.business_low_type
-                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 START */
-                                                  --,cv_business_low_type, lt_vendor_number3
-                                                  --,cv_vendor_contact_code3) -- 紹介者BM支払仕入先コード２
-                                                  ,cv_business_low_type, cv_vendor_contact_code3
+                                                  ,cv_business_low_type,
+                                                    CASE
+                                                      WHEN (
+                                                        SELECT SUM(NVL(sdl.bm3_bm_rate,0)) + SUM(NVL(sdl.bm3_bm_amount,0))
+                                                        FROM   xxcso_sp_decision_lines sdl
+                                                        WHERE  sdl.sp_decision_header_id = it_mst_regist_info_rec.sp_decision_header_id
+                                                      ) <= cn_number_zero THEN
+                                                        NULL
+                                                      ELSE
+                                                        cv_vendor_contact_code3
+                                                    END
                                                   ,lt_vendor_number3) -- 紹介者BM支払仕入先コード２
-                                                  /* 2009.03.24 K.Satomura 障害番号T1_0135対応 END */
+      /* 2009.04.08 K.Satomura 障害番号T1_0287対応 END */
             ,xca.last_update_date         = cd_last_update_date       -- 最終更新日
             ,xca.last_updated_by          = cn_last_updated_by        -- 最終更新者
             ,xca.last_update_login        = cn_last_update_login      -- 最終更新ログイン
