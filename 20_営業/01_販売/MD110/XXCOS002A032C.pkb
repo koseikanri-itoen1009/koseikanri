@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,7 +53,7 @@ AS
  *  2009/11/12    1.9   N.Maeda          [E_T4_00188]新規獲得ポイント集計条件修正
  *  2009/11/18    1.10  T.Nishikawa      [E_本番_00220]性能劣化に伴うヒント句追加
  *  2009/11/24    1.11  K.Atsushiba      [E_本番_00347]PT対応
- *
+ *  2010/01/19    1.12  T.Nakano         [E_本稼動_01039]対応 新規ポイント情報追加
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -381,6 +381,10 @@ AS
   ct_point_data_cls_new_cust    CONSTANT  xxcsm_new_cust_point_hst.data_kbn%TYPE := '1';
   --  什器（Fixture and furniture）
   ct_point_data_cls_f_and_f     CONSTANT  xxcsm_new_cust_point_hst.data_kbn%TYPE := '2';
+/* 2010/01/19 Ver1.12 Add Start */
+  --  什器ぶら下がり（Fixture and furniture burasagari）
+  ct_point_data_cls_f_and_f_bur CONSTANT  xxcsm_new_cust_point_hst.data_kbn%TYPE := '3';
+/* 2010/01/19 Ver1.12 Add End   */
 /* 2009/04/28 Ver1.4 Add Start */
   --  新規評価対象区分(新規獲得ポイント顧客別履歴テーブル)
   --  達成
@@ -4415,6 +4419,9 @@ AS
 -- *********** 2009/11/12 Ver1.9 N.Maeda MOD START *********** --
                                      ncph.data_kbn = ct_point_data_cls_new_cust
                                   OR ncph.data_kbn = ct_point_data_cls_f_and_f
+/* 2010/01/19 Ver1.12 Add Start */
+                                  OR ncph.data_kbn = ct_point_data_cls_f_and_f_bur
+/* 2010/01/19 Ver1.12 Add End   */
                                   )
 /* 2009/04/28 Ver1.4 Mod End   */
                               THEN  ncph.point

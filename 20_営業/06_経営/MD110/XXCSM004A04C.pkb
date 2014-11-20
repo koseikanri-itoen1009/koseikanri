@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,14 +18,21 @@ AS
  *                         データ削除処理(A-4)
  *  make_work_table        ワークテーブルデータ作成／更新処理(A-8)
  *  update_work_table      ワークテープル確定フラグ／新規評価対象区分更新処理(A-11)
- *  insert_hst_table       新規獲得ポイント顧客別履歴テーブル作成処理(A-13)
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+-- *  insert_hst_table       新規獲得ポイント顧客別履歴テーブル作成処理(A-13)
+ *  insert_hst_table       新規獲得ポイント顧客別履歴テーブル作成処理(A-14)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
  *  set_new_point_loop     新規獲得ポイント作成ループ(loop-1)
  *                         顧客情報取得処理(A-5)
  *                         獲得／紹介情報セット処理(A-6)
  *                         ワークテーブルデータチェック処理(A-7)
  *                         ポイント付与判定取得処理(A-9)
  *                         ポイント情報確定判定処理(A-10)
- *                         ポイント按分処理(A-12)
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+-- *                         ポイント按分処理(A-12)
+ *                         ポイント２倍処理(A-12)
+ *                         ポイント按分処理(A-13)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
  *                            ・make_work_table
  *                            ・insert_hst_table
  *                            ・update_work_table
@@ -37,7 +44,10 @@ AS
  *                            ・get_ar_period_loop
  *  main                   コンカレント実行ファイル登録プロシージャ
  *                            ・submain
- *                         終了処理(A-14)
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+-- *                         終了処理(A-14)
+ *                         終了処理(A-15)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -53,6 +63,7 @@ AS
  *  2009/11/27    1.7   K.Kubo         ［障害管理番号E_本稼動_00112］獲得/紹介営業員が同一時の不具合
  *  2009/12/07    1.8   T.Tsukino      ［障害管理番号E_本稼動_00335］獲得/紹介営業員が入替え時の不具合/判定日付の変更
  *  2009/12/15    1.9   T.Nakano       ［障害管理番号E_本稼動_00412］業態(小分類)が"27"時の不具合追加
+ *  2010/01/19    1.10  S.Karikomi      [障害管理番号E_本稼動_01039] 新規ポイント付与対象変更/獲得ポイント判定の追加/評価対象区分変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,6 +126,9 @@ AS
   cv_err_loca_msg           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00033';                           -- 所属拠点不明エラーメッセージ
   cv_err_post_msg           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00044';                           -- 部署コード取得エラーメッセージ
   cv_err_cnvs_busines_person_msg     CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00046';                  -- 獲得営業員コード未設定エラーメッセージ
+--//+ADD START  2010/01/19 E_本稼動_01039 S.Karikomi
+  cv_msg_10159              CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10159';                           -- ポイント付与条件金額重複エラーメッセージ
+--//+ADD END  2010/01/19 E_本稼動_01039 S.Karikomi
   --メッセージコード
   cv_open_period_msg        CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00041';                           -- オープン会計期間取得内容メッセージ
   cv_target_cnt_msg         CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000';                           -- 対象件数メッセージ
@@ -171,7 +185,12 @@ AS
   cv_other                  CONSTANT VARCHAR2(2)   := '  ';                                         -- 営業職以外
   cv_sts_stop               CONSTANT VARCHAR2(2)   := '90';                                         -- 中止顧客
   cv_grant_ok               CONSTANT VARCHAR2(2)   := '0';                                          -- ポイント付与する
-  cv_grant_ng               CONSTANT VARCHAR2(2)   := '1';                                          -- ポイント付与しない
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--  cv_grant_ng               CONSTANT VARCHAR2(2)   := '1';                                          -- ポイント付与しない
+  cv_grant_ok_dbl           CONSTANT VARCHAR2(2)   := '1';                                          -- ポイント付与する(2倍)
+  cv_grant_ng_stp           CONSTANT VARCHAR2(2)   := '2';                                          -- ポイント付与しない(中止顧客)
+  cv_grant_ng_yet           CONSTANT VARCHAR2(2)   := '3';                                          -- ポイント付与しない(未達)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
   cv_point_cond_ari         CONSTANT VARCHAR2(1)   := '1';                                          -- ポイント条件有
   cv_point_cond_nasi        CONSTANT VARCHAR2(1)   := '0';                                          -- ポイント条件無
   cv_jisseki_chk_fuyo       CONSTANT VARCHAR2(1)   := '0';                                          -- 実績判定なし
@@ -206,6 +225,10 @@ AS
   cv_mihon                  CONSTANT VARCHAR2(1)   := '6';                                          -- 売上区分'見本'
   cv_cm                     CONSTANT VARCHAR2(1)   := '7';                                          -- 売上区分'広告'
   cv_empinfo_upd            CONSTANT VARCHAR2(1)   := '1';                                          -- 発令日＜＝獲得日の状態
+--//+ADD START 2010/01/19 E_本稼動_01039 S.Karikomi
+  cv_small_classcd          CONSTANT VARCHAR2(100) := 'XXCSM1_SMALL_CLASSCD';                       -- 業態（小分類）参照タイプ名
+  cv_point_double_ok        CONSTANT VARCHAR2(1)   := '1';                                          -- ポイントを２倍する
+--//+ADD END 2010/01/19 E_本稼動_01039 S.Karikomi
   --デバック用
 --
   -- ===============================
@@ -333,7 +356,7 @@ AS
                    ,val  => gt_set_of_bks_id);                                                      -- 会計帳簿ID
 --//+ADD START 2009/07/30 0000870 T.Tsukino
     FND_PROFILE.GET(name => cv_min_deal_period
-                   ,val  => gv_min_deal_period);                                                      -- 新規獲得ポイント最低取引期間
+                   ,val  => gv_min_deal_period);                                                    -- 新規獲得ポイント最低取引期間
 --//+ADD END   2009/07/30 0000870 T.Tsukinoi
 --//+UPD START   2009/07/07 0000254 M.Ohtsuki
 --    IF ( gv_post_level IS NULL) THEN                                                                -- ポイント算出用部署階層の場合
@@ -380,7 +403,7 @@ AS
     --⑤ 拠点階層の取得
     --==============================================================
     ln_loc_lv_cnt := 0;                                                                             -- 変数の初期化
-    <<get_loc_lv_cur_loop>>                                                                        -- 拠点階層取得LOOP
+    <<get_loc_lv_cur_loop>>                                                                         -- 拠点階層取得LOOP
     FOR rec IN get_loc_lv_cur LOOP
       ln_loc_lv_cnt := ln_loc_lv_cnt + 1;
       gt_loc_lv_tab(ln_loc_lv_cnt)   := rec.lookup_code;                                            -- 拠点階層
@@ -585,7 +608,7 @@ AS
     IF (it_business_low_type IN (cv_business_low_type_s_vd,cv_business_low_type_vd)) THEN           -- 業態（小分類）がフルVD、フルVD(消化)の場合
       lt_custom_condition_cd := cv_custom_condition_fvd;     -- 顧客業態コード フルVD
 --//+UPD START 2009/12/15 E_本番稼動_00412 T.Nakano
-    ELSIF (it_business_low_type IN (cv_business_low_type_n_vd,cv_business_low_type_gvd)) THEN            -- 業態（小分類）納品VDの場合
+    ELSIF (it_business_low_type IN (cv_business_low_type_n_vd,cv_business_low_type_gvd)) THEN       -- 業態（小分類）納品VDの場合
 --    ELSIF (it_business_low_type = cv_business_low_type_n_vd) THEN                                   -- 業態（小分類）納品VDの場合
 --//+UPD END 2009/12/15 E_本番稼動_00412 T.Nakano
       lt_custom_condition_cd := cv_custom_condition_nvd;     -- 顧客業態コード 納品VD
@@ -787,7 +810,7 @@ AS
        ,program_application_id                                                                      -- コンカレント・プログラムのアプリケーションID
        ,program_id                                                                                  -- コンカレント・プログラムID
        ,program_update_date                                                                         -- プログラムによる更新日
-      ) VALUES (                                                                                     
+      ) VALUES (
         it_year                                                                                     -- 対象年度   
        ,it_account_number                                                                           -- 顧客コード
        ,lt_custom_condition_cd                                                                      -- 顧客業態コード
@@ -1018,7 +1041,7 @@ AS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name             CONSTANT VARCHAR2(100)   := 'update_work_table';                         -- プログラム名
+    cv_prg_name             CONSTANT VARCHAR2(100)   := 'update_work_table';                        -- プログラム名
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -1122,6 +1145,19 @@ AS
     lt_2nd_month             xxcsm_mst_grant_point.grant_point_target_2nd_month%TYPE;               -- ポイント付与条件対象月_翌月
     lt_3rd_month             xxcsm_mst_grant_point.grant_point_target_3rd_month%TYPE;               -- ポイント付与条件対象月_翌々月
     lt_price                 xxcsm_mst_grant_point.grant_point_condition_price%TYPE;                -- ポイント付与条件金額
+--//+ADD START 2010/01/19 E_本稼動_01039 S.Karikomi
+    lt_min_grant_condition_point xxcsm_mst_grant_point.grant_condition_point%TYPE;                  -- ポイント付与条件(最低金額時)
+    lt_max_grant_condition_point xxcsm_mst_grant_point.grant_condition_point%TYPE;                  -- ポイント付与条件(最高金額時)
+    lt_min_1st_month             xxcsm_mst_grant_point.grant_point_target_1st_month%TYPE;           -- ポイント付与条件対象月_当月(最低金額時)
+    lt_max_1st_month             xxcsm_mst_grant_point.grant_point_target_1st_month%TYPE;           -- ポイント付与条件対象月_当月(最高金額時)
+    lt_min_2nd_month             xxcsm_mst_grant_point.grant_point_target_2nd_month%TYPE;           -- ポイント付与条件対象月_翌月(最低金額時)
+    lt_max_2nd_month             xxcsm_mst_grant_point.grant_point_target_2nd_month%TYPE;           -- ポイント付与条件対象月_翌月(最高金額時)
+    lt_min_3rd_month             xxcsm_mst_grant_point.grant_point_target_3rd_month%TYPE;           -- ポイント付与条件対象月_翌々月(最低金額時)
+    lt_max_3rd_month             xxcsm_mst_grant_point.grant_point_target_3rd_month%TYPE;           -- ポイント付与条件対象月_翌々月(最高金額時)
+    lt_min_price                 xxcsm_mst_grant_point.grant_point_condition_price%TYPE;            -- ポイント付与条件最低金額
+    lt_max_price                 xxcsm_mst_grant_point.grant_point_condition_price%TYPE;            -- ポイント付与条件最高金額
+    lv_point_double_flg          VARCHAR2(1);                                                       -- 実績と最高金額との判定用
+--//+ADD END 2010/01/19 E_本稼動_01039 S.Karikomi
     lv_point_cond_flg        VARCHAR2(1);                                                           -- ポイント条件有無フラグ
     ln_add_mm                NUMBER(1);                                                             -- 月数
     ln_dummy                 NUMBER;                                                                -- ポイント付与条件最終月判定用
@@ -1163,8 +1199,8 @@ AS
 --       WHERE  TRUNC(xca.cnvs_date) >= gpv.year_start_date                                           -- 顧客獲得日 >= 会計期間開始日
 --         AND  TRUNC(xca.cnvs_date) <= gpv.year_end_date                                             -- 顧客獲得日 <= 会計期間終了日
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-       WHERE  xca.cnvs_date >= gpv.year_start_date                                                -- 顧客獲得日 >= 会計期間開始日
-         AND  xca.cnvs_date <= gpv.year_end_date                                             -- 顧客獲得日 <= 会計期間終了日
+       WHERE  xca.cnvs_date >= gpv.year_start_date                                                  -- 顧客獲得日 >= 会計期間開始日
+         AND  xca.cnvs_date <= gpv.year_end_date                                                    -- 顧客獲得日 <= 会計期間終了日
 --//+UPD END 2009/07/29 0000815 T.Tsukino         
          AND  hca.cust_account_id = xca.customer_id
          AND  hca.party_id = hp.party_id
@@ -1185,6 +1221,17 @@ AS
 --//+UPD END   2009/04/09 T1_0416 M.Ohtsuki
                 )
          AND  NVL(xca.new_point,0) <> 0                                                             -- 新規ポイントが未設定または0以外
+--//+ADD START 2010/01/19 E_本稼動_01039 S.Karikomi
+         AND  xca.business_low_type NOT IN (
+                 SELECT  flv.lookup_code        lookup_code
+                   FROM  fnd_lookup_values      flv
+                  WHERE  flv.lookup_type        = cv_small_classcd                                  -- 業態（小分類）の参照タイプ名
+                    AND  flv.enabled_flag       = cv_flg_y                                          -- 使用可能フラグ
+                    AND  flv.language           = cv_lang                                           -- 言語('JA')
+                    AND  NVL(flv.start_date_active,gd_process_date) <= gd_process_date              -- 適用開始日
+                    AND  NVL(flv.end_date_active,gd_process_date)   >= gd_process_date              -- 適用終了日
+                )
+--//+ADD END 2010/01/19 E_本稼動_01039 S.Karikomi
       ;
 --
     CURSOR  set_month_amount_cur(                                                                   -- 販売実績取得カーソル
@@ -1203,6 +1250,40 @@ AS
                          )
          ;
     set_month_amount_rec set_month_amount_cur%ROWTYPE;                                              -- 販売実績売上計取得レコード
+    
+--
+--//+ADD START 2010/01/19 E_本稼動_01039 S.Karikomi
+    CURSOR grant_condition_point_cur(
+       it_account_number xxcsm_wk_new_cust_get_emp.account_number%TYPE
+      ,it_employee_number xxcsm_wk_new_cust_get_emp.employee_number%TYPE
+      ,it_year xxcsm_new_cust_point_hst.subject_year%TYPE                                           -- 対象年度
+    )                                                                                               -- ポイント付与条件カーソル
+    IS
+       SELECT  xmgp.custom_condition_cd              custom_condition_cd                            -- 顧客業態コード
+              ,xmgp.grant_condition_point            grant_condition_point                          -- ポイント付与条件
+              ,xmgp.post_cd                          post_cd                                        -- 部署コード
+              ,xmgp.duties_cd                        duties_cd                                      -- 職務コード
+              ,xmgp.grant_point_target_1st_month     target_1st_month                               -- ポイント付与条件対象月_当月
+              ,xmgp.grant_point_target_2nd_month     target_2nd_month                               -- ポイント付与条件対象月_翌月
+              ,xmgp.grant_point_target_3rd_month     target_3rd_month                               -- ポイント付与条件対象月_翌々月
+              ,xmgp.grant_point_condition_price      condition_price                                -- ポイント付与条件金額
+         FROM  xxcsm_mst_grant_point xmgp                                                           -- ポイント付与条件マスタ
+              ,xxcsm_wk_new_cust_get_emp xwncge                                                     -- 顧客獲得従業員ワークテーブル
+        WHERE xmgp.subject_year        = xwncge.subject_year                                        -- 対象年度
+          AND xmgp.post_cd             = xwncge.post_cd                                             -- 部署コード
+          AND xmgp.duties_cd           = xwncge.duties_cd                                           -- 職務
+          AND xmgp.custom_condition_cd = xwncge.custom_condition_cd                                 -- 顧客業態コード
+          AND xwncge.account_number    = it_account_number                                          -- 顧客コード
+          AND xwncge.employee_number   = it_employee_number                                         -- 獲得営業員
+          AND xwncge.get_intro_kbn     = cv_get                                                     -- 獲得紹介区分
+          AND xwncge.subject_year      = it_year                                                    -- 対象年度
+       ORDER BY
+              condition_price                                                                       -- ポイント付与条件金額で昇順にソート
+       ;
+    grant_condition_point_rec grant_condition_point_cur%ROWTYPE;                                    -- ポイント付与条件取得レコード
+--
+    repeat_price_expt          EXCEPTION;                                                           -- ポイント付与条件金額重複例外
+--//+ADD END 2010/01/19 E_本稼動_01039 S.Karikomi
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1235,6 +1316,19 @@ AS
       lt_2nd_month        := NULL;                                                                  -- ポイント付与条件対象月_翌月
       lt_3rd_month        := NULL;                                                                  -- ポイント付与条件対象月_翌々月
       lt_price            := NULL;                                                                  -- ポイント付与条件金額
+--//+ADD START 2010/01/19 E_本稼動_01039 S.Karikomi
+      lt_min_grant_condition_point := NULL;                                                         -- ポイント付与条件(最低金額時)
+      lt_max_grant_condition_point := NULL;                                                         -- ポイント付与条件(最高金額時)
+      lt_min_1st_month             := NULL;                                                         -- ポイント付与条件対象月_当月(最低金額時)
+      lt_max_1st_month             := NULL;                                                         -- ポイント付与条件対象月_当月(最高金額時)
+      lt_min_2nd_month             := NULL;                                                         -- ポイント付与条件対象月_翌月(最低金額時)
+      lt_max_2nd_month             := NULL;                                                         -- ポイント付与条件対象月_翌月(最高金額時)
+      lt_min_3rd_month             := NULL;                                                         -- ポイント付与条件対象月_翌々月(最低金額時)
+      lt_max_3rd_month             := NULL;                                                         -- ポイント付与条件対象月_翌々月(最高金額時)
+      lt_min_price                 := NULL;                                                         -- ポイント付与条件最低金額
+      lt_max_price                 := NULL;                                                         -- ポイント付与条件最高金額
+      lv_point_double_flg          := NULL;                                                         -- 実績と最高金額との判定用
+--//+ADD END 2010/01/19 E_本稼動_01039 S.Karikomi
       lv_point_cond_flg   := NULL;                                                                  -- ポイント条件有無フラグ
       ln_add_mm           := NULL;                                                                  -- 月数
       ln_dummy            := NULL;                                                                  -- ポイント付与条件最終月判定用
@@ -1405,7 +1499,10 @@ AS
                      + TO_NUMBER(gv_min_deal_period))) 
           THEN
             lt_decision_flg_upd := cv_kakutei;                                                      -- 確定フラグを確定とする。
-            lt_evaluration_kbn  := cv_grant_ng;                                                     -- ポイント付与しない
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--            lt_evaluration_kbn  := cv_grant_ng;                                                     -- ポイント付与しない
+            lt_evaluration_kbn  := cv_grant_ng_stp;                                                 -- ポイント付与しない(中止顧客)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
             -- ========================================
             -- A-11 ワークテープル確定フラグ／新規評価対象区分更新処理  獲得営業員／紹介従業員の両方を更新する。
             -- ========================================
@@ -1443,44 +1540,144 @@ AS
                      + TO_NUMBER(gv_min_deal_period))) 
           THEN
 --//+UPD END   2009/07/30 0000870 T.Tsukino
-              lt_evaluration_kbn := cv_grant_ng;                                                      
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--            lt_evaluration_kbn  := cv_grant_ng;                                                     -- ポイント付与しない
+            lt_evaluration_kbn  := cv_grant_ng_stp;                                                 -- ポイント付与しない(中止顧客)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
+
           ELSE
           -- 2.ポイント付与条件取得
             BEGIN
               -- ユニークキーでの問い合わせのため、複数件取得エラーは発生しない。
-              SELECT  xmgp.custom_condition_cd              custom_condition_cd                     -- 顧客業態コード
-                     ,xmgp.grant_condition_point            grant_condition_point                   -- ポイント付与条件
-                     ,xmgp.post_cd                          post_cd                                 -- 部署コード
-                     ,xmgp.duties_cd                        duties_cd                               -- 職務コード
-                     ,xmgp.grant_point_target_1st_month     target_1st_month                        -- ポイント付与条件対象月_当月
-                     ,xmgp.grant_point_target_2nd_month     target_2nd_month                        -- ポイント付与条件対象月_翌月
-                     ,xmgp.grant_point_target_3rd_month     target_3rd_month                        -- ポイント付与条件対象月_翌々月
-                     ,xmgp.grant_point_condition_price      condition_price                         -- ポイント付与条件金額
-                INTO
-                      lt_custom_condition_cd
-                     ,lt_grant_condition_point
-                     ,lt_post_cd
-                     ,lt_duties_cd
-                     ,lt_1st_month
-                     ,lt_2nd_month
-                     ,lt_3rd_month
-                     ,lt_price
-                FROM  xxcsm_mst_grant_point xmgp                                                    -- ポイント付与条件マスタ
-                     ,xxcsm_wk_new_cust_get_emp xwncge                                              -- 顧客獲得従業員ワークテーブル
-               WHERE xmgp.subject_year = xwncge.subject_year                                        -- 対象年度
-                 AND xmgp.post_cd      = xwncge.post_cd                                             -- 部署コード
-                 AND xmgp.duties_cd    = xwncge.duties_cd                                           -- 職務
-                 AND xmgp.custom_condition_cd = xwncge.custom_condition_cd                          -- 顧客業態コード
-                 AND xwncge.account_number = set_new_point_rec.account_number                       -- 顧客コード
-                 AND xwncge.get_intro_kbn  = cv_get                                                 -- 獲得紹介区分
-                 AND xwncge.employee_number = set_new_point_rec.cnvs_business_person                -- 獲得営業員
-                 AND xwncge.subject_year = it_year                                                  -- 対象年度
-              ;
-              lv_point_cond_flg := cv_point_cond_ari;                                               -- ポイント条件あり
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--              SELECT  xmgp.custom_condition_cd              custom_condition_cd                     -- 顧客業態コード
+--                     ,xmgp.grant_condition_point            grant_condition_point                   -- ポイント付与条件
+--                     ,xmgp.post_cd                          post_cd                                 -- 部署コード
+--                     ,xmgp.duties_cd                        duties_cd                               -- 職務コード
+--                     ,xmgp.grant_point_target_1st_month     target_1st_month                        -- ポイント付与条件対象月_当月
+--                     ,xmgp.grant_point_target_2nd_month     target_2nd_month                        -- ポイント付与条件対象月_翌月
+--                     ,xmgp.grant_point_target_3rd_month     target_3rd_month                        -- ポイント付与条件対象月_翌々月
+--                     ,xmgp.grant_point_condition_price      condition_price                         -- ポイント付与条件金額
+--                INTO
+--                      lt_custom_condition_cd
+--                     ,lt_grant_condition_point
+--                     ,lt_post_cd
+--                     ,lt_duties_cd
+--                     ,lt_1st_month
+--                     ,lt_2nd_month
+--                     ,lt_3rd_month
+--                     ,lt_price
+--                FROM  xxcsm_mst_grant_point xmgp                                                    -- ポイント付与条件マスタ
+--                     ,xxcsm_wk_new_cust_get_emp xwncge                                              -- 顧客獲得従業員ワークテーブル
+--               WHERE xmgp.subject_year = xwncge.subject_year                                        -- 対象年度
+--                 AND xmgp.post_cd      = xwncge.post_cd                                             -- 部署コード
+--                 AND xmgp.duties_cd    = xwncge.duties_cd                                           -- 職務
+--                 AND xmgp.custom_condition_cd = xwncge.custom_condition_cd                          -- 顧客業態コード
+--                 AND xwncge.account_number = set_new_point_rec.account_number                       -- 顧客コード
+--                 AND xwncge.get_intro_kbn  = cv_get                                                 -- 獲得紹介区分
+--                 AND xwncge.employee_number = set_new_point_rec.cnvs_business_person                -- 獲得営業員
+--                 AND xwncge.subject_year = it_year                                                  -- 対象年度
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+              OPEN grant_condition_point_cur(
+                set_new_point_rec.account_number
+               ,set_new_point_rec.cnvs_business_person 
+               ,it_year
+              );
+              <<grant_condition_point_loop>>
+              LOOP
+                FETCH grant_condition_point_cur INTO grant_condition_point_rec;
+                EXIT WHEN grant_condition_point_cur%NOTFOUND;
+                  lt_price                 := grant_condition_point_rec.condition_price;            -- ポイント付与条件金額
+                  lt_custom_condition_cd   := grant_condition_point_rec.custom_condition_cd;        -- 顧客業態コード
+                  lt_grant_condition_point := grant_condition_point_rec.grant_condition_point;      -- ポイント付与条件
+                  lt_post_cd               := grant_condition_point_rec.post_cd;                    -- 部署コード
+                  lt_duties_cd             := grant_condition_point_rec.duties_cd;                  -- 職務コード
+                  lt_1st_month             := grant_condition_point_rec.target_1st_month;           -- ポイント付与条件対象月_当月
+                  lt_2nd_month             := grant_condition_point_rec.target_2nd_month;           -- ポイント付与条件対象月_翌月
+                  lt_3rd_month             := grant_condition_point_rec.target_3rd_month;           -- ポイント付与条件対象月_翌々月
+                  IF ( grant_condition_point_cur%ROWCOUNT = 1 ) THEN                                -- １件目取得時
+                    lt_min_price                 := lt_price;                                         -- ポイント付与条件最低金額更新
+                    lt_min_grant_condition_point := grant_condition_point_rec.grant_condition_point;  -- ポイント付与条件(最低金額時)
+                    lt_min_1st_month             := grant_condition_point_rec.target_1st_month;       -- ポイント付与条件対象月_当月(最低金額時)
+                    lt_min_2nd_month             := grant_condition_point_rec.target_2nd_month;       -- ポイント付与条件対象月_翌月(最低金額時)
+                    lt_min_3rd_month             := grant_condition_point_rec.target_3rd_month;       -- ポイント付与条件対象月_翌々月(最低金額時)
+                    lv_point_cond_flg            := cv_point_cond_ari;                                -- ポイント条件あり
+                  ELSIF ( grant_condition_point_cur%ROWCOUNT = 2 ) THEN                             -- ２件目取得時
+                    IF ( lt_min_price > lt_price ) THEN                                             -- 最低金額＞取得金額
+                    --==============================================================
+                    --金額でソートしている為、取得金額が最低金額を下回ることは想定外
+                    --==============================================================
+                      lt_max_price                 := lt_min_price;                                 -- ポイント付与条件最高金額更新
+                      lt_max_grant_condition_point := lt_min_grant_condition_point;                 -- ポイント付与条件(最高金額時)
+                      lt_max_1st_month             := lt_min_1st_month;                             -- ポイント付与条件対象月_当月(最高金額時)
+                      lt_max_2nd_month             := lt_min_2nd_month;                             -- ポイント付与条件対象月_翌月(最高金額時)
+                      lt_max_3rd_month             := lt_min_3rd_month;                             -- ポイント付与条件対象月_翌々月(最高金額時)
+                      lt_min_price                 := lt_price;                                     -- ポイント付与条件最低金額更新
+                      lt_min_grant_condition_point := lt_grant_condition_point;                     -- ポイント付与条件(最低金額時)
+                      lt_min_1st_month             := lt_1st_month;                                 -- ポイント付与条件対象月_当月(最低金額時)
+                      lt_min_2nd_month             := lt_2nd_month;                                 -- ポイント付与条件対象月_翌月(最低金額時)
+                      lt_min_3rd_month             := lt_3rd_month;                                 -- ポイント付与条件対象月_翌々月(最低金額時)
+                    ELSIF ( lt_min_price < lt_price ) THEN                                          -- 最低金額＜取得金額
+                      lt_max_price                 := lt_price;                                     -- ポイント付与条件最高金額更新
+                      lt_max_grant_condition_point := lt_grant_condition_point;                     -- ポイント付与条件(最高金額時)
+                      lt_max_1st_month             := lt_1st_month;                                 -- ポイント付与条件対象月_当月(最高金額時)
+                      lt_max_2nd_month             := lt_2nd_month;                                 -- ポイント付与条件対象月_翌月(最高金額時)
+                      lt_max_3rd_month             := lt_3rd_month;                                 -- ポイント付与条件対象月_翌々月(最高金額時)
+                    ELSE                                                                            -- ポイント付与条件金額が重複した場合
+                      lv_errmsg := xxccp_common_pkg.get_msg(
+                                    iv_application  => cv_appl_short_name_csm                       -- アプリケーション短縮名
+                                   ,iv_name         => cv_msg_10159                                 -- ポイント付与条件金額重複エラー
+                                   ,iv_token_name1  => cv_account_tkn                               -- 顧客コードトークン名
+                                   ,iv_token_value1 => set_new_point_rec.account_number             -- 顧客コード
+                                   );
+                      RAISE repeat_price_expt;                                                      -- ポイント付与条件金額重複例外
+                    END IF;
+                  ELSE                                                                              -- ３件目以降
+                    IF ( lt_min_price > lt_price ) THEN                                             -- 最低金額＞取得金額
+                    --==============================================================
+                    --金額でソートしている為、取得金額が最低金額を下回ることは想定外
+                    --==============================================================
+                      lt_min_price                 := lt_price;                                     -- ポイント付与条件最低金額更新
+                      lt_min_grant_condition_point := lt_grant_condition_point;                     -- ポイント付与条件(最低金額時)
+                      lt_min_1st_month             := lt_1st_month;                                 -- ポイント付与条件対象月_当月(最低金額時)
+                      lt_min_2nd_month             := lt_2nd_month;                                 -- ポイント付与条件対象月_翌月(最低金額時)
+                      lt_min_3rd_month             := lt_3rd_month;                                 -- ポイント付与条件対象月_翌々月(最低金額時)
+                    ELSIF ( lt_max_price < lt_price ) THEN                                          -- 最低金額＜取得金額
+                      lt_max_price                 := lt_price;                                     -- ポイント付与条件最高金額更新
+                      lt_max_grant_condition_point := lt_grant_condition_point;                     -- ポイント付与条件(最高金額時)
+                      lt_max_1st_month             := lt_1st_month;                                 -- ポイント付与条件対象月_当月(最高金額時)
+                      lt_max_2nd_month             := lt_2nd_month;                                 -- ポイント付与条件対象月_翌月(最高金額時)
+                      lt_max_3rd_month             := lt_3rd_month;                                 -- ポイント付与条件対象月_翌々月(最高金額時)
+                    ELSE                                                                            -- ポイント付与条件金額が重複した場合
+                      lv_errmsg := xxccp_common_pkg.get_msg(
+                                    iv_application  => cv_appl_short_name_csm                       -- アプリケーション短縮名
+                                   ,iv_name         => cv_msg_10159                                 -- ポイント付与条件金額重複エラー
+                                   ,iv_token_name1  => cv_account_tkn                               -- 顧客コードトークン名
+                                   ,iv_token_value1 => set_new_point_rec.account_number             -- 顧客コード
+                                   );
+                      RAISE repeat_price_expt;                                                      -- ポイント付与条件金額重複例外
+                    END IF;
+                  END IF;
+              END LOOP grant_condition_point_loop;
+              IF ( grant_condition_point_cur%ROWCOUNT = 0 ) THEN                                    -- 1件も取得できなかった場合
+                IF (grant_condition_point_cur%ISOPEN) THEN
+                  CLOSE grant_condition_point_cur;
+                END IF;
+                RAISE NO_DATA_FOUND;
+              END IF;
+              CLOSE grant_condition_point_cur;
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
             EXCEPTION
               WHEN NO_DATA_FOUND THEN
                 lt_evaluration_kbn := cv_grant_ok;                                                  -- ポイント付与
                 lv_point_cond_flg := cv_point_cond_nasi;                                            -- ポイント条件なし
+--//+ADD START  2010/01/19 E_本稼動_01039 S.Karikomi
+              WHEN repeat_price_expt THEN
+                IF (grant_condition_point_cur%ISOPEN) THEN
+                  CLOSE grant_condition_point_cur;
+                END IF;
+                RAISE global_skip_expt;                                                             -- 顧客単位スキップ例外へ
+--//+ADD END  2010/01/19 E_本稼動_01039 S.Karikomi
             END;
             IF  (lv_point_cond_flg = cv_point_cond_ari) THEN                                        -- ポイント条件あり
               --ポイント付与条件最終対象月のAR会計期間がクローズされていない場合、見込みで付与します。 
@@ -1490,7 +1687,7 @@ AS
               ELSIF lt_2nd_month = cv_chk_on THEN                                                   -- 翌月が最終月の場合
                 ln_add_mm := 1;
               ELSIF lt_1st_month = cv_chk_on THEN                                                   -- 当月が最終月の場合
-                 ln_add_mm := 0;
+                ln_add_mm := 0;
               END IF;
               -- 最終月がクローズされていないことを判定
               SELECT COUNT(1)
@@ -1524,106 +1721,235 @@ AS
               END IF;
               -- 販売実績を基に実績判定を行います。
               IF (lv_chk_jisseki_flg = cv_jisseki_chk_yo)  THEN                                     -- 実績判定
-                -- 当月販売実績の取得
-                IF (lt_1st_month = cv_chk_on) THEN                                                  -- 当月が対象月ならば
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--                -- 当月販売実績の取得
+--                IF (lt_1st_month = cv_chk_on) THEN                                                  -- 当月が対象月ならば
+--                  OPEN set_month_amount_cur(
+--                     set_new_point_rec.account_number
+----//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+----                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),0)
+----↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--                   ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),0)
+----//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
+--                  );
+--                  FETCH set_month_amount_cur INTO set_month_amount_rec;
+--                  IF set_month_amount_cur%NOTFOUND THEN
+--                    lt_amount_1st := 0;                                                             -- 当月実績額
+--                  ELSE
+--                    lt_amount_1st := set_month_amount_rec.amount; 
+--                  END IF;
+--                  CLOSE set_month_amount_cur;
+--                END IF;
+--                -- 翌月販売実績の取得
+--                IF (lt_2nd_month = cv_chk_on) THEN                                                   -- 翌月が対象月ならば
+--                  OPEN set_month_amount_cur(
+--                     set_new_point_rec.account_number
+----//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+----↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+----                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),1)
+--                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),1)
+----//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
+--                  );
+--                  FETCH set_month_amount_cur INTO set_month_amount_rec;
+--                  IF set_month_amount_cur%NOTFOUND THEN
+--                    lt_amount_2nd := 0;                                                              -- 翌月実績額
+--                  ELSE
+--                    lt_amount_2nd := set_month_amount_rec.amount;
+--                  END IF;
+--                  CLOSE set_month_amount_cur;
+--                END IF;
+--                -- 翌々月販売実績の取得
+--                IF (lt_3rd_month = cv_chk_on) THEN                                                   -- 翌々月が対象月ならば
+--                  OPEN set_month_amount_cur(
+--                     set_new_point_rec.account_number
+----//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
+----↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+----                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),2)
+--                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),2)
+----//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
+--                  );
+--                  FETCH set_month_amount_cur INTO set_month_amount_rec;
+--                  IF set_month_amount_cur%NOTFOUND THEN
+--                    lt_amount_3rd := 0;                                                             -- 翌々月実績額
+--                  ELSE
+--                    lt_amount_3rd := set_month_amount_rec.amount; 
+--                  END IF;
+--                  CLOSE set_month_amount_cur;
+--                END IF;
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                  -- 各月の販売実績を取得
                   OPEN set_month_amount_cur(
-                     set_new_point_rec.account_number
---//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
---                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),0)
---↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-                   ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),0)
---//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
+                    set_new_point_rec.account_number
+                   ,ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),0)
                   );
                   FETCH set_month_amount_cur INTO set_month_amount_rec;
                   IF set_month_amount_cur%NOTFOUND THEN
                     lt_amount_1st := 0;                                                             -- 当月実績額
                   ELSE
-                    lt_amount_1st := set_month_amount_rec.amount; 
+                    lt_amount_1st := set_month_amount_rec.amount;
                   END IF;
                   CLOSE set_month_amount_cur;
-                END IF;
-                -- 翌月販売実績の取得
-                IF (lt_2nd_month = cv_chk_on) THEN                                                   -- 翌月が対象月ならば
                   OPEN set_month_amount_cur(
-                     set_new_point_rec.account_number
---//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
---↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
---                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),1)
-                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),1)
---//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
+                    set_new_point_rec.account_number
+                   ,ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),1)
                   );
                   FETCH set_month_amount_cur INTO set_month_amount_rec;
                   IF set_month_amount_cur%NOTFOUND THEN
-                    lt_amount_2nd := 0;                                                              -- 翌月実績額
+                    lt_amount_2nd := 0;                                                             -- 翌月実績額
                   ELSE
                     lt_amount_2nd := set_month_amount_rec.amount;
                   END IF;
                   CLOSE set_month_amount_cur;
-                END IF;
-                -- 翌々月販売実績の取得
-                IF (lt_3rd_month = cv_chk_on) THEN                                                   -- 翌々月が対象月ならば
                   OPEN set_month_amount_cur(
-                     set_new_point_rec.account_number
---//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
---↓↓↓↓↓↓↓ 初回取引日による判定を顧客獲得日に変更↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
---                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.start_tran_date,'MM'),2)
-                  ,  ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),2)
---//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
+                    set_new_point_rec.account_number
+                   ,ADD_MONTHS(TRUNC(set_new_point_rec.cnvs_date,'MM'),2)
                   );
                   FETCH set_month_amount_cur INTO set_month_amount_rec;
                   IF set_month_amount_cur%NOTFOUND THEN
-                    lt_amount_3rd := 0;                                   -- 翌々月実績額
+                    lt_amount_3rd := 0;                                                             -- 翌々月実績額
                   ELSE
-                    lt_amount_3rd := set_month_amount_rec.amount; 
+                    lt_amount_3rd := set_month_amount_rec.amount;
                   END IF;
                   CLOSE set_month_amount_cur;
-                END IF;
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
                 -- ポイント付与条件に対応した判定を行います。
-                IF ( lt_grant_condition_point = cv_cond_all ) THEN                                  -- 対象月全てが条件金額以上
-                  IF    ( lt_1st_month != cv_chk_on                                                 -- 当月が対象月でないか
-                          OR ( (lt_1st_month = cv_chk_on )                                          -- 当月が対象月で
-                                AND (lt_price <= lt_amount_1st)                                     -- 当月実績が条件を満たす場合
-                             )
-                        )
-                    AND ( lt_2nd_month != cv_chk_on                                                 -- 翌月が対象月でないか
-                          OR ( (lt_2nd_month = cv_chk_on )                                          -- 翌月が対象月で
-                                AND (lt_price <= lt_amount_2nd)                                     -- 翌月実績が条件を満たす場合
-                             )
-                        )
-                    AND ( lt_3rd_month != cv_chk_on                                                 -- 翌々月が対象月でないか
-                          OR ( (lt_3rd_month = cv_chk_on )                                          -- 翌々月が対象月で
-                                AND (lt_price <= lt_amount_3rd)                                     -- 翌々月実績が条件を満たす場合
-                             )
-                        )
-                  THEN                                                                           
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--                IF ( lt_grant_condition_point = cv_cond_all ) THEN                                  -- 対象月全てが条件金額以上
+--                  IF    ( lt_1st_month != cv_chk_on                                                 -- 当月が対象月でないか
+--                          OR ( (lt_1st_month = cv_chk_on )                                          -- 当月が対象月で
+--                                AND (lt_price <= lt_amount_1st)                                     -- 当月実績が条件を満たす場合
+--                             )
+--                        )
+--                    AND ( lt_2nd_month != cv_chk_on                                                 -- 翌月が対象月でないか
+--                          OR ( (lt_2nd_month = cv_chk_on )                                          -- 翌月が対象月で
+--                                AND (lt_price <= lt_amount_2nd)                                     -- 翌月実績が条件を満たす場合
+--                             )
+--                        )
+--                    AND ( lt_3rd_month != cv_chk_on                                                 -- 翌々月が対象月でないか
+--                          OR ( (lt_3rd_month = cv_chk_on )                                          -- 翌々月が対象月で
+--                                AND (lt_price <= lt_amount_3rd)                                     -- 翌々月実績が条件を満たす場合
+--                             )
+--                        )
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                IF ( lt_min_grant_condition_point = cv_cond_all ) THEN                              -- 対象月全てが条件金額以上
+                  IF ( lt_min_1st_month != cv_chk_on                                                -- 当月が対象月でないか
+                       OR ( ( lt_min_1st_month = cv_chk_on )                                        -- 当月が対象月で
+                            AND ( lt_min_price <= lt_amount_1st )                                   -- 当月実績が条件を満たす場合
+                          )
+                     )
+                  AND ( lt_min_2nd_month != cv_chk_on                                               -- 翌月が対象月でないか
+                        OR ( ( lt_min_2nd_month = cv_chk_on )                                       -- 翌月が対象月で
+                             AND (lt_min_price <= lt_amount_2nd)                                    -- 翌月実績が条件を満たす場合
+                           )
+                      )
+                  AND ( lt_min_3rd_month != cv_chk_on                                               -- 翌々月が対象月でないか
+                        OR ( ( lt_min_3rd_month = cv_chk_on )                                       -- 翌々月が対象月で
+                             AND (lt_min_price <= lt_amount_3rd)                                    -- 翌々月実績が条件を満たす場合
+                           )
+                      )
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
+                  THEN
                     lt_evaluration_kbn := cv_grant_ok;                                              -- ポイント付与
                   ELSE
-                    lt_evaluration_kbn := cv_grant_ng;                                              -- ポイント付与しない
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--                    lt_evaluration_kbn := cv_grant_ng;                                              -- ポイント付与しない
+                    lt_evaluration_kbn := cv_grant_ng_yet;                                          -- ポイント付与しない(未達)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
                   END IF;
-                ELSIF ( lt_grant_condition_point = cv_cond_any ) THEN                               -- 対象月のどれかが条件金額以上
-                  IF   (  (lt_1st_month = cv_chk_on )                                                -- 当月が対象月で
-                        AND (lt_price <= lt_amount_1st)                                             -- 当月実績が条件を満たす場合
-                       )                                                                               
-                    OR ( (lt_2nd_month = cv_chk_on )                                                -- 翌月が対象月で
-                        AND (lt_price <= lt_amount_2nd)                                             -- 翌月実績が条件を満たす場合
-                       )                                                                            
-                    OR ( (lt_3rd_month = cv_chk_on )                                                -- 翌々月が対象月で
-                        AND (lt_price <= lt_amount_3rd)                                             -- 翌々月実績が条件を満たす場合
-                       )
-                  THEN                                                                           
-                    lt_evaluration_kbn := cv_grant_ok;                                              -- ポイント付与
-                  ELSE
-                    lt_evaluration_kbn := cv_grant_ng;                                              -- ポイント付与しない
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--                ELSIF ( lt_grant_condition_point = cv_cond_any ) THEN                               -- 対象月のどれかが条件金額以上
+--                  IF   (  (lt_1st_month = cv_chk_on )                                               -- 当月が対象月で
+--                        AND (lt_price <= lt_amount_1st)                                             -- 当月実績が条件を満たす場合
+--                       )
+--                    OR ( (lt_2nd_month = cv_chk_on )                                                -- 翌月が対象月で
+--                        AND (lt_price <= lt_amount_2nd)                                             -- 翌月実績が条件を満たす場合
+--                       )
+--                    OR ( (lt_3rd_month = cv_chk_on )                                                -- 翌々月が対象月
+--                        AND (lt_price <= lt_amount_3rd)                                             -- 翌々月実績が条件を満たす場合
+--                       )
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                ELSIF ( lt_min_grant_condition_point = cv_cond_any ) THEN                           -- 対象月のどれかが条件金額以上
+                     IF ( ( lt_min_1st_month = cv_chk_on )                                          -- 当月が対象月で
+                          AND ( lt_min_price <= lt_amount_1st )                                     -- 当月実績が条件を満たす場合
+                        )
+                     OR ( ( lt_min_2nd_month = cv_chk_on )                                          -- 翌月が対象月で
+                          AND ( lt_min_price <= lt_amount_2nd )                                     -- 翌月実績が条件を満たす場合
+                        )
+                     OR ( ( lt_min_3rd_month = cv_chk_on )                                          -- 翌々月が対象月
+                          AND ( lt_min_price <= lt_amount_3rd )                                     -- 翌々月実績が条件を満たす場合
+                        )
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
+                     THEN
+                       lt_evaluration_kbn := cv_grant_ok;                                           -- ポイント付与
+                     ELSE
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--                    lt_evaluration_kbn := cv_grant_ng;                                              -- ポイント付与しない
+                    lt_evaluration_kbn := cv_grant_ng_yet;                                          -- ポイント付与しない(未達)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
                   END IF;
-                ELSIF ( lt_grant_condition_point = cv_cond_sum ) THEN                               -- 対象月合計が条件金額以上
+                ELSIF ( lt_min_grant_condition_point = cv_cond_sum ) THEN                               -- 対象月合計が条件金額以上
                   --対象月のみ販売実績を集計しているため、全てを合計することで対象月の合計が算出される。
                   lt_amount_all := lt_amount_1st + lt_amount_2nd + lt_amount_3rd;
-                  IF (lt_price <= lt_amount_all) THEN                                               -- 合計金額が条件を満たした場合
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--                  IF (lt_price <= lt_amount_all) THEN                                               -- 合計金額が条件を満たした場合
+                  IF ( lt_min_price <= lt_amount_all ) THEN                                         -- 合計金額が条件を満たした場合
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
                     lt_evaluration_kbn := cv_grant_ok;                                              -- ポイント付与
                   ELSE
-                    lt_evaluration_kbn := cv_grant_ng;                                              -- ポイント付与しない
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--                    lt_evaluration_kbn := cv_grant_ng;                                              -- ポイント付与しない
+                    lt_evaluration_kbn := cv_grant_ng_yet;                                          -- ポイント付与しない(未達)
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
                   END IF;
                 END IF;                                                                             -- ポイント付与条件別の終了
+--//+ADD START  2010/01/19 E_本稼動_01039 S.Karikomi
+                IF ( lt_evaluration_kbn = cv_grant_ok )                                             -- ポイント付与の場合
+                     AND ( lt_max_price IS NOT NULL )                                               -- ポイント付与条件最高金額あり
+                THEN
+                  IF ( lt_max_grant_condition_point = cv_cond_all ) THEN                            -- 対象月全てが条件金額以上
+                    IF ( lt_max_1st_month != cv_chk_on                                              -- 当月が対象月でないか
+                       OR ( ( lt_max_1st_month = cv_chk_on )                                        -- 当月が対象月で
+                            AND ( lt_amount_1st >= lt_max_price )                                   -- 当月実績がポイント付与条件最高金額より大きい場合
+                          )
+                       )
+                    AND ( lt_max_2nd_month != cv_chk_on                                             -- 翌月が対象月でないか
+                        OR ( ( lt_max_2nd_month = cv_chk_on )                                       -- 翌月が対象月で
+                             AND ( lt_amount_2nd >= lt_max_price )                                  -- 翌月実績がポイント付与条件最高金額より大きい場合
+                           )
+                        )
+                    AND ( lt_max_3rd_month != cv_chk_on                                             -- 翌々月が対象月でないか
+                        OR ( ( lt_max_3rd_month = cv_chk_on )                                       -- 翌々月が対象月で
+                             AND ( lt_amount_3rd >= lt_max_price )                                  -- 翌々月実績がポイント付与条件最高金額より大きい場合
+                           )
+                        )
+                    THEN
+                      lv_point_double_flg := cv_point_double_ok;                                    -- 獲得ポイントを２倍
+                      lt_evaluration_kbn := cv_grant_ok_dbl;                                        -- ポイント付与(２倍)
+                    END IF;
+                  ELSIF ( lt_max_grant_condition_point = cv_cond_any ) THEN                         -- 対象月のどれかが条件金額以上                  THEN
+                    IF ( ( lt_max_1st_month = cv_chk_on )                                           -- 当月が対象月で
+                         AND ( lt_amount_1st >= lt_max_price )                                      -- 当月実績がポイント付与条件最高金額より大きい場合
+                       )
+                    OR ( ( lt_max_2nd_month = cv_chk_on )                                           -- 翌月が対象月で
+                         AND ( lt_amount_2nd >= lt_max_price )                                      -- 翌月実績がポイント付与条件最高金額より大きい場合
+                       )
+                    OR ( ( lt_max_3rd_month = cv_chk_on )                                           -- 翌々月が対象月
+                         AND ( lt_amount_3rd >= lt_max_price )                                      -- 当月実績がポイント付与条件最高金額より大きい場合
+                       )
+                    THEN
+                      lv_point_double_flg := cv_point_double_ok;                                    -- 獲得ポイントを２倍
+                      lt_evaluration_kbn := cv_grant_ok_dbl;                                        -- ポイント付与(２倍)
+                    END IF;
+                  ELSIF ( lt_max_grant_condition_point = cv_cond_sum ) THEN                         -- 対象月合計が条件金額以上
+                    --対象月のみ販売実績を集計しているため、全てを合計することで対象月の合計が算出される。
+                    lt_amount_all := lt_amount_1st + lt_amount_2nd + lt_amount_3rd;
+                    IF ( lt_amount_all >= lt_max_price ) THEN                                       -- 当月実績がポイント付与条件最高金額より大きい場合
+                      lv_point_double_flg := cv_point_double_ok;                                    -- 獲得ポイントを２倍
+                      lt_evaluration_kbn := cv_grant_ok_dbl;                                        -- ポイント付与(２倍)
+                    END IF;
+                  END IF;
+                END IF;                                                                             -- ポイント２倍条件判定の終了
+--//+ADD END  2010/01/19 E_本稼動_01039 S.Karikomi
               END IF;                                                                               -- 実績判定要の終了
             END IF;                                                                                 -- ポイント付与条件ありの終了        
           END IF;                                                                                   -- 中止顧客でないの終了
@@ -1707,11 +2033,22 @@ AS
           END IF;
         END IF;                                                                                     -- 獲得営業員が未確定の終了
         -- ========================================
-        -- A-12 ポイント按分処理
-        -- A-13 新規獲得ポイント顧客別履歴テーブル作成処理
+--//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
+--        -- A-12 ポイント按分処理
+--        -- A-13 新規獲得ポイント顧客別履歴テーブル作成処理
+        -- A-12 ポイント２倍処理
+        -- A-13 ポイント按分処理
+        -- A-14 新規獲得ポイント顧客別履歴テーブル作成処理
+--//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
         -- ========================================
         -- 新規ポイントの設定
         lt_point := set_new_point_rec.new_point;
+--//+ADD START  2010/01/19 E_本稼動_01039 S.Karikomi
+        -- 条件を満たした場合ポイントを２倍
+        IF ( lv_point_double_flg = cv_point_double_ok ) THEN
+          lt_point := lt_point * 2;
+        END IF;
+--//+ADD END  2010/01/19 E_本稼動_01039 S.Karikomi
         -- 獲得ポイント按分後、紹介者の登録
         IF  (gv_intro_umu_flg = cv_intro_ari) THEN                                                  -- 紹介者ありの場合
           -- 獲得ポイント按分
@@ -1737,7 +2074,7 @@ AS
             RAISE global_process_expt;
 --//+UPD END   2009/07/14 0000663 M.Ohtsuki
           END IF;
-        END IF;     
+        END IF; 
         -- 獲得者の登録 
         insert_hst_table(
           it_get_intro_kbn => cv_get                                                                -- 獲得紹介区分
@@ -2132,7 +2469,10 @@ AS
       gn_warn_cnt   := 0;
     END IF;
     -- =======================
-    -- A-14.終了処理 
+--//+UPD START 2010/01/19 E_本稼動_01039 S.Karikomi
+--    -- A-14.終了処理
+    -- A-15.終了処理
+--//+UPD END 2010/01/19 E_本稼動_01039 S.Karikomi
     -- =======================
     --空行の出力
     fnd_file.put_line(

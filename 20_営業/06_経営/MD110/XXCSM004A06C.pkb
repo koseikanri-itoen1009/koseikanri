@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた什器ポイントデータを
  *                  : 新規獲得ポイント顧客別履歴テーブルに取込みます。
  * MD.050           : MD050_CSM_004_A06_什器ポイント一括取込
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/04/09    1.2   SCS M.Ohtsuki    [障害T1_0416]業務日付とシステム日付比較の不具合
  *  2009/04/14    1.3   SCS M.Ohtsuki    [障害T1_0500]年月チェック条件の不具合対応
  *  2009/08/19    1.4   SCS T.Tsukino    [障害0001111]警告終了のエラーメッセージログ出力の変更対応
+ *  2010/01/18    1.5   SCS T.Nakano     [E_本稼動_01039]データ区分チェック追加対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -117,6 +118,9 @@ AS
   cv_csm_msg_149            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10149';                           -- 什器ポイントデータフォーマットチェックエラーメッセージ
   cv_csm_msg_151            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10151';                           -- 什器ポイント項目属性チェックエラーメッセージ
   cv_csm_msg_152            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10152';                           -- 登録データ0件メッセージ
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+  cv_csm_msg_158            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10158';                           -- データ区分エラーメッセージ
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
 --//+ADD START 2009/04/14 T1_0500 M.Ohtsuki
   cv_csm_msg_021            CONSTANT VARCHAR2(100) := 'APP-XXCSM1-00021';                           -- 年度取得エラーメッセージ
 --//+ADD END   2009/04/14 T1_0500 M.Ohtsuki
@@ -132,6 +136,9 @@ AS
   cv_tkn_emp_cd             CONSTANT VARCHAR2(100) := 'EMPLOYEE_CD';                                -- 従業員コード
   cv_tkn_loc_cd             CONSTANT VARCHAR2(100) := 'LOCATION_CD';                                -- 拠点コード
   cv_tkn_cust_cd            CONSTANT VARCHAR2(100) := 'CUSTOMER_CD';                                -- 顧客コード
+--//+ADD START 2010/01/18 E_本稼動_01039 T.Nakano
+  cv_data_kbn               CONSTANT VARCHAR2(100) := 'DATA_KBN';                                   -- データ区分
+--//+ADD END 2010/01/18 E_本稼動_01039 T.Nakano
   cv_tkn_sqlerrm            CONSTANT VARCHAR2(100) := 'ERR_MSG';                                    -- SQLエラーメッセージ
   --アプリケーション短縮名
   cv_xxcsm                  CONSTANT VARCHAR2(100) := 'XXCSM';                                      -- アプリケーション短縮名
@@ -520,6 +527,9 @@ AS
          ,employee_cd                                                                               -- 従業員コード
          ,get_intro_kbn                                                                             -- 獲得・紹介区分
          ,point                                                                                     -- ポイント
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+         ,data_kbn                                                                                  -- データ区分
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
           )
         VALUES(
           lt_data_item_tab(1)                                                                       -- 獲得年月
@@ -528,6 +538,9 @@ AS
          ,lt_data_item_tab(4)                                                                       -- 従業員コード
          ,lt_data_item_tab(5)                                                                       -- 獲得・紹介区分
          ,lt_data_item_tab(6)                                                                       -- ポイント
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+         ,lt_data_item_tab(7)                                                                       -- データ区分
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
         );
     END LOOP ins_wk_loop;
 --
@@ -566,6 +579,9 @@ AS
 --
   PROCEDURE check_year_month(
     iv_year_month   IN  VARCHAR2                                                                    -- 年月
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+   ,iv_data_kbn     IN  VARCHAR2                                                                    -- データ区分
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
    ,ov_errbuf       OUT NOCOPY VARCHAR2                                                             -- エラー・メッセージ
    ,ov_retcode      OUT NOCOPY VARCHAR2                                                             -- リターン・コード
    ,ov_errmsg       OUT NOCOPY VARCHAR2)                                                            -- ユーザー・エラー・メッセージ
@@ -583,6 +599,9 @@ AS
     lv_errmsg       VARCHAR2(4000);                                                                 -- ユーザー・エラー・メッセージ
 --
     lv_year_month   VARCHAR2(1000);                                                                 -- 年月格納用
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+    lv_data_kbn_no  VARCHAR2(1);                                                                    -- データ区分格納用
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
     ln_cnt          NUMBER;                                                                         -- 件数確認用
     ld_year_month   DATE;                                                                           -- フォーマットチェック用
 --//+ADD START 2009/04/14 T1_0500 M.Ohtsuki
@@ -596,6 +615,9 @@ AS
 --
     ov_retcode      := cv_status_normal;                                                            -- 変数の初期化
     lv_year_month   := iv_year_month;                                                               -- INパラメータの格納
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+    lv_data_kbn_no  := iv_data_kbn;                                                                 -- データ区分を格納
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
 --
     --年月が空白の場合はエラー
     IF (lv_year_month IS NULL) THEN
@@ -607,6 +629,18 @@ AS
       RAISE check_err_expt;
     END IF;
 --
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+    --データ区分が2,3以外はエラー
+    IF (lv_data_kbn_no <> '2' AND
+        lv_data_kbn_no <> '3') THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_xxcsm                                                    -- アプリケーション短縮名
+                    ,iv_name         => cv_csm_msg_158                                              -- メッセージコード
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE check_err_expt;
+    END IF;
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
     --年月が'YYYYMM'形式で年月として存在する事。それ以外はエラー
     BEGIN
       SELECT TO_DATE(lv_year_month,'YYYYMM')
@@ -720,7 +754,11 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name     CONSTANT VARCHAR2(100) := 'delete_old_data';                                    -- プログラム名
-    cn_jyuki        CONSTANT NUMBER(1)   := 2;                                                      -- データ区分(什器ポイント = 2)
+--//+UPD START 2010/01/14 E_本稼動_01039 T.Nakano
+--    cn_jyuki        CONSTANT NUMBER(1)   := 2;                                                      -- データ区分(什器ポイント = 2)
+    cn_jyuki_2      CONSTANT NUMBER(1)     := 2;                                                      -- データ区分(什器ポイント = 2)
+    cn_jyuki_3      CONSTANT NUMBER(1)     := 3;                                                      -- データ区分(什器ポイント = 3)
+--//+UPD END 2010/01/14 E_本稼動_01039 T.Nakano
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -738,7 +776,10 @@ AS
       FROM    xxcsm_new_cust_point_hst  ncp                                                         -- 新規獲得ポイント顧客別履歴テーブル
       WHERE   ncp.subject_year = TO_NUMBER(gv_subject_year)                                         -- 対象年度
         AND   ncp.month_no     = in_month_no                                                        -- 月
-        AND   ncp.data_kbn     = cn_jyuki                                                           -- データ区分
+--//+UPD START 2010/01/14 E_本稼動_01039 T.Nakano
+--        AND   ncp.data_kbn     = cn_jyuki                                                           -- データ区分
+        AND   ncp.data_kbn in (cn_jyuki_2,cn_jyuki_3)                                               -- データ区分
+--//+UPD END 2010/01/14 E_本稼動_01039 T.Nakano
       FOR UPDATE NOWAIT;
 --
     lock_err_expt   EXCEPTION;                                                                      -- ロックエラー例外
@@ -775,7 +816,10 @@ AS
     DELETE  FROM  xxcsm_new_cust_point_hst    ncp                                                   -- 新規獲得ポイント顧客別履歴テーブル
     WHERE   ncp.subject_year = TO_NUMBER(gv_subject_year)                                           -- 対象年度
       AND   ncp.month_no     = ln_month_no                                                          -- 月
-      AND   ncp.data_kbn     = cn_jyuki;                                                            -- データ区分
+--//+UPD START 2010/01/14 E_本稼動_01039 T.Nakano
+--      AND   ncp.data_kbn     = cn_jyuki;                                                            -- データ区分
+      AND   ncp.data_kbn     in (cn_jyuki_2,cn_jyuki_3);                                            -- データ区分
+--//+UPD END 2010/01/14 E_本稼動_01039 T.Nakano
 --
   EXCEPTION
 --
@@ -859,6 +903,9 @@ AS
     lt_check_data_tab(4)  := ir_data_rec.employee_cd;                                               -- 従業員コード
     lt_check_data_tab(5)  := ir_data_rec.get_intro_kbn;                                             -- 獲得・紹介区分
     lt_check_data_tab(6)  := lv_point;                                                              -- ポイント
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+    lt_check_data_tab(7)  := ir_data_rec.data_kbn;                                                  -- データ区分
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakno
 --
     ln_check_cnt := 0;                                                                              -- カウンタの初期化
 --
@@ -889,12 +936,20 @@ AS
                        ,iv_token_name2  => cv_tkn_emp_cd                                            -- トークンコード2
                        ,iv_token_name3  => cv_tkn_loc_cd                                            -- トークンコード3
                        ,iv_token_name4  => cv_tkn_cust_cd                                           -- トークンコード4
-                       ,iv_token_name5  => cv_tkn_sqlerrm                                           -- トークンコード5
+--//+UPD START 2010/01/18 E_本稼動_01039 T.Nakano
+--                       ,iv_token_name5  => cv_tkn_sqlerrm                                           -- トークンコード5
+                       ,iv_token_name5  => cv_data_kbn                                              -- トークンコード5
+                       ,iv_token_name6  => cv_tkn_sqlerrm                                           -- トークンコード6
+--//+UPD END 2010/01/18 E_本稼動_01039 T.Nakano
                        ,iv_token_value1 => ir_data_rec.year_month                                   -- 獲得年月
                        ,iv_token_value2 => ir_data_rec.employee_cd                                  -- 従業員コード
                        ,iv_token_value3 => ir_data_rec.location_cd                                  -- 拠点コード
                        ,iv_token_value4 => ir_data_rec.customer_cd                                  -- 顧客コード
-                       ,iv_token_value5 => lv_errmsg                                                -- 共通関数からのメッセージ
+--//+UPD START 2010/01/18 E_本稼動_01039 T.Nakano
+--                       ,iv_token_value5 => lv_errmsg                                                -- 共通関数からのメッセージ
+                       ,iv_token_value5 => ir_data_rec.data_kbn                                     -- データ区分
+                       ,iv_token_value6 => lv_errmsg                                                -- 共通関数からのメッセージ
+--//+UPD END 2010/01/18 E_本稼動_01039 T.Nakano
                        );
          fnd_file.put_line(
                            which  => FND_FILE.OUTPUT                                                -- 出力に表示
@@ -1187,7 +1242,10 @@ AS
        ,TO_NUMBER(gv_subject_year)                                                                  -- 対象年度
        ,TO_NUMBER(SUBSTR(ir_data_rec.year_month,5))                                                 -- 月
        ,ir_data_rec.customer_cd                                                                     -- 顧客コード
-       ,cn_jyuki                                                                                    -- データ区分
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+--       ,cn_jyuki                                                                                    -- データ区分
+       ,TO_NUMBER(ir_data_rec.data_kbn)                                                             -- データ区分
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
        ,TO_NUMBER(ir_data_rec.year_month)                                                           -- 年月
        ,TO_NUMBER(ir_data_rec.point)                                                                -- ポイント
        ,NULL                                                                                        -- 部署コード
@@ -1271,8 +1329,14 @@ AS
                ,wvp.employee_cd                           employee_cd                               -- 従業員コード
                ,wvp.get_intro_kbn                         get_intro_kbn                             -- 獲得・紹介区分
                ,wvp.point                                 point                                     -- ポイント
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+               ,wvp.data_kbn                              data_kbn                                  -- データ区分
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
       FROM      xxcsm_wk_vending_pnt                      wvp                                       -- 什器ポイントデータワークテーブル
       ORDER BY  wvp.year_month                            ASC                                       -- 獲得年月
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+               ,wvp.data_kbn                              ASC                                       -- データ区分
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
                ,wvp.location_cd                           ASC                                       -- 拠点コード
                ,wvp.employee_cd                           ASC                                       -- 従業員コード
                ,wvp.customer_cd                           ASC;                                      -- 顧客コード
@@ -1295,7 +1359,7 @@ AS
       EXIT WHEN get_data_cur%NOTFOUND;                                                              -- 対象データ件数処理を繰り返す
 --
       IF ((get_data_cur%ROWCOUNT = 1)                                                               -- 1件目
-         OR (lv_year_month  <> NVL(get_data_rec.year_month,cv_null))) THEN                          -- 獲得年月ブレイク時
+        OR (lv_year_month  <> NVL(get_data_rec.year_month,cv_null))) THEN                           -- 獲得年月ブレイク時
 --
         IF (get_data_cur%ROWCOUNT <> 1) THEN                                                        -- 1件目以外
           IF (ln_nodata_cnt = 0) THEN                                                               -- 年月単位の登録件数が0件だった場合
@@ -1332,6 +1396,9 @@ AS
 --
         check_year_month(                                                                           -- 年月チェックをコール
             iv_year_month => get_data_rec.year_month
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+           ,iv_data_kbn   => get_data_rec.data_kbn
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
            ,ov_errbuf     => lv_errbuf
            ,ov_retcode    => lv_retcode
            ,ov_errmsg     => lv_errmsg
@@ -1390,6 +1457,9 @@ AS
         lr_data_rec.employee_cd     := get_data_rec.employee_cd;                                    -- 従業員コード
         lr_data_rec.get_intro_kbn   := get_data_rec.get_intro_kbn;                                  -- 獲得・紹介区分
         lr_data_rec.point           := get_data_rec.point;                                          -- ポイント
+--//+ADD START 2010/01/14 E_本稼動_01039 T.Nakano
+        lr_data_rec.data_kbn        := get_data_rec.data_kbn;                                       -- データ区分
+--//+ADD END 2010/01/14 E_本稼動_01039 T.Nakano
 --
         check_item(                                                                                 -- check_itemをコール
            ir_data_rec => lr_data_rec

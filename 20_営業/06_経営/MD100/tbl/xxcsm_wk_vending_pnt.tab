@@ -4,7 +4,11 @@ CREATE TABLE xxcsm.xxcsm_wk_vending_pnt(
     ,location_cd                VARCHAR2(100)
     ,employee_cd                VARCHAR2(100)
     ,get_intro_kbn              VARCHAR2(100)
-    ,point                      VARCHAR2(100))
+    ,point                      VARCHAR2(100)
+--//+ADD START 2010/01/18 E_本稼動_01039 T.Nakano
+    ,data_kbn                   VARCHAR2(100)
+--//+ADD END 2010/01/18 E_本稼動_01039 T.Nakano
+    )
  PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M)
 /
 COMMENT ON TABLE xxcsm.xxcsm_wk_vending_pnt                   IS '什器ポイントワークテーブル'
@@ -21,3 +25,7 @@ COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.get_intro_kbn    IS '獲得・紹介区分
 /
 COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.point            IS 'ポイント'
 /
+--//+ADD START 2010/01/18 E_本稼動_01039 T.Nakano
+COMMENT ON COLUMN xxcsm.xxcsm_wk_vending_pnt.data_kbn         IS 'データ区分'
+/
+--//+ADD END 2010/01/18 E_本稼動_01039 T.Nakano

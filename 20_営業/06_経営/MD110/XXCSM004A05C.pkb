@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM004A05C(body)
  * Description      : 資格ポイント・新規獲得ポイント情報系システムI/F
  * MD.050           : 資格ポイント・新規獲得ポイント情報系システムI/F MD050_CSM_004_A05
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,7 +25,7 @@ AS
  *  2009/01/05    1.0   S.Son            新規作成
  *  2009/07/01    1.1   T.Tsukino        ［SCS障害管理番号0000256］対応
  *  2009/12/22    1.2   T.Nakano         E_本番稼動_00589 対応
- *
+ *  2010/01/13    1.3   S.Karikomi       E_本稼働_1039 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -190,7 +190,7 @@ AS
                                             ,iv_name         => cv_msg_90008
                                             );
     FND_FILE.PUT_LINE(FND_FILE.LOG,lv_no_pram_msg);
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_no_pram_msg);
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_no_pram_msg);	
     
 --
 --② プロファイル値取得
@@ -330,9 +330,9 @@ AS
 --###########################  固定部 END   ############################
     BEGIN
       gf_file_hand := UTL_FILE.FOPEN(
-                                   location     => gv_file_dir 
-                                  ,filename     => gv_file_name 
-                                  ,open_mode    => cv_mode_w 
+                                   location     => gv_file_dir
+                                  ,filename     => gv_file_name
+                                  ,open_mode    => cv_mode_w
                                   ,max_linesize => cn_max_size
                                   );
       EXCEPTION
@@ -438,14 +438,24 @@ AS
              ,xncph.subject_year                                                           --対象年度
              ,xncph.year_month                                                             --年月
              ,xncph.location_cd                                                            --拠点コード
-             ,DECODE(xncph.data_kbn,1,xncph.account_number,'0') account_number           --顧客コード
+--//+UPD START 2010/01/13 E_本稼動_01039 S.Karikomi
+--             ,DECODE(xncph.data_kbn,1,xncph.account_number,'0') account_number             --顧客コード
+             ,DECODE(xncph.data_kbn,1,xncph.account_number
+                                   ,2,xncph.account_number
+                                   ,3,xncph.account_number,'0') account_number             --顧客コード
+--//+UPD END 2010/01/13 E_本稼動_01039 S.Karikomi
              ,xncph.data_kbn                                                               --データ区分
              ,xncph.get_intro_kbn                                                          --獲得・紹介区分
              ,xncph.get_custom_date                                                        --顧客獲得日
              ,xncph.business_low_type                                                      --業態（小分類）
 --//+UPD START 2009/12/22 E_本番稼動_00589 対応 T.Nakano
---              ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,NULL) evaluration_kbn        --新規評価対象区分
-             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,2,xncph.evaluration_kbn,NULL) evaluration_kbn        --新規評価対象区分
+--             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,NULL) evaluration_kbn          --新規評価対象区分
+--//+UPD START 2010/01/13 E_本稼動_01039 S.Karikomi
+--             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn,2,xncph.evaluration_kbn,NULL) evaluration_kbn        --新規評価対象区分
+             ,DECODE(xncph.data_kbn,1,xncph.evaluration_kbn
+                                   ,2,xncph.evaluration_kbn
+                                   ,3,xncph.evaluration_kbn,NULL) evaluration_kbn          --新規評価対象区分
+--//+UPD END 2010/01/13 E_本稼動_01039 S.Karikomi
 --//+UPD END 2009/12/22 E_本番稼動_00589 対応 T.Nakano
              ,xncph.point                                                                  --ポイント
       FROM    xxcsm_new_cust_point_hst   xncph                                             --新規獲得ポイント顧客別履歴テーブル

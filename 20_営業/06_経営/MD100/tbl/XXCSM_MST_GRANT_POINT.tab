@@ -7,7 +7,7 @@ CREATE TABLE xxcsm.xxcsm_mst_grant_point (
     ,grant_point_target_1st_month   VARCHAR2(1)
     ,grant_point_target_2nd_month   VARCHAR2(1)
     ,grant_point_target_3rd_month   VARCHAR2(1)
-    ,grant_point_condition_price    NUMBER(15,0)
+    ,grant_point_condition_price    NUMBER(15,0)  NOT NULL
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15)    NOT NULL
@@ -17,7 +17,7 @@ CREATE TABLE xxcsm.xxcsm_mst_grant_point (
     ,program_application_id         NUMBER(15)
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE
-  ,CONSTRAINT xxcsm_mst_grant_point_pk PRIMARY KEY (subject_year, post_cd, duties_cd, custom_condition_cd)
+  ,CONSTRAINT xxcsm_mst_grant_point_pk PRIMARY KEY (subject_year, post_cd, duties_cd, custom_condition_cd, grant_point_condition_price)
   USING INDEX TABLESPACE xxidx2)
  PCTFREE 5 PCTUSED 60 INITRANS 10 STORAGE ( INITIAL 1M)
 /
