@@ -94,6 +94,9 @@ SELECT xoha.request_no                    request_no            -- 依頼No
       ,xoha.arrival_date                  db_arrival_date          -- 入庫日
       ,xoha.shipping_instructions         db_shipping_instructions -- 摘要(出荷指示)
       ,xoha.arrival_date                  db_result_arrival_date   -- 入庫日(実績)
+-- 2008-10-20 H.Itou Add Start T_S_437
+      ,xoha.shipped_date                  db_result_shipped_date   -- 出庫日(実績)
+-- 2008-10-20 H.Itou Add End
 FROM   xxwsh_order_headers_all        xoha  -- 受注ヘッダアドオン
       ,xxwsh_oe_transaction_types2_v  xottv -- 受注タイプ情報VIEW2
       ,xxcmn_locations2_v             xlv1  -- 事業所情報VIEW2(依頼部署用)
@@ -932,6 +935,18 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN ximv.start_date_a
       ColumnType="DATE"
       AliasName="DB_RESULT_ARRIVAL_DATE"
       Expression="DB_RESULT_ARRIVAL_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DbResultShippedDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="DB_RESULT_SHIPPED_DATE"
+      Expression="DB_RESULT_SHIPPED_DATE"
       SQLType="DATE" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="7" />

@@ -49,6 +49,9 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
       ,xottv.auto_create_po_class         auto_create_po_class  -- Ž©“®”­’ì¬‹æ•ª
       ,xoha.freight_charge_class          freight_charge_class  -- ‰^’À‹æ•ª
       ,xlvvs.lookup_code exe_type -- ‹N“®ƒ^ƒCƒv
+-- 2008-10-20 H.Itou Add Start T_S_437
+      ,xoha.arrival_date                  result_arrival_date   -- “üŒÉ“ú(ŽÀÑ)
+-- 2008-10-20 H.Itou Add End
 FROM   xxwsh_order_headers_all        xoha  -- Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
       ,xxcmn_lookup_values_v          xlvv1 -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(ƒXƒe[ƒ^ƒX—p)
       ,xxcmn_lookup_values_v          xlvv2 -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(’Ê’mƒXƒe[ƒ^ƒX—p)
@@ -456,6 +459,15 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from(+)
       AliasName="ExeType"
       Expression="ExeType"
       SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ResultArrivalDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="RESULT_ARRIVAL_DATE"
+      Expression="RESULT_ARRIVAL_DATE"
+      SQLType="DATE" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="OrderHeaderId" />

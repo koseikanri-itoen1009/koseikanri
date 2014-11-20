@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoShipToResultAMImpl
 * 概要説明   : 入庫実績要約アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-07-01 1.1  二瓶大輔     内部変更要求対応#147,#149,ST不具合#248対応
 * 2008-07-30 1.2  伊藤ひとみ   内部変更要求対応#176,#164対応
 * 2008-08-19 1.3  二瓶大輔     ST不具合#249対応
+* 2008-10-20 1.4  伊藤ひとみ   統合テスト指摘346,T_S_437対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo442001j.server;
@@ -42,7 +43,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 入庫実績要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 新藤 義勝
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -331,18 +332,23 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
                             XxpoConstants.XXPO10125));
 
     }
-   
     // 在庫会計期間クローズチェックを行います。
-    Date shippedDate = (Date)row.getAttribute("ShippedDate"); // 出庫日
+// 2008-10-20 H.Itou Mod Start 統合テスト指摘346 在庫会計期間クローズチェックは入庫日で行う
+//    Date checkDate = (Date)row.getAttribute("ShippedDate"); // 出庫日
+    Date checkDate = (Date)row.getAttribute("ArrivalDate"); // 入庫日
+// 2008-10-20 H.Itou Mod End
     if (XxpoUtility.chkStockClose(getOADBTransaction(),
-                                  shippedDate))
+                                  checkDate))
     {
       exceptions.add( new OAAttrValException(
                             OAAttrValException.TYP_VIEW_OBJECT,          
                             vo.getName(),
                             row.getKey(),
-                            "ShippedDate",
-                            shippedDate,
+// 2008-10-20 H.Itou Mod Start 統合テスト指摘346 在庫会計期間クローズチェックは入庫日で行う
+//                            "ShippedDate",
+                            "ArrivalDate",
+// 2008-10-20 H.Itou Mod End
+                            checkDate,
                             XxcmnConstants.APPL_XXPO, 
                             XxpoConstants.XXPO10119));
 
@@ -363,7 +369,24 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
                             XxpoConstants.XXPO10265));
     }
 // 2008-07-30 H.Itou Add 入庫日未来日チェックを追加 End
+// 2008-10-20 H.Itou Add Start T_S_437 出庫実績日がNULLでない場合のみ出庫日＞入庫日チェック実施。
+    if  (!XxcmnUtility.isBlankOrNull(row.getAttribute("ResultShippedDate")))
+    {
+      // 出庫日＞入庫日の場合
+      if (XxcmnUtility.chkCompareDate(1, (Date)row.getAttribute("ResultShippedDate"), arrivalDate))
+      {
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,          
+                              vo.getName(),
+                              row.getKey(),
+                              "ArrivalDate",
+                              arrivalDate,
+                              XxcmnConstants.APPL_XXPO, 
+                              XxpoConstants.XXPO10249));
 
+      }
+    }
+// 2008-10-20 H.Itou Add End
     // 実績未入力チェックを行います。
      Number orderHeader = (Number)row.getAttribute("OrderHeaderId");
     if(!XxpoUtility.chkOrderResult(getOADBTransaction(),
@@ -513,7 +536,7 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     // 変更に関する警告処理
     doWarnAboutChanges();
 
-  } // doNext
+    } // doNext
 
   /***************************************************************************
    * 入庫実績入力明細画面の初期化処理を行うメソッドです。
@@ -626,19 +649,29 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
                             arrivalDate,
                             XxcmnConstants.APPL_XXPO,         
                             XxpoConstants.XXPO10244));
-    // 出庫日＞入庫日の場合
-    } else if (XxcmnUtility.chkCompareDate(1, shippedDate, arrivalDate)) 
+// 2008-10-20 H.Itou Add Start T_S_437 出庫実績日がNULLでない場合のみ出庫日＞入庫日チェック実施。
+    } else if  (!XxcmnUtility.isBlankOrNull(row.getAttribute("DbResultShippedDate")))
     {
-      exceptions.add( new OAAttrValException(
-                            OAAttrValException.TYP_VIEW_OBJECT,          
-                            vo.getName(),
-                            row.getKey(),
-                            "ArrivalDate",
-                            arrivalDate,
-                            XxcmnConstants.APPL_XXPO, 
-                            XxpoConstants.XXPO10249));
+// 2008-10-20 H.Itou Add End
+      // 出庫日＞入庫日の場合
+// 2008-10-20 H.Itou Mod Start T_S_437 出庫実績日でチェックを行う。
+//      } else if (XxcmnUtility.chkCompareDate(1, shippedDate, arrivalDate)
+      if (XxcmnUtility.chkCompareDate(1, (Date)row.getAttribute("DbResultShippedDate"), arrivalDate))
+// 2008-10-20 H.Itou Mod End
+      {
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,          
+                              vo.getName(),
+                              row.getKey(),
+                              "ArrivalDate",
+                              arrivalDate,
+                              XxcmnConstants.APPL_XXPO, 
+                              XxpoConstants.XXPO10249));
 
-    } 
+      } 
+// 2008-10-20 H.Itou Add Start
+    }
+// 2008-10-20 H.Itou Add End
     // エラーがあった場合エラーをスローします。
     if (exceptions.size() > 0)
     {
@@ -787,16 +820,22 @@ public class XxpoShipToResultAMImpl extends XxcmnOAApplicationModuleImpl
     OARow hdrRow = (OARow)hdrVo.first();
 
     // 在庫会計期間クローズチェックを行います。
-    Date shippedDate = (Date)hdrRow.getAttribute("ShippedDate"); // 出庫日
+// 2008-10-20 H.Itou Mod Start 統合テスト指摘346 在庫会計期間クローズチェックは入庫日で行う
+//    Date checkDate = (Date)hdrRow.getAttribute("ShippedDate"); // 出庫日
+    Date checkDate = (Date)hdrRow.getAttribute("ArrivalDate"); // 入庫日
+// 2008-10-20 H.Itou Mod End
     if (XxpoUtility.chkStockClose(getOADBTransaction(),
-                                  shippedDate))
+                                  checkDate))
     {
       exceptions.add( new OAAttrValException(
                             OAAttrValException.TYP_VIEW_OBJECT,          
                             hdrVo.getName(),
                             hdrRow.getKey(),
-                            "ShippedDate",
-                            shippedDate,
+// 2008-10-20 H.Itou Mod Start 統合テスト指摘346 在庫会計期間クローズチェックは入庫日で行う
+//                            "ShippedDate",
+                            "ArrivalDate",
+// 2008-10-20 H.Itou Mod End
+                            checkDate,
                             XxcmnConstants.APPL_XXPO, 
                             XxpoConstants.XXPO10119));
     }
