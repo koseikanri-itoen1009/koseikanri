@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A05R(body)
  * Description      : 引取計画立案表出力ワーク登録
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *  2009/10/20    1.7  SCS.Sasaki        障害:0001424対応(PT対応)
  *  2009/11/17    1.8  SCS.Miyagawa      SVFファイル名対応
  *  2009/11/27    1.9  SCS.Kikuchi       E_T4_00198	（パフォーマンス）対応
+ *  2009/12/21    1.10 SCS.Kikuchi       E_本稼動_00546対応
+ *                                       （出荷実績取得・抽出項目の出荷日を着荷日に変更）
  *
  *****************************************************************************************/
 --
@@ -580,10 +582,13 @@ AS
       ,      xic1v.parent_item_no                                    -- 親品目コード
       UNION ALL
       SELECT cv_data_type_result                            data_type                -- データ種別区分
---20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
---      ,      TO_CHAR(shipment_date,cv_target_month_format)  detail_month             -- 明細年月
-      ,      TO_CHAR(xsrst.shipment_date,cv_target_month_format)  detail_month             -- 明細年月
---20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+----20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
+----      ,      TO_CHAR(shipment_date,cv_target_month_format)  detail_month             -- 明細年月
+--      ,      TO_CHAR(xsrst.shipment_date,cv_target_month_format)  detail_month             -- 明細年月
+----20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_END
+      ,      TO_CHAR(xsrst.arrival_date,cv_target_month_format)  detail_month        -- 明細年月
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
       ,      xic1v.prod_class_code                          prod_class_code          -- 商品区分
       ,      xic1v.prod_class_name                          prod_class_name          -- 商品区分名
       ,      SUBSTRB(xic1v.crowd_class_code,1,3)            crowd_class_code         -- 群コード
@@ -598,22 +603,34 @@ AS
       ,      xic1v.parent_item_no                           parent_item_no           -- 親品目コード
       FROM
 --20090623_Ver1.4_0000025_SCS.Kikuchi_MOD_START
-           ( SELECT xsr1.shipment_date
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+--           ( SELECT xsr1.shipment_date
+           ( SELECT xsr1.arrival_date
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
              ,      xsr1.item_no
              ,      xsr1.quantity
              FROM   xxcop_shipment_results   xsr1
-             WHERE  xsr1.shipment_date  BETWEEN gd_result_collect_st_day1
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+--             WHERE  xsr1.shipment_date  BETWEEN gd_result_collect_st_day1
+             WHERE  xsr1.arrival_date   BETWEEN gd_result_collect_st_day1
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
                                           AND     gd_result_collect_ed_day1
              AND    xsr1.base_code      =       g_header_data_tbl(in_header_index).base_code
 --20091013_Ver1.5_E_T3_00556_SCS.Fukada_MOD_START
 --             UNION
              UNION ALL
 --20091013_Ver1.5_E_T3_00556_SCS.Fukada_MOD_END
-             SELECT xsr2.shipment_date
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+--             SELECT xsr2.shipment_date
+             SELECT xsr2.arrival_date
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
              ,      xsr2.item_no
              ,      xsr2.quantity
              FROM   xxcop_shipment_results   xsr2
-             WHERE  xsr2.shipment_date  BETWEEN gd_result_collect_st_day2
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+--             WHERE  xsr2.shipment_date  BETWEEN gd_result_collect_st_day2
+             WHERE  xsr2.arrival_date   BETWEEN gd_result_collect_st_day2
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
                                           AND     gd_result_collect_ed_day2
              AND    xsr2.base_code      =       g_header_data_tbl(in_header_index).base_code
              )xsrst                                                  -- 親コード出荷実績表
@@ -642,7 +659,10 @@ AS
       AND    NVL( xsib.item_status_apply_date, gd_system_date )
                                         <= gd_system_date            -- 品目ステータス適用日
       GROUP
-      BY     TO_CHAR(shipment_date,cv_target_month_format)           -- 明細年月
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+--      BY     TO_CHAR(shipment_date,cv_target_month_format)           -- 明細年月
+      BY     TO_CHAR(arrival_date,cv_target_month_format)            -- 明細年月
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
       ,      xic1v.prod_class_code                                   -- 商品区分
       ,      xic1v.prod_class_name                                   -- 商品区分名
       ,      SUBSTRB(xic1v.crowd_class_code,1,3)                     -- 群コード

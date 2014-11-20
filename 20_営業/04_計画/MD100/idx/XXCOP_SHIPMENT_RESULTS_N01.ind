@@ -3,7 +3,7 @@
  *
  * Index Name      : XXCOP_SHIPMENT_RESULTS_N01
  * Description     : 親コード出荷実績表－索引１
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,8 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009-04-15    1.0   SCS.Kikuchi     新規作成
  *  2009-06-09    1.1   SCS.Kikuchi     インデックス名称修正(障害T1_1387)
+ *  2009-12-21    1.2   SCS.Kikuchi     E_本稼動_00546対応
+ *                                      （出荷日を着荷日に変更し、不要項目を削除）
  *
  ************************************************************************/
 --20090609_Ver1.1_T1_1387_SCS.Kikuchi_MOD_START
@@ -18,9 +20,13 @@
 CREATE INDEX xxcop.xxcop_shipment_results_n01
 --20090609_Ver1.1_T1_1387_SCS.Kikuchi_MOD_END
  ON xxcop.xxcop_shipment_results
-  ( shipment_date
-   ,base_code
-   ,item_no
-   ,latest_deliver_from
+--20091221_Ver1.2_E_本稼動_00546_SCS.Kikuchi_MOD_START
+--  ( shipment_date
+--   ,base_code
+--   ,item_no
+--   ,latest_deliver_from
+  ( base_code
+  , arrival_date
+--20091221_Ver1.2_E_本稼動_00546_SCS.Kikuchi_MOD_END
   ) TABLESPACE xxidx2
 /

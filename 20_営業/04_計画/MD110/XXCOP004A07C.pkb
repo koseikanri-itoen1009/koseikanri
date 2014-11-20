@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A07C(body)
  * Description      : 親コード出荷実績作成
  * MD.050           : 親コード出荷実績作成 MD050_COP_004_A07
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ----------------------   ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/07/07    1.7   SCS.Sasaki       統合テスト障害:0000482対応
  *  2009/07/21    1.8   SCS.Fukada       統合テスト障害:0000800対応
  *  2009/11/09    1.9   SCS.Hokkanji     I_E_637対応
+ *  2009/12/21    1.10  SCS.Kikuchi      E_本稼動_00546対応（着荷日を追加）
  *
  *****************************************************************************************/
 --
@@ -171,6 +172,9 @@ AS
    ,deliver_from          xxwsh_order_headers_all.deliver_from%TYPE         -- 受注ヘッダアドオン.出荷元保管場所
    ,head_sales_branch     xxwsh_order_headers_all.head_sales_branch%TYPE    -- 受注ヘッダアドオン.管轄拠点
    ,shipped_date          xxwsh_order_headers_all.shipped_date%TYPE         -- 受注ヘッダアドオン.出荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_START
+   ,arrival_date          xxwsh_order_headers_all.arrival_date%TYPE         -- 受注ヘッダアドオン.着荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_END
    ,shipped_quantity      xxwsh_order_lines_all.shipped_quantity%TYPE       -- 受注明細アドオン.数量
    ,uom_code              xxwsh_order_lines_all.uom_code%TYPE               -- 受注明細アドオン.単位
 --20090615_Ver1.5_T1_1194_SCS.Goto_DEL_START
@@ -325,80 +329,85 @@ AS
       lv_errmsg  := lv_errmsg_wk;
       RAISE init_expt;
     END IF;
---
+
     --==============================================================
     --過去データ削除基準日算出
     --==============================================================
-    lv_errmsg_wk  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_msg_application
-                       ,iv_name         => cv_message_00048
-                       ,iv_token_name1  => cv_message_00048_token_1
-                       ,iv_token_value1 => cv_delete_start_date
-                      );
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_START
+    gd_delete_start_date := ADD_MONTHS(gd_process_date,gn_data_retention_period * -1);
 --
-    BEGIN
---20090721_Ver1.8_0000800_SCS.Fukada_MOD_START
+--    lv_errmsg_wk  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_msg_application
+--                       ,iv_name         => cv_message_00048
+--                       ,iv_token_name1  => cv_message_00048_token_1
+--                       ,iv_token_value1 => cv_delete_start_date
+--                      );
+----
+--    BEGIN
+----20090721_Ver1.8_0000800_SCS.Fukada_MOD_START
+----      -- 現在会計年度の取得
+----      SELECT TO_NUMBER( icd.fiscal_year )
+----      INTO   ln_fiscal_year
+----      FROM   ic_cldr_dtl icd    -- OPM在庫カレンダ詳細
+----            ,ic_whse_sts iws    -- OPM倉庫別カレンダ
+------20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
+------    業務日付で倉個別カレンダを参照
+------      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( SYSDATE, cv_date_format1 )
+----      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( ADD_MONTHS(gd_process_date,-1), cv_date_format1 )
+------20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
+----      AND    icd.period_id = iws.period_id
+----      AND    iws.whse_code = gv_whse_code
+----      ;
+--      --
 --      -- 現在会計年度の取得
---      SELECT TO_NUMBER( icd.fiscal_year )
+--      SELECT MAX( icd.fiscal_year )
 --      INTO   ln_fiscal_year
 --      FROM   ic_cldr_dtl icd    -- OPM在庫カレンダ詳細
---            ,ic_whse_sts iws    -- OPM倉庫別カレンダ
-----20090629_Ver1.6_0000169_SCS.Fukada_ADD_START
-----    業務日付で倉個別カレンダを参照
-----      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( SYSDATE, cv_date_format1 )
---      WHERE  TO_CHAR( icd.period_end_date, cv_date_format1 ) = TO_CHAR( ADD_MONTHS(gd_process_date,-1), cv_date_format1 )
-----20090629_Ver1.6_0000169_SCS.Fukada_ADD_END
---      AND    icd.period_id = iws.period_id
---      AND    iws.whse_code = gv_whse_code
+--      -- 業務日付で倉個別カレンダを参照
+--      WHERE  orgn_code = cv_orgn_code
+--      AND    icd.period_end_date <= gd_process_date
 --      ;
-      --
-      -- 現在会計年度の取得
-      SELECT MAX( icd.fiscal_year )
-      INTO   ln_fiscal_year
-      FROM   ic_cldr_dtl icd    -- OPM在庫カレンダ詳細
-      -- 業務日付で倉個別カレンダを参照
-      WHERE  orgn_code = cv_orgn_code
-      AND    icd.period_end_date <= gd_process_date
-      ;
-      --
---20090721_Ver1.8_0000800_SCS.Fukada_MOD_END
+--      --
+----20090721_Ver1.8_0000800_SCS.Fukada_MOD_END
+----
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        lv_errmsg  := lv_errmsg_wk;
+--        lv_errbuf  := SQLERRM;
+--        RAISE init_expt;
+--    END;
+----
+--    -- 取得できない場合はエラー
+--    IF ( ln_fiscal_year IS NULL ) THEN
+--      lv_errmsg  := lv_errmsg_wk;
+--      RAISE init_expt;
+--    END IF;
+----
+--    BEGIN
+--      -- 過去データ削除基準日の取得
+--      SELECT MAX( icd.period_end_date )
+--      INTO   gd_delete_start_date
+--      FROM   ic_cldr_dtl icd    -- OPM在庫カレンダ詳細
+--            ,ic_whse_sts iws    -- OPM倉庫別カレンダ
+--      WHERE  icd.fiscal_year = TO_CHAR( ln_fiscal_year - gn_data_retention_period )
+--      AND    icd.period_id   = iws.period_id
+--      AND    iws.whse_code   = gv_whse_code
+--      ;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--        lv_errmsg  := lv_errmsg_wk;
+--        lv_errbuf  := SQLERRM;
+--        RAISE init_expt;
+--    END;
+----
+--    -- 取得できない場合はエラー
+--    IF ( gd_delete_start_date IS NULL ) THEN
+--      lv_errmsg  := lv_errmsg_wk;
+--      RAISE init_expt;
+--    END IF;
 --
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errmsg  := lv_errmsg_wk;
-        lv_errbuf  := SQLERRM;
-        RAISE init_expt;
-    END;
---
-    -- 取得できない場合はエラー
-    IF ( ln_fiscal_year IS NULL ) THEN
-      lv_errmsg  := lv_errmsg_wk;
-      RAISE init_expt;
-    END IF;
---
-    BEGIN
-      -- 過去データ削除基準日の取得
-      SELECT MAX( icd.period_end_date )
-      INTO   gd_delete_start_date
-      FROM   ic_cldr_dtl icd    -- OPM在庫カレンダ詳細
-            ,ic_whse_sts iws    -- OPM倉庫別カレンダ
-      WHERE  icd.fiscal_year = TO_CHAR( ln_fiscal_year - gn_data_retention_period )
-      AND    icd.period_id   = iws.period_id
-      AND    iws.whse_code   = gv_whse_code
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errmsg  := lv_errmsg_wk;
-        lv_errbuf  := SQLERRM;
-        RAISE init_expt;
-    END;
---
-    -- 取得できない場合はエラー
-    IF ( gd_delete_start_date IS NULL ) THEN
-      lv_errmsg  := lv_errmsg_wk;
-      RAISE init_expt;
-    END IF;
---
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_MOD_END
+
     --==============================================================
     --生産営業単位組織ID取得
     --==============================================================
@@ -545,7 +554,10 @@ AS
       BULK COLLECT
       INTO   l_xsr_rowid_tab
       FROM   xxcop_shipment_results xsr   -- 親コード出荷実績表アドオン
-      WHERE  xsr.shipment_date <= gd_delete_start_date  -- 出荷日 ≦ 過去データ削除基準日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_START
+--      WHERE  xsr.shipment_date <= gd_delete_start_date  -- 出荷日 ≦ 過去データ削除基準日
+      WHERE  xsr.arrival_date < gd_delete_start_date  -- 着荷日 < 過去データ削除基準日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_END
       FOR UPDATE NOWAIT
       ;
     EXCEPTION
@@ -564,7 +576,10 @@ AS
     --親コード出荷実績アドオンテーブルの削除
     --==============================================================
     DELETE xxcop_shipment_results xsr   -- 親コード出荷実績表アドオン
-    WHERE  xsr.shipment_date <= gd_delete_start_date  -- 出荷日 ≦ 過去データ削除基準日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_START
+--    WHERE  xsr.shipment_date <= gd_delete_start_date  -- 出荷日 ≦ 過去データ削除基準日
+      WHERE  xsr.arrival_date < gd_delete_start_date  -- 着荷日 < 過去データ削除基準日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_END
     ;
 --
 --
@@ -1100,6 +1115,9 @@ AS
             ,xoha.deliver_from                deliver_from          -- 受注ヘッダアドオン.出荷元保管場所
             ,xoha.head_sales_branch           head_sales_branch     -- 受注ヘッダアドオン.管轄拠点
             ,xoha.shipped_date                shipped_date          -- 受注ヘッダアドオン.出荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_START
+            ,xoha.arrival_date                arrival_date          -- 受注ヘッダアドオン.着荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_END
 --
             ,CASE
                WHEN ( otta.order_category_code = cv_order_categ_ord )
@@ -1466,6 +1484,9 @@ AS
        ,deliver_from                  -- 出荷倉庫コード
        ,base_code                     -- 拠点コード
        ,shipment_date                 -- 出荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_START
+       ,arrival_date                  -- 着荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_END
        ,quantity                      -- 数量
        ,uom_code                      -- 単位
        ,latest_parent_item_no         -- 最新親品目コード
@@ -1491,6 +1512,9 @@ AS
        ,i_shipment_result_rec.head_sales_branch       -- 拠点コード
 --★1.1 2009/02/09 UPD END
        ,i_shipment_result_rec.shipped_date            -- 出荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_START
+       ,i_shipment_result_rec.arrival_date            -- 着荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_END
        ,i_shipment_result_rec.shipped_quantity        -- 数量
        ,i_shipment_result_rec.uom_code                -- 単位
        ,NULL                                          -- 最新親品目コード
@@ -1637,6 +1661,9 @@ AS
             ,xsr.base_code                = i_shipment_result_rec.head_sales_branch     -- 拠点コード
 --★1.1 2009/02/09 UPD END
             ,xsr.shipment_date            = i_shipment_result_rec.shipped_date          -- 出荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_START
+            ,xsr.arrival_date             = i_shipment_result_rec.arrival_date          -- 着荷日
+--20091221_Ver1.10_E_本稼動_00546_SCS.Kikuchi_ADD_END
             ,xsr.quantity                 = i_shipment_result_rec.shipped_quantity      -- 数量
             ,xsr.uom_code                 = i_shipment_result_rec.uom_code              -- 単位
             ,xsr.latest_parent_item_no    = NULL                                        -- 最新親品目コード
