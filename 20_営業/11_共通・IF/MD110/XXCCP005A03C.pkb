@@ -417,7 +417,7 @@ AS
            ,program_id
            ,program_update_date
         ) VALUES (
-            xxcso_dept_monthly_plans_s01.nextval         --内部ID
+            xxcso_sls_prsn_mnthly_plns_s01.nextval       --内部ID
            ,data_rec.condition_1                         --拠点コード
            ,data_rec.condition_2                         --営業員CD
            ,data_rec.condition_3                         --年月
