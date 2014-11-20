@@ -56,6 +56,7 @@ AS
  *  2009-08-28    1.15  K.Satomura       統合テスト障害対応(0001205)
  *  2009-08-28    1.16  M.Maruyama       統合テスト障害対応(0001192)
  *  2009-09-14    1.17  K.Satomura       統合テスト障害対応(0001335)
+ *  2009-11-29    1.18  T.Maruyama       E_本稼動_00120 新台以外はEBSのIBの機種CDを正とする
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -369,6 +370,9 @@ AS
      ,instance_status_id          NUMBER          -- インスタンスステータスID
      ,new_old_flg                 VARCHAR2(1)     -- 新古台フラグ
      ,actual_work_date            NUMBER          -- 実作業日
+     /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
+     ,ib_un_number                VARCHAR2(14)    -- インストールベース機種
+     /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
   );
 --
   -- 工場返品倉替先コードレコード定義
@@ -2805,12 +2809,18 @@ AS
             ,ciins.instance_status_id                                 -- インスタンスステータスID
             ,ciins.attribute5                                         -- 新古台フラグ
             ,ciins.attribute6                                         -- 最終発注依頼番号
+            /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
+            ,ciins.attribute1                                         -- 機種CD
+            /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
       INTO   lv_external_reference
             ,io_inst_base_data_rec.instance_id
             ,io_inst_base_data_rec.object_version1
             ,io_inst_base_data_rec.instance_status_id
             ,lv_new_old_flag
             ,lv_last_po_req_number
+            /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
+            ,io_inst_base_data_rec.ib_un_number                       -- IB機種CD
+            /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
       FROM   csi_item_instances ciins                                 -- 物件マスタ
       WHERE  ciins.external_reference = lv_install_code
       ;
@@ -2858,6 +2868,29 @@ AS
         --
       END IF;
       /* 2009.05.18 K.Satomura T1_0959,T1_1066対応 END */
+      
+      
+      /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
+      -----------------------------------------------------
+      --機種CDの設定
+      --1.新台物件かつ同一物件CDがEBSに存在しない場合
+      --     ･･･自販機Sからの物件マスタの機種CDを使用
+      --2.新台物件かつ同一物件CDがEBSに存在する場合
+      --     ･･･自販機Sからの物件マスタの機種CDを使用
+      --3.上記以外の場合
+      --     ･･･EBSインストールベースの機種CDを使用
+      -----------------------------------------------------
+      -- 作業区分が「新台設置」、「新台代替」、かつ作業データの物件コード１が
+      -- 物件データの物件コードと一致である場合
+      IF ((ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_3)
+               AND lv_install_code = NVL(lv_install_code1, ' ')) THEN
+        --ケース2
+        NULL;
+      ELSE
+        --ケース3
+        io_inst_base_data_rec.un_number := io_inst_base_data_rec.ib_un_number;
+      END IF;
+      /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
 
     EXCEPTION
     /* 2009.05.18 K.Satomura T1_1066対応 START */
@@ -4343,6 +4376,10 @@ AS
     /* 2009.06.01 K.Satomura T1_1107対応 START */
     ct_comp_kbn_comp         CONSTANT xxcso_in_work_data.completion_kbn%TYPE := 1;
     /* 2009.06.01 K.Satomura T1_1107対応 END */
+    /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
+    cv_day_zero              CONSTANT VARCHAR2(1) := '0';
+    /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
+
 --
     -- *** ローカル変数 ***
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
@@ -5643,8 +5680,14 @@ AS
 --
     -- 導入日編集
     IF (io_inst_base_data_rec.last_job_cmpltn_date IS NOT NULL) THEN
-      ld_install_date := TO_DATE(
+      /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
+      IF  (io_inst_base_data_rec.last_job_cmpltn_date <> cv_day_zero) THEN
+      /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
+        ld_install_date := TO_DATE(
                            TO_CHAR(io_inst_base_data_rec.last_job_cmpltn_date), 'yyyy/mm/dd');
+      /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
+      END IF;
+      /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */                           
     END IF; 
     l_instance_rec.instance_id                := ln_instance_id;               -- インスタンスID
     l_instance_rec.external_reference         := lv_install_code;              -- 外部参照
@@ -5664,7 +5707,11 @@ AS
       IF (ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_2 OR
           ln_job_kbn = cn_jon_kbn_3 OR ln_job_kbn = cn_jon_kbn_4 OR
           ln_job_kbn = cn_jon_kbn_5) THEN
-        l_instance_rec.install_date             := ld_install_date;              -- 導入日
+        /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
+        IF ld_install_date IS NOT NULL THEN
+          l_instance_rec.install_date             := ld_install_date;              -- 導入日
+        END IF;
+        /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
       END IF;
       l_instance_rec.attribute1                 := lv_un_number;                 -- 機種(コード)
       l_instance_rec.attribute2                 := lv_install_number;            -- 機番
