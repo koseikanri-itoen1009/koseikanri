@@ -12,4 +12,4 @@
  * ------------- ----- ------------ -------------------------------------
  *  2014/04/02    1.0   K.Nakamura   êVãKçÏê¨
  ************************************************************************/
-CREATE OR REPLACE SYNONYM apps.xxcos_consumption_control FOR xxcos.xxcos_consumption_control
+CREATE OR REPLACE SYNONYM apps.xxcos_consumption_control FOR xxcos.xxcos_consumption_control;
