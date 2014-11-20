@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF009A15C(body)
  * Description      : リース管理情報連携
  * MD.050           : リース管理情報連携 MD050_CFF_009_A15
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *                                       ①連携CSVの出力時間のフォーマットを'YYYYMMDDHH24MISS'に変更
  *  2009/05/28    1.2   SCS礒崎          [障害T1_1224] 連携機能がエラーの際にCSVファイルが削除される。
  *  2009/07/03    1.3   SCS萱原          [障害00000136]対象件数が0件の場合、CSV取込時にエラーとなる
+ *  2009/08/31    1.4   SCS渡辺          [統合テスト障害0001060(PT対応)]
  *
  *****************************************************************************************/
 --
@@ -132,7 +133,17 @@ AS
   -- ===============================
     CURSOR get_lease_cur
     IS
-    SELECT   xch.lease_company                           AS lease_company                     --02.リース会社
+    SELECT   
+-- 0001060 2009/08/31 ADD START --
+             /*+
+               LEADING(XOH XCL XCH XPP)
+               INDEX(XOH XXCFF_OBJECT_HEADERS_N03)
+               INDEX(XCL XXCFF_CONTRACT_LINES_N03)
+               INDEX(XCH XXCFF_CONTRACT_HEADERS_PK)
+               INDEX(XPP XXCFF_PAY_PLANNING_PK)
+             */
+-- 0001060 2009/08/31 ADD END --
+             xch.lease_company                           AS lease_company                     --02.リース会社
             ,xch.contract_number                         AS contract_number                   --03.契約番号
             ,TO_CHAR(xch.contract_date      ,'YYYYMMDD') AS contract_date                     --04.リース契約日
             ,xch.payment_frequency                       AS payment_frequency                 --05.支払回数
@@ -141,15 +152,33 @@ AS
             ,TO_CHAR(xch.first_payment_date ,'YYYYMMDD') AS first_payment_date                --08.初回支払日
             ,TO_CHAR(xch.second_payment_date,'YYYYMMDD') AS second_payment_date               --09.2回目支払日
             ,xcl.contract_line_num                       AS contract_line_num                 --10.契約枝番
-            ,xcsv.contract_status_name                   AS contract_status_name              --11.契約ステータス名称
-            ,xltv.lease_type_name                        AS lease_type_name                   --12.リース区分名称
+-- 0001060 2009/08/31 MOD START --
+--            ,xcsv.contract_status_name                   AS contract_status_name              --11.契約ステータス名称
+            ,xcl.contract_status                         AS contract_status
+            ,(SELECT xcsv.contract_status_name
+              FROM xxcff_contract_status_v xcsv
+              WHERE xcl.contract_status = xcsv.contract_status_code)    AS contract_status_name
+-- 0001060 2009/08/31 MOD END --
+-- 0001060 2009/08/31 MOD START --
+--            ,xltv.lease_type_name                        AS lease_type_name                   --12.リース区分名称
+            ,xch.lease_type                              AS lease_type
+            ,(SELECT xltv.lease_type_name
+              FROM xxcff_lease_type_v      xltv
+              WHERE xltv.lease_type_code = xch.lease_type)    AS lease_type_name
+-- 0001060 2009/08/31 MOD END --
             ,xch.re_lease_times                          AS re_lease_times                    --13.再リース回数
             ,xcl.gross_total_charge                      AS gross_total_charge                --14.総額計_リース料
             ,xcl.second_charge                           AS second_charge                     --15.2回目以降月額リース料_リース料
             ,xcl.second_tax_charge                       AS second_tax_charge                 --16.2回目以降消費税額_リース料
             ,xcl.second_total_charge                     AS second_total_charge               --17.2回目以降計_リース料
           --,xlkv.lease_kind_name                        AS lease_kind_name                   --18.リース種類名称
-            ,xlkv.book_type_code_if                      AS lease_kind_name                   --18.リース種類名称
+-- 0001060 2009/08/31 MOD START --
+--            ,xlkv.book_type_code_if                      AS lease_kind_name                   --18.リース種類名称
+            ,xcl.lease_kind                              AS lease_kind
+            ,(SELECT xlkv.book_type_code_if
+              FROM xxcff_lease_kind_v      xlkv
+              WHERE xlkv.lease_kind_code = xcl.lease_kind)    AS lease_kind_name
+-- 0001060 2009/08/31 MOD END --
             ,xcl.original_cost                           AS original_cost                     --19.取得価額
             ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_debt,0)),0)         AS fin_debt          --20.ＦＩＮリース債務額
             ,DECODE(xcl.lease_kind,0,SUM(NVL(xpp.fin_interest_due,0)),0) AS fin_interest_due  --21.ＦＩＮリース支払利息
@@ -165,22 +194,29 @@ AS
             ,xxcff_contract_lines    xcl      --リース契約明細
             ,xxcff_object_headers    xoh      --リース物件
             ,xxcff_pay_planning      xpp      --リース支払計画
-            ,xxcff_contract_status_v xcsv     --契約ステータスビュー
-            ,xxcff_lease_type_v      xltv     --リース区分ビュー
-            ,xxcff_lease_kind_v      xlkv     --リース種類ビュー
+-- 0001060 2009/08/31 DEL START --
+--            ,xxcff_contract_status_v xcsv     --契約ステータスビュー
+--            ,xxcff_lease_type_v      xltv     --リース区分ビュー
+--            ,xxcff_lease_kind_v      xlkv     --リース種類ビュー
+-- 0001060 2009/08/31 DEL END --
     WHERE    xch.contract_header_id = xcl.contract_header_id
     AND      xcl.object_header_id   = xoh.object_header_id
     AND      xcl.contract_line_id   = xpp.contract_line_id(+)
-    AND      xch.lease_class        IN(SELECT lease_class_code
+-- 0001060 2009/08/31 MOD START --
+--    AND      xch.lease_class        IN(SELECT lease_class_code
+    AND      xoh.lease_class        IN(SELECT lease_class_code
+-- 0001060 2009/08/31 MOD END --
                                        FROM   xxcff_lease_class_v
                                        WHERE  vdsh_flag = 'Y')
     AND      xoh.object_status      IN('102','104','107','108','110','111','112')
     AND    ((xoh.info_sys_if_date < xoh.last_update_date OR xoh.info_sys_if_date IS NULL) 
     OR      (xcl.info_sys_if_date < xcl.last_update_date OR xcl.info_sys_if_date IS NULL))
     AND      xch.re_lease_times        = xoh.re_lease_times
-    AND      xcsv.contract_status_code = xcl.contract_status
-    AND      xltv.lease_type_code      = xch.lease_type
-    AND      xlkv.lease_kind_code      = xcl.lease_kind
+-- 0001060 2009/08/31 DEL START --
+--    AND      xcsv.contract_status_code = xcl.contract_status
+--    AND      xltv.lease_type_code      = xch.lease_type
+--    AND      xlkv.lease_kind_code      = xcl.lease_kind
+-- 0001060 2009/08/31 DEL END --
     GROUP BY 
              xch.lease_company          --02.リース会社
             ,xch.contract_number        --03.契約番号
@@ -191,15 +227,23 @@ AS
             ,xch.first_payment_date     --08.初回支払日
             ,xch.second_payment_date    --09.2回目支払日
             ,xcl.contract_line_num      --10.契約枝番
-            ,xcsv.contract_status_name  --11.契約ステータス名称
-            ,xltv.lease_type_name       --12.リース区分名称
+-- 0001060 2009/08/31 DEL START --
+--            ,xcsv.contract_status_name  --11.契約ステータス名称
+--            ,xltv.lease_type_name       --12.リース区分名称
+-- 0001060 2009/08/31 DEL END --
             ,xch.re_lease_times         --13.再リース回数
             ,xcl.gross_total_charge     --14.総額計_リース料
             ,xcl.second_charge          --15.2回目以降月額リース料_リース料
             ,xcl.second_tax_charge      --16.2回目以降消費税額_リース料
             ,xcl.second_total_charge    --17.2回目以降計_リース料
          -- ,xlkv.lease_kind_name       --18.リース種類名称
-            ,xlkv.book_type_code_if     --18.リース種類名称
+-- 0001060 2009/08/31 DEL START --
+--            ,xlkv.book_type_code_if     --18.リース種類名称
+-- 0001060 2009/08/31 DEL END --
+-- 0001060 2009/08/31 ADD START --
+            ,xcl.contract_status
+            ,xch.lease_type
+-- 0001060 2009/08/31 ADD END --
             ,xcl.original_cost          --19.取得価額
             ,xcl.lease_kind
             ,xcl.calc_interested_rate   --23.計算利子率
