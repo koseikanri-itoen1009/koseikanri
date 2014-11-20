@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,7 +54,7 @@ AS
  *  2008/09/10    1.13  N.Fukuda         参照Viewの変更(パーティから顧客に変更)
  *  2008/09/25    1.14  M.Nomura         統合#26対応
  *  2008/10/07    1.15  M.Nomura         TE080_600指摘#27対応
- *
+ *  2008/11/07    1.16  N.Fukuda         統合指摘#143対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -381,6 +381,7 @@ AS
 -- ##### 20080925 Ver.1.14 統合#26対応 START #####
      ,notif_date         xxwsh_hht_stock_deliv_info_tmp.notif_date%TYPE -- 確定通知実施日時
 -- ##### 20080925 Ver.1.14 統合#26対応 END   #####
+     ,sum_quantity              xxwsh_hht_stock_deliv_info_tmp.item_quantity%TYPE     -- 2008/11/07 統合指摘#143 Add
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
   gt_main_data  tab_main_data ;
@@ -956,6 +957,7 @@ AS
 -- ##### 20080925 Ver.1.14 統合#26対応 START #####
             ,main.notif_date                  --   :確定通知実施日時
 -- ##### 20080925 Ver.1.14 統合#26対応 END   #####
+            ,sum_quantity                     -- 依頼Noごとの明細数量合計値      2008/11/07 統合指摘#143 Add
       FROM
         (
         -- ========================================================================================
@@ -1049,6 +1051,10 @@ AS
 -- ##### 20080925 Ver.1.14 統合#26対応 START #####
               ,xoha.notif_date                    AS notif_date   -- 確定通知実施日時
 -- ##### 20080925 Ver.1.14 統合#26対応 END   #####
+              -- 2008/11/07 統合指摘#143 Add Start --------------------------------------------------
+              ,SUM(NVL(xola.quantity,0))
+                OVER (PARTITION BY xoha.request_no) AS sum_quantity       -- 依頼Noごとの明細数量合計値を算出
+              -- 2008/11/07 統合指摘#143 Add End ----------------------------------------------------
         FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
             --,oe_transaction_types_all   otta      -- 受注タイプ           -- 2008/07/22 I_S_001 Del
@@ -1075,6 +1081,7 @@ AS
         -------------------------------------------------------------------------------------------
         -- 受注明細
         AND   xoha.order_header_id = xola.order_header_id
+        AND   xola.delete_flag     = gc_yes_no_n   -- 削除フラグ         -- 2008/11/07 統合指摘#143 Add
         -------------------------------------------------------------------------------------------
         -- 配送配車計画
 -- M.HOKKANJI Ver1.2 START
@@ -1150,7 +1157,8 @@ AS
         AND   (
                 (   xoha.notif_status          = gc_notif_status_c      -- 確定通知済
                 AND xoha.prev_notif_status     = gc_notif_status_n      -- 未通知
-                AND xoha.req_status            = gc_req_status_syu_3    -- 締め済  -- 2008/08/29 TE080_600指摘#27(1) Add
+                AND xola.quantity              > 0                      -- 明細数量 > 0  -- 2008/11/07 統合指摘#143 Add
+                AND xoha.req_status            = gc_req_status_syu_3    -- 締め済        -- 2008/08/29 TE080_600指摘#27(1) Add
                 AND NOT EXISTS
                       ( SELECT 1
                         FROM xxwsh_hht_delivery_info  xhdi
@@ -1289,6 +1297,10 @@ AS
 -- ##### 20080925 Ver.1.14 統合#26対応 START #####
               ,xmrih.notif_date                   AS notif_date   -- 確定通知実施日時
 -- ##### 20080925 Ver.1.14 統合#26対応 END   #####
+              -- 2008/11/07 統合指摘#143 Add Start --------------------------------------------------
+              ,SUM(NVL(xmril.instruct_qty,0))
+                OVER (PARTITION BY xmrih.mov_num) AS sum_quantity       -- 移動Noごとの明細数量合計値を算出
+              -- 2008/11/07 統合指摘#143 Add End ----------------------------------------------------
         FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
             ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
             ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -1310,6 +1322,7 @@ AS
         -------------------------------------------------------------------------------------------
         -- 移動依頼指示明細
         AND   xmrih.mov_hdr_id = xmril.mov_hdr_id
+        AND   xmril.delete_flg = gc_yes_no_n          -- 削除フラグ        -- 2008/11/07 統合指摘#143 Add
         -------------------------------------------------------------------------------------------
         -- 配送配車計画
 -- M.Hokkanji Ver1.2 START
@@ -1371,8 +1384,9 @@ AS
         AND   (
                 (   xmrih.notif_status        = gc_notif_status_c       -- 確定通知済
                 AND xmrih.prev_notif_status   = gc_notif_status_n       -- 未通知
-                AND xmrih.status              IN( gc_mov_status_cmp     -- 依頼済  -- 2008/08/29 TE080_600指摘#27(1) Add
-                                                 ,gc_mov_status_adj )   -- 調整中  -- 2008/08/29 TE080_600指摘#27(1) Add
+                AND xmril.instruct_qty        > 0                       -- 明細数量 > 0  -- 2008/11/07 統合指摘#143 Add
+                AND xmrih.status              IN( gc_mov_status_cmp     -- 依頼済        -- 2008/08/29 TE080_600指摘#27(1) Add
+                                                 ,gc_mov_status_adj )   -- 調整中        -- 2008/08/29 TE080_600指摘#27(1) Add
                 AND NOT EXISTS
                       ( SELECT 1
                         FROM xxwsh_hht_delivery_info  xhdi
@@ -1912,7 +1926,9 @@ AS
       -------------------------------------------------------
       -- ヘッダデータの作成
       -------------------------------------------------------
-      IF ( iv_break_flg = gc_yes_no_y ) THEN
+      IF ( iv_break_flg = gc_yes_no_y )
+        AND ( gt_main_data(in_idx).sum_quantity > 0 )           -- 2008/11/07 統合指摘#143 Add
+      THEN
         prc_cre_head_data
           (
             ir_main_data            => gt_main_data(in_idx)     -- 対象データ
@@ -1930,8 +1946,11 @@ AS
       -- 明細データの作成
       -------------------------------------------------------
       -- 明細の削除フラグが「Y」の場合、明細データを作成しない。            -- 2008/08/29 TE080_600指摘#27(3) Add
-      IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n ) THEN  -- 2008/08/29 TE080_600指摘#27(3) Add
-        prc_cre_dtl_data
+      IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n )       -- 2008/08/29 TE080_600指摘#27(3) Add
+        AND ( gt_main_data(in_idx).item_quantity  > 0 )                     -- 2008/11/07 統合指摘#143 Add
+      THEN
+--
+       prc_cre_dtl_data
           (
             ir_main_data            => gt_main_data(in_idx)     -- 対象データ
            ,iv_data_class           => gc_data_class_syu_s      -- データ種別
@@ -1959,7 +1978,10 @@ AS
       -------------------------------------------------------
       -- ヘッダデータの作成
       -------------------------------------------------------
-      IF ( iv_break_flg = gc_yes_no_y ) THEN
+      IF ( iv_break_flg = gc_yes_no_y )
+        AND ( gt_main_data(in_idx).sum_quantity > 0 )           -- 2008/11/07 統合指摘#143 Add
+      THEN
+--
 -- ##### 20080619 1.5 ST不具合#193 START #####
         -- 内外倉庫区分が内部倉庫の場合
         IF (gt_main_data(in_idx).out_whse_inout_div = gc_whse_io_div_i) THEN
@@ -2011,7 +2033,9 @@ AS
       END IF ;
 --
       -- 明細の削除フラグが「Y」の場合、明細データを作成しない。            -- 2008/08/29 TE080_600指摘#27(3) Add
-      IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n ) THEN  -- 2008/08/29 TE080_600指摘#27(3) Add
+      IF ( gt_main_data(in_idx).line_delete_flag = gc_delete_flag_n )       -- 2008/08/29 TE080_600指摘#27(3) Add
+        AND ( gt_main_data(in_idx).item_quantity  > 0 )                     -- 2008/11/07 統合指摘#143 Add
+      THEN
 --
         -- ##### 20080619 1.5 ST不具合#193 START #####
         -- 内外倉庫区分が内部倉庫の場合
@@ -3055,6 +3079,7 @@ AS
                   (   xoha.req_status            = gc_req_status_syu_3    -- 締め済
                   AND xoha.notif_status          = gc_notif_status_c      -- 確定通知済
                   AND xoha.prev_notif_status     = gc_notif_status_n      -- 未通知
+                  AND xola.quantity              > 0                      -- 明細数量 > 0   -- 2008/11/07 統合指摘#143 Add
                   AND NOT EXISTS
                         ( SELECT 1
                           FROM xxwsh_hht_delivery_info  xhdi
