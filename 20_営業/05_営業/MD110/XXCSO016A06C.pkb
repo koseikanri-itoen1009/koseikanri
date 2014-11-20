@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_016_A06_情報系-EBSインターフェース：(OUT)什器移動明細
  *                    
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009-02-24    1.1   K.Sai            レビュー後対応 
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009-06-15    1.3   Kazuyo.Hosoi     T1_1240対応
+ *  2009-10-01    1.4   Daisuke.Abe      0001452対応
  *
  *****************************************************************************************/
 --
@@ -1023,7 +1024,9 @@ AS
         WHERE  xibv.install_code = l_get_rec.install_code2
           AND  xibv.ven_kyaku_last = hca.account_number
           AND  hca.cust_account_id = xca.customer_id
-          AND  hca.status = cv_active_status
+          /* 2009.10.01 D.Abe 0001452 対応 START */
+          --AND  hca.status = cv_active_status
+          /* 2009.10.01 D.Abe 0001452 対応 END */
           ;
       EXCEPTION
         -- コードが存在しない場合
@@ -1501,9 +1504,11 @@ AS
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
-    -- ローカル変数の初期化
-    ld_from_value := TO_DATE(gv_from_value,'YYYYMMDD');
-    ld_to_value   := TO_DATE(gv_to_value,'YYYYMMDD');
+    /* 2009.10.01 D.Abe 0001452 対応 START */
+    ---- ローカル変数の初期化
+    --ld_from_value := TO_DATE(gv_from_value,'YYYYMMDD');
+    --ld_to_value   := TO_DATE(gv_to_value,'YYYYMMDD');
+    /* 2009.10.01 D.Abe 0001452 対応 END */
 --
     -- ================================
     -- A-1.初期処理 
@@ -1545,6 +1550,12 @@ AS
     IF (lv_retcode = cv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+    --
+    /* 2009.10.01 D.Abe 0001452 対応 START */
+    -- 抽出条件From-Toを設定
+    ld_from_value := TO_DATE(gv_from_value,'YYYYMMDD');
+    ld_to_value   := TO_DATE(gv_to_value,'YYYYMMDD');
+    /* 2009.10.01 D.Abe 0001452 対応 END */
 --
     -- =================================================
     -- A-4.プロファイル値を取得 
