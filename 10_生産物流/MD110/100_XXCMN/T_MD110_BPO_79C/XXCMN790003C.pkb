@@ -7,7 +7,7 @@ AS
  * Description      : 加重平均計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 加重平均計算処理 T_MD070_BPO_79C
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *  2008/12/05    1.2   H.Marushita      本番435対応
  *  2008/12/19    1.3   H.Marushita      在庫調整用に更新と登録を行うように修正
  *  2009/01/14    1.4   H.Marushita      ロットマスタの単価変更反映条件の見直し
+ *  2013/01/08    1.5   M.Kitajima       ロット別原価アドオンの単価更新条件の見直し
+ *                                       (E_本稼動_10355)
  *
  *****************************************************************************************/
 --
@@ -128,6 +130,10 @@ AS
                                                                                 -- 取引数量
   TYPE xlc_unit_price_ttype IS TABLE OF xxcmn_lot_cost.unit_ploce%TYPE INDEX BY BINARY_INTEGER;
                                                                                 -- 単価
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+  TYPE unit_price_flag_ttype IS TABLE OF VARCHAR2(1) INDEX BY BINARY_INTEGER;    -- 更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
+--
 -- 
 -- ロットマスタ単価反映用PL/SQL表
   gt_xlc_item_id_tab    xlc_item_id_ttype;
@@ -143,12 +149,18 @@ AS
   gt_lot_num_ins_tab    lot_num_ttype;      -- ロットNo
   gt_trans_qty_ins_tab  trans_qty_ttype;    -- 取引数量
   gt_unit_price_ins_tab unit_price_ttype;   -- 単価
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+  gt_unit_price_ins_flag_tbl unit_price_flag_ttype; --単価更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
 --
   -- 更新用PL/SQL表
   gt_item_id_upd_tab    item_id_ttype;      -- 品目ID
   gt_lot_id_upd_tab     lot_id_ttype;       -- ロットID
   gt_trans_qty_upd_tab  trans_qty_ttype;    -- 取引数量
   gt_unit_price_upd_tab unit_price_ttype;   -- 単価
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+  gt_unit_price_upd_flag_tbl unit_price_flag_ttype; --単価更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
 --
   -- 入力データダンプ用PL/SQL表型
   TYPE msg_ttype      IS TABLE OF VARCHAR2(5000) INDEX BY BINARY_INTEGER;
@@ -157,7 +169,14 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   -- 在庫オープン期間
-  gd_opening_date     DATE;
+--2013/01/08 DEL AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+--  gv_opening_date     DATE;
+--2013/01/08 DEL AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+  -- OPM在庫カレンダの直近締月
+  gt_close_yyyymm     XXINV_STC_INVENTORY_MONTH_STCK.INVENT_YM%TYPE;
+                                              -- 直近の締め済の年月
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
   gn_ins_cnt          NUMBER DEFAULT 0;       -- 登録件数
   gn_upd_cnt          NUMBER DEFAULT 0;       -- 更新件数
 --
@@ -299,6 +318,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+    cv_update_flag      CONSTANT VARCHAR2(1) := '*';  --ロットマスタの単価を使用した場合セットする
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
 --
     -- *** ローカル変数 ***
     ln_user_id          NUMBER;            -- ログインしているユーザー
@@ -307,6 +329,9 @@ AS
     ln_prog_appl_id     NUMBER;            -- コンカレント・プログラム・アプリケーションID
     ln_conc_program_id  NUMBER;            -- コンカレント・プログラムID
     ln_loop_cnt         NUMBER;            -- ループカーソル変数
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+    ln_data_cnt   NUMBER; -- 棚卸月末在庫テーブルの存在チェックに使用
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
 --
     -- *** ローカル・カーソル ***
 --
@@ -439,7 +464,7 @@ AS
       gt_xlc_item_id_tab(ln_loop_cnt)     := loop_cnt.item_id;              -- 品目ID
       gt_xlc_lot_id_tab(ln_loop_cnt)      := loop_cnt.lot_id;               -- ロットID
       gt_xlc_trans_qty_tab(ln_loop_cnt)   := loop_cnt.trans_cnt;            -- 数量
-      gt_xlc_unit_price_tab(ln_loop_cnt)  := loop_cnt.unit_price;           -- 数量
+      gt_xlc_unit_price_tab(ln_loop_cnt)  := loop_cnt.unit_price;           -- 単価
 --
     END LOOP upd_lot_cost_date_loop;
 --
@@ -535,6 +560,10 @@ AS
         gt_unit_price_ins_tab(gn_ins_cnt) := ROUND(loop_cnt.price
                                                  / loop_cnt.trans_qty, 2); -- 取引金額/数量
       END IF;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+      -- 更新フラグは必要ないがダンプ出力共通関数のINPUTパラメータとして使用する為、ダミーで入力
+      gt_unit_price_ins_flag_tbl(gn_ins_cnt) := NULL;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
 --
     END LOOP ins_data_loop;
 --
@@ -550,14 +579,51 @@ AS
 --
       -- 値セット
       gt_item_id_upd_tab(gn_upd_cnt)     := loop_cnt.item_id;              -- 品目ID
-      gt_lot_id_upd_tab(gn_upd_cnt)   := loop_cnt.lot_id;               -- ロットID
+      gt_lot_id_upd_tab(gn_upd_cnt)      := loop_cnt.lot_id;               -- ロットID
       gt_trans_qty_upd_tab(gn_upd_cnt)   := loop_cnt.trans_qty;            -- 数量
-      IF ( loop_cnt.trans_qty = 0 ) THEN
-        gt_unit_price_upd_tab(gn_upd_cnt) := 0;                            -- 取引金額
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+      gt_unit_price_upd_flag_tbl(gn_upd_cnt) := NULL;                      -- 単価更新フラグ
+      -- 棚卸月末在庫テーブルを参照し当月発生分のロットかの判断を実施
+      SELECT /*+ INDEX(xsims XXINV_SIMS_N04) */
+        COUNT(1) AS COUNT
+      INTO   ln_data_cnt
+      FROM   xxinv_stc_inventory_month_stck xsims
+      WHERE  xsims.item_id          = loop_cnt.item_id
+      AND    xsims.lot_id           = loop_cnt.lot_id
+      AND    xsims.invent_ym       <= gt_close_yyyymm
+      AND    ROWNUM               = 1;
+      IF ( ln_data_cnt = 0 ) THEN
+        -- 棚卸月末在庫テーブルの直近締め月以下に未存在の場合は当月にロットが発生
+        IF ( loop_cnt.trans_qty = 0 ) THEN
+          gt_unit_price_upd_tab(gn_upd_cnt) := 0;                            -- 取引金額
+        ELSE
+          gt_unit_price_upd_tab(gn_upd_cnt) := ROUND(loop_cnt.price
+                                                   / loop_cnt.trans_qty, 2); -- 取引金額/数量
+        END IF;
       ELSE
-        gt_unit_price_upd_tab(gn_upd_cnt) := ROUND(loop_cnt.price
-                                                 / loop_cnt.trans_qty, 2); -- 取引金額/数量
+        -- 棚卸月末在庫テーブルの直近締め月以下に存在する場合は単価変更なし
+        IF ( loop_cnt.trans_qty = 0 ) THEN
+          gt_unit_price_upd_tab(gn_upd_cnt) := 0;                            -- 取引金額
+        ELSE
+          SELECT /*+ INDEX(ilm IC_LOTS_MST_PK) */
+            TO_NUMBER(NVL(ilm.attribute7,'0')) AS unit_price
+          INTO   gt_unit_price_upd_tab(gn_upd_cnt)                           -- ロットマスタの単価設定
+          FROM   ic_lots_mst ilm
+          WHERE  ilm.item_id = loop_cnt.item_id
+          AND    ilm.lot_id  = loop_cnt.lot_id;
+          --単価更新はロットマスタの単価を取得する為、更新しない
+          gt_unit_price_upd_flag_tbl(gn_upd_cnt) := cv_update_flag;          -- 更新
+        END IF;
       END IF;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
+--2013/01/08 DEL AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+--      IF ( loop_cnt.trans_qty = 0 ) THEN
+--        gt_unit_price_upd_tab(gn_upd_cnt) := 0;                            -- 取引金額
+--      ELSE
+--        gt_unit_price_upd_tab(gn_upd_cnt) := ROUND(loop_cnt.price
+--                                                 / loop_cnt.trans_qty, 2); -- 取引金額/数量
+--      END IF;
+--2013/01/08 DEL AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
 --
     END LOOP upd_data_loop;
 --
@@ -735,6 +801,9 @@ AS
   PROCEDURE get_data_dump(
     ir_xxcmn_lot_cost     IN  xxcmn_lot_cost%ROWTYPE,  
                                                 -- 取引別ロット別原価（アドオン）
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+    iv_unit_price_flag    IN  VARCHAR2,         -- 更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
     ov_dump               OUT NOCOPY VARCHAR2,  -- データダンプ文字列
     ov_errbuf             OUT NOCOPY VARCHAR2,  -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT NOCOPY VARCHAR2,  -- リターン・コード             --# 固定 #
@@ -802,6 +871,13 @@ AS
                   || gv_msg_comma ||
                   TO_CHAR(ir_xxcmn_lot_cost.unit_ploce) -- 単価
                   ;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+      -- 更新フラグがNOT NULLの場合
+      IF ( iv_unit_price_flag IS NOT NULL ) THEN
+       ov_dump := ov_dump || gv_msg_comma ||
+                             iv_unit_price_flag;
+      END IF;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
      END IF;
 --
   EXCEPTION
@@ -901,6 +977,9 @@ AS
       -- =============================
       get_data_dump(
           ir_xxcmn_lot_cost => ins_data_rec
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+        , iv_unit_price_flag    => gt_unit_price_ins_flag_tbl(ln_rec_cnt) -- 更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
         , ov_dump               => lv_dump
         , ov_errbuf             => lv_errbuf
         , ov_retcode            => lv_retcode
@@ -939,6 +1018,9 @@ AS
       -- =============================
       get_data_dump(
           ir_xxcmn_lot_cost => ins_data_rec
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+        , iv_unit_price_flag    => gt_unit_price_upd_flag_tbl(ln_rec_cnt) -- 更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
         , ov_dump               => lv_dump
         , ov_errbuf             => lv_errbuf
         , ov_retcode            => lv_retcode
@@ -1051,6 +1133,17 @@ AS
     gt_lot_id_upd_tab.DELETE;     -- ロットID
     gt_trans_qty_upd_tab.DELETE;  -- 取引数量
     gt_unit_price_upd_tab.DELETE; -- 単価
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+    gt_unit_price_ins_flag_tbl.DELETE; -- 単価更新フラグ(INSERT)
+    gt_unit_price_upd_flag_tbl.DELETE; -- 単価更新フラグ(UPDATE)
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
+--
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 START
+    -- =======================================
+    -- OPM在庫カレンダの直近締月取得
+    -- =======================================
+    gt_close_yyyymm := xxcmn_common_pkg.get_opminv_close_period;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.5 CONTENT:E_本稼動_10355 END
 --
     -- =======================================
     -- C-1.ロット別原価テーブル削除処理

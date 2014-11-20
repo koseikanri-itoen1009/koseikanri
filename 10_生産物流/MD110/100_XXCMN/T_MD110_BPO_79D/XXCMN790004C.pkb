@@ -7,7 +7,7 @@ AS
  * Description      : 実際原価洗替処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 実際原価洗替処理 T_MD070_BPO_79D
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2008/04/25    1.1   Marushita        TE080_BPO_790 不具合ID 2,3
  *  2008/06/03    1.2   Marushita        TE080_BPO_790 不具合ID 4
  *  2008/09/11    1.3   A.Shiina         処理対象レコードが0件の場合、正常終了とする。
+ *  2013/01/08    1.4   M.Kitajima       ロットマスタの単価更新条件の見直し
+ *                                       (E_本稼動_10355)
  *
  *****************************************************************************************/
 --
@@ -97,6 +99,9 @@ AS
                                             -- メッセージ：データ取得エラー
   gv_msg_xxcmn00005 CONSTANT VARCHAR2(100)  := 'APP-XXCMN-00005';  
                                             -- メッセージ：APP-XXCMN-00005 成功データ（見出し）
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+  gv_update_flag    CONSTANT VARCHAR2(1) := '*';  --ロットマスタの単価を使用した場合セットする
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -173,7 +178,10 @@ AS
                                                                            -- ＤＦＦ項目２９
   TYPE attribute30_ttype IS TABLE OF ic_lots_mst.attribute30%TYPE INDEX BY BINARY_INTEGER;
                                                                            -- ＤＦＦ項目３０
-
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+  --  更新フラグ
+  TYPE unit_price_flag_ttype IS TABLE OF VARCHAR2(1) INDEX BY BINARY_INTEGER;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
 --
   -- 更新用PL/SQL表
   gt_item_id_upd_tab     item_id_ttype;      -- 品目ID
@@ -211,6 +219,10 @@ AS
   gt_attribute28_upd_tab attribute28_ttype;  -- ＤＦＦ項目２８
   gt_attribute29_upd_tab attribute29_ttype;  -- ＤＦＦ項目２９
   gt_attribute30_upd_tab attribute30_ttype;  -- ＤＦＦ項目３０
+--
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+  gt_unit_price_upd_flag_tbl unit_price_flag_ttype; --単価更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
 --
   -- ロット別原価データを格納するレコード
   TYPE lot_data_rec IS RECORD(
@@ -274,6 +286,11 @@ AS
 -- 2008/09/11 ADD START
   gn_no_data  NUMBER;         -- 取得データ0件時用変数
 -- 2008/09/11 ADD END
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+  -- OPM在庫カレンダの直近締月
+  gt_close_yyyymm     XXINV_STC_INVENTORY_MONTH_STCK.INVENT_YM%TYPE;
+                                              -- 直近の締め済の年月
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
 --
   /**********************************************************************************
    * Procedure Name   : get_lot_cost
@@ -305,6 +322,9 @@ AS
     -- *** ローカル変数 ***
 --
     ln_cnt   NUMBER DEFAULT 0;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+    ln_data_cnt   NUMBER; -- 棚卸月末在庫テーブルの存在チェックに使用
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -392,47 +412,116 @@ AS
     -- ========================================
     <<upd_data_loop>>
     FOR ln_cnt IN 1 .. NVL(gt_lot_data_tbl.LAST,0) LOOP
-        -- データカウント
-      gn_upd_cnt :=  gn_upd_cnt + 1;
+--2013/01/08 DEL AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+--        -- データカウント
+--      gn_upd_cnt :=  gn_upd_cnt + 1;
+--2013/01/08 DEL AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
         -- 処理件数をカウント
       gn_target_cnt := gn_target_cnt + 1;
 --
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+        -- 棚卸月末在庫テーブルを参照し当月発生分のロットかの判断を実施
+      SELECT /*+ INDEX(xsims XXINV_SIMS_N04) */
+        COUNT(1) AS COUNT
+      INTO   ln_data_cnt
+      FROM   xxinv_stc_inventory_month_stck xsims
+      WHERE  xsims.item_id          = gt_lot_data_tbl(ln_cnt).item_id
+      AND    xsims.lot_id           = gt_lot_data_tbl(ln_cnt).lot_id
+      AND    xsims.invent_ym       <= gt_close_yyyymm
+      AND    ROWNUM               = 1;
+      IF ( ln_data_cnt = 0 ) THEN
+        -- 当月発生分ロットの為、単価を更新する
+        gt_unit_price_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).unit_price;  -- 単価
+        gt_unit_price_upd_flag_tbl(gn_target_cnt) := NULL;                            -- 更新する
+        gn_upd_cnt :=  gn_upd_cnt + 1;
+      ELSE
+        -- 棚卸月末在庫テーブルの直近締め月以下に存在する場合は単価変更なし
+        SELECT /*+ INDEX(ilm IC_LOTS_MST_PK) */
+          TO_NUMBER(NVL(ilm.attribute7,0)) AS unit_price
+        INTO   gt_unit_price_upd_tab(gn_target_cnt)                                 -- ロットマスタの単価設定
+        FROM   ic_lots_mst ilm
+        WHERE  ilm.item_id = gt_lot_data_tbl(ln_cnt).item_id
+        AND    ilm.lot_id  = gt_lot_data_tbl(ln_cnt).lot_id;
+        --単価更新はロットマスタの単価を取得する為、更新しない
+        gt_unit_price_upd_flag_tbl(gn_target_cnt) := gv_update_flag;                -- 更新しない
+        gn_warn_cnt := gn_warn_cnt + 1;
+      END IF;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
+--
       -- 値セット
-      gt_item_id_upd_tab(gn_upd_cnt)     := gt_lot_data_tbl(ln_cnt).item_id;     -- 品目ID
-      gt_item_code_upd_tab(gn_upd_cnt)   := gt_lot_data_tbl(ln_cnt).item_code;   -- 品目コード
-      gt_lot_id_upd_tab(gn_upd_cnt)      := gt_lot_data_tbl(ln_cnt).lot_id;      -- ロットID
-      gt_lot_num_upd_tab(gn_upd_cnt)     := gt_lot_data_tbl(ln_cnt).lot_num;     -- ロットNo
-      gt_trans_qty_upd_tab(gn_upd_cnt)   := gt_lot_data_tbl(ln_cnt).trans_qty;   -- 数量
-      gt_attribute1_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute1;  -- OPMロットマスタ ＤＦＦ項目１
-      gt_attribute2_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute2;  -- OPMロットマスタ ＤＦＦ項目２
-      gt_attribute3_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute3;  -- OPMロットマスタ ＤＦＦ項目３
-      gt_attribute4_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute4;  -- OPMロットマスタ ＤＦＦ項目４
-      gt_attribute5_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute5;  -- OPMロットマスタ ＤＦＦ項目５
-      gt_attribute6_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute6;  -- OPMロットマスタ ＤＦＦ項目６
-      gt_unit_price_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).unit_price;  -- 単価
-      gt_attribute8_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute8;  -- OPMロットマスタ ＤＦＦ項目８
-      gt_attribute9_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute9;  -- OPMロットマスタ ＤＦＦ項目９
-      gt_attribute10_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute10; -- OPMロットマスタ ＤＦＦ項目１０
-      gt_attribute11_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute11; -- OPMロットマスタ ＤＦＦ項目１１
-      gt_attribute12_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute12; -- OPMロットマスタ ＤＦＦ項目１２
-      gt_attribute13_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute13; -- OPMロットマスタ ＤＦＦ項目１３
-      gt_attribute14_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute14; -- OPMロットマスタ ＤＦＦ項目１４
-      gt_attribute15_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute15; -- OPMロットマスタ ＤＦＦ項目１５
-      gt_attribute16_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute16; -- OPMロットマスタ ＤＦＦ項目１６
-      gt_attribute17_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute17; -- OPMロットマスタ ＤＦＦ項目１７
-      gt_attribute18_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute18; -- OPMロットマスタ ＤＦＦ項目１８
-      gt_attribute19_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute19; -- OPMロットマスタ ＤＦＦ項目１９
-      gt_attribute20_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute20; -- OPMロットマスタ ＤＦＦ項目２０
-      gt_attribute21_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute21; -- OPMロットマスタ ＤＦＦ項目２１
-      gt_attribute22_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute22; -- OPMロットマスタ ＤＦＦ項目２２
-      gt_attribute23_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute23; -- OPMロットマスタ ＤＦＦ項目２３
-      gt_attribute24_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute24; -- OPMロットマスタ ＤＦＦ項目２４
-      gt_attribute25_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute25; -- OPMロットマスタ ＤＦＦ項目２５
-      gt_attribute26_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute26; -- OPMロットマスタ ＤＦＦ項目２６
-      gt_attribute27_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute27; -- OPMロットマスタ ＤＦＦ項目２７
-      gt_attribute28_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute28; -- OPMロットマスタ ＤＦＦ項目２８
-      gt_attribute29_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute29; -- OPMロットマスタ ＤＦＦ項目２９
-      gt_attribute30_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute30; -- OPMロットマスタ ＤＦＦ項目３０
+--2013/01/08 DEL AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+--      gt_item_id_upd_tab(gn_upd_cnt)     := gt_lot_data_tbl(ln_cnt).item_id;     -- 品目ID
+--      gt_item_code_upd_tab(gn_upd_cnt)   := gt_lot_data_tbl(ln_cnt).item_code;   -- 品目コード
+--      gt_lot_id_upd_tab(gn_upd_cnt)      := gt_lot_data_tbl(ln_cnt).lot_id;      -- ロットID
+--      gt_lot_num_upd_tab(gn_upd_cnt)     := gt_lot_data_tbl(ln_cnt).lot_num;     -- ロットNo
+--      gt_trans_qty_upd_tab(gn_upd_cnt)   := gt_lot_data_tbl(ln_cnt).trans_qty;   -- 数量
+--      gt_attribute1_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute1;  -- OPMロットマスタ ＤＦＦ項目１
+--      gt_attribute2_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute2;  -- OPMロットマスタ ＤＦＦ項目２
+--      gt_attribute3_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute3;  -- OPMロットマスタ ＤＦＦ項目３
+--      gt_attribute4_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute4;  -- OPMロットマスタ ＤＦＦ項目４
+--      gt_attribute5_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute5;  -- OPMロットマスタ ＤＦＦ項目５
+--      gt_attribute6_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute6;  -- OPMロットマスタ ＤＦＦ項目６
+--      gt_unit_price_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).unit_price;  -- 単価
+--      gt_attribute8_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute8;  -- OPMロットマスタ ＤＦＦ項目８
+--      gt_attribute9_upd_tab(gn_upd_cnt)  := gt_lot_data_tbl(ln_cnt).attribute9;  -- OPMロットマスタ ＤＦＦ項目９
+--      gt_attribute10_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute10; -- OPMロットマスタ ＤＦＦ項目１０
+--      gt_attribute11_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute11; -- OPMロットマスタ ＤＦＦ項目１１
+--      gt_attribute12_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute12; -- OPMロットマスタ ＤＦＦ項目１２
+--      gt_attribute13_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute13; -- OPMロットマスタ ＤＦＦ項目１３
+--      gt_attribute14_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute14; -- OPMロットマスタ ＤＦＦ項目１４
+--      gt_attribute15_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute15; -- OPMロットマスタ ＤＦＦ項目１５
+--      gt_attribute16_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute16; -- OPMロットマスタ ＤＦＦ項目１６
+--      gt_attribute17_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute17; -- OPMロットマスタ ＤＦＦ項目１７
+--      gt_attribute18_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute18; -- OPMロットマスタ ＤＦＦ項目１８
+--      gt_attribute19_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute19; -- OPMロットマスタ ＤＦＦ項目１９
+--      gt_attribute20_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute20; -- OPMロットマスタ ＤＦＦ項目２０
+--      gt_attribute21_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute21; -- OPMロットマスタ ＤＦＦ項目２１
+--      gt_attribute22_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute22; -- OPMロットマスタ ＤＦＦ項目２２
+--      gt_attribute23_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute23; -- OPMロットマスタ ＤＦＦ項目２３
+--      gt_attribute24_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute24; -- OPMロットマスタ ＤＦＦ項目２４
+--      gt_attribute25_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute25; -- OPMロットマスタ ＤＦＦ項目２５
+--      gt_attribute26_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute26; -- OPMロットマスタ ＤＦＦ項目２６
+--      gt_attribute27_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute27; -- OPMロットマスタ ＤＦＦ項目２７
+--      gt_attribute28_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute28; -- OPMロットマスタ ＤＦＦ項目２８
+--      gt_attribute29_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute29; -- OPMロットマスタ ＤＦＦ項目２９
+--      gt_attribute30_upd_tab(gn_upd_cnt) := gt_lot_data_tbl(ln_cnt).attribute30; -- OPMロットマスタ ＤＦＦ項目３０
+--2013/01/08 DEL AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+      gt_item_id_upd_tab(gn_target_cnt)     := gt_lot_data_tbl(ln_cnt).item_id;     -- 品目ID
+      gt_item_code_upd_tab(gn_target_cnt)   := gt_lot_data_tbl(ln_cnt).item_code;   -- 品目コード
+      gt_lot_id_upd_tab(gn_target_cnt)      := gt_lot_data_tbl(ln_cnt).lot_id;      -- ロットID
+      gt_lot_num_upd_tab(gn_target_cnt)     := gt_lot_data_tbl(ln_cnt).lot_num;     -- ロットNo
+      gt_trans_qty_upd_tab(gn_target_cnt)   := gt_lot_data_tbl(ln_cnt).trans_qty;   -- 数量
+      gt_attribute1_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).attribute1;  -- OPMロットマスタ ＤＦＦ項目１
+      gt_attribute2_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).attribute2;  -- OPMロットマスタ ＤＦＦ項目２
+      gt_attribute3_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).attribute3;  -- OPMロットマスタ ＤＦＦ項目３
+      gt_attribute4_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).attribute4;  -- OPMロットマスタ ＤＦＦ項目４
+      gt_attribute5_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).attribute5;  -- OPMロットマスタ ＤＦＦ項目５
+      gt_attribute6_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).attribute6;  -- OPMロットマスタ ＤＦＦ項目６
+      gt_attribute8_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).attribute8;  -- OPMロットマスタ ＤＦＦ項目８
+      gt_attribute9_upd_tab(gn_target_cnt)  := gt_lot_data_tbl(ln_cnt).attribute9;  -- OPMロットマスタ ＤＦＦ項目９
+      gt_attribute10_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute10; -- OPMロットマスタ ＤＦＦ項目１０
+      gt_attribute11_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute11; -- OPMロットマスタ ＤＦＦ項目１１
+      gt_attribute12_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute12; -- OPMロットマスタ ＤＦＦ項目１２
+      gt_attribute13_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute13; -- OPMロットマスタ ＤＦＦ項目１３
+      gt_attribute14_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute14; -- OPMロットマスタ ＤＦＦ項目１４
+      gt_attribute15_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute15; -- OPMロットマスタ ＤＦＦ項目１５
+      gt_attribute16_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute16; -- OPMロットマスタ ＤＦＦ項目１６
+      gt_attribute17_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute17; -- OPMロットマスタ ＤＦＦ項目１７
+      gt_attribute18_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute18; -- OPMロットマスタ ＤＦＦ項目１８
+      gt_attribute19_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute19; -- OPMロットマスタ ＤＦＦ項目１９
+      gt_attribute20_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute20; -- OPMロットマスタ ＤＦＦ項目２０
+      gt_attribute21_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute21; -- OPMロットマスタ ＤＦＦ項目２１
+      gt_attribute22_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute22; -- OPMロットマスタ ＤＦＦ項目２２
+      gt_attribute23_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute23; -- OPMロットマスタ ＤＦＦ項目２３
+      gt_attribute24_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute24; -- OPMロットマスタ ＤＦＦ項目２４
+      gt_attribute25_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute25; -- OPMロットマスタ ＤＦＦ項目２５
+      gt_attribute26_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute26; -- OPMロットマスタ ＤＦＦ項目２６
+      gt_attribute27_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute27; -- OPMロットマスタ ＤＦＦ項目２７
+      gt_attribute28_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute28; -- OPMロットマスタ ＤＦＦ項目２８
+      gt_attribute29_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute29; -- OPMロットマスタ ＤＦＦ項目２９
+      gt_attribute30_upd_tab(gn_target_cnt) := gt_lot_data_tbl(ln_cnt).attribute30; -- OPMロットマスタ ＤＦＦ項目３０
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
 --
     END LOOP upd_data_loop;
 --
@@ -535,66 +624,73 @@ AS
     <<upd_lot_loop>>
     FOR ln_cnt IN 1..gt_item_id_upd_tab.COUNT LOOP
 --
-      lr_lot_rec.item_id     := gt_item_id_upd_tab(ln_cnt);     -- 品目ID
-      lr_lot_rec.lot_id      := gt_lot_id_upd_tab(ln_cnt);      -- ロットID
-      lr_lot_rec.lot_no      := gt_lot_num_upd_tab(ln_cnt);     -- ロットNo
-      lr_lot_rec.attribute1  := gt_attribute1_upd_tab(ln_cnt);  -- ＤＦＦ項目１
-      lr_lot_rec.attribute2  := gt_attribute2_upd_tab(ln_cnt);  -- ＤＦＦ項目２
-      lr_lot_rec.attribute3  := gt_attribute3_upd_tab(ln_cnt);  -- ＤＦＦ項目３
-      lr_lot_rec.attribute4  := gt_attribute4_upd_tab(ln_cnt);  -- ＤＦＦ項目４
-      lr_lot_rec.attribute5  := gt_attribute5_upd_tab(ln_cnt);  -- ＤＦＦ項目５
-      lr_lot_rec.attribute6  := gt_attribute6_upd_tab(ln_cnt);  -- ＤＦＦ項目６
-      lr_lot_rec.attribute7  := gt_unit_price_upd_tab(ln_cnt);  -- 単価
-      lr_lot_rec.attribute8  := gt_attribute8_upd_tab(ln_cnt);  -- ＤＦＦ項目８
-      lr_lot_rec.attribute9  := gt_attribute9_upd_tab(ln_cnt);  -- ＤＦＦ項目９
-      lr_lot_rec.attribute10 := gt_attribute10_upd_tab(ln_cnt); -- ＤＦＦ項目１０
-      lr_lot_rec.attribute11 := gt_attribute11_upd_tab(ln_cnt); -- ＤＦＦ項目１１
-      lr_lot_rec.attribute12 := gt_attribute12_upd_tab(ln_cnt); -- ＤＦＦ項目１２
-      lr_lot_rec.attribute13 := gt_attribute13_upd_tab(ln_cnt); -- ＤＦＦ項目１３
-      lr_lot_rec.attribute14 := gt_attribute14_upd_tab(ln_cnt); -- ＤＦＦ項目１４
-      lr_lot_rec.attribute15 := gt_attribute15_upd_tab(ln_cnt); -- ＤＦＦ項目１５
-      lr_lot_rec.attribute16 := gt_attribute16_upd_tab(ln_cnt); -- ＤＦＦ項目１６
-      lr_lot_rec.attribute17 := gt_attribute17_upd_tab(ln_cnt); -- ＤＦＦ項目１７
-      lr_lot_rec.attribute18 := gt_attribute18_upd_tab(ln_cnt); -- ＤＦＦ項目１８
-      lr_lot_rec.attribute19 := gt_attribute19_upd_tab(ln_cnt); -- ＤＦＦ項目１９
-      lr_lot_rec.attribute20 := gt_attribute20_upd_tab(ln_cnt); -- ＤＦＦ項目２０
-      lr_lot_rec.attribute21 := gt_attribute21_upd_tab(ln_cnt); -- ＤＦＦ項目２１
-      lr_lot_rec.attribute22 := gt_attribute22_upd_tab(ln_cnt); -- ＤＦＦ項目２２
-      lr_lot_rec.attribute23 := gt_attribute23_upd_tab(ln_cnt); -- ＤＦＦ項目２３
-      lr_lot_rec.attribute24 := gt_attribute24_upd_tab(ln_cnt); -- ＤＦＦ項目２４
-      lr_lot_rec.attribute25 := gt_attribute25_upd_tab(ln_cnt); -- ＤＦＦ項目２５
-      lr_lot_rec.attribute26 := gt_attribute26_upd_tab(ln_cnt); -- ＤＦＦ項目２６
-      lr_lot_rec.attribute27 := gt_attribute27_upd_tab(ln_cnt); -- ＤＦＦ項目２７
-      lr_lot_rec.attribute28 := gt_attribute28_upd_tab(ln_cnt); -- ＤＦＦ項目２８
-      lr_lot_rec.attribute29 := gt_attribute29_upd_tab(ln_cnt); -- ＤＦＦ項目２９
-      lr_lot_rec.attribute30 := gt_attribute30_upd_tab(ln_cnt); -- ＤＦＦ項目３０
-      -- 2004/04/25 1.1
-      lr_lot_rec.last_update_date := gd_date;
-      lr_lot_rec.last_updated_by  := gn_user_id;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+      -- 棚卸月末在庫にデータが存在する場合はマスタ更新不可とする
+      IF ( gt_unit_price_upd_flag_tbl(ln_cnt) IS NULL ) THEN
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
+        lr_lot_rec.item_id     := gt_item_id_upd_tab(ln_cnt);     -- 品目ID
+        lr_lot_rec.lot_id      := gt_lot_id_upd_tab(ln_cnt);      -- ロットID
+        lr_lot_rec.lot_no      := gt_lot_num_upd_tab(ln_cnt);     -- ロットNo
+        lr_lot_rec.attribute1  := gt_attribute1_upd_tab(ln_cnt);  -- ＤＦＦ項目１
+        lr_lot_rec.attribute2  := gt_attribute2_upd_tab(ln_cnt);  -- ＤＦＦ項目２
+        lr_lot_rec.attribute3  := gt_attribute3_upd_tab(ln_cnt);  -- ＤＦＦ項目３
+        lr_lot_rec.attribute4  := gt_attribute4_upd_tab(ln_cnt);  -- ＤＦＦ項目４
+        lr_lot_rec.attribute5  := gt_attribute5_upd_tab(ln_cnt);  -- ＤＦＦ項目５
+        lr_lot_rec.attribute6  := gt_attribute6_upd_tab(ln_cnt);  -- ＤＦＦ項目６
+        lr_lot_rec.attribute7  := gt_unit_price_upd_tab(ln_cnt);  -- 単価
+        lr_lot_rec.attribute8  := gt_attribute8_upd_tab(ln_cnt);  -- ＤＦＦ項目８
+        lr_lot_rec.attribute9  := gt_attribute9_upd_tab(ln_cnt);  -- ＤＦＦ項目９
+        lr_lot_rec.attribute10 := gt_attribute10_upd_tab(ln_cnt); -- ＤＦＦ項目１０
+        lr_lot_rec.attribute11 := gt_attribute11_upd_tab(ln_cnt); -- ＤＦＦ項目１１
+        lr_lot_rec.attribute12 := gt_attribute12_upd_tab(ln_cnt); -- ＤＦＦ項目１２
+        lr_lot_rec.attribute13 := gt_attribute13_upd_tab(ln_cnt); -- ＤＦＦ項目１３
+        lr_lot_rec.attribute14 := gt_attribute14_upd_tab(ln_cnt); -- ＤＦＦ項目１４
+        lr_lot_rec.attribute15 := gt_attribute15_upd_tab(ln_cnt); -- ＤＦＦ項目１５
+        lr_lot_rec.attribute16 := gt_attribute16_upd_tab(ln_cnt); -- ＤＦＦ項目１６
+        lr_lot_rec.attribute17 := gt_attribute17_upd_tab(ln_cnt); -- ＤＦＦ項目１７
+        lr_lot_rec.attribute18 := gt_attribute18_upd_tab(ln_cnt); -- ＤＦＦ項目１８
+        lr_lot_rec.attribute19 := gt_attribute19_upd_tab(ln_cnt); -- ＤＦＦ項目１９
+        lr_lot_rec.attribute20 := gt_attribute20_upd_tab(ln_cnt); -- ＤＦＦ項目２０
+        lr_lot_rec.attribute21 := gt_attribute21_upd_tab(ln_cnt); -- ＤＦＦ項目２１
+        lr_lot_rec.attribute22 := gt_attribute22_upd_tab(ln_cnt); -- ＤＦＦ項目２２
+        lr_lot_rec.attribute23 := gt_attribute23_upd_tab(ln_cnt); -- ＤＦＦ項目２３
+        lr_lot_rec.attribute24 := gt_attribute24_upd_tab(ln_cnt); -- ＤＦＦ項目２４
+        lr_lot_rec.attribute25 := gt_attribute25_upd_tab(ln_cnt); -- ＤＦＦ項目２５
+        lr_lot_rec.attribute26 := gt_attribute26_upd_tab(ln_cnt); -- ＤＦＦ項目２６
+        lr_lot_rec.attribute27 := gt_attribute27_upd_tab(ln_cnt); -- ＤＦＦ項目２７
+        lr_lot_rec.attribute28 := gt_attribute28_upd_tab(ln_cnt); -- ＤＦＦ項目２８
+        lr_lot_rec.attribute29 := gt_attribute29_upd_tab(ln_cnt); -- ＤＦＦ項目２９
+        lr_lot_rec.attribute30 := gt_attribute30_upd_tab(ln_cnt); -- ＤＦＦ項目３０
+        -- 2004/04/25 1.1
+        lr_lot_rec.last_update_date := gd_date;
+        lr_lot_rec.last_updated_by  := gn_user_id;
 --
-      -- OPMロットマスタ
-      GMI_LOTUPDATE_PUB.UPDATE_LOT_DFF (
-          P_API_VERSION          => in_api_version
-         ,X_RETURN_STATUS        => lv_return_status
-         ,X_MSG_COUNT            => ln_msg_count
-         ,X_MSG_DATA             => lv_msg_data
-         ,P_LOT_REC              => lr_lot_rec
-      );
+        -- OPMロットマスタ
+        GMI_LOTUPDATE_PUB.UPDATE_LOT_DFF (
+            P_API_VERSION          => in_api_version
+           ,X_RETURN_STATUS        => lv_return_status
+           ,X_MSG_COUNT            => ln_msg_count
+           ,X_MSG_DATA             => lv_msg_data
+           ,P_LOT_REC              => lr_lot_rec
+        );
 --
-      -- 失敗
-      IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
-        lv_api_name := 'GMI_LOTUPDATE_PUB.UPDATE_LOT_DFF';
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_80a_016,
-                                            gv_tkn_api_name, lv_api_name);
+        -- 失敗
+        IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
+          lv_api_name := 'GMI_LOTUPDATE_PUB.UPDATE_LOT_DFF';
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_80a_016,
+                                              gv_tkn_api_name, lv_api_name);
 --
-        FND_MSG_PUB.GET( P_MSG_INDEX     => 1, 
-                         P_ENCODED       => FND_API.G_FALSE,
-                         P_DATA          => lv_msg_data,
-                         P_MSG_INDEX_OUT => ln_msg_count );
+          FND_MSG_PUB.GET( P_MSG_INDEX     => 1, 
+                           P_ENCODED       => FND_API.G_FALSE,
+                           P_DATA          => lv_msg_data,
+                           P_MSG_INDEX_OUT => ln_msg_count );
 --
-        lv_errbuf := lv_msg_data;
-        RAISE global_api_expt;
+          lv_errbuf := lv_msg_data;
+          RAISE global_api_expt;
+        END IF;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
       END IF;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
 --
     END LOOP upd_lot_loop;
 --
@@ -627,6 +723,9 @@ AS
   PROCEDURE get_data_dump(
     ir_xxcmn_lot_cost     IN  xxcmn_lot_cost%ROWTYPE,  
                                                 -- ロット別原価（アドオン）
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+    iv_unit_price_flag    IN  VARCHAR2,         -- 更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
     ov_dump               OUT NOCOPY VARCHAR2,  -- データダンプ文字列
     ov_errbuf             OUT NOCOPY VARCHAR2,  -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT NOCOPY VARCHAR2,  -- リターン・コード             --# 固定 #
@@ -681,6 +780,15 @@ AS
                 || gv_msg_comma ||
                 TO_CHAR(ir_xxcmn_lot_cost.unit_ploce) -- 単価
                 ;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+    -- 更新可否フラグが未更新の場合
+    IF  iv_unit_price_flag = gv_update_flag THEN
+      ov_dump := ov_dump
+                 || gv_msg_comma ||
+                 iv_unit_price_flag                   -- 更新未更新分
+               ;
+    END IF;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -776,6 +884,9 @@ AS
       -- =============================
       get_data_dump(
           ir_xxcmn_lot_cost => upd_data_rec
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+        , iv_unit_price_flag => gt_unit_price_upd_flag_tbl(ln_rec_cnt) -- 更新フラグ
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
         , ov_dump           => lv_dump
         , ov_errbuf         => lv_errbuf
         , ov_retcode        => lv_retcode
@@ -909,6 +1020,18 @@ AS
     gt_attribute28_upd_tab.DELETE; -- ＤＦＦ項目２８
     gt_attribute29_upd_tab.DELETE; -- ＤＦＦ項目２９
     gt_attribute30_upd_tab.DELETE; -- ＤＦＦ項目３０
+--
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+    gt_unit_price_upd_flag_tbl.DELETE; -- 単価更新フラグ(UPDATE)
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
+--
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 START
+    -- =======================================
+    -- OPM在庫カレンダの直近締月取得
+    -- =======================================
+    -- 直近締め年月を取得
+    gt_close_yyyymm := xxcmn_common_pkg.get_opminv_close_period;
+--2013/01/08 ADD AUTHOR:M.Kitajima VER：1.4 CONTENT:E_本稼動_10355 END
 --
     -- =======================================
     -- D-1.ロット別原価データ抽出処理
