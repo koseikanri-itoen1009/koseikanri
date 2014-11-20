@@ -1,13 +1,13 @@
-CREATE OR REPLACE PACKAGE BODY      xxcmm004a04c
+CREATE OR REPLACE PACKAGE BODY XXCMM004A04C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name     : xxcmm004a04c(spec)
+ * Package Name     : XXCMM004A04C(spec)
  * Description      : Disc品目変更履歴アドオンマスタにて変更予約管理されている項目を
  *                  : 適用日が到来したタイミングで各品目情報に反映します。
  * MD.050           : 変更予約適用    MD050_CMM_004_A04
- * Version          : Draft2B
+ * Version          : 
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -23,7 +23,7 @@ AS
  *                               ・proc_comp_apply_update
  *  proc_first_update         初回登録データ処理 (A-3)
  *  proc_status_update        品目ステータス変更
- *                               ・proc_item_status_update  
+ *                               ・proc_item_status_update
  *                               ・proc_inherit_parent
  *  proc_item_status_update   品目ステータス反映処理 (A-5)
  *                               ・validate_item
@@ -32,7 +32,7 @@ AS
  *  proc_parent_item_update   親品目変更時の継承 (A-7)
  *  proc_comp_apply_update    品目変更適用済み情報の更新 (A-8,A-9)
  *  submain                   メイン処理プロシージャ
- *                               ・proc_init  
+ *                               ・proc_init
  *                               ・loop_main
  *  main                      コンカレント実行ファイル登録プロシージャ
  *                               ・submain
@@ -48,7 +48,11 @@ AS
  *  2009/01/29    1.3   H.Yoshikawa      親品目の仮登録変更時に「率区分」を必須項目に追加
  *  2009/01/30    1.4   H.Yoshikawa      原価組織変更による修正
  *  2009/02/19    1.5   H.Yoshikawa      品目ステータスチェックを追加
- *  2009/02/20          H.Yoshikawa      検索対象更新日に業務日付を設定するよう修正
+ *  2009/02/20                           検索対象更新日に業務日付を設定するよう修正
+ *  2009/03/23    1.6   H.Yoshikawa      障害No37対応 重量/容積・重量容積区分の設定を追加
+ *                                       障害No39対応 マスタ受信日時(OPM品目.ATTRIBUTE30)の設定を追加
+ *  2009/04/03    1.7   K.Ito            障害対応(T1_0295) 品目OIF作成時にロット管理(LOT_CONTROL_CODE)に「1」(管理なし)を追加
+ *  2009/05/27    1.7   H.Yoshikawa      障害対応(T1_0906) 親品目継承項目の追加【case_conv_inc_num(ケース換算入数)】
  *
  *****************************************************************************************/
 --
@@ -116,6 +120,9 @@ AS
   cv_no                        CONSTANT VARCHAR2(1)   := 'N';
   cv_inherit_kbn_hst           CONSTANT VARCHAR2(1)   := '0';                  -- 親値継承情報区分【'0'：履歴情報による更新】
   cv_inherit_kbn_inh           CONSTANT VARCHAR2(1)   := '1';                  -- 親値継承情報区分【'1'：親品目変更による更新】
+-- Ver1.6  2009/04/03 Add Start Disc品目.ロット管理(LOT_CONTROL_CODE)
+  cn_lot_control_code_no       CONSTANT NUMBER        := 1;                    -- 「1」(管理なし)
+-- Ver1.6  2009/04/03 Add End
   --
   -- 品目ステータス
   cn_itm_status_num_tmp        CONSTANT NUMBER        := xxcmm_004common_pkg.cn_itm_status_num_tmp;
@@ -141,6 +148,9 @@ AS
   --
   -- メッセージ関連
   -- メッセージ
+-- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
+  cv_msg_xxcmm_00430           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00430';   -- 品目ステータスチェックエラー
+-- End
 -- Ver1.5 チェック処理追加
   cv_msg_xxcmm_00436           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00436';   -- 子品目ステータスチェックエラー
   cv_msg_xxcmm_00437           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00437';   -- 親品目ステータスチェックエラー
@@ -170,6 +180,7 @@ AS
   cv_tkn_data_cnt              CONSTANT VARCHAR2(20)  := 'DATA_CNT';           -- データ件数
   --
   cv_tkn_val_categ_policy_cd   CONSTANT VARCHAR2(30)  := '政策群カテゴリ情報';
+  cv_tkn_val_categ_prd_class   CONSTANT VARCHAR2(30)  := '本社商品区分カテゴリ情報';
   cv_tkn_val_item_status       CONSTANT VARCHAR2(30)  := '品目ステータス情報';
   cv_tkn_val_item              CONSTANT VARCHAR2(30)  := '品目';
   cv_tkn_val_uon_conv          CONSTANT VARCHAR2(30)  := '区分間換算';
@@ -490,6 +501,9 @@ AS
                    ,acnt_vessel_group               -- 経理容器群
                    ,brand_group                     -- ブランド群
                    ,sp_supplier_code                -- 専門店仕入先
+-- Ver1.7 2009/05/27 Add  ケース換算入数を継承項目に追加（T1_0906）
+                   ,case_conv_inc_num               -- ケース換算入数
+-- End
                     --
                    ,last_updated_by
                    ,last_update_date
@@ -519,6 +533,9 @@ AS
                                ,parent_xsib.acnt_vessel_group         -- 経理容器群
                                ,parent_xsib.brand_group               -- ブランド群
                                ,parent_xsib.sp_supplier_code          -- 専門店仕入先
+-- Ver1.7 2009/05/27 Add  ケース換算入数を継承項目に追加（T1_0906）
+                               ,parent_xsib.case_conv_inc_num         -- ケース換算入数
+-- End
                                ,cn_last_updated_by
                                ,cd_last_update_date
                                ,cn_last_update_login
@@ -693,6 +710,10 @@ AS
     cv_cost_element              CONSTANT VARCHAR2(10) := '資材';            -- 原価要素
     cv_resource_code             CONSTANT VARCHAR2(10) := '営業原価';        -- 副原価要素
     --
+-- Ver1.6 2009/03/23 ADD  障害No39対応 マスタ受信日時(OPM品目.ATTRIBUTE30)の設定を追加
+    cv_date_format_rmd           CONSTANT VARCHAR2(10) := 'RRRR/MM/DD';      -- マスタ受信日時フォーマット
+-- Ver1.6 ADD END
+    --
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -811,13 +832,19 @@ AS
                  ,iimb.attribute7
                  ,iimb.attribute8
                  ,iimb.attribute9
-                 ,iimb.attribute10
+-- Ver1.6 2009/03/23 MOD  障害No37対応 重量/容積・重量容積区分の設定を追加
+--                 ,iimb.attribute10
+                 ,parent_iimb.attribute10           -- 重量容積区分(親品目から取得)
+-- Ver1.6 MOD END
                  ,parent_iimb.attribute11           -- ケース入数(親品目から取得)
                  ,parent_iimb.attribute12           -- NET(親品目から取得)
                  ,iimb.attribute13
                  ,iimb.attribute14
                  ,iimb.attribute15
-                 ,iimb.attribute16
+-- Ver1.6 2009/03/23 MOD  障害No37対応 重量/容積・重量容積区分の設定を追加
+--                 ,iimb.attribute16
+                 ,parent_iimb.attribute16           -- 容積(親品目から取得)
+-- Ver1.6 MOD END
                  ,iimb.attribute17
                  ,iimb.attribute18
                  ,iimb.attribute19
@@ -831,7 +858,11 @@ AS
                  ,iimb.attribute27
                  ,iimb.attribute28
                  ,iimb.attribute29
-                 ,iimb.attribute30
+-- Ver1.6 2009/03/23 MOD  障害No39対応 マスタ受信日時(OPM品目.ATTRIBUTE30)の設定を追加
+--                 ,iimb.attribute30
+                 ,TO_CHAR( SYSDATE, cv_date_format_rmd )
+                                                    -- マスタ受信日時
+-- Ver1.6 MOD END
                  ,iimb.attribute_category
                  ,iimb.item_abccode
                  ,iimb.ont_pricing_qty_source
@@ -1315,8 +1346,15 @@ AS
     AND  ( i_update_item_rec.policy_group  IS NOT NULL
         OR i_update_item_rec.fixed_price   IS NOT NULL
         OR i_update_item_rec.discrete_cost IS NOT NULL )
-    AND  ( NVL( i_update_item_rec.item_status, cn_itm_status_num_tmp )
-                                           != cn_itm_status_no_use )
+-- Ver1.7 2009/05/27 Mod  現在のステータスがＤ時に、変更予約のステータスがブランクの想定はしていなかったが
+--                        Ｄ時、または、Ｄに変更する場合、登録情報の変更をさせないよう修正
+--    AND  ( NVL( i_update_item_rec.item_status, cn_itm_status_num_tmp )  -- 変更予約のステータス
+--                                           != cn_itm_status_no_use )    -- 現在のステータスも参照する必要あり
+    -- 変更予約のステータスがＤの場合
+    -- または、変更予約のステータスが未設定で現ステータスがＤの場合、処理しない
+    AND  ( NVL( i_update_item_rec.item_status, i_update_item_rec.b_item_status )
+                                             != cn_itm_status_no_use )
+-- End
     THEN
       --
       -------------------
@@ -1426,43 +1464,42 @@ AS
             RAISE sub_proc_expt;
           END IF;
           --
-        END IF;
-        --
-        --==============================================================
-        --A-7.7 子品目時のDisc品目アドオンの更新
-        --==============================================================
-        lv_step := 'STEP-09080';
-        -- Disc品目アドオンロック
-        lv_msg_token := cv_tkn_val_xxcmm_discitem;
-        --
-        OPEN   xxcmm_item_lock_cur( l_parent_item_rec.item_no );
-        CLOSE  xxcmm_item_lock_cur;
-        --
-        lv_step := 'STEP-09090';
-        BEGIN
-          UPDATE      xxcmm_system_items_b    -- Disc品目アドオン
--- Ver1.5 2009/02/20 Mod 検索対象更新日に業務日付を設定するよう修正
---          SET         search_update_date     = i_update_item_rec.apply_date
-                      -- 検索対象更新日
-          SET         search_update_date     = gd_process_date
--- End
-                     ,last_updated_by        = cn_last_updated_by
-                     ,last_update_date       = cd_last_update_date
-                     ,last_update_login      = cn_last_update_login
-                     ,request_id             = cn_request_id
-                     ,program_application_id = cn_program_application_id
-                     ,program_id             = cn_program_id
-                     ,program_update_date    = cd_program_update_date
-                      --
-          WHERE       item_code              = l_parent_item_rec.item_no;
+          --==============================================================
+          --A-7.7 子品目時のDisc品目アドオンの更新
+          --==============================================================
+          lv_step := 'STEP-09080';
+          -- Disc品目アドオンロック
+          lv_msg_token := cv_tkn_val_xxcmm_discitem;
           --
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_msg_errm  := SQLERRM;
-            lv_msg_token := cv_tkn_val_xxcmm_discitem;
-            RAISE data_update_err_expt;  -- 更新エラー
-        END;
-        --
+          OPEN   xxcmm_item_lock_cur( l_parent_item_rec.item_no );
+          CLOSE  xxcmm_item_lock_cur;
+          --
+          lv_step := 'STEP-09090';
+          BEGIN
+            UPDATE      xxcmm_system_items_b    -- Disc品目アドオン
+-- Ver1.5 2009/02/20 Mod 検索対象更新日に業務日付を設定するよう修正
+--            SET         search_update_date     = i_update_item_rec.apply_date
+                        -- 検索対象更新日
+            SET         search_update_date     = gd_process_date
+-- End
+                       ,last_updated_by        = cn_last_updated_by
+                       ,last_update_date       = cd_last_update_date
+                       ,last_update_login      = cn_last_update_login
+                       ,request_id             = cn_request_id
+                       ,program_application_id = cn_program_application_id
+                       ,program_id             = cn_program_id
+                       ,program_update_date    = cd_program_update_date
+                        --
+            WHERE       item_code              = l_parent_item_rec.item_no;
+            --
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_msg_errm  := SQLERRM;
+              lv_msg_token := cv_tkn_val_xxcmm_discitem;
+              RAISE data_update_err_expt;  -- 更新エラー
+          END;
+          --
+        END IF;
       END LOOP child_item_loop;
       --
       gv_inherit_kbn := cv_inherit_kbn_hst;    -- 親値継承情報区分【'0'：履歴情報による更新】
@@ -1573,6 +1610,9 @@ AS
     -- ===============================
     lv_step                      VARCHAR2(10);
     lv_msg_token                 VARCHAR2(100);
+-- Ver1.6 2009/03/23 ADD  障害No37  Ｄからのステータス変更時
+    lv_msg_errm                  VARCHAR2(4000);
+-- Ver1.6 ADD END
     --
     ln_exsits_count              NUMBER;
     ln_cmp_cost_index            NUMBER;
@@ -1585,6 +1625,11 @@ AS
     ln_fixed_price_parent        NUMBER;          -- 定価
     ln_discrete_cost_parent      NUMBER;          -- 営業原価
     lv_policy_group_parent       VARCHAR2(4);     -- 政策群コード
+    --
+-- Ver1.6 2009/03/23 ADD  障害No37  Ｄからのステータス変更時
+    ln_category_set_id           mtl_category_sets.category_set_id%TYPE;     -- カテゴリセットID
+    ln_category_id               mtl_categories.category_id%TYPE;            -- カテゴリID
+-- Ver1.6 ADD END
     --
     -- ===============================
     -- ローカル・カーソル
@@ -1702,12 +1747,21 @@ AS
     l_opm_cost_header_rec        xxcmm_004common_pkg.opm_cost_header_rtype;
     l_opm_cost_dist_tab          xxcmm_004common_pkg.opm_cost_dist_ttype;
     --
+-- Ver1.6 2009/03/23 ADD  障害No37  Ｄからのステータス変更時
+    l_opmitem_category_rec       xxcmm_004common_pkg.opmitem_category_rtype;
+    l_discitem_category_rec      xxcmm_004common_pkg.discitem_category_rtype;
+-- Ver1.6 ADD END
+    --
     -- ===============================
     -- ユーザー定義例外
     -- ===============================
     item_common_ins_expt         EXCEPTION;    -- データ登録エラー(品目共通API)
     sub_proc_expt                EXCEPTION;
     --
+-- Ver1.6 2009/03/23 ADD  障害No37  Ｄからのステータス変更時
+    data_select_err_expt         EXCEPTION;    -- データ抽出エラー
+    data_update_err_expt         EXCEPTION;    -- データ更新エラー
+-- Ver1.6 ADD END
 --
   BEGIN
 --
@@ -1940,14 +1994,111 @@ AS
         END IF;
       END IF;
       --
+-- Ver1.6 2009/03/23 MOD  障害No37、39対応  Ｄからのステータス変更時
+--      IF ( ln_fixed_price_parent   IS NOT NULL
+--        OR ln_discrete_cost_parent IS NOT NULL
+--        OR lv_policy_group_parent  IS NOT NULL ) THEN
       IF ( ln_fixed_price_parent   IS NOT NULL
         OR ln_discrete_cost_parent IS NOT NULL
-        OR lv_policy_group_parent  IS NOT NULL ) THEN
+        OR lv_policy_group_parent  IS NOT NULL
+        OR i_update_item_rec.b_item_status = cn_itm_status_no_use ) THEN
+-- Ver1.6 MOD END
+--
+-- Ver1.6 2009/03/23 ADD  障害No37  Ｄからのステータス変更時
+--
+        -- Ｄからのステータス変更時、かつ、本社商品区分が変更されている場合、
+        -- 親品目の本社商品区分を反映する。
+        IF ( i_update_item_rec.b_item_status = cn_itm_status_no_use ) THEN
+          --
+          lv_step := 'STEP-08110';
+          BEGIN
+            -- 本社商品区分 カテゴリセットID,カテゴリID取得
+            -- 親品目と同じ場合ＮＵＬＬを設定
+            SELECT      DECODE( p_hon.p_hon_prd, c_hon.c_hon_prd, NULL
+                                               , p_hon.category_set_id )    category_set_id
+                       ,DECODE( p_hon.p_hon_prd, c_hon.c_hon_prd, NULL
+                                               , p_hon.category_id )        category_id
+            INTO        ln_category_set_id
+                       ,ln_category_id
+            FROM        -- 本社商品区分用(親品目)
+                      ( SELECT      mcsv_ho.category_set_id   category_set_id
+                                   ,mcv_ho.category_id        category_id
+                                   ,mcv_ho.segment1           p_hon_prd
+                        FROM        gmi_item_categories       gic_ho
+                                   ,mtl_category_sets_vl      mcsv_ho
+                                   ,mtl_categories_vl         mcv_ho
+                        WHERE       mcsv_ho.category_set_name = cv_categ_set_hon_prod
+                        AND         gic_ho.category_set_id    = mcsv_ho.category_set_id
+                        AND         gic_ho.category_id        = mcv_ho.category_id
+                        AND         gic_ho.item_id            = i_update_item_rec.parent_item_id ) p_hon,
+                        -- 本社商品区分用(子品目)
+                      ( SELECT      mcv_ho.segment1           c_hon_prd
+                        FROM        gmi_item_categories       gic_ho
+                                   ,mtl_category_sets_vl      mcsv_ho
+                                   ,mtl_categories_vl         mcv_ho
+                        WHERE       mcsv_ho.category_set_name = cv_categ_set_hon_prod
+                        AND         gic_ho.category_set_id    = mcsv_ho.category_set_id
+                        AND         gic_ho.category_id        = mcv_ho.category_id
+                        AND         gic_ho.item_id            = i_update_item_rec.item_id ) c_hon;
+            --
+          EXCEPTION
+            WHEN OTHERS THEN
+              lv_msg_errm  := SQLERRM;
+              lv_msg_token := cv_tkn_val_categ_prd_class;
+              RAISE data_select_err_expt;  -- 抽出エラー
+          END;
+          --
+          -- 親品目の本社商品区分と異なる場合処理を実施
+          IF ( ln_category_set_id IS NOT NULL ) THEN
+            -- OPM品目カテゴリ更新用パラメータ設定
+            l_opmitem_category_rec.item_id            := i_update_item_rec.item_id;
+            l_opmitem_category_rec.category_set_id    := ln_category_set_id;
+            l_opmitem_category_rec.category_id        := ln_category_id;
+            -- Disc品目カテゴリ更新用パラメータ設定
+            l_discitem_category_rec.inventory_item_id := i_update_item_rec.inventory_item_id;
+            l_discitem_category_rec.category_set_id   := ln_category_set_id;
+            l_discitem_category_rec.category_id       := ln_category_id;
+            --
+            -- OPM品目カテゴリ反映
+            lv_step := 'STEP-08120';
+            xxcmm_004common_pkg.proc_opmitem_categ_ref(
+              i_item_category_rec  =>  l_opmitem_category_rec    -- 品目カテゴリ割当レコードタイプ
+             ,ov_errbuf            =>  lv_errbuf                 -- エラー・メッセージ           --# 固定 #
+             ,ov_retcode           =>  lv_retcode                -- リターン・コード             --# 固定 #
+             ,ov_errmsg            =>  lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            --
+            IF ( lv_retcode = cv_status_error ) THEN
+              lv_msg_errm  := lv_errmsg;
+              lv_msg_token := cv_tkn_val_opm_item_categ;
+              RAISE data_update_err_expt;
+            END IF;
+            --
+            -- Disc品目カテゴリ反映
+            lv_step := 'STEP-08130';
+            xxcmm_004common_pkg.proc_discitem_categ_ref(
+              i_item_category_rec  =>  l_discitem_category_rec    -- 品目カテゴリ割当レコードタイプ
+             ,ov_errbuf            =>  lv_errbuf                  -- エラー・メッセージ           --# 固定 #
+             ,ov_retcode           =>  lv_retcode                 -- リターン・コード             --# 固定 #
+             ,ov_errmsg            =>  lv_errmsg                  -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            --
+            IF ( lv_retcode = cv_status_error ) THEN
+              lv_msg_errm  := lv_errmsg;
+              lv_msg_token := cv_tkn_val_mtl_item_categ;
+              RAISE data_update_err_expt;
+            END IF;
+          END IF;
+          --
+        END IF;
+        --
+-- Ver1.6 ADD END
+        --
         --==============================================================
         --A-6.2-3 営業原価の登録
         --A-6.2-4 OPM品目更新
         --==============================================================
-        lv_step := 'STEP-08110';
+        lv_step := 'STEP-08200';
         proc_item_update(
           in_item_id            =>  i_update_item_rec.item_id              -- OPM品目ID
          ,in_inventory_item_id  =>  i_update_item_rec.inventory_item_id    -- Disc品目ID
@@ -1990,6 +2141,41 @@ AS
                      ,iv_token_name3  => cv_tkn_err_msg                -- トークンコード3
                      ,iv_token_value3 => lv_errmsg                     -- トークン値3
                     );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    -- *** データ抽出例外ハンドラ ***
+    WHEN data_select_err_expt THEN
+      --
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm            -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_00442            -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_data_info              -- トークンコード1
+                     ,iv_token_value1 => lv_msg_token                  -- トークン値1
+                     ,iv_token_name2  => cv_tkn_item_code              -- トークンコード2
+                     ,iv_token_value2 => i_update_item_rec.item_no     -- トークン値2
+                    );
+      --
+      ov_errmsg  := lv_errmsg;
+      lv_errbuf  := lv_errmsg || CHR(10) || lv_msg_errm;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+    -- *** データ更新例外ハンドラ ***
+    WHEN data_update_err_expt THEN
+      --
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm            -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_00445            -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_table                  -- トークンコード1
+                     ,iv_token_value1 => lv_msg_token                  -- トークン値1
+                     ,iv_token_name2  => cv_tkn_item_code              -- トークンコード2
+                     ,iv_token_value2 => i_update_item_rec.item_no     -- トークン値2
+                     ,iv_token_name3  => cv_tkn_err_msg                -- トークンコード3
+                     ,iv_token_value3 => lv_msg_errm                   -- トークン値3
+                    );
+      --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
@@ -2095,6 +2281,10 @@ AS
     parent_status_chk_expt     EXCEPTION;    -- 親品目ステータスチェックエラー
 -- End
     --
+-- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」時のチェックを追加
+    item_no_use_expt           EXCEPTION;    -- 現在の品目ステータス「Ｄ」時のチェックエラー
+-- End
+    --
   BEGIN
     --
 --##################  固定ステータス初期化部 START   ###################
@@ -2148,9 +2338,17 @@ AS
     END IF;
 -- End
     --
+-- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
+    lv_step := 'STEP-07030';
+    IF  ( i_update_item_rec.b_item_status = cn_itm_status_no_use )
+    AND ( i_update_item_rec.item_status IS NULL ) THEN
+      RAISE item_no_use_expt;
+    END IF;
+-- End
+    --
     -- 変更前ステータスがNULL、仮採番、仮登録、Ｄ
     -- 変更後ステータスが仮登録、本登録、廃、Ｄ’の場合チェックする。
-    lv_step := 'STEP-07030';
+    lv_step := 'STEP-07100';
     IF  ( NVL( i_update_item_rec.b_item_status, cn_itm_status_num_tmp ) IN ( cn_itm_status_num_tmp      -- 仮採番
                                                                            , cn_itm_status_pre_reg      -- 仮登録
                                                                            , cn_itm_status_no_use ) )   -- Ｄ
@@ -2460,6 +2658,21 @@ AS
       ov_retcode := cv_status_error;
       --
 -- End
+--
+-- Ver1.7 2009/05/27 Add  現在ステータスが「Ｄ」の場合、品目ステータス以外の変更は不可
+    -- *** 現在の品目ステータスチェック例外ハンドラ ***
+    WHEN item_no_use_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_00430                    -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item_code                      -- トークンコード1
+                     ,iv_token_value1 => i_update_item_rec.item_no             -- トークン値1
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- End
+--
     -- *** データチェック例外ハンドラ ***
     WHEN data_validate_expt THEN
       lv_errmsg  := xxccp_common_pkg.get_msg(
@@ -2781,6 +2994,9 @@ AS
            ,reservable_type                  -- 予約可能
            ,returnable_flag                  -- 返品可能
            ,stock_enabled_flag               -- 在庫保有可能
+-- Ver1.7  2009/04/03 Add Start ロット管理(LOT_CONTROL_CODE)追加
+           ,lot_control_code                 -- ロット管理
+-- Ver1.7  2009/04/03 Add End
            ,process_flag                     -- プロセスフラグ
            ,transaction_type )               -- 処理タイプ
           VALUES(
@@ -2797,6 +3013,9 @@ AS
            ,i_update_item_rec.reservable_type
            ,l_item_status_info_rec.returnable_flag
            ,l_item_status_info_rec.stock_enabled_flag
+-- Ver1.7  2009/04/03 Add Start ロット管理(LOT_CONTROL_CODE)追加
+           ,cn_lot_control_code_no
+-- Ver1.7  2009/04/03 Add End
            ,cn_process_flag
            ,lv_transaction_type );
            --
@@ -4039,11 +4258,11 @@ AS
       );
     END IF;
     --
-    --空行挿入
---    FND_FILE.PUT_LINE(
---       which  => FND_FILE.OUTPUT
---      ,buff   => ''
---    );
+    -- 空行挿入
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
     FND_FILE.PUT_LINE(
        which  => FND_FILE.LOG
       ,buff   => ''
@@ -4232,6 +4451,16 @@ AS
 --      ,buff   => gv_out_msg
 --    );
     --
+    -- 空行挿入
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => ''
+    );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => ''
+    );
+    --
     -- 終了メッセージ
     IF ( lv_retcode = cv_status_normal ) THEN
       lv_message_code := cv_normal_msg;
@@ -4272,5 +4501,5 @@ AS
       retcode := cv_status_error;
   END main;
 --
-END xxcmm004a04c;
+END XXCMM004A04C;
 /
