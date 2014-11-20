@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 従業員インタフェース T_MD070_BPO_80C
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -69,6 +69,7 @@ AS
  *  2008/10/06    1.4   Oracle 椎名 昭圭 統合障害#304対応
  *  2008/11/20    1.5   Oracle 丸下 博宣 I_S_698
  *  2009/03/25    1.6   Oracle 椎名 昭圭 本番#1340対応
+ *  2009/04/15    1.7   SCS    丸下 博宣 本番#1418対応
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -5247,6 +5248,9 @@ AS
        ,P_EMPLOYEE_NUMBER              => or_masters_tbl.employee_num
        ,P_ATTRIBUTE1                   => or_masters_tbl.qualification_id
        ,P_ATTRIBUTE2                   => or_masters_tbl.position_id
+-- 2009/04/15 ADD START
+       ,P_ATTRIBUTE3                   => '1' -- 内部
+-- 2009/04/15 ADD END
        ,P_PER_INFORMATION_CATEGORY     => gv_info_category
        ,P_PER_INFORMATION18            => or_masters_tbl.user_name
        ,P_PERSON_ID                    => ln_person_id                       -- OUT

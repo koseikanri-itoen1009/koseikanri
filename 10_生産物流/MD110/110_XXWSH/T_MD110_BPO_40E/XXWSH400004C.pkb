@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.17
+ * Version                : 1.18
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/12/23   1.14  SCS    上原       本番#81 再締め処理時の抽出条件にリードタイムを追加
  *  2009/01/16   1.15  SCS    菅原大輔   本番#1009 ロックセッション切断対応
  *  2009/02/19   1.17  SCS    伊藤ひとみ (v1.15とv1.16をマージ)本番#1053 対象データなし時の締めステータスチェック追加
+ *  2009/04/16   1.18  SCS    伊藤ひとみ 本番#1398 顧客付け替えが発生し、IDが古い可能性があるので、コードで有効なものを参照する。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1137,9 +1138,14 @@ AS
                                 -- ＝受注ヘッダアドオン.商品区分かつ
        AND   xtc.sales_branch           = DECODE(xtc.sales_branch
                                               ,:gv_ALL,:gv_ALL
-                                              ,xoha.head_sales_branch)
+-- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客付け替えが発生した場合、受注ヘッダの拠点は古いので、顧客サイトを見る
+--                                              ,xoha.head_sales_branch)
+--                                -- 出荷依頼締め管理（アドオン）.拠点
+--                                -- ＝受注ヘッダアドオン.管轄拠点かつ
+                                              ,xcasv.base_code) 
                                 -- 出荷依頼締め管理（アドオン）.拠点
-                                -- ＝受注ヘッダアドオン.管轄拠点かつ
+                                -- ＝顧客サイト.拠点コードかつ
+-- 2009/04/16 H.Itou Mod Start 本番障害#1398
        AND   xtc.sales_branch_category   = DECODE(xtc.sales_branch_category
                                               ,:gv_ALL,:gv_ALL ,
                                               DECODE(xtc.prod_class
@@ -1175,9 +1181,11 @@ AS
 --
 -- 2008/12/17 mod start ver1.13 M_Uehara
     cv_main_sql2                   CONSTANT VARCHAR2(32000) :=
-     ' AND   xcav.party_number            = xoha.head_sales_branch
+-- 2009/04/16 H.Itou Del Start 本番障害#1398 パーティー番号は拠点ではないので、結合しない。
+--     ' AND   xcav.party_number            = xoha.head_sales_branch
+-- 2009/04/16 H.Itou Del End
                    -- パーティマスタ(管轄拠点)．組織番号＝受注ヘッダアドオン．管轄拠点かつ
-       AND   xcav.start_date_active       <= NVL(xoha.shipped_date,xoha.schedule_ship_date)
+     ' AND   xcav.start_date_active       <= NVL(xoha.shipped_date,xoha.schedule_ship_date)
                    -- パーティアドオンマスタ(管轄拠点)．適用開始日≦パラメータ. 出庫日かつ
        AND   xcav.end_date_active         >= NVL(xoha.shipped_date,xoha.schedule_ship_date)
                                 -- パーティアドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
@@ -1195,8 +1203,15 @@ AS
                                                            -- 受注ヘッダアドオン.出荷元保管場所
        AND   xdl.entering_despatching_code2  = xoha.deliver_to
                                                            -- 受注ヘッダアドオン.配送先
-       AND   xcasv.base_code                  = xcav.party_number
-       AND   xoha.deliver_to_id             =  xcasv.party_site_id
+-- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客と顧客サイトは拠点＝パーティ番号ではなくIDで結合する。
+--       AND   xcasv.base_code                  = xcav.party_number
+       AND   xcasv.party_id                   = xcav.party_id
+-- 2009/04/16 H.Itou Mod End
+-- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客付け替えが発生した場合、パーティサイトIDが古いので、配送先で有効なものを参照する。
+--       AND   xoha.deliver_to_id             =  xcasv.party_site_id
+       AND   xoha.deliver_to                  =  xcasv.party_site_number -- パーティサイト番号 = 受注ヘッダ.配送先
+       AND   xcasv.party_site_status          =  ''A''                   -- ステータス：有効な顧客
+-- 2009/04/16 H.Itou Mod End
        AND   xcasv.start_date_active         <= xoha.schedule_ship_date
                                                            -- 受注ヘッダアドオン.出荷予定日
        AND  (xcasv.end_date_active           IS NULL
@@ -1263,6 +1278,9 @@ AS
            xxwsh_oe_transaction_types2_v xottv    --①受注タイプ情報VIEW2
           ,xxwsh_order_headers_all       xoha     --②受注ヘッダアドオン
           ,xxcmn_cust_accounts2_v        xcav
+-- 2009/04/16 H.Itou Add Start 本番障害#1398 顧客付け替え発生の場合、受注ヘッダの拠点が古いので、顧客情報は配送先から見るため、配送LT（倉庫・拠点）でも顧客サイトから顧客を取得
+          ,xxcmn_cust_acct_sites2_v      xcasv
+-- 2009/04/16 H.Itou Add End
           ,(SELECT DISTINCT
                 lt.code_class1                  code_class1,
                                                               --コード区分1（倉庫・拠点）
@@ -1287,9 +1305,11 @@ AS
          )                           xdl    --配送L/Tアドオンマスタ（倉庫・拠点）
        ';
     cv_main_sql5                   CONSTANT VARCHAR2(32000) :=
-     ' AND   xcav.party_number            = xoha.head_sales_branch
+-- 2009/04/16 H.Itou Del Start 本番障害#1398 顧客付け替え発生の場合、受注ヘッダの拠点が古いので、顧客情報は配送先から見るため、配送LT（倉庫・拠点）でも顧客サイトから顧客を取得
+--     ' AND   xcav.party_number            = xoha.head_sales_branch
+-- 2009/04/16 H.Itou Del End
                    -- パーティマスタ(管轄拠点)．組織番号＝受注ヘッダアドオン．管轄拠点かつ
-       AND   xcav.start_date_active       <= NVL(xoha.shipped_date,xoha.schedule_ship_date)
+     ' AND   xcav.start_date_active       <= NVL(xoha.shipped_date,xoha.schedule_ship_date)
                    -- パーティアドオンマスタ(管轄拠点)．適用開始日≦パラメータ. 出庫日かつ
        AND   xcav.end_date_active         >= NVL(xoha.shipped_date,xoha.schedule_ship_date)
                                 -- パーティアドオンマスタ.適用終了日≧パラメータ. 出庫日かつ
@@ -1305,11 +1325,29 @@ AS
                                 -- 顧客マスタ．リーフ拠点カテゴリ＝パラメータ．拠点カテゴリ
        AND   xdl.entering_despatching_code1  = xoha.deliver_from
                                                            -- 受注ヘッダアドオン.出荷元保管場所
-       AND   xdl.entering_despatching_code2  = xoha.head_sales_branch
-                                                           -- 受注ヘッダアドオン.拠点
+-- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客付け替えが発生した場合、受注ヘッダの拠点は古いので、顧客サイトを見る
+--       AND   xdl.entering_despatching_code2  = xoha.head_sales_branch
+--                                                           -- 受注ヘッダアドオン.拠点
+       AND   xdl.entering_despatching_code2  = xcasv.base_code
+                                                           -- 顧客サイト.拠点コード
+-- 2009/04/16 H.Itou Mod End
+-- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客付け替え発生の場合、受注ヘッダの拠点が古いので、顧客情報は配送先から見るため、配送LT（倉庫・拠点）でも顧客サイトから顧客を取得
+       AND   xcasv.party_id                   = xcav.party_id
+       AND   xoha.deliver_to                  = xcasv.party_site_number  -- パーティサイト番号 = 受注ヘッダ.配送先
+       AND   xcasv.party_site_status          =  ''A''                   -- ステータス：有効な顧客
+       AND   xcasv.start_date_active         <= xoha.schedule_ship_date
+                                                           -- 受注ヘッダアドオン.出荷予定日
+       AND  (xcasv.end_date_active           IS NULL
+         OR  xcasv.end_date_active           >= xoha.schedule_ship_date)
+                                                          -- 受注ヘッダアドオン.出荷予定日
+-- 2009/04/16 H.Itou Mod End
        ';
      cv_main_sql6                   CONSTANT VARCHAR2(32000) :=
      ' AND   xcav.account_status            =  :gv_status_A--（有効）
+-- 2009/04/16 H.Itou Add Start 本番障害#1398 顧客付け替え発生の場合、受注ヘッダの拠点が古いので、顧客情報は配送先から見るため、配送LT（倉庫・拠点）でも顧客サイトから顧客を取得
+       AND   xcasv.cust_acct_site_status    =  :gv_status_A--（有効）
+       AND   xcasv.cust_site_uses_status    =  :gv_status_A--（有効）
+-- 2009/04/16 H.Itou Add End
        AND   xottv.start_date_active        <= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)
        AND  (xottv.end_date_active          IS NULL
        OR    xottv.end_date_active          >= NVL(:id_schedule_ship_date,xoha.schedule_ship_date))
@@ -1894,6 +1932,10 @@ AS
             iv_sales_base_category,
             in_lead_time_day,
             gv_status_A,
+-- 2009/04/16 H.Itou Add Start 本番障害#1398
+            gv_status_A,
+            gv_status_A,
+-- 2009/04/16 H.Itou Add End
             id_schedule_ship_date,
             id_schedule_ship_date,
             cv_deliver_from_4,
@@ -1987,6 +2029,10 @@ AS
             in_lead_time_day,
 -- 2008/12/23 addd end ver1.14 M_Uehara
             gv_status_A,
+-- 2009/04/16 H.Itou Add Start 本番障害#1398
+            gv_status_A,
+            gv_status_A,
+-- 2009/04/16 H.Itou Add End
             id_schedule_ship_date,
             id_schedule_ship_date,
             cv_deliver_from_4,
