@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * -------------------------------------------------------------------------------------
  * 注意事項！    HHT(xxwsh930002c)をどのように作ったか
@@ -79,6 +79,7 @@ AS
  *  2008/06/24    1.5  Oracle 宮田 隆史  ST不具合#230対応(2)
  *  2008/06/27    1.6  Oracle 宮田 隆史  ST不具合#299対応
  *  2008/07/01    1.7  Oracle 宮田 隆史  ST不具合#333対応
+ *  2008/07/02    1.8  Oracle 宮田 隆史  ST不具合#365対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3509,6 +3510,7 @@ AS
     lt_expiration_day       ic_lots_mst.attribute3%TYPE;          --IF_L.賞味期限
     lt_original_sign        ic_lots_mst.attribute2%TYPE;          --IF_L.固有記号
     lt_lot_no               ic_lots_mst.lot_no%TYPE;              --IF_L.ロットNo
+    lt_lot_id               ic_lots_mst.lot_id%TYPE;              --IF_L.ロットid
     lt_search_date          DATE;                                 --IF_H.出荷日or着荷日
 --
     ln_count                NUMBER;                               -- ロットマスタデータ件数格納 
@@ -3786,10 +3788,12 @@ AS
                   ,ilm.attribute3  expiration_day  -- 賞味期限
                   ,ilm.attribute2  original_sign   -- 固有記号
                   ,ilm.lot_no      lot_no          -- ロットNo 
+                  ,ilm.lot_id      lot_id          -- ロットID
             INTO   lt_product_date
                   ,lt_expiration_day
                   ,lt_original_sign
                   ,lt_lot_no
+                  ,lt_lot_id
             FROM   ic_lots_mst ilm,
                    xxcmn_item_mst2_v ximv
             WHERE  ximv.item_id   = ilm.item_id                                -- 品目id
@@ -3815,6 +3819,7 @@ AS
 --
               -- 品目区分＝製品の場合、ロットNoを取得
               gr_interface_info_rec(i).lot_no := lt_lot_no ;  -- ロットNo
+              gr_interface_info_rec(i).lot_id := lt_lot_id ;  -- ロットID
 --
             ELSE
 --
@@ -3822,6 +3827,7 @@ AS
               gr_interface_info_rec(i).designated_production_date := FND_DATE.STRING_TO_DATE(lt_product_date,'YYYY/MM/DD') ;    -- 製造日
               gr_interface_info_rec(i).use_by_date                := FND_DATE.STRING_TO_DATE(lt_expiration_day,'YYYY/MM/DD') ;  -- 賞味期限
               gr_interface_info_rec(i).original_character         := lt_original_sign ;            -- 固有記号
+              gr_interface_info_rec(i).lot_id                     := lt_lot_id ;                   -- ロットID
 --
             END IF;
 --
@@ -3836,15 +3842,15 @@ AS
 --
         ln_err_flg := 0;
 --
-        IF ((lt_shipped_date > gd_sysdate) AND (lt_arrival_date > gd_sysdate)) THEN
+        IF ((TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) AND (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate))) THEN
 --
           lv_dterr_flg := gv_date_chk_3;
 --
-        ELSIF (lt_shipped_date > gd_sysdate) THEN
+        ELSIF (TRUNC(lt_shipped_date) > TRUNC(gd_sysdate)) THEN
 --
           lv_dterr_flg := gv_date_chk_1;
 --
-        ELSIF (lt_arrival_date > gd_sysdate) THEN
+        ELSIF (TRUNC(lt_arrival_date) > TRUNC(gd_sysdate)) THEN
 --
           lv_dterr_flg := gv_date_chk_2;
 --
@@ -9671,6 +9677,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_mov_lot_seq       NUMBER;  --移動ロット詳細(アドオン).ロット詳細IDseq
+    ln_order_header_id        xxwsh_order_headers_all.order_header_id%TYPE;  -- 訂正前の受注ヘッダアドオンID
+    lr_movlot_detail_ins      movlot_detail_rec;
+    lr_movlot_detail_ins_ini  movlot_detail_rec;
 --
     -- *** ローカル・カーソル ***
 --
@@ -9689,8 +9698,128 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
---  初期化
+    -- 訂正の場合、訂正前の情報から新規指示レコードを作成する。
+    IF (iv_cnt_kbn = gv_cnt_kbn_4) THEN
+--
+      -- 初期化
+      lr_movlot_detail_ins := lr_movlot_detail_ins_ini;
+--
+      BEGIN 
+--
+        -- 実績計上済みのMAXヘッダID取得
+        SELECT    MAX(xoha.order_header_id) order_header_id
+        INTO      ln_order_header_id       -- ヘッダID
+        FROM      xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
+        WHERE     NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null)
+        AND       xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
+        AND       actual_confirm_class = gv_yesno_y
+        GROUP BY  xoha.delivery_no                 --配送No
+                 ,xoha.order_source_ref            --受注ソース参照
+        ;
+--
+        -- 訂正前の移動ロット情報（指示）を取得する。
+        SELECT  xmld.mov_lot_dtl_id               -- ロット詳細ID
+              , xmld.mov_line_id                  -- 明細ID
+              , xmld.document_type_code           -- 文書タイプ
+              , xmld.record_type_code             -- レコードタイプ
+              , xmld.item_id                      -- opm品目ID
+              , xmld.item_code                    -- 品目
+              , xmld.lot_id                       -- ロットID
+              , xmld.lot_no                       -- ロットNO
+              , xmld.actual_date                  -- 実績日
+              , xmld.actual_quantity              -- 実績数量
+              , xmld.automanual_reserve_class     -- 自動手動引当区分
+        INTO  lr_movlot_detail_ins
+        FROM    xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
+              , xxwsh_order_lines_all     xola    -- 受注明細(アドオン)
+              , xxinv_mov_lot_details     xmld    -- 移動ロット詳細(アドオン)
+        WHERE   xoha.order_header_id      = ln_order_header_id
+        AND     xoha.order_header_id      = xola.order_header_id
+        AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))
+        AND     xola.order_line_id        = xmld.mov_line_id
+        AND     xmld.document_type_code  IN (gv_document_type_10,gv_document_type_30)
+        AND     xmld.record_type_code     = gv_record_type_10
+        AND     xmld.item_id              = gr_interface_info_rec(in_idx).item_id
+        AND     NVL(xmld.lot_no,'X')      = NVL(gr_interface_info_rec(in_idx).lot_no,'X')
+        ;
+--
+      EXCEPTION
+--
+        WHEN NO_DATA_FOUND THEN
+        lr_movlot_detail_ins.mov_lot_dtl_id := NULL;
+--
+      END;
+--
+      -- 訂正前の移動ロット詳細があった場合
+      IF (lr_movlot_detail_ins.mov_lot_dtl_id IS NOT NULL) THEN
+--
+        -- ロット詳細ID取得
+        SELECT xxinv_mov_lot_s1.nextval
+        INTO   ln_mov_lot_seq
+        FROM   dual
+        ;
+--
+        lr_movlot_detail_ins.mov_lot_dtl_id     := ln_mov_lot_seq;
+--
+        lr_movlot_detail_ins.mov_line_id        := gr_order_l_rec.order_line_id;
+--
+      -- 訂正後の移動ロット情報（指示）を作成する。
+      -- **************************************************
+      -- *** 移動ロット詳細(アドオン)登録を行う
+      -- **************************************************
+        INSERT INTO xxinv_mov_lot_details                   -- 移動ロット詳細(アドオン)
+        (  mov_lot_dtl_id                                   -- ロット詳細ID
+          ,mov_line_id                                      -- 明細ID
+          ,document_type_code                               -- 文書タイプ
+          ,record_type_code                                 -- レコードタイプ
+          ,item_id                                          -- opm品目ID
+          ,item_code                                        -- 品目
+          ,lot_id                                           -- ロットID
+          ,lot_no                                           -- ロットNO
+          ,actual_date                                      -- 実績日
+          ,actual_quantity                                  -- 実績数量
+          ,created_by                                       -- 作成者
+          ,creation_date                                    -- 作成日
+          ,last_updated_by                                  -- 最終更新者
+          ,last_update_date                                 -- 最終更新日
+          ,last_update_login                                -- 最終更新ログイン
+          ,request_id                                       -- 要求ID
+          ,program_application_id                           -- アプリケーションID
+          ,program_id                                       -- コンカレント・プログラムID
+          ,program_update_date                              -- プログラム更新日
+        )
+        VALUES
+        (  lr_movlot_detail_ins.mov_lot_dtl_id              -- ロット詳細ID
+          ,lr_movlot_detail_ins.mov_line_id                 -- 明細ID
+          ,lr_movlot_detail_ins.document_type_code          -- 文書タイプ
+          ,lr_movlot_detail_ins.record_type_code            -- レコードタイプ
+          ,lr_movlot_detail_ins.item_id                     -- opm品目id
+          ,lr_movlot_detail_ins.item_code                   -- 品目
+          ,lr_movlot_detail_ins.lot_id                      -- ロットID
+          ,lr_movlot_detail_ins.lot_no                      -- ロットno
+          ,lr_movlot_detail_ins.actual_date                 -- 実績日
+          ,lr_movlot_detail_ins.actual_quantity             -- 実績数量
+          ,gt_user_id                                       -- 作成者
+          ,gt_sysdate                                       -- 作成日
+          ,gt_user_id                                       -- 最終更新者
+          ,gt_sysdate                                       -- 最終更新日
+          ,gt_login_id                                      -- 最終更新ログイン
+          ,gt_conc_request_id                               -- 要求ID
+          ,gt_prog_appl_id                                  -- アプリケーションID
+          ,gt_conc_program_id                               -- コンカレント・プログラムID
+          ,gt_sysdate                                       -- プログラム更新日
+        );
+--
+      END IF;
+--
+    END IF; 
+--
+    --  初期化
     gr_movlot_detail_rec := gr_movlot_detail_ini;
+--
+    --
+    -- 新規移動ロット詳細作成
+    --
 --
     -- ロット詳細ID
     SELECT xxinv_mov_lot_s1.nextval

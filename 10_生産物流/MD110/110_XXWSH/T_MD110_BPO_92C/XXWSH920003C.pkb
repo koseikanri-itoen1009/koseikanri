@@ -40,6 +40,10 @@ AS
  *  2008/04/23   1.0   Oracle 土田 茂   初回作成
  *  2008/06/11   1.1   Oracle 中田 準   デバッグ出力制御対応。エラーハンドリング不備の修正。
  *                                      重量容積算出/積載効率算出処理をプロシージャ化(C-15)。
+ *  2008/07/02   1.2   Oracle 中田 準   ST不具合No368対応
+ *                                      在庫補充ルールが発注で、補充先の直送倉庫区分が直送の場合のみ
+ *                                      配送先を設定するように修正。
+ *                                      その他の場合にはNULLを設定。(配送先毎の集約を行わないため。)
  *
  *****************************************************************************************/
 --
@@ -3497,11 +3501,29 @@ debug_log(FND_FILE.LOG,'  依頼No = ' || gr_deliv_data_tbl(ln_loop_cnt).request_n
            OR
            (gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule = gv_cons_rule_order))
       THEN
+--
         ln_cnt := ln_cnt + 1;
+--
         gt_s_deliver_to_id(ln_cnt) :=
           gr_deliv_data_tbl(ln_loop_cnt).deliver_to_id;              -- 出荷先ID
-        gt_s_deliver_to(ln_cnt) :=
-          gr_deliv_data_tbl(ln_loop_cnt).deliver_to;                 -- 出荷先コード
+--
+-- 2008/07/02 MOD START NAKADA  ST不具合No368対応
+        -- 在庫補充ルールが発注で、かつ、直送倉庫区分が'直送'の場合は出荷先をセットする。
+        IF (gr_deliv_data_tbl(ln_loop_cnt).stock_rep_rule = gv_cons_rule_order
+            AND gr_deliv_data_tbl(ln_loop_cnt).drop_ship_wsh_div = gv_cons_ds_type_d) THEN
+--
+          gt_s_deliver_to(ln_cnt) :=
+            gr_deliv_data_tbl(ln_loop_cnt).deliver_to;               -- 出荷先コード
+--
+        -- その他の場合は出荷先をセットしない。(出荷先ごとの集約を行わないため)
+        ELSE
+--
+          gt_s_deliver_to(ln_cnt) := NULL;                           -- 出荷先コード
+--
+        END IF;
+--
+-- 2008/07/02 MOD END   NAKADA
+--
         gt_s_request_no(ln_cnt) :=
           gr_deliv_data_tbl(ln_loop_cnt).request_no;                 -- 依頼No
         gt_s_deliver_from_id(ln_cnt) :=
@@ -3884,7 +3906,9 @@ debug_log(FND_FILE.LOG,'(C-7)' || cv_prg_name || ' End･････');
         xssrt.stock_rep_rule,                -- 在庫補充ルール
         xssrt.stock_rep_origin,              -- 在庫補充元
         xssrt.deliver_from,                  -- 出荷元コード
-        xssrt.drop_ship_wsh_div,             -- 直送区分
+-- 2008/07/02 MOD START NAKADA  ST不具合No368対応
+        NVL(xssrt.drop_ship_wsh_div,gv_cons_ds_type_n),  -- 直送区分
+-- 2008/07/02 MOD START NAKADA
         xssrt.deliver_to,                    -- 出荷先コード
         xssrt.prod_class_code,               -- 商品区分
         xssrt.weight_capacity_class,         -- 重量容積区分
