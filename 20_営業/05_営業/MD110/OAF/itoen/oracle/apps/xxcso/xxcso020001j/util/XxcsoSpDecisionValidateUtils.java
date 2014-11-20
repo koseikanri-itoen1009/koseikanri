@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.0
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2009-05-19 1.5  SCS柳平直人  [ST障害T1_1058]契約先validate処理統一対応
                                                可視性のためT1_0225対応物理削除
 * 2009-06-08 1.6  SCS柳平直人  [ST障害T1_1307]半角カナチェックメッセージ修正
+* 2009-08-06 1.7  SCS小川浩    [SCS障害0000887]回送先チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -3197,6 +3198,40 @@ public class XxcsoSpDecisionValidateUtils
     {
       return errorList;
     }
+
+// 2009-08-06 [障害0000887] Add Start
+    if ( currentAuthLevel != null )
+    {
+      sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.first();
+      boolean checkFlag = false;
+
+      while ( sendRow != null )
+      {
+        Number checkAuthNumber = sendRow.getApprAuthLevelNumber();
+        if ( checkAuthNumber.compareTo(currentAuthLevel) == 0 )
+        {
+          checkFlag = true;
+        }
+
+        if ( checkFlag )
+        {
+          String workRequestType = sendRow.getWorkRequestType();
+          if ( XxcsoSpDecisionConstants.REQ_APPROVE.equals(workRequestType) )
+          {
+            int checkValue = checkAuthNumber.compareTo(lastApprAuthLevel);
+            if ( checkValue > 0 )
+            {
+              lastApprAuthLevel = checkAuthNumber;
+            }
+
+            break;
+          }
+        }
+
+        sendRow = (XxcsoSpDecisionSendFullVORowImpl)sendVo.next();
+      }
+    }
+// 2009-08-06 [障害0000887] Add End
 
     XxcsoUtils.debug(
       txn, "last apprAuthLevel = " + lastApprAuthLevel.stringValue()
