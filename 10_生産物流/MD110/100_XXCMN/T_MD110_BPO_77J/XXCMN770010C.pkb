@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/12/13    1.19  T.Ohashi         本番#580対応
  *  2008/12/14    1.20  N.Yoshida        本番障害669対応
  *  2008/12/15    1.21  N.Yoshida        本番障害727対応
+ *  2008/12/22    1.22  N.Yoshida        本番障害825、828対応
  *
  *****************************************************************************************/
 --
@@ -3043,7 +3044,10 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
 -- 2008/12/11 v1.18 UPDATE START
 --    || '        ,ABS(itc.trans_qty) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
-    || '        ,NVL(itc.trans_qty, 0)          trans_qty'  -- 数量
+-- 2008/12/22 v1.22 UPDATE START
+--    || '        ,NVL(itc.trans_qty, 0)          trans_qty'  -- 数量
+    || '        ,NVL(itc.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)  trans_qty'  -- 数量
+-- 2008/12/22 v1.22 UPDATE START
 -- 2008/12/11 v1.18 UPDATE END
     || '  FROM   ic_tran_cmp               itc'
     || '        ,ic_adjs_jnl               iaj'
@@ -5629,6 +5633,13 @@ AS
     ln_amt_out              xxcmn_lot_cost.unit_ploce%TYPE ;                   -- 金額（払出）
     ln_position             NUMBER        DEFAULT 0 ;                          -- ポジション
     ln_instr                NUMBER        DEFAULT 0 ;                          -- 項目判定切替位置
+-- 2008/12/22 v1.22 yoshida update start
+    ln_unit_price_cost      NUMBER        DEFAULT 0;
+    ln_raw_material_cost    NUMBER        DEFAULT 0;
+    ln_agein_cost           NUMBER        DEFAULT 0;
+    ln_material_cost        NUMBER        DEFAULT 0;
+    ln_pack_cost            NUMBER        DEFAULT 0;
+-- 2008/12/22 v1.22 yoshida update end
 --
     -- *** ローカル・例外処理 ***
     no_data_expt            EXCEPTION ;             -- 取得レコードなし
@@ -6017,6 +6028,18 @@ AS
       END IF ;
 --
       ln_quantity := ln_quantity + NVL(gt_main_data(i).trans_qty, 0);
+-- 2008/12/22 v1.22 yoshida update start
+      ln_unit_price_cost   := ln_unit_price_cost + ROUND(NVL(gt_main_data(i).unit_price, 0)
+                                                           * NVL(gt_main_data(i).trans_qty, 0));
+      ln_raw_material_cost := ln_raw_material_cost + ROUND(NVL(gt_main_data(i).raw_material_cost, 0)
+                                                           * NVL(gt_main_data(i).trans_qty, 0));
+      ln_agein_cost        := ln_agein_cost + ROUND(NVL(gt_main_data(i).agein_cost, 0)
+                                                           * NVL(gt_main_data(i).trans_qty, 0));
+      ln_material_cost     := ln_material_cost + ROUND(NVL(gt_main_data(i).material_cost, 0)
+                                                           * NVL(gt_main_data(i).trans_qty, 0));
+      ln_pack_cost         := ln_pack_cost + ROUND(NVL(gt_main_data(i).pack_cost, 0)
+                                                           * NVL(gt_main_data(i).trans_qty, 0));
+-- 2008/12/22 v1.22 yoshida update end
 --
       IF (   (gt_main_data.COUNT = i)
           OR (NVL(gt_main_data(i+1).item_code, lc_break_null) <> lv_item_code)) THEN
@@ -6058,8 +6081,9 @@ AS
         -- その他経費
         prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost * ln_quantity,
                       gn_qty_dec));*/
+-- 2008/12/22 v1.22 yoshida update start
         -- 標準原価
-        prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price * ln_quantity));
+        /*prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price * ln_quantity));
         -- 原価費
         prc_set_xml('Z','raw_material_cost',round(gt_main_data(i).raw_material_cost * ln_quantity));
         -- 再製費
@@ -6076,9 +6100,44 @@ AS
                                                - round(gt_main_data(i).agein_cost * ln_quantity)
                                                - round(gt_main_data(i).material_cost * ln_quantity)
                                                - round(gt_main_data(i).pack_cost * ln_quantity)));
+        -- 標準原価
+        /*prc_set_xml('Z','standard_cost', round(gt_main_data(i).unit_price * ln_quantity));
+        -- 原価費
+        prc_set_xml('Z','raw_material_cost',round(gt_main_data(i).raw_material_cost * ln_quantity));
+        -- 再製費
+        prc_set_xml('Z','agein_cost', round(gt_main_data(i).agein_cost * ln_quantity));
+        -- 資材費
+        prc_set_xml('Z','material_cost', round(gt_main_data(i).material_cost * ln_quantity));
+        -- 包装費
+        prc_set_xml('Z','pack_cost', round(gt_main_data(i).pack_cost * ln_quantity));
+        -- その他経費
+-- 2008/12/06 v1.15 miyata update start
+--        prc_set_xml('Z','other_expense_cost',round(gt_main_data(i).other_expense_cost * ln_quantity));
+        prc_set_xml('Z','other_expense_cost', ( round(gt_main_data(i).unit_price * ln_quantity)
+                                               - round(gt_main_data(i).raw_material_cost * ln_quantity)
+                                               - round(gt_main_data(i).agein_cost * ln_quantity)
+                                               - round(gt_main_data(i).material_cost * ln_quantity)
+                                               - round(gt_main_data(i).pack_cost * ln_quantity)));*/
+        -- 標準原価
+        prc_set_xml('Z','standard_cost', ln_unit_price_cost);
+        -- 原価費
+        prc_set_xml('Z','raw_material_cost',ln_raw_material_cost);
+        -- 再製費
+        prc_set_xml('Z','agein_cost', ln_agein_cost);
+        -- 資材費
+        prc_set_xml('Z','material_cost', ln_material_cost);
+        -- 包装費
+        prc_set_xml('Z','pack_cost', ln_pack_cost);
+        -- その他経費
+        prc_set_xml('Z','other_expense_cost',  ln_unit_price_cost
+                                             - ln_raw_material_cost
+                                             - ln_agein_cost
+                                             - ln_material_cost
+                                             - ln_pack_cost);
 -- 2008/12/06 v1.15 miyata update end
 -- 2008/12/03 v1.14 yoshida update end
 -- 2008/11/29 v1.13 yoshida update end
+-- 2008/12/22 v1.22 yoshida update end
         -- 品目コードＧ終了タグ
         prc_set_xml('T','/g_item');
 --
@@ -6088,6 +6147,13 @@ AS
 --
         -- 集計値初期化
         ln_quantity           := 0;
+-- 2008/12/06 v1.15 miyata update start
+        ln_unit_price_cost    := 0;
+        ln_raw_material_cost  := 0;
+        ln_agein_cost         := 0;
+        ln_material_cost      := 0;
+        ln_pack_cost          := 0;
+-- 2008/12/06 v1.15 miyata update end
       END IF;
 --
     END LOOP main_data_loop ;
