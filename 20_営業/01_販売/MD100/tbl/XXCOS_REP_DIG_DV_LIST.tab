@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_DIG_DV_LIST
  * Description : 消化VD別掛率チェックリスト帳票ワークテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Kin      新規作成
  *  2009/09/25    1.1   SCS N.Maeda    金額項目の桁数修正
+ *  2011/04/14    1.2   SCS Oukou      消化計算締日の追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DIG_DV_LIST
@@ -39,6 +40,9 @@ CREATE TABLE XXCOS.XXCOS_REP_DIG_DV_LIST
     PROGRAM_APPLICATION_ID        NUMBER(15,0),                      --コンカレント・プログラム・アプリケーションI
     PROGRAM_ID                    NUMBER(15,0),                      --コンカレント・プログラムID
     PROGRAM_UPDATE_DATE           DATE,                              --プログラム更新日
+/* 2011/04/14 Ver1.2 ADD Start */
+    DIGESTION_DUE_DATE            DATE,                              --消化計算締日
+/* 2011/04/14 Ver1.2 ADD End   */
     CONSTRAINT XXCOS_REP_DIG_DV_LIST_PK PRIMARY KEY (RECORD_ID)
     USING INDEX TABLESPACE xxidx2
 );
@@ -67,5 +71,8 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.REQUEST_ID                  IS '要
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.PROGRAM_APPLICATION_ID      IS 'コンカレント・プログラム・アプリケーションID';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.PROGRAM_ID                  IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.PROGRAM_UPDATE_DATE         IS 'プログラム更新日';
+/* 2011/04/14 Ver1.2 ADD Start */
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DIG_DV_LIST.DIGESTION_DUE_DATE          IS '消化計算締日';
+/* 2011/04/14 Ver1.2 ADD End   */
 --
 COMMENT ON TABLE  XXCOS.XXCOS_REP_DIG_DV_LIST                             IS '消化VD別掛率チェックリスト帳票ワークテーブル';
