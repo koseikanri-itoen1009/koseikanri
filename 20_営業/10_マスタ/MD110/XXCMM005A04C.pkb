@@ -32,6 +32,7 @@ AS
  *  2009/05/21    1.5   Yutaka.Kuboshima 障害T1_1129の対応
  *  2009/06/05    1.6   Yutaka.Kuboshima 障害T1_1320の対応
  *  2009/06/09    1.7   Yutaka.Kuboshima 障害T1_1320の対応
+ *  2009/09/02    1.8   Yutaka.Kuboshima 障害0001222の対応
  *
  *****************************************************************************************/
 --
@@ -667,7 +668,12 @@ AS
             ,hp.duns_number_c          customer_status        -- 顧客ステータス
             ,hp.last_update_date       hp_last_update_date    -- 最終更新日
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
-      FROM   xxcmm_hierarchy_dept_v   xhdv  -- (TABLE)部門階層ビュー
+--
+-- 2009/09/02 Ver1.8 modify start by Yutaka.Kuboshima
+--      FROM   xxcmm_hierarchy_dept_v   xhdv  -- (TABLE)部門階層ビュー
+      FROM   xxcmm_hierarchy_dept_all_v xhdv  -- (TABLE)全部門階層ビュー
+-- 2009/09/02 Ver1.8 modify end by Yutaka.Kuboshima
+--
             ,hz_cust_accounts         hzac  -- (TABLE)顧客マスタ
             ,xxcmn_parties            xpty  -- (TABLE)パーティアドオンマスタ
 -- 2009/06/05 Ver1.6 add start by Yutaka.Kuboshima
