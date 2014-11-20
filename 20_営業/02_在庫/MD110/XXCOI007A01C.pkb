@@ -1,0 +1,1589 @@
+CREATE OR REPLACE PACKAGE BODY XXCOI007A01C
+AS
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Package Name     : XXCOI007A01C(body)
+ * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
+ * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
+ * Version          : 1.0
+ *
+ * Program List
+ * ---------------------- ----------------------------------------------------------
+ *  Name                   Description
+ * ---------------------- ----------------------------------------------------------
+ *  init                   初期処理 (A-1)
+ *  get_mtl_txn_acct       資材配賦情報の抽出 (A-2)
+ *  del_xwcv_last_data     原価差額ワークテーブルの前回データ削除 (A-3)
+ *  get_cost_info          原価情報取得処理 (A-4)
+ *  ins_xwcv               原価差額ワークテーブルの作成 (A-5)
+ *  ins_gl_if              原価差額情報GL-IF登録
+ *                         - 原価差額情報の抽出 (A-6)
+ *                         - 会計期間チェック処理 (A-7)
+ *                         - GLインターフェース格納 (A-8)
+ *  submain                メイン処理プロシージャ
+ *  main                   コンカレント実行ファイル登録プロシージャ
+ *                         終了処理 (A-9)
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2009/01/14    1.0   T.Kojima        新規作成
+ *
+ *****************************************************************************************/
+--
+--#######################  固定グローバル定数宣言部 START   #######################
+--
+  --ステータス・コード
+  cv_status_normal          CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_normal; --正常:0
+  cv_status_warn            CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_warn;   --警告:1
+  cv_status_error           CONSTANT VARCHAR2(1) := xxccp_common_pkg.set_status_error;  --異常:2
+  --WHOカラム
+  cn_created_by             CONSTANT NUMBER      := fnd_global.user_id;         --CREATED_BY
+  cd_creation_date          CONSTANT DATE        := SYSDATE;                    --CREATION_DATE
+  cn_last_updated_by        CONSTANT NUMBER      := fnd_global.user_id;         --LAST_UPDATED_BY
+  cd_last_update_date       CONSTANT DATE        := SYSDATE;                    --LAST_UPDATE_DATE
+  cn_last_update_login      CONSTANT NUMBER      := fnd_global.login_id;        --LAST_UPDATE_LOGIN
+  cn_request_id             CONSTANT NUMBER      := fnd_global.conc_request_id; --REQUEST_ID
+  cn_program_application_id CONSTANT NUMBER      := fnd_global.prog_appl_id;    --PROGRAM_APPLICATION_ID
+  cn_program_id             CONSTANT NUMBER      := fnd_global.conc_program_id; --PROGRAM_ID
+  cd_program_update_date    CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
+--
+  cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
+  cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+--
+--################################  固定部 END   ##################################
+--
+--#######################  固定グローバル変数宣言部 START   #######################
+--
+  gv_out_msg       VARCHAR2(2000);
+  gv_sep_msg       VARCHAR2(2000);
+  gv_exec_user     VARCHAR2(100);
+  gv_conc_name     VARCHAR2(30);
+  gv_conc_status   VARCHAR2(30);
+  gn_target_cnt    NUMBER;                    -- 対象件数
+  gn_normal_cnt    NUMBER;                    -- 成功件数
+  gn_error_cnt     NUMBER;                    -- エラー件数
+--
+--################################  固定部 END   ##################################
+--
+--##########################  固定共通例外宣言部 START  ###########################
+--
+  --*** 処理部共通例外 ***
+  global_process_expt       EXCEPTION;
+  --*** 共通関数例外 ***
+  global_api_expt           EXCEPTION;
+  --*** 共通関数OTHERS例外 ***
+  global_api_others_expt    EXCEPTION;
+--
+  PRAGMA EXCEPTION_INIT(global_api_others_expt,-20000);
+--
+--################################  固定部 END   ##################################
+--
+  -- ===============================
+  -- ユーザー定義例外
+  -- ===============================
+  profile_expt        EXCEPTION;    -- プロファイル値取得例外
+  lock_expt           EXCEPTION;    -- ロック処理例外
+  PRAGMA EXCEPTION_INIT( lock_expt, -54 );
+--
+  -- ===============================
+  -- ユーザー定義グローバル定数
+  -- ===============================
+  cv_pkg_name                CONSTANT VARCHAR2(100) := 'XXCOI007A01C';     -- パッケージ名
+  cv_appl_short_name_xxccp   CONSTANT VARCHAR2(10)  := 'XXCCP';            -- アドオン：共通・IF領域
+  cv_appl_short_name_xxcoi   CONSTANT VARCHAR2(10)  := 'XXCOI';            -- アドオン：在庫領域
+  cv_appl_short_name_sqlgl   CONSTANT VARCHAR2(10)  := 'SQLGL';            -- General Ledger
+  cv_normal_record           CONSTANT VARCHAR2(1)   := 'Y';                -- 通常レコード
+  cv_error_record            CONSTANT VARCHAR2(1)   := 'N';                -- エラーレコード
+
+  -- メッセージ
+  cv_msg_no_prm              CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなし
+  cv_msg_profile_get_err     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00032'; -- プロファイル値取得エラー
+  cv_msg_group_id_get_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10320'; -- グループID取得エラー
+  cv_msg_gl_batch_id_get_err CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10063'; -- GLバッチID取得エラーメッセージ
+  cv_msg_no_data             CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008'; -- 対象データ無しメッセージ
+  cv_msg_acct_tbl_chk_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10123'; -- 勘定科目テーブルチェックエラーメッセージ
+  cv_msg_std_cost_get_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10124'; -- 標準原価取得エラーメッセージ
+  cv_msg_oprtn_cost_get_err  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10125'; -- 営業原価取得エラーメッセージ
+  cv_msg_acctg_period_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10319'; -- 会計期間エラーメッセージ
+  cv_msg_lock_err            CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10064'; -- ロックエラーメッセージ原価差額ワークテーブル
+  cv_msg_unit_mtl_txn_acct   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10339'; -- 資材配賦情報単位件数メッセージ
+  cv_msg_unit_cost_sum       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10340'; -- 原価差額集約単位件数メッセージ
+--
+  -- トークン
+  cv_tkn_profile             CONSTANT VARCHAR2(25)  := 'PRO_TOK';          -- プロファイル名
+  cv_tkn_source              CONSTANT VARCHAR2(25)  := 'SOURCE';           -- 仕訳ソース名
+  cv_tkn_account_id          CONSTANT VARCHAR2(25)  := 'ACCOUNT_ID';       -- 勘定科目ID
+  cv_tkn_account             CONSTANT VARCHAR2(25)  := 'ACCOUNT';          -- 勘定科目
+  cv_tkn_item_code           CONSTANT VARCHAR2(25)  := 'ITEM_CODE';        -- 品目コード
+  cv_tkn_dept                CONSTANT VARCHAR2(25)  := 'DEPT';             -- 部門
+  cv_tkn_period              CONSTANT VARCHAR2(25)  := 'PERIOD';           -- 会計期間
+
+--
+  -- ===============================
+  -- ユーザー定義グローバル型
+  -- ===============================
+--
+  -- 資材配賦情報格納用
+  TYPE g_mtl_txn_acct_rtype IS RECORD(
+      mta_transaction_id         mtl_transaction_accounts.transaction_id%TYPE         --  1.在庫取引ID
+    , gcc_dept_code              gl_code_combinations.segment2%TYPE                   --  2.部門コード
+    , xwcv_adj_dept_code         gl_code_combinations.segment2%TYPE                   --  3.調整部門コード
+    , mta_account_id             mtl_transaction_accounts.reference_account%TYPE      --  4.勘定科目ID
+    , gcc_account_code           gl_code_combinations.segment3%TYPE                   --  5.勘定科目コード
+    , mta_inventory_item_id      mtl_transaction_accounts.inventory_item_id%TYPE      --  6.品目ID
+    , msib_item_code             mtl_system_items_b.segment1%TYPE                     --  7.品目コード
+    , mta_transaction_date       mtl_transaction_accounts.transaction_date%TYPE       --  8.取引日
+    , mta_transaction_value      mtl_transaction_accounts.transaction_value%TYPE      --  9.取引金額
+    , mta_primary_quantity       mtl_transaction_accounts.primary_quantity%TYPE       -- 10.取引数量
+    , mta_base_transaction_value mtl_transaction_accounts.base_transaction_value%TYPE -- 11.基準単位金額
+    , mta_organization_id        mtl_transaction_accounts.organization_id%TYPE        -- 12.組織ID
+    , mta_gl_batch_id            mtl_transaction_accounts.gl_batch_id%TYPE            -- 13.GLバッチID
+  );
+  TYPE g_mtl_txn_acct_ttype IS TABLE OF g_mtl_txn_acct_rtype INDEX BY BINARY_INTEGER;
+--
+  -- ===============================
+  -- ユーザー定義グローバル変数
+  -- ===============================
+  gn_target_sum_cnt              NUMBER;                                              -- 対象件数  (原価差額集約単位)
+  gn_normal_sum_cnt              NUMBER;                                              -- 成功件数  (原価差額集約単位)
+  gn_error_sum_cnt               NUMBER;                                              -- エラー件数(原価差額集約単位)
+  gt_gl_set_of_bks_id            gl_interface.set_of_books_id%TYPE;                   -- 会計帳簿ID
+  gt_gl_set_of_bks_name          gl_interface.context%TYPE;                           -- 会計帳簿名
+  gt_aff1_company_code           gl_interface.segment1%TYPE;                          -- 会社コード
+  gt_aff2_adj_dept_code          gl_interface.segment2%TYPE;                          -- 調整部門コード
+  gt_aff3_shizuoka_factory       gl_interface.segment3%TYPE;                          -- 勘定科目_静岡工場勘定
+  gt_aff4_dummy                  gl_interface.segment4%TYPE;                          -- 補助科目_ダミー値
+  gt_aff5_dummy                  gl_interface.segment5%TYPE;                          -- 顧客コード_ダミー値
+  gt_aff6_dummy                  gl_interface.segment6%TYPE;                          -- 企業コード_ダミー値
+  gt_aff7_dummy                  gl_interface.segment7%TYPE;                          -- 予備１_ダミー値
+  gt_aff8_dummy                  gl_interface.segment8%TYPE;                          -- 予備２_ダミー値
+  gt_je_category_name_inv_cost   gl_interface.user_je_category_name%TYPE;             -- 仕訳カテゴリ名(在庫原価振替)
+  gt_je_source_name_inv_cost     gl_interface.user_je_source_name%TYPE;               -- 仕訳ソース名  (在庫原価振替)
+  gt_sales_calendar              gl_periods.period_set_name%TYPE;                     -- 会計カレンダ
+  gt_je_batch_name               gl_interface.reference1%TYPE;                        -- 仕訳バッチ名
+  gt_group_id                    gl_interface.group_id%TYPE;                          -- グループID
+  gt_last_gl_batch_id            xxcoi_wk_cost_variance.gl_batch_id%TYPE;             -- 前回GLバッチID
+  gt_pre_inventory_item_id       mtl_transaction_accounts.inventory_item_id%TYPE;     -- 前回情報：品目ID
+  gt_pre_transaction_date        mtl_transaction_accounts.transaction_date%TYPE;      -- 前回情報：取引日
+  gt_pre_errbuf_cmpnt_cost       VARCHAR2(1);                                         -- 前回情報：標準原価取得エラー・メッセージ
+  gt_pre_retcode_cmpnt_cost      VARCHAR2(1);                                         -- 前回情報：標準原価取得リターン・コード
+  gt_pre_errbuf_discrete_cost    VARCHAR2(1);                                         -- 前回情報：営業原価取得エラー・メッセージ
+  gt_pre_retcode_discrete_cost   VARCHAR2(1);                                         -- 前回情報：営業原価取得リターン・コード
+  g_mtl_txn_acct_tab             g_mtl_txn_acct_ttype;                                -- PL/SQL表：資材配賦情報格納用
+  gn_mtl_txn_acct_cnt            NUMBER;                                              -- PL/SQL表インデックス
+--
+  /**********************************************************************************
+   * Procedure Name   : init
+   * Description      : 初期処理 (A-1)
+   ***********************************************************************************/
+  PROCEDURE init(
+      ov_errbuf       OUT VARCHAR2      -- エラー・メッセージ           --# 固定 #
+    , ov_retcode      OUT VARCHAR2      -- リターン・コード             --# 固定 #
+    , ov_errmsg       OUT VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'init'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    -- プロファイル
+    cv_prf_gl_set_of_bks_id            CONSTANT VARCHAR2(50) := 'GL_SET_OF_BKS_ID';                 -- 会計帳簿ID
+    cv_prf_gl_set_of_bks_name          CONSTANT VARCHAR2(50) := 'GL_SET_OF_BKS_NAME';               -- 会計帳簿名
+    cv_prf_company_code                CONSTANT VARCHAR2(50) := 'XXCOI1_COMPANY_CODE';              -- XXCOI:会社コード
+    cv_prf_aff2_adj_dept_code          CONSTANT VARCHAR2(50) := 'XXCOI1_AFF2_ADJUSTMENT_DEPT_CODE'; -- XXCOI:調整部門コード
+    cv_prf_aff3_shizuoka_factory       CONSTANT VARCHAR2(50) := 'XXCOI1_AFF3_SHIZUOKA_FACTORY';     -- XXCOI:勘定科目_静岡工場勘定
+    cv_prf_aff4_subacct_dummy          CONSTANT VARCHAR2(50) := 'XXCOK1_AFF4_SUBACCT_DUMMY';        -- XXCOK:補助科目_ダミー値
+    cv_prf_aff5_customer_dummy         CONSTANT VARCHAR2(50) := 'XXCOK1_AFF5_CUSTOMER_DUMMY';       -- XXCOK:顧客コード_ダミー値
+    cv_prf_aff6_company_dummy          CONSTANT VARCHAR2(50) := 'XXCOK1_AFF6_COMPANY_DUMMY';        -- XXCOK:企業コード_ダミー値
+    cv_prf_aff7_preliminary1_dummy     CONSTANT VARCHAR2(50) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';   -- XXCOK:予備１_ダミー値
+    cv_prf_aff8_preliminary2_dummy     CONSTANT VARCHAR2(50) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';   -- XXCOK:予備２_ダミー値
+    cv_prf_gl_category_inv_cost        CONSTANT VARCHAR2(50) := 'XXCOI1_GL_CATEGORY_INV_COST';      -- XXCOI:仕訳カテゴリ_在庫原価振替
+    cv_prf_gl_source_inv_cost          CONSTANT VARCHAR2(50) := 'XXCOI1_GL_SOURCE_INV_COST';        -- XXCOI:仕訳ソース_在庫原価振替
+    cv_prf_sales_calendar              CONSTANT VARCHAR2(50) := 'XXCOI1_SALES_CALENDAR';            -- XXCOI:会計カレンダ
+--
+    -- *** ローカル変数 ***
+    lv_tkn_profile   VARCHAR2(50);  -- トークン：プロファイル
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+    -- ==============================================================
+    -- コンカレント入力パラメータなしメッセージ出力
+    -- ==============================================================
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application => cv_appl_short_name_xxccp
+                    , iv_name        => cv_msg_no_prm
+                  );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.LOG
+      , buff   => gv_out_msg
+    );
+    -- 空行出力
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => ''
+    );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.LOG
+      , buff   => ''
+    );
+--
+    -- ==============================================================
+    -- プロファイル値取得
+    -- ==============================================================
+    -- 会計帳簿ID
+    gt_gl_set_of_bks_id := fnd_profile.value( cv_prf_gl_set_of_bks_id );
+    IF( gt_gl_set_of_bks_id IS NULL ) THEN
+      lv_tkn_profile := cv_prf_gl_set_of_bks_id;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 会計帳簿名
+    gt_gl_set_of_bks_name := fnd_profile.value( cv_prf_gl_set_of_bks_name );
+    IF( gt_gl_set_of_bks_name IS NULL ) THEN
+      lv_tkn_profile := cv_prf_gl_set_of_bks_name;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 会社コード
+    gt_aff1_company_code := fnd_profile.value( cv_prf_company_code );
+    IF( gt_aff1_company_code IS NULL ) THEN
+      lv_tkn_profile := cv_prf_company_code;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 調整部門コード
+    gt_aff2_adj_dept_code := fnd_profile.value( cv_prf_aff2_adj_dept_code );
+    IF( gt_aff2_adj_dept_code IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff2_adj_dept_code;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 勘定科目_静岡工場勘定
+    gt_aff3_shizuoka_factory := fnd_profile.value( cv_prf_aff3_shizuoka_factory );
+    IF( gt_aff3_shizuoka_factory IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff3_shizuoka_factory;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 補助科目_ダミー値
+    gt_aff4_dummy := fnd_profile.value( cv_prf_aff4_subacct_dummy );
+    IF( gt_aff4_dummy IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff4_subacct_dummy;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 顧客コード_ダミー値
+    gt_aff5_dummy := fnd_profile.value( cv_prf_aff5_customer_dummy );
+    IF( gt_aff5_dummy IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff5_customer_dummy;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 企業コード_ダミー値
+    gt_aff6_dummy := fnd_profile.value( cv_prf_aff6_company_dummy );
+    IF( gt_aff6_dummy IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff6_company_dummy;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 予備１_ダミー値
+    gt_aff7_dummy := fnd_profile.value( cv_prf_aff7_preliminary1_dummy );
+    IF( gt_aff7_dummy IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff7_preliminary1_dummy;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 予備２_ダミー値
+    gt_aff8_dummy := fnd_profile.value( cv_prf_aff8_preliminary2_dummy );
+    IF( gt_aff8_dummy IS NULL ) THEN
+      lv_tkn_profile := cv_prf_aff8_preliminary2_dummy;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 仕訳カテゴリ名(在庫原価振替)
+    gt_je_category_name_inv_cost := fnd_profile.value( cv_prf_gl_category_inv_cost );
+    IF( gt_je_category_name_inv_cost IS NULL ) THEN
+      lv_tkn_profile := cv_prf_gl_category_inv_cost;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 仕訳ソース名(在庫原価振替)
+    gt_je_source_name_inv_cost := fnd_profile.value( cv_prf_gl_source_inv_cost );
+    IF( gt_je_source_name_inv_cost IS NULL ) THEN
+      lv_tkn_profile := cv_prf_gl_source_inv_cost;
+      RAISE profile_expt;
+    END IF;
+--
+    -- 会計カレンダ
+    gt_sales_calendar := fnd_profile.value( cv_prf_sales_calendar );
+    IF( gt_sales_calendar IS NULL ) THEN
+      lv_tkn_profile := cv_prf_sales_calendar;
+      RAISE profile_expt;
+    END IF;
+--
+    -- ==============================================================
+    -- 仕訳バッチ名取得
+    -- ==============================================================
+    gt_je_batch_name := xxcok_common_pkg.get_batch_name_f( gt_je_category_name_inv_cost );
+--
+    -- ==============================================================
+    -- グループID取得
+    -- ==============================================================
+    SELECT gjs.attribute1 AS group_id
+    INTO   gt_group_id
+    FROM   gl_je_sources gjs
+    WHERE  gjs.user_je_source_name = gt_je_source_name_inv_cost
+    AND    gjs.language            = USERENV( 'LANG' )
+    ;
+    -- グループID取得エラー(仕訳ソース登録済でグループID未登録の場合)
+    IF( gt_group_id IS NULL ) THEN
+      RAISE NO_DATA_FOUND;
+    END IF;
+--
+    -- ==============================================================
+    -- 原価差額ワークテーブルの前回GLバッチID取得
+    -- ==============================================================
+    SELECT MAX( xwcv.gl_batch_id ) AS gl_batch_id
+    INTO   gt_last_gl_batch_id
+    FROM   xxcoi_wk_cost_variance xwcv
+    ;
+    -- 前回GLバッチID取得エラー
+    IF( gt_last_gl_batch_id IS NULL ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_msg_gl_batch_id_get_err
+                   );
+      RAISE NO_DATA_FOUND;
+    END IF;
+--
+  EXCEPTION
+    -- *** プロファイル値取得例外 ***
+    WHEN profile_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_msg_profile_get_err
+                     , iv_token_name1  => cv_tkn_profile
+                     , iv_token_value1 => lv_tkn_profile
+                   );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;                                            --# 任意 #
+    -- *** グループID/前回GLバッチID取得例外 ***
+    WHEN NO_DATA_FOUND THEN
+      -- グループID取得エラー
+      IF( gt_group_id IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name_xxcoi
+                       , iv_name         => cv_msg_group_id_get_err
+                       , iv_token_name1  => cv_tkn_source
+                       , iv_token_value1 => gt_je_source_name_inv_cost
+                     );
+      END IF;
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;                                            --# 任意 #
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END init;
+--
+  /**********************************************************************************
+   * Procedure Name   : get_mtl_txn_acct
+   * Description      : 資材配賦情報の抽出 (A-2)
+   ***********************************************************************************/
+  PROCEDURE get_mtl_txn_acct(
+      on_mtl_txn_acct_cnt OUT NUMBER        -- 取得件数
+    , ov_errbuf           OUT VARCHAR2      -- エラー・メッセージ           --# 固定 #
+    , ov_retcode          OUT VARCHAR2      -- リターン・コード             --# 固定 #
+    , ov_errmsg           OUT VARCHAR2 )    -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_mtl_txn_acct'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル・カーソル ***
+    -- 資材配賦情報取得
+    CURSOR mtl_txn_acct_cur
+    IS
+      SELECT mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
+           , gcc.segment2                AS gcc_dept_code                --  2.部門コード
+           , CASE WHEN gcc.segment3      = gt_aff3_shizuoka_factory THEN --   5.勘定科目コードが静岡工場勘定の場合
+                    gcc.segment2                                         --     2.部門コード
+                  ELSE                                                   --   それ以外の場合
+                    gt_aff2_adj_dept_code                                --     A-1.で取得した調整部門コード
+             END                         AS xwcv_adj_dept_code           --  3.調整部門コード
+           , mta.reference_account       AS mta_account_id               --  4.勘定科目ID
+           , gcc.segment3                AS gcc_account_code             --  5.勘定科目コード
+           , mta.inventory_item_id       AS mta_inventory_item_id        --  6.品目ID
+           , msib.segment1               AS msib_item_code               --  7.品目コード
+           , mta.transaction_date        AS mta_transaction_date         --  8.取引日
+           , mta.transaction_value       AS mta_transaction_value        --  9.取引金額
+           , mta.primary_quantity        AS mta_primary_quantity         -- 10.取引数量
+           , mta.base_transaction_value  AS mta_base_transaction_value   -- 11.基準単位金額
+           , mta.organization_id         AS mta_organization_id          -- 12.組織ID
+           , mta.gl_batch_id             AS mta_gl_batch_id              -- 13.GLバッチID
+      FROM   mtl_transaction_accounts    mta                             -- 資材配賦テーブル
+           , gl_code_combinations        gcc                             -- 勘定科目テーブル
+           , mtl_system_items_b          msib                            -- Disc品目マスタ
+      WHERE  mta.reference_account       = gcc.code_combination_id       -- CCID
+      AND    mta.gl_batch_id             > gt_last_gl_batch_id           -- GLバッチID > 前回GLバッチID
+      AND    msib.inventory_item_id      = mta.inventory_item_id         -- 品目ID
+      AND    msib.organization_id        = mta.organization_id           -- 組織ID
+      ORDER BY mta.inventory_item_id                                     -- 品目ID
+             , mta.transaction_date;                                     -- 取引日
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- カーソルオープン
+    OPEN mtl_txn_acct_cur;
+    -- フェッチ
+    FETCH mtl_txn_acct_cur BULK COLLECT INTO g_mtl_txn_acct_tab;
+    -- 取得件数セット
+    on_mtl_txn_acct_cnt := g_mtl_txn_acct_tab.COUNT;
+    -- カーソルクローズ
+    CLOSE mtl_txn_acct_cur;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_mtl_txn_acct;
+--
+  /**********************************************************************************
+   * Procedure Name   : del_xwcv_last_data
+   * Description      : 原価差額ワークテーブルの前回データ削除 (A-3)
+   ***********************************************************************************/
+  PROCEDURE del_xwcv_last_data(
+      ov_errbuf             OUT VARCHAR2      -- エラー・メッセージ           --# 固定 #
+    , ov_retcode            OUT VARCHAR2      -- リターン・コード             --# 固定 #
+    , ov_errmsg             OUT VARCHAR2 )    -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_xwcv_last_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル・カーソル ***
+    CURSOR del_xwcv_tbl_cur
+    IS
+      -- 原価差額ワークテーブルのロック取得
+      SELECT 'X'
+      FROM   xxcoi_wk_cost_variance  xwcv             -- 原価差額ワークテーブル
+      FOR UPDATE NOWAIT;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ロック取得
+    OPEN  del_xwcv_tbl_cur;
+    CLOSE del_xwcv_tbl_cur;
+
+    -- 原価差額ワークテーブル削除 
+    DELETE FROM xxcoi_wk_cost_variance  xwcv;
+
+--
+  EXCEPTION
+    -- *** ロックエラーハンドラ ***
+    WHEN lock_expt THEN
+      -- カーソルがオープンしていたらクローズ
+      IF ( del_xwcv_tbl_cur%ISOPEN ) THEN
+        CLOSE del_xwcv_tbl_cur;
+      END IF;
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name_xxcoi
+                      , iv_name         => cv_msg_lock_err
+                    );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルがオープンしていたらクローズ
+      IF ( del_xwcv_tbl_cur%ISOPEN ) THEN
+        CLOSE del_xwcv_tbl_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END del_xwcv_last_data;
+--
+--
+  /**********************************************************************************
+   * Procedure Name   : get_cost_info
+   * Description      : 原価情報取得処理 (A-4)
+   ***********************************************************************************/
+  PROCEDURE get_cost_info(
+      ion_standard_cost  IN OUT NUMBER     -- 標準原価
+    , ion_operation_cost IN OUT NUMBER     -- 営業原価
+    , ion_cost_variance  IN OUT NUMBER     -- 原価差額
+    , ov_errbuf          OUT VARCHAR2      -- エラー・メッセージ           --# 固定 #
+    , ov_retcode         OUT VARCHAR2      -- リターン・コード             --# 固定 #
+    , ov_errmsg          OUT VARCHAR2 )    -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_cost_info'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    lv_errbuf_cmpnt_cost     VARCHAR2(1); -- 標準原価取得エラー・メッセージ
+    lv_retcode_cmpnt_cost    VARCHAR2(1); -- 標準原価取得リターン・コード
+    lv_errbuf_discrete_cost  VARCHAR2(1); -- 営業原価取得エラー・メッセージ
+    lv_retcode_discrete_cost VARCHAR2(1); -- 営業原価取得リターン・コード
+    ln_standard_cost         NUMBER;      -- 標準原価
+    ln_operation_cost        NUMBER;      -- 営業原価
+    ln_cost_variance         NUMBER;      -- 原価差額
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ローカルステータス初期化
+    lv_retcode := cv_status_normal;
+--
+    -- 前回情報と品目/取引日が違う場合は、原価情報取得
+    IF       (( gt_pre_inventory_item_id IS NULL )  
+         AND  ( gt_pre_transaction_date  IS NULL ))
+      OR NOT (( gt_pre_inventory_item_id = g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_inventory_item_id )
+         AND  ( gt_pre_transaction_date  = g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date ))
+    THEN
+      -- ===============================
+      -- 標準原価取得
+      -- ===============================
+      xxcoi_common_pkg.get_cmpnt_cost(
+          in_item_id      => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_inventory_item_id  -- 品目ID
+        , in_org_id       => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_organization_id    -- 組織ID
+        , id_period_date  => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date   -- 対象日
+        , ov_cmpnt_cost   => ln_standard_cost                                                 -- 標準原価
+        , ov_errbuf       => lv_errbuf_cmpnt_cost                                             -- エラー・メッセージ
+        , ov_retcode      => lv_retcode_cmpnt_cost                                            -- リターンコード
+        , ov_errmsg       => lv_errmsg                                                        -- ユーザー・エラー・メッセージ
+      );
+      IF ( lv_retcode_cmpnt_cost <> cv_status_normal ) THEN
+        ln_standard_cost  := 0;
+      END IF;
+--
+      -- ===============================
+      -- 営業原価取得
+      -- ===============================
+      xxcoi_common_pkg.get_discrete_cost(
+          in_item_id       => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_inventory_item_id  -- 品目ID
+        , in_org_id        => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_organization_id    -- 組織ID
+        , id_target_date   => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date   -- 対象日
+        , ov_discrete_cost => ln_operation_cost                                                -- 営業原価
+        , ov_errbuf        => lv_errbuf_discrete_cost                                          -- エラー・メッセージ
+        , ov_retcode       => lv_retcode_discrete_cost                                         -- リターンコード
+        , ov_errmsg        => lv_errmsg                                                        -- ユーザー・エラー・メッセージ
+      );
+      IF   ( lv_retcode_discrete_cost <> cv_status_normal ) 
+        OR ( ln_operation_cost IS NULL )
+      THEN
+        lv_retcode_discrete_cost := cv_status_error;
+        ln_operation_cost        := 0;
+      END IF;
+--
+      -- 前回情報に現レコード情報セット
+      gt_pre_inventory_item_id     := g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_inventory_item_id;
+      gt_pre_transaction_date      := g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date;
+      gt_pre_errbuf_cmpnt_cost     := lv_errbuf_cmpnt_cost;
+      gt_pre_retcode_cmpnt_cost    := lv_retcode_cmpnt_cost;
+      gt_pre_errbuf_discrete_cost  := lv_errbuf_discrete_cost;
+      gt_pre_retcode_discrete_cost := lv_retcode_discrete_cost;
+--
+    -- 前回情報と品目/取引日が同じ場合は、前回情報を使用
+    ELSE
+      -- 前回情報をセット
+      lv_errbuf_cmpnt_cost     := gt_pre_errbuf_cmpnt_cost;
+      lv_retcode_cmpnt_cost    := gt_pre_retcode_cmpnt_cost;
+      lv_errbuf_discrete_cost  := gt_pre_errbuf_discrete_cost;
+      lv_retcode_discrete_cost := gt_pre_retcode_discrete_cost;
+      ln_standard_cost         := ion_standard_cost ;
+      ln_operation_cost        := ion_operation_cost;
+    END IF;
+--
+    -- 原価取得エラーメッセージ出力
+    -- 標準原価取得エラーの場合
+    IF ( lv_retcode_cmpnt_cost = cv_status_error ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_msg_std_cost_get_err
+                     , iv_token_name1  => cv_tkn_item_code
+                     , iv_token_value1 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).msib_item_code
+                     , iv_token_name2  => cv_tkn_period
+                     , iv_token_value2 => TO_CHAR( g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date, 'YYYY-MM' )
+                     , iv_token_name3  => cv_tkn_dept
+                     , iv_token_value3 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code
+                     , iv_token_name4  => cv_tkn_account
+                     , iv_token_value4 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code
+                   );
+      lv_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf_cmpnt_cost, 1, 5000 );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_errmsg
+      );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+        , buff   => lv_errbuf
+      );
+      lv_retcode := cv_status_warn;
+    END IF;
+    -- 営業原価取得エラーの場合
+    IF ( lv_retcode_discrete_cost = cv_status_error ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_msg_oprtn_cost_get_err
+                     , iv_token_name1  => cv_tkn_item_code
+                     , iv_token_value1 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).msib_item_code
+                     , iv_token_name2  => cv_tkn_period
+                     , iv_token_value2 => TO_CHAR( g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date, 'YYYY-MM' )
+                     , iv_token_name3  => cv_tkn_dept
+                     , iv_token_value3 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code
+                     , iv_token_name4  => cv_tkn_account
+                     , iv_token_value4 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code
+                   );
+      lv_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf_discrete_cost, 1, 5000 );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_errmsg
+      );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+        , buff   => lv_errbuf
+      );
+      lv_retcode := cv_status_warn;
+    END IF;
+--
+    -- 標準/営業原価取得成功時
+    IF    ( lv_retcode_cmpnt_cost    = cv_status_normal )
+      AND ( lv_retcode_discrete_cost = cv_status_normal ) THEN
+      -- ===============================
+      -- 原価差額算出
+      -- ===============================
+      -- 原価差額 = 取引数量 * ( 標準原価 － 営業原価 ) 
+      ln_cost_variance := g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_primary_quantity 
+                            * ( ln_standard_cost - ln_operation_cost );
+    ELSE
+      ln_cost_variance := 0;
+    END IF;
+
+    -- 戻り値セット
+    ion_standard_cost  := ln_standard_cost;
+    ion_operation_cost := ln_operation_cost;
+    ion_cost_variance  := ln_cost_variance;
+
+    -- ===============================
+    -- 必須項目チェック処理
+    -- ===============================
+    -- 部門コードと勘定科目コードのNULLチェック
+    IF   g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_dept_code    IS NULL
+      OR g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code IS NULL 
+    THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_appl_short_name_xxcoi
+                     , iv_name         => cv_msg_acct_tbl_chk_err
+                     , iv_token_name1  => cv_tkn_account_id
+                     , iv_token_value1 => TO_CHAR( g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_account_id )
+                     , iv_token_name2  => cv_tkn_period
+                     , iv_token_value2 => TO_CHAR( g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date, 'YYYY-MM' )
+                     , iv_token_name3  => cv_tkn_dept
+                     , iv_token_value3 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code
+                     , iv_token_name4  => cv_tkn_account
+                     , iv_token_value4 => g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code
+                   );
+      lv_errbuf := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_errmsg
+      );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+        , buff   => lv_errbuf
+      );
+      lv_retcode := cv_status_warn;
+    END IF;
+--
+    -- リターン・コードセット
+    ov_retcode := lv_retcode;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END get_cost_info;
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_xwcv
+   * Description      : 原価差額ワークテーブルの作成 (A-5)
+   ***********************************************************************************/
+  PROCEDURE ins_xwcv(
+      in_standard_cost  IN  NUMBER        -- 標準原価
+    , in_operation_cost IN  NUMBER        -- 営業原価
+    , in_cost_variance  IN  NUMBER        -- 原価差額
+    , iv_status         IN  VARCHAR2      -- ステータス
+    , ov_errbuf         OUT VARCHAR2      -- エラー・メッセージ           --# 固定 #
+    , ov_retcode        OUT VARCHAR2      -- リターン・コード             --# 固定 #
+    , ov_errmsg         OUT VARCHAR2 )    -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_xwcv'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 原価差額ワークテーブル挿入処理
+    INSERT INTO xxcoi_wk_cost_variance(
+        transaction_id                                                       --  1.在庫取引ID
+      , dept_code                                                            --  2.部門コード
+      , adj_dept_code                                                        --  3.調整部門コード
+      , account_code                                                         --  4.勘定科目コード
+      , inventory_item_id                                                    --  5.品目ID
+      , transaction_date                                                     --  6.取引日
+      , transaction_value                                                    --  7.取引金額
+      , primary_quantity                                                     --  8.取引数量
+      , base_transaction_value                                               --  9.基準単位金額
+      , organization_id                                                      -- 10.組織ID
+      , gl_batch_id                                                          -- 11.GLバッチID
+      , standard_cost                                                        -- 12.標準原価
+      , operation_cost                                                       -- 13.営業原価
+      , cost_variance                                                        -- 14.原価差額
+      , status                                                               -- 15.ステータス
+      , created_by                                                           -- 16.作成者
+      , creation_date                                                        -- 17.作成日
+      , last_updated_by                                                      -- 18.最終更新者
+      , last_update_date                                                     -- 19.最終更新日
+      , last_update_login                                                    -- 20.最終更新ログイン
+      , request_id                                                           -- 21.要求ID
+      , program_application_id                                               -- 22.コンカレント・プログラム・アプリケーションID
+      , program_id                                                           -- 23.コンカレント・プログラムID
+      , program_update_date                                                  -- 24.プログラム更新日
+    ) VALUES (
+        g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_id         --  1.在庫取引ID
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_dept_code              --  2.部門コード
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).xwcv_adj_dept_code         --  3.調整部門コード
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).gcc_account_code           --  4.勘定科目コード
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_inventory_item_id      --  5.品目ID
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_date       --  6.取引日
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_transaction_value      --  7.取引金額
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_primary_quantity       --  8.取引数量
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_base_transaction_value --  9.基準単位金額
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_organization_id        -- 10.組織ID
+      , g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_gl_batch_id            -- 11.GLバッチID
+      , in_standard_cost                                                     -- 12.標準原価
+      , in_operation_cost                                                    -- 13.営業原価
+      , in_cost_variance                                                     -- 14.原価差額
+      , iv_status                                                            -- 15.ステータス
+      , cn_created_by                                                        -- 16.作成者
+      , SYSDATE                                                              -- 17.システム日付
+      , cn_last_updated_by                                                   -- 18.最終更新者
+      , SYSDATE                                                              -- 19.システム日付
+      , cn_last_update_login                                                 -- 20.最終更新ログイン
+      , cn_request_id                                                        -- 21.要求ID
+      , cn_program_application_id                                            -- 22.コンカレント・プログラム・アプリケーションID
+      , cn_program_id                                                        -- 23.コンカレント・プログラムID
+      , SYSDATE                                                              -- 24.システム日付
+    );
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_xwcv;
+--
+  /**********************************************************************************
+   * Procedure Name   : ins_gl_if
+   * Description      : 原価差額情報GL-IF登録 (A-6、A-7、A-8)
+   ***********************************************************************************/
+  PROCEDURE ins_gl_if(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ                  --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード                    --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_gl_if'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_flag_n            CONSTANT VARCHAR2(1) := 'N';     -- フラグ値：N
+    cv_status_new        CONSTANT VARCHAR2(3) := 'NEW';   -- 固定値：NEW
+    cv_code_jpy          CONSTANT VARCHAR2(3) := 'JPY';   -- 固定値：JPY
+    cv_flag_a            CONSTANT VARCHAR2(1) := 'A';     -- 固定値：A
+--
+    -- *** ローカル変数 ***
+    lb_acctg_period_chk  BOOLEAN;                         -- 会計期間チェック用 TRUE：オープン/FALSE：クローズ
+    lt_entered_dr        gl_interface.entered_dr%TYPE;    -- 借方金額
+    lt_entered_cr        gl_interface.entered_cr%TYPE;    -- 貸方金額
+--
+    -- ===============================
+    -- 原価差額情報の抽出 (A-6)
+    -- ===============================
+    -- 原価差額情報カーソル
+    CURSOR xwcv_sum_cur
+    IS
+      SELECT   xwcv.adj_dept_code           AS xwcv_adj_dept_code          -- 調整部門コード
+             , xwcv.account_code            AS xwcv_account_code           -- 勘定科目コード
+             , xwcv.transaction_date        AS xwcv_transaction_date       -- 取引日
+             , xwcv.gl_batch_id             AS xwcv_gl_batch_id            -- GLバッチID
+             , SUM( xwcv.cost_variance )    AS xwcv_cost_variance_sum      -- 原価差額(集約値)
+             , gp.period_name               AS gp_period_name              -- 会計期間名
+      FROM     xxcoi_wk_cost_variance       xwcv                           -- 原価差額ワークテーブル
+             , gl_periods                   gp                             -- 会計カレンダテーブル
+      WHERE    xwcv.transaction_date BETWEEN gp.start_date AND gp.end_date -- 取引日が開始日と終了日の間
+      AND      gp.period_set_name          = gt_sales_calendar             -- 会計カレンダ名：SALES_CALENDAR
+      AND      gp.adjustment_period_flag   = cv_flag_n                     -- 調整期間フラグ：N
+      AND      xwcv.status                <> cv_error_record               -- エラーレコードでない
+      GROUP BY xwcv.adj_dept_code
+             , xwcv.account_code
+             , xwcv.transaction_date
+             , xwcv.gl_batch_id
+             , gp.period_name
+      HAVING   SUM( xwcv.cost_variance )  <> 0                             -- 原価差額(集約値)が0でない
+      ;
+    -- 原価差額情報カーソル レコード型
+    xwcv_sumr_rec xwcv_sum_cur%ROWTYPE;
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    OPEN xwcv_sum_cur;
+    LOOP
+      FETCH xwcv_sum_cur INTO xwcv_sumr_rec;
+      EXIT WHEN xwcv_sum_cur%NOTFOUND; 
+--
+      -- 初期化
+      lt_entered_dr  := NULL;  -- 借方金額
+      lt_entered_cr  := NULL;  -- 貸方金額
+      -- ===============================
+      -- 会計期間チェック処理 (A-7)
+      -- ===============================
+      lb_acctg_period_chk := xxcok_common_pkg.check_acctg_period_f(
+                                 gt_gl_set_of_bks_id
+                               , xwcv_sumr_rec.xwcv_transaction_date
+                               , cv_appl_short_name_sqlgl
+                             );
+      -- 取引日の会計期間がクローズしていた場合
+      IF( lb_acctg_period_chk = FALSE ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name_xxcoi
+                       , iv_name         => cv_msg_acctg_period_err
+                       , iv_token_name1  => cv_tkn_period
+                       , iv_token_value1 => xwcv_sumr_rec.gp_period_name
+                       , iv_token_name2  => cv_tkn_dept
+                       , iv_token_value2 => xwcv_sumr_rec.xwcv_adj_dept_code
+                       , iv_token_name3  => cv_tkn_account
+                       , iv_token_value3 => xwcv_sumr_rec.xwcv_account_code
+                     );
+        lv_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+        FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+          , buff   => lv_errmsg
+        );
+        FND_FILE.PUT_LINE(
+            which  => FND_FILE.LOG
+          , buff   => lv_errbuf
+        );
+        -- エラー件数(原価差額集約単位)カウント
+        gn_error_sum_cnt := gn_error_sum_cnt + 1;
+      ELSE
+        -- ===============================
+        -- GLインターフェース格納 (A-8)
+        -- ===============================
+        -- 原価差額が－なら借方金額にセット
+        IF xwcv_sumr_rec.xwcv_cost_variance_sum < 0 THEN
+          lt_entered_dr := ABS( xwcv_sumr_rec.xwcv_cost_variance_sum );
+        -- 原価差額が＋なら借方金額にセット
+        ELSE
+          lt_entered_cr := ABS( xwcv_sumr_rec.xwcv_cost_variance_sum );
+        END IF;
+        -- 一般会計OIF挿入(GLインターフェース)
+        INSERT INTO gl_interface(
+            status                                    --  1.ステータス
+          , set_of_books_id                           --  2.会計帳簿ID
+          , accounting_date                           --  3.仕訳有効日付
+          , currency_code                             --  4.通貨コード
+          , date_created                              --  5.新規作成日付
+          , created_by                                --  6.新規作成者ID
+          , actual_flag                               --  7.残高タイプ
+          , user_je_category_name                     --  8.仕訳カテゴリ名
+          , user_je_source_name                       --  9.仕訳ソース名
+          , segment1                                  -- 10.会社コード
+          , segment2                                  -- 11.部門コード
+          , segment3                                  -- 12.勘定科目コード
+          , segment4                                  -- 13.補助科目コード
+          , segment5                                  -- 14.顧客コード
+          , segment6                                  -- 15.企業コード
+          , segment7                                  -- 16.予備1
+          , segment8                                  -- 17.予備2
+          , entered_dr                                -- 18.借方金額
+          , entered_cr                                -- 19.貸方金額
+          , reference1                                -- 20.仕訳バッチ名
+          , reference4                                -- 21.仕訳名
+          , reference21                               -- 22.GLバッチID
+          , period_name                               -- 23.会計期間名
+          , group_id                                  -- 24.グループID
+          , attribute3                                -- 25.伝票番号
+          , attribute4                                -- 26.起票部門コード
+          , attribute5                                -- 27.伝票入力者
+          , context                                   -- 28.DFFコンテキスト
+        ) VALUES (
+            cv_status_new                             --  1.固定値：NEW
+          , gt_gl_set_of_bks_id                       --  2.プロファイル値：会計帳簿ID
+          , xwcv_sumr_rec.xwcv_transaction_date       --  3.取引日
+          , cv_code_jpy                               --  4.固定値：JPY
+          , SYSDATE                                   --  5.システム日付
+          , cn_created_by                             --  6.ユーザーID
+          , cv_flag_a                                 --  7.固定値：A
+          , gt_je_category_name_inv_cost              --  8.プロファイル値：在庫原価振替
+          , gt_je_source_name_inv_cost                --  9.プロファイル値：在庫原価振替
+          , gt_aff1_company_code                      -- 10.プロファイル値：会社コード
+          , xwcv_sumr_rec.xwcv_adj_dept_code          -- 11.調整部門コード
+          , xwcv_sumr_rec.xwcv_account_code           -- 12.勘定科目コード
+          , gt_aff4_dummy                             -- 13.プロファイル値：補助科目_ダミー値
+          , gt_aff5_dummy                             -- 14.プロファイル値：顧客コード_ダミー値
+          , gt_aff6_dummy                             -- 15.プロファイル値：企業コード_ダミー値
+          , gt_aff7_dummy                             -- 16.プロファイル値：予備１_ダミー値
+          , gt_aff8_dummy                             -- 17.プロファイル値：予備２_ダミー値
+          , lt_entered_dr                             -- 18.借方金額
+          , lt_entered_cr                             -- 19.貸方金額
+          , gt_je_batch_name                          -- 20.仕訳バッチ名
+          , cv_pkg_name                               -- 21.固定値：XCOI007A01C(プログラム短縮名)
+          , TO_CHAR( xwcv_sumr_rec.xwcv_gl_batch_id ) -- 22.GLバッチID
+          , xwcv_sumr_rec.gp_period_name              -- 23.会計期間名
+          , gt_group_id                               -- 24.グループID
+          , TO_CHAR( cn_request_id )                  -- 25.要求ID
+          , xwcv_sumr_rec.xwcv_adj_dept_code          -- 26.調整部門コード
+          , TO_CHAR( cn_created_by )                  -- 27.ユーザーID
+          , gt_gl_set_of_bks_name                     -- 28.プロファイル値：会計帳簿名
+        );
+        -- 成功件数(原価差額集約単位)カウント
+        gn_normal_sum_cnt := gn_normal_sum_cnt + 1;
+      END IF;
+    END LOOP;
+    -- 対象件数(原価差額集約単位)セット
+    gn_target_sum_cnt := xwcv_sum_cur%ROWCOUNT;
+    CLOSE xwcv_sum_cur;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルがオープンしていたらクローズ
+      IF ( xwcv_sum_cur%ISOPEN ) THEN
+        CLOSE xwcv_sum_cur;
+      END IF;
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_gl_if;
+--
+  /**********************************************************************************
+   * Procedure Name   : submain
+   * Description      : メイン処理プロシージャ
+   **********************************************************************************/
+  PROCEDURE submain(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+--
+--#####################  固定ローカル定数変数宣言部 START   ####################
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'submain'; -- プログラム名
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ln_mtl_txn_acct_cnt  NUMBER DEFAULT 0;  -- 取得件数：資材配賦情報
+    ln_standard_cost     NUMBER DEFAULT 0;  -- 標準原価
+    ln_operation_cost    NUMBER DEFAULT 0;  -- 営業原価
+    ln_cost_variance     NUMBER DEFAULT 0;  -- 原価差額
+    lv_status            VARCHAR2(1);       -- ステータス
+    
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+--
+    -- グローバル変数の初期化
+    gn_target_cnt     := 0; -- 対象件数  (資材配賦情報単位)
+    gn_normal_cnt     := 0; -- 成功件数  (資材配賦情報単位)
+    gn_error_cnt      := 0; -- エラー件数(資材配賦情報単位)
+    gn_target_sum_cnt := 0; -- 対象件数  (原価差額集約単位)
+    gn_normal_sum_cnt := 0; -- 成功件数  (原価差額集約単位)
+    gn_error_sum_cnt  := 0; -- エラー件数(原価差額集約単位)
+--
+    -- ===============================
+    -- 初期処理 (A-1)
+    -- ===============================
+    init(
+        ov_errbuf       => lv_errbuf        -- エラー・メッセージ
+      , ov_retcode      => lv_retcode       -- リターン・コード
+      , ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ===============================
+    -- 資材配賦情報の抽出 (A-2)
+    -- ===============================
+    get_mtl_txn_acct(
+        on_mtl_txn_acct_cnt => ln_mtl_txn_acct_cnt -- 取得件数
+      , ov_errbuf           => lv_errbuf           -- エラー・メッセージ
+      , ov_retcode          => lv_retcode          -- リターン・コード
+      , ov_errmsg           => lv_errmsg           -- ユーザー・エラー・メッセージ
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+    -- 取得件数0件の場合
+    IF ( ln_mtl_txn_acct_cnt = 0 ) THEN
+      -- 対象データ無しメッセージ出力
+      gv_out_msg  := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name_xxcoi
+                       , iv_name         => cv_msg_no_data
+                     );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => gv_out_msg
+      );
+      RETURN;
+    END IF;
+    
+    -- 対象件数セット(資材配賦情報単位)
+    gn_target_cnt := ln_mtl_txn_acct_cnt;
+--
+    -- =============================================
+    -- 原価差額ワークテーブルの前回データ削除 (A-3)
+    -- =============================================
+    del_xwcv_last_data(
+        ov_errbuf   => lv_errbuf   -- エラー・メッセージ
+      , ov_retcode  => lv_retcode  -- リターン・コード
+      , ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    <<loop_1>>  -- 原価差額情報格納ループ
+    FOR i IN 1 .. ln_mtl_txn_acct_cnt LOOP
+      -- 初期化
+      gn_mtl_txn_acct_cnt := i;                -- PL/SQL表インデックス
+      lv_status           := cv_normal_record; -- ステータス：正常
+      -- ===============================
+      -- 原価情報取得処理 (A-4)
+      -- ===============================
+      get_cost_info(
+          ion_standard_cost  => ln_standard_cost  -- 標準原価
+        , ion_operation_cost => ln_operation_cost -- 営業原価
+        , ion_cost_variance  => ln_cost_variance  -- 原価差額
+        , ov_errbuf          => lv_errbuf         -- エラー・メッセージ
+        , ov_retcode         => lv_retcode        -- リターン・コード
+        , ov_errmsg          => lv_errmsg         -- ユーザー・エラー・メッセージ
+      );
+--
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      -- リターン・コードが警告の場合、ステータスにNセット
+      ELSIF ( lv_retcode = cv_status_warn ) THEN
+        lv_status := cv_error_record;
+      END IF;
+--
+      -- ===================================
+      -- 原価差額ワークテーブルの作成 (A-5)
+      -- ===================================
+      ins_xwcv(
+          in_standard_cost  => ln_standard_cost  -- 標準原価
+        , in_operation_cost => ln_operation_cost -- 営業原価
+        , in_cost_variance  => ln_cost_variance  -- 原価差額
+        , iv_status         => lv_status         -- ステータス
+        , ov_errbuf         => lv_errbuf         -- エラー・メッセージ
+        , ov_retcode        => lv_retcode        -- リターン・コード
+        , ov_errmsg         => lv_errmsg         -- ユーザー・エラー・メッセージ
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      ELSE
+        -- エラーデータ登録 エラー件数(資材配賦情報単位)カウント
+        IF ( lv_status = cv_error_record ) THEN
+          gn_error_cnt := gn_error_cnt + 1;
+        -- 正常データ登録   成功件数(資材配賦情報単位)カウント
+        ELSE
+          gn_normal_cnt := gn_normal_cnt + 1;
+        END IF;
+      END IF;
+    END LOOP loop_1;
+--
+    -- =======================================
+    -- 原価差額情報GL-IF登録 (A-6、A-7、A-8)
+    -- =======================================
+    ins_gl_if(
+        ov_errbuf   => lv_errbuf   -- エラー・メッセージ
+      , ov_retcode  => lv_retcode  -- リターン・コード
+      , ov_errmsg   => lv_errmsg   -- ユーザー・エラー・メッセージ
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- 資材配賦情報単位もしくは原価差額集約単位で1件でもエラーがあった場合
+    IF gn_error_cnt > 0 OR gn_error_sum_cnt > 0 THEN
+      -- 終了ステータスに警告セット
+      ov_retcode := cv_status_warn;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ###################################
+--
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--####################################  固定部 END   ##########################################
+--
+  END submain;
+--
+  /**********************************************************************************
+   * Procedure Name   : main
+   * Description      : コンカレント実行ファイル登録プロシージャ
+   **********************************************************************************/
+--
+  PROCEDURE main(
+      errbuf          OUT VARCHAR2     --  エラーメッセージ #固定#
+    , retcode         OUT VARCHAR2     --  エラーコード     #固定#
+  )
+--
+--###########################  固定部 START   ###########################
+--
+  IS
+--
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name        CONSTANT VARCHAR2(100) := 'main';             -- プログラム名
+--
+    cv_appl_short_name CONSTANT VARCHAR2(10)  := 'XXCCP';            -- アドオン：共通・IF領域
+    cv_target_rec_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000'; -- 対象件数メッセージ
+    cv_success_rec_msg CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001'; -- 成功件数メッセージ
+    cv_error_rec_msg   CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002'; -- エラー件数メッセージ
+    cv_skip_rec_msg    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90003'; -- スキップ件数メッセージ
+    cv_cnt_token       CONSTANT VARCHAR2(10)  := 'COUNT';            -- 件数メッセージ用トークン名
+    cv_normal_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90004'; -- 正常終了メッセージ
+    cv_warn_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90005'; -- 警告終了メッセージ
+    cv_error_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90006'; -- エラー終了全ロールバック
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_errbuf          VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode         VARCHAR2(1);     -- リターン・コード
+    lv_errmsg          VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    lv_message_code    VARCHAR2(100);   -- 終了メッセージコード
+    --
+  BEGIN
+--
+--###########################  固定部 START   #####################################################
+--
+    -- 固定出力
+    -- コンカレントヘッダメッセージ出力関数の呼び出し
+    xxccp_common_pkg.put_log_header(
+        ov_retcode => lv_retcode
+      , ov_errbuf  => lv_errbuf
+      , ov_errmsg  => lv_errmsg
+    );
+    --
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_api_others_expt;
+    END IF;
+    --
+--###########################  固定部 END   #############################
+--
+    -- ===============================================
+    -- submainの呼び出し（実際の処理はsubmainで行う）
+    -- ===============================================
+    submain(
+        ov_errbuf       => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+      , ov_retcode      => lv_retcode       -- リターン・コード             --# 固定 #
+      , ov_errmsg       => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    -- ステータス：異常
+    IF ( lv_retcode = cv_status_error ) THEN
+      -- 件数セット
+      gn_target_cnt     := 0;
+      gn_normal_cnt     := 0;
+      gn_error_cnt      := 1;
+      gn_target_sum_cnt := 0;
+      gn_normal_sum_cnt := 0;
+      gn_error_sum_cnt  := 0;
+      -- エラー出力
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => lv_errmsg -- ユーザー・エラーメッセージ
+      );
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.LOG
+        , buff   => lv_errbuf -- エラーメッセージ
+      );
+    END IF;
+    -- 空行挿入
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => ''
+    );
+--
+    -- 資材配賦情報単位件数メッセージ
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_appl_short_name_xxcoi
+                , iv_name         => cv_msg_unit_mtl_txn_acct
+              );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --対象件数出力(資材配賦情報単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_target_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_target_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --成功件数出力(資材配賦情報単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_success_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_normal_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --エラー件数出力(資材配賦情報単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_error_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_error_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    -- 原価差額集約単位件数メッセージ
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_appl_short_name_xxcoi
+                , iv_name         => cv_msg_unit_cost_sum
+              );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --対象件数出力(原価差額集約単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_target_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_target_sum_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --成功件数出力(原価差額集約単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_success_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_normal_sum_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --エラー件数出力(原価差額集約単位)
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_short_name
+                    , iv_name         => cv_error_rec_msg
+                    , iv_token_name1  => cv_cnt_token
+                    , iv_token_value1 => TO_CHAR(gn_error_sum_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+--
+    -- 空行挿入
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => ''
+    );
+--
+    --終了メッセージ
+    IF (lv_retcode = cv_status_normal) THEN
+      lv_message_code := cv_normal_msg;
+    ELSIF(lv_retcode = cv_status_warn) THEN
+      lv_message_code := cv_warn_msg;
+    ELSIF(lv_retcode = cv_status_error) THEN
+      lv_message_code := cv_error_msg;
+    END IF;
+    --
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => lv_message_code
+                   );
+    FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+      , buff   => gv_out_msg
+    );
+    --ステータスセット
+    retcode := lv_retcode;
+    --終了ステータスがエラーの場合はROLLBACKする
+    IF (retcode = cv_status_error) THEN
+      ROLLBACK;
+    END IF;
+--
+  EXCEPTION
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      retcode := cv_status_error;
+      ROLLBACK;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      retcode := cv_status_error;
+      ROLLBACK;
+  END main;
+--
+--###########################  固定部 END   #######################################################
+--
+END XXCOI007A01C;
+/
