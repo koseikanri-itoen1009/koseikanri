@@ -3,7 +3,7 @@
  * Table Name      : xxcff_contract_histories
  * Description     : リース契約明細履歴
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/01/23    1.0  SCS 奥河美樹  初回作成
  *  2009/05/14    1.1  SCS 松中俊樹  【T1_0721】初回設置場所の桁数を50→600へ変更
+ *  2012/09/24    1.2  SCSK中村健一  【E_本稼働_10112】更新事由、会計期間の追加
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_contract_histories (
      contract_header_id             NUMBER        NOT NULL
@@ -56,6 +57,10 @@ CREATE TABLE xxcff.xxcff_contract_histories (
     ,accounting_date                DATE
     ,accounting_if_flag             VARCHAR2(1)
     ,description                    VARCHAR2(100)
+    --【E_本稼働_10112】ADD START Nakamura
+    ,update_reason                  VARCHAR2(100)
+    ,period_name                    VARCHAR2(7)
+    --【E_本稼働_10112】ADD END   Nakamura
     ,created_by                     NUMBER(15)    NOT NULL
     ,creation_date                  DATE          NOT NULL
     ,last_updated_by                NUMBER(15)    NOT NULL
@@ -110,6 +115,10 @@ COMMENT ON COLUMN xxcff.xxcff_contract_histories.first_installation_place       
 COMMENT ON COLUMN xxcff.xxcff_contract_histories.accounting_date                       IS '計上日';
 COMMENT ON COLUMN xxcff.xxcff_contract_histories.accounting_if_flag                    IS '会計ＩＦフラグ';
 COMMENT ON COLUMN xxcff.xxcff_contract_histories.description                           IS '摘要';
+    --【E_本稼働_10112】ADD START Nakamura
+COMMENT ON COLUMN xxcff.xxcff_contract_histories.update_reason                         IS '更新事由';
+COMMENT ON COLUMN xxcff.xxcff_contract_histories.period_name                           IS '会計期間';
+    --【E_本稼働_10112】ADD END   Nakamura
 COMMENT ON COLUMN xxcff.xxcff_contract_histories.created_by                            IS '作成者';
 COMMENT ON COLUMN xxcff.xxcff_contract_histories.creation_date                         IS '作成日';
 COMMENT ON COLUMN xxcff.xxcff_contract_histories.last_updated_by                       IS '最終更新者';
