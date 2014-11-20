@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/12/09    1.8   N.Abe            [E_本稼動_00379]差異あり抽出方法の修正
  *  2009/12/21    1.9   H.Sasaki         [E_本稼動_00549]出荷数量のNULL対応
  *  2010/01/13    1.10  H.Sasaki         [E_本稼動_01094]伝票日付差異を出力対象外
+ *  2010/01/18    1.11  H.Sasaki         [E_本稼動_01167]同一データの重複出力を修正
  *
  *****************************************************************************************/
 --
@@ -272,7 +273,10 @@ AS
 --          WHERE  xsi.transaction_id = ship_base.transaction_id
 --        )ship_base
 -- == 2009/07/02 V1.4 Deleted END   ===============================================================
-        ,(SELECT xsi.slip_num
+-- == 2010/01/18 V1.11 Modified START ===============================================================
+--        ,(SELECT xsi.slip_num
+        ,(SELECT DISTINCT xsi.slip_num
+-- == 2010/01/18 V1.11 Modified END   ===============================================================
           FROM   xxcoi_storage_information xsi
           WHERE  xsi.base_code = iv_base_code
           AND    TRUNC(xsi.slip_date) BETWEEN TO_DATE(iv_date_from,'YYYY/MM/DD') AND TO_DATE(iv_date_to,'YYYY/MM/DD')
