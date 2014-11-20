@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_mrih_n15 ON xxinv.xxinv_mov_req_instr_headers( status,shipped_locat_id,comp_actual_flg,actual_ship_date ) TABLESPACE xxidx;
