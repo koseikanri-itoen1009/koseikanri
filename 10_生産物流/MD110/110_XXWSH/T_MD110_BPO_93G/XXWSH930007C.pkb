@@ -7,7 +7,7 @@ AS
  * Description      : 外部倉庫入出庫実績インタフェースラッピングプログラム
  * MD.050           : 出荷・移動インタフェース                             T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェースラッピングプログラム T_MD070_BPO_93G
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -22,6 +22,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/09    1.0   Y.Suzuki         新規作成
  *  2008/11/13    1.1   N.Fukuda         統合指摘#589対応
+ *  2008/12/17    1.2   N.Fukuda         本番障害#760対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -121,6 +122,7 @@ AS
     cv_param_all  CONSTANT VARCHAR2(100) := 'ALL';
     cv_param_0    CONSTANT VARCHAR2(100) := '0';
     cv_param_1    CONSTANT VARCHAR2(100) := '1';
+    cv_eos_230    CONSTANT VARCHAR2(003) := '230';     -- 移動入庫  2008/12/17 本番障害#760 Add
 --
     -- *** ローカル変数 ***
     lv_phase      VARCHAR2(100);
@@ -137,11 +139,14 @@ AS
     -- ===============================
     CURSOR get_loct_cur IS
       SELECT /*+ INDEX ( xshi xxwsh_sh_n04 ) */           -- 2008/11/13 統合指摘#589 Add
-             DISTINCT xshi.location_code
+             --DISTINCT xshi.location_code                                                 -- 2008/12/17 本番障害#760 Del
+             DISTINCT DECODE(xshi.eos_data_type, cv_eos_230,                               -- 2008/12/17 本番障害#760 Add
+                               xshi.ship_to_location, xshi.location_code) AS location_code -- 2008/12/17 本番障害#760 Add
       FROM   xxwsh_shipping_headers_if xshi
       WHERE  xshi.data_type        = iv_process_object_info
       AND    xshi.report_post_code = iv_report_post
-      ORDER BY xshi.location_code;
+      --ORDER BY xshi.location_code;                      -- 2008/12/17 本番障害#760 Del
+      ORDER BY location_code;                             -- 2008/12/17 本番障害#760 Add
 --
   BEGIN
 --
