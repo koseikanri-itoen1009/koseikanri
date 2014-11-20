@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(SPEC)
  * Description            : 共通関数2(SPEC)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.6
+ * Version                : 1.7
  *
  * Program List
  *  --------------------------- ---- ----- --------------------------------------------------
@@ -63,6 +63,7 @@ AS
  * 2008/06/24   1.4   oracle 新藤       システムテスト不具合対応#75(D5)
  * 2008/07/16   1.5   oracle 北寒寺     変更要求#93対応
  * 2008/07/25   1.6   oracle 北寒寺     結合テスト不具合対応
+ * 2008/09/09   1.7   oracle 椎名       PT 6-1_28 指摘44 対応
  *
  *****************************************************************************************/
 --
@@ -190,7 +191,10 @@ AS
   -- ロット D1)需要数  実績未計上の出荷依頼
   PROCEDURE get_dem_lot_ship_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
-    in_item_id     IN NUMBER,               -- 品目ID
+-- 2008/09/09 v1.7 UPDATE START
+--    in_item_id     IN NUMBER,               -- 品目ID
+    in_item_code   IN VARCHAR2,             -- 品目ID
+-- 2008/09/09 v1.7 UPDATE END
     in_lot_id      IN NUMBER,               -- ロットID
     id_eff_date    IN DATE,                 -- 有効日付
     on_qty         OUT NOCOPY NUMBER,       -- 数量
@@ -201,7 +205,10 @@ AS
   -- ロット D2)需要数  実績未計上の支給指示
   PROCEDURE get_dem_lot_provide_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
-    in_item_id     IN NUMBER,               -- 品目ID
+-- 2008/09/09 v1.7 UPDATE START
+--    in_item_id     IN NUMBER,               -- 品目ID
+    in_item_code   IN VARCHAR2,             -- 品目ID
+-- 2008/09/09 v1.7 UPDATE END
     in_lot_id      IN NUMBER,               -- ロットID
     id_eff_date    IN DATE,                 -- 有効日付
     on_qty         OUT NOCOPY NUMBER,       -- 数量

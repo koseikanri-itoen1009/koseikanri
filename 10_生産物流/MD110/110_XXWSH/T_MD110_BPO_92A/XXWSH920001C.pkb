@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/07/15   1.7   Oracle 北寒寺 正夫 ST#449対応
  *  2008/06/23   1.8   Oracle 北寒寺 正夫 変更要求#93対応
  *  2008/07/25   1.9   Oracle 北寒寺 正夫 結合テスト不具合修正
+ *  2008/09/08   1.10  Oracle 椎名 昭圭   PT 6-1_28 指摘44 対応
  *
  *****************************************************************************************/
 --
@@ -182,6 +183,12 @@ AS
 -- M.Hokkanji Ver1.6 START
   gv_min_default_date  CONSTANT VARCHAR2(10)  := '1900/01/01';         --MINDATE
 -- M.Hokkanji Ver1.6 END
+-- 2008/09/08 v1.10 ADD START
+  gv_base              CONSTANT VARCHAR2(1)   := '1'; -- 拠点
+  gv_wzero             CONSTANT VARCHAR2(2)   := '00';
+  gv_flg_no            CONSTANT VARCHAR2(1)   := 'N';
+--
+-- 2008/09/08 v1.10 ADD END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -240,7 +247,10 @@ AS
      -- 配送先 V
     deliver_to_id              xxwsh_order_headers_all.deliver_to_id%TYPE,
      -- 配送先ID N
-    reserve_order              xxcmn_parties_v.reserve_order%TYPE,
+-- 2008/09/08 v1.10 UPDATE START
+--    reserve_order              xxcmn_parties_v.reserve_order%TYPE,
+    reserve_order              xxcmn_cust_accounts2_v.reserve_order%TYPE,
+-- 2008/09/08 v1.10 UPDATE END
      -- 拠点引当順 N
     order_line_id              xxwsh_order_lines_all.order_line_id%TYPE,
      -- 明細ID N
@@ -292,7 +302,10 @@ AS
      -- 配送先 V
     deliver_to_id              xxwsh_order_headers_all.deliver_to_id%TYPE,
      -- 配送先ID N
-    reserve_order              xxcmn_parties_v.reserve_order%TYPE,
+-- 2008/09/08 v1.10 UPDATE START
+--    reserve_order              xxcmn_parties_v.reserve_order%TYPE,
+    reserve_order              xxcmn_cust_accounts2_v.reserve_order%TYPE,
+-- 2008/09/08 v1.10 UPDATE END
      -- 拠点引当順 N
     order_line_id              xxwsh_order_lines_all.order_line_id%TYPE,
      -- 明細ID N
@@ -928,7 +941,10 @@ AS
       -- ロット D1)需要数  実績未計上の出荷依頼
       xxcmn_common2_pkg.get_dem_lot_ship_qty(
         ln_whse_id,
-        ln_item_id,
+-- 2008/09/08 v1.7 UPDATE START
+--        ln_item_id,
+        lv_item_code,
+-- 2008/09/08 v1.7 UPDATE END
         ln_lot_id,
         ld_eff_date,
         ln_dem_lot_ship_qty,
@@ -944,7 +960,10 @@ AS
       -- ロット D2)需要数  実績未計上の支給指示
       xxcmn_common2_pkg.get_dem_lot_provide_qty(
         ln_whse_id,
-        ln_item_id,
+-- 2008/09/08 v1.7 UPDATE START
+--        ln_item_id,
+        lv_item_code,
+-- 2008/09/08 v1.7 UPDATE END
         ln_lot_id,
         ld_eff_date,
         ln_dem_lot_provide_qty,
@@ -1479,7 +1498,7 @@ AS
     -- ===============================
     process_exp               EXCEPTION;     -- 各処理でエラーが発生した場合
     PRAGMA EXCEPTION_INIT(process_exp, -20001);
---
+-- 
     -- *** ローカル変数 ***
     ln_pattern     NUMBER := 0;
     lv_fwd_sql     VARCHAR2(5000);    -- 出荷用SQL文格納バッファ
@@ -1506,7 +1525,10 @@ AS
                                     in_deliver_from_id,
                                     in_deliver_type);
     -- SQL文組み立て(1～10までが固定部分)
-    lv_fwd_sql1 := 'SELECT ' || '''' || gv_cons_biz_t_deliv || '''' || ',' || -- 「出荷依頼」
+-- 2008/09/08 v1.10 UPDATE START
+--    lv_fwd_sql1 := 'SELECT ' || '''' || gv_cons_biz_t_deliv || '''' || ',' || -- 「出荷依頼」
+    lv_fwd_sql1 := 'SELECT ' || ' :para_cons_biz_t_deliv, ' || -- 「出荷依頼」
+-- 2008/09/08 v1.10 UPDATE END
                           'oh.request_no, '                 || -- 依頼No
                           'il.distribution_block, '         || -- 物流ブロック
                           'oh.deliver_from, '               || -- 出庫元
@@ -1531,7 +1553,10 @@ AS
                           'im.conv_unit '                   || -- 入出庫換算単位
                    'FROM   xxcmn_item_locations2_v       il, ' || -- OPM保管場所マスタ
                           'xxwsh_order_headers_all       oh, ' || -- 受注ヘッダアドオン
-                          'xxcmn_parties2_v              p,  ';
+-- 2008/09/08 v1.10 UPDATE START
+--                          'xxcmn_parties2_v              p,  ';
+                          'xxcmn_cust_accounts2_v        p,  ';
+-- 2008/09/08 v1.10 UPDATE END
                                                         -- パーティアドオンマスタ , パーティマスタ
 -- Ver1.9 M.Hokkanji Start
 --    lv_fwd_sql6 :=        'xxwsh_oe_transaction_types2_v tt, ' || -- 受注タイプ
@@ -1548,25 +1573,45 @@ AS
 --    lv_fwd_sql7 := 'WHERE  il.inventory_location_id = oh.deliver_from ' ||
     lv_fwd_sql7 := 'WHERE  il.inventory_location_id = oh.deliver_from_id ' ||
                      'AND  oh.schedule_ship_date >= TO_DATE('
-                        || '''' || gv_yyyymmdd_from || '''' || ',' || '''YYYY/MM/DD'') ' ||
+-- 2008/09/08 c1.10 UPDATE START
+--                        || '''' || gv_yyyymmdd_from || '''' || ',' || '''YYYY/MM/DD'') ' ||
+                        || ' :para_yyyymmdd_from, ''YYYY/MM/DD'') ' ||
+-- 2008/09/08 c1.10 UPDATE END
                      'AND  oh.schedule_ship_date <= TO_DATE('
-                        || '''' || gv_yyyymmdd_to || '''' || ',' || '''YYYY/MM/DD'') ' ||
+-- 2008/09/08 c1.10 UPDATE START
+--                        || '''' || gv_yyyymmdd_to || '''' || ',' || '''YYYY/MM/DD'') ' ||
+                        || ' :para_yyyymmdd_to, ''YYYY/MM/DD'') ' ||
+-- 2008/09/08 c1.10 UPDATE END
                      'AND  p.party_number = oh.head_sales_branch '   ||
                      'AND  p.start_date_active <= oh.schedule_ship_date ';
 -- 2008/05/30 END
 --
     lv_fwd_sql8 :=   'AND  p.end_date_active >= oh.schedule_ship_date '  ||
-                     'AND  p.customer_class_code = ' || '''' || '1' || ''' ' ||
+-- 2008/09/08 UPDATE START
+--                     'AND  p.customer_class_code = ' || '''' || '1' || ''' ' ||
+                     'AND  p.customer_class_code = :para_base ' ||
+-- 2008/09/08 UPDATE END
                      'AND  oh.order_type_id = tt.transaction_type_id ' ||
-                     'AND  tt.shipping_shikyu_class = ' || '''' || gv_cons_t_deliv || ''' ' ||
-                     'AND  oh.req_status = ' || '''' || gv_cons_status || ''' ' ||
-                     'AND  ' || 'NVL(oh.notif_status,''' || '00' || ''')' || '<> '
-                      || '''' || gv_cons_notif_status || ''' ';
+-- 2008/09/08 UPDATE START
+--                     'AND  tt.shipping_shikyu_class = ' || '''' || gv_cons_t_deliv || ''' ' ||
+--                     'AND  oh.req_status = ' || '''' || gv_cons_status || ''' ' ||
+--                     'AND  ' || 'NVL(oh.notif_status,''' || '00' || ''')' || '<> '
+--                      || '''' || gv_cons_notif_status || ''' ';
+                     'AND  tt.shipping_shikyu_class = :para_cons_t_deliv ' ||
+                     'AND  oh.req_status = :para_cons_status ' ||
+                     'AND  NVL(oh.notif_status, :para_wzero ) <> :para_cons_notif_status ';
+-- 2008/09/08 UPDATE END
 --
-    lv_fwd_sql9 :=   'AND  oh.latest_external_flag = ' || '''' || gv_cons_flg_yes || ''' ' ||
+-- 2008/09/08 UPDATE START
+--    lv_fwd_sql9 :=   'AND  oh.latest_external_flag = ' || '''' || gv_cons_flg_yes || ''' ' ||
+    lv_fwd_sql9 :=   'AND  oh.latest_external_flag = :para_cons_flg_yes ' ||
+-- 2008/09/08 UPDATE END
                      'AND  ol.order_header_id = oh.order_header_id '     ||
-                     'AND ' || 'NVL(ol.delete_flag,''' || 'N' || ''')' || ' <> '
-                      || '''' || gv_cons_flg_yes  || ''' '  ||
+-- 2008/09/08 UPDATE START
+--                     'AND ' || 'NVL(ol.delete_flag,''' || 'N' || ''')' || ' <> '
+--                    || '''' || gv_cons_flg_yes  || ''' '  ||
+                     'AND NVL(ol.delete_flag, :para_flg_no ) <> :para_cons_flg_yes ' ||
+-- 2008/09/08 UPDATE END
                      'AND  il.date_from             <= oh.schedule_ship_date ' ||
           'AND ((il.date_to >= oh.schedule_ship_date) OR (il.date_to IS NULL)) ' ||
                      'AND  tt.start_date_active     <= oh.schedule_ship_date ' ||
@@ -1577,9 +1622,14 @@ AS
                      'AND  im.item_id = ic.item_id '                           ||
                      'AND  im.item_no = ol.shipping_item_code ';
 --
-    lv_fwd_sql10 :=  'AND  im.lot_ctl = ' || '''' || gv_cons_lot_ctl || ''' ' ||
-                     'AND  ic.item_class_code = ' || '''' || gv_cons_item_product || ''' ' ||
-                     'AND  ic.prod_class_code = ' || '''' || gv_item_class || ''' ';
+-- 2008/09/08 UPDATE START
+--    lv_fwd_sql10 :=  'AND  im.lot_ctl = ' || '''' || gv_cons_lot_ctl || ''' ' ||
+--                     'AND  ic.item_class_code = ' || '''' || gv_cons_item_product || ''' ' ||
+--                     'AND  ic.prod_class_code = ' || '''' || gv_item_class || ''' ';
+    lv_fwd_sql10 :=  'AND  im.lot_ctl = :para_cons_lot_ctl ' ||
+                     'AND  ic.item_class_code = :para_cons_item_product ' ||
+                     'AND  ic.prod_class_code = :para_item_class ';
+-- 2008/09/08 UPDATE END
 /*
       WHERE  il.segment1              = oh.delever_from        -- 保管倉庫コード = 出荷元保管場所
         AND  oh.schedule_ship_date   >= gv_yyyymmdd_from       -- 出荷予定日 >= 入力.出庫From
@@ -1732,7 +1782,10 @@ AS
                                     in_deliver_from_id,
                                     in_deliver_type);
     -- SQL文組み立て(1～10までが固定部分)
-    lv_mov_sql1 := 'SELECT ' || '''' || gv_cons_biz_t_move || '''' || ',' || -- 「移動指示」
+-- 2008/09/08 v1.10 UPDATE START
+--    lv_mov_sql1 := 'SELECT ' || '''' || gv_cons_biz_t_move || '''' || ',' || -- 「移動指示」
+    lv_mov_sql1 := 'SELECT ' || ' :para_cons_biz_t_move, '  || -- 「移動指示」
+-- 2008/09/08 v1.10 UPDATE END
                           'ih.mov_num, '                    || -- 移動番号
                           'il.distribution_block, '         || -- 物流ブロック
                           'ih.shipped_locat_code, '         || -- 出庫元
@@ -1773,20 +1826,37 @@ AS
 -- 2008/05/30 START
 --    lv_mov_sql7 := 'WHERE  il.inventory_location_id = ih.shipped_locat_code ' ||
     lv_mov_sql7 := 'WHERE  il.inventory_location_id = ih.shipped_locat_id ' ||
-                     'AND  ih.mov_type = ' || '''' || gv_cons_move_type || ''' ' ||
+-- 2008/09/08 v1.10 UPDATE START
+--                     'AND  ih.mov_type = ' || '''' || gv_cons_move_type || ''' ' ||
+                     'AND  ih.mov_type = :para_cons_move_type ' ||
+-- 2008/09/08 v1.10 UPDATE END
                      'AND  ih.schedule_ship_date >= TO_DATE('
-                        || '''' || gv_yyyymmdd_from || '''' || ',' || '''YYYY/MM/DD'') ' ||
+-- 2008/09/08 v1.10 UPDATE START
+--                        || '''' || gv_yyyymmdd_from || '''' || ',' || '''YYYY/MM/DD'') ' ||
+                        || ' :para_yyyymmdd_from, ''YYYY/MM/DD'') ' ||
+-- 2008/09/08 v1.10 UPDATE END
                      'AND  ih.schedule_ship_date <= TO_DATE('
-                        || '''' || gv_yyyymmdd_to || '''' || ',' || '''YYYY/MM/DD'') ' ||
-                     'AND  ((ih.status = ' || '''' || gv_cons_mov_sts_c || ''' ' || ') ';
+-- 2008/09/08 v1.10 UPDATE START
+--                        || '''' || gv_yyyymmdd_to || '''' || ',' || '''YYYY/MM/DD'') ' ||
+--                     'AND  ((ih.status = ' || '''' || gv_cons_mov_sts_c || ''' ' || ') ';
+                        || ' :para_yyyymmdd_to, ''YYYY/MM/DD'') ' ||
+                     'AND  ((ih.status = :para_cons_mov_sts_c ) ';
+-- 2008/09/08 v1.10 UPDATE END
 -- 2008/05/30 END
 --
-    lv_mov_sql8 :=   '   OR (ih.status = ' || '''' || gv_cons_mov_sts_e || ''' ' || ')) '   ||
-                     'AND  ' || 'NVL(ih.notif_status,''' || '00' || ''')' || '<> '
-                      || '''' || gv_cons_notif_status || ''' ' ||
+-- 2008/09/08 v1.10 UPDATE START
+--    lv_mov_sql8 :=   '   OR (ih.status = ' || '''' || gv_cons_mov_sts_e || ''' ' || ')) '   ||
+--                     'AND  ' || 'NVL(ih.notif_status,''' || '00' || ''')' || '<> '
+--                      || '''' || gv_cons_notif_status || ''' ' ||
+    lv_mov_sql8 :=   '   OR (ih.status = :para_cons_mov_sts_e )) ' ||
+                     'AND  NVL(ih.notif_status, :para_wzero ) <> :para_cons_notif_status ' ||
+-- 2008/09/08 v1.10 UPDATE END
                      'AND  ml.mov_hdr_id = ih.mov_hdr_id '         ||
-                     'AND ' || 'NVL(ml.delete_flg,''' || 'N' || ''')' || ' <> '
-                      || '''' || gv_cons_flg_yes  || ''' '  ||
+-- 2008/09/08 v1.10 UPDATE START
+--                     'AND ' || 'NVL(ml.delete_flg,''' || 'N' || ''')' || ' <> '
+--                      || '''' || gv_cons_flg_yes  || ''' '  ||
+                     'AND NVL(ml.delete_flg, :para_flg_no ) <> :para_cons_flg_yes ' ||
+-- 2008/09/08 v1.10 UPDATE END
                      'AND  il.date_from             <= ih.schedule_ship_date ' ||
           'AND ((il.date_to >= ih.schedule_ship_date) OR (il.date_to IS NULL)) ' ||
                      'AND  im.start_date_active     <= ih.schedule_ship_date ' ||
@@ -1795,9 +1865,14 @@ AS
 --
     lv_mov_sql9 :=   'AND  im.item_no         = ml.item_code '          ||
                      'AND  im.item_id = ic.item_id '                           ||
-                     'AND  im.lot_ctl         = ' || '''' || gv_cons_lot_ctl  || ''' '       ||
-                     'AND  ic.item_class_code = ' || '''' || gv_cons_item_product  || ''' '    ||
-                     'AND  ic.prod_class_code = ' || '''' || gv_item_class  || ''' ';
+-- 2008/09/08 v1.10 UPDATE START
+--                     'AND  im.lot_ctl         = ' || '''' || gv_cons_lot_ctl  || ''' '       ||
+--                     'AND  ic.item_class_code = ' || '''' || gv_cons_item_product  || ''' '    ||
+--                     'AND  ic.prod_class_code = ' || '''' || gv_item_class  || ''' ';
+                     'AND  im.lot_ctl         = :para_cons_lot_ctl ' ||
+                     'AND  ic.item_class_code = :para_cons_item_product ' ||
+                     'AND  ic.prod_class_code = :para_item_class ';
+-- 2008/09/08 v1.10 UPDATE END
 /*
       WHERE  il.segment1              = ih.shipped_locat_code  -- 保管倉庫コード = 出荷元保管場所
         AND  ih.mov_type             = gv_cons_move_type       -- 移動タイプ = 「積送あり」
@@ -2181,7 +2256,23 @@ AS
     -- ***************************************
 --
     -- カーソルオープン
-    OPEN fwd_cur FOR iv_fwd_sql;
+-- 2008/09/08 v1.10 UPDATE START
+--    OPEN fwd_cur FOR iv_fwd_sql;
+    OPEN fwd_cur FOR iv_fwd_sql USING gv_cons_biz_t_deliv,
+                                      gv_yyyymmdd_from,
+                                      gv_yyyymmdd_from,
+                                      gv_base,
+                                      gv_cons_t_deliv,
+                                      gv_cons_status,
+                                      gv_wzero,
+                                      gv_cons_notif_status,
+                                      gv_cons_flg_yes,
+                                      gv_flg_no,
+                                      gv_cons_flg_yes,
+                                      gv_cons_lot_ctl,
+                                      gv_cons_item_product,
+                                      gv_item_class;
+-- 2008/09/08 v1.10 UPDATE END
 --
     -- データの一括取得
     FETCH fwd_cur BULK COLLECT INTO gr_demand_tbl;
@@ -2280,7 +2371,23 @@ AS
     -- ***************************************
 --
     -- カーソルオープン
-    OPEN mov_cur FOR iv_mov_sql;
+-- 2008/09/08 v1.10 UPDATE START
+--    OPEN mov_cur FOR iv_mov_sql;
+    OPEN mov_cur FOR iv_mov_sql USING gv_cons_biz_t_move,
+                                      gv_cons_move_type,
+                                      gv_yyyymmdd_from,
+                                      gv_yyyymmdd_to,
+                                      gv_cons_mov_sts_c,
+                                      gv_cons_mov_sts_e,
+                                      gv_wzero,
+                                      gv_cons_notif_status,
+                                      gv_flg_no,
+                                      gv_cons_flg_yes,
+                                      gv_cons_lot_ctl,
+                                      gv_cons_item_product,
+                                      gv_item_class
+                                      ;
+-- 2008/09/08 v1.10 UPDATE END
 --
     -- 出荷の情報があった場合は一旦gr_demand_tbl2にデータを格納して
     -- 後でgr_demand_tblに合体する。

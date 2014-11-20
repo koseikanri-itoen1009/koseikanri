@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.6
+ * Version                : 1.7
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2008/06/24   1.4   oracle 新藤     システムテスト不具合対応#75(D5)
  *  2008/07/16   1.5   oracle 北寒寺   変更要求#93対応
  *  2008/07/25   1.6   oracle 北寒寺   結合テスト不具合対応
+ *  2008/09/09   1.7   oracle 椎名     PT 6-1_28 指摘44 対応
  *
  *****************************************************************************************/
 --
@@ -1213,7 +1214,10 @@ AS
    ***********************************************************************************/
   PROCEDURE get_dem_lot_ship_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
-    in_item_id     IN NUMBER,               -- 品目ID
+-- 2008/09/09 v1.7 UPDATE START
+--    in_item_id     IN NUMBER,               -- 品目ID
+    in_item_code   IN VARCHAR2,               -- 品目ID
+-- 2008/09/09 v1.7 UPDATE END
     in_lot_id      IN NUMBER,               -- ロットID
     id_eff_date    IN DATE,                 -- 有効日付
     on_qty         OUT NOCOPY NUMBER,       -- 数量
@@ -1273,7 +1277,11 @@ AS
     AND     oha.order_header_id       = ola.order_header_id
     AND     ola.delete_flag           = cv_flag_off
     AND     ola.order_line_id         = mld.mov_line_id
-    AND     mld.item_id               = in_item_id
+-- 2008/09/09 v1.7 UPDATE START
+--    AND     mld.item_id               = in_item_id
+    AND     ola.shipping_item_code    = mld.item_code
+    AND     ola.shipping_item_code    = in_item_code
+-- 2008/09/09 v1.7 UPDATE END
     AND     mld.lot_id                = in_lot_id
     AND     mld.document_type_code    = cv_doc_type
     AND     mld.record_type_code      = cv_rec_type
@@ -1312,7 +1320,10 @@ AS
    ***********************************************************************************/
   PROCEDURE get_dem_lot_provide_qty(
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
-    in_item_id     IN NUMBER,               -- 品目ID
+-- 2008/09/09 v1.7 UPDATE START
+--    in_item_id     IN NUMBER,               -- 品目ID
+    in_item_code   IN VARCHAR2,               -- 品目ID
+-- 2008/09/09 v1.7 UPDATE END
     in_lot_id      IN NUMBER,               -- ロットID
     id_eff_date    IN DATE,                 -- 有効日付
     on_qty         OUT NOCOPY NUMBER,       -- 数量
@@ -1372,7 +1383,11 @@ AS
     AND     oha.order_header_id       = ola.order_header_id
     AND     ola.delete_flag           = cv_flag_off
     AND     ola.order_line_id         = mld.mov_line_id
-    AND     mld.item_id               = in_item_id
+-- 2008/09/09 v1.7 UPDATE START
+--    AND     mld.item_id               = in_item_id
+    AND     ola.shipping_item_code    = mld.item_code
+    AND     ola.shipping_item_code    = in_item_code
+-- 2008/09/09 v1.7 UPDATE END
     AND     mld.lot_id                = in_lot_id
     AND     mld.document_type_code    = cv_doc_type
     AND     mld.record_type_code      = cv_rec_type
@@ -3463,7 +3478,10 @@ AS
       -- ロット D1)需要数  実績未計上の出荷依頼
       get_dem_lot_ship_qty(
         ln_whse_id,
-        ln_item_id,
+-- 2008/09/09 v1.7 UPDATE START
+--        ln_item_id,
+        lv_item_code,
+-- 2008/09/09 v1.7 UPDATE END
         ln_lot_id,
         ld_eff_date,
         ln_dem_lot_ship_qty,
@@ -3479,7 +3497,10 @@ AS
       -- ロット D2)需要数  実績未計上の支給指示
       get_dem_lot_provide_qty(
         ln_whse_id,
-        ln_item_id,
+-- 2008/09/09 v1.7 UPDATE START
+--        ln_item_id,
+        lv_item_code,
+-- 2008/09/09 v1.7 UPDATE END
         ln_lot_id,
         ld_eff_date,
         ln_dem_lot_provide_qty,

@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.16
+ * Version                : 1.17
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/08/06   1.14  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] 変更要求対応#164対応
  *  2008/08/22   1.15  ORACLE伊藤ひとみ [出荷可否チェック] PT 2-2_15 指摘20
  *  2008/09/05   1.16  ORACLE伊藤ひとみ [積載効率チェック(積載効率算出)] PT 6-2_34 指摘#34対応
+ *  2008/09/08   1.17  ORACLE椎名昭圭   [ロット逆転防止チェック] PT 6-1_28 指摘#44対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1904,8 +1905,12 @@ AS
                   ic_lots_mst                    ilm                        -- OPMロットマスタ
           WHERE   NVL ( xoha.result_deliver_to_id, xoha.deliver_to_id )
                                                    =  iv_move_to_id               -- 出荷先ID(実績)
-            AND   trunc( xoha.schedule_arrival_date )
-                                                   =  trunc( ld_max_ship_arrival_date ) -- 最大着荷日
+-- 2008/09/08 v1.17 UPDATE START
+--            AND   trunc( xoha.schedule_arrival_date )
+--                                                   =  trunc( ld_max_ship_arrival_date ) -- 最大着荷日
+            AND   xoha.schedule_arrival_date >= TRUNC( ld_max_ship_arrival_date )    -- 最大着荷日
+            AND   xoha.schedule_arrival_date  < TRUNC( ld_max_ship_arrival_date + 1) -- 最大着荷日
+-- 2008/09/08 v1.17 UPDATE END
             AND   NVL(xoha.latest_external_flag, cv_no)
                                                    =  cv_yes                      -- 最新フラグ=Y
             AND   xoha.req_status                  =  cv_request_status_04        -- 出荷実績計上済
