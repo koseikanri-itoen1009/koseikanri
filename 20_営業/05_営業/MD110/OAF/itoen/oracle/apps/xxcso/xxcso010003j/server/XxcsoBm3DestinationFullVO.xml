@@ -124,7 +124,7 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
         ,xcm.cooperate_flag
         ,xcm.batch_proc_status
         ,XxcsoDestinationsEO.ADDRESS_LINES_PHONETIC
-        ,pvs.area_code || pvs.phone
+        ,pvs.phone
        )                                               AS address_lines_phonetic,
        XxcsoDestinationsEO.CREATED_BY                  AS created_by,
        XxcsoDestinationsEO.CREATION_DATE               AS creation_date,

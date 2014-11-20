@@ -21,7 +21,7 @@ SELECT  pv.segment1 vendor_number
        ,SUBSTRB(pvs.city, 1, 25) city
        ,SUBSTRB(pvs.address_line1, 1, 35) address_line1
        ,SUBSTRB(pvs.address_line2, 1, 35) address_line2
-       ,pvs.area_code || pvs.phone  phone_number
+       ,pvs.phone                   phone_number
        ,xbav.bank_name
        ,xbav.bank_branch_name
        ,xxcso_util_common_pkg.get_lookup_meaning(

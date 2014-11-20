@@ -182,7 +182,7 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
         ,cntr.customer_id
         ,cntr.same_install_account_flag
         ,XxcsoSpDecisionCustsVEO.ADDRESS_LINES_PHONETIC
-        ,pvs.area_code || pvs.phone
+        ,pvs.phone
         ,inst.address_lines_phonetic
         ,xcasv.phone_number
         ,cntr.address_lines_phonetic

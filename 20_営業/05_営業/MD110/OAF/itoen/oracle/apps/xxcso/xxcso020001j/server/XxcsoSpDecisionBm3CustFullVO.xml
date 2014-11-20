@@ -95,7 +95,7 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
          XxcsoSpDecisionCustsVEO.CUSTOMER_ID
         ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
         ,XxcsoSpDecisionCustsVEO.ADDRESS_LINES_PHONETIC
-        ,pvs.area_code || pvs.phone
+        ,pvs.phone
        ) address_lines_phonetic,
        XxcsoSpDecisionCustsVEO.INSTALL_NAME, 
        XxcsoSpDecisionCustsVEO.BUSINESS_CONDITION_TYPE, 

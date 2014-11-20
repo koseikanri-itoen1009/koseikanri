@@ -139,7 +139,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
          ,'1'
          ,'0'
          ,xsdc.address_lines_phonetic
-         ,pvs.area_code || pvs.phone
+         ,pvs.phone
         )                                    AS address_lines_phonetic
        ,xxcso_010003j_pkg.decode_bm_info(
           xsdc.customer_id
