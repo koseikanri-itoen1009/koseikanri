@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcok_common_pkg(spec)
  * Description      : 個別開発領域・共通関数
  * MD.070           : MD070_IPO_COK_共通関数
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------   ------------------------------------------------------------
@@ -21,18 +21,18 @@ AS
  *  get_operating_day_f          稼働日取得
  *  get_sales_staff_code_f       担当営業員コード取得
  *  get_wholesale_req_est_p      問屋請求見積照合
+ *  get_wholesale_req_est_type_f 問屋請求書見積書突合ステータス取得
  *  get_companies_code_f         企業コード取得
  *  get_department_code_f        所属部門コード取得
  *  get_batch_name_f             バッチ名取得
  *  get_slip_number_f            伝票番号取得
  *  check_year_migration_f       年次移行情報確定チェック
  *  get_code_combination_id_f    CCID取得
- *  get_code_combination_id_f    CCIDチェック
  *  put_message_f                メッセージ出力
  *  get_base_code_f              所属拠点コード取得
  *  split_csv_data_p             CSV文字列分割
  *  get_bill_to_cust_code_f      請求先顧客コード取得
- *  get_wholesale_req_est_type_f 問屋請求書見積書突合ステータス取得
+ *  check_code_combination_id_f  CCIDチェック
  *  get_uom_conversion_qty_f     基準単位換算数取得
  *  get_directory_path_f         ディレクトリパス取得
  *
@@ -42,6 +42,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/31    1.0   T.OSADA          新規作成
  *  2009/02/06    1.1   K.YAMAGUCHI      [障害COK_022] ディレクトリパス取得追加
+ *  2012/03/06    1.2   SCSK K.Nakamura  [E_本稼動_08318] 問屋請求見積照合 OUTに通常NET価格、今回NET価格を追加
  *  
  *****************************************************************************************/
   -- ===============================
@@ -139,6 +140,9 @@ AS
   , on_normal_store_deliver_amt OUT NUMBER              -- 通常店納
   , on_once_store_deliver_amt   OUT NUMBER              -- 今回店納
   , on_net_selling_price        OUT NUMBER              -- NET価格
+-- 2012/03/06 Ver.1.2 [E_本稼動_08318] SCSK K.Nakamura ADD START
+  , on_normal_net_selling_price OUT NUMBER              -- 通常NET価格(NET差照合時のみ)
+-- 2012/03/06 Ver.1.2 [E_本稼動_08318] SCSK K.Nakamura ADD END
   , ov_estimated_type           OUT VARCHAR2            -- 見積区分
   , on_backmargin_amt           OUT NUMBER              -- 販売手数料
   , on_sales_support_amt        OUT NUMBER              -- 販売協賛金
