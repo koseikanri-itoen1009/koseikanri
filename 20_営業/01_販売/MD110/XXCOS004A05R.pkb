@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A05R (body)
  * Description      : 消化VD別掛率チェックリスト
  * MD.050           : 消化VD別掛率チェックリスト MD050_COS_004_A05
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/09/25    1.6   N.Maeda          [0001155]設定掛率金額の設定値修正
  *                                       [0001378]出力桁数修正対応
  *  2009/10/16    1.7   S.Miyakoshi      [0001543]差額＝0の出力可能対応
+ *  2010/02/23    1.8   K.Atsushiba      [E_本稼動_01670]異常掛率対応
  *
  *****************************************************************************************/
 --
@@ -193,6 +194,10 @@ AS
   --未計算区分定数
   ct_uncalculate_class_normal     CONSTANT xxcos_vd_digestion_hdrs.uncalculate_class%TYPE
                                                    := '0';                --通常
+-- ******************** 2010/02/23 1.8 K.Aatsushiba ADD START ********************* --
+  ct_uncalculate_class_abnormal   CONSTANT xxcos_vd_digestion_hdrs.uncalculate_class%TYPE
+                                                   := '4';                --異常掛率
+-- ******************** 2010/02/23 1.8 K.Aatsushiba ADD End ********************* --                                                   
   --位置
   cn_pos_star               CONSTANT NUMBER        := 1;
   --桁数長さ
@@ -658,7 +663,11 @@ AS
 --      g_rpt_data_tab(ln_idx).digest_sale_amount           := l_data_rec.sales_amount;          --設定掛率金額
 --      g_rpt_data_tab(ln_idx).balance                      := l_data_rec.balance_amount;        --差額
 -- ******************** 2009/09/25 1.6 N.Maeda DEL  END  ********************* --
-      IF ( l_data_rec.uncalculate_class  = ct_uncalculate_class_normal ) THEN
+-- ******************** 2010/02/23 1.8 K.Aatsushiba MOD START ********************* --
+      IF ( l_data_rec.uncalculate_class  IN (  ct_uncalculate_class_normal
+                                              ,ct_uncalculate_class_abnormal)) THEN
+--      IF ( l_data_rec.uncalculate_class  = ct_uncalculate_class_normal ) THEN
+-- ******************** 2010/02/23 1.8 K.Aatsushiba MOD END ********************* --
 -- ******************** 2009/09/25 1.6 N.Maeda MOD START ********************* --
         g_rpt_data_tab(ln_idx).account_rate               :=  SUBSTRB( ( TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
                                                                       || cv_pr_tax),1,8);

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A03R (body)
  * Description      : 消化計算チェックリスト
  * MD.050           : 消化計算チェックリスト MD050_COS_004_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/02/26    1.2   K.Kin            削除処理のコメント削除
  *  2009/06/19    1.3   K.Kiriu          [T1_1437]データパージ不具合対応
  *  2009/09/30    1.4   S.Miyakoshi      [0001378]帳票ワークテーブルの桁あふれ対応
+ *  2010/02/23    1.5   K.Atsushiba      [E_本稼動_01670]異常掛率対応
  *
  *****************************************************************************************/
 --
@@ -601,7 +602,10 @@ AS
                                                           cn_pos_star, cn_party_name_length ); --顧客名称
       g_rpt_data_tab(ln_idx).shop_sale_amount             := l_data_rec.ar_sales_amount;       --店舗別売上金額
       g_rpt_data_tab(ln_idx).digest_sale_amount           := l_data_rec.check_sales_amount;    --チェック用売上金額
-      IF  ( l_data_rec.uncalculate_class = 0 ) THEN
+-- ************************ 2010/02/23 K.Aatsushiba Var1.5 MOD START ************************ --
+      IF  ( l_data_rec.uncalculate_class IN ('0','4' )) THEN
+--      IF  ( l_data_rec.uncalculate_class = 0 ) THEN
+-- ************************ 2010/02/23 K.Aatsushiba Var1.5 MOD END ************************ --
 -- ************************ 2009/09/30 S.Miyakoshi Var1.4 MOD START ************************ --
 --            g_rpt_data_tab(ln_idx).account_rate           := TO_CHAR( l_data_rec.digestion_calc_rate, cv_fmt_tax )
 --                                                          || cv_pr_tax;
