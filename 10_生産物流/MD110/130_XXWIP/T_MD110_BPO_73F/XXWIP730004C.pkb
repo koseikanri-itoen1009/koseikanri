@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/10/15    1.11  Yasuhisa Yamamoto 統合障害#300,331,T_TE080_BPO_730 指摘14対応
  *  2008/12/15    1.12  野村 正幸        本番#40対応
  *  2009/01/29    1.13  野村 正幸        本番#431対応
+ *  2009/07/01    1.14  野村 正幸        本番#1551対応
  *
  *****************************************************************************************/
 --
@@ -123,6 +124,17 @@ AS
   gc_min_date_char        CONSTANT VARCHAR2(10) := '1900/01/01' ;
   gc_max_date_char        CONSTANT VARCHAR2(10) := '4712/12/31' ;
 -- S 2008/07/17 1.5 ADD BY S.Takemoto---------------------------------------------------------- S --
+-- *----------* 2009/07/01 本番#1551対応 start *----------*
+  gc_carrier_code_min   CONSTANT VARCHAR2(4)  DEFAULT '0000' ;
+  gc_carrier_code_max   CONSTANT VARCHAR2(4)  DEFAULT 'ZZZZ' ;
+  gc_whs_code_min       CONSTANT VARCHAR2(4)  DEFAULT '0000' ;
+  gc_whs_code_max       CONSTANT VARCHAR2(4)  DEFAULT 'ZZZZ' ;
+  gc_delivery_no_min    CONSTANT VARCHAR2(12) DEFAULT '000000000000' ;
+  gc_delivery_no_max    CONSTANT VARCHAR2(12) DEFAULT '999999999999' ;
+  gc_request_no_min     CONSTANT VARCHAR2(12) DEFAULT '000000000000' ;
+  gc_request_no_max     CONSTANT VARCHAR2(12) DEFAULT '999999999999' ;
+-- *----------* 2009/07/01 本番#1551対応 end   *----------*
+
   -- 差異
   gc_output_flag_n        CONSTANT VARCHAR2(1) := 'N' ;
   -- 支払請求区分
@@ -268,6 +280,18 @@ AS
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
 --##### 固定ローカル変数宣言部 END   #################################
 --
+-- *----------* 2009/07/01 本番#1551対応 start *----------*
+      -- パラメータプログラム内初期値
+    lc_carrier_code_min   CONSTANT VARCHAR2(4)  := gc_carrier_code_min;
+    lc_carrier_code_max   CONSTANT VARCHAR2(4)  := gc_carrier_code_max;
+    lc_whs_code_min       CONSTANT VARCHAR2(4)  := gc_whs_code_min    ;
+    lc_whs_code_max       CONSTANT VARCHAR2(4)  := gc_whs_code_max    ;
+    lc_delivery_no_min    CONSTANT VARCHAR2(12) := gc_delivery_no_min ;
+    lc_delivery_no_max    CONSTANT VARCHAR2(12) := gc_delivery_no_max ;
+    lc_request_no_min     CONSTANT VARCHAR2(12) := gc_request_no_min  ;
+    lc_request_no_max     CONSTANT VARCHAR2(12) := gc_request_no_max  ;
+-- *----------* 2009/07/01 本番#1551対応 end   *----------*
+--
     -- ==================================================
     -- 定数宣言
     -- ==================================================
@@ -294,6 +318,11 @@ AS
     lc_p_name_invoice_no_from   CONSTANT VARCHAR2(50) := '送り状NoFrom' ;
     lc_p_name_invoice_no_to     CONSTANT VARCHAR2(50) := '送り状NoTo' ;
 --
+-- *----------* 2009/07/01 本番#1551対応 start *----------*
+    -- パラメータ未設定時のエラー
+    lc_msg_code_03              CONSTANT VARCHAR2(50) := 'APP-XXWIP-10088' ;
+-- *----------* 2009/07/01 本番#1551対応 end   *----------*
+--
     -- ==================================================
     -- 変数宣言
     -- ==================================================
@@ -305,6 +334,9 @@ AS
     -- 例外宣言
     -- ==================================================
     ex_param_error    EXCEPTION ;
+-- *----------* 2009/07/01 本番#1551対応 start *----------*
+    no_param_error    EXCEPTION ;
+-- *----------* 2009/07/01 本番#1551対応 end   *----------*
 --
   BEGIN
 --
@@ -312,6 +344,40 @@ AS
     ov_retcode := gv_status_normal;
 --##### 固定ステータス初期化部 END   #################################
 --
+-- *----------* 2009/07/01 本番#1551対応 start *----------*
+    -- ====================================================
+    -- パラメータ指定チェック
+    -- ====================================================
+    -- パラメータ指定なしの場合、エラーとする
+    -- ※ 確定後変更・差異以外のパラメータ
+    --    main()関数内で設定している値と比較
+    IF ((gr_param.prod_div            IS NULL )                   -- 商品区分
+    AND (gr_param.carrier_code_from   = lc_carrier_code_min )     -- 運送業者From
+    AND (gr_param.carrier_code_to     = lc_carrier_code_max )     -- 運送業者To
+    AND (gr_param.whs_code_from       = lc_whs_code_min)          -- 出庫元倉庫From
+    AND (gr_param.whs_code_to         = lc_whs_code_max )         -- 出庫元倉庫To
+    AND (gr_param.ship_date_from      = FND_DATE.CANONICAL_TO_DATE(gc_min_date_char)) -- 出庫日From
+    AND (gr_param.ship_date_to        = FND_DATE.CANONICAL_TO_DATE(gc_max_date_char)) -- 出庫日To
+    AND (gr_param.arrival_date_from   = FND_DATE.CANONICAL_TO_DATE(gc_min_date_char)) -- 着日From
+    AND (gr_param.arrival_date_to     = FND_DATE.CANONICAL_TO_DATE(gc_max_date_char)) -- 着日To
+    AND (gr_param.judge_date_from     = FND_DATE.CANONICAL_TO_DATE(gc_min_date_char)) -- 決済日From
+    AND (gr_param.judge_date_to       = FND_DATE.CANONICAL_TO_DATE(gc_max_date_char)) -- 決済日To
+    AND (gr_param.report_date_from    = FND_DATE.CANONICAL_TO_DATE(gc_min_date_char)) -- 報告日From
+    AND (gr_param.report_date_to      = FND_DATE.CANONICAL_TO_DATE(gc_max_date_char)) -- 報告日To
+    AND (gr_param.delivery_no_from    = lc_delivery_no_min )      -- 配送NoFrom
+    AND (gr_param.delivery_no_to      = lc_delivery_no_max )      -- 配送NoTo
+    AND (gr_param.request_no_from     = lc_request_no_min )       -- 依頼NoFrom
+    AND (gr_param.request_no_to       = lc_request_no_max )       -- 依頼NoTo
+    AND (gr_param.invoice_no_from     IS NULL )                   -- 送り状NoFrom
+    AND (gr_param.invoice_no_to       IS NULL )                   -- 送り状NoTo
+    AND (gr_param.order_type          IS NULL )                   -- 受注タイプ
+    AND (gr_param.wc_class            IS NULL )                   -- 重量容積区分
+    AND (gr_param.outside_contract    IS NULL )) THEN             -- 契約外
+      lv_msg_code  := lc_msg_code_03 ;
+      RAISE no_param_error ;
+    END IF;
+--
+-- *----------* 2009/07/01 本番#1551対応 end   *----------*
     -- ====================================================
     -- 逆転チェック
     -- ====================================================
@@ -413,6 +479,21 @@ AS
       ov_errmsg  := lv_errmsg ;
       ov_errbuf  := lv_errmsg ;
       ov_retcode := gv_status_error ;
+--
+-- *----------* 2009/07/01 本番#1551対応 start *----------*
+    -- =============================================================================================
+    -- パラメータ未設定エラー
+    -- =============================================================================================
+    WHEN no_param_error THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg
+                    ( iv_application    => gc_application_wip
+                     ,iv_name           => lv_msg_code
+                    ) ;
+      ov_errmsg  := lv_errmsg ;
+      ov_errbuf  := lv_errmsg ;
+      ov_retcode := gv_status_error ;
+-- *----------* 2009/07/01 本番#1551対応 end   *----------*
+--
 --##### 固定例外処理部 START #######################################################################
 --
     -- *** 共通関数例外ハンドラ ***
@@ -1741,25 +1822,40 @@ AS
     -- ======================================================
     -- ローカル定数
     -- ======================================================
-    lc_carrier_code_min   CONSTANT VARCHAR2(4)  DEFAULT '0000' ;
+-- *----------* 2009/07/01 本番#1551対応 start *----------*
+-- 既存のローカル定数の設定をコメントアウト
+-- グローバル定数を代入するように修正
+-- lc_invoice_no_minとlc_invoice_no_maxは使用していない
+--
+--    lc_carrier_code_min   CONSTANT VARCHAR2(4)  DEFAULT '0000' ;
 -- ##### 20080715 1.3 ST障害対応#444 START #####
 --    lc_carrier_code_max   CONSTANT VARCHAR2(4)  DEFAULT '9999' ;
-    lc_carrier_code_max   CONSTANT VARCHAR2(4)  DEFAULT 'ZZZZ' ;
+--    lc_carrier_code_max   CONSTANT VARCHAR2(4)  DEFAULT 'ZZZZ' ;
 -- ##### 20080715 1.3 ST障害対応#444 END   #####
-    lc_whs_code_min       CONSTANT VARCHAR2(4)  DEFAULT '0000' ;
+--    lc_whs_code_min       CONSTANT VARCHAR2(4)  DEFAULT '0000' ;
 -- ##### 20080715 1.3 ST障害対応#444 START #####
 --    lc_whs_code_max       CONSTANT VARCHAR2(4)  DEFAULT '9999' ;
-    lc_whs_code_max       CONSTANT VARCHAR2(4)  DEFAULT 'ZZZZ' ;
+--    lc_whs_code_max       CONSTANT VARCHAR2(4)  DEFAULT 'ZZZZ' ;
 -- ##### 20080715 1.3 ST障害対応#444 END   #####
-    lc_delivery_no_min    CONSTANT VARCHAR2(12) DEFAULT '000000000000' ;
-    lc_delivery_no_max    CONSTANT VARCHAR2(12) DEFAULT '999999999999' ;
-    lc_request_no_min     CONSTANT VARCHAR2(12) DEFAULT '000000000000' ;
-    lc_request_no_max     CONSTANT VARCHAR2(12) DEFAULT '999999999999' ;
-    lc_invoice_no_min     CONSTANT VARCHAR2(20) DEFAULT '00000000000000000000' ;
+--    lc_delivery_no_min    CONSTANT VARCHAR2(12) DEFAULT '000000000000' ;
+--    lc_delivery_no_max    CONSTANT VARCHAR2(12) DEFAULT '999999999999' ;
+--    lc_request_no_min     CONSTANT VARCHAR2(12) DEFAULT '000000000000' ;
+--    lc_request_no_max     CONSTANT VARCHAR2(12) DEFAULT '999999999999' ;
+--    lc_invoice_no_min     CONSTANT VARCHAR2(20) DEFAULT '00000000000000000000' ;
 -- ##### 20080715 1.3 ST障害対応#444 START #####
 --    lc_invoice_no_max     CONSTANT VARCHAR2(20) DEFAULT '99999999999999999999' ;
-    lc_invoice_no_max     CONSTANT VARCHAR2(20) DEFAULT 'ZZZZZZZZZZZZZZZZZZZZ' ;
+--    lc_invoice_no_max     CONSTANT VARCHAR2(20) DEFAULT 'ZZZZZZZZZZZZZZZZZZZZ' ;
 -- ##### 20080715 1.3 ST障害対応#444 END   #####
+--
+    lc_carrier_code_min   CONSTANT VARCHAR2(4)  := gc_carrier_code_min;
+    lc_carrier_code_max   CONSTANT VARCHAR2(4)  := gc_carrier_code_max;
+    lc_whs_code_min       CONSTANT VARCHAR2(4)  := gc_whs_code_min    ;
+    lc_whs_code_max       CONSTANT VARCHAR2(4)  := gc_whs_code_max    ;
+    lc_delivery_no_min    CONSTANT VARCHAR2(12) := gc_delivery_no_min ;
+    lc_delivery_no_max    CONSTANT VARCHAR2(12) := gc_delivery_no_max ;
+    lc_request_no_min     CONSTANT VARCHAR2(12) := gc_request_no_min  ;
+    lc_request_no_max     CONSTANT VARCHAR2(12) := gc_request_no_max  ;
+-- *----------* 2009/07/01 本番#1551対応 end   *----------*
 --
     -- ======================================================
     -- ローカル変数
