@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF006A12C(body)
  * Description      : リース契約情報連携
  * MD.050           : リース契約情報連携 MD050_CFF_006_A12
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/05/21    1.2   SCS礒崎          [障害T1_1054] 不要なリース契約情報を作成してしまう。
  *  2009/05/28    1.3   SCS礒崎          [障害T1_1224] 連携機能がエラーの際にCSVファイルが削除される。
  *  2009/07/03    1.4   SCS萱原          [障害00000136]対象件数が0件の場合、CSV取込時にエラーとなる
+ *  2009/08/28    1.5   SCS渡辺          [統合テスト障害0001059(PT対応)]
  *
  *****************************************************************************************/
 --
@@ -135,7 +136,16 @@ AS
   -- ===============================
     CURSOR get_lease_cur(i_object_code_from IN VARCHAR2,i_object_code_to IN VARCHAR2)
     IS
-    SELECT   REPLACE(xoh.object_code,'-','')    AS object_code       --物件コード
+    SELECT
+-- 0001059 2009/08/31 ADD START --
+             /*+
+               LEADING(XOH XCL1 XCH1 XCL0)
+               INDEX(XOH  XXCFF_OBJECT_HEADERS_N03)
+               INDEX(XCL1 XXCFF_CONTRACT_LINES_N03)
+               INDEX(XCH1 XXCFF_CONTRACT_HEADERS_PK)
+             */
+-- 0001059 2009/08/31 ADD END --
+             REPLACE(xoh.object_code,'-','')    AS object_code       --物件コード
             ,xch1.lease_company                 AS lease_company     --リース契約(現)リース会社
             ,xch1.lease_start_date              AS lease_start_date  --リース契約(現)リース開始日
             ,DECODE(xch1.lease_type,2,xcl1.gross_charge,1,xcl1.second_charge ) AS charge
@@ -153,13 +163,24 @@ AS
             ,csi_item_instances     cii                              --インストールベースマスタ
 -- T1_1054 2009/05/21 ADD END   --
             ,(
-             SELECT xch.contract_header_id
+             SELECT
+-- 0001059 2009/08/31 ADD START --
+                     /*+
+                       LEADING(XCH)
+                       INDEX(XCH XXCFF_CONTRACT_HEADERS_N06)
+                       INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+                     */
+-- 0001059 2009/08/31 ADD END --
+                     xch.contract_header_id
                     ,xcl.object_header_id
                     ,xch.contract_number
                     ,xcl.contract_line_num
              FROM   xxcff_contract_headers  xch
                     ,xxcff_contract_lines   xcl                             --リース契約明細リース契約(原)
              WHERE  xch.contract_header_id = xcl.contract_header_id
+-- 0001059 2009/08/31 ADD START --
+             AND    xch.lease_type         =  1
+-- 0001059 2009/08/31 ADD END --
              AND    xch.re_lease_times     =  0
              ) xcl0
     WHERE    xch1.contract_header_id = xcl1.contract_header_id
