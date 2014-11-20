@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/02/17    1.4   T.Nakamura       [障害COS_094] CSV出力項目の修正
  *  2009/02/19    1.5   T.Nakamura       [障害COS_109] ログ出力にエラーメッセージを出力等
  *  2009/02/20    1.6   T.Nakamura       [障害COS_110] フッタレコード作成処理実行時のエラーハンドリングを追加
+ *  2009/04/02    1.7   T.Kitajima       [T1_0114] 納品拠点情報取得方法変更
  *
  *****************************************************************************************/
 --
@@ -1383,9 +1384,18 @@ AS
             ,xe.info_class                                                      info_class                    --情報区分
             ,i_other_rec.proc_date                                              process_date                  --処理日
             ,i_other_rec.proc_time                                              process_time                  --処理時刻
-            ,i_input_rec.base_code                                              base_code                     --拠点（部門）コード
-            ,i_base_rec.base_name                                               base_name                     --拠点名（正式名）
-            ,i_base_rec.base_name_kana                                          base_name_alt                 --拠点名（カナ）
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+--            ,i_input_rec.base_code                                              base_code                     --拠点（部門）コード
+--            ,i_base_rec.base_name                                               base_name                     --拠点名（正式名）
+--            ,i_base_rec.base_name_kana                                          base_name_alt                 --拠点名（カナ）
+            ,cdm.account_number                                                 base_code                     --拠点（部門）コード
+            ,DECODE( cdm.account_number
+                    ,NULL
+                    ,g_msg_rec.customer_notfound
+                    ,cdm.base_name
+             )                                                                  base_name                     --拠点名（正式名）
+            ,cdm.base_name_kana                                                 base_name_alt                 --拠点名（カナ）
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
             ,xe.edi_chain_code                                                  edi_chain_code                --ＥＤＩチェーン店コード
             ,i_chain_rec.chain_name                                             edi_chain_name                --ＥＤＩチェーン店名（漢字）
             ,i_chain_rec.chain_name_kana                                        edi_chain_name_alt            --ＥＤＩチェーン店名（カナ）
@@ -1430,7 +1440,10 @@ AS
             ,xe.ar_sale_class                                                   ar_sale_class                 --特売区分
             ,xe.delivery_classe                                                 delivery_classe               --配送区分
             ,xe.opportunity_no                                                  opportunity_no                --便Ｎｏ
-            ,NVL(xe.contact_to, i_base_rec.phone_number)                        contact_to                    --連絡先
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+--            ,NVL(xe.contact_to, i_base_rec.phone_number)                        contact_to                    --連絡先
+            ,NVL(xe.contact_to, cdm.phone_number)                               contact_to                    --連絡先
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
             ,xe.route_sales                                                     route_sales                   --ルートセールス
             ,xe.corporate_code                                                  corporate_code                --法人コード
             ,xe.maker_name                                                      maker_name                    --メーカー名
@@ -1438,9 +1451,33 @@ AS
             ,NVL2(xe.area_code,xca.edi_district_name,NULL)                      area_name                     --地区名（漢字）
             ,NVL2(xe.area_code,xca.edi_district_kana,NULL)                      area_name_alt                 --地区名（カナ）
             ,NVL(xe.vendor_code,xca.torihikisaki_code)                          vendor_code                   --取引先コード
-            ,DECODE(i_base_rec.notfound_flag
-                   ,cv_notfound,i_base_rec.base_name
-                   ,cv_found,i_prf_rec.company_name || cv_space ||  i_base_rec.base_name)    vendor_name      --取引先名（漢字）
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+--            ,DECODE(i_base_rec.notfound_flag
+--                   ,cv_notfound,i_base_rec.base_name
+--                   ,cv_found,i_prf_rec.company_name || cv_space ||  i_base_rec.base_name)    vendor_name      --取引先名（漢字）
+--            ,CASE
+--               WHEN xe.vendor_name1_alt IS NULL
+--                AND xe.vendor_name2_alt IS NULL THEN
+--                 i_prf_rec.company_name_kana
+--               ELSE
+--                 xe.vendor_name1_alt
+--             END                                                                vendor_name1_alt              --取引先名１（カナ）
+--            ,CASE
+--               WHEN xe.vendor_name1_alt IS NULL
+--                AND xe.vendor_name2_alt IS NULL THEN
+--                 i_base_rec.base_name_kana
+--               ELSE
+--                 xe.vendor_name2_alt
+--             END                                                                vendor_name2_alt              --取引先名２（カナ）
+--            ,i_base_rec.phone_number                                            vendor_tel                    --取引先ＴＥＬ
+--            ,NVL(xe.vendor_charge,i_base_rec.manager_name_kana)                 vendor_charge                 --取引先担当者
+--            ,i_base_rec.state ||
+--             i_base_rec.city ||
+--             i_base_rec.address1 ||
+--             i_base_rec.address2                                                vendor_address                --取引先住所（漢字）
+            ,DECODE(cdm.account_number
+                   ,NULL,g_msg_rec.customer_notfound
+                   ,cv_found,i_prf_rec.company_name || cv_space ||  cdm.base_name)    vendor_name      --取引先名（漢字）
             ,CASE
                WHEN xe.vendor_name1_alt IS NULL
                 AND xe.vendor_name2_alt IS NULL THEN
@@ -1451,16 +1488,17 @@ AS
             ,CASE
                WHEN xe.vendor_name1_alt IS NULL
                 AND xe.vendor_name2_alt IS NULL THEN
-                 i_base_rec.base_name_kana
+                 cdm.base_name_kana
                ELSE
                  xe.vendor_name2_alt
              END                                                                vendor_name2_alt              --取引先名２（カナ）
-            ,i_base_rec.phone_number                                            vendor_tel                    --取引先ＴＥＬ
+            ,cdm.phone_number                                                   vendor_tel                    --取引先ＴＥＬ
             ,NVL(xe.vendor_charge,i_base_rec.manager_name_kana)                 vendor_charge                 --取引先担当者
-            ,i_base_rec.state ||
-             i_base_rec.city ||
-             i_base_rec.address1 ||
-             i_base_rec.address2                                                vendor_address                --取引先住所（漢字）
+            ,cdm.state    ||
+             cdm.city     ||
+             cdm.address1 ||
+             cdm.address2                                                       vendor_address                --取引先住所（漢字）
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
             ,xe.deliver_to_code_itouen                                          deliver_to_code_itouen        --届け先コード（伊藤園）
             ,xe.deliver_to_code_chain                                           deliver_to_code_chain         --届け先コード（チェーン店）
             ,xe.deliver_to                                                      deliver_to                    --届け先（漢字）
@@ -1700,8 +1738,12 @@ AS
             ,xe.general_succeeded_item9                                         general_succeeded_item9       --汎用引継ぎ項目９
             ,xe.general_succeeded_item10                                        general_succeeded_item10      --汎用引継ぎ項目１０
             ,TO_CHAR(avtab.tax_rate)                                            general_add_item1             --汎用付加項目１(税率)
-            ,SUBSTRB(i_base_rec.phone_number, 1, 10)                            general_add_item2             --汎用付加項目２
-            ,SUBSTRB(i_base_rec.phone_number, 11, 10)                           general_add_item3             --汎用付加項目３
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+--            ,SUBSTRB(i_base_rec.phone_number, 1, 10)                            general_add_item2             --汎用付加項目２
+--            ,SUBSTRB(i_base_rec.phone_number, 11, 10)                           general_add_item3             --汎用付加項目３
+            ,SUBSTRB(cdm.phone_number, 1, 10)                            general_add_item2             --汎用付加項目２
+            ,SUBSTRB(cdm.phone_number, 11, 10)                           general_add_item3             --汎用付加項目３
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
             ,xe.general_add_item4                                               general_add_item4             --汎用付加項目４
             ,xe.general_add_item5                                               general_add_item5             --汎用付加項目５
             ,xe.general_add_item6                                               general_add_item6             --汎用付加項目６
@@ -2121,6 +2163,33 @@ AS
             ,xxcos_lookup_values_v                                              xlvv                          --売上区分マスタ
             ,xxcos_lookup_values_v                                              xlvv2                         --税コードマスタ
             ,ar_vat_tax_all_b                                                   avtab                         --税率マスタ
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+            ,(
+              SELECT hca.account_number                                                  account_number               --顧客コード
+                    ,hp.party_name                                                       base_name                    --顧客名称
+                    ,hp.organization_name_phonetic                                       base_name_kana               --顧客名称(カナ)
+                    ,hl.state                                                            state                        --都道府県
+                    ,hl.city                                                             city                         --市・区
+                    ,hl.address1                                                         address1                     --住所１
+                    ,hl.address2                                                         address2                     --住所２
+                    ,hl.address_lines_phonetic                                           phone_number                 --電話番号
+                    ,xca.torihikisaki_code                                               customer_code                --取引先コード
+              FROM   hz_cust_accounts                                                    hca                          --顧客マスタ
+                    ,xxcmm_cust_accounts                                                 xca                          --顧客マスタアドオン
+                    ,hz_parties                                                          hp                           --パーティマスタ
+                    ,hz_cust_acct_sites_all                                              hcas                         --顧客所在地
+                    ,hz_party_sites                                                      hps                          --パーティサイトマスタ
+                    ,hz_locations                                                        hl                           --事業所マスタ
+              WHERE  hca.customer_class_code = cv_cust_class_base
+              AND    xca.customer_id         = hca.cust_account_id
+              AND    hp.party_id             = hca.party_id
+              AND    hps.party_id            = hca.party_id
+              AND    hl.location_id          = hps.location_id
+              AND    hcas.cust_account_id    = hca.cust_account_id
+              AND    hps.party_site_id       = hcas.party_site_id
+              AND    hcas.org_id             = g_prf_rec.org_id
+             )                                                                  cdm
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
       --EDI情報テーブル抽出条件
       WHERE  xe.data_type_code = i_input_rec.data_type_code                                                   --データ種コード
       AND (
@@ -2128,11 +2197,14 @@ AS
         OR   i_input_rec.info_div IS NOT NULL AND xe.info_class = i_input_rec.info_div
       )
       AND    xe.edi_chain_code = i_input_rec.chain_code                                                       --EDIチェーン店コード
-      AND (
-             i_input_rec.store_code IS NOT NULL AND xe.shop_code = i_input_rec.store_code                     --店舗コード
-        AND  xe.shop_code = xcss.chain_store_code
-        OR   i_input_rec.store_code IS NULL AND xe.shop_code = xcss.chain_store_code
-      )
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+--      AND (
+--             i_input_rec.store_code IS NOT NULL AND xe.shop_code = i_input_rec.store_code                     --店舗コード
+--        AND  xe.shop_code = xcss.chain_store_code
+--        OR   i_input_rec.store_code IS NULL AND xe.shop_code = xcss.chain_store_code
+--      )
+      AND xe.shop_code = NVL( NULL, xe.shop_code )
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
       AND    NVL(TRUNC(xe.shop_delivery_date)
                 ,NVL(TRUNC(xe.center_delivery_date)
                     ,NVL(TRUNC(xe.order_date)
@@ -2198,8 +2270,13 @@ AS
       --本社商品区分ビュー抽出条件
       AND    xhpc.segment1(+)        = iimb.item_no                                                           --品目コード
       --チェーン店店舗セキュリティビュー抽出条件
-      AND    xcss.chain_code         = i_input_rec.chain_code                                                 --チェーン店コード
-      AND    xcss.user_id            = i_input_rec.user_id                                                    --ユーザID
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+--      AND    xcss.chain_code         = i_input_rec.chain_code                                                 --チェーン店コード
+--      AND    xcss.user_id            = i_input_rec.user_id                                                    --ユーザID
+      AND    xcss.chain_code(+)      = xe.edi_chain_code                                                      --チェーン店コード
+      AND    xcss.chain_store_code(+)= xe.shop_code                                                           --店コード
+      AND    xcss.user_id(+)         = i_input_rec.user_id                                                    --ユーザID
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
       --売上区分マスタ抽出条件
       AND    xlvv.lookup_type(+)     = ct_qc_sale_class                                                       --参照タイプ＝売上区分
       AND    xlvv.lookup_code(+)     = oe.attribute5                                                          --参照コード＝売上区分
@@ -2233,6 +2310,9 @@ AS
         BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
         AND     NVL( avtab.end_date   ,i_other_rec.process_date )
 -- 2009/02/16 T.Nakamura Ver.1.3 add end
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD START *************************************
+      AND xca.delivery_base_code = cdm.account_number(+)
+--******************************************* 2009/04/02 1.7 T.Kitajima MOD  END  *************************************
       ORDER BY xe.invoice_number,xe.line_no
       ;
 --
@@ -2290,58 +2370,60 @@ AS
         out_line(buff => cv_prg_name || ' ' || sqlerrm);
     END;
 --
-    --==============================================================
-    --納品拠点情報取得
-    --==============================================================
-    BEGIN
-      SELECT hp.party_name                                                       base_name                    --顧客名称
-            ,hp.organization_name_phonetic                                       base_name_kana               --顧客名称(カナ)
-            ,hl.state                                                            state                        --都道府県
-            ,hl.city                                                             city                         --市・区
-            ,hl.address1                                                         address1                     --住所１
-            ,hl.address2                                                         address2                     --住所２
-            ,hl.address_lines_phonetic                                           phone_number                 --電話番号
-            ,xca.torihikisaki_code                                               customer_code                --取引先コード
-      INTO   l_base_rec.base_name
-            ,l_base_rec.base_name_kana
-            ,l_base_rec.state
-            ,l_base_rec.city
-            ,l_base_rec.address1
-            ,l_base_rec.address2
-            ,l_base_rec.phone_number
-            ,l_base_rec.customer_code
-      FROM   hz_cust_accounts                                                    hca                          --顧客マスタ
-            ,xxcmm_cust_accounts                                                 xca                          --顧客マスタアドオン
-            ,hz_parties                                                          hp                           --パーティマスタ
--- 2009/02/16 T.Nakamura Ver.1.3 add start
-            ,hz_cust_acct_sites_all                                              hcas                         --顧客所在地
--- 2009/02/16 T.Nakamura Ver.1.3 add end
-            ,hz_party_sites                                                      hps                          --パーティサイトマスタ
-            ,hz_locations                                                        hl                           --事業所マスタ
-      --顧客マスタ抽出条件
-      WHERE  hca.account_number      = g_input_rec.base_code
-      AND    hca.customer_class_code = cv_cust_class_base
-      --顧客マスタアドオン抽出条件
-      AND    xca.customer_id         = hca.cust_account_id
-      --パーティマスタ抽出条件
-      AND    hp.party_id             = hca.party_id
-     --パーティサイト抽出条件
-      AND    hps.party_id            = hca.party_id
-      --顧客事業所マスタ抽出条件
-      AND    hl.location_id          = hps.location_id
--- 2009/02/16 T.Nakamura Ver.1.3 add start
-      AND    hcas.cust_account_id    = hca.cust_account_id
-      AND    hps.party_site_id       = hcas.party_site_id
-      AND    hcas.org_id             = g_prf_rec.org_id
--- 2009/02/16 T.Nakamura Ver.1.3 add end
-      ;
---
-      l_base_rec.notfound_flag   := cv_found;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        l_base_rec.base_name     := g_msg_rec.customer_notfound;
-        l_base_rec.notfound_flag := cv_notfound;
-    END;
+--******************************************* 2009/04/02 1.7 T.Kitajima DEL START *************************************
+--    --==============================================================
+--    --納品拠点情報取得
+--    --==============================================================
+--    BEGIN
+--      SELECT hp.party_name                                                       base_name                    --顧客名称
+--            ,hp.organization_name_phonetic                                       base_name_kana               --顧客名称(カナ)
+--            ,hl.state                                                            state                        --都道府県
+--            ,hl.city                                                             city                         --市・区
+--            ,hl.address1                                                         address1                     --住所１
+--            ,hl.address2                                                         address2                     --住所２
+--            ,hl.address_lines_phonetic                                           phone_number                 --電話番号
+--            ,xca.torihikisaki_code                                               customer_code                --取引先コード
+--      INTO   l_base_rec.base_name
+--            ,l_base_rec.base_name_kana
+--            ,l_base_rec.state
+--            ,l_base_rec.city
+--            ,l_base_rec.address1
+--            ,l_base_rec.address2
+--            ,l_base_rec.phone_number
+--            ,l_base_rec.customer_code
+--      FROM   hz_cust_accounts                                                    hca                          --顧客マスタ
+--            ,xxcmm_cust_accounts                                                 xca                          --顧客マスタアドオン
+--            ,hz_parties                                                          hp                           --パーティマスタ
+---- 2009/02/16 T.Nakamura Ver.1.3 add start
+--            ,hz_cust_acct_sites_all                                              hcas                         --顧客所在地
+---- 2009/02/16 T.Nakamura Ver.1.3 add end
+--            ,hz_party_sites                                                      hps                          --パーティサイトマスタ
+--            ,hz_locations                                                        hl                           --事業所マスタ
+--      --顧客マスタ抽出条件
+--      WHERE  hca.account_number      = g_input_rec.base_code
+--      AND    hca.customer_class_code = cv_cust_class_base
+--      --顧客マスタアドオン抽出条件
+--      AND    xca.customer_id         = hca.cust_account_id
+--      --パーティマスタ抽出条件
+--      AND    hp.party_id             = hca.party_id
+--     --パーティサイト抽出条件
+--      AND    hps.party_id            = hca.party_id
+--      --顧客事業所マスタ抽出条件
+--      AND    hl.location_id          = hps.location_id
+---- 2009/02/16 T.Nakamura Ver.1.3 add start
+--      AND    hcas.cust_account_id    = hca.cust_account_id
+--      AND    hps.party_site_id       = hcas.party_site_id
+--      AND    hcas.org_id             = g_prf_rec.org_id
+---- 2009/02/16 T.Nakamura Ver.1.3 add end
+--      ;
+----
+--      l_base_rec.notfound_flag   := cv_found;
+--    EXCEPTION
+--      WHEN NO_DATA_FOUND THEN
+--        l_base_rec.base_name     := g_msg_rec.customer_notfound;
+--        l_base_rec.notfound_flag := cv_notfound;
+--    END;
+--******************************************* 2009/04/02 1.7 T.Kitajima DEL  END  *************************************
 --
     --==============================================================
     --EDIチェーン店情報取得

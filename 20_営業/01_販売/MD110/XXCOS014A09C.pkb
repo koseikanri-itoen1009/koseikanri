@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A09C (body)
  * Description      : 百貨店送り状データ作成 
  * MD.050           : 百貨店送り状データ作成 MD050_COS_014_A09
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/02/18    1.0   H.Noda           新規作成
  *  2009/03/18    1.1   Y.Tsubomatsu     [障害COS_156] パラメータの桁拡張(帳票コード,帳票様式)
  *  2009/03/19    1.2   Y.Tsubomatsu     [障害COS_158] パラメータの編集(百貨店コード,百貨店店舗コード,枝番)
+ *  2009/04/17    1.3   T.Kitajima       [T1_0375] エラーメッセージ受注番号修正(伝票番号→受注No)
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -2204,7 +2205,10 @@ AS
                      cv_apl_name
                     ,ct_msg_integeral_num_err
                     ,cv_tkn_order_no
-                    ,rec_main.invoice_number
+--****************************** 2009/04/17 1.3 T.Kitajima MOD START ******************************--
+--                      ,rec_main.invoice_number
+                      ,rec_main.order_no_ebs
+--****************************** 2009/04/17 1.3 T.Kitajima MOD START ******************************--
                     ,cv_tkn_item
                     ,ct_msg_koguchi_itoen
                    );
@@ -2227,7 +2231,10 @@ AS
                      cv_apl_name
                     ,ct_msg_integeral_num_err
                     ,cv_tkn_order_no
-                    ,rec_main.invoice_number
+--****************************** 2009/04/17 1.3 T.Kitajima MOD START ******************************--
+--                    ,rec_main.invoice_number
+                    ,rec_main.order_no_ebs
+--****************************** 2009/04/17 1.3 T.Kitajima MOD START ******************************--
                     ,cv_tkn_item
                     ,ct_msg_koguchi_hashiba
                    );
@@ -2259,7 +2266,10 @@ AS
                        cv_apl_name
                       ,ct_msg_koguchi_count_err
                       ,cv_tkn_order_no
-                      ,rec_main.invoice_number
+--****************************** 2009/04/17 1.3 T.Kitajima MOD START ******************************--
+--                      ,rec_main.invoice_number
+                      ,rec_main.order_no_ebs
+--****************************** 2009/04/17 1.3 T.Kitajima MOD START ******************************--
                       ,cv_tkn_item
                       ,ct_msg_koguchi_itoen
                       ,cv_tkn_num_of_item
@@ -2279,7 +2289,10 @@ AS
                        cv_apl_name
                       ,ct_msg_koguchi_count_err
                       ,cv_tkn_order_no
-                      ,rec_main.invoice_number
+--****************************** 2009/04/17 1.3 T.Kitajima MOD START ******************************--
+--                      ,rec_main.invoice_number
+                      ,rec_main.order_no_ebs
+--****************************** 2009/04/17 1.3 T.Kitajima MOD START ******************************--
                       ,cv_tkn_item
                       ,ct_msg_koguchi_hashiba
                       ,cv_tkn_num_of_item
@@ -3068,3 +3081,4 @@ AS
 --###########################  固定部 END   #######################################################
 --
 END XXCOS014A09C;
+/

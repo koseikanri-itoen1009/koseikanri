@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.1
+ * Version                : 1.3
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  2008/11/27    1.0  SCS              新規作成
  *  2009/02/24    1.1  H.Fujimoto       結合不具合No.129
  *  2009/03/11    1.2  K.Kumamoto       I_E_048(百貨店送り状)単体テスト障害対応 (SPEC修正)
+ *  2009/03/31    1.3  T.Kitajima       [T1_0113]makeup_data_recordのNUMBER,DATE編集変更
+ *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
 --
@@ -93,6 +95,9 @@ AS
   gv_char_space                               CONSTANT VARCHAR2(1) := ' ';       --空白
   gv_retcode_ok                               CONSTANT VARCHAR2(1) := ' ';    --戻り値正常
   gv_retcode_ng                               CONSTANT VARCHAR2(1) := 'E';    --戻り値異常
+  --
+  cv_number_null                              CONSTANT VARCHAR2(1) := '0';       --数値NULL
+  cv_date_null                                CONSTANT VARCHAR2(8) := '00000000';--時間NULL
 --
   --レコード識別子
   gv_record_kb_d                              CONSTANT VARCHAR2(1) := 'D';    --データ
@@ -1078,9 +1083,13 @@ AS
       --ELSE
         END IF;
       ELSE                                                                    --可変長
+--*********************************** 2009/03/31 1.3 T.Kitajima MOD START *********************************************
+--        IF ( l_data_ttype(i).attribute1 IN ( cv_character
+--                                            ,cv_date
+--                                            ,cv_varchar ) )
         IF ( l_data_ttype(i).attribute1 IN ( cv_character
-                                            ,cv_date
                                             ,cv_varchar ) )
+--*********************************** 2009/03/31 1.3 T.Kitajima MOD  END  *********************************************
         THEN
           ov_data_record   := ov_data_record
                            || gv_char_double_cort
@@ -1088,10 +1097,24 @@ AS
                                       ,1
                                       ,l_data_ttype(i).attribute2 )
                            || gv_char_double_cort;
+--*********************************** 2009/03/31 1.3 T.Kitajima ADD START *********************************************
+        ELSIF l_data_ttype(i).attribute1 = cv_date
+          THEN
+          ov_data_record   := ov_data_record
+                           || gv_char_double_cort
+                           || NVL( SUBSTRB( lv_out_unit_data
+                                       ,1
+                                       ,l_data_ttype(i).attribute2 ),
+                                   cv_date_null )
+                           || gv_char_double_cort;
+--*********************************** 2009/03/31 1.3 T.Kitajima ADD  END  *********************************************
         ELSIF l_data_ttype(i).attribute1 = cv_number
           THEN
             ov_data_record := ov_data_record
-                           || TO_CHAR( TO_NUMBER( lv_out_unit_data ), lv_number_fmt );
+--*********************************** 2009/03/31 1.3 T.Kitajima MOD START *********************************************
+--                           || TO_CHAR( TO_NUMBER( lv_out_unit_data ), lv_number_fmt );
+                           || NVL( TO_CHAR(  TO_NUMBER( lv_out_unit_data ), lv_number_fmt ), cv_number_null);
+--*********************************** 2009/03/31 1.3 T.Kitajima MOD  END  *********************************************
       --ELSE
         END IF;
       --カンマ付き
