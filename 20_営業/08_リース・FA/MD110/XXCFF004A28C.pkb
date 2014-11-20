@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF004A28C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 再リース要否ダウンロード 004_A28
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/05    1.0   SCS大井 信幸     新規作成
  *  2009/02/09    1.1   SCS大井 信幸     ログ出力項目追加
+ *  2009/08/11    1.2   SCS萱原 伸哉     統合テスト障害0000994対応
  *
  *****************************************************************************************/
 --
@@ -140,6 +141,9 @@ AS
       ,xlcv.lease_company_name        as lease_company_name        --リース会社名
       ,xdv.department_name            as department_name           --管理部門名
       ,xosv.object_status_name        as object_status_name        --物件ステータス名
+-- 0000994 2009/08/11 ADD START
+      ,xch.comments                   as comments                  --件名
+-- 0000994 2009/08/11 ADD END     
     FROM
        xxcff_object_headers   xoh
       ,xxcff_contract_headers xch
@@ -365,7 +369,10 @@ AS
     ov_csvbuf := ov_csvbuf ||           ir_release.quantity                                           || cv_csv_delim;
     --車台番号
     ov_csvbuf := ov_csvbuf || cv_wqt || ir_release.chassis_number                           || cv_wqt || cv_csv_delim;
-
+-- 0000994 2009/08/11 ADD START
+    --件名
+    ov_csvbuf := ov_csvbuf || cv_wqt || ir_release.comments                                 || cv_wqt || cv_csv_delim;
+-- 0000994 2009/08/11 ADD END    
 --
   EXCEPTION
     -- *** 共通関数OTHERS例外ハンドラ ***
