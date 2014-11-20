@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_oh_n28 ON xxwsh.xxwsh_order_headers_all(result_deliver_to_id,req_status) TABLESPACE xxidx ;
