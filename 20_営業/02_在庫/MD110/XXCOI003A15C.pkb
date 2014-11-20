@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A15C(body)
  * Description      : 保管場所転送取引データOIF更新(基準在庫)
  * MD.050           : 保管場所転送取引データOIF更新(基準在庫) MD050_COI_003_A15
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------  ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *                                         VDコラムマスタの更新処理の修正
  *  2009/12/15    1.3   SCS N.Abe        [E_本稼動_00402]VDコラムマスタ更新処理の修正
  *  2010/04/19    1.4   SCS H.Sasaki     [E_本稼動_06588]HHTからのVDコラムマスタ登録
+ *  2011/12/07    1.5   SCSK K.Nakamura  [E_本稼動_08842]同一顧客で伝票日付が不一致の場合のエラー処理追加
+ *                                       [E_本稼動_08843]VDコラムマスタ存在チェックフラグの初期化を修正
  *
  *****************************************************************************************/
 --
@@ -156,6 +158,9 @@ AS
   cv_msg_coi_10435      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10435';       --  基準在庫更新（顧客移行）エラー
   cv_msg_coi_10436      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10436';       --  新規ベンダ基準在庫コラム重複
 -- == 2011/04/19 V1.4 Added END   ===============================================================
+-- == 2011/12/07 V1.5 Added START ===============================================================
+  cv_msg_coi_10449      CONSTANT VARCHAR2(30) :=  'APP-XXCOI1-10449';       --  新規ベンダ基準在庫コラム登録日不一致
+-- == 2011/12/07 V1.5 Added END   ===============================================================
 --
   -- トークン
   gv_tkn_pro_tok       CONSTANT VARCHAR2(7)   := 'PRO_TOK';              -- プロファイル名
@@ -195,6 +200,9 @@ AS
   gt_default_rack       xxcoi_mst_vd_column.rack_quantity%TYPE;           --  ラック数初期値
   gv_ins_vd_type        VARCHAR2(1);                                      --  当月前月区分
 -- == 2011/04/19 V1.4 Added END   ===============================================================
+-- == 2011/12/07 V1.5 Added START ===============================================================
+  gb_cust_date_chk      BOOLEAN;                                          --  顧客内伝票日付不一致チェックフラグ
+-- == 2011/12/07 V1.5 Added END   ===============================================================
 --
   -- VDコラムマスタ情報レコード型
   TYPE gr_mst_vd_column_type IS RECORD(
@@ -299,6 +307,22 @@ AS
 -- == 2011/04/19 V1.4 Added END   ===============================================================
   -- 基準在庫変更抽出カーソルレコード型
   hht_inv_tran_rec hht_inv_tran_cur%ROWTYPE;
+-- == 2011/12/07 V1.5 Added START ===============================================================
+  --  顧客内伝票日付不一致チェック用カーソル
+  CURSOR chk_cust_date_cur(iv_customer_code VARCHAR2)
+  IS
+    SELECT  xhit.invoice_date         AS  invoice_date      -- 伝票日付
+    FROM    xxcoi_hht_inv_transactions    xhit              -- HHT入出庫一時表
+    WHERE   xhit.status           =   gn_xhit_status_0
+    AND     xhit.hht_program_div  =   cv_hht_program_div_6
+    AND     xhit.inside_code      =   iv_customer_code
+    ORDER BY  xhit.column_no      DESC
+            , xhit.interface_id   DESC
+    ;
+  -- 顧客内伝票日付不一致チェック用カーソルレコード型
+  chk_cust_date_rec chk_cust_date_cur%ROWTYPE;
+-- == 2011/12/07 V1.5 Added END   ===============================================================
+
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -1936,6 +1960,14 @@ AS
                           iv_application    =>  gv_msg_kbn_coi
                         , iv_name           =>  gv_msg_coi_10354
                       );
+-- == 2011/12/07 V1.5 Added START ===============================================================
+    ELSIF (iv_msg_code = cv_msg_coi_10449) THEN
+      --  新規ベンダ基準在庫コラム登録日不一致
+      lv_errmsg   :=  xxccp_common_pkg.get_msg(
+                          iv_application    =>  gv_msg_kbn_coi
+                        , iv_name           =>  cv_msg_coi_10449
+                      );
+-- == 2011/12/07 V1.5 Added END   ===============================================================
     END IF;
     --
     --  メッセージの出力
@@ -2058,6 +2090,11 @@ AS
     gb_vd_column_chk  :=  TRUE;
     gb_sale_base_chk  :=  TRUE;
     gb_cust_grp_chk   :=  FALSE;
+-- == 2011/12/07 V1.5 Added START ===============================================================
+    gb_cust_date_chk  :=  TRUE;
+    lt_msg_code       :=  NULL;
+    lt_chk_customer   :=  NULL;
+-- == 2011/12/07 V1.5 Added END   ===============================================================
     lt_chk_column     :=  0;
     --
     --  メッセージヘッダの出力（新規ベンダ基準在庫）
@@ -2174,6 +2211,12 @@ AS
         gt_new_vd_data.DELETE;
         --  顧客内有効データ有無フラグ
         gb_cust_grp_chk :=  FALSE;
+-- == 2011/12/07 V1.5 Added START ===============================================================
+        --  VDコラムマスタ存在チェックフラグ
+        gb_vd_column_chk := TRUE;
+        --  顧客内伝票日付不一致チェックフラグ
+        gb_cust_date_chk := TRUE;
+-- == 2011/12/07 V1.5 Added END   ===============================================================
         --
         IF  (hht_inv_tran2_cur%FOUND) THEN
           BEGIN
@@ -2216,6 +2259,24 @@ AS
             --
             --  顧客情報が取得された場合
             gb_customer_chk   :=  TRUE;
+-- == 2011/12/07 V1.5 Added START ===============================================================
+            --  今回対象顧客の伝票日付チェック
+            OPEN chk_cust_date_cur(iv_customer_code => hht_inv_tran_rec.customer_code);
+            --
+            <<chk_cust_date_loop>>
+            LOOP
+              FETCH chk_cust_date_cur INTO chk_cust_date_rec;
+              EXIT WHEN ( chk_cust_date_cur%NOTFOUND );
+                --  顧客内で伝票日付が不一致の場合
+                IF ( hht_inv_tran_rec.invoice_date <> chk_cust_date_rec.invoice_date ) THEN
+                  --  顧客内伝票日付不一致チェックフラグ
+                  gb_cust_date_chk := FALSE;
+                  ov_retcode       := cv_status_warn;
+                END IF;
+            END LOOP chk_cust_date_loop;
+            --
+            CLOSE chk_cust_date_cur;
+-- == 2011/12/07 V1.5 Added END   ===============================================================
             --
             --  コラムNo1から、今回対象の有効最大コラムNoまでを初期化
             <<vd_format_loop>>
@@ -2271,6 +2332,21 @@ AS
           RAISE global_process_expt;
         END IF;
         --
+-- == 2011/12/07 V1.5 Added START ===============================================================
+      ELSIF NOT(gb_cust_date_chk) THEN
+        --  同一顧客内での伝票日付の不一致（同一顧客のスキップ）
+        put_warning_msg(
+            iv_msg_code     =>  cv_msg_coi_10449
+          , ov_errbuf       =>  lv_errbuf         --  エラー・メッセージ            --# 固定 #
+          , ov_retcode      =>  lv_retcode        --  リターン・コード              --# 固定 #
+          , ov_errmsg       =>  lv_errmsg         --  ユーザー・エラー・メッセージ  --# 固定 #
+        );
+        --  処理完了ステータス正常以外の場合
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+-- == 2011/12/07 V1.5 Added END   ===============================================================
       ELSIF NOT(gb_sale_base_chk) THEN
         --  前月、当月売上拠点の不一致（同一顧客のスキップ）
         put_warning_msg(
