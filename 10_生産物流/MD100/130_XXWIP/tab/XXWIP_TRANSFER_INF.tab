@@ -6,7 +6,7 @@ CREATE TABLE xxwip.xxwip_transfer_inf
   goods_classe            VARCHAR2(1)     NOT NULL,
   jurisdicyional_hub      VARCHAR2(4)     NOT NULL,
   area_name               VARCHAR2(240),
-  transfe_qty             NUMBER(9,3)     NOT NULL,
+  transfe_qty             NUMBER(12,3)    NOT NULL,
   transfer_amount         NUMBER(8,0)     NOT NULL,
   restore_amount          NUMBER(8,0)     NOT NULL,
   shipping_expenses_a     NUMBER(8,0)     NOT NULL,
