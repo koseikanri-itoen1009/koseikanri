@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -90,6 +90,7 @@ AS
  *  2009/01/09    1.12  Oracle 椎名 昭圭 本番#857対応
  *  2009/02/25    1.13  Oracle 椎名 昭圭 本番#1235対応
  *  2009/04/03    1.14  Oracle 丸下 博宣 本番#1357、1360
+ *  2009/10/23    1.15  SCS 丸下 博宣    本番#1670
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -498,6 +499,7 @@ AS
   -- 拠点IFより
   CURSOR gc_hca_party_cur
   IS
+/* 2009/10/23 DEL START
     SELECT hca.party_id
     FROM   hz_cust_accounts hca
     WHERE  EXISTS (
@@ -507,10 +509,20 @@ AS
       AND    ROWNUM = 1)
     AND    hca.status = gv_status_on
     FOR UPDATE OF hca.party_id NOWAIT;
+   2009/10/23 DEL END */
+-- 2009/10/23 ADD START
+    SELECT hca.party_id
+    FROM   hz_cust_accounts hca
+          ,xxcmn_party_if xpi
+    WHERE  hca.account_number = xpi.base_code
+    AND    hca.status = gv_status_on
+    FOR UPDATE OF hca.party_id NOWAIT;
+-- 2009/10/23 ADD END
 --
   -- 配送先IFより
   CURSOR gc_hca_site_cur
   IS
+/* 2009/10/23 DEL START
     SELECT hca.party_id
     FROM   hz_cust_accounts hca
     WHERE  EXISTS (
@@ -520,11 +532,21 @@ AS
       AND    ROWNUM = 1)
     AND    hca.status = gv_status_on
     FOR UPDATE OF hca.party_id NOWAIT;
+   2009/10/23 DEL END */
+-- 2009/10/23 ADD START
+    SELECT hca.party_id
+    FROM   hz_cust_accounts hca
+          ,xxcmn_site_if xsi
+    WHERE  hca.account_number = xsi.party_num
+    AND    hca.status = gv_status_on
+    FOR UPDATE OF hca.party_id NOWAIT;
+-- 2009/10/23 ADD END
 --
   -- パーティマスタ
   -- 拠点IFより
   CURSOR gc_hp_party_cur
   IS
+/* 2009/10/23 DEL START
     SELECT hp.party_id
     FROM   hz_parties hp
     WHERE  EXISTS (
@@ -534,10 +556,20 @@ AS
       AND    ROWNUM = 1)
     AND    hp.validated_flag = gv_validated_flag_on
     FOR UPDATE OF hp.party_id NOWAIT;
+   2009/10/23 DEL END */
+-- 2009/10/23 ADD START
+    SELECT hp.party_id
+    FROM   hz_parties hp
+          ,xxcmn_party_if xpi
+    WHERE  hp.party_number = xpi.base_code
+    AND    hp.validated_flag = gv_validated_flag_on
+    FOR UPDATE OF hp.party_id NOWAIT;
+-- 2009/10/23 ADD END
 --
   -- 配送先IFより
   CURSOR gc_hp_site_cur
   IS
+/* 2009/10/23 DEL START
     SELECT hp.party_id
     FROM   hz_parties hp
     WHERE  EXISTS (
@@ -547,11 +579,21 @@ AS
       AND    ROWNUM = 1)
     AND    hp.validated_flag = gv_validated_flag_on
     FOR UPDATE OF hp.party_id NOWAIT;
+   2009/10/23 DEL END */
+-- 2009/10/23 ADD START
+    SELECT hp.party_id
+    FROM   hz_parties hp
+          ,xxcmn_site_if xsi
+    WHERE  hp.party_number = xsi.party_num
+    AND    hp.validated_flag = gv_validated_flag_on
+    FOR UPDATE OF hp.party_id NOWAIT;
+-- 2009/10/23 ADD END
 --
   -- パーティーアドオンマスタ
   -- 拠点IFより
   CURSOR gc_xp_party_cur
   IS
+/* 2009/10/23 DEL START
     SELECT xp.party_id
     FROM   xxcmn_parties xp
     WHERE  EXISTS (
@@ -566,10 +608,22 @@ AS
       AND    xp.party_id = hps.party_id
       AND    ROWNUM = 1)
     FOR UPDATE OF xp.party_id NOWAIT;
+   2009/10/23 DEL END */
+-- 2009/10/23 ADD START
+    SELECT xp.party_id
+    FROM   xxcmn_parties xp
+          ,hz_parties hps
+          ,xxcmn_party_if xpi
+    WHERE  hps.party_number = xpi.base_code
+    AND    hps.validated_flag = gv_validated_flag_on
+    AND    xp.party_id = hps.party_id
+    FOR UPDATE OF xp.party_id NOWAIT;
+-- 2009/10/23 ADD END
 --
   -- 配送先IFより
   CURSOR gc_xp_site_cur
   IS
+/* 2009/10/23 DEL START
     SELECT xp.party_id
     FROM   xxcmn_parties xp
     WHERE  EXISTS (
@@ -584,27 +638,23 @@ AS
       AND    xp.party_id = hps.party_id
       AND    ROWNUM = 1)
     FOR UPDATE OF xp.party_id NOWAIT;
+   2009/10/23 DEL END */
+-- 2009/10/23 ADD START
+    SELECT xp.party_id
+    FROM   xxcmn_parties xp
+          ,hz_parties hps
+          ,xxcmn_site_if xsi
+    WHERE  hps.party_number = xsi.party_num
+    AND    hps.validated_flag = gv_validated_flag_on
+    AND    xp.party_id = hps.party_id
+    FOR UPDATE OF xp.party_id NOWAIT;
+-- 2009/10/23 ADD END
 --
   -- パーティサイトマスタ
   -- 配送先IFより
   CURSOR gc_hps_site_cur
   IS
--- 2008/08/25 Mod ↓
-/*
-    SELECT hps.party_site_id
-    FROM   hz_party_sites hps
-    WHERE  EXISTS (
-      SELECT hcas.party_site_id
-      FROM   hz_cust_acct_sites_all hcas
-      WHERE  EXISTS (
-        SELECT xsi.ship_to_code
-        FROM   xxcmn_site_if xsi
-        WHERE  hcas.attribute18 = xsi.ship_to_code
-        AND    ROWNUM = 1)
-      AND    hps.party_site_id = hcas.party_site_id
-      AND    ROWNUM = 1)
-    AND    hps.status = gv_status_on
-*/
+/* 2009/10/23 DEL START
     SELECT hps.party_site_id
     FROM   hz_party_sites hps                     -- パーティサイトマスタ
     WHERE  EXISTS (
@@ -618,27 +668,23 @@ AS
       AND    hps.location_id = hcas.location_id
       AND    ROWNUM = 1)
     AND    hps.status = gv_status_on
--- 2008/08/25 Mod ↑
     FOR UPDATE OF hps.party_site_id NOWAIT;
+   2009/10/23 DEL END */
+-- 2009/10/23 ADD START
+    SELECT hps.party_site_id
+    FROM   hz_party_sites hps                     -- パーティサイトマスタ
+          ,hz_locations hcas                    -- 顧客事業所マスタ
+          ,xxcmn_site_if xsi
+    WHERE  hcas.province = xsi.ship_to_code
+    AND    hps.location_id = hcas.location_id
+    AND    hps.status = gv_status_on
+    FOR UPDATE OF hps.party_site_id NOWAIT;
+-- 2009/10/23 ADD END
 --
   -- パーティーサイトアドオンマスタ
   CURSOR gc_xps_site_cur
   IS
--- 2008/08/25 Mod ↓
-/*
-    SELECT xps.party_site_id
-    FROM   xxcmn_party_sites xps
-    WHERE  EXISTS (
-      SELECT hcas.party_site_id
-      FROM   hz_cust_acct_sites_all hcas
-      WHERE  EXISTS (
-        SELECT xsi.ship_to_code
-        FROM   xxcmn_site_if xsi
-        WHERE  hcas.attribute18 = xsi.ship_to_code
-        AND    ROWNUM = 1)
-      AND    xps.party_site_id = hcas.party_site_id
-      AND    ROWNUM = 1)
-*/
+/* 2009/10/23 DEL START
     SELECT xps.party_site_id
     FROM   xxcmn_party_sites xps                  -- パーティサイトアドオンマスタ
     WHERE  EXISTS (
@@ -651,8 +697,17 @@ AS
         AND    ROWNUM = 1)
       AND    xps.location_id = hcas.location_id
       AND    ROWNUM = 1)
--- 2008/08/25 Mod ↑
     FOR UPDATE OF xps.party_site_id NOWAIT;
+   2009/10/23 DEL END */
+-- 2009/10/23 ADD START
+    SELECT xps.party_site_id
+    FROM   xxcmn_party_sites xps                  -- パーティサイトアドオンマスタ
+          ,hz_locations hcas                    -- 顧客事業所マスタ
+          ,xxcmn_site_if xsi
+    WHERE  hcas.province = xsi.ship_to_code
+    AND    xps.location_id = hcas.location_id
+    FOR UPDATE OF xps.party_site_id NOWAIT;
+-- 2009/10/23 ADD END
 --
   /***********************************************************************************
    * Procedure Name   : get_profile
