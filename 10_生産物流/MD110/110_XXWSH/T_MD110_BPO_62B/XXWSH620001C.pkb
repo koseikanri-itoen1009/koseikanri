@@ -39,6 +39,7 @@ AS
  *  2008/12/10    1.6   Hitomi Itou        本番障害#650
  *  2009/01/07    1.7   Akiyoshi Shiina    本番障害#873
  *  2009/01/14    1.8   Hisanobu Sakuma    本番障害#661
+ *  2009/01/20    1.9   Hisanobu Sakuma    本番障害#800
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1296,8 +1297,10 @@ AS
     ln_report_data_to    NUMBER DEFAULT 0;                                  -- 元帳票データの格納用番号（至）
     ln_ins_qty           NUMBER DEFAULT 0;                                  -- 不足数の集計値
     ln_report_data_cnt   NUMBER DEFAULT 0;                                  -- 出力データ（ワーク）用配列カウンタ
---
 -- 2009/01/14 v1.8 ADD END
+-- 2009/01/20 v1.9 ADD START
+    lv_req_move_no       xoha.request_no%TYPE DEFAULT NULL ;                -- 依頼No/移動No
+-- 2009/01/20 v1.9 ADD END
 --
   BEGIN
 --
@@ -2330,6 +2333,21 @@ AS
           <<report_data_in_loop>>
           FOR ln_line_loop_cnt IN ln_report_data_fr..ln_report_data_to LOOP
             ln_report_data_cnt := ln_report_data_cnt + 1;
+-- 2009/01/20 v1.9 ADD START
+            -- 依頼No/移動Noが前のレコードと同じ場合
+            IF  (lv_req_move_no = gt_report_data(ln_line_loop_cnt).req_move_no) THEN
+              gt_report_data(ln_line_loop_cnt).req_move_no     :=  NULL;      -- 依頼No/移動No
+              gt_report_data(ln_line_loop_cnt).base_cd         :=  NULL;      -- 管轄拠点
+              gt_report_data(ln_line_loop_cnt).base_nm         :=  NULL;      -- 管轄拠点名称
+              gt_report_data(ln_line_loop_cnt).delivery_to_cd  :=  NULL;      -- 配送先/入庫先
+              gt_report_data(ln_line_loop_cnt).delivery_to_nm  :=  NULL;      -- 配送先名称
+              gt_report_data(ln_line_loop_cnt).description     :=  NULL;      -- 摘要
+              gt_report_data(ln_line_loop_cnt).conf_req        :=  NULL;      -- 確認依頼
+            -- 依頼No/移動Noが前のレコードと異なる場合
+            ELSE
+              lv_req_move_no := gt_report_data(ln_line_loop_cnt).req_move_no;
+            END IF;
+-- 2009/01/20 v1.9 ADD END
             lt_report_data(ln_report_data_cnt) := gt_report_data(ln_line_loop_cnt);
           END LOOP report_data_in_loop;
         END IF;
@@ -2349,6 +2367,21 @@ AS
       <<report_data_out_loop>>
       FOR ln_line_loop_cnt IN ln_report_data_fr..ln_report_data_to LOOP
           ln_report_data_cnt := ln_report_data_cnt + 1;
+-- 2009/01/20 v1.9 ADD START
+          -- 依頼No/移動Noが前のレコードと同じ場合
+          IF  (lv_req_move_no = gt_report_data(ln_line_loop_cnt).req_move_no) THEN
+            gt_report_data(ln_line_loop_cnt).req_move_no     :=  NULL;      -- 依頼No/移動No
+            gt_report_data(ln_line_loop_cnt).base_cd         :=  NULL;      -- 管轄拠点
+            gt_report_data(ln_line_loop_cnt).base_nm         :=  NULL;      -- 管轄拠点名称
+            gt_report_data(ln_line_loop_cnt).delivery_to_cd  :=  NULL;      -- 配送先/入庫先
+            gt_report_data(ln_line_loop_cnt).delivery_to_nm  :=  NULL;      -- 配送先名称
+            gt_report_data(ln_line_loop_cnt).description     :=  NULL;      -- 摘要
+            gt_report_data(ln_line_loop_cnt).conf_req        :=  NULL;      -- 確認依頼
+          -- 依頼No/移動Noが前のレコードと異なる場合
+          ELSE
+            lv_req_move_no := gt_report_data(ln_line_loop_cnt).req_move_no;
+          END IF;
+-- 2009/01/20 v1.9 ADD END
           lt_report_data(ln_report_data_cnt) := gt_report_data(ln_line_loop_cnt);
       END LOOP report_data_out_loop;
     END IF;
