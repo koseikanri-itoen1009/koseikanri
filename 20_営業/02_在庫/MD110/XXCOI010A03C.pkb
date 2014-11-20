@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI010A03C(body)
  * Description      : VDコラムマスタHHT連携
  * MD.050           : VDコラムマスタHHT連携 MD050_COI_010_A03
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/02    1.0   T.Nakamura       新規作成
+ *  2009/09/14    1.1   H.Sasaki         [0001348]PT対応
  *
  *****************************************************************************************/
 --
@@ -123,10 +124,69 @@ AS
   -- ユーザー定義グローバルカーソル
   -- ===============================
   -- VDコラムマスタ情報抽出
-  CURSOR get_xmvc_tbl_cur
+-- == 2009/09/14 V1.1 Modified START ===============================================================
+--  CURSOR get_xmvc_tbl_cur
+--  IS
+--    -- 最終連携日時以降、SYSDATEより前に更新されたVDコラムマスタのデータを抽出
+--    SELECT   xmvc.column_no                AS column_no                   -- コラムNO.
+--           , xmvc.price                    AS price                       -- 単価
+--           , xmvc.inventory_quantity       AS inventory_quantity          -- 満タン数
+--           , xmvc.hot_cold                 AS hot_cold                    -- H/C
+--           , xmvc.last_update_date         AS last_update_date            -- 更新日時
+--           , msib.segment1                 AS item_code                   -- 品目コード
+--           , hca.account_number            AS cust_code                   -- 顧客コード
+--           , CASE WHEN hp.duns_number_c IN ( cv_cust_status_reorg_crd     -- 顧客ステータスが「更正債権」
+--                                           , cv_cust_status_stop_apr )    -- または、「中止決裁済」の場合
+--                  THEN cv_del_flag_y                                      -- 削除フラグに'1'を設定
+--                  ELSE cv_del_flag_n                                      -- それ以外の場合、削除フラグに'0'を設定
+--             END                           AS del_flag                    -- 削除フラグ
+--    FROM     xxcoi_mst_vd_column           xmvc                           -- VDコラムマスタ
+--           , mtl_system_items_b            msib                           -- 品目マスタ
+--           , hz_cust_accounts              hca                            -- 顧客マスタ
+--           , hz_parties                    hp                             -- パーティ
+--    WHERE    xmvc.last_update_date         >= gd_last_coop_date           -- 取得条件：最終更新日が最終連携日時以降
+--    AND      xmvc.last_update_date         <  gd_sysdate                  -- 取得条件：最終更新日がSYSDATEより前
+--    AND      msib.inventory_item_id        =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
+--    AND      msib.organization_id          =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+--    AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
+--    AND      hp.party_id                   =  hca.party_id                -- 結合条件：パーティと顧客マスタ
+--    UNION                                                                 -- マージ
+--    -- 顧客移行日が前回最終連携日時より大きく、業務日付以前の顧客移行情報を抽出
+--    SELECT   xmvc.column_no                AS column_no                   -- コラムNO.
+--           , xmvc.price                    AS price                       -- 単価
+--           , xmvc.inventory_quantity       AS inventory_quantity          -- 満タン数
+--           , xmvc.hot_cold                 AS hot_cold                    -- H/C
+--           , xmvc.last_update_date         AS last_update_date            -- 更新日時
+--           , msib.segment1                 AS item_code                   -- 品目コード
+--           , hca.account_number            AS cust_code                   -- 顧客コード
+--           , CASE WHEN hp.duns_number_c IN ( cv_cust_status_reorg_crd     -- 顧客ステータスが「更正債権」
+--                                           , cv_cust_status_stop_apr )    -- または、「中止決裁済」の場合
+--                  THEN cv_del_flag_y                                      -- 削除フラグに'1'を設定
+--                  ELSE cv_del_flag_n                                      -- それ以外の場合、削除フラグに'0'を設定
+--             END                           AS del_flag                    -- 削除フラグ
+--    FROM     xxcoi_mst_vd_column           xmvc                           -- VDコラムマスタ
+--           , mtl_system_items_b            msib                           -- 品目マスタ
+--           , hz_cust_accounts              hca                            -- 顧客マスタ
+--           , xxcok_cust_shift_info         xcsi                           -- 顧客移行情報
+--           , hz_parties                    hp                             -- パーティ
+--    WHERE    xmvc.last_update_date         <  gd_last_coop_date           -- 取得条件：最終更新日が最終連携日時より前
+--    AND      msib.inventory_item_id        =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
+--    AND      msib.organization_id          =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
+--    AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
+--    AND      xcsi.cust_code                =  hca.account_number          -- 結合条件：顧客移行情報と顧客マスタ
+--    AND      xcsi.cust_shift_date          >= TRUNC( gd_last_coop_date )  -- 取得条件：顧客移行日が最終連携日日付以降
+--    AND      xcsi.cust_shift_date          <=                             -- 取得条件：顧客移行日は、
+--               CASE WHEN gv_night_exec_flag     =  cv_night_exec_flag_y   -- 夜間実行フラグが'Y'の場合、
+--                    THEN gd_next_sys_act_day                              -- 翌システム稼動日以前
+--                    ELSE gd_process_date                                  -- それ以外の場合、業務日付以前
+--               END
+--    AND      hp.party_id                   =  hca.party_id                -- 結合条件：パーティと顧客マスタ
+--  ;
+--
+  CURSOR  get_xmvc_tbl_cur1
   IS
-    -- 最終連携日時以降、SYSDATEより前に更新されたVDコラムマスタのデータを抽出
-    SELECT   xmvc.column_no                AS column_no                   -- コラムNO.
+    SELECT   /*+ use_nl(hp hca xmvc msib) */
+             xmvc.column_no                AS column_no                   -- コラムNO.
            , xmvc.price                    AS price                       -- 単価
            , xmvc.inventory_quantity       AS inventory_quantity          -- 満タン数
            , xmvc.hot_cold                 AS hot_cold                    -- H/C
@@ -147,10 +207,12 @@ AS
     AND      msib.inventory_item_id        =  xmvc.item_id                -- 結合条件：品目マスタとVDコラムマスタ
     AND      msib.organization_id          =  xmvc.organization_id        -- 結合条件：品目マスタとVDコラムマスタ
     AND      hca.cust_account_id           =  xmvc.customer_id            -- 結合条件：顧客マスタとVDコラムマスタ
-    AND      hp.party_id                   =  hca.party_id                -- 結合条件：パーティと顧客マスタ
-    UNION                                                                 -- マージ
-    -- 顧客移行日が前回最終連携日時より大きく、業務日付以前の顧客移行情報を抽出
-    SELECT   xmvc.column_no                AS column_no                   -- コラムNO.
+    AND      hp.party_id                   =  hca.party_id;               -- 結合条件：パーティと顧客マスタ
+  --
+  CURSOR  get_xmvc_tbl_cur2
+  IS
+    SELECT   /*+ use_nl(hp hca xcsi xmvc msib) */
+             xmvc.column_no                AS column_no                   -- コラムNO.
            , xmvc.price                    AS price                       -- 単価
            , xmvc.inventory_quantity       AS inventory_quantity          -- 満タン数
            , xmvc.hot_cold                 AS hot_cold                    -- H/C
@@ -178,14 +240,17 @@ AS
                     THEN gd_next_sys_act_day                              -- 翌システム稼動日以前
                     ELSE gd_process_date                                  -- それ以外の場合、業務日付以前
                END
-    AND      hp.party_id                   =  hca.party_id                -- 結合条件：パーティと顧客マスタ
-  ;
+    AND      hp.party_id                   =  hca.party_id;               -- 結合条件：パーティと顧客マスタ
+-- == 2009/09/14 V1.1 Modified END   ===============================================================
 --
   -- ==============================
   -- ユーザー定義グローバルテーブル
   -- ==============================
-  TYPE g_get_xmvc_tbl_ttype IS TABLE OF get_xmvc_tbl_cur%ROWTYPE INDEX BY BINARY_INTEGER;
-  g_get_xmvc_tbl_tab        g_get_xmvc_tbl_ttype;
+-- == 2009/09/14 V1.1 Modified START ===============================================================
+--  TYPE g_get_xmvc_tbl_ttype IS TABLE OF get_xmvc_tbl_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+--  g_get_xmvc_tbl_tab        g_get_xmvc_tbl_ttype;
+  get_xmvc_tbl_rec  get_xmvc_tbl_cur1%ROWTYPE;
+-- == 2009/09/14 V1.1 Modified END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義例外
@@ -537,113 +602,115 @@ AS
 --
   END get_last_coop_date;
 --
-  /**********************************************************************************
-   * Procedure Name   : get_mst_vd_column
-   * Description      : VDコラムマスタ情報抽出(A-4)
-   ***********************************************************************************/
-  PROCEDURE get_mst_vd_column(
-      ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
-    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
-    , ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
-  IS
-    -- ===============================
-    -- 固定ローカル定数
-    -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_mst_vd_column'; -- プログラム名
---
---#######################  固定ローカル変数宣言部 START   ######################
---
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
-    lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
---
---###########################  固定部 END   ####################################
---
-    -- ===============================
-    -- ユーザー宣言部
-    -- ===============================
-    -- *** ローカル定数 ***
---
-    -- *** ローカル変数 ***
---
-    -- *** ローカル・カーソル ***
---
-    -- *** ローカル・レコード ***
---
-  BEGIN
---
---##################  固定ステータス初期化部 START   ###################
---
-    ov_retcode := cv_status_normal;
---
---###########################  固定部 END   ############################
---
-    -- カーソルオープン
-    OPEN  get_xmvc_tbl_cur;
---
-    -- カーソルデータ取得
-    FETCH get_xmvc_tbl_cur BULK COLLECT INTO g_get_xmvc_tbl_tab;
---
-    -- カーソルのクローズ
-    CLOSE get_xmvc_tbl_cur;
---
-    -- ===============================
-    -- 対象件数カウント
-    -- ===============================
-    gn_target_cnt := g_get_xmvc_tbl_tab.COUNT;
---
-    -- ===============================
-    -- 抽出0件チェック
-    -- ===============================
-    IF ( gn_target_cnt = 0 ) THEN
-      gv_out_msg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_appl_short_name_xxcoi
-                      , iv_name         => cv_no_data_msg
-                    );
-      -- メッセージ出力
-      FND_FILE.PUT_LINE(
-          which  => FND_FILE.OUTPUT
-        , buff   => gv_out_msg
-      );
-    END IF;
---
-    --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
-    --==============================================================
---
-  EXCEPTION
---
---#################################  固定例外処理部 START   ####################################
---
-    -- *** 共通関数例外ハンドラ ***
-    WHEN global_api_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( get_xmvc_tbl_cur%ISOPEN ) THEN
-        CLOSE get_xmvc_tbl_cur;
-      END IF;
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
-      ov_retcode := cv_status_error;
-    -- *** 共通関数OTHERS例外ハンドラ ***
-    WHEN global_api_others_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( get_xmvc_tbl_cur%ISOPEN ) THEN
-        CLOSE get_xmvc_tbl_cur;
-      END IF;
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
-    -- *** OTHERS例外ハンドラ ***
-    WHEN OTHERS THEN
-      -- カーソルがOPENしている場合
-      IF ( get_xmvc_tbl_cur%ISOPEN ) THEN
-        CLOSE get_xmvc_tbl_cur;
-      END IF;
-      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-      ov_retcode := cv_status_error;
---
---#####################################  固定部 END   ##########################################
---
-  END get_mst_vd_column;
+-- == 2009/09/14 V1.1 Deleted START ===============================================================
+--  /**********************************************************************************
+--   * Procedure Name   : get_mst_vd_column
+--   * Description      : VDコラムマスタ情報抽出(A-4)
+--   ***********************************************************************************/
+--  PROCEDURE get_mst_vd_column(
+--      ov_errbuf     OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+--    , ov_retcode    OUT VARCHAR2      --   リターン・コード             --# 固定 #
+--    , ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+--  IS
+--    -- ===============================
+--    -- 固定ローカル定数
+--    -- ===============================
+--    cv_prg_name   CONSTANT VARCHAR2(100) := 'get_mst_vd_column'; -- プログラム名
+----
+----#######################  固定ローカル変数宣言部 START   ######################
+----
+--    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+--    lv_retcode VARCHAR2(1);     -- リターン・コード
+--    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+----
+----###########################  固定部 END   ####################################
+----
+--    -- ===============================
+--    -- ユーザー宣言部
+--    -- ===============================
+--    -- *** ローカル定数 ***
+----
+--    -- *** ローカル変数 ***
+----
+--    -- *** ローカル・カーソル ***
+----
+--    -- *** ローカル・レコード ***
+----
+--  BEGIN
+----
+----##################  固定ステータス初期化部 START   ###################
+----
+--    ov_retcode := cv_status_normal;
+----
+----###########################  固定部 END   ############################
+----
+--    -- カーソルオープン
+--    OPEN  get_xmvc_tbl_cur;
+----
+--    -- カーソルデータ取得
+--    FETCH get_xmvc_tbl_cur BULK COLLECT INTO g_get_xmvc_tbl_tab;
+----
+--    -- カーソルのクローズ
+--    CLOSE get_xmvc_tbl_cur;
+----
+--    -- ===============================
+--    -- 対象件数カウント
+--    -- ===============================
+--    gn_target_cnt := g_get_xmvc_tbl_tab.COUNT;
+----
+--    -- ===============================
+--    -- 抽出0件チェック
+--    -- ===============================
+--    IF ( gn_target_cnt = 0 ) THEN
+--      gv_out_msg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_appl_short_name_xxcoi
+--                      , iv_name         => cv_no_data_msg
+--                    );
+--      -- メッセージ出力
+--      FND_FILE.PUT_LINE(
+--          which  => FND_FILE.OUTPUT
+--        , buff   => gv_out_msg
+--      );
+--    END IF;
+----
+--    --==============================================================
+--    --メッセージ出力をする必要がある場合は処理を記述
+--    --==============================================================
+----
+--  EXCEPTION
+----
+----#################################  固定例外処理部 START   ####################################
+----
+--    -- *** 共通関数例外ハンドラ ***
+--    WHEN global_api_expt THEN
+--      -- カーソルがOPENしている場合
+--      IF ( get_xmvc_tbl_cur%ISOPEN ) THEN
+--        CLOSE get_xmvc_tbl_cur;
+--      END IF;
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000 );
+--      ov_retcode := cv_status_error;
+--    -- *** 共通関数OTHERS例外ハンドラ ***
+--    WHEN global_api_others_expt THEN
+--      -- カーソルがOPENしている場合
+--      IF ( get_xmvc_tbl_cur%ISOPEN ) THEN
+--        CLOSE get_xmvc_tbl_cur;
+--      END IF;
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+--    -- *** OTHERS例外ハンドラ ***
+--    WHEN OTHERS THEN
+--      -- カーソルがOPENしている場合
+--      IF ( get_xmvc_tbl_cur%ISOPEN ) THEN
+--        CLOSE get_xmvc_tbl_cur;
+--      END IF;
+--      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+--      ov_retcode := cv_status_error;
+----
+----#####################################  固定部 END   ##########################################
+----
+--  END get_mst_vd_column;
+-- == 2009/09/14 V1.1 Deleted END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : create_csv_file
@@ -696,39 +763,107 @@ AS
     -- ===============================
     -- ループ開始
     -- ===============================
-    <<create_file_loop>>
-    FOR i IN 1 .. g_get_xmvc_tbl_tab.COUNT LOOP
-      lv_column_no          := TO_CHAR( g_get_xmvc_tbl_tab(i).column_no );                                -- コラムNo.
-      lv_price              := TO_CHAR( g_get_xmvc_tbl_tab(i).price );                                    -- 単価
-      lv_inventory_quantity := TO_CHAR( g_get_xmvc_tbl_tab(i).inventory_quantity );                       -- 満タン数
-      lv_last_update_date   := TO_CHAR( g_get_xmvc_tbl_tab(i).last_update_date, 'YYYY/MM/DD HH24:MI:SS' );-- 更新日時
+-- == 2009/09/14 V1.1 Modified START ===============================================================
+--    <<create_file_loop>>
+--    FOR i IN 1 .. g_get_xmvc_tbl_tab.COUNT LOOP
+--      lv_column_no          := TO_CHAR( g_get_xmvc_tbl_tab(i).column_no );                                -- コラムNo.
+--      lv_price              := TO_CHAR( g_get_xmvc_tbl_tab(i).price );                                    -- 単価
+--      lv_inventory_quantity := TO_CHAR( g_get_xmvc_tbl_tab(i).inventory_quantity );                       -- 満タン数
+--      lv_last_update_date   := TO_CHAR( g_get_xmvc_tbl_tab(i).last_update_date, 'YYYY/MM/DD HH24:MI:SS' );-- 更新日時
+----
+--      -- CSVデータを作成
+--      lv_csv_file := (
+--        cv_encloser || g_get_xmvc_tbl_tab(i).cust_code || cv_encloser || cv_delimiter ||  -- 顧客コード
+--        cv_encloser || lv_column_no                    || cv_encloser || cv_delimiter ||  -- コラムNo.
+--        cv_encloser || g_get_xmvc_tbl_tab(i).item_code || cv_encloser || cv_delimiter ||  -- 品目コード
+--                       lv_price                                       || cv_delimiter ||  -- 単価
+--                       lv_inventory_quantity                          || cv_delimiter ||  -- 満タン数
+--        cv_encloser || g_get_xmvc_tbl_tab(i).hot_cold  || cv_encloser || cv_delimiter ||  -- H/C
+--        cv_encloser || g_get_xmvc_tbl_tab(i).del_flag  || cv_encloser || cv_delimiter ||  -- 削除フラグ
+--        cv_encloser || lv_last_update_date             || cv_encloser                     -- 更新日時
+--      );
+----
+--      -- ===============================
+--      -- CSVデータを出力
+--      -- ===============================
+--      UTL_FILE.PUT_LINE(
+--          file   => g_file_handle
+--        , buffer => lv_csv_file
+--      );
+----
+--      -- ===============================
+--      -- 成功件数カウント
+--      -- ===============================
+--      gn_normal_cnt := gn_normal_cnt + 1;
+----
+--    END LOOP create_file_loop;
 --
-      -- CSVデータを作成
-      lv_csv_file := (
-        cv_encloser || g_get_xmvc_tbl_tab(i).cust_code || cv_encloser || cv_delimiter ||  -- 顧客コード
-        cv_encloser || lv_column_no                    || cv_encloser || cv_delimiter ||  -- コラムNo.
-        cv_encloser || g_get_xmvc_tbl_tab(i).item_code || cv_encloser || cv_delimiter ||  -- 品目コード
-                       lv_price                                       || cv_delimiter ||  -- 単価
-                       lv_inventory_quantity                          || cv_delimiter ||  -- 満タン数
-        cv_encloser || g_get_xmvc_tbl_tab(i).hot_cold  || cv_encloser || cv_delimiter ||  -- H/C
-        cv_encloser || g_get_xmvc_tbl_tab(i).del_flag  || cv_encloser || cv_delimiter ||  -- 削除フラグ
-        cv_encloser || lv_last_update_date             || cv_encloser                     -- 更新日時
+    OPEN  get_xmvc_tbl_cur1;
+    OPEN  get_xmvc_tbl_cur2;
+    --
+    <<cursor_loop>>
+    FOR i IN  1 .. 2  LOOP
+      <<create_file_loop>>
+      LOOP
+        IF (i = 1) THEN
+          FETCH get_xmvc_tbl_cur1 INTO  get_xmvc_tbl_rec;
+          EXIT WHEN get_xmvc_tbl_cur1%NOTFOUND;
+        ELSE
+          FETCH get_xmvc_tbl_cur2 INTO  get_xmvc_tbl_rec;
+          EXIT WHEN get_xmvc_tbl_cur2%NOTFOUND;
+        END IF;
+        --
+        lv_column_no          := TO_CHAR( get_xmvc_tbl_rec.column_no );                                -- コラムNo.
+        lv_price              := TO_CHAR( get_xmvc_tbl_rec.price );                                    -- 単価
+        lv_inventory_quantity := TO_CHAR( get_xmvc_tbl_rec.inventory_quantity );                       -- 満タン数
+        lv_last_update_date   := TO_CHAR( get_xmvc_tbl_rec.last_update_date, 'YYYY/MM/DD HH24:MI:SS' );-- 更新日時
+  --
+        -- CSVデータを作成
+        lv_csv_file := (
+          cv_encloser || get_xmvc_tbl_rec.cust_code || cv_encloser || cv_delimiter ||  -- 顧客コード
+          cv_encloser || lv_column_no               || cv_encloser || cv_delimiter ||  -- コラムNo.
+          cv_encloser || get_xmvc_tbl_rec.item_code || cv_encloser || cv_delimiter ||  -- 品目コード
+                         lv_price                                  || cv_delimiter ||  -- 単価
+                         lv_inventory_quantity                     || cv_delimiter ||  -- 満タン数
+          cv_encloser || get_xmvc_tbl_rec.hot_cold  || cv_encloser || cv_delimiter ||  -- H/C
+          cv_encloser || get_xmvc_tbl_rec.del_flag  || cv_encloser || cv_delimiter ||  -- 削除フラグ
+          cv_encloser || lv_last_update_date        || cv_encloser                     -- 更新日時
+        );
+  --
+        -- ===============================
+        -- CSVデータを出力
+        -- ===============================
+        UTL_FILE.PUT_LINE(
+            file   => g_file_handle
+          , buffer => lv_csv_file
+        );
+  --
+        -- ===============================
+        -- 成功件数カウント
+        -- ===============================
+        gn_target_cnt :=  gn_target_cnt + 1;
+        gn_normal_cnt :=  gn_normal_cnt + 1;
+      END LOOP create_file_loop;
+    END LOOP cursor_loop;
+    --
+    CLOSE  get_xmvc_tbl_cur1;
+    CLOSE  get_xmvc_tbl_cur2;
+    --
+    -- ===============================
+    -- 抽出0件チェック
+    -- ===============================
+    IF ( gn_target_cnt = 0 ) THEN
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appl_short_name_xxcoi
+                      , iv_name         => cv_no_data_msg
+                    );
+      -- メッセージ出力
+      FND_FILE.PUT_LINE(
+          which  => FND_FILE.OUTPUT
+        , buff   => gv_out_msg
       );
---
-      -- ===============================
-      -- CSVデータを出力
-      -- ===============================
-      UTL_FILE.PUT_LINE(
-          file   => g_file_handle
-        , buffer => lv_csv_file
-      );
---
-      -- ===============================
-      -- 成功件数カウント
-      -- ===============================
-      gn_normal_cnt := gn_normal_cnt + 1;
---
-    END LOOP create_file_loop;
+    END IF;
+-- == 2009/09/14 V1.1 Modified START ===============================================================
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -749,6 +884,15 @@ AS
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+-- == 2009/09/14 V1.1 Added START ===============================================================
+      IF (get_xmvc_tbl_cur1%ISOPEN) THEN
+        CLOSE get_xmvc_tbl_cur1;
+      END IF;
+      --
+      IF (get_xmvc_tbl_cur2%ISOPEN) THEN
+        CLOSE get_xmvc_tbl_cur1;
+      END IF;
+-- == 2009/09/14 V1.1 Added END   ===============================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -939,18 +1083,20 @@ AS
                        , open_mode => cv_open_mode
                      );
 --
-    -- ===============================
-    -- VDコラムマスタ情報抽出 (A-4)
-    -- ===============================
-    get_mst_vd_column(
-        ov_errbuf  => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-      , ov_retcode => lv_retcode        -- リターン・コード             --# 固定 #
-      , ov_errmsg  => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
-    );
---
-    IF ( lv_retcode = cv_status_error ) THEN
-      RAISE global_process_expt;
-    END IF;
+-- == 2009/09/14 V1.1 Deleted START ===============================================================
+--    -- ===============================
+--    -- VDコラムマスタ情報抽出 (A-4)
+--    -- ===============================
+--    get_mst_vd_column(
+--        ov_errbuf  => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+--      , ov_retcode => lv_retcode        -- リターン・コード             --# 固定 #
+--      , ov_errmsg  => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+--    );
+----
+--    IF ( lv_retcode = cv_status_error ) THEN
+--      RAISE global_process_expt;
+--    END IF;
+-- == 2009/09/14 V1.1 Deleted END   ===============================================================
 --
     -- ===============================
     -- ベンダ在庫マスタCSV作成 (A-5)
