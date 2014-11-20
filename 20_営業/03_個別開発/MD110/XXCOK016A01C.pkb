@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/25    1.0   K.Ezaki          新規作成
  *  2009/02/19    1.1   A.Yano           [障害COK_047] 残高取消日の更新不具合対応
+ *  2009/05/29    1.2   M.Hiruta         [障害T1_1139] 日付条件を変更し、過去分のデータを処理できるよう変更
  *
  *****************************************************************************************/
 --
@@ -320,13 +321,19 @@ AS
     -- 組み戻しロックカーソル定義
     CURSOR bm_rollback_cur(
        iv_vendor_code IN po_vendors.segment1%TYPE                          -- 仕入先コード
-      ,id_pay_date    IN xxcok_backmargin_balance.expect_payment_date%TYPE -- 支払日
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--      ,id_pay_date    IN xxcok_backmargin_balance.expect_payment_date%TYPE -- 支払日
+      ,id_pay_date    IN xxcok_backmargin_balance.publication_date%TYPE    -- 支払日
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
     )
     IS
       SELECT xbb.bm_balance_id AS bm_balance_id -- 販手残高ID
       FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
       WHERE  xbb.supplier_code       = iv_vendor_code
-      AND    xbb.expect_payment_date = id_pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--      AND    xbb.expect_payment_date = id_pay_date
+      AND    xbb.publication_date = id_pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
       AND    xbb.resv_flag           IS NULL
       AND    xbb.fb_interface_status = cv_fb_if_type1
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
@@ -339,7 +346,10 @@ AS
       SELECT xbb.bm_balance_id AS bm_balance_id -- 販手残高ID
       FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
       WHERE  xbb.supplier_code       = iv_vendor_code
-      AND    xbb.expect_payment_date = id_pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--      AND    xbb.expect_payment_date = id_pay_date
+      AND    xbb.expect_payment_date <= id_pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
       AND    xbb.resv_flag           IS NULL
       AND    xbb.fb_interface_status = cv_fb_if_type0
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
@@ -353,7 +363,10 @@ AS
       SELECT xbb.bm_balance_id AS bm_balance_id -- 販手残高ID
       FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
       WHERE  xbb.supplier_code        = iv_vendor_code
-      AND    xbb.expect_payment_date  = id_pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--      AND    xbb.expect_payment_date  = id_pay_date
+      AND    xbb.expect_payment_date <= id_pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
       AND    NVL( xbb.resv_flag,'N' ) = iv_recv_type
       AND    xbb.fb_interface_status  = cv_fb_if_type0
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
@@ -367,7 +380,10 @@ AS
       SELECT xbb.bm_balance_id AS bm_balance_id -- 販手残高ID
       FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
       WHERE  xbb.cust_code            = iv_customer_code
-      AND    xbb.expect_payment_date  = id_pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--      AND    xbb.expect_payment_date  = id_pay_date
+      AND    xbb.expect_payment_date <= id_pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
       AND    NVL( xbb.resv_flag,'N' ) = iv_recv_type
       AND    xbb.fb_interface_status  = cv_fb_if_type0
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
@@ -383,7 +399,10 @@ AS
       FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
       WHERE  xbb.base_code            = iv_base_code
       AND    xbb.cust_code            = iv_customer_code
-      AND    xbb.expect_payment_date  = id_pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--      AND    xbb.expect_payment_date  = id_pay_date
+      AND    xbb.expect_payment_date <= id_pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
       AND    NVL( xbb.resv_flag,'N' ) = iv_recv_type
       AND    xbb.fb_interface_status  = cv_fb_if_type0
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
@@ -523,7 +542,10 @@ AS
               ,xbb.program_id             = cn_program_id             -- プログラムID
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
         WHERE  xbb.supplier_code       = it_check_data(in_index).vendor_code
-        AND    xbb.expect_payment_date = it_check_data(in_index).pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date = it_check_data(in_index).pay_date
+        AND    xbb.publication_date    = it_check_data(in_index).pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    xbb.resv_flag           IS NULL
         AND    xbb.fb_interface_status = cv_fb_if_type1;
       -------------------------------------------------
@@ -534,7 +556,10 @@ AS
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.expect_payment_amt_tax = cn_zero                    -- 支払予定額
               ,xbb.payment_amt_tax        = xbb.expect_payment_amt_tax -- 支払額
-              ,xbb.publication_date       = gd_proc_date               -- 案内書発効日
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--              ,xbb.publication_date       = gd_proc_date               -- 案内書発効日
+              ,xbb.publication_date       = it_check_data(in_index).pay_date -- 案内書発効日
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
               ,xbb.fb_interface_status    = cv_fb_if_type1             -- 連携ステータス（本振用FB）
               ,xbb.fb_interface_date      = gd_proc_date               -- 連携日（本振用FB）
               ,xbb.edi_interface_status   = cv_fb_if_type1             -- 連携ステータス（EDI支払案内書）
@@ -551,7 +576,10 @@ AS
               ,xbb.program_id             = cn_program_id              -- プログラムID
               ,xbb.program_update_date    = SYSDATE                    -- プログラム更新日
         WHERE  xbb.supplier_code       = it_check_data(in_index).vendor_code
-        AND    xbb.expect_payment_date = it_check_data(in_index).pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date = it_check_data(in_index).pay_date
+        AND    xbb.expect_payment_date <= it_check_data(in_index).pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    xbb.resv_flag           IS NULL
         AND    xbb.fb_interface_status = cv_fb_if_type0;
       -------------------------------------------------
@@ -571,7 +599,10 @@ AS
               ,xbb.program_id             = cn_program_id             -- プログラムID
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
         WHERE  xbb.supplier_code        = it_check_data(in_index).vendor_code
-        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+        AND    xbb.expect_payment_date <= it_check_data(in_index).pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    NVL( xbb.resv_flag,'N' ) = cv_no
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
       ELSIF ( gv_dept_flg =  cv_act_dept ) AND
@@ -588,7 +619,10 @@ AS
               ,xbb.program_id             = cn_program_id             -- プログラムID
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
         WHERE  xbb.supplier_code        = it_check_data(in_index).vendor_code
-        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+        AND    xbb.expect_payment_date <= it_check_data(in_index).pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    NVL( xbb.resv_flag,'N' ) = cv_yes
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
       -------------------------------------------------
@@ -608,7 +642,10 @@ AS
               ,xbb.program_id             = cn_program_id             -- プログラムID
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
         WHERE  xbb.cust_code            = it_check_data(in_index).customer_code
-        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+        AND    xbb.expect_payment_date <= it_check_data(in_index).pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    NVL( xbb.resv_flag,'N' ) = cv_no
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
       ELSIF ( gv_dept_flg =  cv_act_dept ) AND
@@ -625,7 +662,10 @@ AS
               ,xbb.program_id             = cn_program_id             -- プログラムID
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
         WHERE  xbb.cust_code            = it_check_data(in_index).customer_code
-        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+        AND    xbb.expect_payment_date <= it_check_data(in_index).pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    NVL( xbb.resv_flag,'N' ) = cv_yes
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
       -------------------------------------------------
@@ -646,7 +686,10 @@ AS
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
         WHERE  xbb.base_code            = gv_dept_bel_code
         AND    xbb.cust_code            = it_check_data(in_index).customer_code
-        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+        AND    xbb.expect_payment_date <= it_check_data(in_index).pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    NVL( xbb.resv_flag,'N' ) = cv_no
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
       ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
@@ -664,7 +707,10 @@ AS
               ,xbb.program_update_date    = SYSDATE                   -- プログラム更新日
         WHERE  xbb.base_code            = gv_dept_bel_code
         AND    xbb.cust_code            = it_check_data(in_index).customer_code
-        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date  = it_check_data(in_index).pay_date
+        AND    xbb.expect_payment_date <= it_check_data(in_index).pay_date
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    NVL( xbb.resv_flag,'N' ) = cv_yes
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
       END IF;
@@ -787,7 +833,10 @@ AS
             ,po_vendors               pvs
             ,po_vendor_sites_all      pva
       WHERE  xbb.cust_code                                        = iv_customer_code
-      AND    xbb.expect_payment_date                              = TRUNC( id_pay_date )
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--      AND    xbb.expect_payment_date                              = TRUNC( id_pay_date )
+      AND    xbb.expect_payment_date                             <= TRUNC( id_pay_date )
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
       AND    NVL( xbb.resv_flag,'N' )                             = iv_recv_type
       AND    xbb.fb_interface_status                              = cv_zero
       AND    pvs.segment1                                         = xbb.supplier_code
@@ -818,7 +867,10 @@ AS
             ,po_vendor_sites_all      pva
       WHERE  xbb.base_code                                        = iv_base_code
       AND    xbb.cust_code                                        = iv_customer_code
-      AND    xbb.expect_payment_date                              = TRUNC( id_pay_date )
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--      AND    xbb.expect_payment_date                              = TRUNC( id_pay_date )
+      AND    xbb.expect_payment_date                             <= TRUNC( id_pay_date )
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
       AND    NVL( xbb.resv_flag,'N' )                             = iv_recv_type
       AND    xbb.fb_interface_status                              = cv_zero
       AND    pvs.segment1                                         = xbb.supplier_code
@@ -1236,18 +1288,24 @@ AS
         -- 販手残高確認
         BEGIN
           SELECT xbb.supplier_code          AS supplier_code -- 仕入先コード
-                ,xbb.expect_payment_date    AS payment_date  -- 支払予定日
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--                ,xbb.expect_payment_date    AS payment_date  -- 支払予定日
+                ,xbb.publication_date       AS publication_date  -- 案内書発効日
                 ,SUM( xbb.payment_amt_tax ) AS payment_amt   -- 支払額
           INTO   lv_vendor_code -- 仕入先コード
-                ,ld_pay_date    -- 支払予定日
+--                ,ld_pay_date    -- 支払予定日
+                ,ld_pay_date    -- 案内書発効日
                 ,ln_pay_sum_amt -- 支払予定額
           FROM   xxcok_backmargin_balance xbb
           WHERE  xbb.supplier_code       = lv_vendor_code
-          AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+--          AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+          AND    xbb.publication_date    = TRUNC( ld_pay_date )
           AND    xbb.resv_flag           IS NULL
           AND    xbb.fb_interface_status = cv_one
           GROUP BY xbb.supplier_code
-                  ,xbb.expect_payment_date;
+--                  ,xbb.expect_payment_date;
+                  ,xbb.publication_date;
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         EXCEPTION
           -- 販手残高存在チェック
           WHEN NO_DATA_FOUND THEN
@@ -1461,18 +1519,22 @@ AS
         -- 販手残高確認
         BEGIN
           SELECT xbb.supplier_code                 AS supplier_code -- 仕入先コード
-                ,xbb.expect_payment_date           AS payment_date  -- 支払予定日
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--                ,xbb.expect_payment_date           AS payment_date  -- 支払予定日
                 ,SUM( xbb.expect_payment_amt_tax ) AS payment_amt   -- 支払予定額
           INTO   lv_vendor_code -- 仕入先コード
-                ,ld_pay_date    -- 支払予定日
+--                ,ld_pay_date    -- 支払予定日
                 ,ln_pay_sum_amt -- 支払予定額
           FROM   xxcok_backmargin_balance xbb
           WHERE  xbb.supplier_code       = lv_vendor_code
-          AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+--          AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+          AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
           AND    xbb.resv_flag           IS NULL
           AND    xbb.fb_interface_status = cv_zero
-          GROUP BY xbb.supplier_code
-                  ,xbb.expect_payment_date;
+--          GROUP BY xbb.supplier_code
+--                  ,xbb.expect_payment_date;
+          GROUP BY xbb.supplier_code;
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         EXCEPTION
           -- 販手残高存在チェック
           WHEN NO_DATA_FOUND THEN
@@ -1659,7 +1721,10 @@ AS
         INTO   ln_cnt
         FROM   xxcok_backmargin_balance xbb
         WHERE  xbb.supplier_code       = lv_vendor_code
-        AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+        AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    xbb.resv_flag           IS NULL
         AND    xbb.fb_interface_status = cv_zero;
         -- 販手残高存在チェック
@@ -1696,7 +1761,10 @@ AS
         INTO   ln_cnt
         FROM   xxcok_backmargin_balance xbb
         WHERE  xbb.supplier_code       = lv_vendor_code
-        AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+-- Start 2009/05/29 Ver_1.2 T1_1139 M.Hiruta
+--        AND    xbb.expect_payment_date = TRUNC( ld_pay_date )
+        AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
+-- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    xbb.resv_flag           IS NOT NULL
         AND    xbb.fb_interface_status = cv_zero;
         -- 販手残高存在チェック
