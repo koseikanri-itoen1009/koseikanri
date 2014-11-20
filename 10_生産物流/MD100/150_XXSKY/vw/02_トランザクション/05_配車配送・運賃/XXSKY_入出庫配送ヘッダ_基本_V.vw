@@ -240,7 +240,10 @@ SELECT
                                                             loading_efficiency_capacity   --容積積載効率
        ,CEIL( SPMH.based_weight )                           based_weight                  --基本重量
        ,CEIL( SPMH.based_capacity )                         based_capacity                --基本容積
-       ,CEIL( SPMH.sum_weight )                             sum_weight                    --積載重量合計
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL( SPMH.sum_weight )                             sum_weight                    --積載重量合計
+       ,CEIL( TRUNC(NVL(SPMH.sum_weight,0),1) )             sum_weight                    --積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/7 #627 Y.Fukami Mod End
        ,CEIL( SPMH.sum_capacity )                           sum_capacity                  --積載容積合計
        ,CEIL( SPMH.mixed_ratio                 * 100 ) / 100    --少数点弟３以下切り上げ
                                                             mixed_ratio                   --混載率
@@ -307,7 +310,10 @@ SELECT
        ,XCS.demand_freight_flag                             demand_freight_flag           --配送_請求運賃計算対象フラグ
        ,DECODE(XCS.demand_freight_flag , '0', '対象外', '1', '対象')
                                                             demand_freight_flag_name      --配送_請求運賃計算対象フラグ名
-       ,CEIL( XCS.sum_loading_weight )                      sum_loading_weight            --配送_積載重量合計
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL( XCS.sum_loading_weight )                      sum_loading_weight            --配送_積載重量合計
+       ,CEIL( TRUNC(NVL(XCS.sum_loading_weight,0),1) )      sum_loading_weight            --配送_積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/7 #627 Y.Fukami Mod End
        ,CEIL( XCS.sum_loading_capacity )                    sum_loading_capacity          --配送_積載容積合計
        ,CEIL( XCS.loading_efficiency_weight    * 100 ) / 100    --少数点弟３以下切り上げ
                                                             cs_loading_effc_weight        --配送_重量積載効率

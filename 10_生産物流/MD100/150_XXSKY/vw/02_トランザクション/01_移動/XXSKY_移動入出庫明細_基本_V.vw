@@ -91,7 +91,10 @@ SELECT  XINS.mov_num                      --移動番号
        ,XINS.first_instruct_qty           --初回指示数量
        ,XINS.shipped_quantity             --出庫実績数量
        ,XINS.ship_to_quantity             --入庫実績数量
-       ,CEIL(XINS.weight)
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL(XINS.weight)
+       ,CEIL(TRUNC(NVL(XINS.weight,0),1))     --小数点第2位以下を切り捨て後、小数点第1位を切り上げ
+-- 2010/1/7 #627 Y.Fukami Mod Start
         weight                            --重量
        ,CEIL(XINS.capacity)
         capacity                          --容積

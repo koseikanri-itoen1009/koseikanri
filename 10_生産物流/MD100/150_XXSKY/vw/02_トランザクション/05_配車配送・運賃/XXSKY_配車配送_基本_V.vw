@@ -92,7 +92,10 @@ SELECT
             WHEN    '0' THEN    '対象外'
             WHEN    '1' THEN    '対象'
         END                     demand_freight_name
-       ,CEIL( XCS.sum_loading_weight   )                    --積載重量合計(少数点第以下切り上げ)
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL( XCS.sum_loading_weight   )                    --積載重量合計(少数点第以下切り上げ)
+       ,CEIL( TRUNC(NVL(XCS.sum_loading_weight,0),1) )      --積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/7 #627 Y.Fukami Mod End
        ,CEIL( XCS.sum_loading_capacity )                    --積載容積合計(少数点第以下切り上げ)
        ,CEIL( XCS.loading_efficiency_weight   * 100 ) / 100 --重量積載効率(少数点第３位以下切り上げ)
        ,CEIL( XCS.loading_efficiency_capacity * 100 ) / 100 --容積積載効率(少数点第３位以下切り上げ)

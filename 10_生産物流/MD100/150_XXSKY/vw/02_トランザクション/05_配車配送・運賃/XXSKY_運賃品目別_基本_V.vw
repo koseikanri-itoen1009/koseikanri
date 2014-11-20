@@ -114,9 +114,16 @@ SELECT
                ,NVL( DELV.shipped_quantity / ITEM.num_of_cases, 0 )
                                                     cs_quantity                     --品目ケース数
                ,NVL( DELV.qty1, 0 )                 sum_cs_quantity                 --合計ケース数
-               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --積載重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --積載重量合計
+               ,CEIL(TRUNC(NVL(DELV.sum_loading_weight,0),1))      
+                                                    sum_loading_weight              --積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_sum_loading_weight  distribute_sum_loading_weight   --按分計算用_積載重量合計
-               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+               ,CEIL(TRUNC(NVL(DELV.weight,0),1))   item_weight                     --品目重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_item_weight         distribute_item_weight          --按分計算用_品目重量合計
                --配送単位と品目単位の運賃
                ,NVL( DELV.total_amount      , 0 )                       total_amount             --合計金額
@@ -282,9 +289,16 @@ SELECT
                ,NVL( DELV.shipped_quantity / ITEM.num_of_cases, 0 )
                                                     cs_quantity                     --品目ケース数
                ,NVL( DELV.qty1, 0 )                 sum_cs_quantity                 --合計ケース数
-               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --積載重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --積載重量合計
+               ,CEIL(TRUNC(NVL(DELV.sum_loading_weight,0),1))      
+                                                    sum_loading_weight              --積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_sum_loading_weight  distribute_sum_loading_weight   --按分計算用_積載重量合計
-               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+               ,CEIL(TRUNC(NVL(DELV.weight,0),1))   item_weight                     --品目重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_item_weight         distribute_item_weight          --按分計算用_品目重量合計
                --配送単位と品目単位の運賃
                --運賃がある場合、配送単位の最大依頼NOの最大明細番号にセットする
@@ -485,9 +499,16 @@ SELECT
 --             ,NVL( DELV.qty1 / ITEM.num_of_cases, 0 )
 --                                                  sum_cs_quantity                 --合計ケース数
                ,DELV.qty1                           sum_cs_quantity                 --合計ケース数
-               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --積載重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --積載重量合計
+               ,CEIL(TRUNC(NVL(DELV.sum_loading_weight,0),1))      
+                                                    sum_loading_weight              --積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_sum_loading_weight  distribute_sum_loading_weight   --按分計算用_積載重量合計
-               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+               ,CEIL(TRUNC(NVL(DELV.weight,0),1))   item_weight                     --品目重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_item_weight         distribute_item_weight          --按分計算用_品目重量合計
                ,0                                   total_amount                    --合計金額
                ,0                                   item_total_amount               --品目_合計金額
@@ -757,9 +778,16 @@ SELECT
                ,NVL( DELV.quantity / ITEM.num_of_cases, 0 )
                                                     cs_quantity                     --品目_ケース数
                ,NVL( DELV.qty1, 0 )                 sum_cs_quantity                 --合計ケース数
-               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --配送_積載重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --配送_積載重量合計
+               ,CEIL(TRUNC(NVL(DELV.sum_loading_weight,0),1))      
+                                                    sum_loading_weight              --積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_sum_loading_weight  distribute_sum_loading_weight   --配送_按分計算用_積載重量合計
-               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+               ,CEIL(TRUNC(NVL(DELV.weight,0),1))   item_weight                     --品目重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_item_weight         distribute_item_weight          --按分計算用_品目重量合計
                --配送単位と品目単位の運賃
                ,NVL( DELV.total_amount      , 0 )                       total_amount             --合計金額
@@ -907,9 +935,16 @@ SELECT
                ,NVL( DELV.quantity / ITEM.num_of_cases, 0 )
                                                     cs_quantity                     --品目_ケース数
                ,NVL( DELV.qty1, 0 )                 sum_cs_quantity                 --合計ケース数
-               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --配送_積載重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --配送_積載重量合計
+               ,CEIL(TRUNC(NVL(DELV.sum_loading_weight,0),1))      
+                                                    sum_loading_weight              --積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_sum_loading_weight  distribute_sum_loading_weight   --配送_按分計算用_積載重量合計
-               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+               ,CEIL(TRUNC(NVL(DELV.weight,0),1))   item_weight                     --品目重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_item_weight         distribute_item_weight          --按分計算用_品目重量合計
                --配送単位と品目単位の運賃
                --運賃がある場合、配送単位の最大依頼NOの最大明細番号にセットする
@@ -1090,9 +1125,16 @@ SELECT
                ,NVL( DELV.quantity / ITEM.num_of_cases, 0 )
                                                     cs_quantity                     --品目_ケース数
                ,NVL( DELV.qty1, 0 )                 sum_cs_quantity                 --合計ケース数
-               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --配送_積載重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.sum_loading_weight)      sum_loading_weight              --配送_積載重量合計
+               ,CEIL(TRUNC(NVL(DELV.sum_loading_weight,0),1))      
+                                                    sum_loading_weight              --積載重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_sum_loading_weight  distribute_sum_loading_weight   --配送_按分計算用_積載重量合計
-               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--               ,ROUND(DELV.weight)                  item_weight                     --品目重量合計
+               ,CEIL(TRUNC(NVL(DELV.weight,0),1))   item_weight                     --品目重量合計(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
                ,DELV.distribute_item_weight         distribute_item_weight          --按分計算用_品目重量合計
                ,0                                   total_amount                    --合計金額
                ,0                                   item_total_amount               --品目_合計金額

@@ -79,7 +79,10 @@ SELECT  XILL.mov_num                      --移動番号
        ,XILL.first_instruct_qty           --初回指示数量
        ,XILL.shipped_quantity             --出庫実績数量
        ,XILL.ship_to_quantity             --入庫実績数量
-       ,CEIL(XILL.weight)
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL(XILL.weight)
+       ,CEIL(TRUNC(NVL(XILL.weight,0),1))     --小数点第2位以下を切り捨て後、小数点第1位を切り上げ
+-- 2010/1/7 #627 Y.Fukami Mod End
         weight                            --重量
        ,CEIL(XILL.capacity)
         capacity                          --容積

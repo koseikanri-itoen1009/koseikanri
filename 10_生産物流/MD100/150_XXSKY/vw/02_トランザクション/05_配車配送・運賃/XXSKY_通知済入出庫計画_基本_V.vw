@@ -125,7 +125,11 @@ SELECT
        ,XNDI.schedule_arrival_date      schedule_arrival_date         --着日
        ,XNDI.shipping_method_code       shipping_method_code          --配送区分
        ,FLV03.meaning                   shipping_method_name          --配送区分名
-       ,CEIL( XNDI.weight )             weight                        --依頼NO単位_重量容積
+-- 2010/1/8 #627 Y.Fukami Mod Start
+--       ,CEIL( XNDI.weight )             weight                        --依頼NO単位_重量容積
+       ,CEIL( TRUNC(NVL(XNDI.weight,0),1) )
+                                        weight                        --依頼NO単位_重量容積(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/8 #627 Y.Fukami Mod End
        ,XNDI.mixed_no                   mixed_no                      --混載元依頼No
        ,XNDI.collected_pallet_qty       collected_pallet_qty          --パレット回収枚数
        ,XNDI.arrival_time_from          arrival_time_from             --着荷時間指定FROM

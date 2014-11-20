@@ -94,7 +94,11 @@ SELECT  XOLL.request_no                 request_no                 --依頼No
        ,XOLL.pallet_quantity            pallet_quantity            --パレット数
        ,XOLL.layer_quantity             layer_quantity             --段数
        ,XOLL.case_quantity              case_quantity              --ケース数
-       ,CEIL(XOLL.weight)               weight                     --重量(小数点以下切上げ)
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL(XOLL.weight)               weight                     --重量(小数点以下切上げ)
+       ,CEIL(TRUNC(NVL(XOLL.weight,0),1))
+                                        weight                     --重量(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/7 #627 Y.Fukami Mod End
        ,CEIL(XOLL.capacity)             capacity                   --容積(小数点以下切上げ)
        ,XOLL.pallet_qty                 pallet_qty                 --パレット枚数
        ,CEIL(XOLL.pallet_weight)        pallet_weight              --パレット重量(小数点以下切上げ)

@@ -76,7 +76,11 @@ SELECT  XOLL.request_no                 request_no                 --依頼No
        ,ITEM2.item_short_name           request_item_s_name        --依頼品目略称
        ,XOLL.ship_to_quantity           ship_to_quantity           --入庫実績数量
        ,XOLL.futai_code                 futai_code                 --付帯コード
-       ,CEIL(XOLL.weight)               weight                     --重量(小数点以下切上げ)
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL(XOLL.weight)               weight                     --重量(小数点以下切上げ)
+       ,CEIL(TRUNC(NVL(XOLL.weight,0),1))
+                                        weight                     --重量(小数点第2位以下を切り捨て後、小数点第1位を切り上げ)
+-- 2010/1/7 #627 Y.Fukami Mod End
        ,CEIL(XOLL.capacity)             capacity                   --容積(小数点以下切上げ)
        ,XOLL.reserved_quantity          reserved_quantity          --引当数
        ,XOLL.warning_class              warning_class              --警告区分

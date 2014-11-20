@@ -199,7 +199,10 @@ SELECT
         based_weight                     --基本重量
        ,CEIL( XOHA.based_capacity )
         based_capacity                   --基本容積
-       ,CEIL( XOHA.sum_weight )
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL( XOHA.sum_weight )
+       ,CEIL(TRUNC(NVL(XOHA.sum_weight,0),1))     --小数点第2位以下を切り捨て後、小数点第1位を切り上げ
+-- 2010/1/7 #627 Y.Fukami Mod End
         sum_weight                       --積載重量合計
        ,CEIL( XOHA.sum_capacity )
         sum_capacity                     --積載容積合計
@@ -283,7 +286,10 @@ SELECT
        ,XCS.demand_freight_flag          --配送_請求運賃計算対象フラグ
        ,DECODE(XCS.demand_freight_flag, '0', '対象外', '1', '対象')
         demand_freight_flag_name         --配送_請求運賃計算対象フラグ名
-       ,CEIL( XCS.sum_loading_weight )
+-- 2010/1/7 #627 Y.Fukami Mod Start
+--       ,CEIL( XCS.sum_loading_weight )
+       ,CEIL(TRUNC(NVL(XCS.sum_loading_weight,0),1))     --小数点第2位以下を切り捨て後、小数点第1位を切り上げ
+-- 2010/1/7 #627 Y.Fukami Mod End
         sum_loading_weight               --配送_積載重量合計
        ,CEIL( XCS.sum_loading_capacity )
         sum_loading_capacity             --配送_積載容積合計
