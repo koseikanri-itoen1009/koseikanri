@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *                                       [0001345] PT対応
  *  2009/09/30    1.11  M.Sano           [0001275] 売上拠点と成績者の所属拠点の整合性チェックの追加
  *  2009/10/20    1.12  K.Satomura       [0001381] 受注明細．販売実績作成済フラグ追加対応
+ *  2009/11/05    1.13  M.Sano           [E_T4_00111] ロック実施箇所の変更
  *
  *****************************************************************************************/
 --
@@ -1111,6 +1112,19 @@ AS
 -- 2009/07/08 Ver.1.9 M.Sano Mod Start
     lv_create_data_seq NUMBER;
 -- 2009/07/08 Ver.1.9 M.Sano Mod End
+-- 2009/11/05 Ver.1.13 M.Sano Add Start
+    CURSOR order_lines_cur( iv_line_id oe_order_lines_all.line_id%TYPE )
+    IS
+      SELECT
+        line_id
+      FROM
+        oe_order_lines_all
+      WHERE
+        line_id =iv_line_id
+      FOR UPDATE OF
+        line_id
+      NOWAIT;
+-- 2009/11/05 Ver.1.13 M.Sano Add End
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -1358,10 +1372,13 @@ AS
     ORDER BY
         ooha.header_id
       , oola.line_id
-    FOR UPDATE OF
-        ooha.header_id
-      , oola.line_id
-    NOWAIT;
+-- 2009/11/05 Ver.1.13 M.Sano Mod Start
+--    FOR UPDATE OF
+--        ooha.header_id
+--      , oola.line_id
+--    NOWAIT;
+    ;
+-- 2009/11/05 Ver.1.13 M.Sano Mod End
 --
     --データが無い時は「対象データなしエラーメッセージ」
 -- 2009/07/08 Ver.1.9 M.Sano Mod Start
@@ -1376,6 +1393,15 @@ AS
 --    gn_target_cnt := g_order_data_tab.COUNT;
     gn_target_cnt := g_order_all_data_tab.COUNT;
 --
+-- 2009/11/05 Ver.1.13 M.Sano Add Start
+    -- 受注明細の行ロック処理
+    <<loop_lock>>
+    FOR i IN 1..g_order_all_data_tab.COUNT LOOP
+      OPEN order_lines_cur( g_order_all_data_tab(i).line_id );
+      CLOSE order_lines_cur;
+    END LOOP loop_lock;
+--
+-- 2009/11/05  Ver.1.13 M.Sano Add End
     -- 取得した受注データから返品実績作成対象のものを抽出する。
     lv_create_data_seq := 0;
     <<get_sales_created_data_loop>>
