@@ -44,4 +44,9 @@
       FullName="itoen.oracle.apps.xxinv.xxinv510001j.server.XxinvMovResultsHdSearchVO"
       ObjectType="ViewObject" >
    </Containee>
+   <Containee
+      Name="XxinvMovementResultsLnPVO"
+      FullName="itoen.oracle.apps.xxinv.xxinv510001j.server.XxinvMovementResultsLnPVO"
+      ObjectType="ViewObject" >
+   </Containee>
 </JboPackage>

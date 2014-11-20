@@ -195,6 +195,26 @@
       AliasName="VIEW_ATTR"
       SQLType="BIT" >
    </ViewAttribute>
+   <ViewAttribute
+      Name="OutPalletReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="InPalletReadOnly"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.Boolean"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="BIT" >
+   </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="RowKey" />
    </AttrArray>

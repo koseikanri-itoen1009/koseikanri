@@ -349,7 +349,7 @@
                                     </oa:cellFormat>
                                     <oa:cellFormat id="MovCell1401">
                                        <ui:contents>
-                                          <oa:messageTextInput id="TxtOutPallet" viewName="XxinvMovementResultsHdVO1" viewAttr="OutPalletQty" dataType="NUMBER" styleClass="LegendText" maximumLength="3" prompt="" shortDesc="パレット枚数(出)" columns="3"/>
+                                          <oa:messageTextInput id="TxtOutPallet" viewName="XxinvMovementResultsHdVO1" viewAttr="OutPalletQty" dataType="NUMBER" styleClass="LegendText" maximumLength="3" prompt="" shortDesc="パレット枚数(出)" columns="3" readOnly="${oa.XxinvMovementResultsHdPVO1.OutPalletReadOnly}"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                     <oa:cellFormat id="MovCell1402">
@@ -359,7 +359,7 @@
                                     </oa:cellFormat>
                                     <oa:cellFormat id="MovCell1403" columnSpan="1">
                                        <ui:contents>
-                                          <oa:messageTextInput id="TxtInPallet" viewName="XxinvMovementResultsHdVO1" viewAttr="InPalletQty" dataType="NUMBER" maximumLength="3" prompt="" styleClass="LegendText" shortDesc="パレット枚数(入)" rows="1" columns="3"/>
+                                          <oa:messageTextInput id="TxtInPallet" viewName="XxinvMovementResultsHdVO1" viewAttr="InPalletQty" dataType="NUMBER" maximumLength="3" prompt="" styleClass="LegendText" shortDesc="パレット枚数(入)" rows="1" columns="3" readOnly="${oa.XxinvMovementResultsHdPVO1.InPalletReadOnly}"/>
                                        </ui:contents>
                                     </oa:cellFormat>
                                  </ui:contents>

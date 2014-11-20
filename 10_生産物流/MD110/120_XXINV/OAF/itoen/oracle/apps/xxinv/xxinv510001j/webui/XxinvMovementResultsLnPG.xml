@@ -11,7 +11,7 @@
                <ui:contents>
                   <oa:submitButton id="Cancel" text="取消" prompt="取消"/>
                   <oa:submitButton id="Back" text="戻る" prompt="戻る" warnAboutChanges="false"/>
-                  <oa:submitButton id="Go" text="適用" prompt="適用" disabled="false"/>
+                  <oa:submitButton id="Go" text="適用" prompt="適用" disabled="${oa.XxinvMovementResultsLnPVO1.GoDisabled}"/>
                </ui:contents>
             </oa:pageButtonBar>
             <oa:advancedTable id="MovLineRN" viewName="XxinvMovementResultsLnVO1" blockSize="200" width="100%">
@@ -130,7 +130,7 @@
                <ui:footer>
                   <oa:tableFooter id="footer">
                      <ui:contents>
-                        <oa:addTableRow id="AddRow" autoInsertion="false" text="行挿入"/>
+                        <oa:addTableRow id="AddRow" autoInsertion="false" text="行挿入" rendered="${oa.XxinvMovementResultsLnPVO1.AddRowRendered}"/>
                      </ui:contents>
                   </oa:tableFooter>
                </ui:footer>

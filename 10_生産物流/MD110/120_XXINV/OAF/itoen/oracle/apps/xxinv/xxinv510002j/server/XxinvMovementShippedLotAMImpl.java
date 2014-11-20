@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementShippedLotAMImpl
 * 概要説明   : 出庫・入庫ロット明細画面アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-04-11 1.0  伊藤ひとみ     新規作成
 * 2008-07-10 1.1  伊藤ひとみ     内部変更 自身のコンカレントコールで変更した場合、排他エラーとしない。
 * 2008-07-14 1.2  山本  恭久     内部変更 重量容積小口個数関数のコールタイミングの変更
+* 2008-10-21 1.3  伊藤ひとみ     統合テスト 指摘353対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510002j.server;
@@ -36,7 +37,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出庫ロット明細画面アプリケーションモジュールです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.1
+ * @version 1.3
  ***************************************************************************
  */
 public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -219,13 +220,32 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
       // 明細1行目を取得
       OARow lineRow   = (OARow)lineVo.first();
       String lotCtl   = (String)lineRow.getAttribute("LotCtl"); // ロット管理区分
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+      String compActualFlg     = (String)lineRow.getAttribute("CompActualFlg");   // 実績計上済フラグ
+      Date   actualShipDate    = (Date)lineRow.getAttribute("ActualShipDate");    // 出庫実績日
+      Date   actualArrivalDate = (Date)lineRow.getAttribute("ActualArrivalDate"); // 入庫実績日
+// 2008-10-21 H.Itou Add End
 
       // ロット管理外品の場合
       if (XxinvConstants.LOT_CTL_N.equals(lotCtl))
       {
         pvoRow.setAttribute("CheckRendered",  Boolean.FALSE); // チェック：非表示
         pvoRow.setAttribute("AddRowRendered", Boolean.FALSE); // 行挿入：非表示
-      }      
+      }
+
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+      // 実績計上済で出庫実績日がクローズしている場合
+      if  (XxcmnConstants.STRING_Y.equals(compActualFlg)
+        && XxinvUtility.chkStockClose(getOADBTransaction(), actualShipDate))
+      {
+        // 変更不可なので参照のみ。
+        pvoRow.setAttribute("CheckRendered",           Boolean.FALSE); // チェック：非表示
+        pvoRow.setAttribute("AddRowRendered",          Boolean.FALSE); // 行挿入：非表示
+        pvoRow.setAttribute("ReturnDisabled",          Boolean.FALSE); // 取消：有効
+        pvoRow.setAttribute("GoDisabled",              Boolean.TRUE ); // 適用：無効
+        pvoRow.setAttribute("ConvertQuantityReadOnly", Boolean.TRUE);  // 数量：無効
+      }
+// 2008-10-21 H.Itou Add End
     }
  }  
  

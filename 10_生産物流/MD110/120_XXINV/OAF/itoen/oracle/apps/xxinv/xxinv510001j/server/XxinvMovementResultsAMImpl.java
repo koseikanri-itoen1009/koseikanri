@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2008-07-25 1.5  山本恭久     不具合指摘事項修正
 * 2008-08-20 1.6  山本恭久     ST#249対応、内部変更#167対応
 * 2008-09-24 1.7  伊藤ひとみ   統合テスト 指摘59,156対応
+* 2008-10-21 1.8  伊藤ひとみ   統合テスト 指摘353対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -42,7 +43,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.7
+ * @version 1.8
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -444,6 +445,24 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       readOnlyRow.setAttribute("WeightCapacityClassReadOnly", Boolean.TRUE);
       // ヘッダ.摘要を読取専用に変更
       readOnlyRow.setAttribute("DescriptionReadOnly", Boolean.TRUE);
+      
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+      String compActualFlg     = (String)row.getAttribute("CompActualFlg");   // 実績計上済フラグ
+      Date   actualShipDate    = (Date)row.getAttribute("ActualShipDate");    // 出庫実績日
+      Date   actualArrivalDate = (Date)row.getAttribute("ActualArrivalDate"); // 入庫実績日
+
+      // 実績計上済で出庫実績日がクローズしている場合
+      if  (XxcmnConstants.STRING_Y.equals(compActualFlg)
+        && XxinvUtility.chkStockClose(getOADBTransaction(), actualShipDate))
+      {
+        // 参照のみ。
+        readOnlyRow.setAttribute("ActualShipDateReadOnly", Boolean.TRUE);   // 出庫日(実績)：読取専用
+        readOnlyRow.setAttribute("ActualArrivalDateReadOnly", Boolean.TRUE);// 着日(実績)：読取専用
+        readOnlyRow.setAttribute("OutPalletReadOnly", Boolean.TRUE);        // パレット枚数(出)：読取専用
+        readOnlyRow.setAttribute("InPalletReadOnly", Boolean.TRUE);         // パレット枚数(入)：読取専用
+        disabledChanged("1"); // 適用を無効に設定
+      }
+// 2008-10-21 H.Itou Add End
     }
   } // readOnlyChanged
 
@@ -568,6 +587,23 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       movementResultsHdPvoRow.setNewRowState(OARow.STATUS_INITIALIZED);
       movementResultsHdPvoRow.setAttribute("RowKey", new Number(1));
     }
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+    // ************************************* //
+    // * 入出庫実績明細:PVO 空行取得       * //
+    // ************************************* //
+    OAViewObject movementResultsLnPvo = getXxinvMovementResultsLnPVO1();
+    // 1行もない場合、空行作成
+    if (!movementResultsLnPvo.isPreparedForExecution())
+    {
+      movementResultsLnPvo.setMaxFetchSize(0);
+      movementResultsLnPvo.insertRow(movementResultsLnPvo.createRow());
+      // 1行目を取得
+      OARow movementResultsLnPvoRow = (OARow)movementResultsLnPvo.first();
+      // キーに値をセット
+      movementResultsLnPvoRow.setNewRowState(OARow.STATUS_INITIALIZED);
+      movementResultsLnPvoRow.setAttribute("RowKey", new Number(1));
+    }
+// 2008-10-21 H.Itou Add End
      
   } // initializeHdr
 
@@ -796,9 +832,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
   /***************************************************************************
    * 入出庫実績ヘッダ画面の登録・更新時のチェックを行います。
+   * @param btn  - ボタン 1:次へボタン押下時 2:ヘッダ適用ボタン押下時
+   * @throws OAException - OA例外
    ***************************************************************************
    */
-  public void checkHdr()
+// 2008-10-21 H.Itou Mod Start 統合テスト指摘353
+//  public void checkHdr()
+  public void checkHdr(String btn)
+// 2008-10-21 H.Itou Mod End
 // 2008-09-24 H.Itou Add Start
      throws OAException
 // 2008-09-24 H.Itou Add End
@@ -816,6 +857,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-09-24 H.Itou Add Start 統合テスト指摘156 出庫元・入庫先同一チェック
     String shippedLocat  = (String)row.getAttribute("ShippedLocatCode"); // 出庫元保管場所
     String shipToLocat   = (String)row.getAttribute("ShipToLocatCode");  // 入庫先保管場所
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+    Date dbActualShipDate    = (Date)row.getAttribute("DbActualShipDate");    // 出庫日(実績)
+    Date dbActualArrivalDate = (Date)row.getAttribute("DbActualArrivalDate"); // 着日(実績)
+// 2008-10-21 H.Itou Add End
+
     // 実績データ区分VO取得
     OAViewObject resultSearchVo = getXxinvMovResultsSearchVO1();
     // 1行目を取得
@@ -851,7 +897,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         OAException.raiseBundledOAException(exceptions);
       }
 
-    // 指示あり新規登録(移動番号が設定済)場合
+    // 指示なし新規登録(移動番号が設定済)場合
     } else if ((!XxcmnUtility.isBlankOrNull(movNum))
                   && (XxinvConstants.COMP_ACTUAL_FLG_N.equals(compActualFlg)))
     {
@@ -876,6 +922,26 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         OAException.raiseBundledOAException(exceptions);
       }
     }
+
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+    // 以下のいづれかの場合、在庫クローズチェックを行う。
+    // ・ヘッダ適用ボタン押下時
+    // ・次へボタン押下時で、DBの出庫実績日・DBの入庫実績日どちらにも値がない場合 (指示登録済で、実績を初めて登録する場合)
+    if (btn.equals("2") 
+      || (btn.equals("1")
+        && XxcmnUtility.isBlankOrNull(dbActualShipDate) 
+        && XxcmnUtility.isBlankOrNull(dbActualArrivalDate)))
+    {
+      // 在庫クローズチェック
+      stockCloseCheck(vo, row, exceptions);
+
+      // 例外があった場合、例外メッセージを出力し、処理終了
+      if (exceptions.size() > 0)
+      {
+        OAException.raiseBundledOAException(exceptions);
+      }
+    }
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
 
 // 2008-09-24 H.Itou Add Start 統合テスト指摘156 出庫元・入庫先同一チェック
     if (!XxcmnUtility.isBlankOrNull(shippedLocat)
@@ -1539,12 +1605,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         errCount = errCount + 1;
       }
     }
-    // 未来日でない場合
-    if (errCount == 0)
-    {
-      // OPM在庫クローズチェック
-      stockCloseCheck(vo, row, exceptions);
-    }
+// 2008-10-21 H.Itou Del Start 統合テスト指摘353
+//    // 未来日でない場合
+//    if (errCount == 0)
+//    {
+//      // OPM在庫クローズチェック
+//      stockCloseCheck(vo, row, exceptions);
+//    }
+// 2008-10-21 H.Itou Del End
   } // chkFutureDate
 
   /***************************************************************************
@@ -2050,10 +2118,24 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
                         headerId,
                         lastUpdateDate))
     {
-      XxinvUtility.rollBack(getOADBTransaction());
-      // 排他エラーメッセージ
-      throw new OAException(XxcmnConstants.APPL_XXCMN,
-                              XxcmnConstants.XXCMN10147);
+// 2008-10-21 H.Itou Add Start
+      // 自分自身のコンカレント起動により更新された場合は排他エラーとしない
+      if (!XxinvUtility.isMovHdrUpdForOwnConc(
+             getOADBTransaction(),
+             headerId,
+             XxinvConstants.CONC_NAME_XXINV570001C))
+      {
+// 2008-10-21 H.Itou Add End
+        // ロールバック
+        XxinvUtility.rollBack(getOADBTransaction());
+        
+        // 排他エラーメッセージ出力
+        throw new OAException(
+            XxcmnConstants.APPL_XXCMN, 
+            XxcmnConstants.XXCMN10147);
+// 2008-10-21 H.Itou Add Start
+      }
+// 2008-07-10 H.Itou Mod END
     }
   } // chkLockAndExclusive
 
@@ -2173,6 +2255,23 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       OARow resultsSearchRow = (OARow)resultsSearchVo.first();
       resultsSearchRow.setAttribute("ExeFlag", "1");
     }
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+    // ************************************* //
+    // * 入出庫実績明細:PVO 空行取得       * //
+    // ************************************* //
+    OAViewObject movementResultsLnPvo = getXxinvMovementResultsLnPVO1();
+    // 1行もない場合、空行作成
+    if (!movementResultsLnPvo.isPreparedForExecution())
+    {
+      movementResultsLnPvo.setMaxFetchSize(0);
+      movementResultsLnPvo.insertRow(movementResultsLnPvo.createRow());
+      // 1行目を取得
+      OARow movementResultsLnPvoRow = (OARow)movementResultsLnPvo.first();
+      // キーに値をセット
+      movementResultsLnPvoRow.setNewRowState(OARow.STATUS_INITIALIZED);
+      movementResultsLnPvoRow.setAttribute("RowKey", new Number(1));
+    }
+// 2008-10-21 H.Itou Add End
   } // initializeLine
 
   /***************************************************************************
@@ -2244,6 +2343,12 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // データを取得できなかった場合
     if (movementResultsLnVo.getRowCount() == 0)
     {
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+      // *********************** //
+      // *  入力制御           * //
+      // *********************** //
+      readOnlyChangedLine("1"); // 無効
+// 2008-10-21 H.Itou Add End
       // *********************** //
       // *  VO初期化処理       * //
       // *********************** //
@@ -2342,8 +2447,58 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
         movementResultsLnVo.next();
       }
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+      readOnlyChangedLine("0"); // 有効
+// 2008-10-21 H.Itou Add End
     }
   } // doSearchLine
+
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+  /***************************************************************************
+   * 入出庫実績明細画面の入力制御を行うメソッドです。
+   * @param flag 処理フラグ
+   ***************************************************************************
+   */
+  public void readOnlyChangedLine(String flag)
+  {
+    // 入出庫実績明細:PVO取得
+    OAViewObject resultsLinePVO = getXxinvMovementResultsLnPVO1();
+    // 1行目を取得
+    OARow readOnlyRow = (OARow)resultsLinePVO.first();
+    
+    // 初期化
+    readOnlyRow.setAttribute("AddRowRendered", Boolean.TRUE); // 行挿入：非表示
+    readOnlyRow.setAttribute("GoDisabled", Boolean.FALSE);    // 適用：無効
+
+    // 有効の場合
+    if (flag.equals("0"))
+    {
+      // 移動実績情報ヘッダVO取得
+      OAViewObject hdrVo = getXxinvMovementResultsHdVO1();
+      // 1行目を取得
+      OARow  hdrRow      = (OARow)hdrVo.first();
+
+      String compActualFlg     = (String)hdrRow.getAttribute("CompActualFlg");
+      Date   actualShipDate    = (Date)hdrRow.getAttribute("ActualShipDate");    // 出庫実績日
+      Date   actualArrivalDate = (Date)hdrRow.getAttribute("ActualArrivalDate"); // 入庫実績日
+
+      // 実績計上済で出庫実績日か入庫実績日がクローズしている場合
+      if  (XxcmnConstants.STRING_Y.equals(compActualFlg)
+        && XxinvUtility.chkStockClose(getOADBTransaction(), actualShipDate))
+      {
+        // 参照のみ。
+        readOnlyRow.setAttribute("AddRowRendered", Boolean.FALSE); // 行挿入：非表示
+        readOnlyRow.setAttribute("GoDisabled", Boolean.TRUE); // 適用：無効
+      }
+
+    // 無効の場合
+    } else
+    {
+      readOnlyRow.setAttribute("AddRowRendered", Boolean.FALSE); // 行挿入：非表示
+      readOnlyRow.setAttribute("GoDisabled", Boolean.TRUE); // 適用：無効
+    }
+  } // readOnlyChangedLine
+// 2008-10-21 H.Itou Add End
 
   /***************************************************************************
    * 入出庫実績明細画面の登録・更新時のチェックを行います。
@@ -2354,6 +2509,25 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
      throws OAException
 // 2008-09-24 H.Itou Add End
   {
+// 2008-10-21 H.Itou Add Start 統合テスト指摘353
+    // OA例外リストを生成します。
+    ArrayList exceptions = new ArrayList(100);
+    // 移動実績情報ヘッダVO取得
+    OAViewObject hdrVo = getXxinvMovementResultsHdVO1();
+    // 1行目を取得
+    OARow  hdrRow      = (OARow)hdrVo.first();
+    // ************************ //
+    // * 在庫クローズチェック * //
+    // ************************ //
+    stockCloseCheck(hdrVo, hdrRow, exceptions);
+
+    // 在庫クローズエラーの場合、処理終了
+    if (exceptions.size() > 0)
+    {
+      OAException.raiseBundledOAException(exceptions);
+    }
+// 2008-10-21 H.Itou Add End
+
     // 品目格納用HashMap生成
     HashMap itemParams = new HashMap();
     // 移動実績情報VO取得
@@ -2361,7 +2535,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 1行目を取得
     vo.first();
     int i = 0;
-
+    
     while (vo.getCurrentRow() != null)
     {
       OARow row = (OARow)vo.getCurrentRow();
@@ -3075,6 +3249,15 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
   public XxinvMovResultsHdSearchVOImpl getXxinvMovResultsHdSearchVO1()
   {
     return (XxinvMovResultsHdSearchVOImpl)findViewObject("XxinvMovResultsHdSearchVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxinvMovementResultsLnPVO1
+   */
+  public XxinvMovementResultsLnPVOImpl getXxinvMovementResultsLnPVO1()
+  {
+    return (XxinvMovementResultsLnPVOImpl)findViewObject("XxinvMovementResultsLnPVO1");
   }
 
 

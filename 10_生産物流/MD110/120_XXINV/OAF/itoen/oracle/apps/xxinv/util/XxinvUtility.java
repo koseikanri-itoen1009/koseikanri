@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxinvUtility
 * 概要説明   : 移動共通関数
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-14 1.0  大橋 孝郎    新規作成
 * 2008-07-10 1.1  伊藤ひとみ   isMovHdrUpdForOwnConc,isMovLineUpdForOwnConc追加
+* 2008-10-21 1.2  伊藤ひとみ   updateMovLotDetailsロック取得を変更
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.util;
@@ -30,7 +31,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 移動共通関数クラスです。
  * @author  ORACLE 大橋孝郎
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxinvUtility 
@@ -1223,10 +1224,9 @@ public class XxinvUtility
                  // ユーザー定義エラー
     sb.append("  lock_expt             EXCEPTION; "                                  ); // ロックエラー
     sb.append("  PRAGMA EXCEPTION_INIT(lock_expt, -54); "                            ); 
-    sb.append("BEGIN "                                                );
-                 // ロック取得
+// 2008-10-21 H.Itou Add Start
+    sb.append("  CURSOR lock_cur IS "                                 );
     sb.append("  SELECT xmrih.mov_hdr_id "                            );
-    sb.append("  INTO   lt_hdr_id "                                   );
     sb.append("  FROM   xxinv_mov_req_instr_headers xmrih "           );
     sb.append("        ,xxinv_mov_req_instr_lines   ximril "          );
     sb.append("        ,xxinv_mov_lot_details       ximld "           );
@@ -1237,6 +1237,26 @@ public class XxinvUtility
     sb.append("  FOR UPDATE OF xmrih.mov_hdr_id "                     );
     sb.append("               ,ximril.mov_hdr_id "                    );
     sb.append("               ,ximld.mov_line_id NOWAIT; "            );
+// 2008-10-21 H.Itou Add End
+    sb.append("BEGIN "                                                );
+                 // ロック取得
+// 2008-10-21 Mod Start
+//    sb.append("  SELECT xmrih.mov_hdr_id "                            );
+//    sb.append("  INTO   lt_hdr_id "                                   );
+//    sb.append("  FROM   xxinv_mov_req_instr_headers xmrih "           );
+//    sb.append("        ,xxinv_mov_req_instr_lines   ximril "          );
+//    sb.append("        ,xxinv_mov_lot_details       ximld "           );
+//    sb.append("  WHERE  xmrih.mov_hdr_id = lt_mov_hdr_id "            );
+//    sb.append("  AND    xmrih.mov_hdr_id = ximril.mov_hdr_id "        );
+//    sb.append("  AND    ximril.mov_line_id = ximld.mov_line_id "      );
+//    sb.append("  AND    ximld.record_type_code = lt_record_type "     );
+//    sb.append("  FOR UPDATE OF xmrih.mov_hdr_id "                     );
+//    sb.append("               ,ximril.mov_hdr_id "                    );
+//    sb.append("               ,ximld.mov_line_id NOWAIT; "            );
+    sb.append("  OPEN lock_cur; "                                                                        );
+    sb.append("  FETCH lock_cur INTO lt_hdr_id; "                                                         );
+    sb.append("  CLOSE lock_cur; "                                                                       );
+// 2008-10-21 Mod End
                  // 移動ロット詳細(アドオン)更新
     sb.append("  UPDATE xxinv_mov_lot_details ximld"          );
     // レコードタイプが:20(出庫実績)の場合

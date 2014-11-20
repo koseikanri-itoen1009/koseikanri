@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsHdCO
 * 概要説明   : 入出庫実績ヘッダ:検索コントローラ
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2008-07-25 1.1  山本恭久     不具合指摘事項修正
 * 2008-08-18 1.2  山本恭久     内部変更#157対応、ST#249対応
 * 2008-09-24 1.3  伊藤ひとみ   内部変更#157のバグ対応
+* 2008-10-21 1.4  伊藤ひとみ   統合テスト 指摘353対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.webui;
@@ -39,7 +40,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績ヘッダ:検索コントローラです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
@@ -316,7 +317,11 @@ public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
         String searchMovHdrId = pageContext.getParameter("HdrId");
 
         // 次へチェック
-        am.invokeMethod("checkHdr");
+// 2008-10-21 H.Itou Mod Start 統合テスト指摘353
+        Serializable checkHdrParams[] = { "1" };
+//        am.invokeMethod("checkHdr");
+        am.invokeMethod("checkHdr", checkHdrParams);
+// 2008-10-21 H.Itou Mod End
 
         // パレット枚数のチェック
         am.invokeMethod("chckPallet");
@@ -471,7 +476,11 @@ public class XxinvMovementResultsHdCO extends XxcmnOAControllerImpl
       {
 
         // 登録・更新時のチェック
-        am.invokeMethod("checkHdr");
+// 2008-10-21 H.Itou Mod Start 統合テスト指摘353
+        Serializable checkHdrParams[] = { "2" };
+//        am.invokeMethod("checkHdr");
+        am.invokeMethod("checkHdr", checkHdrParams);
+// 2008-10-21 H.Itou Mod End
 
         // パレット枚数のチェック
         am.invokeMethod("chckPallet");

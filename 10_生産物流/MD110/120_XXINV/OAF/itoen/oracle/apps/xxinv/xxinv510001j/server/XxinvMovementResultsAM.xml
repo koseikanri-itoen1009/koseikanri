@@ -35,4 +35,8 @@
       Name="XxinvMovResultsHdSearchVO1"
       ViewObjectName="itoen.oracle.apps.xxinv.xxinv510001j.server.XxinvMovResultsHdSearchVO" >
    </ViewUsage>
+   <ViewUsage
+      Name="XxinvMovementResultsLnPVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.xxinv510001j.server.XxinvMovementResultsLnPVO" >
+   </ViewUsage>
 </AppModule>
