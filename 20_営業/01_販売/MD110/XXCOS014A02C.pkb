@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A02C (body)
  * Description      : 納品書用データ作成(EDI)
  * MD.050           : 納品書用データ作成(EDI) MD050_COS_014_A02
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *                                       [E_本稼動_02042] 商品名の取得元を変更
  *  2010/06/11    1.17  S.Miyakoshi      [E_本稼動_03075] 拠点選択対応
  *  2010/10/15    1.18  K.Kiriu          [E_本稼動_04783] 地区コード、地区名(漢字)、地区コード(カナ)出力変更対応
+ *  2011/10/06    1.19  A.Shirakawa      [E_本稼動_07906] EDIの流通BMS対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2574,6 +2575,9 @@ AS
             ,xeh_l.xeh_l3_column                                               l3_column                     --Ｌ－３欄
             ,xeh_l.xeh_chain_peculiar_area_header                              chain_peculiar_area_header   --チェーン店固有エリア（ヘッダー）
             ,xeh_l.xeh_order_connection_number                                 order_connection_number       --受注関連番号（仮）
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD START
+            ,xeh_l.xeh_bms_header_data                                         bms_header_data               --流通ＢＭＳヘッダデータ
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD END
             ------------------------------------------------明細情報------------------------------------------------
             ,TO_CHAR(xeh_l.xel_line_no)                                        line_no                       --行Ｎｏ
             ,xeh_l.xel_stockout_class                                          stockout_class                --欠品区分
@@ -2710,6 +2714,9 @@ AS
             ,xeh_l.xel_general_add_item9                                       general_add_item9             --汎用付加項目９
             ,xeh_l.xel_general_add_item10                                      general_add_item10            --汎用付加項目１０
             ,xeh_l.xel_chain_peculiar_area_line                                chain_peculiar_area_line      --チェーン店固有エリア（明細）
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD START
+            ,xeh_l.xel_bms_line_data                                           bms_line_data                 --流通ＢＭＳ明細データ
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD END
             ------------------------------------------------フッタ情報-----------------------------------------------
             ,TO_CHAR(xeh_l.xeh_invoice_indv_order_qty)                         invoice_indv_order_qty        --（伝票計）発注数量（バラ）
             ,TO_CHAR(xeh_l.xeh_invoice_case_order_qty)                         invoice_case_order_qty        --（伝票計）発注数量（ケース）
@@ -3033,6 +3040,9 @@ AS
                     ,xeh.price_list_header_id           xeh_price_list_header_id        -- 価格表ヘッダID
                     ,xeh.deliv_slip_flag_area_chain     xeh_deliv_slip_flag_area_chain  -- 納品書発行フラグエリア（チェーン店様式）
                     ,xeh.deliv_slip_flag_area_cmn       xeh_deliv_slip_flag_area_cmn    -- 納品書発行フラグエリア（共通様式）
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD START
+                    ,xeh.bms_header_data                xeh_bms_header_data             -- 流通ＢＭＳヘッダデータ
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD END
                     -------------------- 明細データ -------------------------------------------------------------------------------
                     ,xel.edi_line_info_id               xel_edi_line_info_id            -- EDI明細情報ID
                     ,xel.edi_header_info_id             xel_edi_header_info_id          -- EDIヘッダ情報ID
@@ -3130,6 +3140,9 @@ AS
                     ,xel.hht_delivery_schedule_flag     xel_hht_delivery_schedule_flag  -- HHT納品予定連携済フラグ
                     ,xel.order_connection_line_number   xel_order_connect_line_num      -- 受注関連明細番号
                     ,xel.taking_unit_price              xel_taking_unit_price           -- 取込時原単価（発注）
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD START
+                    ,xel.bms_line_data                  xel_bms_line_data               -- 流通ＢＭＳ明細データ
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD END
                     ----------------- 顧客情報 --------------------------------------------------------------
                     ,hca.account_number                 hca_account_number              -- 顧客コード
                     ,hp.party_name                      hp_party_name                   -- 顧客名（漢字）
@@ -3538,6 +3551,9 @@ AS
                     ,xeh.price_list_header_id           xeh_price_list_header_id        -- 価格表ヘッダID
                     ,xeh.deliv_slip_flag_area_chain     xeh_deliv_slip_flag_area_chain  -- 納品書発行フラグエリア（チェーン店様式）
                     ,xeh.deliv_slip_flag_area_cmn       xeh_deliv_slip_flag_area_cmn    -- 納品書発行フラグエリア（共通様式）
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD START
+                    ,xeh.bms_header_data                xeh_bms_header_data             -- 流通ＢＭＳヘッダデータ
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD END
                     -------------------- 明細データ -------------------------------------------------------------------------------
                     ,xel.edi_line_info_id               xel_edi_line_info_id            -- EDI明細情報ID
                     ,xel.edi_header_info_id             xel_edi_header_info_id          -- EDIヘッダ情報ID
@@ -3635,6 +3651,9 @@ AS
                     ,xel.hht_delivery_schedule_flag     xel_hht_delivery_schedule_flag  -- HHT納品予定連携済フラグ
                     ,xel.order_connection_line_number   xel_order_connect_line_num  -- 受注関連明細番号
                     ,xel.taking_unit_price              xel_taking_unit_price           -- 取込時原単価（発注）
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD START
+                    ,xel.bms_line_data                  xel_bms_line_data               -- 流通ＢＭＳ明細データ
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD END
                     ----------------- 顧客情報 --------------------------------------------------------------
                     ,NULL                               hca_account_number              -- 顧客コード
                     ,NULL                               hp_party_name                   -- 顧客名（漢字）
@@ -4263,6 +4282,9 @@ AS
        ,l_data_tab('L3_COLUMN')                                                                               --Ｌ－３欄
        ,l_data_tab('CHAIN_PECULIAR_AREA_HEADER')                                                              --チェーン店固有エリア（ヘッダー）
        ,l_data_tab('ORDER_CONNECTION_NUMBER')                                                                 --受注関連番号（仮）
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD START
+       ,l_data_tab('BMS_HEADER_DATA')                                                                         --流通ＢＭＳヘッダデータ
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD END
             ------------------------------------------------明細情報------------------------------------------------
        ,l_data_tab('LINE_NO')                                                                                 --行Ｎｏ
        ,l_data_tab('STOCKOUT_CLASS')                                                                          --欠品区分
@@ -4353,6 +4375,9 @@ AS
        ,l_data_tab('GENERAL_ADD_ITEM9')                                                                       --汎用付加項目９
        ,l_data_tab('GENERAL_ADD_ITEM10')                                                                      --汎用付加項目１０
        ,l_data_tab('CHAIN_PECULIAR_AREA_LINE')                                                                --チェーン店固有エリア（明細）
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD START
+       ,l_data_tab('BMS_LINE_DATA')                                                                           --流通ＢＭＳ明細データ
+-- 2011/10/06 A.Shirakawa Ver.1.19 ADD END
             ------------------------------------------------フッタ情報------------------------------------------------
        ,l_data_tab('INVOICE_INDV_ORDER_QTY')                                                                  --（伝票計）発注数量（バラ）
        ,l_data_tab('INVOICE_CASE_ORDER_QTY')                                                                  --（伝票計）発注数量（ケース）
