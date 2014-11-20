@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫品目マスタ取込処理
  * MD.050           : 生産物流共通（出荷・移動仮引当）T_MD050_BPO_922
  * MD.070           : 倉庫品目マスタ取込処理(92H) T_MD070_BPO_92H
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -35,7 +35,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/06/12    1.0   H.Itou           新規作成
- *
+ *  2009/01/20    1.1   H.Itou           本番障害#1052対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -881,7 +881,11 @@ AS
     -- 元倉庫妥当性チェック
     -- ===========================
     -- 元倉庫_代表倉庫がダミー代表倉庫でない場合、警告
-    IF (ir_chk_data.frequent_whse <> gv_dummy_frequent_whse) THEN
+-- 2009/01/20 H.Itou Mod Start 本番障害#1052
+--    IF (ir_chk_data.frequent_whse <> gv_dummy_frequent_whse) THEN
+    IF  ((ir_chk_data.frequent_whse <> gv_dummy_frequent_whse)
+      OR (ir_chk_data.frequent_whse IS NULL)) THEN
+-- 2009/01/20 H.Itou Mod End
       -- 警告メッセージ出力
       lv_errmsg  := SUBSTRB(
                       xxcmn_common_pkg.get_msg(
@@ -906,7 +910,11 @@ AS
     -- 代表倉庫妥当性チェック
     -- ===========================
     -- 代表倉庫が代表倉庫_代表倉庫でない場合、警告
-    IF (ir_chk_data.frq_item_location_code <> ir_chk_data.frq_frequent_whse) THEN
+-- 2009/01/20 H.Itou Mod Start 本番障害#1052
+--    IF (ir_chk_data.frq_item_location_code <> ir_chk_data.frq_frequent_whse) THEN
+    IF  ((ir_chk_data.frq_item_location_code <> ir_chk_data.frq_frequent_whse)
+      OR (ir_chk_data.frq_frequent_whse IS NULL)) THEN
+-- 2009/01/20 H.Itou Mod End
 --
       -- 警告メッセージ出力
       lv_errmsg  := SUBSTRB(
