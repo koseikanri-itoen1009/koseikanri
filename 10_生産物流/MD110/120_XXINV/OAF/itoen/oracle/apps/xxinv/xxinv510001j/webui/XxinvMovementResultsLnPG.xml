@@ -126,6 +126,29 @@
                         </oa:switcher>
                      </ui:contents>
                   </oa:column>
+                  <oa:column id="Column9" columnDataFormat="iconButtonFormat">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col09Hdr" prompt="削除"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:switcher id="DeleteSwitcher" viewAttr="DeleteSwitcher">
+                           <ui:case name="DeleteEnable">
+                              <oa:image id="DeleteEnable" source="deleteicon_enabled.gif" shortDesc="削除可" imageHeight="24" imageWidth="24">
+                                 <ui:primaryClientAction>
+                                    <ui:fireAction event="deleteLine" id="fireAction1">
+                                       <ui:parameters>
+                                          <ui:parameter key="DEL_MOV_LINE_ID" value="${oa.XxinvMovementResultsLnVO1.MovLineId}"/>
+                                       </ui:parameters>
+                                    </ui:fireAction>
+                                 </ui:primaryClientAction>
+                              </oa:image>
+                           </ui:case>
+                           <ui:case name="DeleteDisable">
+                              <oa:image id="DeleteDisable" source="deleteicon_disabled.gif" shortDesc="削除不可" imageHeight="24" imageWidth="24"/>
+                           </ui:case>
+                        </oa:switcher>
+                     </ui:contents>
+                  </oa:column>
                </ui:contents>
                <ui:footer>
                   <oa:tableFooter id="footer">

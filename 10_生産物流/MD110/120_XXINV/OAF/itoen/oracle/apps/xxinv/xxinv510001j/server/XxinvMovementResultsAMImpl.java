@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2008-12-01 1.9  伊藤ひとみ   本番障害#236対応
 * 2008-12-25 1.10 伊藤ひとみ   本番障害#797,821対応
 * 2009-02-09 1.11 伊藤ひとみ   本番障害#1143対応
+* 2009-02-26 1.12 二瓶大輔     本番障害#885対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -46,7 +47,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.11
+ * @version 1.12
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -67,18 +68,6 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
   {
     launchTester("itoen.oracle.apps.xxinv.xxinv510001j.server", "XxinvMovementResultsAMLocal");
   }
-
-
-
-  /**
-   * 
-   * Container's getter for XxinvMovResultsSearchVO1
-   */
-  public XxinvMovResultsSearchVOImpl getXxinvMovResultsSearchVO1()
-  {
-    return (XxinvMovResultsSearchVOImpl)findViewObject("XxinvMovResultsSearchVO1");
-  }
-
 
   /***************************************************************************
    * 入出庫実績要約画面の初期化処理を行うメソッドです。
@@ -104,7 +93,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // キーに値をセット
       resultsSearchRow.setNewRowState(OARow.STATUS_INITIALIZED);
       resultsSearchRow.setAttribute("RowKey", new Number(1));
-      resultsSearchRow.setAttribute("ActualFlg", actualFlag);
+      resultsSearchRow.setAttribute("ActualFlg",  actualFlag);
       resultsSearchRow.setAttribute("ProductFlg", productFlag);
     }
 
@@ -153,15 +142,15 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
           // 1行目を取得
           OARow movementResultsHdRow = (OARow)movementResultsHdVo.first();
           // 保管場所をセット
-          movementResultsHdRow.setAttribute("ShippedLocatId", paramsRet.get("locationId"));
+          movementResultsHdRow.setAttribute("ShippedLocatId",   paramsRet.get("locationId"));
           movementResultsHdRow.setAttribute("ShippedLocatCode", paramsRet.get("locationsCode"));
-          movementResultsHdRow.setAttribute("Description1", paramsRet.get("locationsName"));
+          movementResultsHdRow.setAttribute("Description1",     paramsRet.get("locationsName"));
         } else if ("1".equals(exeType))
         {
           // 保管場所をセット
-          resultsSearchRow.setAttribute("ShipLcationCode", paramsRet.get("locationsCode"));
+          resultsSearchRow.setAttribute("ShipLcationCode",  paramsRet.get("locationsCode"));
           resultsSearchRow.setAttribute("ShipLocationName", paramsRet.get("locationsName"));
-          resultsSearchRow.setAttribute("ShipLocationId", paramsRet.get("locationId"));
+          resultsSearchRow.setAttribute("ShipLocationId",   paramsRet.get("locationId"));
         }
 
       // 入庫実績メニューから起動
@@ -175,15 +164,15 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
           // 1行目を取得
           OARow movementResultsHdRow = (OARow)movementResultsHdVo.first();
           // 保管場所をセット
-          movementResultsHdRow.setAttribute("ShipToLocatId", paramsRet.get("locationId"));
+          movementResultsHdRow.setAttribute("ShipToLocatId",   paramsRet.get("locationId"));
           movementResultsHdRow.setAttribute("ShipToLocatCode", paramsRet.get("locationsCode"));
-          movementResultsHdRow.setAttribute("Description2", paramsRet.get("locationsName"));
+          movementResultsHdRow.setAttribute("Description2",    paramsRet.get("locationsName"));
         } else if ("1".equals(exeType))
         {
           // 保管場所をセット
           resultsSearchRow.setAttribute("ArrivalLocationCode", paramsRet.get("locationsCode"));
           resultsSearchRow.setAttribute("ArrivalLocationName", paramsRet.get("locationsName"));
-          resultsSearchRow.setAttribute("ArrivalLocationId", paramsRet.get("locationId"));
+          resultsSearchRow.setAttribute("ArrivalLocationId",   paramsRet.get("locationId"));
         }
       }
     }
@@ -202,7 +191,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 移動実績情報VO取得
     XxinvMovementResultsVOImpl xxinvMovementResultsVo = getXxinvMovementResultsVO1();
     // 検索
-    String shippedLocatId      = (String)searchParams.get("shippedLocatId");
+    String shippedLocatId = (String)searchParams.get("shippedLocatId");
 
     xxinvMovementResultsVo.initQuery(searchParams); // 検索パラメータ用HashMap
 
@@ -218,7 +207,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
   public void copyShipDate()
   {
     // 移動実績情報VO取得
-    OAViewObject vo = getXxinvMovResultsSearchVO1();
+    OAViewObject vo    = getXxinvMovResultsSearchVO1();
     OARow row          = (OARow)vo.first();
     Date  shipDateFrom = (Date)row.getAttribute("ShipDateFrom");
     Date  shipDateTo   = (Date)row.getAttribute("ShipDateTo");
@@ -237,7 +226,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
   public void copyArrivalDate()
   {
     // 移動実績情報VO取得
-    OAViewObject vo = getXxinvMovResultsSearchVO1();
+    OAViewObject vo       = getXxinvMovResultsSearchVO1();
     OARow row             = (OARow)vo.first();
     Date  arrivalDateFrom = (Date)row.getAttribute("ArrivalDateFrom");
     Date  arrivalDateTo   = (Date)row.getAttribute("ArrivalDateTo");
@@ -357,12 +346,12 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // フラグが0:有効の場合
     if ("0".equals(flag))
     {
-      readOnlyRow.setAttribute("GoDisabled",  Boolean.FALSE); // 適用ボタン押下可
+      readOnlyRow.setAttribute("GoDisabled", Boolean.FALSE); // 適用ボタン押下可
 
     // フラグが1:無効の場合
     } else if ("1".equals(flag))
     {
-      readOnlyRow.setAttribute("GoDisabled",  Boolean.TRUE); // 適用ボタン押下不可
+      readOnlyRow.setAttribute("GoDisabled", Boolean.TRUE); // 適用ボタン押下不可
     }
   } // disabledChanged
 
@@ -397,7 +386,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // ヘッダ.修正フラグを読取専用に変更
       readOnlyRow.setAttribute("NewModifyFlgReadOnly", Boolean.TRUE);
       // ヘッダ.移動タイプを読取専用に変更
-      readOnlyRow.setAttribute("MovTypeReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("MovTypeReadOnly",      Boolean.TRUE);
 
     // 処理フラグ:2(更新)の場合
     } else if ("2".equals(peocessFlag))
@@ -411,43 +400,43 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // ヘッダ.移動指示部署を読取専用に変更
       readOnlyRow.setAttribute("InstructionPostReadOnly", Boolean.TRUE);
       // ヘッダ.移動タイプを読取専用に変更
-      readOnlyRow.setAttribute("MovTypeReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("MovTypeReadOnly",         Boolean.TRUE);
       // ヘッダ.修正フラグを読取専用に変更
-      readOnlyRow.setAttribute("NewModifyFlgReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("NewModifyFlgReadOnly",    Boolean.TRUE);
       // ヘッダ.出庫元を読取専用に変更
-      readOnlyRow.setAttribute("ShippedLocatReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("ShippedLocatReadOnly",    Boolean.TRUE);
       // ヘッダ.入庫先を読取専用に変更
-      readOnlyRow.setAttribute("ShipToLocatReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("ShipToLocatReadOnly",     Boolean.TRUE);
       // 配送Noが付与されていた場合
       if (!XxcmnUtility.isBlankOrNull(deliveryNo))
       {
         // ヘッダ.出庫日(実績)を読取専用に変更
-        readOnlyRow.setAttribute("ActualShipDateReadOnly", Boolean.TRUE);
+        readOnlyRow.setAttribute("ActualShipDateReadOnly",    Boolean.TRUE);
         // ヘッダ.着日(実績)を読取専用に変更
         readOnlyRow.setAttribute("ActualArrivalDateReadOnly", Boolean.TRUE);
       } else
       {
         // ヘッダ.出庫日(実績)を読取専用に変更
-        readOnlyRow.setAttribute("ActualShipDateReadOnly", Boolean.FALSE);
+        readOnlyRow.setAttribute("ActualShipDateReadOnly",    Boolean.FALSE);
         // ヘッダ.着日(実績)を読取専用に変更
         readOnlyRow.setAttribute("ActualArrivalDateReadOnly", Boolean.FALSE);
       }
       // ヘッダ.運賃区分を読取専用に変更
-      readOnlyRow.setAttribute("FreightChargeClassReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("FreightChargeClassReadOnly",  Boolean.TRUE);
       // ヘッダ.運送業者を読取専用に変更
-      readOnlyRow.setAttribute("FreightCarrierReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("FreightCarrierReadOnly",      Boolean.TRUE);
       // ヘッダ.時間指定Fromを読取専用に変更
-      readOnlyRow.setAttribute("ArrivalTimeFromReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("ArrivalTimeFromReadOnly",     Boolean.TRUE);
       // ヘッダ.時間指定Toを読取専用に変更
-      readOnlyRow.setAttribute("ArrivalTimeToReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("ArrivalTimeToReadOnly",       Boolean.TRUE);
       // ヘッダ.パレット回収枚数を読取専用に変更
-      readOnlyRow.setAttribute("CollectedPalletReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("CollectedPalletReadOnly",     Boolean.TRUE);
       // ヘッダ.契約外運賃区分を読取専用に変更
-      readOnlyRow.setAttribute("NoContFreightClassReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("NoContFreightClassReadOnly",  Boolean.TRUE);
       // ヘッダ.重量容積区分を読取専用に変更
       readOnlyRow.setAttribute("WeightCapacityClassReadOnly", Boolean.TRUE);
       // ヘッダ.摘要を読取専用に変更
-      readOnlyRow.setAttribute("DescriptionReadOnly", Boolean.TRUE);
+      readOnlyRow.setAttribute("DescriptionReadOnly",         Boolean.TRUE);
       
 // 2008-10-21 H.Itou Add Start 統合テスト指摘353
       String compActualFlg     = (String)row.getAttribute("CompActualFlg");   // 実績計上済フラグ
@@ -459,10 +448,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         && XxinvUtility.chkStockClose(getOADBTransaction(), actualShipDate))
       {
         // 参照のみ。
-        readOnlyRow.setAttribute("ActualShipDateReadOnly", Boolean.TRUE);   // 出庫日(実績)：読取専用
-        readOnlyRow.setAttribute("ActualArrivalDateReadOnly", Boolean.TRUE);// 着日(実績)：読取専用
-        readOnlyRow.setAttribute("OutPalletReadOnly", Boolean.TRUE);        // パレット枚数(出)：読取専用
-        readOnlyRow.setAttribute("InPalletReadOnly", Boolean.TRUE);         // パレット枚数(入)：読取専用
+        readOnlyRow.setAttribute("ActualShipDateReadOnly",    Boolean.TRUE); // 出庫日(実績)：読取専用
+        readOnlyRow.setAttribute("ActualArrivalDateReadOnly", Boolean.TRUE); // 着日(実績)：読取専用
+        readOnlyRow.setAttribute("OutPalletReadOnly",         Boolean.TRUE); // パレット枚数(出)：読取専用
+        readOnlyRow.setAttribute("InPalletReadOnly",          Boolean.TRUE); // パレット枚数(入)：読取専用
         disabledChanged("1"); // 適用を無効に設定
       }
 // 2008-10-21 H.Itou Add End
@@ -500,7 +489,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       resultsSearchVoRow.setNewRowState(OARow.STATUS_INITIALIZED);
       resultsSearchVoRow.setAttribute("RowKey", new Number(1));
       resultsSearchVoRow.setAttribute("PeopleCode", peopleCode);
-      resultsSearchVoRow.setAttribute("ActualFlg", actualFlag);
+      resultsSearchVoRow.setAttribute("ActualFlg",  actualFlag);
       resultsSearchVoRow.setAttribute("ProductFlg", productFlag);
       resultsSearchVoRow.setAttribute("UpdateFlag", updateFlag);
     }
@@ -535,8 +524,8 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       OARow movementResultsHdRow = (OARow)movementResultsHdVo.first();
       // キーに値をセット
       movementResultsHdRow.setNewRowState(OARow.STATUS_INITIALIZED);
-      movementResultsHdRow.setAttribute("MovType", XxinvConstants.MOV_TYPE_1);
-      movementResultsHdRow.setAttribute("NotifStatus", XxinvConstants.NOTIFSTATSU_CODE_1O);
+      movementResultsHdRow.setAttribute("MovType",         XxinvConstants.MOV_TYPE_1);
+      movementResultsHdRow.setAttribute("NotifStatus",     XxinvConstants.NOTIFSTATSU_CODE_1O);
       movementResultsHdRow.setAttribute("NotifStatusName", XxinvConstants.NOTIFSTATSU_NAME_1O);
 
       // 製品識別区分が:1(製品)の場合
@@ -551,13 +540,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // 商品区分が:1リーフの場合
       if ("1".equals(itemClass))
       {
-        movementResultsHdRow.setAttribute("WeightCapacityClass", XxinvConstants.WEIGHT_CAPACITY_CLASS_CODE_2);
+        movementResultsHdRow.setAttribute("WeightCapacityClass",     XxinvConstants.WEIGHT_CAPACITY_CLASS_CODE_2);
         movementResultsHdRow.setAttribute("WeightCapacityClassName", XxinvConstants.WEIGHT_CAPACITY_CLASS_NAME_2);
 
       // 商品区分が:2ドリンクの場合
       } else if ("2".equals(itemClass))
       {
-        movementResultsHdRow.setAttribute("WeightCapacityClass", XxinvConstants.WEIGHT_CAPACITY_CLASS_CODE_1);
+        movementResultsHdRow.setAttribute("WeightCapacityClass",     XxinvConstants.WEIGHT_CAPACITY_CLASS_CODE_1);
         movementResultsHdRow.setAttribute("WeightCapacityClassName", XxinvConstants.WEIGHT_CAPACITY_CLASS_NAME_1);
       }
 
@@ -719,14 +708,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
         // 出庫実績メニューで起動の場合で、出庫日(実績)がNULLの場合、出庫予定日をコピー
         if (XxcmnUtility.isBlankOrNull(movementResultsHdRow.getAttribute("ActualShipDate"))
-          && XxinvConstants.ACTUAL_FLAG_DELI.equals(actualFlg))
+         && XxinvConstants.ACTUAL_FLAG_DELI.equals(actualFlg))
         {
           // 出庫日を出庫日(実績)へセットする
           movementResultsHdRow.setAttribute("ActualShipDate", movementResultsHdRow.getAttribute("ScheduleShipDate"));
         }
         // 入庫実績メニューで起動の場合で、着日(実績)がNULLの場合、着荷予定日をコピー
         if (XxcmnUtility.isBlankOrNull(movementResultsHdRow.getAttribute("ActualArrivalDate"))
-          && XxinvConstants.ACTUAL_FLAG_SCOC.equals(actualFlg))
+         && XxinvConstants.ACTUAL_FLAG_SCOC.equals(actualFlg))
         {
           // 着日を着日(実績)へセットする
           movementResultsHdRow.setAttribute("ActualArrivalDate", movementResultsHdRow.getAttribute("ScheduleArrivalDate"));
@@ -734,15 +723,15 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-09-24 H.Itou add End
       }
 
-      searchVoRow.setAttribute("ActualShipDate", movementResultsHdRow.getAttribute("ActualShipDate"));
+      searchVoRow.setAttribute("ActualShipDate",    movementResultsHdRow.getAttribute("ActualShipDate"));
       searchVoRow.setAttribute("ActualArrivalDate", movementResultsHdRow.getAttribute("ActualArrivalDate"));
       // 移動指示部署、出庫元、入庫先、運送業者の名称をセット
       OAViewObject searchHdVo = getXxinvMovResultsHdSearchVO1();
       OARow searchHdVoRow = (OARow)searchHdVo.first();
-      searchHdVoRow.setAttribute("LocationName", movementResultsHdRow.getAttribute("LocationShortName"));
-      searchHdVoRow.setAttribute("ShipLocationName", movementResultsHdRow.getAttribute("Description1"));
+      searchHdVoRow.setAttribute("LocationName",        movementResultsHdRow.getAttribute("LocationShortName"));
+      searchHdVoRow.setAttribute("ShipLocationName",    movementResultsHdRow.getAttribute("Description1"));
       searchHdVoRow.setAttribute("ArrivalLocationName", movementResultsHdRow.getAttribute("Description2"));
-      searchHdVoRow.setAttribute("FrtCarrierName", movementResultsHdRow.getAttribute("PartyName2"));
+      searchHdVoRow.setAttribute("FrtCarrierName",      movementResultsHdRow.getAttribute("PartyName2"));
 
       // *********************** //
       // *  無効切替処理       * //
@@ -765,7 +754,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 移動実績情報VO取得
     OAViewObject vo = getXxinvMovementResultsHdVO1();
     // 1行目を取得
-    OARow row            = (OARow)vo.first();
+    OARow row = (OARow)vo.first();
     Date  actualShipDate = (Date)row.getAttribute("ActualShipDate");
 
     // 出庫日(実績)を出庫日にコピー
@@ -782,7 +771,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 移動実績情報VO取得
     OAViewObject vo = getXxinvMovementResultsHdVO1();
     // 1行目を取得
-    OARow row               = (OARow)vo.first();
+    OARow row = (OARow)vo.first();
     Date  actualArrivalDate = (Date)row.getAttribute("ActualArrivalDate");
 
     // 着日(実績)を着日にコピー
@@ -815,7 +804,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 移動実績情報VO取得
     OAViewObject vo = getXxinvMovementResultsHdVO1();
     // 1行目を取得
-    OARow  row                = (OARow)vo.first();
+    OARow  row = (OARow)vo.first();
     String freightChargeClass = (String)row.getAttribute("FreightChargeClass");
 
     // 運賃区分がOFFになった場合
@@ -853,13 +842,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 移動実績情報VO取得
     OAViewObject vo = getXxinvMovementResultsHdVO1();
     // 1行目を取得
-    OARow  row      = (OARow)vo.first();
-    String movNum        = (String)row.getAttribute("MovNum");        // 移動番号
-    String movType       = (String)row.getAttribute("MovType");       // 移動タイプ
-    String compActualFlg = (String)row.getAttribute("CompActualFlg"); // 実績計上フラグ
+    OARow  row = (OARow)vo.first();
+    String movNum            = (String)row.getAttribute("MovNum");        // 移動番号
+    String movType           = (String)row.getAttribute("MovType");       // 移動タイプ
+    String compActualFlg     = (String)row.getAttribute("CompActualFlg"); // 実績計上フラグ
 // 2008-09-24 H.Itou Add Start 統合テスト指摘156 出庫元・入庫先同一チェック
-    String shippedLocat  = (String)row.getAttribute("ShippedLocatCode"); // 出庫元保管場所
-    String shipToLocat   = (String)row.getAttribute("ShipToLocatCode");  // 入庫先保管場所
+    String shippedLocat      = (String)row.getAttribute("ShippedLocatCode"); // 出庫元保管場所
+    String shipToLocat       = (String)row.getAttribute("ShipToLocatCode");  // 入庫先保管場所
 // 2008-10-21 H.Itou Add Start 統合テスト指摘353
     Date dbActualShipDate    = (Date)row.getAttribute("DbActualShipDate");    // 出庫日(実績)
     Date dbActualArrivalDate = (Date)row.getAttribute("DbActualArrivalDate"); // 着日(実績)
@@ -878,7 +867,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-12-01 H.Itou Add Start
     // 運賃区分がONの場合、運送業者NULLはエラー
     if ("1".equals(freightChargeClass)
-      && XxcmnUtility.isBlankOrNull(actualFreightCarrierCode))
+     && XxcmnUtility.isBlankOrNull(actualFreightCarrierCode))
     {
       // エラーメッセージトークン取得
       throw new OAAttrValException(
@@ -894,8 +883,8 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 移動番号が設定済かつ移動タイプが「積送なし」かつ実績計上済の場合
     if ((!XxcmnUtility.isBlankOrNull(movNum))
-           && (XxinvConstants.MOV_TYPE_2.equals(movType))
-           && (XxinvConstants.COMP_ACTUAL_FLG_Y.equals(compActualFlg)))
+     && (XxinvConstants.MOV_TYPE_2.equals(movType))
+     && (XxinvConstants.COMP_ACTUAL_FLG_Y.equals(compActualFlg)))
     {
       // 更新チェック
       chkActualTypeOn(vo, row, exceptions);
@@ -908,8 +897,8 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 移動番号が設定済かつ移動タイプが「積送あり」かつ実績計上済の場合
     } else if ((!XxcmnUtility.isBlankOrNull(movNum))
-                  && (XxinvConstants.MOV_TYPE_1.equals(movType))
-                  && (XxinvConstants.COMP_ACTUAL_FLG_Y.equals(compActualFlg)))
+            && (XxinvConstants.MOV_TYPE_1.equals(movType))
+            && (XxinvConstants.COMP_ACTUAL_FLG_Y.equals(compActualFlg)))
     {
       // 更新チェック
       chkActualTypeOff(vo, row, exceptions);
@@ -922,7 +911,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
     // 指示なし新規登録(移動番号が設定済)場合
     } else if ((!XxcmnUtility.isBlankOrNull(movNum))
-                  && (XxinvConstants.COMP_ACTUAL_FLG_N.equals(compActualFlg)))
+            && (XxinvConstants.COMP_ACTUAL_FLG_N.equals(compActualFlg)))
     {
       // 更新チェック
       chkInstr(vo, row, XxinvConstants.INPUT_FLAG_1, exceptions);
@@ -950,10 +939,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 以下のいづれかの場合、在庫クローズチェックを行う。
     // ・ヘッダ適用ボタン押下時
     // ・次へボタン押下時で、DBの出庫実績日・DBの入庫実績日どちらにも値がない場合 (指示登録済で、実績を初めて登録する場合)
-    if (btn.equals("2") 
-      || (btn.equals("1")
-        && XxcmnUtility.isBlankOrNull(dbActualShipDate) 
-        && XxcmnUtility.isBlankOrNull(dbActualArrivalDate)))
+    if ((btn.equals("2"))
+     || (btn.equals("1")
+      && XxcmnUtility.isBlankOrNull(dbActualShipDate) 
+      && XxcmnUtility.isBlankOrNull(dbActualArrivalDate)))
     {
       // 在庫クローズチェック
       stockCloseCheck(vo, row, exceptions);
@@ -969,7 +958,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-09-24 H.Itou Add Start 統合テスト指摘156 出庫元・入庫先同一チェック
     if (!XxcmnUtility.isBlankOrNull(shippedLocat)
      && !XxcmnUtility.isBlankOrNull(shipToLocat)
-     && shippedLocat.equals(shipToLocat))
+     &&  shippedLocat.equals(shipToLocat))
     {
       throw new OAException(XxcmnConstants.APPL_XXINV, XxinvConstants.XXINV10119);
     }
@@ -1141,7 +1130,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     {
       // 出庫日(実績)、 着日(実績)が入力済の場合
       if (!XxcmnUtility.isBlankOrNull(actualShipDate)
-            && !XxcmnUtility.isBlankOrNull(actualArrivalDate))
+       && !XxcmnUtility.isBlankOrNull(actualArrivalDate))
       {
 // 2008-12-25 H.Itou Mod Start
 //        // 出庫日(実績) > 着日(実績)の場合
@@ -1167,7 +1156,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 // 2008-12-25 H.Itou Add Start
         // 移動タイプが2:積送なしで出庫日(実績)、着日(実績)が同日でない場合
         } else if ( XxinvConstants.MOV_TYPE_2.equals(movType)
-                  && !XxcmnUtility.isEquals(actualShipDate, actualArrivalDate))
+                && !XxcmnUtility.isEquals(actualShipDate, actualArrivalDate))
         {
           // エラーメッセージトークン取得
           MessageToken[] tokens = new MessageToken[2];
@@ -1233,11 +1222,11 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     ArrayList exceptions
   ) throws OAException
   {
-    String shippedLocat = (String)row.getAttribute("ShippedLocatCode"); // 出庫元保管場所
-    String shipToLocat  = (String)row.getAttribute("ShipToLocatCode");  // 入庫先保管場所
-    String freightChargeClass  = (String)row.getAttribute("FreightChargeClass");  // 運賃区分
-    String weightCapacityClass  = (String)row.getAttribute("WeightCapacityClass");  // 重力容積区分
-    Date actualShipDate    = (Date)row.getAttribute("ActualShipDate");    // 出庫日(実績)
+    String shippedLocat         = (String)row.getAttribute("ShippedLocatCode");    // 出庫元保管場所
+    String shipToLocat          = (String)row.getAttribute("ShipToLocatCode");     // 入庫先保管場所
+    String freightChargeClass   = (String)row.getAttribute("FreightChargeClass");  // 運賃区分
+    String weightCapacityClass  = (String)row.getAttribute("WeightCapacityClass"); // 重力容積区分
+    Date actualShipDate         = (Date)row.getAttribute("ActualShipDate");        // 出庫日(実績)
 
     // mod start ver1.3
     // 指示あり新規登録の場合
@@ -1579,15 +1568,15 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     String status = (String)row.getAttribute("Status"); // ステータス
 
     OAViewObject actualVo = getXxinvMovResultsSearchVO1(); // 検索VO
-    OARow  actualVoRow = (OARow)actualVo.first(); 
-    String actualFlg  = (String)actualVoRow.getAttribute("ActualFlg"); // 起動メニューフラグ
+    OARow  actualVoRow    = (OARow)actualVo.first(); 
+    String actualFlg      = (String)actualVoRow.getAttribute("ActualFlg"); // 起動メニューフラグ
     
     // 出庫実績メニューから起動した場合
     if ("1".equals(actualFlg))
     {
       // ステータスが「入庫報告有」又は「入出庫報告有」の場合
       if ((XxinvConstants.STATUS_05.equals(status))
-            || (XxinvConstants.STATUS_06.equals(status)))
+       || (XxinvConstants.STATUS_06.equals(status)))
       {
         // 出庫日(実績)、着日(実績)の未来日チェック
         chkFutureDate(vo, row, "3", exceptions);
@@ -1602,7 +1591,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     {
       // ステータスが「出庫報告有」又は「入出庫報告有」の場合
       if ((XxinvConstants.STATUS_04.equals(status))
-            || (XxinvConstants.STATUS_06.equals(status)))
+       || (XxinvConstants.STATUS_06.equals(status)))
       {
         // 出庫日(実績)、着日(実績)の未来日チェック
         chkFutureDate(vo, row, "3", exceptions);
@@ -2054,13 +2043,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // *   ヘッダー更新処理      * //
     // *************************** //
     if ((!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualShipDate"),
-                         makeHdrVORow.getAttribute("DbActualShipDate")))           // 出庫日(実績)：出庫日(実績)(DB)
-           || (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualArrivalDate"),
-                               makeHdrVORow.getAttribute("DbActualArrivalDate")))  // 着日(実績)：着日(実績)(DB)
-           || (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("OutPalletQty"),
-                               makeHdrVORow.getAttribute("DbOutPalletQty")))       // パレット枚数(出)：パレット枚数(出)(DB)
-           || (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("InPalletQty"),
-                               makeHdrVORow.getAttribute("DbInPalletQty"))))       // パレット枚数(入)：パレット枚数(入)(DB)
+                                makeHdrVORow.getAttribute("DbActualShipDate")))    // 出庫日(実績)：出庫日(実績)(DB)
+     || (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualArrivalDate"),
+                                makeHdrVORow.getAttribute("DbActualArrivalDate"))) // 着日(実績)：着日(実績)(DB)
+     || (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("OutPalletQty"),
+                                makeHdrVORow.getAttribute("DbOutPalletQty")))      // パレット枚数(出)：パレット枚数(出)(DB)
+     || (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("InPalletQty"),
+                                makeHdrVORow.getAttribute("DbInPalletQty"))))      // パレット枚数(入)：パレット枚数(入)(DB)
     {
       // 実績計上済フラグがYの場合
       if (XxcmnConstants.STRING_Y.equals(makeHdrVORow.getAttribute("CompActualFlg")))
@@ -2080,7 +2069,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
             makeHdrVORow.getAttribute("DbActualShipDate")))
       {
         // 出庫日(実績)(DB)に更新した値をセット
-  //      makeHdrVORow.setAttribute("DbActualShipDate", makeHdrVORow.getAttribute("ActualShipDate"));
+//      makeHdrVORow.setAttribute("DbActualShipDate", makeHdrVORow.getAttribute("ActualShipDate"));
         // ロット詳細確認処理
         if (XxinvUtility.chkLotDetails(
                            getOADBTransaction(),         // トランザクション
@@ -2096,10 +2085,10 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       }
       // 着日(実績)が更新された場合
       if (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualArrivalDate"),
-            makeHdrVORow.getAttribute("DbActualArrivalDate")))
+                                 makeHdrVORow.getAttribute("DbActualArrivalDate")))
       {
         // 着日(実績)(DB)に更新した値をセット
-  //      makeHdrVORow.setAttribute("DbActualArrivalDate", makeHdrVORow.getAttribute("ActualArrivalDate"));
+//      makeHdrVORow.setAttribute("DbActualArrivalDate", makeHdrVORow.getAttribute("ActualArrivalDate"));
         // ロット詳細確認処理
         if (XxinvUtility.chkLotDetails(
                            getOADBTransaction(),         // トランザクション
@@ -2114,14 +2103,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       }
       // パレット枚数(出)が更新された場合
       if (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("OutPalletQty"),
-            makeHdrVORow.getAttribute("DbOutPalletQty")))
+                                 makeHdrVORow.getAttribute("DbOutPalletQty")))
       {
         // パレット枚数(出)(DB)に更新した値をセット
         makeHdrVORow.setAttribute("DbOutPalletQty", makeHdrVORow.getAttribute("OutPalletQty"));
       }
       // パレット枚数(入)が更新された場合
       if (!XxcmnUtility.isEquals(makeHdrVORow.getAttribute("InPalletQty"),
-            makeHdrVORow.getAttribute("DbInPalletQty")))
+                                 makeHdrVORow.getAttribute("DbInPalletQty")))
       {
         // パレット枚数(入)(DB)に更新した値をセット
         makeHdrVORow.setAttribute("DbInPalletQty", makeHdrVORow.getAttribute("InPalletQty"));
@@ -2152,7 +2141,6 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     {
       retCode = XxcmnUtility.stringValue(movHdrId);
 
-
     // 更新無し終了した場合、STRING_TRUEを戻す
     } else
     {
@@ -2173,19 +2161,19 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap params = new HashMap();
 
     // 移動ヘッダID
-    params.put("MovHdrId", makeHdrVORow.getAttribute("MovHdrId"));
+    params.put("MovHdrId",          makeHdrVORow.getAttribute("MovHdrId"));
 
     // 出庫日(実績)
-    params.put("ActualShipDate", makeHdrVORow.getAttribute("ActualShipDate"));
+    params.put("ActualShipDate",    makeHdrVORow.getAttribute("ActualShipDate"));
 
     // 着日(実績)
     params.put("ActualArrivalDate", makeHdrVORow.getAttribute("ActualArrivalDate"));
 
     // パレット枚数(出)
-    params.put("OutPalletQty", makeHdrVORow.getAttribute("OutPalletQty"));
+    params.put("OutPalletQty",      makeHdrVORow.getAttribute("OutPalletQty"));
 
     // パレット枚数(入)
-    params.put("InPalletQty", makeHdrVORow.getAttribute("InPalletQty"));
+    params.put("InPalletQty",       makeHdrVORow.getAttribute("InPalletQty"));
 
     // 運送業者_ID_実績
     if (XxcmnUtility.isBlankOrNull(makeHdrVORow.getAttribute("ActualCareerId")))
@@ -2221,16 +2209,16 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     }
 
     // 着荷時間FROM
-    params.put("ArrivalTimeFrom", makeHdrVORow.getAttribute("ArrivalTimeFrom"));
+    params.put("ArrivalTimeFrom",  makeHdrVORow.getAttribute("ArrivalTimeFrom"));
 
     // 着荷時間TO
-    params.put("ArrivalTimeTo", makeHdrVORow.getAttribute("ArrivalTimeTo"));
+    params.put("ArrivalTimeTo",    makeHdrVORow.getAttribute("ArrivalTimeTo"));
 
     // 実績訂正フラグ
     params.put("CorrectActualFlg", makeHdrVORow.getAttribute("CorrectActualFlg"));
 
     // 最終更新日
-    params.put("LastUpdateDate", makeHdrVORow.getAttribute("LastUpdateDate"));
+    params.put("LastUpdateDate",   makeHdrVORow.getAttribute("LastUpdateDate"));
 
     // ロック・排他処理
     chkLockAndExclusive(params);
@@ -2313,13 +2301,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     HashMap params = new HashMap();
 
     // 移動ヘッダID
-    params.put("MovHdrId", makeHdrVORow.getAttribute("MovHdrId"));
+    params.put("MovHdrId",          makeHdrVORow.getAttribute("MovHdrId"));
 
     // レコードタイプ
-    params.put("RecordType", recordType);
+    params.put("RecordType",        recordType);
     
     // 出庫日(実績)
-    params.put("ActualShipDate", makeHdrVORow.getAttribute("ActualShipDate"));
+    params.put("ActualShipDate",    makeHdrVORow.getAttribute("ActualShipDate"));
 
     // 着日(実績)
     params.put("ActualArrivalDate", makeHdrVORow.getAttribute("ActualArrivalDate"));
@@ -2377,14 +2365,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // * 入出庫実績明細:登録VO 空行取得    * //
     // ************************************* //
     OAViewObject lnVo = getXxinvMovementResultsLnVO1();
-    lnVo.setWhereClauseParam(0,null);
-    lnVo.setWhereClauseParam(1,null);
-    lnVo.setWhereClauseParam(2,null);
-    lnVo.setWhereClauseParam(3,null);
+    lnVo.setWhereClauseParam(0, null);
+    lnVo.setWhereClauseParam(1, null);
+    lnVo.setWhereClauseParam(2, null);
+    lnVo.setWhereClauseParam(3, null);
 // 2008/08/21 v1.6 Y.Yamamoto Mod Start
 //    lnVo.setWhereClauseParam(4, null);
 //    lnVo.setWhereClauseParam(5, null);
-    lnVo.setWhereClauseParam(4,null);
+    lnVo.setWhereClauseParam(4, null);
 // 2008/08/21 v1.6 Y.Yamamoto Mod End
     lnVo.executeQuery();
 
@@ -2403,12 +2391,12 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       OARow resultsSearchVoRow = (OARow)resultsSearchVo.first();
       // キーに値をセット
       resultsSearchVoRow.setNewRowState(OARow.STATUS_INITIALIZED);
-      resultsSearchVoRow.setAttribute("RowKey", new Number(1));
+      resultsSearchVoRow.setAttribute("RowKey",     new Number(1));
       resultsSearchVoRow.setAttribute("PeopleCode", peopleCode);
-      resultsSearchVoRow.setAttribute("ActualFlg", actualFlag);
+      resultsSearchVoRow.setAttribute("ActualFlg",  actualFlag);
       resultsSearchVoRow.setAttribute("ProductFlg", productFlag);
       resultsSearchVoRow.setAttribute("UpdateFlag", updateFlag);
-      resultsSearchVoRow.setAttribute("ExeFlag", null);
+      resultsSearchVoRow.setAttribute("ExeFlag",    null);
     } else
     {
       OARow resultsSearchRow = (OARow)resultsSearchVo.first();
@@ -2450,10 +2438,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     OARow row = (OARow)movementResultsLnVo.createRow();
 
     row.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
-    row.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+    row.setAttribute("ShipToLotSwitcher",  "ShipToLotDetailsDisable");
 
     // 処理フラグ1:登録をセット
-    row.setAttribute("ProcessFlag", XxinvConstants.PROCESS_FLAG_I); // 処理フラグ 1:登録
+    row.setAttribute("ProcessFlag",         XxinvConstants.PROCESS_FLAG_I); // 処理フラグ 1:登録
+// 2009-02-26 v1.12 D.Nihei Add Start 本番障害#855対応 削除処理追加
+    row.setAttribute("DeleteSwitcher",      "DeleteDisable"); // 削除アイコン：押下不可
+// 2009-02-26 v1.12 D.Nihei Add End
     movementResultsLnVo.last();
     movementResultsLnVo.next();
     movementResultsLnVo.insertRow(row);
@@ -2465,7 +2456,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       OARow movementResultsLnRow = (OARow)movementResultsLnVo.getCurrentRow();
 
       movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
-      movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+      movementResultsLnRow.setAttribute("ShipToLotSwitcher",  "ShipToLotDetailsDisable");
 
       movementResultsLnVo.next();
     }
@@ -2512,14 +2503,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // *  VO初期化処理       * //
       // *********************** //
       OAViewObject vo = getXxinvMovementResultsLnVO1();
-      vo.setWhereClauseParam(0,null);
-      vo.setWhereClauseParam(1,null);
-      vo.setWhereClauseParam(2,null);
-      vo.setWhereClauseParam(3,null);
+      vo.setWhereClauseParam(0, null);
+      vo.setWhereClauseParam(1, null);
+      vo.setWhereClauseParam(2, null);
+      vo.setWhereClauseParam(3, null);
 // 2008/08/21 v1.6 Y.Yamamoto Mod Start
 //      vo.setWhereClauseParam(4, null);
 //      vo.setWhereClauseParam(5, null);
-      vo.setWhereClauseParam(4,null);
+      vo.setWhereClauseParam(4, null);
 // 2008/08/21 v1.6 Y.Yamamoto Mod End
       vo.executeQuery();
       vo.insertRow(vo.createRow());
@@ -2550,12 +2541,12 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
       // ヘッダ変更がなかった場合
       if ((XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualShipDate"),
-                           makeHdrVORow.getAttribute("DbActualShipDate")))           // 出庫日(実績)：出庫日(実績)(DB)
-             && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualArrivalDate"),
+                                 makeHdrVORow.getAttribute("DbActualShipDate")))     // 出庫日(実績)：出庫日(実績)(DB)
+       && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualArrivalDate"),
                                  makeHdrVORow.getAttribute("DbActualArrivalDate")))  // 着日(実績)：着日(実績)(DB)
-             && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("OutPalletQty"),
+       && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("OutPalletQty"),
                                  makeHdrVORow.getAttribute("DbOutPalletQty")))       // パレット枚数(出)：パレット枚数(出)(DB)
-             && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("InPalletQty"),
+       && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("InPalletQty"),
                                  makeHdrVORow.getAttribute("DbInPalletQty"))))       // パレット枚数(入)：パレット枚数(入)(DB)
       {
         resultsSearchRow.setAttribute("ExeFlag", "1");
@@ -2575,7 +2566,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       {
         OARow movementResultsLnRow = (OARow)movementResultsLnVo.getCurrentRow();
         // 処理フラグ2:更新をセット
-        movementResultsLnRow.setAttribute("ProcessFlag", XxinvConstants.PROCESS_FLAG_U);
+        movementResultsLnRow.setAttribute("ProcessFlag",      XxinvConstants.PROCESS_FLAG_U);
         // 品目の入力項目制御
         movementResultsLnRow.setAttribute("ItemCodeReadOnly", Boolean.TRUE);
         
@@ -2589,12 +2580,12 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
           {
             movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
           }
-          movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+          movementResultsLnRow.setAttribute("ShipToLotSwitcher",    "ShipToLotDetailsDisable");
 
         // 実績データ区分が:2(入庫実績)の場合
         } else if ("2".equals(actualFlg))
         {
-          movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
+          movementResultsLnRow.setAttribute("ShippedLotSwitcher",  "ShippedLotDetailsDisable");
           if ("1".equals(exeFlg))
           {
             movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetails");
@@ -2626,8 +2617,8 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     OARow readOnlyRow = (OARow)resultsLinePVO.first();
     
     // 初期化
-    readOnlyRow.setAttribute("AddRowRendered", Boolean.TRUE); // 行挿入：非表示
-    readOnlyRow.setAttribute("GoDisabled", Boolean.FALSE);    // 適用：無効
+    readOnlyRow.setAttribute("AddRowRendered", Boolean.TRUE);  // 行挿入：非表示
+    readOnlyRow.setAttribute("GoDisabled",     Boolean.FALSE); // 適用：無効
 
     // 有効の場合
     if (flag.equals("0"))
@@ -2647,14 +2638,14 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       {
         // 参照のみ。
         readOnlyRow.setAttribute("AddRowRendered", Boolean.FALSE); // 行挿入：非表示
-        readOnlyRow.setAttribute("GoDisabled", Boolean.TRUE); // 適用：無効
+        readOnlyRow.setAttribute("GoDisabled",     Boolean.TRUE);  // 適用：無効
       }
 
     // 無効の場合
     } else
     {
       readOnlyRow.setAttribute("AddRowRendered", Boolean.FALSE); // 行挿入：非表示
-      readOnlyRow.setAttribute("GoDisabled", Boolean.TRUE); // 適用：無効
+      readOnlyRow.setAttribute("GoDisabled",     Boolean.TRUE);  // 適用：無効
     }
   } // readOnlyChangedLine
 // 2008-10-21 H.Itou Add End
@@ -2753,7 +2744,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     // 入出庫実績ヘッダ情報取得
     OAViewObject movementResultsHdVo = getXxinvMovementResultsHdVO1();
     // 1行目を取得
-    OARow movHdrRow = (OARow)movementResultsHdVo.first();
+    OARow movHdrRow    = (OARow)movementResultsHdVo.first();
     String processFlag = (String)movHdrRow.getAttribute("ProcessFlag");
 
     // 入出庫実績明細情報取得
@@ -2764,7 +2755,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     OAViewObject resultsSearchVo = getXxinvMovResultsSearchVO1();
     // 1行目を取得
     OARow resultsSearchRow = (OARow)resultsSearchVo.first();
-    String productFlg  = (String)resultsSearchRow.getAttribute("ProductFlg");
+    String productFlg      = (String)resultsSearchRow.getAttribute("ProductFlg");
 
     // 更新の場合
     if (XxinvConstants.PROCESS_FLAG_U.equals(processFlag))
@@ -2775,8 +2766,8 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         OARow movementResultsLnRow = (OARow)movementResultsLnVo.getCurrentRow();
         
         // 新規登録の明細行の場合
-        if (XxinvConstants.PROCESS_FLAG_I.equals(movementResultsLnRow.getAttribute("ProcessFlag"))
-              && (!XxcmnUtility.isBlankOrNull(movementResultsLnRow.getAttribute("ItemCode"))))
+        if ( XxinvConstants.PROCESS_FLAG_I.equals(movementResultsLnRow.getAttribute("ProcessFlag"))
+         && !XxcmnUtility.isBlankOrNull(movementResultsLnRow.getAttribute("ItemCode")))
         {
           // 移動依頼/指示明細登録処理
           insertMovLine(movHdrRow, movementResultsLnRow);
@@ -2790,7 +2781,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       {
         // 移動ヘッダIDを取得
         Number movHdrId = (Number)movHdrRow.getAttribute("MovHdrId");
-        retCode = XxcmnUtility.stringValue(movHdrId);
+        retCode         = XxcmnUtility.stringValue(movHdrId);
       }
       resultsSearchRow.setAttribute("ExeFlag", "1");
     // 新規登録登録の場合
@@ -2802,7 +2793,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // 移動番号を取得
       String movNum = XxcmnUtility.getSeqNo(getOADBTransaction(), "移動番号");
 
-      movHdrRow.setAttribute("MovNum", movNum);
+      movHdrRow.setAttribute("MovNum",     movNum);
       movHdrRow.setAttribute("ProductFlg", productFlg);
 
       while (movementResultsLnVo.getCurrentRow() != null)
@@ -3020,9 +3011,9 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       // 運賃区分が：1(有)の場合
 //      if (XxinvConstants.FREIGHT_CHARGE_CLASS_1.equals(freightChargeClass))
 //      {
-        cstmt.setInt(i++, XxcmnUtility.intValue(dctualCareerId));    // 運送業者ID
+        cstmt.setInt(i++,    XxcmnUtility.intValue(dctualCareerId));    // 運送業者ID
         cstmt.setString(i++, actualFreightCarrierCode);              // 運送業者
-        cstmt.setInt(i++, XxcmnUtility.intValue(dctualCareerId));    // 運送業者ID_実績
+        cstmt.setInt(i++,    XxcmnUtility.intValue(dctualCareerId));    // 運送業者ID_実績
         cstmt.setString(i++, actualFreightCarrierCode);              // 運送業者_実績
 //      } else
 //      {
@@ -3036,8 +3027,8 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       cstmt.setString(i++, arrivalTimeFrom);                           // 着荷時間FROM
       cstmt.setString(i++, arrivalTimeTo);                             // 着荷時間TO
       cstmt.setString(i++, weightCapacityClass);                       // 重量容積区分
-      cstmt.setDate(i++, XxcmnUtility.dateValue(actualShipDate));      // 出庫実績日
-      cstmt.setDate(i++, XxcmnUtility.dateValue(actualArrivalDate));   // 入庫実績日
+      cstmt.setDate(i++,   XxcmnUtility.dateValue(actualShipDate));      // 出庫実績日
+      cstmt.setDate(i++,   XxcmnUtility.dateValue(actualArrivalDate));   // 入庫実績日
       cstmt.setString(i++, productFlg);                                // 製品識別区分
 
       //PL/SQL実行
@@ -3285,12 +3276,12 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
     // ヘッダ変更がなかった場合
     if ((XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualShipDate"),
-                         makeHdrVORow.getAttribute("DbActualShipDate")))           // 出庫日(実績)：出庫日(実績)(DB)
-           && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualArrivalDate"),
+                               makeHdrVORow.getAttribute("DbActualShipDate")))     // 出庫日(実績)：出庫日(実績)(DB)
+     && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("ActualArrivalDate"),
                                makeHdrVORow.getAttribute("DbActualArrivalDate")))  // 着日(実績)：着日(実績)(DB)
-           && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("OutPalletQty"),
+     && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("OutPalletQty"),
                                makeHdrVORow.getAttribute("DbOutPalletQty")))       // パレット枚数(出)：パレット枚数(出)(DB)
-           && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("InPalletQty"),
+     && (XxcmnUtility.isEquals(makeHdrVORow.getAttribute("InPalletQty"),
                                makeHdrVORow.getAttribute("DbInPalletQty"))))       // パレット枚数(入)：パレット枚数(入)(DB)
     {
       resultsSearchRow.setAttribute("ExeFlag", "1");
@@ -3311,7 +3302,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
       if (XxcmnUtility.isEquals(movementResultsLnRow.getAttribute("ItemCodeReadOnly"),Boolean.TRUE))
       {
         // 処理フラグ2:更新をセット
-        movementResultsLnRow.setAttribute("ProcessFlag", XxinvConstants.PROCESS_FLAG_U);
+        movementResultsLnRow.setAttribute("ProcessFlag",      XxinvConstants.PROCESS_FLAG_U);
         // 品目の入力項目制御
         movementResultsLnRow.setAttribute("ItemCodeReadOnly", Boolean.TRUE);
         
@@ -3325,7 +3316,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
           {
             movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
           }
-          movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+          movementResultsLnRow.setAttribute("ShipToLotSwitcher",    "ShipToLotDetailsDisable");
 
         // 実績データ区分が:2(入庫実績)の場合
         } else if ("2".equals(actualFlg))
@@ -3337,7 +3328,7 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
           {
             movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
           }
-          movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
+          movementResultsLnRow.setAttribute("ShippedLotSwitcher",  "ShippedLotDetailsDisable");
         }
         addRowOn = "0";
       } else
@@ -3356,13 +3347,299 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         OARow movementResultsLnRow = (OARow)movementResultsLnVo.getCurrentRow();
 
         movementResultsLnRow.setAttribute("ShippedLotSwitcher", "ShippedLotDetailsDisable");
-        movementResultsLnRow.setAttribute("ShipToLotSwitcher", "ShipToLotDetailsDisable");
+        movementResultsLnRow.setAttribute("ShipToLotSwitcher",  "ShipToLotDetailsDisable");
 
         movementResultsLnVo.next();
       }
     }
   } // doLotSwitcher
 // 2008/08/20 v1.6 Y.Yamamoto Mod End
+// 2009-02-26 v1.12 D.Nihei Add Start 本番障害#855対応 削除処理追加
+  /*****************************************************************************
+   * 指定された行を削除します。
+   * @param exeType - 起動タイプ
+   * @param movLineId - 移動明細ID
+   * @param hdrParams - ヘッダ用HashMap
+   * @param lnParams - 明細用HashMap
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public void chkDeleteLine(
+    String movLineId
+    ) throws OAException 
+  {
+    // 移動依頼/指示ヘッダVO
+    XxinvMovementResultsHdVOImpl hdrVo = getXxinvMovementResultsHdVO1();
+    OARow hdrRow = (OARow)hdrVo.first();
+    Number movHeaderId = (Number)hdrRow.getAttribute("MovHdrId");
+
+    // OA例外リストを生成します。
+    ArrayList exceptions = new ArrayList(100);
+
+    // ************************ //
+    // * 在庫クローズチェック * //
+    // ************************ //
+    stockCloseCheck(hdrVo, hdrRow, exceptions);
+
+    // 在庫クローズエラーの場合、処理終了
+    if (exceptions.size() > 0)
+    {
+      OAException.raiseBundledOAException(exceptions);
+    }
+
+    // 移動依頼/指示明細VO
+    XxinvMovementResultsLnVOImpl vo = getXxinvMovementResultsLnVO1();
+    // 削除対象行を取得
+    OARow row = (OARow)vo.getFirstFilteredRow("MovLineId", new Number(Integer.parseInt(movLineId)));
+
+    // 更新行取得
+    Row[] rows = vo.getFilteredRows("ProcessFlag", XxinvConstants.PROCESS_FLAG_U);
+    // 取得行の明細件数が1件しかない場合
+    if ((rows == null) || (rows.length == 1)) 
+    {
+      Object itemCode = row.getAttribute("ItemCode");
+      // 削除不可エラー
+      throw new OAAttrValException(
+                  OAAttrValException.TYP_VIEW_OBJECT,          
+                  vo.getName(),
+                  row.getKey(),
+                  "ItemCode",
+                  itemCode,
+                  XxcmnConstants.APPL_XXINV, 
+                  XxinvConstants.XXINV10187);
+    }
+  } // chkDeleteLine
+
+  /*****************************************************************************
+   * 指定された行を削除します。
+   * @param exeType - 起動タイプ
+   * @param movLineId - 移動明細ID
+   * @param hdrParams - ヘッダ用HashMap
+   * @param lnParams - 明細用HashMap
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public void doDeleteLine(
+    String movLineId,
+    HashMap hdrParams,
+    HashMap lnParams
+    ) throws OAException 
+  {
+    // 終了メッセージ格納
+    ArrayList infoMsg = new ArrayList(100);
+
+    // 移動依頼/指示ヘッダVO
+    XxinvMovementResultsHdVOImpl hdrVo = getXxinvMovementResultsHdVO1();
+    OARow hdrRow = (OARow)hdrVo.first();
+    Number movHeaderId = (Number)hdrRow.getAttribute("MovHdrId"); // 移動ヘッダID
+    String movNum      = (String)hdrRow.getAttribute("MovNum");   // 移動番号
+    String status      = (String)hdrRow.getAttribute("Status");   // ステータス
+
+    // 移動依頼/指示ヘッダVOデータ取得
+    HashMap params = new HashMap();
+    params.put("MovHdrId",       movHeaderId);        // 移動ヘッダID
+    params.put("LastUpdateDate", hdrRow.getAttribute("LastUpdateDate"));  // 最終更新日
+
+    // 移動依頼/指示明細VO
+    XxinvMovementResultsLnVOImpl vo = getXxinvMovementResultsLnVO1();
+    // 削除対象行を取得
+    OARow row = (OARow)vo.getFirstFilteredRow("MovLineId", new Number(Integer.parseInt(movLineId)));
+
+    // 実績データ区分VO取得
+    OAViewObject shVo = getXxinvMovResultsSearchVO1();
+    OARow  shRow = (OARow)shVo.first(); 
+    String actualFlg = (String)shRow.getAttribute("ActualFlg"); // 実績データ区分
+
+    // ロック・排他処理
+    chkLockAndExclusive(params);
+
+    // 削除処理
+    deleteMovLine(movHeaderId.toString(), movLineId);
+
+    // 削除完了メッセージ登録
+    MessageToken[] token = { new MessageToken(XxcmnConstants.TOKEN_PROCESS, XxinvConstants.TOKEN_NAME_DEL) };
+    infoMsg.add(new OAException(XxcmnConstants.APPL_XXCMN,
+                                XxcmnConstants.XXCMN05001,
+                                token,
+                                OAException.INFORMATION,
+                                null));
+
+    // ************************************** // 
+    // *  全移動明細実績数量登録済チェック  * //
+    // ************************************** //
+    // 全移動明細出庫実績数量登録済チェック (true:登録済  false:未登録あり)
+    boolean shippedResultFlag = XxinvUtility.isQuantityAllEntry(getOADBTransaction(), movHeaderId, "1");
+    // 全移動明細入庫実績数量登録済チェック (true:登録済  false:未登録あり)
+    boolean shipToResultFlag  = XxinvUtility.isQuantityAllEntry(getOADBTransaction(), movHeaderId, "2");
+
+    // ************************************** // 
+    // * ステータス判定                     * //
+    // ************************************** //
+    String updStatus = status;
+    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
+    if (shippedResultFlag && shipToResultFlag)
+    {
+      updStatus = XxinvConstants.STATUS_06; // 06：入出庫報告有
+    
+    // 出庫実績メニューで起動で全ての出庫実績が入力されている場合
+    } else if (XxinvConstants.ACTUAL_FLAG_DELI.equals(actualFlg) && shippedResultFlag)
+    {
+      // ステータスが 02：依頼済 OR 03：調整中 の場合
+      if (XxinvConstants.STATUS_02.equals(status)
+       || XxinvConstants.STATUS_03.equals(status))
+      { 
+        updStatus = XxinvConstants.STATUS_04; // 04：出庫報告有
+
+      }
+
+    // 入庫実績メニューで起動で全ての入庫実績が入力されている場合
+    } else if (XxinvConstants.ACTUAL_FLAG_SCOC.equals(actualFlg) && shipToResultFlag)
+    {
+      // ステータスが 02：依頼済 OR 03：調整中 OR 05：入庫報告有 の場合
+      if (XxinvConstants.STATUS_02.equals(status)
+       || XxinvConstants.STATUS_03.equals(status))
+      { 
+        updStatus = XxinvConstants.STATUS_05; // 05：入庫報告有
+
+      }
+    }
+    // ステータスに変更があった場合
+    if (!XxcmnUtility.isEquals(status, updStatus)) 
+    {
+      // ************************************** // 
+      // * ステータス更新                     * //
+      // ************************************** //
+      XxinvUtility.updateStatus(
+        getOADBTransaction(),
+        movHeaderId,
+        updStatus);
+
+    }
+
+    // ************************************** // 
+    // * コミット処理                       * //
+    // ************************************** //
+    doCommit();
+
+    // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
+    if (shippedResultFlag && shipToResultFlag)
+    {    
+      // ******************************************* // 
+      // *  移動入出庫実績登録処理(コンカレント)   * //
+      // ******************************************* //
+      HashMap param = new HashMap();
+      param.put("MovNum", movNum); // 移動番号
+      HashMap retHashMap = XxinvUtility.doMovShipActualMake(getOADBTransaction(), param);
+
+      // コンカレント正常終了の場合
+      if (XxcmnConstants.RETURN_SUCCESS.equals((String)retHashMap.get("retFlag")))
+      {
+        // コンカレント正常終了メッセージ取得
+        MessageToken[] tokens = new MessageToken[2];
+        tokens[0] = new MessageToken(XxinvConstants.TOKEN_PROGRAM, XxinvConstants.TOKEN_NAME_MOV_ACTUAL_MAKE);
+        tokens[1] = new MessageToken(XxinvConstants.TOKEN_ID,      retHashMap.get("requestId").toString());
+        infoMsg.add(new OAException(XxcmnConstants.APPL_XXINV,
+                                    XxinvConstants.XXINV10006,
+                                    tokens,
+                                    OAException.INFORMATION,
+                                    null));
+      }
+    }
+
+    // ヘッダ初期化&再検索
+    initializeHdr(hdrParams);
+    doSearchHdr(movHeaderId.toString());
+
+    // 明細初期化&再検索
+    initializeLine(lnParams);
+    doSearchLine(lnParams);
+    
+    // メッセージを出力し、処理終了
+    OAException.raiseBundledOAException(infoMsg);
+
+  } // doDeleteLine
+
+  /*****************************************************************************
+   * 移動依頼/指示明細(アドオン)にデータを削除します。
+   * @param movLineId - 移動明細ID
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public void deleteMovLine(
+    String movHeaderId,
+    String movLineId
+  ) throws OAException
+  {
+    String apiName = "deleteMovLine";
+    
+    //PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN ");
+    sb.append("  UPDATE xxinv_mov_req_instr_lines l "); // 移動依頼/指示明細アドオン
+    sb.append("  SET    l.delete_flg         = 'Y'                 "); // 削除フラグ
+    sb.append("       , l.last_updated_by    = FND_GLOBAL.USER_ID  "); // 最終更新者
+    sb.append("       , l.last_update_date   = SYSDATE             "); // 最終更新日
+    sb.append("       , l.last_update_login  = FND_GLOBAL.LOGIN_ID "); // 最終更新ログイン
+    sb.append("  WHERE  l.mov_line_id = TO_NUMBER(:1) "); // 移動明細ID
+    sb.append("  ; ");
+    sb.append("  UPDATE xxinv_mov_req_instr_headers h "); // 移動依頼/指示ヘッダアドオン
+    sb.append("  SET    h.sum_quantity       = (SELECT SUM(l.instruct_qty)         ");
+    sb.append("                                 FROM   xxinv_mov_req_instr_lines l ");
+    sb.append("                                 WHERE  l.mov_hdr_id = h.mov_hdr_id ");
+    sb.append("                                 AND    l.delete_flg = 'N' )        "); // 合計数量
+    sb.append("       , h.screen_update_by   = FND_GLOBAL.USER_ID  "); // 最終更新者
+    sb.append("       , h.screen_update_date = SYSDATE             "); // 最終更新日
+    sb.append("       , h.last_updated_by    = FND_GLOBAL.USER_ID  "); // 最終更新者
+    sb.append("       , h.last_update_date   = SYSDATE             "); // 最終更新日
+    sb.append("       , h.last_update_login  = FND_GLOBAL.LOGIN_ID "); // 最終更新ログイン
+    sb.append("  WHERE  h.mov_hdr_id = TO_NUMBER(:2) "); // 移動ヘッダID
+    sb.append("  ; ");
+    sb.append("END; ");
+    
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = getOADBTransaction().createCallableStatement(
+                                sb.toString(),
+                                OADBTransaction.DEFAULT);
+
+    try
+    {
+      int i = 1;
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(i++, movLineId);   // 移動明細ID
+      cstmt.setString(i++, movHeaderId); // 移動ヘッダID
+
+      //PL/SQL実行
+      cstmt.execute();
+
+      // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+        // ロールバック
+      XxinvUtility.rollBack(getOADBTransaction());
+      XxcmnUtility.writeLog(getOADBTransaction(),
+                              XxinvConstants.CLASS_AM_XXINV510001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxinvUtility.rollBack(getOADBTransaction());
+        XxcmnUtility.writeLog(getOADBTransaction(),
+                                XxinvConstants.CLASS_AM_XXINV510001J + XxcmnConstants.DOT + apiName,
+                                s.toString(),
+                                6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                                XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // deleteMovLine
+// 2009-02-26 v1.12 D.Nihei Add End
 
   /**
    * 
@@ -3372,7 +3649,6 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
   {
     return (XxinvMovementResultsVOImpl)findViewObject("XxinvMovementResultsVO1");
   }
-
 
   /**
    * 
@@ -3419,8 +3695,13 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     return (XxinvMovementResultsLnPVOImpl)findViewObject("XxinvMovementResultsLnPVO1");
   }
 
-
-
-
+  /**
+   * 
+   * Container's getter for XxinvMovResultsSearchVO1
+   */
+  public XxinvMovResultsSearchVOImpl getXxinvMovResultsSearchVO1()
+  {
+    return (XxinvMovResultsSearchVOImpl)findViewObject("XxinvMovResultsSearchVO1");
+  }
 
 }

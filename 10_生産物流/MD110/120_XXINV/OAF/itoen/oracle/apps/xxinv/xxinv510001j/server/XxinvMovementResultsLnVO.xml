@@ -66,6 +66,15 @@ SELECT ximril.mov_hdr_id         mov_hdr_id                      -- 移動ヘッダID
       ,ximril.last_updated_by    last_updated_by_l           -- 最終更新者
       ,ximril.last_update_date   last_update_date_l          -- 最終更新日
       ,ximril.last_update_login  last_update_login_l         -- 最終更新ログイン
+-- 2009-02-26 D.Nihei Add Start 削除アイコン追加
+      ,CASE
+         WHEN ( ( NVL(ximril.reserved_quantity, 0) = 0 ) 
+            AND ( ximril.shipped_quantity IS NULL )
+            AND ( ximril.ship_to_quantity IS NULL ) )
+           THEN 'DeleteEnable'
+         ELSE 'DeleteDisable'
+       END                              delete_switcher   -- 削除アイコン
+-- 2009-02-26 D.Nihei Add End
 FROM   xxinv_mov_req_instr_headers ximrih   -- 移動依頼/指示ヘッダ(アドオン)
       ,xxinv_mov_req_instr_lines   ximril   -- 移動依頼/指示明細(アドオン)
       ,xxcmn_item_mst2_v           xim2v    -- OPM品目情報VIEW2
@@ -384,6 +393,16 @@ AND   ximril.delete_flg   = 'N'
       ColumnType="VARCHAR2"
       AliasName="VIEW_ATTR"
       SQLType="BIT" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="DeleteSwitcher"
+      IsPersistent="false"
+      Precision="13"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="DeleteSwitcher"
+      Expression="DeleteSwitcher"
+      SQLType="VARCHAR" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="MovHdrId" />

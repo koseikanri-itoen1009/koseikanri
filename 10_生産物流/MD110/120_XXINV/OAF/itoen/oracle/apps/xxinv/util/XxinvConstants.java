@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvConstants
 * 概要説明   : INV共通定数
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2008-07-10 1.2  伊藤ひとみ   内部変更
 * 2008-09-24 1.3  伊藤ひとみ   統合テスト 指摘156
 * 2008-12-01 1.4  伊藤ひとみ   本番障害#236
+* 2009-02-26 1.5  二瓶大輔     本番障害#885
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.util;
@@ -18,7 +19,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * INV共通定数クラスです。
  * @author  ORACLE 高梨雅史
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxinvConstants 
@@ -61,6 +62,8 @@ public class XxinvConstants
   public static final String URL_PARAM_SEARCH_MOV_LINE_ID = "pSearchMovLineId";
   /** URLパラメータID：前画面URL */
   public static final String URL_PARAM_PREV_URL     = "pPrevUrl";
+  /** URLパラメータID：削除用移動明細ID */
+  public static final String URL_PARAM_DEL_MOV_LINE_ID = "pDelMovLineId"; // add ver1.5
   /** 処理フラグ：1 登録 */
   public static final String PROCESS_FLAG_I = "1";
   /** 処理フラグ：2 更新 */
@@ -175,6 +178,10 @@ public class XxinvConstants
   public static final String XXINV10119 = "APP-XXINV-10119"; // add ver1.3
   /** メッセージ：APP-XXINV-10180 運送業者未登録エラー */
   public static final String XXINV10180 = "APP-XXINV-10180"; // add ver1.4
+  /** メッセージ：APP-XXINV-10187 削除不可エラー */
+  public static final String XXINV10187 = "APP-XXINV-10187"; // add ver1.5
+  /** メッセージ：APP-XXINV-40001 削除確認 */
+  public static final String XXINV40001 = "APP-XXINV-40001"; // add ver1.5
   /** トークン：SHIP_DATE */
   public static final String TOKEN_SHIP_DATE       = "SHIP_DATE";
   /** トークン：ARRIVAL_DATE */
@@ -207,6 +214,8 @@ public class XxinvConstants
   public static final String TOKEN_NAME_MAX_SHIP_METHOD = "最大配送区分";
   /** トークン名称：品目 */
   public static final String TOKEN_NAME_ITEM = "品目";  // add ver1.1
+  /** トークン名称：削除処理 */
+  public static final String TOKEN_NAME_DEL   = "削除処理";  // add ver1.5
   /** ページタイトルの固定部分 (「ファイルアップロード：　」)*/
   public static final String DISP_TEXT = "ファイルアップロード：";
   /** 参照タイプ タイプ名称 */
