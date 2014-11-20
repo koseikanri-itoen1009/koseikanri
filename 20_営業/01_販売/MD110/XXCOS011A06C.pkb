@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2010/03/16    1.10  K.Kiriu         [E_本稼動_01153]EDI販売実績対象顧客追加時の対応
  *                                      [E_本稼動_01301]PT対応(対象外データの更新追加）
  *                                                      顧客マスタモデルの対応
+ *  2010/06/22    1.11  S.Arizumi       [E_本稼動_02995] 菱食EDI販売実績のオーダーNo.（注文伝票番号）不具合対応
  *
  *****************************************************************************************/
 --
@@ -2137,9 +2138,21 @@ AS
              ,xseh.sales_base_code                    sales_base_code              --売上拠点コード
              ,hcam.sales_base_name                    sales_base_name              --売上拠点名
              ,hcam.sales_base_phonetic                sales_base_phonetic          --売上拠点名カナ
-/* 2009/11/27 Ver1.9 Add Start */
-             ,xseh.order_invoice_number               order_invoice_number         --注文伝票番号
-/* 2009/11/27 Ver1.9 Add End   */
+-- 2010/06/22 S.Arizumi Ver1.11 Mod Start
+--/* 2009/11/27 Ver1.9 Add Start */
+--             ,xseh.order_invoice_number               order_invoice_number         --注文伝票番号
+--/* 2009/11/27 Ver1.9 Add End   */
+             ,CASE WHEN     xlvv.attribute1   <>  cv_5                            --処理パターン：スマイル 以外
+                        AND xseh.create_class IN( cv_3                            --作成元区分  ：VD納品データ作成
+                                                 ,cv_4                            --作成元区分  ：出荷確認処理(HHT納品データ)
+                                                 ,cv_5                            --作成元区分  ：返品実績データ作成(HHT)
+                                              )
+                THEN NVL( xseh.order_invoice_number
+                         ,xseh.invoice_classification_code || xseh.invoice_class
+                     )
+                ELSE xseh.order_invoice_number
+              END                                     order_invoice_number         --注文伝票番号
+-- 2010/06/22 S.Arizumi Ver1.11 Mod End
              ,xseh.ship_to_customer_code              ship_to_customer_code        --顧客【納品先】
              ,xcchv.ship_account_name                 ship_account_name            --納品先顧客名
              ,hcan.organization_name_phonetic         organization_name_phonetic   --納品先顧客名カナ
