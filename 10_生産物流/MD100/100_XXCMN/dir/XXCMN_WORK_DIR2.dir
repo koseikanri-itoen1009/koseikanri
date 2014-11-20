@@ -1,1 +1,1 @@
-CREATE DIRECTORY xxcmn_work_dir2 AS '/home/tebs04/work';
+CREATE DIRECTORY xxcmn_work_dir2 AS '/ebst/tebs04/ebsif/outbound';
