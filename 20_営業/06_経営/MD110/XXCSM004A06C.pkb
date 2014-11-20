@@ -7,7 +7,7 @@ AS
  * Description      : EBS(ファイルアップロードIF)に取込まれた什器ポイントデータを
  *                  : 新規獲得ポイント顧客別履歴テーブルに取込みます。
  * MD.050           : MD050_CSM_004_A06_什器ポイント一括取込
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/08/19    1.4   SCS T.Tsukino    [障害0001111]警告終了のエラーメッセージログ出力の変更対応
  *  2010/01/18    1.5   SCS T.Nakano     [E_本稼動_01039]データ区分チェック追加対応
  *  2010/02/15    1.6   SCS S.Karikomi   [E_本稼動_01534]項目妥当性チェックの変更対応
+ *  2010/04/16    1.7   SCS T.Yoshimoto  [E_本稼動_01895]業態(小分類)固定値設定対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -145,6 +146,9 @@ AS
   cv_xxcsm                  CONSTANT VARCHAR2(100) := 'XXCSM';                                      -- アプリケーション短縮名
   cv_chk_warning            CONSTANT VARCHAR2(1)   := '1';                                          -- 警告
   cv_chk_normal             CONSTANT VARCHAR2(1)   := '0';                                          -- 正常
+-- 2010/04/16 v1.7 T.Yoshimoto Add Start 本稼動#1895
+  cv_low_type_29            CONSTANT VARCHAR2(2)   := '29';                                         -- 業態(小分類)(29:上様・社内販売)
+-- 2010/04/16 v1.7 T.Yoshimoto Add End 本稼動#1895
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -870,6 +874,9 @@ AS
     cv_canncel    CONSTANT VARCHAR2(100) := '90';                                                   -- 中止決済
     cv_minus      CONSTANT VARCHAR2(100) := '-';                                                    -- マイナス
     cn_zero       CONSTANT NUMBER := 0;
+-- 2010/04/16 v1.7 T.Yoshimoto Add Start 本稼動#1895
+    cn_jyuki_2    CONSTANT NUMBER(1)     := 2;                                                      -- データ区分(什器ポイント = 2)
+-- 2010/04/16 v1.7 T.Yoshimoto Add End 本稼動#1895
 --
     lv_errbuf     VARCHAR2(4000);                                                                   -- エラー・メッセージ
     lv_retcode    VARCHAR2(1);                                                                      -- リターン・コード
@@ -1126,6 +1133,15 @@ AS
         gv_check_flag := cv_chk_warning;                                                            -- チェックフラグ→ON
         RAISE chk_warning_expt;
     END;
+--
+-- 2010/04/16 v1.7 T.Yoshimoto Add Start 本稼動#1895
+    -- データ区分が「2:什器」の場合は、業態(小分類)を「29:上様・社内販売」固定とする
+    IF ( ir_data_rec.data_kbn = cn_jyuki_2) THEN
+--
+      gv_low_type := cv_low_type_29;
+--
+    END IF;
+-- 2010/04/16 v1.7 T.Yoshimoto Add End 本稼動#1895
 --
     --==============================================================
     --A-7 ⑥獲得・紹介区分チェック

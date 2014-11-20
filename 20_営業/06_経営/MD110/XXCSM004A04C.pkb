@@ -7,7 +7,7 @@ AS
  * Description      : 顧客マスタから新規獲得した顧客を抽出し、新規獲得ポイント顧客別履歴テーブル
  *                  : にデータを登録します。
  * MD.050           : 新規獲得ポイント集計（新規獲得ポイント集計処理）MD050_CSM_004_A04
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2009/12/07    1.8   T.Tsukino      ［障害管理番号E_本稼動_00335］獲得/紹介営業員が入替え時の不具合/判定日付の変更
  *  2009/12/15    1.9   T.Nakano       ［障害管理番号E_本稼動_00412］業態(小分類)が"27"時の不具合追加
  *  2010/01/19    1.10  S.Karikomi      [障害管理番号E_本稼動_01039] 新規ポイント付与対象変更/獲得ポイント判定の追加/評価対象区分変更
+ *  2010/04/19    1.11  S.Karikomi      [障害管理番号E_本稼動_01895] 最低取引期間外、中止理由が"9"時の不具合
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -184,6 +185,9 @@ AS
   cv_sales                  CONSTANT VARCHAR2(2)   := '01';                                         -- 営業職
   cv_other                  CONSTANT VARCHAR2(2)   := '  ';                                         -- 営業職以外
   cv_sts_stop               CONSTANT VARCHAR2(2)   := '90';                                         -- 中止顧客
+--//+ADD START 2010/04/19 E_本稼動_01895 S.Karikomi
+  cv_stp_reason_niju        CONSTANT VARCHAR2(1)   := '9';                                          -- 中止理由(二重登録)
+--//+ADD END 2010/04/19 E_本稼動_01895 S.Karikomi
   cv_grant_ok               CONSTANT VARCHAR2(2)   := '0';                                          -- ポイント付与する
 --//+UPD START  2010/01/19 E_本稼動_01039 S.Karikomi
 --  cv_grant_ng               CONSTANT VARCHAR2(2)   := '1';                                          -- ポイント付与しない
@@ -1182,6 +1186,9 @@ AS
              ,xca.intro_base_code        intro_base_code                                            -- 紹介拠点
              ,xca.cnvs_date              cnvs_date                                                  -- 顧客獲得日
              ,xca.stop_approval_date     stop_approval_date                                         -- 中止決済日
+--//+ADD START 2010/04/19 E_本稼動_01895 S.Karikomi
+             ,xca.stop_approval_reason   stop_approval_reason                                       -- 中止理由
+--//+ADD END 2010/04/19 E_本稼動_01895 S.Karikomi
              ,xca.cnvs_business_person   cnvs_business_person                                       -- 獲得営業員
              ,xca.cnvs_base_code         cnvs_base_code                                             -- 獲得拠点
              ,xca.start_tran_date        start_tran_date                                            -- 初回取引日
@@ -1492,7 +1499,7 @@ AS
           IF (set_new_point_rec.duns_number_c = cv_sts_stop )                                       -- 中止顧客の場合
             AND (TRUNC(set_new_point_rec.stop_approval_date)
 --//+UPD START  2009/12/07 E_本稼動_00335 T.Tsukino
-          -- 1.顧客獲得日から新規獲得ポイント最低取引期間内に注視顧客になった場合、ポイント付与しない。（初回取引日は使用しない）
+          -- 1.顧客獲得日から新規獲得ポイント最低取引期間内に中止顧客になった場合、ポイント付与しない。（初回取引日は使用しない）
 --              <=  TRUNC(set_new_point_rec.start_tran_date
               <=  TRUNC(set_new_point_rec.cnvs_date
 --//+UPD END  2009/12/07 E_本稼動_00335 T.Tsukino
@@ -1519,6 +1526,32 @@ AS
             IF (lv_retcode <> cv_status_normal) THEN
               RAISE global_process_expt;
             END IF;
+--//+ADD START  2010/04/19 E_本稼動_01895 S.Karikomi
+          ELSIF (set_new_point_rec.duns_number_c = cv_sts_stop )                                    -- 中止顧客の場合
+          -- 2.顧客獲得日から新規獲得ポイント最低取引期間外に中止顧客になり、中止理由が'9'(二重登録)である場合、ポイント付与しない(未達)。
+            AND (TRUNC(set_new_point_rec.stop_approval_date)
+              >  TRUNC(set_new_point_rec.cnvs_date + TO_NUMBER(gv_min_deal_period))) 
+            AND (set_new_point_rec.stop_approval_reason = '9')
+          THEN
+            lt_decision_flg_upd := cv_kakutei;                                                      -- 確定フラグを確定とする。
+            lt_evaluration_kbn  := cv_grant_ng_yet;                                                 -- ポイント付与しない(未達)
+            -- ========================================
+            -- A-11 ワークテープル確定フラグ／新規評価対象区分更新処理  獲得営業員／紹介従業員の両方を更新する。
+            -- ========================================
+            update_work_table(
+              it_year => it_year                                                                    -- 対象年度
+             ,it_account_number => set_new_point_rec.account_number                                 -- 顧客コード
+             ,it_decision_flg => lt_decision_flg_upd                                                -- 更新用確定フラグ
+             ,it_evaluration_kbn => lt_evaluration_kbn                                              -- 新規評価対象区分
+             ,ov_errbuf  => lv_errbuf                                                               -- エラー・メッセージ
+             ,ov_retcode => lv_retcode                                                              -- リターン・コード
+             ,ov_errmsg  => lv_errmsg                                                               -- ユーザー・エラー・メッセージ
+            );
+            -- エラーならば、顧客単位で処理をスキップする。
+            IF (lv_retcode <> cv_status_normal) THEN
+              RAISE global_process_expt;
+            END IF;
+--//+ADD END  2010/04/19 E_本稼動_01895 S.Karikomi
           END IF;
         END IF;
 --//+ADD END   2009/08/17 0000870 T.Tsukino
@@ -1544,7 +1577,6 @@ AS
 --            lt_evaluration_kbn  := cv_grant_ng;                                                     -- ポイント付与しない
             lt_evaluration_kbn  := cv_grant_ng_stp;                                                 -- ポイント付与しない(中止顧客)
 --//+UPD END  2010/01/19 E_本稼動_01039 S.Karikomi
-
           ELSE
           -- 2.ポイント付与条件取得
             BEGIN
