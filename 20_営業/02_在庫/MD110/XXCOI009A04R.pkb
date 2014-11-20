@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/05    1.0   SCS.Tsuboi       新規作成
+ *  2009/04/02    1.1   H.Sasaki         [T1_0002]VD預け先の顧客コード出力
  *
  *****************************************************************************************/
 --
@@ -880,6 +881,10 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_99                         CONSTANT VARCHAR2(2)  := '99';
+-- == 2009/04/02 V1.1 Added START ===============================================================
+    -- レコード種別
+    cv_record_type_30             CONSTANT VARCHAR2(2)  :=  '30';
+-- == 2009/04/02 V1.1 Added END   ===============================================================
 --
     -- 参照タイプ
     cv_invoice_type               CONSTANT VARCHAR2(30)  := 'XXCOI1_INVOICE_KBN';        -- 伝票区分
@@ -897,23 +902,30 @@ AS
     -- HHT入出庫データ
     CURSOR info_hht_cur
     IS
-    SELECT  xhit.transaction_id            transaction_id             -- HHT入出庫一時表ID 
-           ,xhit.interface_id              interface_id               -- インターフェースID
-           ,xhit.outside_base_code         out_base_code              -- 出庫拠点コード
-           ,SUBSTRB(hca.account_name,1,8)  out_base_name              -- 出庫拠点名
-           ,xhit.outside_subinv_code       outside_subinv_code        -- 出庫側保管場所コード
-           ,msi1.description               outside_subinv_name        -- 出庫拠保管場所名
-           ,xhit.invoice_type              invoice_type               -- 伝票区分
-           ,flv.meaning                    invoice_name               -- 伝票区分名
-           ,xhit.inside_subinv_code        inside_subinv_code         -- 入庫側保管場所コード
-           ,msi2.description               inside_subinv_name         -- 入庫拠保管場所名
-           ,xhit.item_code                 item_code                  -- 品目コード
-           ,ximb.item_short_name           item_short_name            -- 略称
-           ,xhit.case_quantity             case_quantity              -- ケース数
-           ,xhit.case_in_quantity          case_in_quantity           -- ケース入数
-           ,xhit.quantity                  quantity                   -- 本数
-           ,xhit.total_quantity            total_quantity             -- 総数
-           ,xhit.invoice_no                invoice_no                 -- 伝票No
+    SELECT  xhit.transaction_id             transaction_id              -- HHT入出庫一時表ID 
+           ,xhit.interface_id               interface_id                -- インターフェースID
+           ,xhit.outside_base_code          out_base_code               -- 出庫拠点コード
+           ,SUBSTRB(hca.account_name,1,8)   out_base_name               -- 出庫拠点名
+           ,xhit.outside_subinv_code        outside_subinv_code         -- 出庫側保管場所コード
+           ,msi1.description                outside_subinv_name         -- 出庫拠保管場所名
+           ,xhit.invoice_type               invoice_type                -- 伝票区分
+           ,flv.meaning                     invoice_name                -- 伝票区分名
+           ,xhit.inside_subinv_code         inside_subinv_code          -- 入庫側保管場所コード
+           ,msi2.description                inside_subinv_name          -- 入庫拠保管場所名
+           ,xhit.item_code                  item_code                   -- 品目コード
+           ,ximb.item_short_name            item_short_name             -- 略称
+           ,xhit.case_quantity              case_quantity               -- ケース数
+           ,xhit.case_in_quantity           case_in_quantity            -- ケース入数
+           ,xhit.quantity                   quantity                    -- 本数
+           ,xhit.total_quantity             total_quantity              -- 総数
+-- == 2009/04/02 V1.1 Modified START ===============================================================
+--           ,xhit.invoice_no                invoice_no                 -- 伝票No
+           ,CASE  WHEN  xhit.record_type = cv_record_type_30  THEN
+                    NVL(xhit.inside_cust_code, xhit.invoice_no)
+                  ELSE
+                    xhit.inside_code
+            END                             invoice_no                  -- 伝票№
+-- == 2009/04/02 V1.1 Modified END   ===============================================================
     FROM    xxcoi_hht_inv_transactions xhit                           -- HHT入出庫一時表
            ,hz_cust_accounts           hca                            -- 顧客マスタ
            ,mtl_secondary_inventories  msi1                           -- 保管場所マスタ1
@@ -922,26 +934,26 @@ AS
            ,ic_item_mst_b              iimb                           -- OPM品目マスタ  
            ,xxcmn_item_mst_b           ximb                           -- OPM品目アドオンマスタ
            ,fnd_lookup_values          flv                            -- クイックコードマスタ
-    WHERE  xhit.output_flag                      =  gr_param.output_kbn
-      AND  xhit.invoice_type                     =  NVL(gr_param.invoice_kbn,xhit.invoice_type)
-      AND  TO_CHAR(xhit.invoice_date,'YYYY/MM/DD') =  SUBSTR(gr_param.target_date,1,10)
-      AND  xhit.outside_base_code                =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
+    WHERE  xhit.output_flag                         =  gr_param.output_kbn
+      AND  xhit.invoice_type                        =  NVL(gr_param.invoice_kbn,xhit.invoice_type)
+      AND  TO_CHAR(xhit.invoice_date,'YYYY/MM/DD')  =  SUBSTR(gr_param.target_date,1,10)
+      AND  xhit.outside_base_code                   =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
       AND  ( ( ( gr_param.reverse_kbn = cv_1 ) AND (xhit.total_quantity < 0 ) )
            OR ( ( gr_param.reverse_kbn = cv_0 ) AND (xhit.total_quantity > 0 ) ) )
-      AND  hca.account_number                    =  xhit.outside_base_code
-      AND  hca.customer_class_code               =  cv_1
-      AND  xhit.outside_subinv_code              =  msi1.secondary_inventory_name
-      AND  xhit.inside_subinv_code               =  msi2.secondary_inventory_name(+)
-      AND  msib.segment1                         =  xhit.item_code
-      AND  msib.organization_id                  =  gn_organization_id
-      AND  msib.segment1                         =  iimb.item_no
-      AND  iimb.item_id                          =  ximb.item_id(+)
-      AND  flv.lookup_type                       =  cv_invoice_type
-      AND  flv.lookup_code                       =  xhit.invoice_type
-      AND  flv.enabled_flag                      =  cv_yes
-      AND  flv.language                          =  USERENV( 'LANG' )
+      AND  hca.account_number                       =  xhit.outside_base_code
+      AND  hca.customer_class_code                  =  cv_1
+      AND  xhit.outside_subinv_code                 =  msi1.secondary_inventory_name
+      AND  xhit.inside_subinv_code                  =  msi2.secondary_inventory_name(+)
+      AND  msib.segment1                            =  xhit.item_code
+      AND  msib.organization_id                     =  gn_organization_id
+      AND  msib.segment1                            =  iimb.item_no
+      AND  iimb.item_id                             =  ximb.item_id(+)
+      AND  flv.lookup_type                          =  cv_invoice_type
+      AND  flv.lookup_code                          =  xhit.invoice_type
+      AND  flv.enabled_flag                         =  cv_yes
+      AND  flv.language                             =  USERENV( 'LANG' )
    ORDER BY xhit.interface_id
-      ;    
+      ;
 --
     -- ローカル・レコード
 --
