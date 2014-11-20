@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  get_fiscal_period_from (A-4-1)有効会計期間FROM取得関数
  *  edit_item              (A-4)項目編集
  *  check_data_row         (A-5)データチェック
+ *  check_results_employee (A-5-1)売上計上者の所属拠点チェック 2009/09/30 Add
  *  set_plsql_table        (A-6)販売実績PL/SQL表作成
  *  make_sales_exp_lines   (A-7)販売実績明細作成
  *  make_sales_exp_headers (A-8)販売実績ヘッダ作成
@@ -50,6 +51,7 @@ AS
  *  2009/07/28    1.9   M.Sano           [0000434] PT対応(修正漏れ対応)
  *  2009/09/11    1.10  K.Kiriu          [0001211] 消費税関連項目取得基準日修正
  *                                       [0001345] PT対応
+ *  2009/09/30    1.11  M.Sano           [0001275] 売上拠点と成績者の所属拠点の整合性チェックの追加
  *
  *****************************************************************************************/
 --
@@ -181,6 +183,14 @@ AS
   ct_msg_cls_success_note   CONSTANT  fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-11585';   -- データ取得エラー
 -- 2009/07/08 Ver.1.9 M.Sano Add  End  --
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+  cv_msg_base_mismatch_err  CONSTANT  fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-00193';   -- 成績計上者所属拠点不整合エラー
+  cv_msg_err_param1_note    CONSTANT fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-00194';   -- 成績計上者所属拠点不整合エラー用パラメータ1
+  cv_msg_err_param2_note    CONSTANT fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-00195';   -- 成績計上者所属拠点不整合エラー用パラメータ2
+-- 2009/09/30 Ver.1.11 M.Sano Add End
 --
   --トークン
   cv_tkn_para_date        CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
@@ -199,6 +209,14 @@ AS
   cv_tkn_table_name       CONSTANT  VARCHAR2(100)  :=  'TABLE_NAME';     -- テーブル名称
   cv_tkn_api_name         CONSTANT  VARCHAR2(100)  :=  'API_NAME';       -- API名称
   cv_tkn_err_msg          CONSTANT  VARCHAR2(100)  :=  'ERR_MSG';        -- エラーメッセージ
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+  cv_tkn_base_code        CONSTANT  VARCHAR2(100)  :=  'BASE_CODE';         -- 拠点名
+  cv_tkn_base_name        CONSTANT  VARCHAR2(100)  :=  'BASE_NAME';         -- 拠点コード
+  cv_tkn_invoice_num      CONSTANT  VARCHAR2(100)  :=  'INVOICE_NUM';       -- 納品伝票番号
+  cv_tkn_customer_code    CONSTANT  VARCHAR2(100)  :=  'CUSTOMER_CODE';     -- 顧客コード
+  cv_tkn_result_emp_code  CONSTANT  VARCHAR2(100)  :=  'RESULT_EMP_CODE';   -- 成績計上者コード
+  cv_tkn_result_base_code CONSTANT  VARCHAR2(100)  :=  'RESULT_BASE_CODE';  -- 成績計上者の所属拠点コード
+-- 2009/09/30 Ver.1.11 M.Sano Add End
 --
   --メッセージ用文字列
   cv_str_profile_nm                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00047';  -- MO:営業単位
@@ -283,6 +301,9 @@ AS
   cv_fmt_date_yyyymm            CONSTANT  VARCHAR2(7)  := 'yyyymm';
   cv_fmt_date_default           CONSTANT  VARCHAR2(21)  := 'YYYY-MM-DD HH24:MI:SS';
   cv_fmt_date                   CONSTANT  VARCHAR2(10) := 'RRRR/MM/DD';
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+  cv_fmt_date_rrrrmmdd          CONSTANT  VARCHAR2(10) := 'RRRRMMDD';
+-- 2009/09/30 Ver.1.11 M.Sano Add End
 --
   --データチェックステータス値
   cn_check_status_normal        CONSTANT  NUMBER := 0;  -- 正常
@@ -317,6 +338,11 @@ AS
   -- 言語コード
   ct_lang                       CONSTANT  fnd_lookup_values.language%TYPE := USERENV('LANG');
 -- 2009/07/08 Ver.1.9 M.Sano Add End
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+--
+  -- 顧客区分
+  cv_cust_class_base            CONSTANT VARCHAR2(1)  := '1';     --顧客区分.拠点
+-- 2009/09/30 Ver.1.11 M.Sano Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -423,7 +449,22 @@ AS
 -- 2009/07/08 Ver.1.9 M.Sano Add Start
     , info_class                  oe_order_headers_all.global_attribute3%type       -- 情報区分
 -- 2009/07/08 Ver.1.9 M.Sano Add End
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+    , results_employee_base_code  per_all_assignments_f.ass_attribute5%TYPE         -- 所属拠点コード
+-- 2009/09/30 Ver.1.11 M.Sano Add End
   );
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+--
+  --所属拠点不一致エラーデータ(ヘッダ)レコード型
+  TYPE g_base_err_order_rtype IS RECORD(
+      sale_base_code              xxcos_sales_exp_headers.sales_base_code%type      -- 売上拠点コード
+    , dlv_invoice_number          xxcos_sales_exp_headers.dlv_invoice_number%type   -- 納品伝票番号
+    , ship_to_customer_code       xxcos_sales_exp_headers.ship_to_customer_code%type-- 顧客【納品先】
+    , results_employee_code       xxcos_sales_exp_headers.results_employee_code%type-- 成績計上者コード
+    , results_employee_base_code  per_all_assignments_f.ass_attribute5%TYPE         -- 所属拠点コード
+    , output_flag                 VARCHAR2(1)                                       -- 出力フラグ
+  );
+-- 2009/09/30 Ver.1.11 M.Sano Add End
 --
   -- 売上区分
   TYPE sales_class_rtype IS RECORD(
@@ -497,6 +538,10 @@ AS
 /* 2009/09/11 Ver1.10 Del End   */
   --受注明細データ
   TYPE order_line_data_ttype IS TABLE OF order_line_data_rtype INDEX BY BINARY_INTEGER;
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+  --成績計上者不整合エラーデータ
+  TYPE g_base_err_order_ttype IS TABLE OF g_base_err_order_rtype INDEX BY BINARY_INTEGER;
+-- 2009/09/30 Ver.1.11 M.Sano Add End
 --
   -- ===============================
   -- ユーザー定義グローバルPL/SQL表
@@ -1171,6 +1216,9 @@ AS
 -- 2009/07/08 Ver.1.9 M.Sano Add Start
       , ooha.global_attribute3                AS info_class                 -- 情報区分
 -- 2009/07/08 Ver.1.9 M.Sano Add  End 
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+      , NULL                                  AS results_employee_base_code -- 成績計上者の拠点コード
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
     BULK COLLECT INTO
 -- 2009/07/08 Ver.1.9 M.Sano Add Start
 --      g_order_data_tab
@@ -1974,16 +2022,37 @@ AS
 --
       SELECT
         papf.employee_number                -- 従業員番号
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+        , CASE
+            WHEN NVL( TO_DATE( paaf.ass_attribute2, cv_fmt_date_rrrrmmdd )
+                    , TRUNC(io_order_rec.dlv_date) ) <= TRUNC(io_order_rec.dlv_date)
+            THEN
+              paaf.ass_attribute5
+            ELSE
+              paaf.ass_attribute6
+          END                employee_base_code -- 従業員の所属拠点コード
+-- 2009/09/30 Ver.1.11 M.Sano Add End
       INTO
         io_order_rec.results_employee_code  -- 成績計上者コード
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+        , io_order_rec.results_employee_base_code -- 成績計上者の所属拠点コード
+-- 2009/09/30 Ver.1.11 M.Sano Add End
       FROM
           jtf_rs_resource_extns jrre        -- リソースマスタ
         , per_all_people_f papf             -- 従業員マスタ
         , jtf_rs_salesreps jrs              -- 
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+        , per_all_assignments_f paaf        -- 従業員タイプマスタ
+-- 2009/09/30 Ver.1.11 M.Sano Add End
       WHERE
           jrs.salesrep_id = io_order_rec.salesrep_id
       AND jrs.resource_id = jrre.resource_id
       AND jrre.source_id = papf.person_id
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+      AND papf.person_id  = paaf.person_id
+      AND TRUNC(paaf.effective_start_date) <= TRUNC(io_order_rec.dlv_date)
+      AND TRUNC(paaf.effective_end_date)   >= TRUNC(io_order_rec.dlv_date)
+-- 2009/09/30 Ver.1.11 M.Sano Add End
       AND TRUNC(papf.effective_start_date) <= TRUNC(io_order_rec.dlv_date)
       AND TRUNC(NVL(papf.effective_end_date,io_order_rec.dlv_date)) >= io_order_rec.dlv_date;
 --
@@ -2253,6 +2322,205 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END check_data_row;
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+--
+  /**********************************************************************************
+   * Procedure Name   : check_results_employee
+   * Description      : 売上計上者の所属拠点チェック(A-5-1)
+   ***********************************************************************************/
+  PROCEDURE check_results_employee(
+    ov_errbuf          OUT VARCHAR2,             -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT VARCHAR2,             -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT VARCHAR2)             -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'check_results_employee'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf     VARCHAR2(5000);   -- エラー・メッセージ
+    lv_retcode    VARCHAR2(1);      -- リターン・コード
+    lv_errmsg     VARCHAR2(5000);   -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_base_name    hz_parties.party_name%TYPE;     -- 売上拠点名
+    ln_err_flag     NUMBER;                         -- ヘッダにてエラーなった場合の件数
+    ln_idx          NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+    l_base_err_order_tab  g_base_err_order_ttype;  -- 売上計上者所属拠点不整合エラーデータ
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ==============================================================
+    -- 成績計上者の所属拠点と売上拠点が同一であることを確認する。
+    -- ==============================================================
+    <<loop_chek_data>>
+    FOR i IN 1..g_order_data_tab.COUNT LOOP
+      --販売実績ヘッダ作成単位で成績計上者の所属拠点をチェック
+      IF ((i = 1) OR (   g_order_data_tab(i).header_id          != g_order_data_tab(i-1).header_id
+                      OR g_order_data_tab(i).dlv_date           != g_order_data_tab(i-1).dlv_date
+                      OR g_order_data_tab(i).inspect_date       != g_order_data_tab(i-1).inspect_date
+                      OR g_order_data_tab(i).dlv_invoice_number != g_order_data_tab(i-1).dlv_invoice_number ) ) THEN
+-- 
+        IF (    g_order_data_tab(i).sale_base_code <> g_order_data_tab(i).results_employee_base_code
+            AND g_order_data_tab(i).check_status = cn_check_status_normal
+           ) THEN
+          --・成績計上者拠点不一致エラーリストに追加
+          --[追加位置を取得]
+          ln_idx := l_base_err_order_tab.COUNT + 1;
+          --[売上拠点コード]
+          l_base_err_order_tab(ln_idx).sale_base_code             := g_order_data_tab(i).sale_base_code;
+          --[納品伝票番号]
+          l_base_err_order_tab(ln_idx).dlv_invoice_number         := g_order_data_tab(i).dlv_invoice_number;
+          --[顧客コード]
+          l_base_err_order_tab(ln_idx).ship_to_customer_code      := g_order_data_tab(i).ship_to_customer_code;
+          --[成績計上者コード]
+          l_base_err_order_tab(ln_idx).results_employee_code      := g_order_data_tab(i).results_employee_code;
+          --[成績計上者の拠点コード]
+          l_base_err_order_tab(ln_idx).results_employee_base_code := g_order_data_tab(i).results_employee_base_code;
+          --[出力フラグ]
+          l_base_err_order_tab(ln_idx).output_flag                := ct_yes_flg;
+          --エラーフラグを有効へ変更。
+          ln_err_flag := cn_check_status_error;
+        ELSE
+          --エラーフラグを無効へ変更。
+          ln_err_flag := cn_check_status_normal;
+        END IF;
+      END IF;
+--
+      -- エラーフラグが有効の場合、ステータスをエラーに変更。
+      IF ( ln_err_flag = cn_check_status_error ) THEN
+        --チェックステータスを更新
+        g_order_data_tab(i).check_status := cn_check_status_error;
+        --警告件数を+1
+        gn_warn_cnt := gn_warn_cnt + 1;
+      END IF;
+--
+    END LOOP g_base_err_data1_loop;
+--
+    -- ====================================================================
+    -- 件数が1件以上存在する場合、成績計上者所属拠点不整合エラーを出力
+    -- ====================================================================
+    IF ( l_base_err_order_tab.COUNT <> 0 ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application => cv_xxcos_appl_short_nm
+                       , iv_name        => cv_msg_base_mismatch_err
+                     );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => ''
+        );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+    END IF;
+    -- ====================================================================
+    -- 成績計上者所属拠点不整合エラーの対象パラメータを出力
+    -- ====================================================================
+    <<g_base_err_data1_loop>>
+    FOR i IN 1..l_base_err_order_tab.COUNT LOOP
+      -- 成績計上者の拠点不一致エラーのメッセージ出力対象の場合、下記の処理を実行する。
+      IF ( l_base_err_order_tab(i).output_flag = ct_yes_flg ) THEN
+        --■ 拠点名を取得。
+        SELECT hp.party_name          -- 拠点コード
+        INTO   lt_base_name
+        FROM   hz_cust_accounts hca   -- 顧客マスタ
+             , hz_parties       hp    -- パーティマスタ
+        WHERE  hca.account_number      = l_base_err_order_tab(i).sale_base_code
+                                                            -- 条件:顧客マスタ.顧客コード = 売上拠点コード
+        AND    hca.customer_class_code = cv_cust_class_base -- 条件:顧客マスタ.顧客区分   = '1'(拠点)
+        AND    hp.party_id             = hca.party_id       -- [結合条件]
+        ;
+        --■ 成績者所属拠点不一致エラー用パラメータ(売上拠点)を取得し、出力。
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application => cv_xxcos_appl_short_nm
+                       , iv_name        => cv_msg_err_param1_note
+                       , iv_token_name1 => cv_tkn_base_code
+                       , iv_token_value1=> l_base_err_order_tab(i).sale_base_code
+                       , iv_token_name2 => cv_tkn_base_name
+                       , iv_token_value2=> lt_base_name
+                     );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+        --■ 出力対象の売上拠点と同一である不整合データを出力。
+        <<g_base_err_data2_loop>>
+        FOR j IN i..l_base_err_order_tab.COUNT LOOP
+          -- 表示対象の売上拠点と一致した場合、メッセージを出力。
+          IF (   l_base_err_order_tab(j).sale_base_code = l_base_err_order_tab(i).sale_base_code
+             AND l_base_err_order_tab(j).output_flag    = ct_yes_flg
+             ) THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                             iv_application => cv_xxcos_appl_short_nm
+                           , iv_name        => cv_msg_err_param2_note
+                           , iv_token_name1 => cv_tkn_invoice_num
+                           , iv_token_value1=> l_base_err_order_tab(j).dlv_invoice_number
+                           , iv_token_name2 => cv_tkn_customer_code
+                           , iv_token_value2=> l_base_err_order_tab(j).ship_to_customer_code
+                           , iv_token_name3 => cv_tkn_result_emp_code
+                           , iv_token_value3=> l_base_err_order_tab(j).results_employee_code
+                           , iv_token_name4 => cv_tkn_result_base_code
+                           , iv_token_value4=> l_base_err_order_tab(j).results_employee_base_code
+                         );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg
+            );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => ''
+            );
+            -- 出力済のレコードのフラグをNに戻す。
+            l_base_err_order_tab(j).output_flag := ct_no_flg;
+          END IF;
+        END LOOP g_base_err_data2_loop;
+      END IF;
+    END LOOP g_base_err_data1_loop;
+--
+  -- 後の処理では、未使用のため、領域開放
+  l_base_err_order_tab.DELETE;
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END check_results_employee;
+-- 2009/09/30 Ver.1.11 M.Sano Add End
 --
   /**********************************************************************************
    * Procedure Name   : set_plsql_table
@@ -3246,6 +3514,20 @@ AS
       END LOOP loop_set_check_status;
     END IF;
 --
+-- 2009/09/30 Ver.1.11 M.Sano Add Start
+    -- ===============================
+    -- A-5-1.売上計上者の所属拠点チェック
+    -- ===============================
+    check_results_employee(
+        ov_errbuf         => lv_errbuf           -- エラー・メッセージ           --# 固定 #
+      , ov_retcode        => lv_retcode          -- リターン・コード             --# 固定 #
+      , ov_errmsg         => lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF (lv_retcode = cv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+-- 2009/09/30 Ver.1.11 M.Sano Add End
     -- 正常データのみのPL/SQL表作成
     <<loop_make_sort_data>>
     FOR i IN 1..g_order_data_tab.COUNT LOOP
