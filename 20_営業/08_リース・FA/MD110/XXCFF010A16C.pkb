@@ -47,6 +47,7 @@ AS
  *  2008/12/01    1.0   SCS渡辺学        新規作成
  *  2008/02/18    1.1   SCS渡辺学        [障害CFF_038]仕訳元データ(リース取引)抽出条件不具合対応
  *  2009/04/17    1.2   SCS礒崎祐次      [障害T1_0356]リース料部門賦課仕訳の配賦先部門の取得先変更対応
+ *  2009/05/14    1.3   SCS礒崎祐次      [障害T1_0874]資産仕訳時の設定内容変更対応
  *
  *****************************************************************************************/
 --
@@ -518,7 +519,10 @@ AS
           ,xxcff_lease_kind_v      xlk           -- リース種類ビュー
     WHERE
           xxcff_fa_trn.period_name      =  gv_period_name
-    AND   xxcff_fa_trn.transaction_type IN ('2','3') --振替(2),解約(3)
+-- T1_0874 2009/05/14 MOD START --
+--  AND   xxcff_fa_trn.transaction_type IN ('2','3') --振替(2),解約(3)
+    AND   xxcff_fa_trn.transaction_type IN ('3') --解約(3)
+-- T1_0874 2009/05/14 MOD END   --
     AND   xxcff_fa_trn.contract_line_id =  ctrct_line.contract_line_id
     AND   xxcff_fa_trn.contract_line_id =  pay_plan.contract_line_id
     AND   pay_plan.period_name          =  xxcff_fa_trn.period_name
@@ -526,6 +530,48 @@ AS
     AND   xxcff_fa_trn.gl_if_flag       =  cv_if_yet          --未送信
     AND   xlk.lease_kind_code           =  cv_lease_kind_fin  -- FINリース
     AND   xxcff_fa_trn.book_type_code   =  xlk.book_type_code
+-- T1_0874 2009/05/14 ADD START --
+    UNION ALL
+    SELECT
+            xxcff_fa_trn.fa_transaction_id      AS fa_transaction_id  -- リース取引内部ID
+           ,xxcff_fa_trn.contract_header_id     AS contract_header_id -- 契約内部ID
+           ,xxcff_fa_trn.contract_line_id       AS contract_line_id   -- 契約明細内部ID
+           ,xxcff_fa_trn.object_header_id       AS object_header_id   -- 物件内部ID
+           ,xxcff_fa_trn.period_name            AS period_name        -- 会計期間名
+           ,xxcff_fa_trn.transaction_type       AS transaction_type   -- 取引タイプ
+           ,xxcff_fa_trn.movement_type          AS movement_type      -- 移動タイプ
+           ,xxcff_fa_trn.lease_class            AS lease_class        -- リース種別
+           ,1                                   AS lease_type         -- リース区分
+           ,xxcff_fa_trn.owner_company          AS owner_company      -- 本社／工場
+           ,ctrct_line.gross_tax_charge
+              - ctrct_line.gross_tax_deduction  AS temp_pay_tax       -- 仮払消費税額
+                                                                      -- (総額消費税_リース料 - 総額消費税_控除額)
+           -- 未照合⇒リース債務残 + リース債務額 (債務取崩が発生しない為)
+           ,pay_plan.fin_debt_rem + pay_plan.fin_debt               AS liab_blc  -- リース債務残
+           -- 未照合⇒リース債務残_消費税 + リース債務額_消費税 (債務取崩が発生しない為)
+           ,pay_plan.fin_tax_debt_rem + pay_plan.fin_tax_debt       AS liab_tax_blc  -- リース債務残_消費税
+           -- 未照合⇒(リース債務残 + リース債務額) + (リース債務残_消費税 + リース債務額_消費税)
+           ,pay_plan.fin_debt_rem + pay_plan.fin_debt
+              + pay_plan.fin_tax_debt_rem + pay_plan.fin_tax_debt   AS liab_pretax_blc    -- リース債務残_本体＋税
+                                                                      -- (リース債務残 + リース債務残_消費税)
+           ,ctrct_head.tax_code                 AS tax_code           -- 税コード
+    FROM
+           xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
+          ,xxcff_contract_lines    ctrct_line    -- リース契約明細
+          ,xxcff_pay_planning      pay_plan      -- リース支払計画
+          ,xxcff_contract_headers  ctrct_head    -- リース契約
+          ,xxcff_lease_kind_v      xlk           -- リース種類ビュー
+    WHERE
+          xxcff_fa_trn.period_name      =  gv_period_name
+    AND   xxcff_fa_trn.transaction_type IN ('2') --振替(2)
+    AND   xxcff_fa_trn.contract_line_id =  ctrct_line.contract_line_id
+    AND   xxcff_fa_trn.contract_line_id =  pay_plan.contract_line_id
+    AND   pay_plan.period_name          =  xxcff_fa_trn.period_name
+    AND   ctrct_line.contract_header_id =  ctrct_head.contract_header_id
+    AND   xxcff_fa_trn.gl_if_flag       =  cv_if_yet          --未送信
+    AND   xlk.lease_kind_code           =  cv_lease_kind_fin  -- FINリース
+    AND   xxcff_fa_trn.book_type_code   =  xlk.book_type_code
+-- T1_0874 2009/05/14 ADD END   --
     ;
   g_get_les_trn_data_rec  get_les_trn_data_cur%ROWTYPE;
 --
