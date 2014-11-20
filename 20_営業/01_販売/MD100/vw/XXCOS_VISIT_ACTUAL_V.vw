@@ -3,13 +3,14 @@
  *
  * View Name       : xxcos_visit_actual_v
  * Description     : 有効訪問実績ビュー（販売）
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2010/12/14    1.0  K.Kiriu          新規作成
+ *  2011/07/14    1.17 K.Kubo           [E_本稼動_07885]対応 PT対応（タスク情報2ヶ月抽出処理）
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_visit_actual_v
 (
@@ -221,11 +222,12 @@ SELECT jtb.task_id                     task_id
       ,jtb.child_position              child_position
       ,jtb.child_sequence_num          child_sequence_num
       ,jtb.source_object_id            party_id
-FROM   jtf_tasks_b jtb  --タスクテーブル
+FROM   xxcos_jtf_tasks_b jtb  --タスクテーブル
 WHERE  jtb.source_object_type_code   = 'PARTY'
 AND    NVL(jtb.deleted_flag, 'N')    = 'N'
 UNION ALL
-SELECT jtb2.task_id                    task_id
+SELECT /*+ leading(ala) index(jtb2 XXCOS_JTF_TASKS_B_N02) */
+       jtb2.task_id                    task_id
       ,jtb2.created_by                 created_by
       ,jtb2.creation_date              creation_date
       ,jtb2.last_updated_by            last_updated_by
@@ -328,7 +330,7 @@ SELECT jtb2.task_id                    task_id
       ,jtb2.child_position             child_position
       ,jtb2.child_sequence_num         child_sequence_num
       ,ala.customer_id                 party_id
-FROM   jtf_tasks_b   jtb2  --タスクテーブル
+FROM   xxcos_jtf_tasks_b   jtb2  --タスクテーブル
       ,as_leads_all  ala   --商談テーブル
 WHERE  jtb2.source_object_type_code = 'OPPORTUNITY'
 AND    NVL(jtb2.deleted_flag, 'N')  = 'N'

@@ -6,13 +6,14 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理(B-1)
+ *  ins_jtf_tasks          タスク情報2ヶ月抽出処理(B-21)
  *  new_cust_sales_results 新規貢献売上実績情報集計＆登録処理(B-2)
  *  bus_sales_sum          業態・納品形態別販売実績情報集計＆登録処理(B-3)
  *  bus_transfer_sum       業態・納品形態別実績振替情報集計＆登録処理(B-4)
@@ -61,6 +62,7 @@ AS
  *  2010/05/18    1.14  D.Abe            [E_本稼動_02767]対応 PT対応（xxcos_rs_info2_vを変更）
  *  2010/12/14    1.15  K.Kiriu          [E_本稼動_05671]対応 PT対応（有効訪問ビューの関数を外だしにする）
  *  2011/05/17    1.16  H.Sasaki         [E_本稼動_07118]対応 処理の並列実行化
+ *  2011/07/14    1.17  K.Kubo           [E_本稼動_07885]対応 PT対応（タスク情報2ヶ月抽出処理）
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -211,6 +213,12 @@ AS
   --  営業成績表 営業員情報一時表テーブル
   ct_msg_resource_sum_tbl       CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10588';
 /* 2010/05/18 Ver1.14 Add End   */
+/* 2011/07/14 Ver1.17 Add START */
+  --  営業成績表 タスク２ヶ月保持テーブル
+  ct_msg_jtf_task_tbl           CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10593';
+  --  営業成績表 タスク情報2ヶ月抽出処理件数
+  ct_msg_count_ins_tasks        CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10592';
+/* 2011/07/14 Ver1.17 Add END   */
   --  入力パラメータ
   ct_msg_para_in                CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10579';
   --  実行パラメータ
@@ -366,6 +374,10 @@ AS
   --  未訪問客件数（当月）取得処理
   cv_para_no_visit_this_month   CONSTANT  VARCHAR2(1) := '8';
 /* 2011/05/17 Ver1.16 Add END   */
+/* 2011/07/14 Ver1.17 Add START */
+  --  タスク情報2ヶ月抽出処理
+  cv_para_ins_tasks             CONSTANT  VARCHAR2(1) := '9';
+/* 2011/07/14 Ver1.17 Add END   */
 --
   --  会計情報
   --  ＡＲ
@@ -1016,6 +1028,405 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END init;
+--
+/* 2011/07/14 Ver1.17 Add START */
+  /**********************************************************************************
+   * Procedure Name   : ins_jtf_tasks
+   * Description      : タスク情報2ヶ月抽出処理(B-21)
+   ***********************************************************************************/
+  PROCEDURE ins_jtf_tasks(
+    ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'ins_jtf_tasks'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    ld_ar_from_date    DATE;
+    ln_ins_task_count  NUMBER;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --==================================
+    -- 1.処理実行判定
+    --==================================
+    --  処理区分「0:全て」「9:タスク情報2ヶ月抽出処理」の場合、処理を実施
+    IF ( gv_processing_class IN ( cv_para_cls_all, cv_para_ins_tasks ) ) THEN
+      NULL;
+    ELSE
+      --  本処理はスキップ
+      RETURN;
+    END IF;
+--
+    --==================================
+    -- 2.会計期間オープン初日取得
+    --==================================
+    -- 前月の会計ステータスがOPENなら、前月の開始日
+    IF (g_account_info_tab(cn_last_month).status = cv_open) THEN
+      ld_ar_from_date := g_account_info_tab(cn_last_month).from_date;
+    -- 前月の会計ステータスがCLOSEなら、当月の開始日
+    ELSE
+      ld_ar_from_date := g_account_info_tab(cn_this_month).from_date;
+    END IF;
+--
+    --==================================
+    -- 3.削除処理
+    --==================================
+    BEGIN
+--
+      -- 対象テーブルを全件削除
+      EXECUTE IMMEDIATE 'TRUNCATE TABLE XXCOS.XXCOS_JTF_TASKS_B';
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_jtf_task_tbl             -- 営業成績表 タスク２ヶ月保持テーブル
+          );
+        ov_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_delete_data_err,
+          iv_token_name1 => cv_tkn_table_name,
+          iv_token_value1=> lv_errmsg,
+          iv_token_name2 => cv_tkn_key_data,
+          iv_token_value2=> NULL
+          );
+        --  後続データの処理は中止となる為、当箇所でのエラー発生時は常に１件
+        gn_error_cnt := 1;
+        lv_errbuf := SQLERRM;
+        RAISE global_delete_data_expt;
+    END;
+--
+    --==================================
+    -- 4.登録処理
+    --==================================
+    BEGIN
+      -- タスク２ヶ月保持テーブルにタスクデータを登録
+      INSERT INTO xxcos_jtf_tasks_b(
+        task_id,                              -- タスクID
+        created_by,                           -- 作成者
+        creation_date,                        -- 作成日
+        last_updated_by,                      -- 最終更新者
+        last_update_date,                     -- 最終更新日
+        last_update_login,                    -- 最終更新ログイン
+        object_version_number,                -- オブジェクトバージョン番号
+        task_number,                          -- タスク番号
+        task_type_id,                         -- タスクタイプID
+        task_status_id,                       -- タスクステータスID
+        task_priority_id,                     -- タスク優先ID
+        owner_id,                             -- 所有者ID
+        owner_type_code,                      -- 所有者タイプコード
+        owner_territory_id,                   -- 所有者区域ID
+        assigned_by_id,                       -- 割当者ID
+        cust_account_id,                      -- アカウントID
+        customer_id,                          -- 顧客ID
+        address_id,                           -- アドレスID
+        planned_start_date,                   -- 計画開始日
+        planned_end_date,                     -- 計画終了日
+        scheduled_start_date,                 -- 予定開始日
+        scheduled_end_date,                   -- 予定終了日
+        actual_start_date,                    -- 実績開始日
+        actual_end_date,                      -- 実績終了日
+        source_object_type_code,              -- ソースオブジェクトタイプコード
+        timezone_id,                          -- 時差ID
+        source_object_id,                     -- ソースオブジェクトID
+        source_object_name,                   -- ソースオブジェクト名
+        duration,                             -- 持続
+        duration_uom,                         -- 持続単位
+        planned_effort,                       -- 活動計画
+        planned_effort_uom,                   -- 活動計画単位
+        actual_effort,                        -- 活動実績
+        actual_effort_uom,                    -- 活動実績単位
+        percentage_complete,                  -- 進捗率
+        reason_code,                          -- 理由コード
+        private_flag,                         -- プライベートフラグ
+        publish_flag,                         -- 発行フラグ
+        restrict_closure_flag,                -- 閉鎖制限フラグ
+        multi_booked_flag,                    -- マルチ予約フラグ
+        milestone_flag,                       -- マイルストーンフラグ
+        holiday_flag,                         -- 休日フラグ
+        billable_flag,                        -- 請求可能フラグ
+        bound_mode_code,                      -- バウンドモードコード
+        soft_bound_flag,                      -- ソフトバウンドフラグ
+        workflow_process_id,                  -- ワークフロープロセスID
+        notification_flag,                    -- 通知フラグ
+        notification_period,                  -- 通知期間
+        notification_period_uom,              -- 通知期間単位
+        parent_task_id,                       -- 親タスクID
+        recurrence_rule_id,                   -- 再発規則ID
+        alarm_start,                          -- 警告開始
+        alarm_start_uom,                      -- 警告開始単位
+        alarm_on,                             -- 警告中
+        alarm_count,                          -- 警告カウント
+        alarm_fired_count,                    -- 解雇警告カウント
+        alarm_interval,                       -- 警告間隔
+        alarm_interval_uom,                   -- 警告間隔単位
+        deleted_flag,                         -- 削除済フラグ
+        palm_flag,                            -- 扁平フラグ
+        wince_flag,                           -- ウィンスフラグ
+        laptop_flag,                          -- ラップトップフラグ
+        device1_flag,                         -- デバイス１
+        device2_flag,                         -- デバイス２
+        device3_flag,                         -- デバイス３
+        costs,                                -- 経費
+        currency_code,                        -- 通貨コード
+        org_id,                               -- 組織ID
+        escalation_level,                     -- エスカレーションレベル
+        attribute1,                           -- 訪問区分１
+        attribute2,                           -- 訪問区分２
+        attribute3,                           -- 訪問区分３
+        attribute4,                           -- 訪問区分４
+        attribute5,                           -- 訪問区分５
+        attribute6,                           -- 訪問区分６
+        attribute7,                           -- 訪問区分７
+        attribute8,                           -- 訪問区分８
+        attribute9,                           -- 訪問区分９
+        attribute10,                          -- 訪問区分１０
+        attribute11,                          -- 有効訪問区分
+        attribute12,                          -- 登録元区分
+        attribute13,                          -- 登録元ソース番号
+        attribute14,                          -- 顧客ステータス
+        attribute15,                          --
+        attribute_category,                   -- 属性分類
+        security_group_id,                    -- セキュリティグループID
+        orig_system_reference,                -- オリジナルシステムリファレンス
+        orig_system_reference_id,             -- オリジナルシステムリファレンスID
+        update_status_flag,                   -- ステータス更新フラグ
+        calendar_start_date,                  -- カレンダー開始日
+        calendar_end_date,                    -- カレンダー終了日
+        date_selected,                        -- 選択日
+        template_id,                          -- テンプレートID
+        template_group_id,                    -- テンプレートグループID
+        object_changed_date,                  -- オブジェクト変更日
+        task_confirmation_status,             -- タスク確認開始
+        task_confirmation_counter,            -- タスク確認カウンター
+        task_split_flag,                      -- タスク分割フラグ
+        open_flag,                            -- オープンフラグ
+        entity,                               -- 実体
+        child_position,                       -- 子ポジション
+        child_sequence_num                    -- 子シーケンス番号
+      )
+      (SELECT task_id,                        -- タスクID
+              created_by,                     -- 作成者
+              creation_date,                  -- 作成日
+              last_updated_by,                -- 最終更新者
+              last_update_date,               -- 最終更新日
+              last_update_login,              -- 最終更新ログイン
+              object_version_number,          -- オブジェクトバージョン番号
+              task_number,                    -- タスク番号
+              task_type_id,                   -- タスクタイプID
+              task_status_id,                 -- タスクステータスID
+              task_priority_id,               -- タスク優先ID
+              owner_id,                       -- 所有者ID
+              owner_type_code,                -- 所有者タイプコード
+              owner_territory_id,             -- 所有者区域ID
+              assigned_by_id,                 -- 割当者ID
+              cust_account_id,                -- アカウントID
+              customer_id,                    -- 顧客ID
+              address_id,                     -- アドレスID
+              planned_start_date,             -- 計画開始日
+              planned_end_date,               -- 計画終了日
+              scheduled_start_date,           -- 予定開始日
+              scheduled_end_date,             -- 予定終了日
+              actual_start_date,              -- 実績開始日
+              actual_end_date,                -- 実績終了日
+              source_object_type_code,        -- ソースオブジェクトタイプコード
+              timezone_id,                    -- 時差ID
+              source_object_id,               -- ソースオブジェクトID
+              source_object_name,             -- ソースオブジェクト名
+              duration,                       -- 持続
+              duration_uom,                   -- 持続単位
+              planned_effort,                 -- 活動計画
+              planned_effort_uom,             -- 活動計画単位
+              actual_effort,                  -- 活動実績
+              actual_effort_uom,              -- 活動実績単位
+              percentage_complete,            -- 進捗率
+              reason_code,                    -- 理由コード
+              private_flag,                   -- プライベートフラグ
+              publish_flag,                   -- 発行フラグ
+              restrict_closure_flag,          -- 閉鎖制限フラグ
+              multi_booked_flag,              -- マルチ予約フラグ
+              milestone_flag,                 -- マイルストーンフラグ
+              holiday_flag,                   -- 休日フラグ
+              billable_flag,                  -- 請求可能フラグ
+              bound_mode_code,                -- バウンドモードコード
+              soft_bound_flag,                -- ソフトバウンドフラグ
+              workflow_process_id,            -- ワークフロープロセスID
+              notification_flag,              -- 通知フラグ
+              notification_period,            -- 通知期間
+              notification_period_uom,        -- 通知期間単位
+              parent_task_id,                 -- 親タスクID
+              recurrence_rule_id,             -- 再発規則ID
+              alarm_start,                    -- 警告開始
+              alarm_start_uom,                -- 警告開始単位
+              alarm_on,                       -- 警告中
+              alarm_count,                    -- 警告カウント
+              alarm_fired_count,              -- 解雇警告カウント
+              alarm_interval,                 -- 警告間隔
+              alarm_interval_uom,             -- 警告間隔単位
+              deleted_flag,                   -- 削除済フラグ
+              palm_flag,                      -- 扁平フラグ
+              wince_flag,                     -- ウィンスフラグ
+              laptop_flag,                    -- ラップトップフラグ
+              device1_flag,                   -- デバイス１
+              device2_flag,                   -- デバイス２
+              device3_flag,                   -- デバイス３
+              costs,                          -- 経費
+              currency_code,                  -- 通貨コード
+              org_id,                         -- 組織ID
+              escalation_level,               -- エスカレーションレベル
+              attribute1,                     -- 訪問区分１
+              attribute2,                     -- 訪問区分２
+              attribute3,                     -- 訪問区分３
+              attribute4,                     -- 訪問区分４
+              attribute5,                     -- 訪問区分５
+              attribute6,                     -- 訪問区分６
+              attribute7,                     -- 訪問区分７
+              attribute8,                     -- 訪問区分８
+              attribute9,                     -- 訪問区分９
+              attribute10,                    -- 訪問区分１０
+              attribute11,                    -- 有効訪問区分
+              attribute12,                    -- 登録元区分
+              attribute13,                    -- 登録元ソース番号
+              attribute14,                    -- 顧客ステータス
+              attribute15,                    --
+              attribute_category,             -- 属性分類
+              security_group_id,              -- セキュリティグループID
+              orig_system_reference,          -- オリジナルシステムリファレンス
+              orig_system_reference_id,       -- オリジナルシステムリファレンスID
+              update_status_flag,             -- ステータス更新フラグ
+              calendar_start_date,            -- カレンダー開始日
+              calendar_end_date,              -- カレンダー終了日
+              date_selected,                  -- 選択日
+              template_id,                    -- テンプレートID
+              template_group_id,              -- テンプレートグループID
+              object_changed_date,            -- オブジェクト変更日
+              task_confirmation_status,       -- タスク確認開始
+              task_confirmation_counter,      -- タスク確認カウンター
+              task_split_flag,                -- タスク分割フラグ
+              open_flag,                      -- オープンフラグ
+              entity,                         -- 実体
+              child_position,                 -- 子ポジション
+              child_sequence_num              -- 子シーケンス番号
+         FROM jtf_tasks_b                                                -- タスク情報
+        WHERE TRUNC(actual_end_date) >= TRUNC(ld_ar_from_date)           -- (FROM)AR会計期間オープン初日以降
+          AND TRUNC(actual_end_date) <= TRUNC(gd_process_date)           -- (TO)業務日付
+      );
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_jtf_task_tbl             -- 営業成績表 タスク２ヶ月保持テーブル
+          );
+        ov_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_insert_data_err,
+          iv_token_name1 => cv_tkn_table_name,
+          iv_token_value1=> lv_errmsg,
+          iv_token_name2 => cv_tkn_key_data,
+          iv_token_value2=> NULL
+          );
+        --  後続データの処理は中止となる為、当箇所でのエラー発生時は常に１件
+        gn_error_cnt := 1;
+        lv_errbuf := SQLERRM;
+        RAISE global_insert_data_expt;
+    END;
+--
+    --登録件数カウント
+    ln_ins_task_count := SQL%ROWCOUNT;
+--
+    --  処理件数メッセージ編集（営業成績表 タスク情報2ヶ月抽出処理件数）
+    lv_errmsg :=  xxccp_common_pkg.get_msg(
+                      iv_application    =>  ct_xxcos_appl_short_name
+                    , iv_name           =>  ct_msg_count_ins_tasks
+                    , iv_token_name1    =>  cv_tkn_insert_count
+                    , iv_token_value1   =>  ln_ins_task_count
+                  );
+--
+    --  処理件数メッセージ出力
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  lv_errmsg
+    );
+    FND_FILE.PUT_LINE(
+        which   =>  FND_FILE.OUTPUT
+      , buff    =>  ''
+    );
+--
+    --  コミット発行
+    COMMIT;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errbuf   :=  lv_errbuf;
+      ov_errmsg   :=  lv_errmsg;
+      ov_retcode  :=  lv_retcode;
+    --*** データ削除例外ハンドラ ***
+    WHEN global_delete_data_expt THEN
+      ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    --*** データ登録例外ハンドラ ***
+    WHEN global_insert_data_expt THEN
+      ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END ins_jtf_tasks;
+/* 2011/07/14 Ver1.17 Add END   */
 --
   /**********************************************************************************
    * Procedure Name   : new_cust_sales_results
@@ -3897,9 +4308,13 @@ AS
 --/* 2009/09/04 Ver1.7 Add   End */
               /*+
                 LEADING(work.task)
-                INDEX(work.task.jtb xxcso_jtf_tasks_b_n20)
-                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n20)
+-- 2011/07/14 Ver1.17 MOD START
+                INDEX(work.task.jtb xxcos_jtf_tasks_b_n02)
+                INDEX(work.task.jtb2 xxcos_jtf_tasks_b_n02)
               */
+--                INDEX(work.task.jtb xxcso_jtf_tasks_b_n20)
+--                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n20)
+-- 2011/07/14 Ver1.17 MOD END
 /* 2010/05/18 Ver1.14 Mod End   */
               it_account_info.base_years                AS  target_date,
               gd_process_date                           AS  regist_bus_date,
@@ -4172,9 +4587,13 @@ AS
 --/* 2009/09/04 Ver1.7 Add   End */
               /*+
                 LEADING(work.task)
-                INDEX(work.task.jtb xxcso_jtf_tasks_b_n20)
-                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n20)
+-- 2011/07/14 Ver1.17 MOD START
+                INDEX(work.task.jtb xxcos_jtf_tasks_b_n02)
+                INDEX(work.task.jtb2 xxcos_jtf_tasks_b_n02)
               */
+--                INDEX(work.task.jtb xxcso_jtf_tasks_b_n20)
+--                INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n20)
+-- 2011/07/14 Ver1.17 MOD END
 /* 2010/05/18 Ver1.14 Mod End   */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_valid
                                                         AS  record_id,
@@ -5998,6 +6417,21 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+/* 2011/07/14 Ver1.17 Add START */
+    -- ===============================
+    -- タスク情報2ヶ月抽出処理(B-21)
+    -- ===============================
+    ins_jtf_tasks(
+        ov_errbuf     =>  lv_errbuf         -- エラー・メッセージ           --# 固定 #
+      , ov_retcode    =>  lv_retcode        -- リターン・コード             --# 固定 #
+      , ov_errmsg     =>  lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+--
+    IF ( lv_retcode = cv_status_error ) THEN
+      --  (エラー処理)
+      RAISE global_process_expt;
+    END IF;
+/* 2011/07/14 Ver1.17 Add END   */
     -- ===============================
     -- 新規貢献売上実績情報集計＆登録処理(B-2)
     -- ===============================
