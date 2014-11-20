@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/09/26    1.2   Hitomi Itou        T_TE080_BPO_600 指摘38
  *                                         T_TE080_BPO_600 指摘37
  *                                         T_S_533(PT対応 動的SQLに変更)
+ *  2008/10/03    1.3   Hitomi Itou        T_TE080_BPO_600 指摘37 在庫不足の場合、依頼数には不足数を表示する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -197,7 +198,7 @@ AS
     ,description       xoha.shipping_instructions%TYPE       -- 摘要
     ,conf_req          xlvv.meaning%TYPE                     -- 確認依頼
     ,de_prod_date      xola.warning_date%TYPE                -- 指定製造日
--- 2008/09/26 H.Itou Add Start T_TE080_BPO_620指摘38
+-- 2008/09/26 H.Itou Add Start T_TE080_BPO_600指摘38
     ,de_prod_date_sort xola.warning_date%TYPE                -- 指定製造日(ソート用)
 -- 2008/09/26 H.Itou Add End
     ,prod_date         ilm.attribute1%TYPE                   -- 製造日
@@ -454,18 +455,18 @@ AS
 --           ELSE xola.warning_date
 --         END                          AS  de_prod_date        -- 指定製造日
 --        ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE('19000101', 'YYYYMMDD'))) 
---                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
 --        ,NULL                         AS  prod_date           -- 製造日
 --        ,NULL                         AS  best_before_date    -- 賞味期限
 --        ,NULL                         AS  native_sign         -- 固有記号
 --        ,NULL                         AS  lot_no              -- ロットNo
 --        ,NULL                         AS  lot_status          -- 品質
----- 2008/09/26 H.Itou Mod Start T_TE080_BPO_620指摘37対応
+---- 2008/09/26 H.Itou Mod Start T_TE080_BPO_600指摘37対応
 ----        ,TO_NUMBER(0)                 AS  req_qty             -- 依頼数
 --        ,CASE 
 --           WHEN ximv.conv_unit IS NULL THEN xola.quantity 
 --           ELSE                            (xola.quantity / ximv.num_of_cases) 
---         END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘37対応
+--         END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘37対応
 ---- 2008/09/26 H.Itou Mod End
 --        ,CASE
 --          WHEN ximv.conv_unit IS NULL THEN
@@ -609,7 +610,7 @@ AS
 --           ELSE xola.warning_date
 --         END                          AS  de_prod_date        -- 指定製造日
 --        ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE('19000101', 'YYYYMMDD'))) 
---                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
 --        ,ilm.attribute1               AS  prod_date           -- 製造日
 --        ,ilm.attribute3               AS  best_before_date    -- 賞味期限
 --        ,ilm.attribute2               AS  native_sign         -- 固有記号
@@ -883,18 +884,18 @@ AS
 --          ELSE xmril.warning_date
 --         END                          AS  de_prod_date        -- 指定製造日
 --        ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE('19000101', 'YYYYMMDD'))) 
---                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
 --        ,NULL                         AS  prod_date           -- 製造日
 --        ,NULL                         AS  best_before_date    -- 賞味期限
 --        ,NULL                         AS  native_sign         -- 固有記号
 --        ,NULL                         AS  lot_no              -- ロットNo
 --        ,NULL                         AS  lot_status          -- 品質
----- 2008/09/26 H.Itou Mod Start T_TE080_BPO_620指摘37対応
+---- 2008/09/26 H.Itou Mod Start T_TE080_BPO_600指摘37対応
 ----        ,TO_NUMBER(0)                 AS  req_qty             -- 依頼数
 --        ,CASE 
 --           WHEN ximv.conv_unit IS NULL THEN xmril.instruct_qty 
 --           ELSE                            (xmril.instruct_qty / ximv.num_of_cases) 
---         END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘37対応
+--         END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘37対応
 ---- 2008/09/26 H.Itou Mod End
 --        ,CASE
 --          WHEN ximv.conv_unit IS NULL THEN
@@ -1003,7 +1004,7 @@ AS
 --          ELSE xmril.warning_date
 --         END                          AS  de_prod_date        -- 指定製造日
 --        ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE('19000101', 'YYYYMMDD'))) 
---                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
 --        ,ilm.attribute1               AS  prod_date           -- 製造日
 --        ,ilm.attribute3               AS  best_before_date    -- 賞味期限
 --        ,ilm.attribute2               AS  native_sign         -- 固有記号
@@ -1226,7 +1227,7 @@ AS
 --        ,shipped_date   ASC      -- 04:出庫日
 --        ,arrival_date   ASC      -- 05:着日
 ----        ,de_prod_date   DESC     -- 06:指定製造日
---        ,de_prod_date_sort   DESC     -- 06:指定製造日 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--        ,de_prod_date_sort   DESC     -- 06:指定製造日 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
 --        ,reserve_order  ASC      -- 07:引当順
 --        ,base_cd        ASC      -- 08:管轄拠点
 --        ,time_from      ASC      -- 09:時間指定From
@@ -1506,16 +1507,27 @@ AS
     || '     ELSE xola.warning_date '
     || '   END                          AS  de_prod_date '            -- 指定製造日
     || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
-    || '                                AS  de_prod_date_sort '       -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+    || '                                AS  de_prod_date_sort '       -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,NULL                         AS  prod_date '               -- 製造日
     || '  ,NULL                         AS  best_before_date '        -- 賞味期限
     || '  ,NULL                         AS  native_sign '             -- 固有記号
     || '  ,NULL                         AS  lot_no '                  -- ロットNo
     || '  ,NULL                         AS  lot_status '              -- 品質
+-- 2008/10/03 H.Itou Mod Start T_TE080_BPO_600指摘37 在庫不足の場合、依頼数には不足数を表示
+--    || '  ,CASE '
+--    || '     WHEN ximv.conv_unit IS NULL THEN xola.quantity '
+--    || '     ELSE                            (xola.quantity / ximv.num_of_cases) '
     || '  ,CASE '
-    || '     WHEN ximv.conv_unit IS NULL THEN xola.quantity '
-    || '     ELSE                            (xola.quantity / ximv.num_of_cases) '
-    || '   END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘37対応
+    || '     WHEN ximv.conv_unit IS NULL THEN '
+    || '       (xola.quantity - NVL(xola.reserved_quantity, 0)) '
+    || '     ELSE ((xola.quantity - NVL(xola.reserved_quantity, 0)) '
+    || '            / TO_NUMBER( '
+    || '                CASE  '
+    || '                  WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                  ELSE TO_CHAR(1) '
+    || '                END)) '
+-- 2008/10/03 H.Itou Mod End
+    || '   END                          AS  req_qty '                 -- 依頼数
     || '  ,CASE '
     || '     WHEN ximv.conv_unit IS NULL THEN '
     || '       (xola.quantity - NVL(xola.reserved_quantity, 0)) '
@@ -1659,7 +1671,7 @@ AS
     || '     ELSE xola.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
     || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
-    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
     || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
     || '  ,ilm.attribute2               AS  native_sign '        -- 固有記号
@@ -1700,7 +1712,10 @@ AS
     || ' AND  xola.shipping_item_code   =  data.item_cd '
     || ' AND  xoha.schedule_ship_date  >=  TO_DATE(:shipped_date_from) '
     || ' AND  xoha.schedule_ship_date  <=  TO_DATE(data.shipped_date) '
-    || ' AND  (xola.quantity - xola.reserved_quantity) <= 0 '
+-- 2008/10/03 H.Itou Mod Start 部分引当か、全引当を抽出したいので、不等号変更
+--    || ' AND  (xola.quantity - xola.reserved_quantity) <= 0 '
+    || ' AND  (xola.quantity - xola.reserved_quantity) >= 0 '
+-- 2008/10/03 H.Itou Del End
          ----------------------------------------------------------------------------------
          -- ヘッダ情報
          ----------------------------------------------------------------------------------
@@ -1825,16 +1840,27 @@ AS
     || '    ELSE xmril.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
     || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
-    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,NULL                         AS  prod_date '          -- 製造日
     || '  ,NULL                         AS  best_before_date '   -- 賞味期限
     || '  ,NULL                         AS  native_sign '        -- 固有記号
     || '  ,NULL                         AS  lot_no '             -- ロットNo
     || '  ,NULL                         AS  lot_status '         -- 品質
+-- 2008/10/03 H.Itou Mod Start T_TE080_BPO_600指摘37 在庫不足の場合、依頼数には不足数を表示
+--    || '  ,CASE '
+--    || '     WHEN ximv.conv_unit IS NULL THEN xmril.instruct_qty '
+--    || '     ELSE                            (xmril.instruct_qty / ximv.num_of_cases) '
     || '  ,CASE '
-    || '     WHEN ximv.conv_unit IS NULL THEN xmril.instruct_qty '
-    || '     ELSE                            (xmril.instruct_qty / ximv.num_of_cases) '
-    || '   END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘37対応
+    || '    WHEN ximv.conv_unit IS NULL THEN '
+    || '      (xmril.instruct_qty - NVL(xmril.reserved_quantity, 0)) '
+    || '    ELSE ((xmril.instruct_qty - NVL(xmril.reserved_quantity, 0)) '
+    || '          / TO_NUMBER( '
+    || '              CASE '
+    || '                WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                ELSE TO_CHAR(1) '
+    || '              END)) '
+-- 2008/10/03 H.Itou Mod End
+    || '   END                          AS  req_qty '            -- 依頼数
     || '  ,CASE '
     || '    WHEN ximv.conv_unit IS NULL THEN '
     || '      (xmril.instruct_qty - NVL(xmril.reserved_quantity, 0)) '
@@ -1945,7 +1971,7 @@ AS
     || '     ELSE xmril.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
     || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
-    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
     || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
     || '  ,ilm.attribute2               AS  native_sign '        -- 固有記号
@@ -1982,7 +2008,10 @@ AS
     || ' AND  xmril.item_code            =  data.item_cd '
     || ' AND  xmrih.schedule_ship_date  >=  :shipped_date_from '
     || ' AND  xmrih.schedule_ship_date  <=  data.shipped_date '
-    || ' AND  (xmril.instruct_qty - xmril.reserved_quantity) <= 0 '
+-- 2008/10/03 H.Itou Mod Start 部分引当か、全引当を抽出したいので、不等号変更
+--    || ' AND  (xmril.instruct_qty - xmril.reserved_quantity) <= 0 '
+    || ' AND  (xmril.instruct_qty - xmril.reserved_quantity) >= 0 '
+-- 2008/10/03 H.Itou Mod End
          ----------------------------------------------------------------------------------
          -- ヘッダ情報
          ----------------------------------------------------------------------------------
@@ -2056,7 +2085,7 @@ AS
     || '  ,item_cd        ASC '     -- 03:品目
     || '  ,shipped_date   ASC '     -- 04:出庫日
     || '  ,arrival_date   ASC '     -- 05:着日
-    || '  ,de_prod_date_sort  DESC '-- 06:指定製造日 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘38対応
+    || '  ,de_prod_date_sort  DESC '-- 06:指定製造日 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘38対応
     || '  ,reserve_order  ASC '     -- 07:引当順
     || '  ,base_cd        ASC '     -- 08:管轄拠点
     || '  ,time_from      ASC '     -- 09:時間指定From
