@@ -8,7 +8,7 @@ AS
  *                    作成します。
  * MD.050           : MD050_CSO_020_A04_自販機（什器）発注依頼データ連携機能
  *
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *                                         開始日～終了日へ変更
  *                                       ・搬送先事業所ＩＤ、搬送先事業所コード、搬送先要
  *                                         求者ＩＤをログインのユーザーＩＤから取得
+ *  2009-04-03    1.2   Kazuo.Satomura   システムテスト障害対応(障害番号T1_0109)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -142,6 +143,9 @@ AS
   cv_tkn_number_10 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00465'; -- 購買依頼登録エラー
   cv_tkn_number_11 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00496'; -- パラメータ出力
   cv_tkn_number_12 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00548'; -- 見積複数エラー
+  /* 2009.04.03 K.Satomura T1_0109対応 START */
+  cv_tkn_number_13 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00337'; -- データ更新エラー
+  /* 2009.04.03 K.Satomura T1_0109対応 END */
   --
   -- トークンコード
   cv_tkn_param_name    CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -1597,6 +1601,9 @@ AS
     -- *** ローカル定数 ***
     cv_profile_option_name1 CONSTANT VARCHAR2(30) := 'XXCSO1_VENDOR_WAIT_TIME';
     cv_profile_option_name2 CONSTANT VARCHAR2(30) := 'XXCSO1_CONC_MAX_WAIT_TIME';
+    /* 2009.04.03 K.Satomura T1_0109対応 START */
+    cv_purchase_request     CONSTANT VARCHAR2(30) := 'POR';
+    /* 2009.04.03 K.Satomura T1_0109対応 END */
     --
     -- 実行フェーズ
     cv_phase_complete CONSTANT VARCHAR2(20) := 'COMPLETE'; -- 完了
@@ -1605,7 +1612,10 @@ AS
     cv_ret_status_normal CONSTANT VARCHAR2(20) := 'NORMAL'; -- 正常終了
     --
     -- トークン用定数
-    cv_tkn_value_proc_name CONSTANT VARCHAR2(50) := '購買依頼インポート処理';
+    cv_tkn_value_proc_name  CONSTANT VARCHAR2(50) := '購買依頼インポート処理';
+    /* 2009.04.03 K.Satomura T1_0109対応 START */
+    cv_tkn_value_req_header CONSTANT VARCHAR2(50) := '購買依頼ヘッダ';
+    /* 2009.04.03 K.Satomura T1_0109対応 END */
     --
     -- *** ローカル変数 ***
     lb_return     BOOLEAN;
@@ -1615,6 +1625,9 @@ AS
     lv_dev_status VARCHAR2(5000);
     lv_message    VARCHAR2(5000);
     ln_work_count NUMBER;
+    /* 2009.04.03 K.Satomura T1_0109対応 START */
+    lt_requisition_header_id po_requisition_headers.requisition_header_id%TYPE;
+    /* 2009.04.03 K.Satomura T1_0109対応 END */
     --
   BEGIN
     --
@@ -1709,6 +1722,48 @@ AS
       --
     END IF;
     --
+    /* 2009.04.03 K.Satomura T1_0109対応 START */
+    -- ======================
+    -- 購買依頼ヘッダ更新処理
+    -- ======================
+    BEGIN
+      SELECT requisition_header_id requisition_header_id -- 購買依頼ヘッダＩＤ
+      INTO   lt_requisition_header_id
+      FROM   po_requisition_headers prh -- 購買依頼ヘッダービュー
+      WHERE  prh.request_id = in_request_id
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_10         -- メッセージコード
+                     );
+        --
+        RAISE global_api_expt;
+        --
+    END;
+    --
+    BEGIN
+      UPDATE po_requisition_headers_all prh -- 購買依頼ヘッダーテーブル
+      SET    prh.apps_source_code = cv_purchase_request
+      WHERE  prh.requisition_header_id = lt_requisition_header_id
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_13         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_value_req_header  -- トークン値1
+                       ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                       ,iv_token_value2 => SQLERRM                  -- トークン値2
+                    );
+        --
+        RAISE global_api_expt;
+        --
+    END;
+    --
+    /* 2009.04.03 K.Satomura T1_0109対応 END */
   EXCEPTION
     --
     --#################################  固定例外処理部 START   ####################################
