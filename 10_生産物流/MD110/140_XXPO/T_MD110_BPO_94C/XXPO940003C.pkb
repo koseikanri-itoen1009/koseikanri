@@ -8,7 +8,7 @@ AS
  * Description      : ロット在庫情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : ロット在庫情報抽出処理        T_MD070_BPO_94C
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/08/01    1.1   Oracle 吉田 夏樹 ST不具合対応
  *  2008/08/04    1.2   Oracle 吉田 夏樹 PT対応
  *  2008/08/19    1.3   Oracle 山根 一浩 仕様不備・指摘15
+ *  2008/09/17    1.4   Oracle 大橋 孝郎 T_S_460対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1554,6 +1555,9 @@ AS
     lv_extend_word    CONSTANT VARCHAR2(4)   := '.csv';
 --
     gv_sep_com        CONSTANT VARCHAR2(1)  := ',';
+-- add start ver1.4
+    lv_crlf           CONSTANT VARCHAR2(1)  := CHR(13); -- 改行コード
+-- add end ver1.4
 --
     -- *** ローカル変数 ***
     mst_rec         masters_rec;
@@ -1663,7 +1667,10 @@ AS
                    mst_rec.qt_effect2        || gv_sep_com ||  -- 結果2
                    mst_rec.inspect_due_date3 || gv_sep_com ||  -- 検査予定日3
                    mst_rec.test_date3        || gv_sep_com ||  -- 検査日3
-                   mst_rec.qt_effect3;                         -- 結果3
+-- mod start ver1.4
+--                   mst_rec.qt_effect3;                         -- 結果3
+                   mst_rec.qt_effect3        || lv_crlf;       -- 結果3
+-- mod end ver1.4
 --
         -- データ出力
         UTL_FILE.PUT_LINE(lf_file_hand,lv_data);
