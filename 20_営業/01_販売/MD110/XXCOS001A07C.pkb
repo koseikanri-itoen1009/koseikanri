@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/02/20    1.2   S.Miyakoshi      [COS_108]成績者をマスタより取得(入出庫データにおいて)
  *  2009/02/20    1.3   S.Miyakoshi      パラメータのログファイル出力対応
  *  2009/04/15    1.4   N.Maeda          [T1_0576]補充数ケース数に対する伝票区分別処理の追加
+ *  2009/04/16    1.5   N.Maeda          [T1_0621]従業員絞込み条件の変更、出力ケース数の修正
  *
  *****************************************************************************************/
 --
@@ -692,13 +693,22 @@ AS
           AND    cust.customer_id       = acct.cust_account_id    -- 顧客追加情報.顧客サイトID＝顧客所在地.顧客サイトID
           AND    acct.cust_acct_site_id = site.cust_acct_site_id  -- 顧客所在地.顧客サイトID＝顧客使用目的.顧客サイトID
           AND    site.site_use_code     = cv_tkn_bill_to          -- 顧客使用目的.使用目的＝BILL_TO
+--************************* 2009/04/16 N.Maeda Var1.5 MOD START ****************************************************
+--          AND    (
+--                    xsv.account_number = inv.outside_cust_code    -- 担当営業員view.顧客番号＝入出庫一時表.出庫側顧客
+--                  AND                                             -- 日付の適用範囲
+--                    inv.invoice_date >= NVL(xsv.effective_start_date, gd_process_date)
+--                  AND
+--                    inv.invoice_date <= NVL(xsv.effective_end_date, gd_max_date)
+--                 )
           AND    (
                     xsv.account_number = inv.outside_cust_code    -- 担当営業員view.顧客番号＝入出庫一時表.出庫側顧客
                   AND                                             -- 日付の適用範囲
-                    inv.invoice_date >= NVL(xsv.effective_start_date, gd_process_date)
+                    inv.invoice_date >= NVL(xsv.effective_start_date, inv.invoice_date)
                   AND
                     inv.invoice_date <= NVL(xsv.effective_end_date, gd_max_date)
                  )
+--************************* 2009/04/16 N.Maeda Var1.5 MOD END ******************************************************
           ORDER BY  inv.base_code              -- 拠点コード
                    ,inv.outside_cust_code      -- 出庫側顧客コード
                    ,inv.invoice_no             -- 伝票No.
@@ -800,13 +810,22 @@ AS
           AND    cust.customer_id       = acct.cust_account_id    -- 顧客追加情報.顧客サイトID＝顧客所在地.顧客サイトID
           AND    acct.cust_acct_site_id = site.cust_acct_site_id  -- 顧客所在地.顧客サイトID＝顧客使用目的.顧客サイトID
           AND    site.site_use_code     = cv_tkn_bill_to          -- 顧客使用目的.使用目的＝BILL_TO
+--************************* 2009/04/16 N.Maeda Var1.5 MOD START ****************************************************
+--          AND    (
+--                    xsv.account_number = inv.inside_cust_code     -- 担当営業員view.顧客番号＝入出庫一時表.入庫側顧客
+--                  AND                                             -- 日付の適用範囲
+--                    inv.invoice_date >= NVL(xsv.effective_start_date, gd_process_date)
+--                  AND
+--                    inv.invoice_date <= NVL(xsv.effective_end_date, gd_max_date)
+--                 )
           AND    (
                     xsv.account_number = inv.inside_cust_code     -- 担当営業員view.顧客番号＝入出庫一時表.入庫側顧客
                   AND                                             -- 日付の適用範囲
-                    inv.invoice_date >= NVL(xsv.effective_start_date, gd_process_date)
+                    inv.invoice_date >= NVL(xsv.effective_start_date, inv.invoice_date)
                   AND
                     inv.invoice_date <= NVL(xsv.effective_end_date, gd_max_date)
                  )
+--************************* 2009/04/16 N.Maeda Var1.5 MOD END ******************************************************
           ORDER BY  inv.base_code              -- 拠点コード
                    ,inv.inside_cust_code       -- 入庫側顧客コード
                    ,inv.invoice_no             -- 伝票No.
@@ -1242,10 +1261,13 @@ AS
       gt_content(ln_inv_lines_num)        := lt_case_in_quant;     -- 入数
       gt_item_id(ln_inv_lines_num)        := lt_item_id;           -- 品目ID
       gt_standard_unit(ln_inv_lines_num)  := lt_primary_code;      -- 基準単位
+--************************* 2009/04/16 N.Maeda Var1.5 MOD START ****************************************************
 --************************* 2009/04/15 N.Maeda Var1.4 MOD START ****************************************************
 --      gt_case_number(ln_inv_lines_num)    := lt_case_quant;        -- ケース数
-      gt_case_number(ln_inv_lines_num)    := lt_vd_replenish_number;        -- ケース数
+--      gt_case_number(ln_inv_lines_num)    := lt_vd_replenish_number;        -- ケース数
 --************************* 2009/04/15 N.Maeda Var1.4 MOD END ******************************************************
+      gt_case_number(ln_inv_lines_num)    := lt_vd_case_quant;        -- ケース数
+--************************* 2009/04/16 N.Maeda Var1.5 MOD END ******************************************************
       gt_quantity(ln_inv_lines_num)       := lt_vd_quantity;       -- 数量
       gt_wholesale(ln_inv_lines_num)      := lt_unit_price;        -- 卸単価
       gt_column_no(ln_inv_lines_num)      := lt_column_no;         -- コラムNo.

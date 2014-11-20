@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,8 @@ AS
  *  2009/02/06    1.4   K.Kakishita      [COS_037]AR取引タイプマスタの抽出条件に営業単位を追加
  *  2009/02/20    1.5   K.Kakishita      パラメータのログファイル出力対応
  *  2009/03/19    1.6   T.Kitajima       [T1_0098]保管場所抽出条件修正
+ *  2009/04/13    1.7   N.Maeda          [T1_0496]VDコラム別取引情報明細の数量使用部
+ *                                                  ⇒VDコラム別取引情報明細の補充数へ変更
  *
  *****************************************************************************************/
 --
@@ -1542,7 +1544,10 @@ AS
         xvcl.item_code_self                 item_code_self,                --品名コード(自社)
         xvcl.standard_unit                  standard_unit,                 --基準単位
         xvcl.wholesale_unit_ploce           wholesale_unit_ploce,          --卸単価
-        xvcl.quantity                       quantity,                      --数量
+--******************************** 2009/04/13 1.7 N.Maeda MOD START **************************************************
+--        xvcl.quantity                       quantity,                      --数量
+        xvcl.replenish_number               replenish_number,              --補充数
+--******************************** 2009/04/13 1.7 N.Maeda MOD END   **************************************************
         xvcl.h_and_c                        h_and_c,                       --H/C
         xvcl.column_no                      column_no,                     --コラムNo.
         xvch.order_no_hht                   order_no_hht,                  --受注No.(HHT)
@@ -1799,10 +1804,17 @@ AS
       g_xvdl_tab(gn_xvdl_idx).inventory_item_id       := l_vdc_rec.inventory_item_id;
       g_xvdl_tab(gn_xvdl_idx).item_price              := g_chk_fixed_price_tab(l_vdc_rec.item_code_self);
       g_xvdl_tab(gn_xvdl_idx).unit_price              := l_vdc_rec.wholesale_unit_ploce;
+--******************************** 2009/04/13 1.7 N.Maeda MOD START **************************************************
+--      g_xvdl_tab(gn_xvdl_idx).item_sales_amount       := l_vdc_rec.wholesale_unit_ploce
+--                                                         * l_vdc_rec.quantity;
       g_xvdl_tab(gn_xvdl_idx).item_sales_amount       := l_vdc_rec.wholesale_unit_ploce
-                                                         * l_vdc_rec.quantity;
+                                                        * l_vdc_rec.replenish_number;
+--******************************** 2009/04/13 1.7 N.Maeda MOD  END  **************************************************
       g_xvdl_tab(gn_xvdl_idx).uom_code                := l_vdc_rec.standard_unit;
-      g_xvdl_tab(gn_xvdl_idx).sales_quantity          := l_vdc_rec.quantity;
+--******************************** 2009/04/13 1.7 N.Maeda MOD START **************************************************
+--      g_xvdl_tab(gn_xvdl_idx).sales_quantity          := l_vdc_rec.quantity;
+      g_xvdl_tab(gn_xvdl_idx).sales_quantity          := l_vdc_rec.replenish_number;
+--******************************** 2009/04/13 1.7 N.Maeda MOD  END  **************************************************
       g_xvdl_tab(gn_xvdl_idx).hot_cold_type           := l_vdc_rec.h_and_c;
       g_xvdl_tab(gn_xvdl_idx).column_no               := l_vdc_rec.column_no;
       g_xvdl_tab(gn_xvdl_idx).delivery_base_code      := it_delivery_base_code;
@@ -1828,7 +1840,10 @@ AS
       -- ===================================================
       -- A-10 チェック用売上金額集計処理
       -- ===================================================
-      ln_vdc_amount := ln_vdc_amount + ( l_vdc_rec.quantity * l_vdc_rec.wholesale_unit_ploce );
+--******************************** 2009/04/13 1.7 N.Maeda MOD START **************************************************
+--      ln_vdc_amount := ln_vdc_amount + ( l_vdc_rec.quantity * l_vdc_rec.wholesale_unit_ploce );
+      ln_vdc_amount := ln_vdc_amount + ( l_vdc_rec.replenish_number * l_vdc_rec.wholesale_unit_ploce );
+--******************************** 2009/04/13 1.7 N.Maeda MOD  END  **************************************************
       --
     END LOOP get_vdc_loop;
     -- ===================================================
