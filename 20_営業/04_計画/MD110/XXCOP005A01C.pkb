@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP005A01C(body)
  * Description      : 工場出荷計画
  * MD.050           : 工場出荷計画 MD050_COP_005_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/04/14    1.3   SCS Uda          システムテスト障害対応（T1_0542）
  *  2009/04/21    1.4   SCS Uda          システムテスト障害対応（T1_0722）
  *  2009/04/28    1.5   SCS Uda          システムテスト障害対応（T1_0845、T1_0847）
+ *  2009/05/20    1.6   SCS Uda          システムテスト障害対応（T1_1096）
  *
  *****************************************************************************************/
 --
@@ -262,6 +263,9 @@ AS
   --移動数マイナスフラグ
   cv_move_minus_flg_on      CONSTANT VARCHAR2(2)   := '1';                      -- 移動数マイナス
 --20090428_Ver1.5_T1_0847_SCS_Uda_ADD_END
+--20090520_Ver1.2_T1_1096_SCS_Uda_ADD_START
+  cn_cnt_from               CONSTANT NUMBER        := 1;                        --親件数
+--20090520_Ver1.2_T1_1096_SCS_Uda_ADD_END
 --
   --入力パラメータ
   cv_buy_type               CONSTANT VARCHAR2(1)   := '3';                      -- 基準計画分類（購入計画）
@@ -2060,6 +2064,9 @@ AS
           lr_xwsp_rec.receipt_date             := get_wk_ship_planning_rec.shipping_date;          --出荷日
           lr_xwsp_rec.shipping_type            := gv_plan_type;                                    --出荷計画区分
           lr_xwsp_rec.delivery_lead_time       := 0;                                               --配送リードタイム
+--20090520_Ver1.2_T1_1096_SCS_Uda_ADD_START
+          lr_xwsp_rec.cnt_ship_org             := cn_cnt_from;                                     --親件数 固定値1をセット
+--20090520_Ver1.2_T1_1096_SCS_Uda_ADD_END
           --
           --===================================
           -- 自倉庫出荷ペース取得処理
