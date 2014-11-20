@@ -7,7 +7,7 @@ AS
  * Description      : イセトー請求書データ作成
  * MD.050           : MD050_CFR_003_A17_イセトー請求書データ作成
  * MD.070           : MD050_CFR_003_A17_イセトー請求書データ作成
- * Version          : 1.30
+ * Version          : 1.40
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009-09-29    1.10 SCS 安川 智博     共通課題「IE535」対応
  *  2009-11-20    1.20 SCS 安川 智博     共通課題「IE691」対応
  *  2009-12-11    1.30 SCS 安川 智博     障害「E_本稼動_00423」対応
+ *  2010-01-07    1.40 SCS 安川 智博     障害「E_本稼動_00951」対応
  *
  *****************************************************************************************/
 --
@@ -2879,7 +2880,10 @@ AS
             ,TO_NUMBER(NULL)                                            seq                -- 出力順
             ,cv_line_kbn                                                header_line_kbn    -- ヘッダ/明細区分
             ,cv_record_kbn2                                             record_kbn         -- レコード区分
-            ,xxcot.col3                                                 issue_date         -- 発行日付
+-- Modify 2010-01-07 Ver1.40 Start
+--            ,xxcot.col3                                                 issue_date         -- 発行日付
+            ,MAX(xxcot.col3)                                            issue_date         -- 発行日付
+-- Modify 2010-01-07 Ver1.40 End
             ,NULL                                                       zip_code           -- 郵便番号
             ,NULL                                                       send_address1      -- 住所１
             ,NULL                                                       send_address2      -- 住所２
@@ -2910,7 +2914,10 @@ AS
       WHERE xxcot.request_id = cn_request_id
         AND xxcot.col29 = cv_layout_kbn2       -- レイアウト区分 = '2'(店舗別内訳レイアウト)
         AND xxcot.col2 = cv_record_kbn1        -- レコード区分 = '1'(店舗別明細レコード)
-      GROUP BY xxcot.col3,                                                                 -- 発行日付
+-- Modify 2010-01-07 Ver1.40 Start
+--      GROUP BY xxcot.col3,                                                                 -- 発行日付
+      GROUP BY 
+-- Modify 2010-01-07 Ver1.40 End
                xxcot.col8,                                                                 -- 顧客コード
                xxcot.col24,                                                                -- 店舗コード
                xxcot.col25;                                                                -- 店舗名
@@ -2956,7 +2963,10 @@ AS
             ,TO_NUMBER(NULL)                                            seq                -- 出力順
             ,cv_header_kbn                                              header_line_kbn    -- ヘッダ/明細区分
             ,cv_record_kbn0                                             record_kbn         -- レコード区分
-            ,xxcot.col3                                                 issue_date         -- 発行日付
+-- Modify 2010-01-07 Ver1.40 Start
+--            ,xxcot.col3                                                 issue_date         -- 発行日付
+            ,MAX(xxcot.col3)                                            issue_date         -- 発行日付
+-- Modify 2010-01-07 Ver1.40 End
             ,hzlo.postal_code                                           zip_code           -- 郵便番号
             ,hzlo.state||hzlo.city                                      send_address1      -- 住所１
             ,hzlo.address1                                              send_address2      -- 住所２
@@ -2970,13 +2980,20 @@ AS
 -- Modify 2009-11-20 Ver1.20 End
             ,xffvv.description                                          location_name      -- 拠点名
             ,xxcfr_common_pkg.get_base_target_tel_num(xxcot.col8)       phone_num          -- 電話番号
-            ,xxcot.col12                                                object_month       -- 対象年月
-            ,xxcot.col13                                                ar_concat_text     -- 売掛管理コード連結文字列
+-- Modify 2010-01-07 Ver1.40 Start
+--            ,xxcot.col12                                                object_month       -- 対象年月
+            ,MAX(xxcot.col12)                                           object_month       -- 対象年月
+--            ,xxcot.col13                                                ar_concat_text     -- 売掛管理コード連結文字列
+            ,MAX(xxcot.col13)                                           ar_concat_text     -- 売掛管理コード連結文字列
+-- Modify 2010-01-07 Ver1.40 End
             ,xxcot.col14                                                out_put_div        -- 請求書出力区分
             ,SUM(TO_NUMBER(xxcot.col101))                               inv_amount         -- 当月お買い上げ額
             ,SUM(TO_NUMBER(xxcot.col102))                               tax_amount         -- 消費税等
             ,SUM(TO_NUMBER(xxcot.col101) + TO_NUMBER(xxcot.col102))     total_amount       -- 当月請求額
-            ,xxcot.col18                                                payment_date       -- 入金予定日
+-- Modify 2010-01-07 Ver1.40 Start
+--            ,xxcot.col18                                                payment_date       -- 入金予定日
+            ,MAX(xxcot.col18)                                           payment_date       -- 入金予定日
+-- Modify 2010-01-07 Ver1.40 End
             ,xxcot.col19                                                banc_number        -- 銀行名
             ,xxcot.col20                                                bank_branch_number -- 支店名
             ,xxcot.col21                                                bank_account_type  -- 口座種別
@@ -3014,7 +3031,10 @@ AS
         AND hzps.party_site_id = hcas.party_site_id                 -- パーティサイト.パーティサイトID = 顧客所在地.パーティサイトID
         AND hzlo.location_id = hzps.location_id                     -- 顧客事業所.事業所ID = パーティサイト.事業所ID
         AND xffvv.flex_value = xxca.bill_base_code                  -- 部門値セット.コード = 顧客追加情報.請求拠点コード
-      GROUP BY xxcot.col3,                                                                 -- 発行日付
+-- Modify 2010-01-07 Ver1.40 Start
+--      GROUP BY xxcot.col3,                                                                 -- 発行日付
+      GROUP BY 
+-- Modify 2010-01-07 Ver1.40 End
                hzlo.postal_code,                                                           -- 郵便番号
                hzlo.state||hzlo.city,                                                      -- 住所１
                hzlo.address1,                                                              -- 住所２
@@ -3027,10 +3047,14 @@ AS
                                   ,hzpa.party_name),                                       -- 顧客名
 -- Modify 2009-11-20 Ver1.20 End
                xffvv.description,                                                          -- 拠点名
-               xxcot.col12,                                                                -- 対象年月
-               xxcot.col13,                                                                -- 売掛管理コード連結文字列
+-- Modify 2010-01-07 Ver1.40 Start
+--               xxcot.col12,                                                                -- 対象年月
+--               xxcot.col13,                                                                -- 売掛管理コード連結文字列
+-- Modify 2010-01-07 Ver1.40 Start
                xxcot.col14,                                                                -- 請求書出力区分
-               xxcot.col18,                                                                -- 入金予定日
+-- Modify 2010-01-07 Ver1.40 Start
+--               xxcot.col18,                                                                -- 入金予定日
+-- Modify 2010-01-07 Ver1.40 End
                xxcot.col19,                                                                -- 銀行名
                xxcot.col20,                                                                -- 支店名
                xxcot.col21,                                                                -- 口座種別
