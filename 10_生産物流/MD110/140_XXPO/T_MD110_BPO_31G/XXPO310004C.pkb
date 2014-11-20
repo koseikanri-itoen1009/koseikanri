@@ -7,7 +7,7 @@ AS
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/01/27    1.11  Oracle 椎名 昭圭 本番#819対応
  *  2009/01/28    1.12  Oracle 椎名 昭圭 本番#1047対応(再)
  *  2009/02/10    1.13  Oracle 椎名 昭圭 本番#1127対応
+ *  2009/03/30    1.14  Oracle 飯田 甫   本番#1346対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -180,6 +181,9 @@ AS
   gv_flg_on              CONSTANT VARCHAR2(1)  := 'Y';
   gv_flg_off             CONSTANT VARCHAR2(1)  := 'N';
   gv_one_space           CONSTANT VARCHAR2(1)  := ' ';
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+  gv_prf_org_id          CONSTANT VARCHAR2(100) := 'ORG_ID';         -- プロファイル：ORG_ID
+-- 2009/03/30 H.Iida ADD END
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -387,6 +391,9 @@ AS
   gn_program_id               NUMBER;                     -- プログラムID
   gd_program_update_date      DATE;                       -- プログラム更新日
   gv_user_name                fnd_user.user_name%TYPE;    -- ユーザ名
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+  gv_org_id                   VARCHAR2(1000);             -- ORG_ID
+-- 2009/03/30 H.Iida ADD END
 --
   -- 項目テーブル型定義
   gt_org_txns_id       reg_txns_id;           -- 取引ID(削除用)
@@ -1308,6 +1315,9 @@ AS
 */
              AND     ((pha.attribute1 >= gv_add_status_zmi         -- 発注作成済:20
              AND     pha.attribute1 < gv_add_status_qty_zmi)       -- 金額確定済:35
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+             AND     pha.org_id        = TO_NUMBER(gv_org_id)
+-- 2009/03/30 H.Iida ADD END
               OR     pha.attribute1 = gv_add_status_end)) xxpo     -- 取消済み:99
 --2008/09/25 Mod ↑
             ,(SELECT xiv.item_no                       -- 品目コード
@@ -1678,6 +1688,9 @@ AS
             INTO   ln_po_header_id
             FROM   po_headers_all pha
             WHERE  pha.po_header_id = mst_rec.po_header_id
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+            AND    pha.org_id       = TO_NUMBER(gv_org_id)
+-- 2009/03/30 H.Iida ADD END
             FOR UPDATE OF pha.po_header_id NOWAIT;
 --
           EXCEPTION
@@ -1698,6 +1711,9 @@ AS
             INTO   ln_po_line_id
             FROM   po_lines_all pla
             WHERE  pla.po_line_id = mst_rec.po_line_id
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+            AND    pla.org_id     = TO_NUMBER(gv_org_id)
+-- 2009/03/30 H.Iida ADD END
             FOR UPDATE OF pla.po_line_id NOWAIT;
 --
           EXCEPTION
@@ -2937,6 +2953,9 @@ AS
 -- 2009/02/10 v1.13 ADD START
         AND    pla.cancel_flag <> gv_flg_on
 -- 2009/02/10 v1.13 ADD END
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+        AND    pla.org_id       = TO_NUMBER(gv_org_id)
+-- 2009/03/30 H.Iida ADD END
       )
       AND    pha.attribute1 < gv_add_status_num_zmi;
 --
@@ -3279,6 +3298,12 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2009/03/30 H.Iida ADD START 本番障害#1346
+    --==========================
+    -- ORG_ID取得
+    --==========================
+    gv_org_id := FND_PROFILE.VALUE(gv_prf_org_id);
+-- 2009/03/30 H.Iida ADD END
 --
     -- グローバル変数の初期化
     gn_target_cnt := 0;
