@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (spec)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009/10/05    1.14  N.Maeda          [0001464]受注明細分割による影響対応
  *  2010/03/01    1.15  S.Karikomi       [E_本稼働_01635]ヘッダ出力拠点修正
  *                                                       件数カウント単位の同期対応
+ *  2010/06/11    1.16  S.Niki           [E_本稼動_03075]拠点選択対応
  *
  *****************************************************************************************/
 --
@@ -72,7 +73,10 @@ AS
     iv_delivery_charge  IN     VARCHAR2,         --  12.納品担当者
     iv_carrier_means    IN     VARCHAR2,         --  13.輸送手段
     iv_proc_date        IN     VARCHAR2,         --  14.処理日
-    iv_proc_time        IN     VARCHAR2          --  15.処理時刻
+    iv_proc_time        IN     VARCHAR2,         --  15.処理時刻
+/* 2010/06/11 Ver1.21 Add Start */
+    iv_slct_base_code   IN     VARCHAR2          --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
   );
 END XXCOS011A03C;
 /

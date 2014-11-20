@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_login_base_info_v
  * Description     : ログインユーザ拠点ビュー
- * Version         : 1.4
+ * Version         : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,17 +14,26 @@
  *  2009/07/22    1.2   M.Maruyama       障害番号0000640 対応
  *  2009/09/03    1.3   M.Sano           障害番号0001227 対応
  *  2009/10/16    1.4   K.Atsushiba      障害番号0001113 対応
+ *  2010/06/11    1.5   S.Niki           E_本稼動_03075  対応
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_login_base_info_v (
   base_code,                            --拠点コード
   base_name,                            --拠点名称
-  base_short_name                       --拠点略称
+-- 2010/06/11 Ver1.5 Mod Start
+--  base_short_name                       --拠点略称
+  base_short_name,                      --拠点略称
+  user_id                               --ユーザーID
+-- 2010/06/11 Ver1.5 Mod End
 )
 AS
   SELECT
     hca.account_number                  base_code,                              --拠点コード
     hp.party_name                       base_name,                              --拠点名称
-    hca.account_name                    base_short_name                         --拠点略称
+-- 2010/06/11 Ver1.5 Mod Start
+--    hca.account_name                    base_short_name                         --拠点略称
+    hca.account_name                    base_short_name,                        --拠点略称
+    obc.user_id                         user_id                                 --ユーザーID
+-- 2010/06/11 Ver1.5 Mod End
   FROM
     hz_cust_accounts                    hca,                                    --顧客マスタ
     hz_parties                          hp,                                     --パーティマスタ
@@ -50,7 +59,11 @@ AS
 --          ELSE paaf.ass_attribute4                                              --拠点コード（旧）
 -- 2009/10/16 Ver1.3 Mod Start
         END own_base_code,
-        pd.process_date                 process_date                            --業務日付
+-- 2010/06/11 Ver1.5 Mod Start
+--        pd.process_date                 process_date                            --業務日付
+        pd.process_date                 process_date,                           --業務日付
+        fu.user_id                      user_id                                 --ユーザーID
+-- 2010/06/11 Ver1.5 Mod End
       FROM
         fnd_user                        fu,                                     --ユーザマスタ
         per_all_people_f                papf,                                   --従業員マスタ
@@ -162,5 +175,8 @@ AS
 COMMENT ON  COLUMN  xxcos_login_base_info_v.base_code        IS  '拠点コード'; 
 COMMENT ON  COLUMN  xxcos_login_base_info_v.base_name        IS  '拠点名称';
 COMMENT ON  COLUMN  xxcos_login_base_info_v.base_short_name  IS  '拠点略称';
+-- 2010/06/11 Ver1.5 Add Start
+COMMENT ON  COLUMN  xxcos_login_base_info_v.user_id          IS  'ユーザーID';
+-- 2010/06/11 Ver1.5 Add End
 --
 COMMENT ON  TABLE   xxcos_login_base_info_v                  IS  'ログインユーザ拠点ビュー';

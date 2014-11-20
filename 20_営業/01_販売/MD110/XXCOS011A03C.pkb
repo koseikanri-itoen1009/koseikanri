@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *                                                       対象件数0件時のステータス変更対応
  *  2010/03/19    1.19  S.Karikomi       [E_本稼動_01867]納品担当者取得変更対応
  *  2010/04/15    1.20  N.Abe            [E_本稼動_01618]エラー品目時の数量取得元変更(Ver1.9の全コメント化)
+ *  2010/06/11    1.21  S.Niki           [E_本稼動_03075]拠点選択対応
  *
  *****************************************************************************************/
 --
@@ -269,6 +270,9 @@ AS
 /* 2009/05/12 Ver1.8 Add Start */
   cv_tkn_param12        CONSTANT VARCHAR2(8)   := 'PARAME12';          -- 入力パラメータ値
 /* 2009/05/12 Ver1.8 Add End   */
+/* 2010/06/11 Ver1.21 Add Start */
+  cv_tkn_param13        CONSTANT VARCHAR2(8)   := 'PARAME13';          -- 入力パラメータ値
+/* 2010/06/11 Ver1.21 Add End */
 -- ******* 2009/10/05 1.14 N.Maeda ADD START ******* --
   cv_order_source            CONSTANT VARCHAR2(20) := 'ORDER_SOURCE';
 -- ******* 2009/10/05 1.14 N.Maeda ADD  END  ******* --
@@ -727,6 +731,9 @@ AS
 /* 2010/03/19 Ver1.19 Add Start */
   gt_delivery_charge    xxcos_edi_headers.vendor_charge%TYPE;          -- 納品担当者
 /* 2010/03/19 Ver1.19 Add  End  */
+/* 2010/06/11 Ver1.21 Add Start */
+  gt_slct_base_code     xxcmm_cust_accounts.delivery_base_code%TYPE;   -- 納品拠点コード
+/* 2010/06/11 Ver1.21 Add End */
   -- プロファイル値
   gv_if_header          VARCHAR2(2);                                   -- ヘッダレコード区分
   gv_if_data            VARCHAR2(2);                                   -- データレコード区分
@@ -1201,7 +1208,9 @@ AS
           ,xxcmm_cust_accounts                  xca3   -- 顧客追加情報
           ,hz_parties                           hp3    -- 顧客パーティ
           ,xxcos_tax_rate_v                     xtrv   -- 消費税率ビュー
-          ,xxcos_login_base_info_v              xlbiv  -- 拠点(管理元)ビュー
+/* 2010/06/11 Ver1.21 Delete Start */
+--          ,xxcos_login_base_info_v              xlbiv  -- 拠点(管理元)ビュー
+/* 2010/06/11 Ver1.21 Delete End */
 /* 2010/03/19 Ver1.19 Del Start */
 --          ,per_all_people_f                     papf   -- 従業員マスタ
 --          ,per_all_assignments_f                paaf   -- 従業員割当マスタ
@@ -1301,7 +1310,10 @@ AS
     AND    hca2.party_id                  = hp2.party_id                      -- ﾁｪｰﾝ店ﾏｽﾀ.ﾊﾟｰﾃｨID=ﾁｪｰﾝ店ﾊﾟｰﾃｨ.ﾊﾟｰﾃｨID
     AND    hp2.duns_number_c             <> cv_cust_status_90                 -- ﾁｪｰﾝ店ﾊﾟｰﾃｨ.顧客ｽﾃｰﾀｽ<>'90'(中止決裁済)
     AND    hca3.party_id                  = hp3.party_id                      -- 顧客ﾏｽﾀ.ﾊﾟｰﾃｨID=顧客ﾊﾟｰﾃｨ.ﾊﾟｰﾃｨID
-    AND    xca3.delivery_base_code        = xlbiv.base_code                   -- 顧客追加情報.納品拠点ｺｰﾄﾞ=拠点(管理元)ﾋﾞｭｰ.拠点ｺｰﾄﾞ
+/* 2010/06/11 Ver1.21 Mod Start */
+--    AND    xca3.delivery_base_code        = xlbiv.base_code                   -- 顧客追加情報.納品拠点ｺｰﾄﾞ=拠点(管理元)ﾋﾞｭｰ.拠点ｺｰﾄﾞ
+    AND    xca3.delivery_base_code        = gt_slct_base_code                 -- 顧客追加情報.納品拠点ｺｰﾄﾞ=入力ﾊﾟﾗﾒｰﾀ.出力拠点ｺｰﾄﾞ
+/* 2010/06/11 Ver1.21 Mod End */
 /* 2010/03/19 Ver1.19 Del Start */
 --    AND    xca3.delivery_base_code        = paaf.ass_attribute5               -- 顧客追加情報.納品拠点ｺｰﾄﾞ=従業員割当ﾏｽﾀ.所属ｺｰﾄﾞ
 --    AND    paaf.effective_start_date     <= cd_process_date                   -- 従業員割当ﾏｽﾀ.適用開始日<=業務日付
@@ -1550,6 +1562,9 @@ AS
     iv_carrier_means    IN  VARCHAR2,     --  13.輸送手段
     iv_proc_date        IN  VARCHAR2,     --  14.処理日
     iv_proc_time        IN  VARCHAR2,     --  15.処理時刻
+/* 2010/06/11 Ver1.21 Add Start */
+    iv_slct_base_code   IN  VARCHAR2,     --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1660,6 +1675,10 @@ AS
 --                        ,iv_token_name3  => cv_tkn_param11      -- トークンコード１１
                         ,iv_token_name3  => cv_tkn_param12      -- トークンコード１２
                         ,iv_token_value3 => iv_carrier_means    -- 輸送手段
+/* 2010/06/11 Ver1.21 Add Start */
+                        ,iv_token_name4  => cv_tkn_param13      -- トークンコード１３
+                        ,iv_token_value4 => iv_slct_base_code   -- 出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
 /* 2009/05/12 Ver1.8 Mod End   */
                       );
     -- 「作成区分」が、'解除'の場合
@@ -2883,6 +2902,9 @@ AS
     iv_file_name        IN  VARCHAR2,     --   1.ファイル名
     iv_edi_c_code       IN  VARCHAR2,     --   3.EDIチェーン店コード
     iv_edi_f_number     IN  VARCHAR2,     --   4.EDI伝送追番(ファイル名用)
+/* 2010/06/11 Ver1.21 Add Start */
+    iv_iv_slct_base_code IN VARCHAR2,     --   16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2927,7 +2949,9 @@ AS
       AND     hca.cust_account_id = hcas.cust_account_id  -- 結合(拠点(顧客) = 顧客所在地)
       AND     hca.party_id        = hp.party_id           -- 結合(拠点(顧客) = 拠点(パーティ))
       AND     hcas.org_id         = gn_org_id             -- 営業単位
-      AND     hca.account_number  =
+/* 2010/06/11 Ver1.21 Add Start */
+      AND     hca.account_number  = iv_iv_slct_base_code
+/* 2010/06/11 Ver1.21 Add End */
 /* 2010/02/26 Ver1.15 Mod Start */
 --                ( SELECT  xca1.delivery_base_code
 --                  FROM    hz_cust_accounts     hca1  -- 顧客
@@ -2942,10 +2966,12 @@ AS
 --                  AND     xca1.chain_store_code    =  iv_edi_c_code       -- EDIチェーン店コード
 --                  AND     ROWNUM                   =  cn_1
 --                )
-                ( SELECT xuif.base_code  AS base_code     -- ログインユーザーの拠点コード(新)
-                  FROM   xxcos_user_info_v xuif           -- ユーザ情報ビュー
-                  WHERE  xuif.user_id = cn_created_by     -- ログインユーザー
-                )
+/* 2010/06/11 Ver1.21 Del Start */
+--                ( SELECT xuif.base_code  AS base_code     -- ログインユーザーの拠点コード(新)
+--                  FROM   xxcos_user_info_v xuif           -- ユーザ情報ビュー
+--                  WHERE  xuif.user_id = cn_created_by     -- ログインユーザー
+--                )
+/* 2010/06/11 Ver1.21 Del End */
 /* 2010/02/26 Ver1.15 Mod  End  */
       ;
     -- EDIチェーン店情報
@@ -3119,6 +3145,9 @@ AS
 /* 2010/03/19 Ver1.19 Add Start */
     iv_delivery_charge  IN  VARCHAR2,     --  12.納品担当者
 /* 2010/03/19 Ver1.19 Add  End  */
+/* 2010/06/11 Ver1.21 Add Start */
+    iv_slct_base_code   IN  VARCHAR2,     --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -3176,6 +3205,9 @@ AS
 /* 2010/03/19 Ver1.19 Add Start */
     gt_delivery_charge := iv_delivery_charge;                         -- 納品担当者
 /* 2010/03/19 Ver1.19 Add  End  */
+/* 2010/06/11 Ver1.21 Add Start */
+    gt_slct_base_code  := iv_slct_base_code;                          -- 出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
 --
     --==============================================================
     -- EDI受注データ抽出
@@ -4937,6 +4969,9 @@ AS
     iv_delivery_time    IN  VARCHAR2,     --  11.納品時刻
     iv_delivery_charge  IN  VARCHAR2,     --  12.納品担当者
     iv_carrier_means    IN  VARCHAR2,     --  13.輸送手段
+/* 2010/06/11 Ver1.21 Add Start */
+    iv_slct_base_code   IN  VARCHAR2,     --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -5010,6 +5045,9 @@ AS
 --      ,iv_edi_f_number     --  4.EDI伝送追番
       ,iv_edi_f_number_f   --  4.EDI伝送追番(ファイル名用)
 /* 2009/05/12 Ver1.8 Mod End   */
+/* 2010/06/11 Ver1.21 Add Start */
+      , iv_slct_base_code  --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5034,6 +5072,9 @@ AS
 /* 2010/03/19 Ver1.19 Add Start */
       ,iv_delivery_charge  --  12.納品担当者
 /* 2010/03/19 Ver1.19 Add  End  */
+/* 2010/06/11 Ver1.21 Add Start */
+      ,iv_slct_base_code   --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5323,6 +5364,9 @@ AS
     iv_carrier_means    IN  VARCHAR2,     --  13.輸送手段
     iv_proc_date        IN  VARCHAR2,     --  14.処理日
     iv_proc_time        IN  VARCHAR2,     --  15.処理時刻
+/* 2010/06/11 Ver1.21 Add Start */
+    iv_slct_base_code   IN  VARCHAR2,     --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -5392,6 +5436,9 @@ AS
       ,iv_carrier_means    -- 13.輸送手段
       ,iv_proc_date        -- 14.処理日
       ,iv_proc_time        -- 15.処理時刻
+/* 2010/06/11 Ver1.21 Add Start */
+      ,iv_slct_base_code   -- 16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
       ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5437,6 +5484,9 @@ AS
         ,iv_delivery_time    -- 11.納品時刻
         ,iv_delivery_charge  -- 12.納品担当者
         ,iv_carrier_means    -- 13.輸送手段
+/* 2010/06/11 Ver1.21 Add Start */
+        ,iv_slct_base_code   -- 16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
         ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
         ,lv_retcode          -- リターン・コード             --# 固定 #
         ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5517,7 +5567,11 @@ AS
     iv_delivery_charge  IN  VARCHAR2,      --  12.納品担当者
     iv_carrier_means    IN  VARCHAR2,      --  13.輸送手段
     iv_proc_date        IN  VARCHAR2,      --  14.処理日
-    iv_proc_time        IN  VARCHAR2       --  15.処理時刻
+/* 2010/06/11 Ver1.21 Mod Start */
+--    iv_proc_time        IN  VARCHAR2       --  15.処理時刻
+    iv_proc_time        IN  VARCHAR2,      --  15.処理時刻
+    iv_slct_base_code   IN  VARCHAR2       --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Mod End */
   )
 --
 --
@@ -5587,6 +5641,9 @@ AS
       ,iv_carrier_means    --  13.輸送手段
       ,iv_proc_date        --  14.処理日
       ,iv_proc_time        --  15.処理時刻
+/* 2010/06/11 Ver1.21 Add Start */
+      ,iv_slct_base_code   --  16.出力拠点コード
+/* 2010/06/11 Ver1.21 Add End */
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
