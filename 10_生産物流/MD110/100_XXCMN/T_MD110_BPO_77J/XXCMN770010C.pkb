@@ -7,7 +7,7 @@ AS
  * Description      : •W€Œ´‰¿“à–ó•\
  * MD.050/070       : ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/12/15    1.21  N.Yoshida        –{”ÔáŠQ727‘Î‰ž
  *  2008/12/22    1.22  N.Yoshida        –{”ÔáŠQ825A828‘Î‰ž
  *  2009/01/15    1.23  N.Yoshida        –{”ÔáŠQ1023‘Î‰ž
+ *  2009/03/10    1.24  A.Shiina         –{”ÔáŠQ1298‘Î‰ž
  *
  *****************************************************************************************/
 --
@@ -621,6 +622,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -676,6 +680,10 @@ AS
     || '  AND    xrpm.item_div_origin      IS NOT NULL'
     || '  AND    xrpm.item_div_ahead       IS NOT NULL'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select101_2 :=
@@ -711,6 +719,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -768,6 +779,10 @@ AS
 --    || '  AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,''04'',''1'',''08'',''2'')'
     || '  AND    xrpm.shipment_provision_div = ''1'''
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select101_3 :=
@@ -801,6 +816,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -855,6 +873,10 @@ AS
     || '  AND    xrpm.item_div_origin      IS NOT NULL'
     || '  AND    xrpm.item_div_ahead       IS NOT NULL'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select101_4 :=
@@ -890,6 +912,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -946,6 +971,10 @@ AS
 --    || '  AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,''04'',''1'',''08'',''2'')'
     || '  AND    xrpm.shipment_provision_div = ''1'''
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
       ;
 --
     --===============================================================
@@ -986,6 +1015,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1042,6 +1074,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''2'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select102_2 :=
@@ -1079,6 +1115,9 @@ AS
     || '        ,mtl_categories_b          mcb5'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1145,6 +1184,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''2'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select102_3 :=
@@ -1180,6 +1223,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1235,6 +1281,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''2'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select102_4 :=
@@ -1272,6 +1322,9 @@ AS
     || '        ,mtl_categories_b          mcb5'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1337,6 +1390,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''2'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -1374,6 +1431,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1429,6 +1489,10 @@ AS
     || '  AND    xrpm.item_div_origin      IS NOT NULL'
     || '  AND    xrpm.item_div_ahead       IS NOT NULL'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select103_2 :=
@@ -1462,6 +1526,9 @@ AS
     || '            ,mtl_categories_b          mcb3'
     || '            ,xxcmn_stnd_unit_price_v   xsup'
     || '            ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '      WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '      AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '      AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1516,6 +1583,10 @@ AS
     || '      AND    xrpm.item_div_origin      IS NOT NULL'
     || '      AND    xrpm.item_div_ahead       IS NOT NULL'
     || '      AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -1570,6 +1641,9 @@ AS
     || '        ,mtl_categories_b          mcb5'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1634,6 +1708,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''2'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select105_2 :=
@@ -1678,6 +1756,9 @@ AS
     || '        ,mtl_categories_b          mcb5'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1741,6 +1822,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''2'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -1783,6 +1868,9 @@ AS
     || '        ,ic_item_mst_b             iimb2'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1848,6 +1936,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''2'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select106_2 :=
@@ -1886,6 +1978,9 @@ AS
     || '        ,ic_item_mst_b             iimb2'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -1950,6 +2045,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''2'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
 -- 2008/12/02 v1.14 yoshida mod start
@@ -1999,6 +2098,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2049,6 +2151,10 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select107_2 :=
@@ -2093,6 +2199,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2142,6 +2251,10 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
 -- 2008/12/02 v1.14 yoshida mod end
@@ -2199,6 +2312,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2254,6 +2370,10 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select109_2 :=
@@ -2298,6 +2418,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2352,6 +2475,10 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -2400,6 +2527,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2452,6 +2582,10 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select111_2 :=
@@ -2496,6 +2630,9 @@ AS
     || '        ,mtl_categories_b          mcb4'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2547,6 +2684,10 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
 -- 2008/12/02 v1.14 yoshida mod end
@@ -2583,6 +2724,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itc.doc_type            = xrpm.doc_type'
     || '  AND    itc.reason_code         = xrpm.reason_code'
     || '  AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2614,6 +2758,10 @@ AS
     || '  AND    xrpm.reason_code        = ''' || cv_reason_code_henpin || ''''
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.break_col_10       IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itc.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select201_2 :=
@@ -2644,6 +2792,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    itp.trans_date            >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2715,6 +2866,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2764,6 +2918,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''3'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select202_03_2 :=
@@ -2798,6 +2956,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -2845,6 +3006,10 @@ AS
     || '  AND    xrpm.shipment_provision_div = ''3'''
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -2895,6 +3060,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type            = ''' || cv_doc_type_prod || ''''
     || '  AND    itp.completed_ind       = ''' || cv_completed_ind || ''''
     || '  AND    itp.reverse_id          IS NULL'
@@ -2933,6 +3101,10 @@ AS
     || '  AND    xrpm.break_col_10       IS NOT NULL'
     || '  AND    ( ( ( gmd.attribute5 IS NULL ) AND ( xrpm.hit_in_div IS NULL ) )'
     || '         OR ( xrpm.hit_in_div        = gmd.attribute5 ) )'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -2969,6 +3141,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type            = ''' || cv_doc_type_prod || ''''
     || '  AND    itp.completed_ind       = ''' || cv_completed_ind || ''''
     || '  AND    itp.reverse_id          IS NULL'
@@ -3027,6 +3202,10 @@ AS
     || '                  AND    gic.category_set_id = ''' || cn_item_class_id || ''''
     || '                  AND    gic.category_id = mcb.category_id'
     || '                  AND    mcb.segment1    = xrpm.item_div_ahead))'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -3071,6 +3250,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itc.doc_type            = xrpm.doc_type'
     || '  AND    itc.reason_code         = xrpm.reason_code'
 --    || '  AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3123,8 +3305,11 @@ AS
     || '                                      ''' || cv_rcv_pay_div_plus || ''''
     || '                                    ELSE xrpm.rcv_pay_div'
     || '                                  END'
-
 -- 2008/12/11 v1.18 UPDATE END
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itc.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select4xx_2 :=
@@ -3156,6 +3341,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type            = ''' || cv_doc_type_xfer || ''''
     || '  AND    itp.completed_ind       = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date          >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3193,6 +3381,10 @@ AS
     || '                                     ELSE ''' || cv_rcv_pay_div_minus || ''''
     || '                                   END'
     || '  AND    xrpm.break_col_10       IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select4xx_3 :=
@@ -3225,6 +3417,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itc.doc_type            = ''' || cv_doc_type_trni || ''''
     || '  AND    itc.reason_code         = ''' || gv_reason_code_trni || ''''
 --    || '  AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3266,6 +3461,10 @@ AS
     || '                                     ELSE ''' || cv_rcv_pay_div_minus || ''''
     || '                                   END'
     || '  AND    xrpm.break_col_10       IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itc.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -3321,6 +3520,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itc.doc_type            = xrpm.doc_type'
     || '  AND    itc.reason_code         = xrpm.reason_code'
     || '  AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3371,6 +3573,10 @@ AS
 -- 2008/11/19 v1.12 UPDATE END
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.break_col_10       IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itc.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select5xx_2 :=
@@ -3402,6 +3608,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itc.doc_type            = xrpm.doc_type'
     || '  AND    itc.reason_code         = xrpm.reason_code'
     || '  AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3433,6 +3642,10 @@ AS
     || '  AND    xrpm.reason_code        = ''' || cv_reason_code_hamaoka || ''''
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.break_col_10       IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itc.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select5xx_3 :=
@@ -3461,6 +3674,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itc.doc_type            = xrpm.doc_type'
     || '  AND    itc.reason_code         = xrpm.reason_code'
     || '  AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3494,6 +3710,10 @@ AS
 --    || '                                    ELSE ''' || cv_rcv_pay_div_minus || ''''
 --    || '                                  END'
 -- 2008/11/19 v1.12 DELETE END
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itc.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     --===============================================================
@@ -3528,6 +3748,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itc.doc_type            = xrpm.doc_type'
     || '  AND    itc.reason_code         = xrpm.reason_code'
     || '  AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3562,6 +3785,10 @@ AS
 --    || '                                    ELSE ''' || cv_rcv_pay_div_minus || ''''
 --    || '                                  END'
 -- 2008/12/13 v1.19 T.Ohashi mod end
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itc.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select504_09_2 :=
@@ -3599,6 +3826,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_porc || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3645,6 +3875,10 @@ AS
     || '  AND    xrpm.stock_adjustment_div = otta.attribute4'
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 --
     lv_select504_09_3 :=
@@ -3682,6 +3916,9 @@ AS
     || '        ,mtl_categories_b          mcb3'
     || '        ,xxcmn_stnd_unit_price_v   xsup'
     || '        ,xxcmn_rcv_pay_mst         xrpm'
+-- 2009/03/10 v1.24 ADD START
+    || '        ,ic_whse_mst               iwm'
+-- 2009/03/10 v1.24 ADD END
     || '  WHERE  itp.doc_type              = ''' || cv_doc_type_omso || ''''
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
 --    || '  AND    itp.trans_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
@@ -3727,6 +3964,10 @@ AS
     || '  AND    xrpm.stock_adjustment_div = otta.attribute4'
     || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
     || '  AND    xrpm.break_col_10         IS NOT NULL'
+-- 2009/03/10 v1.24 ADD START
+    || '  AND    iwm.whse_code             = itp.whse_code'
+    || '  AND    iwm.attribute1            = ''0'''
+-- 2009/03/10 v1.24 ADD END
     ;
 -- 2008/10/24 v1.10 ADD END
 -- 2008/10/24 v1.10 DELETE START

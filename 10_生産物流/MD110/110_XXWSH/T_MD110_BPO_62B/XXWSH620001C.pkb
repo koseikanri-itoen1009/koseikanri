@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 2.1
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,15 +33,16 @@ AS
  *  2008/09/26    1.2   Hitomi Itou        T_TE080_BPO_600 指摘38
  *                                         T_TE080_BPO_600 指摘37
  *                                         T_S_533(PT対応 動的SQLに変更)
- *  2008/10/03    1.3   Hitomi Itou        T_TE080_BPO_600 指摘37 在庫不足の場合、依頼数には不足数を表示する
+ *  2008/10/03    1.3   Hitomi Itou        T_TE080_BPO_600 指摘37 在庫不足の場合、ロット別数には不足数を表示する
  *  2008/11/13    1.4   Tsuyoki Yoshimoto  内部変更#168
  *  2008/12/10    1.5   T.Miyata           本番#637 パフォーマンス対応
  *  2008/12/10    1.6   Hitomi Itou        本番障害#650
  *  2009/01/07    1.7   Akiyoshi Shiina    本番障害#873
  *  2009/01/14    1.8   Hisanobu Sakuma    本番障害#661
  *  2009/01/20    1.9   Hisanobu Sakuma    本番障害#800
- *  2009/01/21    2.0   Hisanobu Sakuma    本番障害#1065
- *  2009/01/27    2.1   Hisanobu Sakuma    本番障害#1066
+ *  2009/01/21    1.10  Hisanobu Sakuma    本番障害#1065
+ *  2009/01/27    1.11  Hisanobu Sakuma    本番障害#1066
+ *  2009/03/06    1.12  Yuki Kazama        本番障害#785
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -228,9 +229,14 @@ AS
     ,prod_date         ilm.attribute1%TYPE                   -- 製造日
     ,best_before_date  ilm.attribute3%TYPE                   -- 賞味期限
     ,native_sign       ilm.attribute2%TYPE                   -- 固有記号
-    ,lot_no            xmld.lot_no%TYPE                      -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
+--    ,lot_no            xmld.lot_no%TYPE                      -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
     ,lot_status        xlvv.meaning%TYPE                     -- 品質
-    ,req_qty           NUMBER                                -- 依頼数
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
+    ,req_sum_qty       NUMBER                                -- 依頼数
+-- 2009/03/06 v1.12 Y.Kazama Add End   本番障害#785
+    ,req_qty           NUMBER                                -- ロット別数
     ,ins_qty           NUMBER                                -- 不足数
     ,reserve_order     xcav.reserve_order%TYPE               -- 引当順
     ,time_from         xoha.arrival_time_from%TYPE           -- 時間指定From
@@ -486,11 +492,11 @@ AS
 --        ,NULL                         AS  lot_no              -- ロットNo
 --        ,NULL                         AS  lot_status          -- 品質
 ---- 2008/09/26 H.Itou Mod Start T_TE080_BPO_600指摘37対応
-----        ,TO_NUMBER(0)                 AS  req_qty             -- 依頼数
+----        ,TO_NUMBER(0)                 AS  req_qty             -- ロット別数
 --        ,CASE 
 --           WHEN ximv.conv_unit IS NULL THEN xola.quantity 
 --           ELSE                            (xola.quantity / ximv.num_of_cases) 
---         END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘37対応
+--         END                          AS  req_qty '                 -- ロット別数 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘37対応
 ---- 2008/09/26 H.Itou Mod End
 --        ,CASE
 --          WHEN ximv.conv_unit IS NULL THEN
@@ -648,7 +654,7 @@ AS
 --                                           ELSE TO_CHAR(1)
 --                                         END)
 --          )
---         END                          AS  req_qty             -- 依頼数
+--         END                          AS  req_qty             -- ロット別数
 --        ,TO_NUMBER(0)                 AS  ins_qty             -- 不足数
 --        ,xcav.reserve_order           AS  reserve_order       -- 引当順
 --        ,xoha.arrival_time_from       AS  time_from           -- 時間指定From
@@ -915,11 +921,11 @@ AS
 --        ,NULL                         AS  lot_no              -- ロットNo
 --        ,NULL                         AS  lot_status          -- 品質
 ---- 2008/09/26 H.Itou Mod Start T_TE080_BPO_600指摘37対応
-----        ,TO_NUMBER(0)                 AS  req_qty             -- 依頼数
+----        ,TO_NUMBER(0)                 AS  req_qty             -- ロット別数
 --        ,CASE 
 --           WHEN ximv.conv_unit IS NULL THEN xmril.instruct_qty 
 --           ELSE                            (xmril.instruct_qty / ximv.num_of_cases) 
---         END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘37対応
+--         END                          AS  req_qty '                 -- ロット別数 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘37対応
 ---- 2008/09/26 H.Itou Mod End
 --        ,CASE
 --          WHEN ximv.conv_unit IS NULL THEN
@@ -1042,7 +1048,7 @@ AS
 --                                           ELSE TO_CHAR(1)
 --                                         END)
 --          )
---         END                          AS  req_qty             -- 依頼数
+--         END                          AS  req_qty             -- ロット別数
 --        ,TO_NUMBER(0)                 AS  ins_qty             -- 不足数
 --        ,NULL                         AS  reserve_order       -- 引当順
 --        ,xmrih.arrival_time_from      AS  time_from           -- 時間指定From
@@ -1303,12 +1309,12 @@ AS
 ---- 2009/01/20 v1.9 ADD START
 --    lv_req_move_no       xoha.request_no%TYPE DEFAULT NULL ;                -- 依頼No/移動No
 ---- 2009/01/20 v1.9 ADD END
--- 2009/01/21 v2.0 ADD START
+-- 2009/01/21 v1.10 ADD START
     lv_block_cd_null          xilv.distribution_block%TYPE DEFAULT NULL ;        -- 空白項目作成用（ブロックコード）
     lv_tmp_shipped_cd_null    type_report_data.shipped_cd%TYPE DEFAULT NULL ;    -- 空白項目作成用（出庫元コード）
     lv_tmp_item_cd_null       type_report_data.item_cd%TYPE DEFAULT NULL ;       -- 空白項目作成用（品目コード）
     lv_req_move_no_null       xoha.request_no%TYPE DEFAULT NULL ;                -- 空白項目作成用（依頼No/移動No）
--- 2009/01/21 v2.0 ADD END
+-- 2009/01/21 v1.10 ADD END
 --
   BEGIN
 --
@@ -1571,17 +1577,31 @@ AS
     || '     WHEN xola.warning_date IS NULL THEN xola.designated_production_date '
     || '     ELSE xola.warning_date '
     || '   END                          AS  de_prod_date '            -- 指定製造日
--- 2009/01/27 v2.1 MOD START
+-- 2009/01/27 v1.11 MOD START
 --    || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
     || '  ,NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD'')) '
--- 2009/01/27 v2.1 MOD END
+-- 2009/01/27 v1.11 MOD END
     || '                                AS  de_prod_date_sort '       -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,NULL                         AS  prod_date '               -- 製造日
     || '  ,NULL                         AS  best_before_date '        -- 賞味期限
     || '  ,NULL                         AS  native_sign '             -- 固有記号
-    || '  ,NULL                         AS  lot_no '                  -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
+--    || '  ,NULL                         AS  lot_no '                  -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
     || '  ,NULL                         AS  lot_status '              -- 品質
--- 2008/10/03 H.Itou Mod Start T_TE080_BPO_600指摘37 在庫不足の場合、依頼数には不足数を表示
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
+    || '  ,CASE '
+    || '     WHEN ximv.conv_unit IS NULL THEN '
+    || '       xola.quantity '
+    || '     ELSE (xola.quantity '
+    || '            / TO_NUMBER( '
+    || '                CASE  '
+    || '                  WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                  ELSE TO_CHAR(1) '
+    || '                END)) '
+    || '   END                          AS  req_sum_qty '             -- 依頼数
+-- 2009/03/06 v1.12 Y.Kazama Add End   本番障害#785
+-- 2008/10/03 H.Itou Mod Start T_TE080_BPO_600指摘37 在庫不足の場合、ロット別数には不足数を表示
 --    || '  ,CASE '
 --    || '     WHEN ximv.conv_unit IS NULL THEN xola.quantity '
 --    || '     ELSE                            (xola.quantity / ximv.num_of_cases) '
@@ -1595,7 +1615,7 @@ AS
     || '                  ELSE TO_CHAR(1) '
     || '                END)) '
 -- 2008/10/03 H.Itou Mod End
-    || '   END                          AS  req_qty '                 -- 依頼数
+    || '   END                          AS  req_qty '                 -- ロット別数
     || '  ,CASE '
     || '     WHEN ximv.conv_unit IS NULL THEN '
     || '       (xola.quantity - NVL(xola.reserved_quantity, 0)) '
@@ -1747,16 +1767,29 @@ AS
     || '     WHEN xola.warning_date IS NULL THEN xola.designated_production_date '
     || '     ELSE xola.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
--- 2009/01/27 v2.1 MOD START
+-- 2009/01/27 v1.11 MOD START
 --    || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
     || '  ,NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD'')) '
--- 2009/01/27 v2.1 MOD END
+-- 2009/01/27 v1.11 MOD END
     || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
     || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
     || '  ,ilm.attribute2               AS  native_sign '        -- 固有記号
-    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
+--    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
     || '  ,xlvv3.meaning                AS  lot_status '         -- 品質
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
+    || '  ,CASE '
+    || '    WHEN ximv.conv_unit IS NULL THEN xola.quantity '
+    || '    ELSE (xola.quantity '
+    || '          / TO_NUMBER( '
+    || '              CASE '
+    || '                WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                ELSE TO_CHAR(1) '
+    || '              END)) '
+    || '   END                          AS  req_sum_qty '        -- 依頼数
+-- 2009/03/06 v1.12 Y.Kazama Add End   本番障害#785
     || '  ,CASE '
     || '    WHEN ximv.conv_unit IS NULL THEN xmld.actual_quantity '
     || '    ELSE (xmld.actual_quantity '
@@ -1765,7 +1798,7 @@ AS
     || '                WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
     || '                ELSE TO_CHAR(1) '
     || '              END)) '
-    || '   END                          AS  req_qty '            -- 依頼数
+    || '   END                          AS  req_qty '            -- ロット別数
     || '  ,TO_NUMBER(0)                 AS  ins_qty '            -- 不足数
     || '  ,xcav.reserve_order           AS  reserve_order '      -- 引当順
     || '  ,xoha.arrival_time_from       AS  time_from '          -- 時間指定From
@@ -1928,17 +1961,31 @@ AS
     || '    WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date '
     || '    ELSE xmril.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
--- 2009/01/27 v2.1 MOD START
+-- 2009/01/27 v1.11 MOD START
 --    || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
     || '  ,NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD'')) '
--- 2009/01/27 v2.1 MOD END
+-- 2009/01/27 v1.11 MOD END
     || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,NULL                         AS  prod_date '          -- 製造日
     || '  ,NULL                         AS  best_before_date '   -- 賞味期限
     || '  ,NULL                         AS  native_sign '        -- 固有記号
-    || '  ,NULL                         AS  lot_no '             -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
+--    || '  ,NULL                         AS  lot_no '             -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
     || '  ,NULL                         AS  lot_status '         -- 品質
--- 2008/10/03 H.Itou Mod Start T_TE080_BPO_600指摘37 在庫不足の場合、依頼数には不足数を表示
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
+    || '  ,CASE '
+    || '    WHEN ximv.conv_unit IS NULL THEN '
+    || '      xmril.instruct_qty '
+    || '    ELSE (xmril.instruct_qty '
+    || '          / TO_NUMBER( '
+    || '              CASE '
+    || '                WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                ELSE TO_CHAR(1) '
+    || '              END)) '
+    || '   END                          AS  req_sum_qty '        -- 依頼数
+-- 2009/03/06 v1.12 Y.Kazama Add End   本番障害#785
+-- 2008/10/03 H.Itou Mod Start T_TE080_BPO_600指摘37 在庫不足の場合、ロット別数には不足数を表示
 --    || '  ,CASE '
 --    || '     WHEN ximv.conv_unit IS NULL THEN xmril.instruct_qty '
 --    || '     ELSE                            (xmril.instruct_qty / ximv.num_of_cases) '
@@ -1952,7 +1999,7 @@ AS
     || '                ELSE TO_CHAR(1) '
     || '              END)) '
 -- 2008/10/03 H.Itou Mod End
-    || '   END                          AS  req_qty '            -- 依頼数
+    || '   END                          AS  req_qty '            -- ロット別数
     || '  ,CASE '
     || '    WHEN ximv.conv_unit IS NULL THEN '
     || '      (xmril.instruct_qty - NVL(xmril.reserved_quantity, 0)) '
@@ -2078,16 +2125,29 @@ AS
     || '     WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date '
     || '     ELSE xmril.warning_date '
     || '   END                          AS  de_prod_date '       -- 指定製造日
--- 2009/01/27 v2.1 MOD START
+-- 2009/01/27 v1.11 MOD START
 --    || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
     || '  ,NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD'')) '
--- 2009/01/27 v2.1 MOD END
+-- 2009/01/27 v1.11 MOD END
     || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_600指摘38対応
     || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
     || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
     || '  ,ilm.attribute2               AS  native_sign '        -- 固有記号
-    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
+--    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
     || '  ,xlvv2.meaning                AS  lot_status '         -- 品質
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
+    || '  ,CASE '
+    || '     WHEN ximv.conv_unit IS NULL THEN xmril.instruct_qty '
+    || '     ELSE (xmril.instruct_qty '
+    || '           / TO_NUMBER( '
+    || '               CASE '
+    || '                 WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                 ELSE TO_CHAR(1) '
+    || '               END)) '
+    || '   END                          AS  req_sum_qty '        -- 依頼数
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
     || '  ,CASE '
     || '     WHEN ximv.conv_unit IS NULL THEN xmld.actual_quantity '
     || '     ELSE (xmld.actual_quantity '
@@ -2096,7 +2156,7 @@ AS
     || '                 WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
     || '                 ELSE TO_CHAR(1) '
     || '               END)) '
-    || '   END                          AS  req_qty '            -- 依頼数
+    || '   END                          AS  req_qty '            -- ロット別数
     || '  ,TO_NUMBER(0)                 AS  ins_qty '            -- 不足数
     || '  ,NULL                         AS  reserve_order '      -- 引当順
     || '  ,xmrih.arrival_time_from      AS  time_from '          -- 時間指定From
@@ -2211,12 +2271,14 @@ AS
     || '  ,de_prod_date_sort  DESC '-- 06:指定製造日 2008/09/26 H.Itou Mod T_TE080_BPO_600指摘38対応
     || '  ,reserve_order  ASC '     -- 07:引当順
     || '  ,base_cd        ASC '     -- 08:管轄拠点
--- 2009/01/27 v2.1 ADD START
+-- 2009/01/27 v1.11 ADD START
     || '  ,delivery_to_cd ASC '     -- 配送先/入庫先
--- 2009/01/27 v2.1 ADD END
+-- 2009/01/27 v1.11 ADD END
     || '  ,time_from      ASC '     -- 09:時間指定From
     || '  ,req_move_no    ASC '     -- 10:依頼No/移動No
-    || '  ,lot_no         ASC '     -- 11:ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
+--    || '  ,lot_no         ASC '     -- 11:ロットNo
+-- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
     ;
 --
     -- ======================================
@@ -2357,7 +2419,7 @@ AS
           FOR ln_line_loop_cnt IN ln_report_data_fr..ln_report_data_to LOOP
             ln_report_data_cnt := ln_report_data_cnt + 1;
 -- 2009/01/20 v1.9 ADD START
--- 2009/01/21 v2.0 MOD START
+-- 2009/01/21 v1.10 MOD START
 --            -- 依頼No/移動Noが前のレコードと同じ場合
             -- 空白作成項目データの場合
 --            IF  (lv_req_move_no = gt_report_data(ln_line_loop_cnt).req_move_no) THEN
@@ -2365,7 +2427,7 @@ AS
             AND (lv_tmp_shipped_cd_null = gt_report_data(ln_line_loop_cnt).shipped_cd)        -- 空白項目作成用（出庫元コード）
             AND (lv_tmp_item_cd_null    = gt_report_data(ln_line_loop_cnt).item_cd)           -- 空白項目作成用（品目コード）
             AND (lv_req_move_no_null    = gt_report_data(ln_line_loop_cnt).req_move_no) THEN  -- 空白項目作成用（依頼No/移動No）
--- 2009/01/21 v2.0 MOD END
+-- 2009/01/21 v1.10 MOD END
               gt_report_data(ln_line_loop_cnt).req_move_no     :=  NULL;      -- 依頼No/移動No
               gt_report_data(ln_line_loop_cnt).base_cd         :=  NULL;      -- 管轄拠点
               gt_report_data(ln_line_loop_cnt).base_nm         :=  NULL;      -- 管轄拠点名称
@@ -2373,18 +2435,21 @@ AS
               gt_report_data(ln_line_loop_cnt).delivery_to_nm  :=  NULL;      -- 配送先名称
               gt_report_data(ln_line_loop_cnt).description     :=  NULL;      -- 摘要
               gt_report_data(ln_line_loop_cnt).conf_req        :=  NULL;      -- 確認依頼
--- 2009/01/21 v2.0 MOD START
+-- 2009/01/21 v1.10 MOD START
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
+              gt_report_data(ln_line_loop_cnt).req_sum_qty     :=  NULL;      -- 依頼数
+-- 2009/03/06 v1.12 Y.Kazama Add End   本番障害#785
 --            -- 依頼No/移動Noが前のレコードと異なる場合
             -- 空白作成項目データでない場合
--- 2009/01/21 v2.0 MOD END
+-- 2009/01/21 v1.10 MOD END
             ELSE
--- 2009/01/21 v2.0 MOD START
+-- 2009/01/21 v1.10 MOD START
 --              lv_req_move_no := gt_report_data(ln_line_loop_cnt).req_move_no;
               lv_block_cd_null       := gt_report_data(ln_line_loop_cnt).block_cd;        -- 空白項目作成用（ブロックコード）
               lv_tmp_shipped_cd_null := gt_report_data(ln_line_loop_cnt).shipped_cd;      -- 空白項目作成用（出庫元コード）
               lv_tmp_item_cd_null    := gt_report_data(ln_line_loop_cnt).item_cd;         -- 空白項目作成用（品目コード）
               lv_req_move_no_null    := gt_report_data(ln_line_loop_cnt).req_move_no;     -- 空白項目作成用（依頼No/移動No）
--- 2009/01/21 v2.0 MOD END
+-- 2009/01/21 v1.10 MOD END
             END IF;
 -- 2009/01/20 v1.9 ADD END
             lt_report_data(ln_report_data_cnt) := gt_report_data(ln_line_loop_cnt);
@@ -2407,7 +2472,7 @@ AS
       FOR ln_line_loop_cnt IN ln_report_data_fr..ln_report_data_to LOOP
           ln_report_data_cnt := ln_report_data_cnt + 1;
 -- 2009/01/20 v1.9 ADD START
--- 2009/01/21 v2.0 MOD START
+-- 2009/01/21 v1.10 MOD START
 --          -- 依頼No/移動Noが前のレコードと同じ場合
           -- 空白作成項目データの場合
 --          IF  (lv_req_move_no = gt_report_data(ln_line_loop_cnt).req_move_no) THEN
@@ -2415,7 +2480,7 @@ AS
           AND (lv_tmp_shipped_cd_null = gt_report_data(ln_line_loop_cnt).shipped_cd)        -- 空白項目作成用（出庫元コード）
           AND (lv_tmp_item_cd_null    = gt_report_data(ln_line_loop_cnt).item_cd)           -- 空白項目作成用（品目コード）
           AND (lv_req_move_no_null    = gt_report_data(ln_line_loop_cnt).req_move_no) THEN  -- 空白項目作成用（依頼No/移動No）
--- 2009/01/21 v2.0 MOD END
+-- 2009/01/21 v1.10 MOD END
             gt_report_data(ln_line_loop_cnt).req_move_no     :=  NULL;      -- 依頼No/移動No
             gt_report_data(ln_line_loop_cnt).base_cd         :=  NULL;      -- 管轄拠点
             gt_report_data(ln_line_loop_cnt).base_nm         :=  NULL;      -- 管轄拠点名称
@@ -2423,15 +2488,19 @@ AS
             gt_report_data(ln_line_loop_cnt).delivery_to_nm  :=  NULL;      -- 配送先名称
             gt_report_data(ln_line_loop_cnt).description     :=  NULL;      -- 摘要
             gt_report_data(ln_line_loop_cnt).conf_req        :=  NULL;      -- 確認依頼
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
+            gt_report_data(ln_line_loop_cnt).req_sum_qty     :=  NULL;      -- 依頼数
+-- 2009/03/06 v1.12 Y.Kazama Add End   本番障害#785
+
           -- 依頼No/移動Noが前のレコードと異なる場合
           ELSE
--- 2009/01/21 v2.0 MOD START
+-- 2009/01/21 v1.10 MOD START
 --            lv_req_move_no := gt_report_data(ln_line_loop_cnt).req_move_no;
             lv_block_cd_null       := gt_report_data(ln_line_loop_cnt).block_cd;        -- 空白項目作成用（ブロックコード）
             lv_tmp_shipped_cd_null := gt_report_data(ln_line_loop_cnt).shipped_cd;      -- 空白項目作成用（出庫元コード）
             lv_tmp_item_cd_null    := gt_report_data(ln_line_loop_cnt).item_cd;         -- 空白項目作成用（品目コード）
             lv_req_move_no_null    := gt_report_data(ln_line_loop_cnt).req_move_no;     -- 空白項目作成用（依頼No/移動No）
--- 2009/01/21 v2.0 MOD END
+-- 2009/01/21 v1.10 MOD END
           END IF;
 -- 2009/01/20 v1.9 ADD END
           lt_report_data(ln_report_data_cnt) := gt_report_data(ln_line_loop_cnt);
@@ -2615,8 +2684,13 @@ AS
       prc_set_tag_data('prod_date'       , gt_report_data(i).prod_date) ;
       prc_set_tag_data('best_before_date', gt_report_data(i).best_before_date) ;
       prc_set_tag_data('native_sign'     , gt_report_data(i).native_sign) ;
-      prc_set_tag_data('lot_no'          , gt_report_data(i).lot_no) ;
+-- 2009/03/06 v1.12 Y.Kazama Del Start 本番障害#785
+--      prc_set_tag_data('lot_no'          , gt_report_data(i).lot_no) ;
+-- 2009/03/06 v1.12 Y.Kazama Del End   本番障害#785
       prc_set_tag_data('lot_status'      , gt_report_data(i).lot_status) ;
+-- 2009/03/06 v1.12 Y.Kazama Add Start 本番障害#785
+      prc_set_tag_data('req_sum_qty'     , gt_report_data(i).req_sum_qty) ;
+-- 2009/03/06 v1.12 Y.Kazama Add End   本番障害#785
       prc_set_tag_data('req_qty'         , gt_report_data(i).req_qty) ;
       prc_set_tag_data('ins_qty'         , gt_report_data(i).ins_qty) ;
       prc_set_tag_data('/g_req_move_info') ;
