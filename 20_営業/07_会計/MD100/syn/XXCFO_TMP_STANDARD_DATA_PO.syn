@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfo_tmp_standard_data_po FOR xxcfo.xxcfo_tmp_standard_data_po;
