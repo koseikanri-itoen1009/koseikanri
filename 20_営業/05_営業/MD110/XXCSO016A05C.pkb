@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009-06-09    1.8   K.Hosoi          ＳＴ障害対応(T1_1154) 再修正
  *  2009-07-09    1.9   K.Hosoi          SCS障害管理番号(0000518) 対応
  *  2009-07-21    1.10  K.Hosoi          SCS障害管理番号(0000475) 対応
+ *  2009-08-06    1.11  K.Satomura       SCS障害管理番号(0000935) 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1044,48 +1045,60 @@ AS
     -- ===================================
     -- 拠点(部門)コード・顧客コードを抽出
     -- ===================================
-    IF ((l_get_rec.jotai_kbn1 = cv_jotai_kbn1_3) AND (l_get_rec.install_account_id IS NULL)) THEN
-      lv_sale_base_code   := NULL;  -- 拠点コードにNULLをセット
-      lv_account_number   := NULL;  -- 顧客コードにNULLをセット
-    ELSIF (l_get_rec.jotai_kbn1 IS NOT NULL) THEN
-      BEGIN
-        SELECT   (CASE
-                  WHEN l_get_rec.jotai_kbn1 = cv_jotai_kbn1_1
-                  THEN xcav.sale_base_code       -- 拠点(部門)コード
-                  WHEN l_get_rec.jotai_kbn1 = cv_jotai_kbn1_2
-                  THEN xcav.account_number       -- 顧客コード
-                  WHEN l_get_rec.jotai_kbn1 = cv_jotai_kbn1_3
-                  THEN NULL
-                  END) sale_base_code            -- 拠点(部門)コード
-                ,xcav.account_number             -- 顧客コード
-        INTO     lv_sale_base_code               -- 拠点(部門)コード
-                ,lv_account_number               -- 顧客コード
-        FROM     xxcso_cust_accounts_v xcav      -- 顧客マスタビュー
-        WHERE    xcav.cust_account_id = l_get_rec.install_account_id; -- アカウントID
+    /* 2009.08.06 K.Satomura 0000935対応 START */
+    --IF ((l_get_rec.jotai_kbn1 = cv_jotai_kbn1_3) AND (l_get_rec.install_account_id IS NULL)) THEN
+    /* 2009.08.06 K.Satomura 0000935対応 END */
+    lv_sale_base_code   := NULL;  -- 拠点コードにNULLをセット
+    lv_account_number   := NULL;  -- 顧客コードにNULLをセット
+    /* 2009.08.06 K.Satomura 0000935対応 START */
+    --ELSIF (l_get_rec.jotai_kbn1 IS NOT NULL) THEN
+    /* 2009.08.06 K.Satomura 0000935対応 END */
+    BEGIN
+      SELECT   (CASE
+                  WHEN l_get_rec.jotai_kbn1 = cv_jotai_kbn1_1 THEN
+                    xcav.sale_base_code       -- 拠点(部門)コード
+                  /* 2009.08.06 K.Satomura 0000935対応 START */
+                  --WHEN l_get_rec.jotai_kbn1 = cv_jotai_kbn1_2 THEN
+                  --  xcav.account_number       -- 顧客コード
+                  --WHEN l_get_rec.jotai_kbn1 = cv_jotai_kbn1_3 THEN
+                  --  NULL
+                  WHEN l_get_rec.jotai_kbn1 IN (cv_jotai_kbn1_2, cv_jotai_kbn1_3) THEN
+                    xcav.account_number       -- 顧客コード
+                  ELSE
+                    NULL
+                  /* 2009.08.06 K.Satomura 0000935対応 END */
+                END) sale_base_code            -- 拠点(部門)コード
+              ,xcav.account_number             -- 顧客コード
+      INTO     lv_sale_base_code               -- 拠点(部門)コード
+              ,lv_account_number               -- 顧客コード
+      FROM     xxcso_cust_accounts_v xcav      -- 顧客マスタビュー
+      WHERE    xcav.cust_account_id = l_get_rec.install_account_id; -- アカウントID
 
-      EXCEPTION
-        -- 検索結果がない場合、抽出失敗した場合
-        WHEN OTHERS THEN
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                             iv_application  => cv_app_name                   -- アプリケーション短縮名
-                            ,iv_name         => cv_tkn_number_07              -- メッセージコード
-                            ,iv_token_name1  => cv_tkn_proc_name              -- トークンコード1
-                            ,iv_token_value1 => cv_base_account_cd            -- トークン値1抽出処理名
-                            ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
-                            ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
-                            ,iv_token_name3  => cv_tkn_account_id             -- トークンコード3
-                            ,iv_token_value3 => l_get_rec.install_account_id  -- トークン値3所有者アカウントID
-                            ,iv_token_name4  => cv_tkn_location_cd            -- トークンコード4
-                            ,iv_token_value4 => lv_sale_base_code             -- トークン値4拠点(部門)コード
-                            ,iv_token_name5  => cv_tkn_customer_cd            -- トークンコード5
-                            ,iv_token_value5 => lv_account_number             -- トークン値5顧客コード
-                            ,iv_token_name6  => cv_tkn_err_msg                -- トークンコード6
-                            ,iv_token_value6 => SQLERRM                       -- トークン値6
-              );
-          lv_errbuf  := lv_errmsg;
-          RAISE select_error_expt;
-      END;
-    END IF;
+    EXCEPTION
+      -- 検索結果がない場合、抽出失敗した場合
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name                   -- アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_07              -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_proc_name              -- トークンコード1
+                          ,iv_token_value1 => cv_base_account_cd            -- トークン値1抽出処理名
+                          ,iv_token_name2  => cv_tkn_object_cd              -- トークンコード2
+                          ,iv_token_value2 => l_get_rec.install_code        -- トークン値2外部参照(物件コード)
+                          ,iv_token_name3  => cv_tkn_account_id             -- トークンコード3
+                          ,iv_token_value3 => l_get_rec.install_account_id  -- トークン値3所有者アカウントID
+                          ,iv_token_name4  => cv_tkn_location_cd            -- トークンコード4
+                          ,iv_token_value4 => lv_sale_base_code             -- トークン値4拠点(部門)コード
+                          ,iv_token_name5  => cv_tkn_customer_cd            -- トークンコード5
+                          ,iv_token_value5 => lv_account_number             -- トークン値5顧客コード
+                          ,iv_token_name6  => cv_tkn_err_msg                -- トークンコード6
+                          ,iv_token_value6 => SQLERRM                       -- トークン値6
+            );
+        lv_errbuf  := lv_errmsg;
+        RAISE select_error_expt;
+    END;
+    /* 2009.08.06 K.Satomura 0000935対応 START */
+    --END IF;
+    /* 2009.08.06 K.Satomura 0000935対応 END */
     -- 機器状態１が「2:滞留」の場合
     /* 2009.05.25 M.Maruyama T1_1154対応 START */
     /* 2009.04.08 K.Satomura T1_0365対応 START */
@@ -1473,45 +1486,52 @@ AS
     -- 先月末年月=業務月-１の場合
     ELSIF (l_get_rec.last_year_month = TO_CHAR(ADD_MONTHS(ld_bsnss_mnth,cn_mnth_shft),cv_yr_mnth_frmt)) THEN
       -- 先月末機器状態が3の場合
-      IF (l_get_rec.last_jotai_kbn = cv_jotai_kbn1_3) THEN
-        lv_last_month_base_cd   := NULL;                           -- 先月末拠点コードにNULLをセット
-        lv_lst_accnt_num        := l_get_rec.last_inst_cust_code;  -- 先月末顧客コードに先月末顧客コードをセット
-      ELSIF (l_get_rec.last_jotai_kbn IN (cv_jotai_kbn1_1,cv_jotai_kbn1_2)) THEN
-        BEGIN
-          SELECT   (CASE
-                    WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_1
-                    THEN xcav.past_sale_base_code  -- 前月売上拠点(部門)コード
-                    WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_2
-                    THEN xcav.account_number       -- 顧客コード
-                    END) last_month_base_cd
-                   ,l_get_rec.last_inst_cust_code  -- 先月末顧客コード
-            INTO   lv_last_month_base_cd           -- 先月末売上拠点コード
-                  ,lv_lst_accnt_num                -- 先月末顧客コード
-            FROM   xxcso_cust_accounts_v xcav      -- 顧客マスタビュー
-           WHERE   xcav.account_number = l_get_rec.last_inst_cust_code; -- 顧客コード
-        EXCEPTION
-          -- 検索結果がない場合、抽出失敗した場合
-          WHEN OTHERS THEN
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                               iv_application  => cv_app_name                    -- アプリケーション短縮名
-                              ,iv_name         => cv_tkn_number_07               -- メッセージコード
-                              ,iv_token_name1  => cv_tkn_proc_name               -- トークンコード1
-                              ,iv_token_value1 => cv_lst_bs_ccnt_cd              -- トークン値1抽出処理名
-                              ,iv_token_name2  => cv_tkn_object_cd               -- トークンコード2
-                              ,iv_token_value2 => l_get_rec.install_code         -- トークン値2外部参照(物件コード)
-                              ,iv_token_name3  => cv_tkn_account_id              -- トークンコード3
-                              ,iv_token_value3 => l_get_rec.install_account_id   -- トークン値3所有者アカウントID
-                              ,iv_token_name4  => cv_tkn_location_cd             -- トークンコード4
-                              ,iv_token_value4 => lv_last_month_base_cd          -- トークン値4拠点(部門)コード
-                              ,iv_token_name5  => cv_tkn_customer_cd             -- トークンコード5
-                              ,iv_token_value5 => l_get_rec.last_inst_cust_code  -- トークン値5先月末顧客コード
-                              ,iv_token_name6  => cv_tkn_err_msg                 -- トークンコード6
-                              ,iv_token_value6 => SQLERRM                        -- トークン値6
-                );
-            lv_errbuf  := lv_errmsg;
-            RAISE select_error_expt;
-        END;
-      END IF;
+      /* 2009.08.06 K.Satomura 0000935対応 START */
+      --IF (l_get_rec.last_jotai_kbn = cv_jotai_kbn1_3) THEN
+      --  lv_last_month_base_cd   := NULL;                           -- 先月末拠点コードにNULLをセット
+      --  lv_lst_accnt_num        := l_get_rec.last_inst_cust_code;  -- 先月末顧客コードに先月末顧客コードをセット
+      --ELSIF (l_get_rec.last_jotai_kbn IN (cv_jotai_kbn1_1,cv_jotai_kbn1_2)) THEN
+      /* 2009.08.06 K.Satomura 0000935対応 END */
+      BEGIN
+        SELECT (CASE
+                  WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_1 THEN
+                    xcav.past_sale_base_code  -- 前月売上拠点(部門)コード
+                  /* 2009.08.06 K.Satomura 0000935対応 START */
+                  --WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_2 THEN
+                  WHEN l_get_rec.last_jotai_kbn IN (cv_jotai_kbn1_2, cv_jotai_kbn1_3) THEN
+                  /* 2009.08.06 K.Satomura 0000935対応 END */
+                    xcav.account_number       -- 顧客コード
+                  END) last_month_base_cd
+               ,l_get_rec.last_inst_cust_code  -- 先月末顧客コード
+          INTO  lv_last_month_base_cd           -- 先月末売上拠点コード
+               ,lv_lst_accnt_num                -- 先月末顧客コード
+          FROM  xxcso_cust_accounts_v xcav      -- 顧客マスタビュー
+         WHERE  xcav.account_number = l_get_rec.last_inst_cust_code; -- 顧客コード
+      EXCEPTION
+        -- 検索結果がない場合、抽出失敗した場合
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_app_name                    -- アプリケーション短縮名
+                            ,iv_name         => cv_tkn_number_07               -- メッセージコード
+                            ,iv_token_name1  => cv_tkn_proc_name               -- トークンコード1
+                            ,iv_token_value1 => cv_lst_bs_ccnt_cd              -- トークン値1抽出処理名
+                            ,iv_token_name2  => cv_tkn_object_cd               -- トークンコード2
+                            ,iv_token_value2 => l_get_rec.install_code         -- トークン値2外部参照(物件コード)
+                            ,iv_token_name3  => cv_tkn_account_id              -- トークンコード3
+                            ,iv_token_value3 => l_get_rec.install_account_id   -- トークン値3所有者アカウントID
+                            ,iv_token_name4  => cv_tkn_location_cd             -- トークンコード4
+                            ,iv_token_value4 => lv_last_month_base_cd          -- トークン値4拠点(部門)コード
+                            ,iv_token_name5  => cv_tkn_customer_cd             -- トークンコード5
+                            ,iv_token_value5 => l_get_rec.last_inst_cust_code  -- トークン値5先月末顧客コード
+                            ,iv_token_name6  => cv_tkn_err_msg                 -- トークンコード6
+                            ,iv_token_value6 => SQLERRM                        -- トークン値6
+              );
+          lv_errbuf  := lv_errmsg;
+          RAISE select_error_expt;
+      END;
+      /* 2009.08.06 K.Satomura 0000935対応 START */
+      --END IF;
+      /* 2009.08.06 K.Satomura 0000935対応 END */
     END IF;
 --
     -- 取得した値をOUTパラメータに設定
