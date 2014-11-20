@@ -1,4 +1,0 @@
-f60gen module=$XXAU_TOP/forms/JA/XXINV500001F.fmb userid=apps/apps output_file=$XXINV_TOP/forms/JA/XXINV500001F.fmx
-f60gen module=$XXAU_TOP/forms/JA/XXINV540001F.fmb userid=apps/apps output_file=$XXINV_TOP/forms/JA/XXINV540001F.fmx
-f60gen module=$XXAU_TOP/forms/JA/XXINV540002F.fmb userid=apps/apps output_file=$XXINV_TOP/forms/JA/XXINV540002F.fmx
-f60gen module=$XXAU_TOP/forms/JA/XXINV580001F.fmb userid=apps/apps output_file=$XXINV_TOP/forms/JA/XXINV580001F.fmx
