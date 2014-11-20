@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/08/28    1.4   Oracle 山根 一浩 PT 2_1_12 #33,T_S_503対応
  *  2008/09/16    1.5   Y.Yamamoto       PT 2-1_12 #63
  *  2008/09/24    1.6   Y.Kawano         T_S_500対応
+ *  2008/10/02    1.7   Y.Yamamoto       PT 2-1_12 #85
  *
  *****************************************************************************************/
 --  
@@ -920,13 +921,21 @@ AS
                     xxwsh_order_lines_all xola,                                   -- ②受注明細アドオン
                     xxinv_mov_lot_details xmld,                                   -- ③移動ロット詳細(アドオン)
                     xxcmn_item_locations_v xilv,                                  -- ④⑤OPM保管場所情報VIEW
-                    mtl_system_items_b msib                                       -- ⑥品目マスタ
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--                    mtl_system_items_b msib                                       -- ⑥品目マスタ
+                    ic_item_mst_b iimb                                            -- ⑥品目マスタ
+-- 2008/10/02 v1.7 Y.Yamamoto Update End
               WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
               AND   xola.order_line_id           = xmld.mov_line_id               -- ②の受注明細アドオンID    = ③の明細ID
               AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
               AND   xilv.whse_code                = curr_whse_code_tbl(i)         -- ④の倉庫コード= D-2で取得した倉庫コード
-              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
-              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
+--              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   iimb.item_no                 = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xola.shipping_item_code      = iimb.item_no                   -- ②の出荷品目ID= ⑥の品目ID
+              AND   iimb.item_id                 = xmld.item_id                   -- ⑥の品目ID    = D-2で取得した品目ID
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
               AND   xoha.req_status              IN ('04','08')                   -- ①のステータス= "出荷実績計上済"
               AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
               AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
@@ -947,7 +956,9 @@ AS
                    )
               -- 2008/05/07 mod 日付TRUNC対応 end
               AND   xmld.lot_id = curr_lot_id_tbl(i)                              -- ③のロットid = d-2で取得したロットid
-              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+-- 2008/10/02 v1.7 Y.Yamamoto Delete Start
+--              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+-- 2008/10/02 v1.7 Y.Yamamoto Delete End
               GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
 --
             ELSE
@@ -958,14 +969,24 @@ AS
               FROM  xxwsh_order_headers_all xoha,                                 -- ①受注ヘッダアドオン
                     xxwsh_order_lines_all xola,                                   -- ②受注明細アドオン
                     xxcmn_item_locations_v xilv,                                  -- ④⑤OPM保管場所情報VIEW      
-                    mtl_system_items_b msib,                                      -- ⑥品目マスタ
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--                    mtl_system_items_b msib,                                      -- ⑥品目マスタ
+                    ic_item_mst_b iimb,                                           -- ⑥品目マスタ
+-- 2008/10/02 v1.7 Y.Yamamoto Update End
 	                  xxcmn_item_mst_v ximv                                         -- OPM品目情報VIEW
               WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
               AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
-              AND   msib.segment1                = ximv.item_no
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--              AND   msib.segment1                = ximv.item_no
+              AND   iimb.item_no                 = ximv.item_no
+-- 2008/10/02 v1.7 Y.Yamamoto Update End
               AND   xilv.whse_code               = curr_whse_code_tbl(i)          -- ④の倉庫コード= D-2で取得した倉庫コード
-              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
-              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
+--              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   iimb.item_no                 = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xola.shipping_item_code      = iimb.item_no                   -- ②の出荷品目ID= ⑥の品目ID
+-- 2008/10/02 v1.7 Y.Yamamoto Update End
               AND   xoha.req_status              IN ('04','08')                   -- ①のステータス= "出荷実績計上済"
               AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
               AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
@@ -983,7 +1004,9 @@ AS
                     OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
                    )
               -- 2008/05/07 mod 日付TRUNC対応 end
-              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+-- 2008/10/02 v1.7 Y.Yamamoto Delete Start
+--              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+-- 2008/10/02 v1.7 Y.Yamamoto Delete End
               GROUP BY xilv.whse_code, ximv.item_id;
 --
             END IF;
@@ -1231,13 +1254,21 @@ AS
                     xxwsh_order_lines_all xola,                                   -- ②受注明細アドオン
                     xxinv_mov_lot_details xmld,                                   -- ③移動ロット詳細(アドオン)
                     xxcmn_item_locations_v xilv,                                  -- ④⑤OPM保管場所情報VIEW   
-                    mtl_system_items_b msib                                       -- ⑥品目マスタ
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--                    mtl_system_items_b msib                                       -- ⑥品目マスタ
+                    ic_item_mst_b iimb                                            -- ⑥品目マスタ
+-- 2008/10/02 v1.7 Y.Yamamoto Update End
               WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
               AND   xola.order_line_id           = xmld.mov_line_id               -- ②の受注明細アドオンID    = ③の明細ID
               AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
               AND   xilv.whse_code                = pre_whse_code_tbl(i)          -- ④の倉庫コード= D-2で取得した倉庫コード
-              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
-              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
+--              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   iimb.item_no                 = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xola.shipping_item_code      = iimb.item_no                   -- ②の出荷品目ID= ⑥の品目ID
+              AND   iimb.item_id                 = xmld.item_id                   -- ⑥の品目ID    = D-2で取得した品目ID
+-- 2008/10/02 v1.7 Y.Yamamoto Update End
               AND   xoha.req_status              IN ('04','08')                   -- ①のステータス= "出荷実績計上済"
               AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
               AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
@@ -1258,7 +1289,9 @@ AS
                    )
               -- 2008/05/07 mod 日付TRUNC対応 end
               AND   xmld.lot_id = pre_lot_id_tbl(i)                               -- ③のロットid = d-2で取得したロットid
-              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+-- 2008/10/02 v1.7 Y.Yamamoto Delete Start
+--              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+-- 2008/10/02 v1.7 Y.Yamamoto Delete End
               GROUP BY xilv.whse_code, xmld.item_code, xmld.lot_no;
 --
             ELSE
@@ -1269,14 +1302,24 @@ AS
               FROM  xxwsh_order_headers_all xoha,                                 -- ①受注ヘッダアドオン
                     xxwsh_order_lines_all xola,                                   -- ②受注明細アドオン
                     xxcmn_item_locations_v xilv,                                  -- ④⑤OPM保管場所情報VIEW   
-                    mtl_system_items_b msib,                                      -- ⑥品目マスタ
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--                    mtl_system_items_b msib,                                      -- ⑥品目マスタ
+                    ic_item_mst_b iimb,                                           -- ⑥品目マスタ
+-- 2008/10/02 v1.7 Y.Yamamoto Update End
 	                  xxcmn_item_mst_v ximv                                       -- OPM品目情報VIEW
               WHERE xoha.order_header_id         = xola.order_header_id           -- ①の受注ヘッダアドオンID= ②の受注ヘッダアドオンID
               AND   xoha.deliver_from_id         = xilv.inventory_location_id     -- ①の出荷元ID= ⑤の保管倉庫ID
-              AND   msib.segment1                = ximv.item_no
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--              AND   msib.segment1                = ximv.item_no
+              AND   iimb.item_no                 = ximv.item_no
+-- 2008/10/02 v1.7 Y.Yamamoto Update End
               AND   xilv.whse_code                = pre_whse_code_tbl(i)          -- ④の倉庫コード= D-2で取得した倉庫コード
-              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
-              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
+--              AND   xola.shipping_inventory_item_id = msib.inventory_item_id      -- ②の出荷品目ID= ⑥の品目ID
+--              AND   msib.segment1                = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   iimb.item_no                 = lv_item_cd                     -- ⑥の品目コード= D-2で取得した品目コード
+              AND   xola.shipping_item_code      = iimb.item_no                   -- ②の出荷品目ID= ⑥の品目ID
+-- 2008/10/02 v1.7 Y.Yamamoto Update Start
               AND   xoha.req_status              IN ('04','08')                   -- ①のステータス= "出荷実績計上済"
               AND   xoha.latest_external_flag    = 'Y'                            -- ①の最新フラグ= "ON"
               AND   xola.delete_flag             = 'N'                            -- ②の削除フラグ= "OFF"
@@ -1294,7 +1337,9 @@ AS
                     OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
                    )
               -- 2008/05/07 mod 日付TRUNC対応 start
-              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+-- 2008/10/02 v1.7 Y.Yamamoto Delete Start
+--              AND   msib.organization_id         = lv_orgid_div                   -- ⑥組織ID = プロファイル：マスタ組織ID
+-- 2008/10/02 v1.7 Y.Yamamoto Delete End
               GROUP BY xilv.whse_code, ximv.item_id;
 --
             END IF;

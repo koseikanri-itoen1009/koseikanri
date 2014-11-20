@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/09/17    1.17  Yasuhisa Yamamoto  PT 2_1_12 #63
  *  2008/09/19    1.18  Yasuhisa Yamamoto  T_TE080_BPO_550 #32#33,T_S_466,変更#171
  *  2008/09/22    1.19  Yasuhisa Yamamoto  PT 2_1_12 #63 再改修
+ *  2008/10/02    1.20  Yasuhisa Yamamoto  PT 2-1_12 #85
  *
  *****************************************************************************************/
 --
@@ -934,7 +935,10 @@ AS
     IS
 -- 08/09/22 Y.Yamamoto ADD v1.19 Start
 --    SELECT xilv.whse_code                                       -- 倉庫コード
-    SELECT /*+ no_merge(xrpm) leading(xrpm) use_nl(xilv.iwm) */ xilv.whse_code -- 倉庫コード
+-- 08/10/02 Y.Yamamoto Update v1.20 Start
+--    SELECT /*+ no_merge(xrpm) leading(xrpm) use_nl(xilv.iwm) */ xilv.whse_code -- 倉庫コード
+    SELECT xilv.whse_code                                       -- 倉庫コード
+-- 08/10/02 Y.Yamamoto Update v1.20 End
 -- 08/09/22 Y.Yamamoto ADD v1.19 End
           ,ximv.item_id                                         -- 品目ID
           ,ximv.item_no                                         -- 品目コード
@@ -972,7 +976,10 @@ AS
           ,ic_lots_mst                               ilm        -- OPMロットマスタ
 -- 08/09/22 Y.Yamamoto ADD v1.19 Start
 --          ,(SELECT  xrpmv.whse_code                             -- 倉庫コード
-          ,(SELECT /*+ no_merge(xrpmv) */ xrpmv.whse_code       -- 倉庫コード
+-- 08/10/02 Y.Yamamoto Update v1.20 Start
+--          ,(SELECT /*+ no_merge(xrpmv) */ xrpmv.whse_code       -- 倉庫コード
+          ,(SELECT  xrpmv.whse_code                             -- 倉庫コード
+-- 08/10/02 Y.Yamamoto Update v1.20 End
 -- 08/09/22 Y.Yamamoto ADD v1.19 End
                    ,xrpmv.location                              -- 保管倉庫コード
                    ,xrpmv.item_id                               -- 品目ID
@@ -1706,7 +1713,10 @@ AS
     )
     --倉庫コードによる絞込み
     AND (in_whse_code1 IS NULL AND in_whse_code2 IS NULL AND in_whse_code3 IS NULL
-      OR xilv.whse_code IN (in_whse_code1,in_whse_code2,in_whse_code3)
+-- 08/10/02 Y.Yamamoto Update v1.20 Start
+--      OR xilv.whse_code IN (in_whse_code1,in_whse_code2,in_whse_code3)
+      OR xrpm.whse_code IN (in_whse_code1,in_whse_code2,in_whse_code3)
+-- 08/10/02 Y.Yamamoto Update v1.20 End
     )
     --物流ブロックによる絞込み
     AND (in_block_code1 IS NULL AND in_block_code2 IS NULL AND in_block_code3 IS NULL
@@ -1789,7 +1799,10 @@ AS
     IS
 -- 08/09/22 Y.Yamamoto ADD v1.19 Start
 --    SELECT xilv.whse_code                                       -- 倉庫コード
-    SELECT /*+ no_merge(xrpm) leading(xrpm) use_nl(xilv.iwm) */ xilv.whse_code -- 倉庫コード
+-- 08/10/02 Y.Yamamoto Update v1.20 Start
+--    SELECT /*+ no_merge(xrpm) leading(xrpm) use_nl(xilv.iwm) */ xilv.whse_code -- 倉庫コード
+    SELECT  xilv.whse_code                                      -- 倉庫コード
+-- 08/10/02 Y.Yamamoto Update v1.20 End
 -- 08/09/22 Y.Yamamoto ADD v1.19 End
           ,ximv.item_id                                         -- 品目ID
           ,ximv.item_no                                         -- 品目コード
@@ -1827,7 +1840,10 @@ AS
           ,ic_lots_mst                               ilm        -- OPMロットマスタ
 -- 08/09/22 Y.Yamamoto ADD v1.19 Start
 --          ,(SELECT  xrpmv.whse_code                             -- 倉庫コード
-          ,(SELECT /*+ no_merge(xrpmv) */ xrpmv.whse_code       -- 倉庫コード
+-- 08/10/02 Y.Yamamoto Update v1.20 Start
+--          ,(SELECT /*+ no_merge(xrpmv) */ xrpmv.whse_code       -- 倉庫コード
+          ,(SELECT  xrpmv.whse_code                             -- 倉庫コード
+-- 08/10/02 Y.Yamamoto Update v1.20 End
 -- 08/09/22 Y.Yamamoto ADD v1.19 End
                    ,xrpmv.location                              -- 保管倉庫コード
                    ,xrpmv.item_id                               -- 品目ID
@@ -2561,7 +2577,10 @@ AS
     )
     --倉庫コードによる絞込み
     AND (in_whse_code1 IS NULL AND in_whse_code2 IS NULL AND in_whse_code3 IS NULL
-      OR xilv.whse_code IN (in_whse_code1,in_whse_code2,in_whse_code3)
+-- 08/10/02 Y.Yamamoto Update v1.20 Start
+--      OR xilv.whse_code IN (in_whse_code1,in_whse_code2,in_whse_code3)
+      OR xrpm.whse_code IN (in_whse_code1,in_whse_code2,in_whse_code3)
+-- 08/10/02 Y.Yamamoto Update v1.20 End
     )
     --物流ブロックによる絞込み
     AND (in_block_code1 IS NULL AND in_block_code2 IS NULL AND in_block_code3 IS NULL
