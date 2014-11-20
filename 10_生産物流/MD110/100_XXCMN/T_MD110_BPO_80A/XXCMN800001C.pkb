@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -88,6 +88,7 @@ AS
  *  2008/10/01    1.10  Oracle 椎名 昭圭 統合障害#291対応
  *  2008/10/07    1.11  Oracle 椎名 昭圭 T_S_550対応
  *  2009/01/09    1.12  Oracle 椎名 昭圭 本番#857対応
+ *  2009/02/25    1.13  Oracle 椎名 昭圭 本番#1235対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7091,6 +7092,10 @@ AS
     lv_address_line1   xxcmn_parties.address_line1%TYPE;
     lv_address_line2   xxcmn_parties.address_line2%TYPE;
 --
+-- 2009/02/25 v1.13 ADD START
+    ln_lenb            NUMBER;
+--
+-- 2009/02/25 v1.13 ADD END
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -7113,9 +7118,15 @@ AS
 --
       -- 拠点インタフェース
       IF (ir_masters_rec.tbl_kbn = gn_kbn_party) THEN
-        lv_address_line1 := SUBSTR(ir_masters_rec.address,1,15);
-        lv_address_line2 := SUBSTR(ir_masters_rec.address,31,15);
+-- 2009/02/25 v1.13 ADD START
+--        lv_address_line1 := SUBSTR(ir_masters_rec.address,1,15);
+--        lv_address_line2 := SUBSTR(ir_masters_rec.address,31,15);
 --
+        lv_address_line1 := RTRIM(SUBSTRB(ir_masters_rec.address, 1, 30));
+        ln_lenb          := TO_NUMBER(LENGTHB(lv_address_line1)) + 1;
+        lv_address_line2 := RTRIM(SUBSTRB(ir_masters_rec.address, ln_lenb, 30));
+--
+-- 2009/02/25 v1.13 ADD END
         INSERT INTO xxcmn_parties
           (party_id
           ,start_date_active
@@ -7199,8 +7210,15 @@ AS
 --
       -- 拠点インタフェース
       IF (ir_masters_rec.tbl_kbn = gn_kbn_party) THEN
-        lv_address_line1 := SUBSTR(ir_masters_rec.address,1,15);
-        lv_address_line2 := SUBSTR(ir_masters_rec.address,31,15);
+-- 2009/02/25 v1.13 ADD START
+--        lv_address_line1 := SUBSTR(ir_masters_rec.address,1,15);
+--        lv_address_line2 := SUBSTR(ir_masters_rec.address,31,15);
+--
+        lv_address_line1 := RTRIM(SUBSTRB(ir_masters_rec.address, 1, 30));
+        ln_lenb          := TO_NUMBER(LENGTHB(lv_address_line1)) + 1;
+        lv_address_line2 := RTRIM(SUBSTRB(ir_masters_rec.address, ln_lenb, 30));
+--
+-- 2009/02/25 v1.13 ADD END
 --
         UPDATE xxcmn_parties SET
            party_name             = ir_masters_rec.party_name             --正式名
