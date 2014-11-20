@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A01C(body)
  * Description      : 運送費予算算出
  * MD.050           : 運送費予算算出 MD050_COK_023_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/03/25    1.4   A.Yano           [障害T1_0064] オープン年度を取得する条件追加
  *  2009/05/12    1.5   A.Yano           [障害T1_0772] 設定単価エラーメッセージに品目コード追加
  *  2009/09/03    1.6   S.Moriyama       [障害0001257] OPM品目マスタ取得条件追加
+ *  2010/07/09    1.7   H.Sasaki         [E_本稼動_03494] ドリンク振替運賃アドオンの有効チェック修正
  *
  *****************************************************************************************/
 --
@@ -109,6 +110,9 @@ AS
   cv_nodata_case_qty        CONSTANT VARCHAR2(1)  := '0';                         -- 未取得
   -- 顧客区分
   cv_customer_class_code    CONSTANT VARCHAR2(1)  := '1';                         -- 拠点
+-- == 2010/07/09 V1.7 Added START ===============================================================
+  cn_year_5                 CONSTANT NUMBER(1)    := 5;                           --  年度切替月（５月）
+-- == 2010/07/09 V1.7 Added END   ===============================================================
   -- ===============================
   -- グローバル変数
   -- ===============================
@@ -681,17 +685,30 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_prg_name   CONSTANT VARCHAR2(20) := 'get_drink_dlv_cost'; -- プログラム名
+    cv_prg_name     CONSTANT VARCHAR2(20) := 'get_drink_dlv_cost'; -- プログラム名
     -- *** ローカル変数 ***
-    lv_errbuf     VARCHAR2(5000);    -- エラー・メッセージ
-    lv_retcode    VARCHAR2(1);       -- リターン・コード
-    lv_errmsg     VARCHAR2(5000);    -- ユーザー・エラー・メッセージ
-    lv_out_msg    VARCHAR2(2000);    -- 出力メッセージ
-    lb_retcode    BOOLEAN;           -- メッセージ出力のリターン・コード
+    lv_errbuf       VARCHAR2(5000);     --  エラー・メッセージ
+    lv_retcode      VARCHAR2(1);        --  リターン・コード
+    lv_errmsg       VARCHAR2(5000);     --  ユーザー・エラー・メッセージ
+    lv_out_msg      VARCHAR2(2000);     --  出力メッセージ
+    lb_retcode      BOOLEAN;            --  メッセージ出力のリターン・コード
+-- == 2010/07/09 V1.7 Added START ===============================================================
+    ld_target_date  DATE;               --  マスタ有効チェック用日付
+-- == 2010/07/09 V1.7 Added END   ===============================================================
 --
   BEGIN
 --
     ov_retcode := cv_status_normal;
+--
+-- == 2010/07/09 V1.7 Added START ===============================================================
+    IF  (it_target_month <  cn_year_5) THEN
+      --  対象月が１月から４月の場合
+      ld_target_date  :=  TO_DATE(it_budget_year + 1 || TO_CHAR(it_target_month, 'FM00'), 'YYYYMM');
+    ELSE
+      --  対象月が上記以外の場合
+      ld_target_date  :=  TO_DATE(it_budget_year || TO_CHAR(it_target_month, 'FM00'), 'YYYYMM');
+    END IF;
+-- == 2010/07/09 V1.7 Added END   ===============================================================
     -- ===============================
     -- ドリンク振替運賃アドオンマスタ情報取得
     -- ===============================
@@ -701,7 +718,10 @@ AS
     WHERE xdtd.godds_classification   = TO_CHAR( it_product_class )
     AND   xdtd.foothold_macrotaxonomy = it_base_major_division
     AND   xdtd.dellivary_classe       = cv_dellivary_classe
-    AND   TO_DATE( it_budget_year || TO_CHAR( it_target_month, 'FM00' ) , 'YYYYMM' )
+-- == 2010/07/09 V1.7 Modified START ===============================================================
+--    AND   TO_DATE( it_budget_year || TO_CHAR( it_target_month, 'FM00' ) , 'YYYYMM' )
+    AND   ld_target_date
+-- == 2010/07/09 V1.7 Modified END   ===============================================================
           BETWEEN xdtd.start_date_active AND NVL( xdtd.end_date_active, SYSDATE )
     ;
 --
