@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2008/04/17    1.1   Oracle 山根 一浩 変更要求No61 対応
  *  2008/05/15    1.2   Oracle 山根 一浩 変更要求No66 対応
  *  2008/05/27    1.3   Oracle 丸下 博宣 内部変更要求No122対応
+ *  2008/06/23    1.4   Oracle 山根 一浩 不具合No259対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5666,6 +5667,18 @@ AS
       -- 顧客・パーティマスタデータあり(有効)
       ELSIF (ln_kbn = gn_data_on) THEN
 --
+        -- 処理スキップ
+        set_warn_status(ir_status_rec,
+                        NULL,
+                        lv_errbuf,
+                        lv_retcode,
+                        lv_errmsg);
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+/* 2008.08.23 Mod ↓
         -- 登録分の重複チェックエラー
         set_error_status(ir_status_rec,
                          xxcmn_common_pkg.get_msg(gv_msg_kbn,
@@ -5679,6 +5692,7 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_api_expt;
         END IF;
+2008.08.23 Mod ↑*/
       END IF;
 --
       RAISE check_party_num_expt;
@@ -5864,6 +5878,7 @@ AS
 --
     -- *** ローカル変数 ***
     ln_kbn         NUMBER;
+    ln_p_kbn       NUMBER;
     lb_on_retcd    BOOLEAN;           -- 有効
     lb_off_retcd   BOOLEAN;           -- 無効
     lb_party_retcd BOOLEAN;           -- 拠点
@@ -5979,6 +5994,33 @@ AS
       -- パーティサイトマスタデータあり(有効)
       ELSIF (ln_kbn = gn_data_on) THEN
 --
+        -- ステータスチェック
+        chk_party_status(ir_masters_rec,
+                         ln_p_kbn,
+                         lv_errbuf,
+                         lv_retcode,
+                         lv_errmsg);
+--
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+
+        -- 顧客・パーティマスタデータなし
+        IF (ln_p_kbn <> gn_data_on) THEN
+--
+          -- 処理スキップ
+          set_warn_status(ir_status_rec,
+                          NULL,
+                          lv_errbuf,
+                          lv_retcode,
+                          lv_errmsg);
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_api_expt;
+          END IF;
+        END IF;
+--
+/* 2008.08.23 Mod ↓
         -- 登録分の重複チェックエラー
         set_error_status(ir_status_rec,
                          xxcmn_common_pkg.get_msg(gv_msg_kbn,
@@ -5992,6 +6034,7 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_api_expt;
         END IF;
+2008.08.23 Mod ↑ */
       END IF;
 --
       RAISE check_ship_to_code_expt;
@@ -8409,8 +8452,6 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
---TEST
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'proc_site');
 --
     -- 登録以外
     IF ((ir_masters_rec.proc_code <> gn_proc_insert)
@@ -8435,8 +8476,6 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'proc_site');
       ELSE
         ln_kbn := gn_kbn_site;
       END IF;
---TEST
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'ln_kbn:'||ln_kbn);
 --
       lv_validated_flag := ir_masters_rec.validated_flag;
       lv_status         := ir_masters_rec.status;
@@ -9802,7 +9841,13 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'ln_kbn:'||ln_kbn);
       ELSE
         -- 警告件数をカウントアップ
         IF (is_row_status_warn(lr_cust_sts_rec)) THEN
-          gn_c_warn_cnt := gn_c_warn_cnt + 1;
+          IF ((lr_masters_rec.k_proc_code = gn_proc_insert)
+           AND (lr_masters_rec.party_num IS NOT NULL)) THEN
+            lr_cust_sts_rec.file_level_status := gn_data_status_nomal;
+            gn_c_normal_cnt := gn_c_normal_cnt + 1;
+          ELSE
+            gn_c_warn_cnt := gn_c_warn_cnt + 1;
+          END IF;
 --
         -- 異常件数をカウントアップ
         ELSE

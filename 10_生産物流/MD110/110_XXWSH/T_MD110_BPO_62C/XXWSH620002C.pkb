@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,12 @@ AS
  *  2008/04/30    1.0   Yoshitomo Kawasaki 新規作成
  *  2008/06/04    1.1   Jun Nakada       出力担当部署の値をコードから名称に修正。GLOBAL変数名整理
  *                                       運送依頼元の名称を 部署=>会社名 から 会社名 => 部署に修正
+ *  2008/06/12    1.2   Kazuo Kumamoto   パラメータ.業務種別によって抽出対象を選択
+ *  2008/06/18    1.3   Kazuo Kumamoto   結合テスト障害対応
+ *                                       (配送No未設定の場合は数量合計、混在重量、混載体積を出力しない)
+ *  2008/06/23    1.4   Yoshikatsu Shindou 配送区分情報VIEWのリレーションを外部結合に変更
+ *                                         (システムテスト不具合#229)
+ *                                         小口区分が取得できない場合,重量容積合計をNULLとする。
  *
  *****************************************************************************************/
 --
@@ -631,6 +637,9 @@ AS
     lv_sql_ido_where1     VARCHAR2(32767);
     lv_sql_ido_where2     VARCHAR2(32767);
     lv_sql_tail           VARCHAR2(32767);
+--add start 1.2
+    lb_union              BOOLEAN := FALSE;
+--add end 1.2
 --
   BEGIN
 --
@@ -724,6 +733,9 @@ AS
     -- ====================================================
     -- 出荷情報
     -- ====================================================
+--add start 1.2
+  IF (NVL(gt_param.iv_gyoumu_shubetsu,gc_biz_type_cd_ship) = gc_biz_type_cd_ship) THEN
+--add end 1.2
     lv_sql_shu_sel_from1  :=  lv_sql_shu_sel_from1
     || ' SELECT ' 
     || ' '''|| gc_biz_type_nm_ship ||''' AS gyoumu_shubetsu ' 
@@ -759,9 +771,11 @@ AS
     || ' CASE ' 
     || ' WHEN ( xoha.weight_capacity_class = '''|| gc_wei_cap_kbn_w ||''' ) THEN' 
     || ' xoha.sum_weight' 
-    || ' WHEN ( xoha.weight_capacity_class = '''|| gc_wei_cap_kbn_c ||''' ) THEN' 
+    || ' WHEN ( xoha.weight_capacity_class = '''|| gc_wei_cap_kbn_c ||''' ) THEN'    
     || ' xoha.sum_capacity' 
     || ' END' 
+    || ' WHEN xsm2v.small_amount_class IS NULL THEN'   -- 6/23 追加
+    || ' NULL'
     || ' ELSE' 
     || ' CASE ' 
     || ' WHEN ( xoha.weight_capacity_class = '''|| gc_wei_cap_kbn_w ||''' ) THEN' 
@@ -918,7 +932,7 @@ AS
     -------------------------------------------------------------------------------
     -- 配送区分情報VIEW2
     -------------------------------------------------------------------------------
-    || ' AND xoha.shipping_method_code = xsm2v.ship_method_code' 
+    || ' AND xoha.shipping_method_code = xsm2v.ship_method_code(+)'  -- 6/23 外部結合追加
     ------------------------------------------------
     -- 受注タイプ情報VIEW2
     ------------------------------------------------
@@ -1111,8 +1125,19 @@ AS
     || ' )' 
     || ' )' 
     || ' )' 
-    || ' UNION ALL' ;
+--mod start 1.2
+--    || ' UNION ALL' ;
+    ;
+    lb_union := true;
+  END IF;
+--mod end 1.2
 --
+--add start 1.2
+  IF (NVL(gt_param.iv_gyoumu_shubetsu,gc_biz_type_cd_shikyu) = gc_biz_type_cd_shikyu) THEN
+    IF (lb_union) THEN
+      lv_sql_sik_sel_from1 := ' UNION ALL' ;
+    END IF;
+--add end 1.2
     lv_sql_sik_sel_from1  :=  lv_sql_sik_sel_from1
     --=====================================================================
     -- 支給情報
@@ -1267,7 +1292,7 @@ AS
     -------------------------------------------------------------------------------
     -- 配送区分情報VIEW2
     -------------------------------------------------------------------------------
-    || ' AND xoha.shipping_method_code = xsm2v.ship_method_code' 
+    || ' AND xoha.shipping_method_code = xsm2v.ship_method_code(+)'  -- 6/23 外部結合追加
     ------------------------------------------------
     -- 受注タイプ情報VIEW2
     ------------------------------------------------
@@ -1437,8 +1462,19 @@ AS
     || ' )' 
     || ' )' 
     || ' )' 
-    || ' UNION ALL' ;
+--mod start 1.2
+--    || ' UNION ALL' ;
+    ;
+    lb_union := true;
+  END IF;
+--mod end 1.2
 --
+--add start 1.2
+  IF (NVL(gt_param.iv_gyoumu_shubetsu,gc_biz_type_cd_move) = gc_biz_type_cd_move) THEN
+    IF (lb_union) THEN
+      lv_sql_ido_sel_from1 := ' UNION ALL' ;
+    END IF;
+--add end 1.2
     lv_sql_ido_sel_from1  :=  lv_sql_ido_sel_from1
     --=====================================================================
     -- 移動情報
@@ -1479,7 +1515,9 @@ AS
     || ' xmrih.sum_weight' 
     || ' WHEN ( xmrih.weight_capacity_class = '''|| gc_wei_cap_kbn_c ||''' ) THEN' 
     || ' xmrih.sum_capacity' 
-    || ' END' 
+    || ' END'
+    || ' WHEN  xsm2v.small_amount_class IS NULL THEN'   -- 6/23 追加
+    || ' NULL'
     || ' ELSE' 
     || ' CASE ' 
     || ' WHEN ( xmrih.weight_capacity_class = '''|| gc_wei_cap_kbn_w ||''' ) THEN' 
@@ -1632,7 +1670,7 @@ AS
     -------------------------------------------------------------------------------
     -- 配送区分情報VIEW2
     -------------------------------------------------------------------------------
-    || ' AND xmrih.shipping_method_code = xsm2v.ship_method_code' 
+    || ' AND xmrih.shipping_method_code = xsm2v.ship_method_code(+)'  -- 6/23 外部結合追加
     -------------------------------------------------------------------------------
     -- OPM保管場所マスタ（出）
     -------------------------------------------------------------------------------
@@ -1783,6 +1821,9 @@ AS
     || ' )' 
     || ' )' 
     || ' )' ;
+--add start 1.2
+  END IF;
+--add end 1.2
 --
     lv_sql_tail := lv_sql_tail
     || ' )' 
@@ -2062,10 +2103,25 @@ AS
         prcsub_set_xml_data('delivery_no'           , gt_report_data(i).delivery_no) ;
         prcsub_set_xml_data('delivery_kbn'          , gt_report_data(i).shipping_method_code) ;
         prcsub_set_xml_data('delivery_nm'           , gt_report_data(i).ship_method_meaning) ;
-        prcsub_set_xml_data('mixed_weight'          , gt_report_data(i).sum_loading_weight) ;
-        prcsub_set_xml_data('mixed_weight_tani'     , gv_uom_weight) ;
-        prcsub_set_xml_data('mixed_capacity'        , gt_report_data(i).sum_loading_capacity) ;
-        prcsub_set_xml_data('mixed_capacity_tani'   , gv_uom_capacity) ;
+--mod start 1.3
+--        prcsub_set_xml_data('mixed_weight'          , gt_report_data(i).sum_loading_weight) ;
+--        prcsub_set_xml_data('mixed_weight_tani'     , gv_uom_weight) ;
+--        prcsub_set_xml_data('mixed_capacity'        , gt_report_data(i).sum_loading_capacity) ;
+--        prcsub_set_xml_data('mixed_capacity_tani'   , gv_uom_capacity) ;
+        IF (gt_report_data(i).delivery_no IS NOT NULL) THEN
+          --配送Noが設定されている場合
+          prcsub_set_xml_data('mixed_weight'          , gt_report_data(i).sum_loading_weight) ;
+          prcsub_set_xml_data('mixed_weight_tani'     , gv_uom_weight) ;
+          prcsub_set_xml_data('mixed_capacity'        , gt_report_data(i).sum_loading_capacity) ;
+          prcsub_set_xml_data('mixed_capacity_tani'   , gv_uom_capacity) ;
+        ELSE
+          --配送Noが設定されていない場合
+          prcsub_set_xml_data('mixed_weight'          , NULL) ;
+          prcsub_set_xml_data('mixed_weight_tani'     , NULL) ;
+          prcsub_set_xml_data('mixed_capacity'        , NULL) ;
+          prcsub_set_xml_data('mixed_capacity_tani'   , NULL) ;
+        END IF;
+--mod end 1.3
         prcsub_set_xml_data('knkt_base_cd'          , gt_report_data(i).head_sales_branch) ;
         prcsub_set_xml_data('knkt_base_nm'          , gt_report_data(i).party_name) ;
         prcsub_set_xml_data('delivery_ship'         , gt_report_data(i).deliver_to) ;
@@ -2213,6 +2269,12 @@ AS
 --
         IF ( lb_dispflg_delivery_no ) THEN
           -- 依頼No/移動No単位の合計数量
+--add start 1.3
+          --配送Noが未設定の場合は配送No単位の数量合計は空欄とする
+          IF (gt_report_data(i).delivery_no IS NULL) THEN
+            lv_sum_quantity_deli := NULL;
+          END IF;
+--add end 1.3
           prcsub_set_xml_data('sum_quantity_deli'     , lv_sum_quantity_deli) ;
           -- 依頼No/移動No単位のクリア
           lv_sum_quantity_deli  :=  0;

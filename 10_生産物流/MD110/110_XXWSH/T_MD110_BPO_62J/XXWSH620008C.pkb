@@ -28,6 +28,8 @@ AS
  *  Date          Ver.  Editor             Description
  * ------------- ----- ------------------ -------------------------------------------------
  *  2008/03/25    1.0   Yoshitomo Kawasaki 新規作成
+ *  2008/06/23    1.1   Yoshikatsu Shindou 配送区分情報VIEWのリレーションを外部結合に変更
+ *                                         小口区分がNULLの時の処理を追加
  *
  *****************************************************************************************/
 --
@@ -508,6 +510,7 @@ AS
     lc_code_hanseihin               CONSTANT VARCHAR2(1)  :=  '4' ;         -- 半製品
     lc_item_cd_shizai               CONSTANT  VARCHAR2(1) :=  '2' ;          -- 資材
     lc_small_amount_enabled         CONSTANT VARCHAR2(1)  :=  '1' ;         -- 小口区分が対象
+    lc_small_amount_disabled        CONSTANT VARCHAR2(1)  :=  '0' ;         -- 小口区分が対象外
     lc_employee_division_inside     CONSTANT VARCHAR2(1)  :=  '1' ;         -- 従業員区分(1:内部)
     lc_employee_division_outside    CONSTANT VARCHAR2(1)  :=  '2' ;         -- 従業員区分(2:外部)
     lc_fixa_notif_end               CONSTANT VARCHAR2(2)  :=  '40' ;        -- 確定通知済
@@ -622,26 +625,34 @@ AS
                 ,CASE
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xoha.sum_weight
-                  ELSE
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
                     xoha.sum_weight + xoha.sum_pallet_weight
+                  ELSE
+                    NULL
                 END                               AS sum_weight     -- 合計重量(明細単位)
                 ,CASE
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xoha.sum_capacity
-                  ELSE
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
                     xoha.sum_capacity + xoha.sum_pallet_weight
+                  ELSE
+                    NULL
                 END                               AS sum_capacity   -- 合計容積(明細単位)
                 ,CASE
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xoha.sum_weight
-                  ELSE
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
                     xoha.sum_weight + xoha.sum_pallet_weight
+                  ELSE
+                    NULL
                 END                               AS sum_weight     -- 依頼重量(依頼合計単位)
                 ,CASE
-                  WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN   
                     xoha.sum_capacity
-                  ELSE
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
                     xoha.sum_capacity + xoha.sum_pallet_weight
+                  ELSE
+                    NULL
                 END                               AS sum_capacity   -- 依頼容積(依頼合計単位)
 --
       FROM
@@ -811,7 +822,7 @@ AS
       -------------------------------------------------------------------------------
       -------------------------------------------------------------------------------
       -- 配送区分(名称)
-      AND       xoha.shipping_method_code         =   xsm2v.ship_method_code
+      AND       xoha.shipping_method_code         =   xsm2v.ship_method_code(+)  -- 6/23 外部結合追加
       -------------------------------------------------------------------------------
 --
       ORDER BY
@@ -914,26 +925,34 @@ AS
                 ,CASE
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xmrih.sum_weight
-                  ELSE
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
                     xmrih.sum_weight + xmrih.sum_pallet_weight
+                  ELSE
+                    NULL
                 END                               AS sum_weight     -- 合計重量(明細単位)
                 ,CASE
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xmrih.sum_capacity
-                  ELSE
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
                     xmrih.sum_capacity + xmrih.sum_pallet_weight
+                  ELSE
+                    NULL
                 END                               AS sum_capacity   -- 合計容積(明細単位)
                 ,CASE
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xmrih.sum_weight
-                  ELSE
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
                     xmrih.sum_weight + xmrih.sum_pallet_weight
+                  ELSE
+                    NULL
                 END                               AS sum_weight     -- 依頼重量(依頼合計単位)
                 ,CASE
                   WHEN  xsm2v.small_amount_class    = lc_small_amount_enabled THEN
                     xmrih.sum_capacity
-                  ELSE
+                  WHEN  xsm2v.small_amount_class    = lc_small_amount_disabled THEN    -- 6/23 追加
                     xmrih.sum_capacity + xmrih.sum_pallet_weight
+                  ELSE
+                    NULL
                 END                               AS sum_capacity   -- 依頼容積(依頼合計単位)
 --
       FROM
@@ -979,7 +998,7 @@ AS
       AND       (in_delivery_no IS NULL
         OR        xmrih.delivery_no               =   in_delivery_no)
       AND       (in_addre_delivery_dest IS NULL
-        OR        xmrih.ship_to_locat_id          =   in_addre_delivery_dest)
+        OR        xmrih.ship_to_locat_code         =   in_addre_delivery_dest)
       AND       (in_request_movement_no IS NULL
         OR        xmrih.mov_num                   =   in_request_movement_no)
       -------------------------------------------------------------------------------
@@ -1083,7 +1102,7 @@ AS
       -------------------------------------------------------------------------------
       -------------------------------------------------------------------------------
       -- 配送区分(名称)
-      AND       xmrih.shipping_method_code        =   xsm2v.ship_method_code
+      AND       xmrih.shipping_method_code        =   xsm2v.ship_method_code(+)  -- 6/23 外部結合追加
       -------------------------------------------------------------------------------
 --
       ORDER BY
