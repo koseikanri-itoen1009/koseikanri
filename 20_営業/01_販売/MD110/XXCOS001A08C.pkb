@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *                                       [0001010] 従業員情報取得条件追加
  *  2009/08/21    1.18  N.Maeda          [0001141] 前月売上拠点考慮処理追加
  *  2009/09/04    1.19  N.Maeda          [0001211] 税関連項目取得基準日修正
+ *  2009/10/29    1.20  M.Sano           [0001373] 参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
  *
  *****************************************************************************************/
 --
@@ -2105,7 +2106,10 @@ AS
 -- ********** 2009/08/12 1.17 N.Maeda MOD START ************** --
           SELECT rin_v.base_code  base_code -- 拠点コード
           INTO   lt_dlv_base_code
-          FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+-- ********** 2009/10/30 1.20 M.Sano  MOD START ************** --
+--          FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+          FROM   xxcos_rs_info2_v  rin_v        -- 従業員情報view
+-- ********** 2009/10/30 1.20 M.Sano  MOD  END  ************** --
           WHERE  rin_v.employee_number = lt_dlv_by_code
           AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
           AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date
@@ -6048,7 +6052,10 @@ AS
 -- ********** 2009/08/12 1.17 N.Maeda MOD START ************** --
           SELECT rin_v.base_code  base_code -- 拠点コード
           INTO   lt_dlv_base_code
-          FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+-- ********** 2009/10/30 1.20 M.Sano  MOD START ************** --
+--          FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+          FROM   xxcos_rs_info2_v  rin_v        -- 従業員情報view
+-- ********** 2009/10/30 1.20 M.Sano  MOD  END  ************** --
           WHERE  rin_v.employee_number = lt_dlv_by_code
           AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
           AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date

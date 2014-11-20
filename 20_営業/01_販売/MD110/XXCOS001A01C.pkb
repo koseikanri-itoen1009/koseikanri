@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/09/01    1.15  N.Maeda          [0000929]リソースID取得条件変更[成績者⇒納品者]
  *                                                H/C妥当性チェックの実行条件修正
  *  2009/10/01    1.16  N.Maeda          [0001378]エラーリスト登録時登録桁数指定
+ *  2009/10/30    1.17  M.Sano           [0001373]参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
  *
  *****************************************************************************************/
 --
@@ -2410,7 +2411,10 @@ AS
         BEGIN
           SELECT rivp.base_code       base_code              -- 拠点コード（成績者）
           INTO   lt_base_perf
-          FROM   xxcos_rs_info_v      rivp                   -- 営業員情報view（成績者）
+-- ******* 2009/10/30 M.Sano  MOD START ********* --
+--          FROM   xxcos_rs_info_v      rivp                   -- 営業員情報view（成績者）
+          FROM   xxcos_rs_info2_v     rivp                   -- 営業員情報view（成績者）
+-- ******* 2009/10/30 M.Sano  MOD  END  ********* --
           WHERE  rivp.employee_number = lt_performance_code  -- 営業員情報view(成績者).顧客番号 = 抽出した成績者
           AND    lt_dlv_date >= NVL(rivp.effective_start_date, gd_process_date)-- 納品日の適用範囲
           AND   lt_dlv_date <= NVL(rivp.effective_end_date, gd_max_date)
@@ -2497,7 +2501,10 @@ AS
         BEGIN
           SELECT rivd.base_code       base_code                           -- 拠点コード（納品者）
           INTO   lt_base_dlv
-          FROM   xxcos_rs_info_v      rivd                    -- 営業員情報view（納品者）
+-- ******* 2009/10/30 M.Sano  MOD START ********* --
+--          FROM   xxcos_rs_info_v      rivd                    -- 営業員情報view（納品者）
+          FROM   xxcos_rs_info2_v     rivd                   -- 営業員情報view（納品者）
+-- ******* 2009/10/30 M.Sano  MOD  END  ********* --
           WHERE  rivd.employee_number = lt_dlv_code          -- 営業員情報view(納品者).顧客番号 = 抽出した納品者
           AND    lt_dlv_date >= NVL(rivd.effective_start_date, gd_process_date)-- 納品日の適用範囲
           AND    lt_dlv_date <= NVL(rivd.effective_end_date, gd_max_date)
@@ -2585,7 +2592,10 @@ AS
         BEGIN
           SELECT rivp.resource_id     resource_id            -- リソースID
           INTO   lt_resource_id
-          FROM   xxcos_rs_info_v      rivp                   -- 営業員情報view（納品者）
+-- ******* 2009/10/30 M.Sano  MOD START ********* --
+--          FROM   xxcos_rs_info_v      rivp                   -- 営業員情報view（納品者）
+          FROM   xxcos_rs_info2_v      rivp                  -- 営業員情報view（納品者）
+-- ******* 2009/10/30 M.Sano  MOD  END  ********* --
 -- ************* 2009/09/01 N.Maeda 1.15 MOD START ************** --
           WHERE  rivp.employee_number = lt_dlv_code
 --          WHERE  rivp.employee_number = lt_performance_code  -- 営業員情報view(成績者).顧客番号 = 抽出した成績者

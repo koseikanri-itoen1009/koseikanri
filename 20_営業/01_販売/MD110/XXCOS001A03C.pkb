@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *                                         [0001010] 従業員ビュー取得条件追加
  *  2009/08/21    1.17    N.Maeda          [0001141] 前月売上拠点の考慮追加
  *  2009/09/03    1.18    N.Maeda          [0001211] 消費税関連項目取得基準日付の修正
+ *  2009/10/30    1.19    M.Sano           [0001373] 参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
  *
  *****************************************************************************************/
 --
@@ -2081,7 +2082,10 @@ AS
 --******************************* 2009/08/12 N.Maeda Ver1.16 MOD START ***************************************
         SELECT rin_v.base_code  base_code    -- 拠点コード
         INTO   lt_dlv_base_code
-        FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+--******************************* 2009/10/30 M.Sano  Ver1.19 MOD START ***************************************
+--        FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+        FROM   xxcos_rs_info2_v rin_v
+--******************************* 2009/10/30 M.Sano  Ver1.19 MOD END *****************************************
         WHERE  rin_v.employee_number = lt_dlv_by_code
         AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
         AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date

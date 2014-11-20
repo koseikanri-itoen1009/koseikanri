@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/05/26    1.5   K.Kiriu          [T1_1213]顧客軒数カウント条件マスタ結合条件修正
  *  2009/08/31    1.6   K.Kiriu          [0000929]訪問軒数/有効訪問件数のカウント方法変更
  *  2009/09/04    1.7   K.Kiriu          [0000900]PT対応
+ *  2009/10/30    1.8   M.Sano           [0001373]XXCOS_RS_INFO_V変更に伴うPT対応
  *
  *****************************************************************************************/
 --
@@ -2727,6 +2728,9 @@ AS
                  USE_NL(work.xrsi.jrgm_o)
                  USE_NL(work.xrsi.jrgb_o)
                  USE_NL(work.xrsi)
+--Ver1.8 Add Start
+                 USE_NL(work.xrsi.jrgm_max.jrgm_m)
+--Ver1.8 Add End
               */
 /* 2009/09/04 Ver1.7 Add End   */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_cuntomer
@@ -2753,7 +2757,10 @@ AS
                       xrsi.employee_number                      AS  employee_num,
                       xbco.d_lookup_code                        AS  business_low_type,
                       COUNT(hzca.cust_account_id)               AS  counter_customer
-              FROM    xxcos_rs_info_v             xrsi,
+--Ver1.8 Mod Start
+--              FROM    xxcos_rs_info_v             xrsi,
+              FROM    xxcos_rs_info2_v            xrsi,
+--Ver1.8 Mod End
                       xxcos_salesreps_v           xsal,
                       hz_parties                  hzpt,
                       hz_cust_accounts            hzca,
@@ -2949,6 +2956,9 @@ AS
                 USE_NL(work.xrsi.jrgm_o)
                 USE_NL(work.xrsi.jrgb_o)
                 USE_NL(work.xrsi)
+--Ver1.8 Add Start
+                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+--Ver1.8 Add End
               */
 /* 2009/09/04 Ver1.7 Add   End */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_no_visit
@@ -2974,7 +2984,10 @@ AS
                       xrsi.base_code                            AS  base_code,
                       xrsi.employee_number                      AS  employee_num,
                       COUNT(hzca.cust_account_id)               AS  counter_customer
-              FROM    xxcos_rs_info_v             xrsi,
+--Ver1.8 Mod Start
+--              FROM    xxcos_rs_info_v             xrsi,
+              FROM    xxcos_rs_info2_v             xrsi,
+--Ver1.8 Mod End
                       xxcos_salesreps_v           xsal,
                       hz_parties                  hzpt,
                       hz_cust_accounts            hzca,
@@ -3182,6 +3195,9 @@ AS
                 USE_NL(work.xrsi.jrgm_o)
                 USE_NL(work.xrsi.jrgb_o)
                 USE_NL(work.xrsi)
+--Ver1.8 Add Start
+                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+--Ver1.8 Add End
               */
 /* 2009/09/04 Ver1.7 Add   End */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_no_trade
@@ -3207,7 +3223,10 @@ AS
                       xrsi.base_code                            AS  base_code,
                       xrsi.employee_number                      AS  employee_num,
                       COUNT(hzca.cust_account_id)               AS  counter_customer
-              FROM    xxcos_rs_info_v             xrsi,
+--Ver1.8 Mod Start
+--              FROM    xxcos_rs_info_v             xrsi,
+              FROM    xxcos_rs_info2_v            xrsi,
+--Ver1.8 Mod End
                       xxcos_salesreps_v           xsal,
                       hz_parties                  hzpt,
                       hz_cust_accounts            hzca,
@@ -3518,6 +3537,9 @@ AS
                 USE_NL(work.task)
                 INDEX(work.task.jtb xxcso_jtf_tasks_b_n18)
                 INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n18)
+--Ver1.8 Add Start
+                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+--Ver1.8 Add End
               */
 /* 2009/09/04 Ver1.7 Add   End */
               it_account_info.base_years                AS  target_date,
@@ -3539,6 +3561,11 @@ AS
               cd_program_update_date                    AS  program_update_date
       FROM    (
               SELECT
+--Ver1.8 Add Start
+                /*+
+                USE_NL(xrsi.jrgm_max.jrgm_m)
+                */
+--Ver1.8 Add End
                       xrsi.base_code                            AS  base_code,
                       xrsi.employee_number                      AS  employee_num,
 /* 2009/04/28 Ver1.4 Mod Start */
@@ -3559,7 +3586,10 @@ AS
                             ELSE    0
                           END
                           )                                     AS  total_mc_visit
-              FROM    xxcos_rs_info_v               xrsi,
+--Ver1.8 Mod Start
+--              FROM    xxcos_rs_info_v               xrsi,
+              FROM    xxcos_rs_info2_v              xrsi,
+--Ver1.8 Mod End
 /* 2009/08/31 Ver1.6 Del Start */
 --                      xxcos_salesreps_v             xsal,
 /* 2009/08/31 Ver1.6 Del Start */
@@ -3756,6 +3786,9 @@ AS
                 USE_NL(work.task)
                 INDEX(work.task.jtb xxcso_jtf_tasks_b_n18)
                 INDEX(work.task.jtb2 xxcso_jtf_tasks_b_n18)
+--Ver1.8 Add Start
+                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+--Ver1.8 Add End
               */
 /* 2009/09/04 Ver1.7 Add   End */
               xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_valid
@@ -3784,7 +3817,10 @@ AS
 --                      COUNT(DISTINCT  task.source_object_id)    AS  count_valid
                       COUNT(DISTINCT  task.party_id)            AS  count_valid
 /* 2009/04/28 Ver1.4 Mod End   */
-              FROM    xxcos_rs_info_v               xrsi,
+--Ver1.8 Mod Start
+--              FROM    xxcos_rs_info_v               xrsi,
+              FROM    xxcos_rs_info2_v              xrsi,
+--Ver1.8 Mod End
 /* 2009/08/31 Ver1.6 Del Start */
 --                      xxcos_salesreps_v             xsal,
 /* 2009/08/31 Ver1.6 Del End   */
@@ -4036,6 +4072,9 @@ AS
                 USE_NL(work.xrsi.jrgm_o)
                 USE_NL(work.xrsi.jrgb_o)
                 USE_NL(work.xrsi)
+--Ver1.8 Add Start
+                USE_NL(work.xrsi.jrgm_max.jrgm_m)
+--Ver1.8 Add End
               */
 /* 2009/09/04 Ver1.7 Add End   */
               it_account_info.base_years                AS  target_date,
@@ -4066,7 +4105,10 @@ AS
                             ELSE    0
                           END
                           )                                     AS  new_customer_vd
-              FROM    xxcos_rs_info_v             xrsi,
+--Ver1.8 Mod Start
+--              FROM    xxcos_rs_info_v             xrsi,
+              FROM    xxcos_rs_info2_v            xrsi,
+--Ver1.8 Mod End
                       xxcmm_cust_accounts         xcac,
                       hz_parties                  hzpt,
                       hz_cust_accounts            hzca,

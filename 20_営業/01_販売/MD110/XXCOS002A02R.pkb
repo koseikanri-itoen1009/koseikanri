@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : 営業報告日報
  * MD.050           : 営業報告日報 MD050_COS_002_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/07/22    1.7   T.Tominaga       入金額の取得を納品実績情報カーソルからA-3.納品実績データ挿入処理内で別途取得に変更
  *  2009/09/02    1.8   K.Kiriu          [0000900]PT対応
  *                                       [0001273]集金のみの抽出条件不正対応
+ *  2009/10/30    1.9   M.Sano           [0001373]参照ビュー変更：XXCOS_RS_INFO_V⇒XXCOS_RS_INFO2_V
  *
  *****************************************************************************************/
 --
@@ -262,6 +263,9 @@ AS
     SELECT
 /* 2009/09/02 Ver1.8 Add Start */
             /*+
+-- 2009/10/30 Ver1.9 Add Start
+              LEADING(rsid)
+-- 2009/10/30 Ver1.9 Add Start
               LEADING(rsid.jrrx_n)
               INDEX(rsid.jrgm_n jtf_rs_group_members_n2)
               INDEX(rsid.jrgb_n jtf_rs_groups_b_u1)
@@ -281,24 +285,30 @@ AS
               USE_NL(rsid.jrgm_o)
               USE_NL(rsid.jrgb_o)
               USE_NL(rsid)
-              LEADING(rsir.jrrx_n)
-              INDEX(rsir.jrgm_n jtf_rs_group_members_n2)
-              INDEX(rsir.jrgb_n jtf_rs_groups_b_u1)
-              INDEX(rsir.jrrx_n xxcso_jrre_n02)
-              USE_NL(rsir.papf_n)
-              USE_NL(rsir.pept_n)
-              USE_NL(rsir.paaf_n)
-              USE_NL(rsir.jrgm_n)
-              USE_NL(rsir.jrgb_n)
-              LEADING(rsir.jrrx_o)
-              INDEX(rsir.jrrx_o xxcso_jrre_n02)
-              INDEX(rsir.jrgm_o jtf_rs_group_members_n2)
-              INDEX(rsir.jrgb_o jtf_rs_groups_b_u1)
-              USE_NL(rsir.papf_o)
-              USE_NL(rsir.pept_o)
-              USE_NL(rsir.paaf_o)
-              USE_NL(rsir.jrgm_o)
-              USE_NL(rsir.jrgb_o)
+-- 2009/10/30 Ver1.9 Add Start
+--              LEADING(rsir.jrrx_n)
+--              INDEX(rsir.jrgm_n jtf_rs_group_members_n2)
+--              INDEX(rsir.jrgb_n jtf_rs_groups_b_u1)
+--              INDEX(rsir.jrrx_n xxcso_jrre_n02)
+--              USE_NL(rsir.papf_n)
+--              USE_NL(rsir.pept_n)
+--              USE_NL(rsir.paaf_n)
+--              USE_NL(rsir.jrgm_n)
+--              USE_NL(rsir.jrgb_n)
+--              LEADING(rsir.jrrx_o)
+--              INDEX(rsir.jrrx_o xxcso_jrre_n02)
+--              INDEX(rsir.jrgm_o jtf_rs_group_members_n2)
+--              INDEX(rsir.jrgb_o jtf_rs_groups_b_u1)
+--              USE_NL(rsir.papf_o)
+--              USE_NL(rsir.pept_o)
+--              USE_NL(rsir.paaf_o)
+--              USE_NL(rsir.jrgm_o)
+--              USE_NL(rsir.jrgb_o)
+              USE_NL(rsid.jrgm_max.jrgm_m)
+              USE_NL(rsir.jrgm_max.jrgm_m)
+              USE_NL(saeh)
+              USE_NL(base)
+-- 2009/10/30 Ver1.9 Add End
               USE_NL(rsir)
             */
 /* 2009/09/02 Ver1.8 Add End   */
@@ -352,8 +362,12 @@ AS
 --****************************** 2009/07/15 1.7 T.Tominaga MOD  END  ******************************--
     FROM    xxcos_sales_exp_headers   saeh,
             xxcos_sales_exp_lines     sael,
-            xxcos_rs_info_v           rsid,
-            xxcos_rs_info_v           rsir,
+-- 2009/10/30 Ver1.9 Add Start
+--            xxcos_rs_info_v           rsid,
+--            xxcos_rs_info_v           rsir,
+            xxcos_rs_info2_v          rsid,
+            xxcos_rs_info2_v          rsir,
+-- 2009/10/30 Ver1.9 Add End
             hz_cust_accounts          hzca,
             hz_parties                hzpc,
             hz_cust_accounts          base,
@@ -376,6 +390,9 @@ AS
     AND     sael.delivery_base_code   =       icp_delivery_base_code
     AND     rsid.base_code            =       icp_delivery_base_code
     AND     rsid.employee_number      =       saeh.dlv_by_code
+-- 2009/10/30 Ver1.9 Add Start
+    AND     rsid.employee_number      =       NVL(icp_dlv_by_code, rsid.employee_number)
+-- 2009/10/30 Ver1.9 Add End
     AND     icp_delivery_date         BETWEEN rsid.effective_start_date
                                       AND     rsid.effective_end_date
     AND     icp_delivery_date         BETWEEN rsid.per_effective_start_date
@@ -571,25 +588,28 @@ AS
     SELECT
 /* 2009/09/02 Ver1.8 Add Start */
             /*+
-              LEADING(rsid.jrrx_n)
-              INDEX(rsid.jrgm_n jtf_rs_group_members_n2)
-              INDEX(rsid.jrgb_n jtf_rs_groups_b_u1)
-              INDEX(rsid.jrrx_n xxcso_jrre_n02)
-              USE_NL(rsid.papf_n)
-              USE_NL(rsid.pept_n)
-              USE_NL(rsid.paaf_n)
-              USE_NL(rsid.jrgm_n)
-              USE_NL(rsid.jrgb_n)
-              LEADING(rsid.jrrx_o)
-              INDEX(rsid.jrrx_o xxcso_jrre_n02)
-              INDEX(rsid.jrgm_o jtf_rs_group_members_n2)
-              INDEX(rsid.jrgb_o jtf_rs_groups_b_u1)
-              USE_NL(rsid.papf_o)
-              USE_NL(rsid.pept_o)
-              USE_NL(rsid.paaf_o)
-              USE_NL(rsid.jrgm_o)
-              USE_NL(rsid.jrgb_o)
-              USE_NL(rsid)
+-- 2009/10/30 Ver1.9 Mod Start
+--              LEADING(rsid.jrrx_n)
+--              INDEX(rsid.jrgm_n jtf_rs_group_members_n2)
+--              INDEX(rsid.jrgb_n jtf_rs_groups_b_u1)
+--              INDEX(rsid.jrrx_n xxcso_jrre_n02)
+--              USE_NL(rsid.papf_n)
+--              USE_NL(rsid.pept_n)
+--              USE_NL(rsid.paaf_n)
+--              USE_NL(rsid.jrgm_n)
+--              USE_NL(rsid.jrgb_n)
+--              LEADING(rsid.jrrx_o)
+--              INDEX(rsid.jrrx_o xxcso_jrre_n02)
+--              INDEX(rsid.jrgm_o jtf_rs_group_members_n2)
+--              INDEX(rsid.jrgb_o jtf_rs_groups_b_u1)
+--              USE_NL(rsid.papf_o)
+--              USE_NL(rsid.pept_o)
+--              USE_NL(rsid.paaf_o)
+--              USE_NL(rsid.jrgm_o)
+--              USE_NL(rsid.jrgb_o)
+--              USE_NL(rsid)
+              LEADING(rsid)
+-- 2009/10/30 Ver1.9 Mod End
             */
 /* 2009/09/02 Ver1.8 Add End   */
             rsid.employee_number                      AS  employee_num,
@@ -604,7 +624,10 @@ AS
 --    FROM    jtf_tasks_b                   task,
     FROM    xxcso_visit_actual_v          task,
 /* 2009/05/01 Ver1.4 Mod End   */
-            xxcos_rs_info_v               rsid
+-- 2009/10/30 Ver1.9 Mod Start
+--            xxcos_rs_info_v               rsid
+            xxcos_rs_info2_v              rsid
+-- 2009/10/30 Ver1.9 Mod End
     WHERE   task.actual_end_date          >=      icp_delivery_date
     AND     task.actual_end_date          <       icp_delivery_date + 1
 /* 2009/05/01 Ver1.4 Mod Start */
@@ -1334,6 +1357,9 @@ AS
       SELECT
 /* 2009/09/02 Ver1.8 Add Start */
                /*+
+-- 2009/10/30 Ver1.9 Add Start
+                 LEADING(rsid)
+-- 2009/10/30 Ver1.9 Add End
                  LEADING(rsid.jrrx_n)
                  INDEX(rsid.jrgm_n jtf_rs_group_members_n2)
                  INDEX(rsid.jrgb_n jtf_rs_groups_b_u1)
@@ -1353,7 +1379,12 @@ AS
                  USE_NL(rsid.jrgm_o)
                  USE_NL(rsid.jrgb_o)
                  USE_NL(rsid)
-                 INDEX(task.jtb jtf_tasks_b_n2)
+-- 2009/10/30 Ver1.9 Add Start
+--                 INDEX(task.jtb jtf_tasks_b_n2)
+                 USE_NL(base)
+                 USE_NL(task)
+                 USE_NL(rsid.jrrx_o rsid.jrgm_max.jrgm_m)
+-- 2009/10/30 Ver1.9 Add End
               */
 /* 2009/09/02 Ver1.8 Add End   */
               xxcos_rep_bus_report_s01.nextval          AS  record_id,
@@ -1421,7 +1452,10 @@ AS
               hz_parties                    hzpb,
               hz_cust_accounts              hzca,
               hz_parties                    hzpc,
-              xxcos_rs_info_v               rsid
+-- 2009/10/30 Ver1.9 Mod Start
+--              xxcos_rs_info_v               rsid
+              xxcos_rs_info2_v              rsid
+-- 2009/10/30 Ver1.9 Mod End
       WHERE   task.actual_end_date          >=      ld_delivery_date
       AND     task.actual_end_date          <       ld_delivery_date + 1
 /* 2009/05/01 Ver1.4 Del Start */
@@ -1663,7 +1697,7 @@ AS
                 USE_NL(rsid.jrgm_o)
                 USE_NL(rsid.jrgb_o)
                 USE_NL(rsid)
-              */
+             */
 /* 2009/09/02 Ver1.8 Add End   */
               xxcos_rep_bus_report_s01.nextval          AS  record_id,
               paym.payment_date                         AS  dlv_date,

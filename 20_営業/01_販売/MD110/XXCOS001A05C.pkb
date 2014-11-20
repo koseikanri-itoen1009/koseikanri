@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A05C (body)
  * Description      : 出荷確認処理（HHT納品データ）
  * MD.050           : 出荷確認処理(MD050_COS_001_A05)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -79,6 +79,7 @@ AS
  *  2009/08/21    1.20  N.Maeda          [0001141] 前月売上拠点の考慮追加
  *  2009/09/04    1.21  N.Maeda          [0001211] 消費税関連項目取得基準日修正
  *  2009/10/13    1.22  N.Maeda          [0001381] 受注明細の販売実績連携済みフラグ追加対応
+ *  2009/10/30    1.23  M.Sano           [0001373] 参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
  *
  *****************************************************************************************/
 --
@@ -3786,7 +3787,10 @@ AS
 --************* 2009/08/12 N.Maeda Var1.19 MOD START ***************************************
             SELECT rin_v.base_code  base_code -- 拠点コード
             INTO   lt_dlv_base_code
-            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+--************* 2009/10/30 M.Sano  Var1.23 MOD START ***************************************
+--            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+            FROM   xxcos_rs_info2_v rin_v        -- 従業員情報view
+--************* 2009/10/30 M.Sano  Var1.23 MOD  END  ***************************************
             WHERE  rin_v.employee_number = lt_dlv_by_code
             AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
             AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date
@@ -6821,7 +6825,10 @@ AS
 --************* 2009/08/12 N.Maeda Var1.19 MOD START ***************************************
             SELECT rin_v.base_code  base_code -- 拠点コード
             INTO   lt_dlv_base_code
-            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+--************* 2009/10/30 M.Sano  Var1.23 MOD START ***************************************
+--            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+            FROM   xxcos_rs_info2_v rin_v        -- 従業員情報view
+--************* 2009/10/30 M.Sano  Var1.23 MOD  END  ***************************************
             WHERE  rin_v.employee_number = lt_dlv_by_code
             AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
             AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date
@@ -9755,7 +9762,10 @@ AS
 --************* 2009/08/12 N.Maeda Var1.19 MOD START ***************************************
             SELECT rin_v.base_code  base_code -- 拠点コード
             INTO   lt_dlv_base_code
-            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+--************* 2009/10/30 M.Sano  Var1.23 MOD START ***************************************
+--            FROM   xxcos_rs_info_v  rin_v        -- 従業員情報view
+            FROM   xxcos_rs_info2_v rin_v        -- 従業員情報view
+--************* 2009/10/30 M.Sano  Var1.23 MOD  START ***************************************
             WHERE  rin_v.employee_number = lt_dlv_by_code
             AND    NVL( rin_v.effective_start_date     , lt_dlv_date )  <= lt_dlv_date
             AND    NVL( rin_v.effective_end_date       , lt_dlv_date )  >= lt_dlv_date
