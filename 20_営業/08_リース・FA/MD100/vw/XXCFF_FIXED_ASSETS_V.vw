@@ -82,8 +82,11 @@ LAST_UPDATE_LOGIN              --最終更新ログイン
 AS 
 -- Modify 2009.08.19 Ver1.1 Start
 --  SELECT MAIN.ASSET_ID                AS ASSET_ID--資産ID
-  SELECT /*+   
-           LEADING(MAIN.B)
+  SELECT
+         /*+   
+-- Modify E_最終移行リハ_00469 2009.10.13 Start
+           LEADING(MAIN) --LEADING(MAIN.B)
+-- Modify E_最終移行リハ_00469 2009.10.13 End
            USE_NL(MAIN C FC D FA FL CC)
            INDEX(FBC      FA_BOOK_CONTROLS_U1)
            INDEX(C.B      FA_ADDITIONS_B_U1)
