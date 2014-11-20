@@ -66,6 +66,7 @@ AS
  *  2009/02/13    1.36 Yasuhisa Yamamoto 本番障害#1189対応
  *  2009/03/30    1.37  Akiyoshi Shiina  本番障害#1346対応
  *  2009/10/14    1.38 Masayuki Nomura   本番障害#1659対応
+ *  2009/11/09    1.39 Yukiko Fukami     本番障害#1685対応
  *
  *****************************************************************************************/
 --
@@ -3036,7 +3037,10 @@ AS
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
           --OPMジャーナルマスタ抽出条件
-          AND ijm.attribute1 = xnpt.entry_number                                --伝票No
+-- 2009/11/09 v1.39 Y.Fukami update start
+--          AND ijm.attribute1 = xnpt.entry_number                                --伝票No
+          AND ijm.attribute1 = xnpt.txns_id                                --伝票ID
+-- 2009/11/09 v1.39 Y.Fukami update end
           UNION ALL
           -----------------------
           --外注出来高実績(アドオン)
@@ -5031,7 +5035,10 @@ AS
             BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd)
             AND TO_DATE(civ_ymd_to,gv_fmt_ymd)
           --OPMジャーナルマスタ抽出条件
-          AND ijm.attribute1 = xnpt.entry_number                                --伝票No
+-- 2009/11/09 v1.39 Y.Fukami update start
+--          AND ijm.attribute1 = xnpt.entry_number                                --伝票No
+          AND ijm.attribute1 = xnpt.txns_id                                --伝票ID
+-- 2009/11/09 v1.39 Y.Fukami update start
           UNION ALL
           -----------------------
           --外注出来高実績(アドオン)
