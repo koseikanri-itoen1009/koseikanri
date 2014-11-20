@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A37C(body)
  * Description      : チェーンマスタ連携IFデータ作成
  * MD.050           : MD050_CMM_003_A37_チェーンマスタ連携IFデータ作成
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/18    1.0   Yutaka.Kuboshima 新規作成
  *  2009-03-09    1.1   Yutaka.Kuboshima ファイル出力先のプロファイルの変更
+ *  2011/10/31    1.2   Yasuhiro.Horikawa E_本稼動_08649 チェーン店名の最大長を文字数カウントに変更
  *
  *****************************************************************************************/
 --
@@ -424,19 +425,28 @@ AS
       -- チェーンコード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.chain_code, 1, 9)      || cv_dqu;
       -- チェーン店名(漢字)
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.chain_name, 1, 50)     || cv_dqu;
+-- 2011/10/31 Ver.1.2 Mod Start
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.chain_name, 1, 50)     || cv_dqu;
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTR(chain_data_rec.chain_name, 1, 25)      || cv_dqu;
+-- 2011/10/31 Ver.1.2 Mod End
       -- チェーン店名(カナ)
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.chain_kana, 1, 25)     || cv_dqu;
       -- 企業コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.kigyo_code, 1, 6)      || cv_dqu;
       -- 企業名
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.kigyo_name, 1, 50)     || cv_dqu;
+-- 2011/10/31 Ver.1.2 Mod Start
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.kigyo_name, 1, 50)     || cv_dqu;
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTR(chain_data_rec.kigyo_name, 1, 25)      || cv_dqu;
+-- 2011/10/31 Ver.1.2 Mod End
       -- 本部担当拠点コード(企業)
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.kigyo_base_code, 1, 4) || cv_dqu;
       -- 企業Gコード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.kigyo_gcode, 1, 6)     || cv_dqu;
       -- 企業G名
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.kigyo_gname, 1, 50)    || cv_dqu;
+-- 2011/10/31 Ver.1.2 Mod Start
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.kigyo_gname, 1, 50)    || cv_dqu;
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTR(chain_data_rec.kigyo_gname, 1, 25)     || cv_dqu;
+-- 2011/10/31 Ver.1.2 Mod End
       -- 本部担当拠点コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(chain_data_rec.base_code, 1, 4)       || cv_dqu;
       -- 連携日時
