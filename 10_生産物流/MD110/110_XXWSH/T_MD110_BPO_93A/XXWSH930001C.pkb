@@ -116,6 +116,7 @@ AS
  *  2008/12/02    1.30 Oracle 福田 直樹  本番障害対応#320(指示なし実績登録時、指示項目へのセットは行わないようにする)
  *  2008/12/02    1.30 Oracle 福田 直樹  本番障害対応#188(A-5-3品目マスタ存在チェックの要件とmaster_data_get品目情報取得時の要件を同じにする)
  *  2008/12/04    1.31 Oracle 福田 直樹  本番障害対応(移動指示なし実績訂正時、移動入出庫実績登録(57A)で赤なく黒伝票が作成されてしまう)
+ *  2008/12/06    1.32 Oracle 宮田       本番障害対応#484(数量に変更があった受注明細のみしか出荷実績I/F済みフラグがNにしかしていない。※ヘッダー単位で対象は全てNにする。)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2549,9 +2550,11 @@ AS
         lv_shipping_result_if_flg := gv_yesno_n;  -- 受注明細レベルの項目変更に関わらず全受注明細を'N'に更新
 --
       ELSE  -- 受注ヘッダレベルの項目変更がない場合
-        IF (ln_shipped_quantity <> lt_sum_actual_quantity(i)) THEN -- 受注明細レベルの出荷実績数量に変更があった場合
+-- 2008/12/06 T.Miyata Modify Start #484 変更があった場合のみではなく、ヘッダ単位でNとする。
+--        IF (ln_shipped_quantity <> lt_sum_actual_quantity(i)) THEN -- 受注明細レベルの出荷実績数量に変更があった場合
+-- 2008/12/06 T.Miyata Modify End #484
           lv_shipping_result_if_flg := gv_yesno_n; -- 該当明細のみ出荷実績I/F済フラグを'N'で更新
-        END IF;
+--        END IF;
       END IF;
 --
       UPDATE
@@ -10946,10 +10949,12 @@ AS
       WHERE xola.order_line_id = in_order_line_id             -- 受注明細アドオンID
       AND   ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL));
 --
-      IF (ln_shipped_quantity <> gr_order_l_rec.shipped_quantity) THEN   -- 受注明細レベルで実績数量の変更があれば
+-- 2008/12/06 T.Miyata Modify Start #484 変更があった場合のみではなく、ヘッダ単位でNとする。
+      --IF (ln_shipped_quantity <> gr_order_l_rec.shipped_quantity) THEN   -- 受注明細レベルで実績数量の変更があれば
         lv_shipping_result_if_flg := gv_yesno_n;  -- 該当受注明細の出荷実績I/F済フラグを'N'で更新
-      END IF;  -- 受注明細レベルで実績数量の変更がなければ訂正前の値を引き継ぐ
+--      END IF;  -- 受注明細レベルで実績数量の変更がなければ訂正前の値を引き継ぐ
       -- 2008/09/22 TE080_400指摘#76 Add End ------------------------------------------
+-- 2008/12/06 T.Miyata Modify End #484
 --
       -- **************************************************
       -- *** 受注明細(アドオン)更新を行う
