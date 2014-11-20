@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2008/12/16    1.18  A.Shiina         本番#749対応
  *  2008/12/16    1.19  A.Shiina         本番#754対応 -- 対応削除
  *  2008/12/17    1.20  A.Shiina         本番#428対応(PT対応)
+ *  2008/12/18    1.21  A.Shiina         本番#799対応
  *
  *****************************************************************************************/
 --
@@ -827,7 +828,10 @@ AS
     || ' )' 
     || ' END) AS price' -- 有償金額
 */
-    || ' ,xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) AS price' -- 有償金額
+-- 2008/12/18 v1.21 UPDATE START
+--    || ' ,xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) AS price' -- 有償金額
+    || ' ,ROUND(xola.unit_price * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div))) AS price' -- 有償金額
+-- 2008/12/18 v1.21 UPDATE END
 -- 2008/12/02 v1.14 UPDATE END
     || ' ,TO_NUMBER(''' || lt_lkup_code    || ''') AS tax' 
     ;
