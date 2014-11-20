@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.13
+ * Version          : 1.15
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009-09-03    1.12  M.Maruyama       SCS障害管理番号(0001192) 対応
  *  2009-11-27    1.13  K.Satomura       E_本稼動_00118対応
  *  2009-12-09    1.14  T.Maruyama       E_本稼動_00117対応
+ *  2010-02-26    1.15  K.Hosoi          E_本稼動_01568対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -929,6 +930,13 @@ AS
     cv_tkn_val2           CONSTANT VARCHAR2(100) := '機種コード';
     cv_tkn_val3           CONSTANT VARCHAR2(100) := '先月末顧客コード';
     /* 2009.11.27 K.Satomura E_本稼動_00118対応 END */
+    /* 2010.02.26 K.Hosoi E_本稼動_01568 START */
+    cv_ls_tp_no_cntrct          CONSTANT VARCHAR2(1)   := '9';      -- 設置可能契約無し
+    cv_obj_sts_contracted       CONSTANT VARCHAR2(3)   := '102';    -- 契約済
+    cv_obj_sts_re_lease_cntrctd CONSTANT VARCHAR2(3)   := '104';    -- 再リース契約済
+    cv_obj_sts_uncontract       CONSTANT VARCHAR2(3)   := '101';    -- 未契約
+    cv_obj_sts_lease_wait       CONSTANT VARCHAR2(3)   := '103';    -- 再リース待
+    /* 2010.02.26 K.Hosoi E_本稼動_01568 END */
     -- *** ローカル変数 ***
     ld_bsnss_mnth         DATE;
     lv_lookup_code        VARCHAR2(100);      -- ステータス
@@ -948,6 +956,9 @@ AS
     lv_last_month_base_cd VARCHAR2(2000);     -- 先月末拠点(部門)コード
     ln_actual_work_date   NUMBER;             -- 滞留開始日
     ld_sysdate            DATE;               -- システム日付
+    /* 2010.02.26 K.Hosoi E_本稼動_01568 START */
+    lt_object_status      xxcff_object_headers.object_status%TYPE; -- 物件ステータス
+    /* 2010.02.26 K.Hosoi E_本稼動_01568 END */
     /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
     ln_target_cnt         NUMBER;             -- カーソル抽出件数格納
     -- *** ローカル・カーソル ***
@@ -1503,8 +1514,14 @@ AS
       BEGIN
         SELECT  xch.lease_type lease_type       -- 再リース区分
                ,xcl.second_charge second_charge -- リース料 月額リース料(税抜)
+               /* 2010.02.26 K.Hosoi E_本稼動_01568 START */
+               ,xoh.object_status object_status -- 物件ステータス
+               /* 2010.02.26 K.Hosoi E_本稼動_01568 END */
         INTO    lv_lease_type                   -- 再リース区分
                ,ln_second_charge                -- リース料 月額リース料(税抜)
+               /* 2010.02.26 K.Hosoi E_本稼動_01568 START */
+               ,lt_object_status
+               /* 2010.02.26 K.Hosoi E_本稼動_01568 END */
         FROM    xxcff_object_headers xoh        -- リース物件マスタ
                ,xxcff_contract_headers xch      -- リース契約テーブル
                ,xxcff_contract_lines xcl        -- リース契約明細テーブル
@@ -1512,6 +1529,18 @@ AS
           AND   xoh.object_header_id = xcl.object_header_id       -- 物件内部ID
           AND   xcl.contract_header_id = xch.contract_header_id   -- 契約内部ID
           AND   xch.re_lease_times = xoh.re_lease_times;          -- 再リース回数
+        /* 2010.02.26 K.Hosoi E_本稼動_01568 START */
+        --
+        -- 物件ステータスにより、設置可能契約の有無をチェック
+        -- 物件ステータスがNULL以外でかつ、「契約済」「再リース契約済」「未契約」「再リース待」以外の場合
+        IF ( lt_object_status IS NOT NULL
+             AND lt_object_status NOT IN ( cv_obj_sts_contracted, cv_obj_sts_re_lease_cntrctd, cv_obj_sts_uncontract,
+                                         cv_obj_sts_lease_wait ) ) THEN
+          -- 再リース区分に'9'を設定 (※情報系には区分「9」のみ連携され、名称は連携されない)
+          lv_lease_type := cv_ls_tp_no_cntrct;
+          --
+        END IF;
+        /* 2010.02.26 K.Hosoi E_本稼動_01568 END */
       EXCEPTION
         /*20090327_yabuki_T1_0192 START*/
         -- 該当するレコードが存在しない場合
