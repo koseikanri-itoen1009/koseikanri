@@ -218,7 +218,7 @@ SELECT
                  ,MFDN.attribute5                                     generation          --世代
                  -- 2009/05/12 T.Yoshimoto Mod Start 本番#1469
                  --,MFDN.attribute3                                     hs_branch           --拠点
-                 ,MFDN.attribute5                                     hs_branch           --拠点
+                 ,MFDT.attribute5                                     hs_branch           --拠点
                  -- 2009/05/12 T.Yoshimoto Mod End 本番#1469
                  ,MFDT.inventory_item_id                              inv_item_id         --品目ID(INV品目ID)
                   --年間
@@ -281,7 +281,7 @@ SELECT
                  ,MFDN.attribute5                           --世代
                  -- 2009/05/12 T.Yoshimoto Mod Start 本番#1469
                  --,MFDN.attribute3                           --拠点
-                 ,MFDN.attribute5                           --拠点
+                 ,MFDT.attribute5                           --拠点
                  -- 2009/05/12 T.Yoshimoto Mod End 本番#1469
                  ,MFDT.inventory_item_id                    --品目ID(INV品目ID)
        )                           SMFC                     --販売計画集計
