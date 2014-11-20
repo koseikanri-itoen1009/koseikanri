@@ -7,7 +7,7 @@ AS
  * Description      : èoå…é¿ê—ï\
  * MD.050/070       : åééüÅYèàóù(åoóù)Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYèàóù(åoóù)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2009/01/09    1.22  A.Shiina         ñ{î‘#987ëŒâû
  *  2009/01/10    1.23  A.Shiina         ñ{î‘#987ëŒâû(çƒëŒâû)
  *  2009/01/21    1.24  N.Yoshida        ñ{î‘#1016ëŒâû(v1.23ÇÃéÊÇËé~ÇﬂÇä‹Çﬁ)
+ *  2009/05/29    1.25  Marushita        ñ{î‘è·äQ1511ëŒâû
  *
  *****************************************************************************************/
 --
@@ -1236,11 +1237,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.23 DELETE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = itp.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE START
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/16 v1.23 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -1385,11 +1391,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.23 DELETE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE END
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = itp.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/16 v1.23 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -1539,11 +1550,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.12 DELETE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = iimb2.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/16 v1.12 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -1677,11 +1693,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.23 DELETE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = itp.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/16 v1.23 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -1811,11 +1832,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/16 v1.23 DELETE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = itp.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/16 v1.23 DELETE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -1953,11 +1979,15 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = iimb2.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -2098,11 +2128,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE END
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = iimb2.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
     || ' AND pv.vendor_id = pvsa.vendor_id' 
@@ -2238,11 +2273,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = itp.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -2383,11 +2423,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = itp.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -2535,11 +2580,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = iimb2.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2008/12/17 v1.20 UPDATE START
@@ -2672,11 +2722,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = itp.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -2805,11 +2860,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = itp.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = itp.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -2945,11 +3005,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = iimb2.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 
@@ -3089,11 +3154,16 @@ AS
 --    || ' AND xsupv.start_date_active <= TRUNC(itp.trans_date)' 
 --    || ' AND xsupv.end_date_active >= TRUNC(itp.trans_date)' 
 -- 2009/01/09 v1.22 UPDATE START
--- 2009/01/22 v1.24 UPDATE START
+---- 2009/01/22 v1.24 UPDATE START
+--    || ' AND xsupv.item_id(+) = iimb2.item_id' 
+--    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
+--    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
+---- 2009/01/22 v1.24 UPDATE START
+-- 2009/05/29 MOD START v1.24 DEL
     || ' AND xsupv.item_id(+) = iimb2.item_id' 
-    || ' AND NVL(xsupv.start_date_active, TRUNC(itp.trans_date)) <= TRUNC(itp.trans_date)' 
-    || ' AND NVL(xsupv.end_date_active, TRUNC(itp.trans_date)) >= TRUNC(itp.trans_date)' 
--- 2009/01/22 v1.24 UPDATE END
+    || ' AND NVL(xsupv.start_date_active, TRUNC(xoha.arrival_date)) <= TRUNC(xoha.arrival_date)' 
+    || ' AND NVL(xsupv.end_date_active, TRUNC(xoha.arrival_date)) >= TRUNC(xoha.arrival_date)' 
+-- 2009/05/29 MOD END
 -- 2009/01/09 v1.22 UPDATE END
 -- 2009/01/09 v1.22 UPDATE END
     || ' AND pvsa.vendor_site_id = xoha.vendor_site_id' 

@@ -7,7 +7,7 @@ AS
  * Description      : ïWèÄå¥âøì‡ñÛï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009/01/15    1.23  N.Yoshida        ñ{î‘è·äQ1023ëŒâû
  *  2009/03/10    1.24  A.Shiina         ñ{î‘è·äQ1298ëŒâû
  *  2009/04/10    1.25  A.Shiina         ñ{î‘è·äQ1396ëŒâû
+ *  2009/05/29    1.26  Marushita        ñ{î‘è·äQ1511ëŒâû
  *
  *****************************************************************************************/
 --
@@ -665,8 +666,12 @@ AS
     || '  AND    gic3.item_id              = itp.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = itp.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type             = itp.doc_type'
     || '  AND    xrpm.doc_type             = ''PORC'''
     || '  AND    xrpm.source_document_code = ''RMA'''
@@ -764,8 +769,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -859,8 +868,12 @@ AS
     || '  AND    gic3.item_id              = itp.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = itp.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type             = itp.doc_type'
     || '  AND    xrpm.doc_type             = ''OMSO'''
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
@@ -957,8 +970,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -1058,8 +1075,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -1160,8 +1181,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -1266,8 +1291,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -1367,8 +1396,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -1474,8 +1507,12 @@ AS
     || '  AND    gic3.item_id              = itp.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = itp.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type             = itp.doc_type'
     || '  AND    xrpm.doc_type             = ''PORC'''
     || '  AND    xrpm.source_document_code = ''RMA'''
@@ -1569,8 +1606,12 @@ AS
     || '      AND    gic3.item_id              = itp.item_id'
     || '      AND    gic3.category_id          = mcb3.category_id'
     || '      AND    xsup.item_id              = itp.item_id'
-    || '      AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '      AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '      AND    xrpm.doc_type             = itp.doc_type'
     || '      AND    xrpm.doc_type             = ''OMSO'''
     || '      AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
@@ -1686,8 +1727,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -1801,8 +1846,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -1914,8 +1963,12 @@ AS
     || '  AND    gic3.item_id              = itp.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = iimb2.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -2024,8 +2077,12 @@ AS
     || '  AND    gic3.item_id              = itp.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = iimb2.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -2134,8 +2191,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -2235,8 +2296,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -2348,8 +2413,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -2454,8 +2523,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -2563,8 +2636,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -2666,8 +2743,12 @@ AS
     || '  AND    gic3.item_id              = iimb.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = iimb.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    gic4.item_id              = itp.item_id'
     || '  AND    gic4.category_set_id      = ''' || cn_item_class_id || ''''
     || '  AND    gic4.category_id          = mcb4.category_id'
@@ -2912,8 +2993,12 @@ AS
     || '  AND    gic3.item_id              = iimb2.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = itp.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type             = itp.doc_type'
     || '  AND    xrpm.doc_type             = ''' || cv_doc_type_porc || ''''
     || '  AND    xrpm.source_document_code = ''RMA'''
@@ -3002,8 +3087,12 @@ AS
     || '  AND    gic3.item_id              = iimb2.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = itp.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type             = ''' || cv_doc_type_omso || ''''
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.dealings_div         IN (''201'',''203'')'
@@ -3287,8 +3376,12 @@ AS
     || '  AND    gic3.item_id            = itc.item_id'
     || '  AND    gic3.category_id        = mcb3.category_id'
     || '  AND    xsup.item_id            = itc.item_id'
-    || '  AND    xsup.start_date_active <= TRUNC(itc.trans_date)'
-    || '  AND    xsup.end_date_active   >= TRUNC(itc.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itc.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itc.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xmrh.actual_arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xmrh.actual_arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type           = ''' || cv_doc_type_adji || ''''
     || '  AND    xrpm.reason_code        = ''' || cv_reason_code_idouteisei || ''''
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
@@ -3375,8 +3468,12 @@ AS
     || '  AND    gic3.item_id            = itp.item_id'
     || '  AND    gic3.category_id        = mcb3.category_id'
     || '  AND    xsup.item_id            = itp.item_id'
-    || '  AND    xsup.start_date_active <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active   >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xmrh.actual_arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xmrh.actual_arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type           = itp.doc_type'
     || '  AND    xrpm.reason_code        = itp.reason_code'
     || '  AND    xrpm.new_div_account    = ''' || ir_param.rcv_pay_div || ''''
@@ -3454,8 +3551,12 @@ AS
     || '  AND    gic3.item_id            = itc.item_id'
     || '  AND    gic3.category_id        = mcb3.category_id'
     || '  AND    xsup.item_id            = itc.item_id'
-    || '  AND    xsup.start_date_active <= TRUNC(itc.trans_date)'
-    || '  AND    xsup.end_date_active   >= TRUNC(itc.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itc.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itc.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xmrih.actual_arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xmrih.actual_arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type           = itc.doc_type'
     || '  AND    xrpm.rcv_pay_div        = itc.line_type'
     || '  AND    xrpm.reason_code        = itc.reason_code'
@@ -3870,8 +3971,12 @@ AS
     || '  AND    gic3.item_id              = iimb2.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = itp.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type             = itp.doc_type'
     || '  AND    xrpm.doc_type             = ''' || cv_doc_type_porc || ''''
     || '  AND    xrpm.source_document_code = ''RMA'''
@@ -3960,8 +4065,12 @@ AS
     || '  AND    gic3.item_id              = iimb2.item_id'
     || '  AND    gic3.category_id          = mcb3.category_id'
     || '  AND    xsup.item_id              = itp.item_id'
-    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
-    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+-- 2009/05/29 MOD START
+--    || '  AND    xsup.start_date_active   <= TRUNC(itp.trans_date)'
+--    || '  AND    xsup.end_date_active     >= TRUNC(itp.trans_date)'
+    || '  AND    xsup.start_date_active   <= TRUNC(xoha.arrival_date)'
+    || '  AND    xsup.end_date_active     >= TRUNC(xoha.arrival_date)'
+-- 2009/05/29 MOD END
     || '  AND    xrpm.doc_type             = itp.doc_type'
     || '  AND    xrpm.doc_type             = ''' || cv_doc_type_omso || ''''
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''

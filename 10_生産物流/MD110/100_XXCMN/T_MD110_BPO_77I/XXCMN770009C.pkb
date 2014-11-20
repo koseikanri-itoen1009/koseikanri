@@ -7,7 +7,7 @@ AS
  * Description      : ëºä®íËêUë÷å¥âøç∑àŸï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD050_BPO_770)
  *                  : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/12/18    1.15  A.Shiina         ñ{î‘#789ëŒâû
  *  2009/01/14    1.16  N.Yoshida        ñ{î‘#1015ëŒâû
  *  2009/05/12    1.17  M.Nomura         ñ{î‘#1469ëŒâû
+ *  2009/05/29    1.18  Marushita        ñ{î‘è·äQ1511ëŒâû
  *
  *****************************************************************************************/
 --
@@ -604,15 +605,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -741,15 +749,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -885,15 +900,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -1030,15 +1052,22 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -1170,15 +1199,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -1303,15 +1339,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -1435,15 +1478,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -1569,15 +1619,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -1709,15 +1766,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -1854,15 +1918,22 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -1991,15 +2062,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -2122,15 +2200,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
               ,iimb.item_no
@@ -2270,15 +2355,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -2408,15 +2500,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -2553,15 +2652,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -2699,15 +2805,22 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -2840,15 +2953,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -2974,15 +3094,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -3107,15 +3234,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -3242,15 +3376,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -3383,15 +3524,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -3529,15 +3677,22 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -3667,15 +3822,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -3799,15 +3961,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -3948,15 +4117,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -4086,15 +4262,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -4231,15 +4414,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -4377,15 +4567,22 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -4518,15 +4715,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -4652,15 +4856,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -4785,15 +4996,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -4920,15 +5138,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -5061,15 +5286,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -5207,15 +5439,22 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -5345,15 +5584,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -5477,15 +5723,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       GROUP BY iimb2.item_no
               ,ximb2.item_short_name
@@ -5626,15 +5879,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -5765,15 +6025,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -5911,15 +6178,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -6058,15 +6332,22 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -6200,15 +6481,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -6335,15 +6623,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -6469,15 +6764,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -6605,15 +6907,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -6747,15 +7056,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -6894,15 +7210,22 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -7033,15 +7356,22 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
@@ -7166,15 +7496,22 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
--- 2009/01/14 v1.16 N.Yoshida mod start
---      AND    xsup_m.item_id          = iimb2.item_id
---      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+---- 2009/01/14 v1.16 N.Yoshida mod start
+----      AND    xsup_m.item_id          = iimb2.item_id
+----      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+--      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+---- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup.item_id            = iimb.item_id
+--      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD START v1.6 DEL
       AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
-      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
--- 2009/01/14 v1.16 N.Yoshida mod start
+      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
       AND    xsup.item_id            = iimb.item_id
-      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+      AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
+-- 2009/05/29 MOD END
       AND    mcb3.segment1           = lt_crowd_code
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
       GROUP BY iimb2.item_no
