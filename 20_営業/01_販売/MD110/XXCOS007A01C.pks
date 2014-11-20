@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.13
+ * Version          : 1.18
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -46,6 +46,8 @@ AS
  *  2009/10/16    1.12  N.Maeda          [0001381] 受注明細取得条件追加(販売実績連携フラグ)
  *                                                 (A-10) 受注明細更新処理の追加
  *  2010/08/02    1.13  S.Miyakoshi      [E_本稼動_01676] 非営業日の販売実績のINV連携対応（非営業日はEDI受注以外を販売実績作成）
+ *  2010/08/20    1.18  M.Watanabe       [E_本稼動_01763] 販売実績の日中連携化対応
+ *                                       [E_本稼動_02635] 夜間起動時のエラーログを各拠点にて確認可能とする
  *
  *****************************************************************************************/
 --
@@ -56,8 +58,20 @@ AS
 -- ************ 2010/08/02 1.13 S.Miyakoshi MOD START ************ --
 --    iv_target_date  IN     VARCHAR2     -- 処理日付
     iv_target_date  IN     VARCHAR2,    -- 処理日付
+-- ************ 2010/08/20 1.18 M.Watanabe ADD START ************ --
+    iv_exec_type    IN     VARCHAR2,    -- 定期随時区分
+-- ************ 2010/08/20 1.18 M.Watanabe ADD END   ************ --
     iv_mode         IN     VARCHAR2     -- 起動モード
 -- ************ 2010/08/02 1.13 S.Miyakoshi MOD  END  ************ --
+-- ************ 2010/08/20 1.18 M.Watanabe ADD START ************ --
+   ,iv_dlv_code       IN     VARCHAR2   -- 納品拠点コード
+   ,iv_edi_chain_code IN     VARCHAR2   -- EDIチェーン店コード
+   ,iv_cust_code      IN     VARCHAR2   -- 顧客コード
+   ,iv_dlv_date_from  IN     VARCHAR2   -- 納品日FROM
+   ,iv_dlv_date_to    IN     VARCHAR2   -- 納品日TO
+   ,iv_user_name      IN     VARCHAR2   -- 作成者
+   ,iv_order_number   IN     VARCHAR2   -- 受注番号
+-- ************ 2010/08/20 1.18 M.Watanabe ADD END   ************ --
   );
 --
 END XXCOS007A01C;

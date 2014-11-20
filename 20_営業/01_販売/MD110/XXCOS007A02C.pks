@@ -7,7 +7,7 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.13
+ * Version          : 1.16
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -42,6 +42,8 @@ AS
  *  2009/09/30    1.11  M.Sano           [0001275] 売上拠点と成績者の所属拠点の整合性チェックの追加
  *  2009/10/20    1.12  K.Satomura       [0001381] 受注明細．販売実績作成済フラグ追加対応
  *  2009/11/05    1.13  M.Sano           [E_T4_00111] ロック実施箇所の変更
+ *  2010/08/25    1.16  S.Arizumi        [E_本稼動_01763] INV締め日当日のINV連携日中化
+ *                                       [E_本稼動_02635] クローズされない受注のエラーリスト出力
  *
  *****************************************************************************************/
 --
@@ -49,7 +51,18 @@ AS
   PROCEDURE main(
     errbuf          OUT    VARCHAR2,    -- エラーメッセージ #固定#
     retcode         OUT    VARCHAR2,    -- エラーコード     #固定#
-    iv_target_date  IN     VARCHAR2     -- 処理日付
+-- 2010/08/25 Ver.1.16 S.Arizumi Mod Start --
+--    iv_target_date  IN     VARCHAR2     -- 処理日付
+    iv_target_date        IN  VARCHAR2,   -- 処理日付
+    iv_regular_any_class  IN  VARCHAR2,   -- 定期随時区分
+    iv_dlv_base_code      IN  VARCHAR2,   -- 納品拠点コード
+    iv_edi_chain_code     IN  VARCHAR2,   -- EDIチェーン店コード
+    iv_cust_code          IN  VARCHAR2,   -- 顧客コード
+    iv_dlv_date_from      IN  VARCHAR2,   -- 納品日FROM
+    iv_dlv_date_to        IN  VARCHAR2,   -- 納品日TO
+    iv_user_name          IN  VARCHAR2,   -- 作成者
+    iv_order_number       IN  VARCHAR2    -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Mod End   --
   );
 --
 END XXCOS007A02C;

@@ -7,12 +7,13 @@ AS
  * Description      : 返品予定日の到来した拠点出荷の返品受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 返品実績データ作成（ＨＨＴ以外）  MD050_COS_007_A02
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
+ *  set_gen_err_list       汎用エラーリスト出力情報設定
  *  init                   (A-1)初期処理
  *  set_profile            (A-2)プロファイル値取得
  *  get_order_data         (A-3)受注データ取得
@@ -25,6 +26,7 @@ AS
  *  make_sales_exp_headers (A-8)販売実績ヘッダ作成
  *  set_order_line_close_status (A-9)受注明細クローズ設定
  *  upd_sales_exp_create_flag   (A-9-1)販売実績作成済フラグ更新
+ *  make_gen_err_list      (A-10)汎用エラーリスト作成
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -57,6 +59,8 @@ AS
  *  2009/11/05    1.13  M.Sano           [E_T4_00111] ロック実施箇所の変更
  *  2010/02/01    1.14  S.Karikomi       [E_T4_00195] カレンダのクローズの確認をINVカレンダに変更
  *  2010/03/09    1.15  N.Maeda          [E_本稼動_01725] 販売実績連携時売上拠点-前月売上拠点判定条件修正
+ *  2010/08/25    1.16  S.Arizumi        [E_本稼動_01763] INV締め日当日のINV連携日中化
+ *                                       [E_本稼動_02635] クローズされない受注のエラーリスト出力
  *
  *****************************************************************************************/
 --
@@ -202,9 +206,26 @@ AS
                                        := 'APP-XXCOS1-00011';     -- 更新エラー
 -- ********** 2009/10/19 1.12 K.Satomura  ADD End   ************ --
 -- 2009/09/30 Ver.1.11 M.Sano Add End
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+  --  汎用エラー用キー情報
+  ct_msg_xxcos_00206        CONSTANT  fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-00206';    -- キー項目（受注番号、明細番号）
+  ct_msg_xxcos_00207        CONSTANT  fnd_new_messages.message_name%TYPE
+                                       :=  'APP-XXCOS1-00207';    -- キー項目（受注番号、明細番号、日付）
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
   --トークン
   cv_tkn_para_date        CONSTANT  VARCHAR2(100)  :=  'PARA_DATE';      -- 処理日付
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+  cv_tkn_para_regular_any_class CONSTANT  VARCHAR2(100) :=  'PARA_REGULAR_ANY_CLASS'; -- 定期随時区分
+  cv_tkn_para_dlv_base_code     CONSTANT  VARCHAR2(100) :=  'PARA_DLV_BASE_CODE';     -- 納品拠点コード
+  cv_tkn_para_edi_chain_code    CONSTANT  VARCHAR2(100) :=  'PARA_EDI_CHAIN_CODE';    -- EDIチェーン店コード
+  cv_tkn_para_cust_code         CONSTANT  VARCHAR2(100) :=  'PARA_CUST_CODE';         -- 顧客コード
+  cv_tkn_para_dlv_date_from     CONSTANT  VARCHAR2(100) :=  'PARA_DLV_DATE_FROM';     -- 納品日FROM
+  cv_tkn_param_dlv_date_to      CONSTANT  VARCHAR2(100) :=  'PARA_DLV_DATE_TO';       -- 納品日TO
+  cv_tkn_para_created_by        CONSTANT  VARCHAR2(100) :=  'PARA_CREATED_BY';        -- 作成者
+  cv_tkn_para_order_numer       CONSTANT  VARCHAR2(100) :=  'PARA_ORDER_NUMBER';      -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
   cv_tkn_profile          CONSTANT  VARCHAR2(100)  :=  'PROFILE';        -- プロファイル名
   cv_tkn_table            CONSTANT  VARCHAR2(100)  :=  'TABLE';          -- テーブル名称
   cv_tkn_order_number     CONSTANT  VARCHAR2(100)  :=  'ORDER_NUMBER';   -- 受注番号
@@ -261,6 +282,10 @@ AS
   cv_person_table                  CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11578';  -- 従業員マスタ
   cv_api_name                      CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11582';  -- 受注クローズAPI
   cv_tax_class                     CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11584';  -- 消費税区分
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+  cv_fnd_user                      CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00214';  -- ユーザマスタ
+  cv_gen_err_list                  CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00213';  -- 汎用エラーリスト
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
   --プロファイル名称
   --MO:営業単位
@@ -369,6 +394,12 @@ AS
   cv_trunc_mm                   CONSTANT VARCHAR2(2)  := 'MM';
 -- ****** 2010/03/09 N.Maeda 1.15 ADD  END  ****** --
 --
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+  -- 定期随時区分
+  cv_regular_any_class_any      CONSTANT VARCHAR2(1)  := '0'; -- 随時
+  cv_regular_any_class_regular  CONSTANT VARCHAR2(1)  := '1'; -- 定期
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -396,6 +427,19 @@ AS
   -- 業務日付(日付切捨)
   gd_business_date_trunc_mm DATE;
 -- ****** 2010/03/09 N.Maeda 1.15 ADD  END  ****** --
+--
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+  gn_gen_err_count        NUMBER                                      DEFAULT 0;    -- 汎用エラー出力件数
+--
+  gt_regular_any_class    fnd_lookup_values.lookup_code%TYPE          DEFAULT NULL; -- 定期随時区分
+  gt_dlv_base_code        xxcmm_cust_accounts.delivery_base_code%TYPE DEFAULT NULL; -- 納品拠点コード
+  gt_edi_chain_code       xxcmm_cust_accounts.chain_store_code%TYPE   DEFAULT NULL; -- EDIチェーン店コード
+  gt_cust_code            xxcmm_cust_accounts.customer_code%TYPE      DEFAULT NULL; -- 顧客コード
+  gt_dlv_date_from        oe_order_lines_all.request_date%TYPE        DEFAULT NULL; -- 納品日FROM
+  gt_dlv_date_to          oe_order_lines_all.request_date%TYPE        DEFAULT NULL; -- 納品日TO
+  gt_created_by           oe_order_headers_all.created_by%TYPE        DEFAULT NULL; -- 作成者
+  gt_order_number         oe_order_headers_all.order_number%TYPE      DEFAULT NULL; -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
   -- ===============================
   -- ユーザー定義グローバルRECORD型宣言
@@ -492,6 +536,9 @@ AS
     , ship_to_customer_code       xxcos_sales_exp_headers.ship_to_customer_code%type-- 顧客【納品先】
     , results_employee_code       xxcos_sales_exp_headers.results_employee_code%type-- 成績計上者コード
     , results_employee_base_code  per_all_assignments_f.ass_attribute5%TYPE         -- 所属拠点コード
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    , delivery_base_code          xxcos_sales_exp_lines.delivery_base_code%TYPE     -- 納品拠点コード
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
     , output_flag                 VARCHAR2(1)                                       -- 出力フラグ
   );
 -- 2009/09/30 Ver.1.11 M.Sano Add End
@@ -573,6 +620,11 @@ AS
   TYPE g_base_err_order_ttype IS TABLE OF g_base_err_order_rtype INDEX BY BINARY_INTEGER;
 -- 2009/09/30 Ver.1.11 M.Sano Add End
 --
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+  -- 汎用エラーリスト
+  TYPE g_gen_err_list_ttype IS TABLE OF xxcos_gen_err_list%ROWTYPE INDEX BY BINARY_INTEGER;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+--
   -- ===============================
   -- ユーザー定義グローバルPL/SQL表
   -- ===============================
@@ -595,6 +647,156 @@ AS
   g_order_cls_data_tab        order_line_data_ttype;          -- 受注データ(受注CLOSE対象)
 -- 2009/07/08 Ver.1.9 M.Sano Add End
 --
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+  g_gen_err_list_tab          g_gen_err_list_ttype;           -- 汎用エラーリスト
+--
+  /**********************************************************************************
+   * Procedure Name   : set_gen_err_list
+   * Description      : 汎用エラーリスト出力情報設定
+   ***********************************************************************************/
+  PROCEDURE set_gen_err_list(
+      ov_errbuf                   OUT VARCHAR2                              -- エラー・メッセージ           --# 固定 #
+    , ov_retcode                  OUT VARCHAR2                              -- リターン・コード             --# 固定 #
+    , ov_errmsg                   OUT VARCHAR2                              -- ユーザー・エラー・メッセージ --# 固定 #
+    , it_base_code                IN  xxcos_gen_err_list.base_code%TYPE     -- 納品拠点コード
+    , it_message_name             IN  xxcos_gen_err_list.message_name%TYPE  -- エラーメッセージ名
+    , it_message_text             IN  xxcos_gen_err_list.message_text%TYPE  -- エラーメッセージ
+    , iv_output_msg_application   IN  VARCHAR2 DEFAULT NULL                 -- アプリケーション短縮名
+    , iv_output_msg_name          IN  VARCHAR2 DEFAULT NULL                 -- メッセージコード
+    , iv_output_msg_token_name1   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード1
+    , iv_output_msg_token_value1  IN  VARCHAR2 DEFAULT NULL                 -- トークン値1
+    , iv_output_msg_token_name2   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード2
+    , iv_output_msg_token_value2  IN  VARCHAR2 DEFAULT NULL                 -- トークン値2
+    , iv_output_msg_token_name3   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード3
+    , iv_output_msg_token_value3  IN  VARCHAR2 DEFAULT NULL                 -- トークン値4
+    , iv_output_msg_token_name4   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード4
+    , iv_output_msg_token_value4  IN  VARCHAR2 DEFAULT NULL                 -- トークン値4
+    , iv_output_msg_token_name5   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード5
+    , iv_output_msg_token_value5  IN  VARCHAR2 DEFAULT NULL                 -- トークン値5
+    , iv_output_msg_token_name6   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード6
+    , iv_output_msg_token_value6  IN  VARCHAR2 DEFAULT NULL                 -- トークン値6
+    , iv_output_msg_token_name7   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード7
+    , iv_output_msg_token_value7  IN  VARCHAR2 DEFAULT NULL                 -- トークン値7
+    , iv_output_msg_token_name8   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード8
+    , iv_output_msg_token_value8  IN  VARCHAR2 DEFAULT NULL                 -- トークン値8
+    , iv_output_msg_token_name9   IN  VARCHAR2 DEFAULT NULL                 -- トークンコード9
+    , iv_output_msg_token_value9  IN  VARCHAR2 DEFAULT NULL                 -- トークン値9
+    , iv_output_msg_token_name10  IN  VARCHAR2 DEFAULT NULL                 -- トークンコード10
+    , iv_output_msg_token_value10 IN  VARCHAR2 DEFAULT NULL                 -- トークン値10
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100)  := 'set_gen_err_list';  -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START  #####################
+    lv_errbuf   VARCHAR2(5000); -- エラー・メッセージ
+    lv_retcode  VARCHAR2(1);    -- リターン・コード
+    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラー・メッセージ
+--#####################  固定ローカル変数宣言部 END    #####################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_out_msg  xxcos_gen_err_list.message_text%TYPE; -- 汎用エラーリスト出力メッセージ
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--#####################  固定ステータス初期化部 START  #####################
+    ov_retcode  := cv_status_normal;
+--#####################  固定ステータス初期化部 END    #####################
+--
+    IF (     ( gt_regular_any_class IS NOT NULL                    )
+         AND ( gt_regular_any_class = cv_regular_any_class_regular )
+    ) THEN
+      IF ( it_message_text IS NULL ) THEN
+        lv_out_msg  := xxccp_common_pkg.get_msg(
+                           iv_application   => iv_output_msg_application
+                         , iv_name          => iv_output_msg_name
+                         , iv_token_name1   => iv_output_msg_token_name1
+                         , iv_token_value1  => iv_output_msg_token_value1
+                         , iv_token_name2   => iv_output_msg_token_name2
+                         , iv_token_value2  => iv_output_msg_token_value2
+                         , iv_token_name3   => iv_output_msg_token_name3
+                         , iv_token_value3  => iv_output_msg_token_value3
+                         , iv_token_name4   => iv_output_msg_token_name4
+                         , iv_token_value4  => iv_output_msg_token_value4
+                         , iv_token_name5   => iv_output_msg_token_name5
+                         , iv_token_value5  => iv_output_msg_token_value5
+                         , iv_token_name6   => iv_output_msg_token_name6
+                         , iv_token_value6  => iv_output_msg_token_value6
+                         , iv_token_name7   => iv_output_msg_token_name7
+                         , iv_token_value7  => iv_output_msg_token_value7
+                         , iv_token_name8   => iv_output_msg_token_name8
+                         , iv_token_value8  => iv_output_msg_token_value8
+                         , iv_token_name9   => iv_output_msg_token_name9
+                         , iv_token_value9  => iv_output_msg_token_value9
+                         , iv_token_name10  => iv_output_msg_token_name10
+                         , iv_token_value10 => iv_output_msg_token_value10
+                       );
+      ELSE
+        lv_out_msg  := it_message_text;
+      END If;
+--
+      gn_gen_err_count  := gn_gen_err_count + 1;  -- 汎用エラー出力件数をインクリメント
+--
+      SELECT  xxcos_gen_err_list_s01.nextval  AS gen_err_list_id
+      INTO  g_gen_err_list_tab( gn_gen_err_count ).gen_err_list_id                                  -- 汎用エラーリストID
+      FROM    DUAL
+      ;
+--
+      g_gen_err_list_tab( gn_gen_err_count ).base_code                := it_base_code;              -- 納品拠点コード
+      g_gen_err_list_tab( gn_gen_err_count ).concurrent_program_name  := cv_pkg_name;               -- コンカレント名
+      g_gen_err_list_tab( gn_gen_err_count ).business_date            := gd_business_date;          -- 登録業務日付
+      g_gen_err_list_tab( gn_gen_err_count ).message_name             := it_message_name;           -- エラーメッセージ名
+      g_gen_err_list_tab( gn_gen_err_count ).message_text             := lv_out_msg;                -- エラーメッセージ
+      g_gen_err_list_tab( gn_gen_err_count ).created_by               := cn_created_by;             -- 作成者
+--      g_gen_err_list_tab( gn_gen_err_count ).creation_date            := cd_creation_date;          -- 作成日
+      g_gen_err_list_tab( gn_gen_err_count ).creation_date            := SYSDATE;                   -- 作成日
+      g_gen_err_list_tab( gn_gen_err_count ).last_updated_by          := cn_last_updated_by;        -- 最終更新者
+--      g_gen_err_list_tab( gn_gen_err_count ).last_update_date         := cd_last_update_date;       -- 最終更新日
+      g_gen_err_list_tab( gn_gen_err_count ).last_update_date         := SYSDATE;                   -- 最終更新日
+      g_gen_err_list_tab( gn_gen_err_count ).last_update_login        := cn_last_update_login;      -- 最終更新ログイン
+      g_gen_err_list_tab( gn_gen_err_count ).request_id               := cn_request_id;             -- 要求ID
+      g_gen_err_list_tab( gn_gen_err_count ).program_application_id   := cn_program_application_id; -- コンカレント・プログラム・アプリケーションID
+      g_gen_err_list_tab( gn_gen_err_count ).program_id               := cn_program_id;             -- コンカレント・プログラムID
+--      g_gen_err_list_tab( gn_gen_err_count ).program_update_date      := cd_program_update_date;    -- プログラム更新日
+      g_gen_err_list_tab( gn_gen_err_count ).program_update_date      := SYSDATE;                   -- プログラム更新日
+    END IF;
+--
+  EXCEPTION
+--#################################  固定例外処理部 START  #################################
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM  , 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM  , 1, 5000 );
+      ov_retcode := cv_status_error;
+--#################################  固定例外処理部 END    #################################
+  END set_gen_err_list;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -603,6 +805,16 @@ AS
 --
   PROCEDURE init(
     iv_target_date  IN      VARCHAR2,     -- 処理日付
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    iv_regular_any_class  IN  VARCHAR2,   -- 定期随時区分
+    iv_dlv_base_code      IN  VARCHAR2,   -- 納品拠点コード
+    iv_edi_chain_code     IN  VARCHAR2,   -- EDIチェーン店コード
+    iv_cust_code          IN  VARCHAR2,   -- 顧客コード
+    iv_dlv_date_from      IN  VARCHAR2,   -- 納品日FROM
+    iv_dlv_date_to        IN  VARCHAR2,   -- 納品日TO
+    iv_user_name          IN  VARCHAR2,   -- 作成者
+    iv_order_number       IN  VARCHAR2,   -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
     ov_errbuf       OUT     VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode      OUT     VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg       OUT     VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -626,7 +838,11 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_para_msg     VARCHAR2(100);
+-- 2010/08/25 Ver.1.16 S.Arizumi Mod Start --
+--    lv_para_msg     VARCHAR2(100);
+    lv_para_msg     VARCHAR2(5000);   -- パラメータ出力メッセージ
+    lv_table_name   VARCHAR2(100);    --  テーブル名
+-- 2010/08/25 Ver.1.16 S.Arizumi Mod End   --
 --
     -- *** ローカル・カーソル ***
 --
@@ -682,7 +898,26 @@ AS
                        iv_application   =>  cv_xxcos_appl_short_nm,
                        iv_name          =>  cv_msg_parameter_note,
                        iv_token_name1   =>  cv_tkn_para_date,
-                       iv_token_value1  =>  TO_CHAR(gd_process_date, ct_target_date_format)  -- 処理日付
+-- 2010/08/25 Ver.1.16 S.Arizumi Mod Start --
+--                       iv_token_value1  =>  TO_CHAR(gd_process_date, ct_target_date_format)  -- 処理日付
+                       iv_token_value1  =>  TO_CHAR( gd_process_date, ct_target_date_format ),  -- 処理日付
+                       iv_token_name2   =>  cv_tkn_para_regular_any_class,
+                       iv_token_value2  =>  iv_regular_any_class,                               -- 定期随時区分
+                       iv_token_name3   =>  cv_tkn_para_dlv_base_code,
+                       iv_token_value3  =>  iv_dlv_base_code,                                   -- 納品拠点コード
+                       iv_token_name4   =>  cv_tkn_para_edi_chain_code,
+                       iv_token_value4  =>  iv_edi_chain_code,                                  -- EDIチェーン店コード
+                       iv_token_name5   =>  cv_tkn_para_cust_code,
+                       iv_token_value5  =>  iv_cust_code,                                       -- 顧客コード
+                       iv_token_name6   =>  cv_tkn_para_dlv_date_from,
+                       iv_token_value6  =>  iv_dlv_date_from,                                   -- 納品日FROM
+                       iv_token_name7   =>  cv_tkn_param_dlv_date_to,
+                       iv_token_value7  =>  iv_dlv_date_to,                                     -- 納品日TO
+                       iv_token_name8   =>  cv_tkn_para_created_by,
+                       iv_token_value8  =>  iv_user_name,                                       -- 作成者
+                       iv_token_name9   =>  cv_tkn_para_order_numer,
+                       iv_token_value9  =>  iv_order_number                                     -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Mod End   --
                      );
 --
     FND_FILE.PUT_LINE(
@@ -708,6 +943,57 @@ AS
       ,buff   => lv_para_msg
     );
 --
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    --===================================
+    -- 入力パラメータ
+    --===================================
+    -- 定期随時区分
+    gt_regular_any_class  := iv_regular_any_class;
+--
+    IF (     ( gt_regular_any_class IS NOT NULL                )
+         AND ( gt_regular_any_class = cv_regular_any_class_any )
+    ) THEN
+      -- 納品拠点コード
+      gt_dlv_base_code      := iv_dlv_base_code;
+      -- EDIチェーン店コード
+      gt_edi_chain_code     := iv_edi_chain_code;
+      -- 顧客コード
+      gt_cust_code          := iv_cust_code;
+--
+      BEGIN
+        -- 納品日FROM
+        gt_dlv_date_from    := TO_DATE( iv_dlv_date_from, ct_target_date_format );
+        -- 納品日TO
+        gt_dlv_date_to      := TO_DATE( iv_dlv_date_to  , ct_target_date_format );
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          RAISE global_format_date_err_expt;
+      END;
+--
+      BEGIN
+        IF ( iv_user_name IS NOT NULL ) THEN
+          -- 作成者
+          SELECT  fu.user_id  AS user_id  -- ユーザID
+          INTO  gt_created_by
+          FROM    fnd_user  fu  -- ユーザマスタ
+          WHERE   fu.user_name  =  iv_user_name
+          ;
+        END IF;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_table_name := xxccp_common_pkg.get_msg(
+                             iv_application => cv_xxcos_appl_short_nm,
+                             iv_name        => cv_fnd_user
+                           );
+          RAISE global_select_data_expt;
+      END;
+--
+      -- 受注番号
+      gt_order_number       := TO_NUMBER( iv_order_number );
+    END IF;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
   EXCEPTION
     -- *** 業務日付取得例外ハンドラ ***
@@ -731,6 +1017,21 @@ AS
 --
       ov_errbuf   :=  SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode  :=  cv_status_error;
+--
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    -- *** データ取得例外ハンドラ ***
+    WHEN global_select_data_expt  THEN
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_xxcos_appl_short_nm,
+                     iv_name         => ct_msg_select_data_err,
+                     iv_token_name1  => cv_tkn_table_name,
+                     iv_token_value1 => lv_table_name,
+                     iv_token_name2  => cv_tkn_key_data,
+                     iv_token_value2 => NULL
+                   );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || ov_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1160,247 +1461,427 @@ AS
 --###########################  固定部 END   ############################
 --
 --
-    SELECT
-/* 2009/09/11 Ver1.10 Add Start */
-      /*+
-        LEADING(ooha)
-        USE_NL(oola ooha xca ottth otttl ottth ottal msi)
-        USE_NL(ooha xchv)
-        USE_NL(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
-        INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
-        INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
-        INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
-        INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
-      */
-/* 2009/09/11 Ver1.10 Add End   */
-      ooha.header_id                          AS header_id                  -- 受注ヘッダID
-      , oola.line_id                          AS line_id                    -- 受注明細ID
-      , ottth.name                            AS order_type                 -- 受注タイプ
-      , otttl.name                            AS line_type                  -- 明細タイプ
-      , ooha.salesrep_id                      AS salesrep_id                -- 営業担当
-      , ooha.cust_po_number                   AS dlv_invoice_number         -- 納品伝票番号
-      , ooha.attribute19                      AS order_invoice_number       -- 注文伝票番号
-      , ooha.order_number                     AS order_number               -- 受注番号
-      , oola.line_number                      AS line_number                -- 受注明細番号
-      , NULL                                  AS order_no_hht               -- 受注No（HHT)
-      , NULL                                  AS order_no_hht_seq           -- 受注No（HHT）枝番
-      , NULL                                  AS dlv_invoice_class          -- 納品伝票区分
-      , NULL                                  AS cancel_correct_class       -- 取消・訂正区分
-      , NULL                                  AS input_class                -- 入力区分
-      , xca.business_low_type                 AS cust_gyotai_sho            -- 業態（小分類）
-      , NULL                                  AS dlv_date                   -- 納品日
-      , TRUNC(oola.request_date)              AS org_dlv_date               -- オリジナル納品日
-      , NULL                                  AS inspect_date               -- 検収日
-      , CASE 
-          WHEN oola.attribute4 IS NULL THEN TRUNC(oola.request_date)
-          ELSE TRUNC(TO_DATE(oola.attribute4,cv_fmt_date_default))
-        END 
-                                              AS orig_inspect_date          -- オリジナル検収日
-      , xca.customer_code                     AS ship_to_customer_code      -- 顧客納品先
-      , xchv.bill_tax_div                     AS consumption_tax_class      -- 消費税区分
-      , NULL                                  AS tax_code                   -- 税金コード
-      , NULL                                  AS tax_rate                   -- 消費税率
-      , NULL                                  AS results_employee_code      -- 成績計上者コード
-      , xca.sale_base_code                    AS sale_base_code             -- 売上拠点コード
-      , xca.past_sale_base_code               AS last_month_sale_base_code  -- 前月売上拠点コード
-      , xca.rsv_sale_base_act_date            AS rsv_sale_base_act_date     -- 予約売上拠点有効開始日
-      , xchv.cash_receiv_base_code            AS receiv_base_code           -- 入金拠点コード
-      , ooha.order_source_id                  AS order_source_id            -- 受注ソースID
-      , ooha.orig_sys_document_ref            AS order_connection_number    -- 外部システム受注番号
-      , NULL                                  AS card_sale_class            -- カード売り区分
--- 2009/07/08 Ver.1.9 M.Sano Add Start
---      , xeh.invoice_class                     AS invoice_class              -- 伝票区分
---      , xeh.big_classification_code           AS invoice_classification_code-- 伝票分類コード
-      , ooha.attribute5                       AS invoice_class              -- 伝票区分
-      , ooha.attribute20                      AS invoice_classification_code-- 伝票分類コード
--- 2009/07/08 Ver.1.9 M.Sano Add Start
-      , NULL                                  AS change_out_time_100        -- つり銭切れ時間１００円
-      , NULL                                  AS change_out_time_10         -- つり銭切れ時間１０円
-      , ct_no_flg                             AS ar_interface_flag          -- ARインタフェース済フラグ
-      , ct_no_flg                             AS gl_interface_flag          -- GLインタフェース済フラグ
-      , ct_no_flg                             AS dwh_interface_flag         -- 情報システムインタフェース済フラグ
-      , ct_no_flg                             AS edi_interface_flag         -- EDI送信済みフラグ
-      , NULL                                  AS edi_send_date              -- EDI送信日時
-      , NULL                                  AS hht_dlv_input_date         -- HHT納品入力日時
-      , NULL                                  AS dlv_by_code                -- 納品者コード
-      , cv_business_cost                      AS create_class               -- 作成元区分
-      , oola.line_number                      AS dlv_invoice_line_number    -- 納品明細番号
-      , oola.line_number                      AS order_invoice_line_number  -- 注文明細番号
-      , oola.attribute5                       AS sales_class                -- 売上区分
-      , NULL                                  AS delivery_pattern_class     -- 納品形態区分
-      , NULL                                  AS red_black_flag             -- 赤黒フラグ
-      , oola.ordered_item                     AS item_code                  -- 品目コード
-      , oola.ordered_quantity *
-        DECODE( ottal.order_category_code
-              , ct_order_category, -1, 1 )    AS ordered_quantity           -- 受注数量
-      , 0                                     AS base_quantity              -- 基準数量
-      , oola.order_quantity_uom               AS order_quantity_uom         -- 受注単位
-      , NULL                                  AS base_uom                   -- 基準単位
-      , 0                                     AS standard_unit_price        -- 税抜基準単価
-      , 0                                     AS base_unit_price            -- 基準単価
-      , oola.unit_selling_price               AS unit_selling_price         -- 販売単価
-      , 0                                     AS business_cost              -- 営業原価
-      , 0                                     AS sale_amount                -- 売上金額
-      , 0                                     AS pure_amount                -- 本体金額
-      , 0                                     AS tax_amount                 -- 消費税金額
-      , NULL                                  AS cash_and_card              -- 現金・カード併用額
-      , oola.subinventory                     AS ship_from_subinventory_code-- 出荷元保管場所
-      , DECODE(msi.attribute1
-             , cv_subinventory_class
-             , xca.delivery_base_code
-             , msi.attribute7)                AS delivery_base_code         -- 納品拠点コード
-      , NULL                                  AS hot_cold_class             -- Ｈ＆Ｃ
-      , NULL                                  AS column_no                  -- コラムNo
-      , NULL                                  AS sold_out_class             -- 売切区分
-      , NULL                                  AS sold_out_time              -- 売切時間
-      , ct_no_flg                             AS to_calculate_fees_flag     -- 手数料計算インタフェース済フラグ
-      , ct_no_flg                             AS unit_price_mst_flag        -- 単価マスタ作成済フラグ
-      , ct_no_flg                             AS inv_interface_flag         -- INVインタフェース済フラグ
-      , xchv.bill_tax_round_rule              AS bill_tax_round_rule        -- 税金－端数処理
-      , oola.packing_instructions             AS packing_instructions       -- 出荷依頼No
-      , msi.attribute1                        AS subinventory_class         -- 保管場所区分
-      , cn_check_status_normal                AS check_status               -- チェックステータス
--- 2009/07/08 Ver.1.9 M.Sano Add Start
-      , ooha.global_attribute3                AS info_class                 -- 情報区分
--- 2009/07/08 Ver.1.9 M.Sano Add  End 
--- 2009/09/30 Ver.1.11 M.Sano Add Start
-      , NULL                                  AS results_employee_base_code -- 成績計上者の拠点コード
--- 2009/09/30 Ver.1.11 M.Sano Add Start
-    BULK COLLECT INTO
--- 2009/07/08 Ver.1.9 M.Sano Add Start
---      g_order_data_tab
-      g_order_all_data_tab
--- 2009/07/08 Ver.1.9 M.Sano Add  End 
-    FROM
-      oe_order_headers_all        ooha    -- 受注ヘッダ
-      , oe_order_lines_all        oola    -- 受注明細
-      , oe_transaction_types_tl   ottth   -- 受注ヘッダ摘要用取引タイプ
-      , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
-      , oe_transaction_types_all  ottal   -- 受注明細取引タイプ
-      , mtl_secondary_inventories msi     -- 保管場所マスタ
--- 2009/07/08 Ver.1.9 M.Sano Del Start
---      , xxcos_edi_headers         xeh     -- EDIヘッダ情報
--- 2009/07/08 Ver.1.9 M.Sano Del  End 
-      , xxcmm_cust_accounts       xca     -- アカウントアドオンマスタ
-      , xxcos_cust_hierarchy_v    xchv    -- 顧客階層VIEW
-    WHERE
-          ooha.header_id = oola.header_id                 -- 受注ヘッダ.受注ヘッダID＝受注明細.受注ヘッダID
-      -- 受注ヘッダ.受注タイプID＝受注ヘッダ摘要用取引タイプ.取引タイプID
-      AND ooha.order_type_id = ottth.transaction_type_id
-      -- 受注明細.明細タイプID＝受注明細摘要用取引タイプ.取引タイプID
-      AND oola.line_type_id  = otttl.transaction_type_id
-      -- 受注明細.明細タイプID＝受注明細取引タイプ.取引タイプID
-      AND oola.line_type_id  = ottal.transaction_type_id
--- 2009/07/08 Ver.1.9 M.Sano Mod Start
---      AND ottth.language = USERENV('LANG')
---      AND otttl.language = USERENV('LANG')
-      AND ottth.language = ct_lang
-      AND otttl.language = ct_lang
--- 2009/07/08 Ver.1.9 M.Sano Mod  End 
-      AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス≠記帳済(BOOKED)
-      AND ooha.order_category_code  = ct_order_category               -- 受注ヘッダ.受注カテゴリコード＝返品(RETURN)
-      -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
-      AND oola.flow_status_code NOT IN (ct_ln_status_closed, ct_ln_status_cancelled)
-      AND ooha.org_id = gn_org_id                                     -- 組織ID
-      AND TRUNC(oola.request_date) <= TRUNC(gd_process_date)          -- 受注明細.要求日≦業務日付
--- 2009/07/08 Ver.1.9 M.Sano Mod Start
---      AND ooha.orig_sys_document_ref = xeh.order_connection_number(+) -- 受注ヘッダ.外部システム受注番号
---                                                                      --    = EDIヘッダ情報.受注関連番号
-      -- 受注ヘッダ.情報区分 = NULL or 01 or 02
-      AND NVL(ooha.global_attribute3, cv_info_class_01) IN (cv_info_class_01, cv_info_class_02)
--- 2009/07/08 Ver.1.9 M.Sano Mod  End 
-      AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
-      AND ooha.sold_to_org_id = xchv.ship_account_id                  -- 受注ヘッダ.顧客ID = 顧客階層VIEW.出荷先顧客ID
--- 2009/07/08 Ver.1.9 M.Sano Mod Start
---      AND oola.ordered_item NOT IN (                                  -- 受注明細.受注品目≠エラー品目
-      AND NOT EXISTS (
--- 2009/07/08 Ver.1.9 M.Sano Mod  End 
-                                    SELECT
-/* 2009/09/11 Ver1.10 Add Start */
-                                      /*+
-                                        USE_NL(flv)
-                                      */
-/* 2009/09/11 Ver1.10 Add End   */
-                                      flv.lookup_code
-                                    FROM
--- 2009/07/28 Ver.1.9 M.Sano Del Start
---                                      fnd_application               fa,
---                                      fnd_lookup_types              flt,
--- 2009/07/28 Ver.1.9 M.Sano Del End
-                                      fnd_lookup_values             flv
-                                    WHERE
--- 2009/07/28 Ver.1.9 M.Sano Mod Start
---                                        fa.application_id           = flt.application_id
---                                    AND flt.lookup_type             = flv.lookup_type
---                                    AND fa.application_short_name   = cv_xxcos_appl_short_nm
---                                    AND flv.lookup_type             = ct_qct_edi_item_err_type
-                                        flv.lookup_type             = ct_qct_edi_item_err_type
--- 2009/07/28 Ver.1.9 M.Sano Mod End
-                                    AND flv.start_date_active      <= gd_process_date
-                                    AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                                    AND flv.enabled_flag            = ct_yes_flg
--- 2009/07/08 Ver.1.9 M.Sano Mod Start
---                                    AND flv.language                = USERENV( 'LANG' )
-                                    AND flv.language                = ct_lang
-                                    AND flv.lookup_code             = oola.ordered_item
--- 2009/07/08 Ver.1.9 M.Sano Mod  End 
-                                 )
-      AND oola.subinventory = msi.secondary_inventory_name    -- 受注明細.保管場所=保管場所マスタ.保管場所コード
-      AND oola.ship_from_org_id = msi.organization_id         -- 出荷元組織ID = 
-      AND NOT EXISTS (
-                SELECT
-                  'X'
-                FROM (
-                     SELECT
-/* 2009/09/11 Ver1.10 Add Start */
-                         /*+
-                           USE_NL(flv)
-                         */
-/* 2009/09/11 Ver1.10 Add End   */
-                         flv.attribute1 AS subinventory
-                       , flv.attribute2 AS order_type
-                       , flv.attribute3 AS line_type
-                     FROM
--- 2009/07/28 Ver.1.9 M.Sano Del Start
---                       fnd_application               fa,
---                       fnd_lookup_types              flt,
--- 2009/07/28 Ver.1.9 M.Sano Del End
-                       fnd_lookup_values             flv
-                     WHERE
--- 2009/07/28 Ver.1.9 M.Sano Mod Start
---                         fa.application_id           = flt.application_id
---                     AND flt.lookup_type             = flv.lookup_type
---                     AND fa.application_short_name   = cv_xxcos_appl_short_nm
---                     AND flv.lookup_type             = ct_qct_sale_exp_condition
-                         flv.lookup_type             = ct_qct_sale_exp_condition
--- 2009/07/28 Ver.1.9 M.Sano Mod End
-                     AND flv.lookup_code          LIKE ct_qcc_sale_exp_condition
-                     AND flv.start_date_active      <= gd_process_date
-                     AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                     AND flv.enabled_flag            = ct_yes_flg
--- 2009/07/08 Ver.1.9 M.Sano Mod Start
---                     AND flv.language                = USERENV( 'LANG' )
-                     AND flv.language                = ct_lang
--- 2009/07/08 Ver.1.9 M.Sano Mod End
-                  ) flvs
-                WHERE
-                  msi.attribute13  = flvs.subinventory                -- 保管場所分類
-                  AND ottth.name   = NVL(flvs.order_type, ottth.name) -- 受注タイプ
-                  AND otttl.name   = NVL(flvs.line_type,  otttl.name) -- 明細タイプ
-          )
--- 2009/10/20 Ver.1.12 K.Satomura Add Start
-      AND oola.global_attribute5 IS NULL
--- 2009/10/20 Ver.1.12 K.Satomura Add End
-    ORDER BY
-        ooha.header_id
-      , oola.line_id
--- 2009/11/05 Ver.1.13 M.Sano Mod Start
---    FOR UPDATE OF
---        ooha.header_id
---      , oola.line_id
---    NOWAIT;
-    ;
--- 2009/11/05 Ver.1.13 M.Sano Mod End
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    IF    ( gt_regular_any_class IS NULL                        ) THEN
+      NULL;
+    ELSIF ( gt_regular_any_class = cv_regular_any_class_regular ) THEN
+-- 2010/08/25 Ver.1.16 S.Arizumi Add END   --
+      SELECT
+  /* 2009/09/11 Ver1.10 Add Start */
+        /*+
+          LEADING(ooha)
+          USE_NL(oola ooha xca ottth otttl ottth ottal msi)
+          USE_NL(ooha xchv)
+          USE_NL(xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3)
+          INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
+          INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
+          INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1)
+          INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1)
+        */
+  /* 2009/09/11 Ver1.10 Add End   */
+        ooha.header_id                          AS header_id                  -- 受注ヘッダID
+        , oola.line_id                          AS line_id                    -- 受注明細ID
+        , ottth.name                            AS order_type                 -- 受注タイプ
+        , otttl.name                            AS line_type                  -- 明細タイプ
+        , ooha.salesrep_id                      AS salesrep_id                -- 営業担当
+        , ooha.cust_po_number                   AS dlv_invoice_number         -- 納品伝票番号
+        , ooha.attribute19                      AS order_invoice_number       -- 注文伝票番号
+        , ooha.order_number                     AS order_number               -- 受注番号
+        , oola.line_number                      AS line_number                -- 受注明細番号
+        , NULL                                  AS order_no_hht               -- 受注No（HHT)
+        , NULL                                  AS order_no_hht_seq           -- 受注No（HHT）枝番
+        , NULL                                  AS dlv_invoice_class          -- 納品伝票区分
+        , NULL                                  AS cancel_correct_class       -- 取消・訂正区分
+        , NULL                                  AS input_class                -- 入力区分
+        , xca.business_low_type                 AS cust_gyotai_sho            -- 業態（小分類）
+        , NULL                                  AS dlv_date                   -- 納品日
+        , TRUNC(oola.request_date)              AS org_dlv_date               -- オリジナル納品日
+        , NULL                                  AS inspect_date               -- 検収日
+        , CASE 
+            WHEN oola.attribute4 IS NULL THEN TRUNC(oola.request_date)
+            ELSE TRUNC(TO_DATE(oola.attribute4,cv_fmt_date_default))
+          END 
+                                                AS orig_inspect_date          -- オリジナル検収日
+        , xca.customer_code                     AS ship_to_customer_code      -- 顧客納品先
+        , xchv.bill_tax_div                     AS consumption_tax_class      -- 消費税区分
+        , NULL                                  AS tax_code                   -- 税金コード
+        , NULL                                  AS tax_rate                   -- 消費税率
+        , NULL                                  AS results_employee_code      -- 成績計上者コード
+        , xca.sale_base_code                    AS sale_base_code             -- 売上拠点コード
+        , xca.past_sale_base_code               AS last_month_sale_base_code  -- 前月売上拠点コード
+        , xca.rsv_sale_base_act_date            AS rsv_sale_base_act_date     -- 予約売上拠点有効開始日
+        , xchv.cash_receiv_base_code            AS receiv_base_code           -- 入金拠点コード
+        , ooha.order_source_id                  AS order_source_id            -- 受注ソースID
+        , ooha.orig_sys_document_ref            AS order_connection_number    -- 外部システム受注番号
+        , NULL                                  AS card_sale_class            -- カード売り区分
+  -- 2009/07/08 Ver.1.9 M.Sano Add Start
+  --      , xeh.invoice_class                     AS invoice_class              -- 伝票区分
+  --      , xeh.big_classification_code           AS invoice_classification_code-- 伝票分類コード
+        , ooha.attribute5                       AS invoice_class              -- 伝票区分
+        , ooha.attribute20                      AS invoice_classification_code-- 伝票分類コード
+  -- 2009/07/08 Ver.1.9 M.Sano Add Start
+        , NULL                                  AS change_out_time_100        -- つり銭切れ時間１００円
+        , NULL                                  AS change_out_time_10         -- つり銭切れ時間１０円
+        , ct_no_flg                             AS ar_interface_flag          -- ARインタフェース済フラグ
+        , ct_no_flg                             AS gl_interface_flag          -- GLインタフェース済フラグ
+        , ct_no_flg                             AS dwh_interface_flag         -- 情報システムインタフェース済フラグ
+        , ct_no_flg                             AS edi_interface_flag         -- EDI送信済みフラグ
+        , NULL                                  AS edi_send_date              -- EDI送信日時
+        , NULL                                  AS hht_dlv_input_date         -- HHT納品入力日時
+        , NULL                                  AS dlv_by_code                -- 納品者コード
+        , cv_business_cost                      AS create_class               -- 作成元区分
+        , oola.line_number                      AS dlv_invoice_line_number    -- 納品明細番号
+        , oola.line_number                      AS order_invoice_line_number  -- 注文明細番号
+        , oola.attribute5                       AS sales_class                -- 売上区分
+        , NULL                                  AS delivery_pattern_class     -- 納品形態区分
+        , NULL                                  AS red_black_flag             -- 赤黒フラグ
+        , oola.ordered_item                     AS item_code                  -- 品目コード
+        , oola.ordered_quantity *
+          DECODE( ottal.order_category_code
+                , ct_order_category, -1, 1 )    AS ordered_quantity           -- 受注数量
+        , 0                                     AS base_quantity              -- 基準数量
+        , oola.order_quantity_uom               AS order_quantity_uom         -- 受注単位
+        , NULL                                  AS base_uom                   -- 基準単位
+        , 0                                     AS standard_unit_price        -- 税抜基準単価
+        , 0                                     AS base_unit_price            -- 基準単価
+        , oola.unit_selling_price               AS unit_selling_price         -- 販売単価
+        , 0                                     AS business_cost              -- 営業原価
+        , 0                                     AS sale_amount                -- 売上金額
+        , 0                                     AS pure_amount                -- 本体金額
+        , 0                                     AS tax_amount                 -- 消費税金額
+        , NULL                                  AS cash_and_card              -- 現金・カード併用額
+        , oola.subinventory                     AS ship_from_subinventory_code-- 出荷元保管場所
+        , DECODE(msi.attribute1
+               , cv_subinventory_class
+               , xca.delivery_base_code
+               , msi.attribute7)                AS delivery_base_code         -- 納品拠点コード
+        , NULL                                  AS hot_cold_class             -- Ｈ＆Ｃ
+        , NULL                                  AS column_no                  -- コラムNo
+        , NULL                                  AS sold_out_class             -- 売切区分
+        , NULL                                  AS sold_out_time              -- 売切時間
+        , ct_no_flg                             AS to_calculate_fees_flag     -- 手数料計算インタフェース済フラグ
+        , ct_no_flg                             AS unit_price_mst_flag        -- 単価マスタ作成済フラグ
+        , ct_no_flg                             AS inv_interface_flag         -- INVインタフェース済フラグ
+        , xchv.bill_tax_round_rule              AS bill_tax_round_rule        -- 税金－端数処理
+        , oola.packing_instructions             AS packing_instructions       -- 出荷依頼No
+        , msi.attribute1                        AS subinventory_class         -- 保管場所区分
+        , cn_check_status_normal                AS check_status               -- チェックステータス
+  -- 2009/07/08 Ver.1.9 M.Sano Add Start
+        , ooha.global_attribute3                AS info_class                 -- 情報区分
+  -- 2009/07/08 Ver.1.9 M.Sano Add  End 
+  -- 2009/09/30 Ver.1.11 M.Sano Add Start
+        , NULL                                  AS results_employee_base_code -- 成績計上者の拠点コード
+  -- 2009/09/30 Ver.1.11 M.Sano Add Start
+      BULK COLLECT INTO
+  -- 2009/07/08 Ver.1.9 M.Sano Add Start
+  --      g_order_data_tab
+        g_order_all_data_tab
+  -- 2009/07/08 Ver.1.9 M.Sano Add  End 
+      FROM
+        oe_order_headers_all        ooha    -- 受注ヘッダ
+        , oe_order_lines_all        oola    -- 受注明細
+        , oe_transaction_types_tl   ottth   -- 受注ヘッダ摘要用取引タイプ
+        , oe_transaction_types_tl   otttl   -- 受注明細摘要用取引タイプ
+        , oe_transaction_types_all  ottal   -- 受注明細取引タイプ
+        , mtl_secondary_inventories msi     -- 保管場所マスタ
+  -- 2009/07/08 Ver.1.9 M.Sano Del Start
+  --      , xxcos_edi_headers         xeh     -- EDIヘッダ情報
+  -- 2009/07/08 Ver.1.9 M.Sano Del  End 
+        , xxcmm_cust_accounts       xca     -- アカウントアドオンマスタ
+        , xxcos_cust_hierarchy_v    xchv    -- 顧客階層VIEW
+      WHERE
+            ooha.header_id = oola.header_id                 -- 受注ヘッダ.受注ヘッダID＝受注明細.受注ヘッダID
+        -- 受注ヘッダ.受注タイプID＝受注ヘッダ摘要用取引タイプ.取引タイプID
+        AND ooha.order_type_id = ottth.transaction_type_id
+        -- 受注明細.明細タイプID＝受注明細摘要用取引タイプ.取引タイプID
+        AND oola.line_type_id  = otttl.transaction_type_id
+        -- 受注明細.明細タイプID＝受注明細取引タイプ.取引タイプID
+        AND oola.line_type_id  = ottal.transaction_type_id
+  -- 2009/07/08 Ver.1.9 M.Sano Mod Start
+  --      AND ottth.language = USERENV('LANG')
+  --      AND otttl.language = USERENV('LANG')
+        AND ottth.language = ct_lang
+        AND otttl.language = ct_lang
+  -- 2009/07/08 Ver.1.9 M.Sano Mod  End 
+        AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス≠記帳済(BOOKED)
+        AND ooha.order_category_code  = ct_order_category               -- 受注ヘッダ.受注カテゴリコード＝返品(RETURN)
+        -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
+        AND oola.flow_status_code NOT IN (ct_ln_status_closed, ct_ln_status_cancelled)
+        AND ooha.org_id = gn_org_id                                     -- 組織ID
+        AND TRUNC(oola.request_date) <= TRUNC(gd_process_date)          -- 受注明細.要求日≦業務日付
+  -- 2009/07/08 Ver.1.9 M.Sano Mod Start
+  --      AND ooha.orig_sys_document_ref = xeh.order_connection_number(+) -- 受注ヘッダ.外部システム受注番号
+  --                                                                      --    = EDIヘッダ情報.受注関連番号
+        -- 受注ヘッダ.情報区分 = NULL or 01 or 02
+        AND NVL(ooha.global_attribute3, cv_info_class_01) IN (cv_info_class_01, cv_info_class_02)
+  -- 2009/07/08 Ver.1.9 M.Sano Mod  End 
+        AND ooha.sold_to_org_id = xca.customer_id                       -- 受注ヘッダ.顧客ID = ｱｶｳﾝﾄｱﾄﾞｵﾝﾏｽﾀ.顧客ID
+        AND ooha.sold_to_org_id = xchv.ship_account_id                  -- 受注ヘッダ.顧客ID = 顧客階層VIEW.出荷先顧客ID
+  -- 2009/07/08 Ver.1.9 M.Sano Mod Start
+  --      AND oola.ordered_item NOT IN (                                  -- 受注明細.受注品目≠エラー品目
+        AND NOT EXISTS (
+  -- 2009/07/08 Ver.1.9 M.Sano Mod  End 
+                                      SELECT
+  /* 2009/09/11 Ver1.10 Add Start */
+                                        /*+
+                                          USE_NL(flv)
+                                        */
+  /* 2009/09/11 Ver1.10 Add End   */
+                                        flv.lookup_code
+                                      FROM
+  -- 2009/07/28 Ver.1.9 M.Sano Del Start
+  --                                      fnd_application               fa,
+  --                                      fnd_lookup_types              flt,
+  -- 2009/07/28 Ver.1.9 M.Sano Del End
+                                        fnd_lookup_values             flv
+                                      WHERE
+  -- 2009/07/28 Ver.1.9 M.Sano Mod Start
+  --                                        fa.application_id           = flt.application_id
+  --                                    AND flt.lookup_type             = flv.lookup_type
+  --                                    AND fa.application_short_name   = cv_xxcos_appl_short_nm
+  --                                    AND flv.lookup_type             = ct_qct_edi_item_err_type
+                                          flv.lookup_type             = ct_qct_edi_item_err_type
+  -- 2009/07/28 Ver.1.9 M.Sano Mod End
+                                      AND flv.start_date_active      <= gd_process_date
+                                      AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+                                      AND flv.enabled_flag            = ct_yes_flg
+  -- 2009/07/08 Ver.1.9 M.Sano Mod Start
+  --                                    AND flv.language                = USERENV( 'LANG' )
+                                      AND flv.language                = ct_lang
+                                      AND flv.lookup_code             = oola.ordered_item
+  -- 2009/07/08 Ver.1.9 M.Sano Mod  End 
+                                   )
+        AND oola.subinventory = msi.secondary_inventory_name    -- 受注明細.保管場所=保管場所マスタ.保管場所コード
+        AND oola.ship_from_org_id = msi.organization_id         -- 出荷元組織ID = 
+        AND NOT EXISTS (
+                  SELECT
+                    'X'
+                  FROM (
+                       SELECT
+  /* 2009/09/11 Ver1.10 Add Start */
+                           /*+
+                             USE_NL(flv)
+                           */
+  /* 2009/09/11 Ver1.10 Add End   */
+                           flv.attribute1 AS subinventory
+                         , flv.attribute2 AS order_type
+                         , flv.attribute3 AS line_type
+                       FROM
+  -- 2009/07/28 Ver.1.9 M.Sano Del Start
+  --                       fnd_application               fa,
+  --                       fnd_lookup_types              flt,
+  -- 2009/07/28 Ver.1.9 M.Sano Del End
+                         fnd_lookup_values             flv
+                       WHERE
+  -- 2009/07/28 Ver.1.9 M.Sano Mod Start
+  --                         fa.application_id           = flt.application_id
+  --                     AND flt.lookup_type             = flv.lookup_type
+  --                     AND fa.application_short_name   = cv_xxcos_appl_short_nm
+  --                     AND flv.lookup_type             = ct_qct_sale_exp_condition
+                           flv.lookup_type             = ct_qct_sale_exp_condition
+  -- 2009/07/28 Ver.1.9 M.Sano Mod End
+                       AND flv.lookup_code          LIKE ct_qcc_sale_exp_condition
+                       AND flv.start_date_active      <= gd_process_date
+                       AND gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+                       AND flv.enabled_flag            = ct_yes_flg
+  -- 2009/07/08 Ver.1.9 M.Sano Mod Start
+  --                     AND flv.language                = USERENV( 'LANG' )
+                       AND flv.language                = ct_lang
+  -- 2009/07/08 Ver.1.9 M.Sano Mod End
+                    ) flvs
+                  WHERE
+                    msi.attribute13  = flvs.subinventory                -- 保管場所分類
+                    AND ottth.name   = NVL(flvs.order_type, ottth.name) -- 受注タイプ
+                    AND otttl.name   = NVL(flvs.line_type,  otttl.name) -- 明細タイプ
+            )
+  -- 2009/10/20 Ver.1.12 K.Satomura Add Start
+        AND oola.global_attribute5 IS NULL
+  -- 2009/10/20 Ver.1.12 K.Satomura Add End
+      ORDER BY
+          ooha.header_id
+        , oola.line_id
+  -- 2009/11/05 Ver.1.13 M.Sano Mod Start
+  --    FOR UPDATE OF
+  --        ooha.header_id
+  --      , oola.line_id
+  --    NOWAIT;
+      ;
+  -- 2009/11/05 Ver.1.13 M.Sano Mod End
+--
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    ELSIF ( gt_regular_any_class = cv_regular_any_class_any     ) THEN
+      SELECT    /*+
+                  LEADING( ooha oola ottal msi otttl ottth xca )
+                  USE_NL( oola ooha xca ottth otttl ottth ottal msi )
+                  USE_NL( ooha xchv )
+--                  USE_NL( xchv.cust_hier.cash_hcar_3 xchv.cust_hier.ship_hzca_3 )
+--                  INDEX( xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1 )
+--                  INDEX( xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1 )
+--                  INDEX( xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u1 )
+--                  INDEX( xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u1 )
+                 */
+                ooha.header_id              AS header_id                    -- 受注ヘッダID
+              , oola.line_id                AS line_id                      -- 受注明細ID
+              , ottth.name                  AS order_type                   -- 受注タイプ
+              , otttl.name                  AS line_type                    -- 明細タイプ
+              , ooha.salesrep_id            AS salesrep_id                  -- 営業担当
+              , ooha.cust_po_number         AS dlv_invoice_number           -- 納品伝票番号
+              , ooha.attribute19            AS order_invoice_number         -- 注文伝票番号
+              , ooha.order_number           AS order_number                 -- 受注番号
+              , oola.line_number            AS line_number                  -- 受注明細番号
+              , NULL                        AS order_no_hht                 -- 受注No（HHT)
+              , NULL                        AS order_no_hht_seq             -- 受注No（HHT）枝番
+              , NULL                        AS dlv_invoice_class            -- 納品伝票区分
+              , NULL                        AS cancel_correct_class         -- 取消・訂正区分
+              , NULL                        AS input_class                  -- 入力区分
+              , xca.business_low_type       AS cust_gyotai_sho              -- 業態（小分類）
+              , NULL                        AS dlv_date                     -- 納品日
+              , TRUNC( oola.request_date )  AS org_dlv_date                 -- オリジナル納品日
+              , NULL                        AS inspect_date                 -- 検収日
+              , CASE WHEN oola.attribute4 IS NULL
+                  THEN TRUNC( oola.request_date                               )
+                  ELSE TRUNC( TO_DATE( oola.attribute4, cv_fmt_date_default ) )
+                END                         AS orig_inspect_date            -- オリジナル検収日
+              , xca.customer_code           AS ship_to_customer_code        -- 顧客納品先
+              , xchv.bill_tax_div           AS consumption_tax_class        -- 消費税区分
+              , NULL                        AS tax_code                     -- 税金コード
+              , NULL                        AS tax_rate                     -- 消費税率
+              , NULL                        AS results_employee_code        -- 成績計上者コード
+              , xca.sale_base_code          AS sale_base_code               -- 売上拠点コード
+              , xca.past_sale_base_code     AS last_month_sale_base_code    -- 前月売上拠点コード
+              , xca.rsv_sale_base_act_date  AS rsv_sale_base_act_date       -- 予約売上拠点有効開始日
+              , xchv.cash_receiv_base_code  AS receiv_base_code             -- 入金拠点コード
+              , ooha.order_source_id        AS order_source_id              -- 受注ソースID
+              , ooha.orig_sys_document_ref  AS order_connection_number      -- 外部システム受注番号
+              , NULL                        AS card_sale_class              -- カード売り区分
+              , ooha.attribute5             AS invoice_class                -- 伝票区分
+              , ooha.attribute20            AS invoice_classification_code  -- 伝票分類コード
+              , NULL                        AS change_out_time_100          -- つり銭切れ時間１００円
+              , NULL                        AS change_out_time_10           -- つり銭切れ時間１０円
+              , ct_no_flg                   AS ar_interface_flag            -- ARインタフェース済フラグ
+              , ct_no_flg                   AS gl_interface_flag            -- GLインタフェース済フラグ
+              , ct_no_flg                   AS dwh_interface_flag           -- 情報システムインタフェース済フラグ
+              , ct_no_flg                   AS edi_interface_flag           -- EDI送信済みフラグ
+              , NULL                        AS edi_send_date                -- EDI送信日時
+              , NULL                        AS hht_dlv_input_date           -- HHT納品入力日時
+              , NULL                        AS dlv_by_code                  -- 納品者コード
+              , cv_business_cost            AS create_class                 -- 作成元区分
+              , oola.line_number            AS dlv_invoice_line_number      -- 納品明細番号
+              , oola.line_number            AS order_invoice_line_number    -- 注文明細番号
+              , oola.attribute5             AS sales_class                  -- 売上区分
+              , NULL                        AS delivery_pattern_class       -- 納品形態区分
+              , NULL                        AS red_black_flag               -- 赤黒フラグ
+              , oola.ordered_item           AS item_code                    -- 品目コード
+              ,   oola.ordered_quantity
+                * DECODE( ottal.order_category_code
+                        , ct_order_category, -1
+                        , 1 )               AS ordered_quantity             -- 受注数量
+              , 0                           AS base_quantity                -- 基準数量
+              , oola.order_quantity_uom     AS order_quantity_uom           -- 受注単位
+              , NULL                        AS base_uom                     -- 基準単位
+              , 0                           AS standard_unit_price          -- 税抜基準単価
+              , 0                           AS base_unit_price              -- 基準単価
+              , oola.unit_selling_price     AS unit_selling_price           -- 販売単価
+              , 0                           AS business_cost                -- 営業原価
+              , 0                           AS sale_amount                  -- 売上金額
+              , 0                           AS pure_amount                  -- 本体金額
+              , 0                           AS tax_amount                   -- 消費税金額
+              , NULL                        AS cash_and_card                -- 現金・カード併用額
+              , oola.subinventory           AS ship_from_subinventory_code  -- 出荷元保管場所
+              , DECODE( msi.attribute1
+                      , cv_subinventory_class, xca.delivery_base_code
+                      , msi.attribute7 )    AS delivery_base_code           -- 納品拠点コード
+              , NULL                        AS hot_cold_class               -- Ｈ＆Ｃ
+              , NULL                        AS column_no                    -- コラムNo
+              , NULL                        AS sold_out_class               -- 売切区分
+              , NULL                        AS sold_out_time                -- 売切時間
+              , ct_no_flg                   AS to_calculate_fees_flag       -- 手数料計算インタフェース済フラグ
+              , ct_no_flg                   AS unit_price_mst_flag          -- 単価マスタ作成済フラグ
+              , ct_no_flg                   AS inv_interface_flag           -- INVインタフェース済フラグ
+              , xchv.bill_tax_round_rule    AS bill_tax_round_rule          -- 税金－端数処理
+              , oola.packing_instructions   AS packing_instructions         -- 出荷依頼No
+              , msi.attribute1              AS subinventory_class           -- 保管場所区分
+              , cn_check_status_normal      AS check_status                 -- チェックステータス
+              , ooha.global_attribute3      AS info_class                   -- 情報区分
+              , NULL                        AS results_employee_base_code   -- 成績計上者の拠点コード
+      BULK COLLECT INTO g_order_all_data_tab
+      FROM      oe_order_headers_all      ooha   -- 受注ヘッダ
+              , oe_order_lines_all        oola   -- 受注明細
+              , oe_transaction_types_tl   ottth  -- 受注ヘッダ摘要用取引タイプ
+              , oe_transaction_types_tl   otttl  -- 受注明細摘要用取引タイプ
+              , oe_transaction_types_all  ottal  -- 受注明細取引タイプ
+              , mtl_secondary_inventories msi    -- 保管場所マスタ
+              , xxcmm_cust_accounts       xca    -- アカウントアドオンマスタ
+              , xxcos_cust_hierarchy_v    xchv   -- 顧客階層VIEW
+      WHERE     ooha.header_id              =  oola.header_id
+        AND     ooha.order_type_id          =  ottth.transaction_type_id
+        AND     ottth.language              =  ct_lang
+        AND     oola.line_type_id           =  otttl.transaction_type_id
+        AND     otttl.language              =  ct_lang
+        AND     oola.line_type_id           =  ottal.transaction_type_id
+        AND     ooha.flow_status_code       =  ct_hdr_status_booked         -- 記帳済
+        AND     ooha.order_category_code    =  ct_order_category            -- 返品
+        AND     oola.flow_status_code       NOT IN( ct_ln_status_closed     -- クローズ
+                                                  , ct_ln_status_cancelled  -- 取消
+                                            )
+        AND     ooha.org_id                 =  gn_org_id
+        AND     TRUNC( oola.request_date )  <= gd_process_date
+        AND     NVL( ooha.global_attribute3
+                   , cv_info_class_01 )     IN( cv_info_class_01
+                                              , cv_info_class_02
+                                            )
+        AND     ooha.sold_to_org_id         =  xca.customer_id
+        AND     ooha.sold_to_org_id         =  xchv.ship_account_id
+        AND     NOT EXISTS( SELECT  /*+
+--                                      USE_NL( flv )
+                                     */
+                                    flv.lookup_code
+                            FROM    fnd_lookup_values flv
+                            WHERE   flv.lookup_type       =  ct_qct_edi_item_err_type
+                              AND   flv.start_date_active <= gd_process_date
+                              AND   gd_process_date       <= NVL( flv.end_date_active, gd_max_date )
+                              AND   flv.enabled_flag      =  ct_yes_flg
+                              AND   flv.language          =  ct_lang
+                              AND   flv.lookup_code       =  oola.ordered_item
+                )
+        AND     oola.subinventory           =  msi.secondary_inventory_name
+        AND     oola.ship_from_org_id       =  msi.organization_id
+        AND     NOT EXISTS( SELECT  'X'
+                            FROM    ( SELECT  /*+
+--                                                USE_NL(flv)
+                                               */
+                                              flv.attribute1  AS subinventory
+                                            , flv.attribute2 AS order_type
+                                            , flv.attribute3 AS line_type
+                                      FROM    fnd_lookup_values flv
+                                      WHERE   flv.lookup_type       =  ct_qct_sale_exp_condition
+                                        AND   flv.lookup_code       LIKE ct_qcc_sale_exp_condition
+                                        AND   flv.start_date_active <= gd_process_date
+                                        AND   gd_process_date       <= NVL( flv.end_date_active, gd_max_date )
+                                        AND   flv.enabled_flag      =  ct_yes_flg
+                                        AND   flv.language          =  ct_lang
+                                    ) flvs
+                            WHERE   msi.attribute13 =  flvs.subinventory
+                              AND   ottth.name      =  NVL( flvs.order_type, ottth.name )
+                              AND   otttl.name      =  NVL( flvs.line_type , otttl.name )
+                )
+        AND     oola.global_attribute5      IS NULL
+        AND     DECODE( msi.attribute1
+                      , cv_subinventory_class, xca.delivery_base_code
+                      , msi.attribute7 )    =  gt_dlv_base_code
+        AND     (     gt_edi_chain_code     IS NULL
+                  OR  xca.chain_store_code  =  gt_edi_chain_code
+                )
+        AND     xca.customer_code           =  NVL( gt_cust_code     , xca.customer_code    )
+        AND     TRUNC( oola.request_date )  BETWEEN gt_dlv_date_from
+                                                AND gt_dlv_date_to
+        AND     ooha.created_by             =  NVL( gt_created_by    , ooha.created_by      )
+        AND     ooha.order_number           =  NVL( gt_order_number  , ooha.order_number    )
+      ORDER BY  ooha.header_id
+              , oola.line_id
+      ;
+    END IF;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
     --データが無い時は「対象データなしエラーメッセージ」
 -- 2009/07/08 Ver.1.9 M.Sano Mod Start
@@ -2190,6 +2671,25 @@ AS
       ov_retcode := cv_status_warn;
       io_order_rec.check_status := cn_check_status_error;
 --
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+      set_gen_err_list(
+          ov_errbuf                   => lv_errbuf
+        , ov_retcode                  => lv_retcode
+        , ov_errmsg                   => lv_errmsg
+        , it_base_code                => io_order_rec.delivery_base_code
+        , it_message_name             => ct_msg_fiscal_period_err
+        , it_message_text             => NULL
+        , iv_output_msg_application   => cv_xxcos_appl_short_nm
+        , iv_output_msg_name          => ct_msg_xxcos_00207
+        , iv_output_msg_token_name1   => cv_tkn_order_number                          -- トークン01：受注番号
+        , iv_output_msg_token_value1  => TO_CHAR( io_order_rec.order_number )         -- 値01      ：受注番号
+        , iv_output_msg_token_name2   => cv_tkn_line_number                           -- トークン02：受注明細番号
+        , iv_output_msg_token_value2  => TO_CHAR( io_order_rec.line_number )          -- 値02      ：受注明細番号
+        , iv_output_msg_token_name3   => cv_tkn_base_date                             -- トークン03：基準日
+        , iv_output_msg_token_value3  => TO_CHAR( ld_base_date, cv_fmt_date_default ) -- 値03      ：基準日
+      );
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+--
     -- *** 納品形態区分取得例外ハンドラ ***
     WHEN global_delivered_from_err_expt THEN
       xxcos_common_pkg.makeup_key_info(
@@ -2242,6 +2742,23 @@ AS
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_warn;
       io_order_rec.check_status := cn_check_status_error;
+--
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+      set_gen_err_list(
+          ov_errbuf                   => lv_errbuf
+        , ov_retcode                  => lv_retcode
+        , ov_errmsg                   => lv_errmsg
+        , it_base_code                => io_order_rec.delivery_base_code
+        , it_message_name             => ct_msg_select_odr_err
+        , it_message_text             => NULL
+        , iv_output_msg_application   => cv_xxcos_appl_short_nm
+        , iv_output_msg_name          => ct_msg_xxcos_00206
+        , iv_output_msg_token_name1   => cv_tkn_order_number                          -- トークン01：受注番号
+        , iv_output_msg_token_value1  => TO_CHAR( io_order_rec.order_number )         -- 値01      ：受注番号
+        , iv_output_msg_token_name2   => cv_tkn_line_number                           -- トークン02：受注明細番号
+        , iv_output_msg_token_value2  => TO_CHAR( io_order_rec.line_number )          -- 値02      ：受注明細番号
+      );
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -2429,6 +2946,9 @@ AS
     lt_base_name    hz_parties.party_name%TYPE;     -- 売上拠点名
     ln_err_flag     NUMBER;                         -- ヘッダにてエラーなった場合の件数
     ln_idx          NUMBER;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    lv_errmsg_prefix VARCHAR2( 5000 );              -- 汎用エラーリスト用メッセージ
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
 --
     -- *** ローカル・カーソル ***
 --
@@ -2470,6 +2990,10 @@ AS
           l_base_err_order_tab(ln_idx).results_employee_code      := g_order_data_tab(i).results_employee_code;
           --[成績計上者の拠点コード]
           l_base_err_order_tab(ln_idx).results_employee_base_code := g_order_data_tab(i).results_employee_base_code;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+          --[納品拠点コード]
+          l_base_err_order_tab( ln_idx ).delivery_base_code       := g_order_data_tab( i ).delivery_base_code;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
           --[出力フラグ]
           l_base_err_order_tab(ln_idx).output_flag                := ct_yes_flg;
           --エラーフラグを有効へ変更。
@@ -2537,6 +3061,13 @@ AS
            which  => FND_FILE.OUTPUT
           ,buff   => lv_errmsg
         );
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+        IF (     ( gt_regular_any_class IS NOT NULL                    )
+             AND ( gt_regular_any_class = cv_regular_any_class_regular )
+        ) THEN
+          lv_errmsg_prefix := lv_errmsg;
+        END IF;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
         --■ 出力対象の売上拠点と同一である不整合データを出力。
         <<g_base_err_data2_loop>>
         FOR j IN i..l_base_err_order_tab.COUNT LOOP
@@ -2560,6 +3091,16 @@ AS
                which  => FND_FILE.OUTPUT
               ,buff   => lv_errmsg
             );
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+            set_gen_err_list(
+                ov_errbuf       => lv_errbuf
+              , ov_retcode      => lv_retcode
+              , ov_errmsg       => lv_errmsg
+              , it_base_code    => l_base_err_order_tab( j ).delivery_base_code
+              , it_message_name => cv_msg_base_mismatch_err
+              , it_message_text => SUBSTRB( lv_errmsg_prefix || CHR( 10 ) || lv_errmsg, 1, 2000 )
+            );
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
             FND_FILE.PUT_LINE(
                which  => FND_FILE.OUTPUT
               ,buff   => ''
@@ -3482,6 +4023,106 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END upd_sales_exp_create_flag;
+--
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+  /**********************************************************************************
+   * Procedure Name   : make_gen_err_list
+   * Description      : 汎用エラーリスト作成(A-10)
+   ***********************************************************************************/
+  PROCEDURE make_gen_err_list(
+      ov_errbuf   OUT VARCHAR2  -- エラー・メッセージ           --# 固定 #
+    , ov_retcode  OUT VARCHAR2  -- リターン・コード             --# 固定 #
+    , ov_errmsg   OUT VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100)  := 'make_gen_err_list'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START  #####################
+    lv_errbuf   VARCHAR2(5000); -- エラー・メッセージ
+    lv_retcode  VARCHAR2(1);    -- リターン・コード
+    lv_errmsg   VARCHAR2(5000); -- ユーザー・エラー・メッセージ
+--#####################  固定ローカル変数宣言部 END    #####################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--#####################  固定ステータス初期化部 START  #####################
+    ov_retcode  := cv_status_normal;
+--#####################  固定ステータス初期化部 END    #####################
+--
+    IF (     ( gt_regular_any_class IS NOT NULL                    )
+         AND ( gt_regular_any_class = cv_regular_any_class_regular )
+    ) THEN
+      BEGIN
+        FORALL i IN 1..g_gen_err_list_tab.COUNT
+        INSERT INTO xxcos_gen_err_list VALUES g_gen_err_list_tab( i );
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := SUBSTRB( SQLERRM, 1, 5000 );
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application   => cv_xxcos_appl_short_nm
+                         , iv_name          => cv_gen_err_list
+                       );
+          ov_errmsg := SUBSTRB( xxccp_common_pkg.get_msg(
+                                    iv_application   => cv_xxcos_appl_short_nm
+                                  , iv_name          => ct_msg_insert_data_err
+                                  , iv_token_name1   => cv_tkn_table_name
+                                  , iv_token_value1  => lv_errmsg
+                                  , iv_token_name2   => cv_tkn_key_data
+                                  , iv_token_value2  => lv_errbuf
+                                )
+                              , 1
+                              , 5000
+                       );
+          RAISE global_insert_data_expt;
+      END;
+    END IF;
+--
+  EXCEPTION
+    --*** データ登録例外ハンドラ ***
+    WHEN global_insert_data_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START  #################################
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM  , 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM  , 1, 5000 );
+      ov_retcode := cv_status_error;
+--#################################  固定例外処理部 END    #################################
+  END make_gen_err_list;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+--
 --****************************** 2009/10/20 1.12 K.Satomura Add END  ******************************--
   /**********************************************************************************
    * Procedure Name   : submain
@@ -3489,6 +4130,16 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_target_date  IN      VARCHAR2,     -- 処理日付
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    iv_regular_any_class  IN  VARCHAR2,   -- 定期随時区分
+    iv_dlv_base_code      IN  VARCHAR2,   -- 納品拠点コード
+    iv_edi_chain_code     IN  VARCHAR2,   -- EDIチェーン店コード
+    iv_cust_code          IN  VARCHAR2,   -- 顧客コード
+    iv_dlv_date_from      IN  VARCHAR2,   -- 納品日FROM
+    iv_dlv_date_to        IN  VARCHAR2,   -- 納品日TO
+    iv_user_name          IN  VARCHAR2,   -- 作成者
+    iv_order_number       IN  VARCHAR2,   -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
     ov_errbuf       OUT     VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode      OUT     VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg       OUT     VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3554,6 +4205,16 @@ AS
     -- ===============================
     init(
       iv_target_date          =>  iv_target_date,             -- 処理日付
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+      iv_regular_any_class    =>  iv_regular_any_class,       -- 定期随時区分
+      iv_dlv_base_code        =>  iv_dlv_base_code,           -- 納品拠点コード
+      iv_edi_chain_code       =>  iv_edi_chain_code,          -- EDIチェーン店コード
+      iv_cust_code            =>  iv_cust_code,               -- 顧客コード
+      iv_dlv_date_from        =>  iv_dlv_date_from,           -- 納品日FROM
+      iv_dlv_date_to          =>  iv_dlv_date_to,             -- 納品日TO
+      iv_user_name            =>  iv_user_name,               -- 作成者
+      iv_order_number         =>  iv_order_number,            -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
       ov_errbuf               =>  lv_errbuf,                  -- エラー・メッセージ
       ov_retcode              =>  lv_retcode,                 -- リターン・コード
       ov_errmsg               =>  lv_errmsg                   -- ユーザー・エラー・メッセージ
@@ -3806,6 +4467,20 @@ AS
 -- 2009/10/20 Ver.1.12 K.Satomura Add End
     END IF;
 --
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+    -- ===============================
+    -- A-10.汎用エラーリスト作成
+    -- ===============================
+    make_gen_err_list(
+        ov_errbuf   => lv_errbuf  -- エラー・メッセージ           --# 固定 #
+      , ov_retcode  => lv_retcode -- リターン・コード             --# 固定 #
+      , ov_errmsg   => lv_errmsg  -- ユーザー・エラー・メッセージ --# 固定 #
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+    END IF;
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
+--
     -- エラーデータがある場合、警告終了とする
     IF ( gn_warn_cnt > 0 ) THEN
       ov_retcode := cv_status_warn;
@@ -3846,7 +4521,18 @@ AS
   PROCEDURE main(
     errbuf          OUT     VARCHAR2,   -- エラー・メッセージ  --# 固定 #
     retcode         OUT     VARCHAR2,   -- リターン・コード    --# 固定 #
-    iv_target_date  IN      VARCHAR2    -- 処理日付
+-- 2010/08/25 Ver.1.16 S.Arizumi Mod Start --
+--    iv_target_date  IN      VARCHAR2    -- 処理日付
+    iv_target_date        IN  VARCHAR2,   -- 処理日付
+    iv_regular_any_class  IN  VARCHAR2,   -- 定期随時区分
+    iv_dlv_base_code      IN  VARCHAR2,   -- 納品拠点コード
+    iv_edi_chain_code     IN  VARCHAR2,   -- EDIチェーン店コード
+    iv_cust_code          IN  VARCHAR2,   -- 顧客コード
+    iv_dlv_date_from      IN  VARCHAR2,   -- 納品日FROM
+    iv_dlv_date_to        IN  VARCHAR2,   -- 納品日TO
+    iv_user_name          IN  VARCHAR2,   -- 作成者
+    iv_order_number       IN  VARCHAR2    -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Mod End   --
   )
 --
 --
@@ -3899,6 +4585,16 @@ AS
     -- ===============================================
     submain(
       iv_target_date  -- 処理日付
+-- 2010/08/25 Ver.1.16 S.Arizumi Add Start --
+      ,iv_regular_any_class -- 定期随時区分
+      ,iv_dlv_base_code     -- 納品拠点コード
+      ,iv_edi_chain_code    -- EDIチェーン店コード
+      ,iv_cust_code         -- 顧客コード
+      ,iv_dlv_date_from     -- 納品日FROM
+      ,iv_dlv_date_to       -- 納品日TO
+      ,iv_user_name         -- 作成者
+      ,iv_order_number      -- 受注番号
+-- 2010/08/25 Ver.1.16 S.Arizumi Add End   --
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #

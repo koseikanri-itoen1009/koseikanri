@@ -8,7 +8,7 @@ AS
  *                    更新します。
  * MD.050           :  MD050_COS_007_A03_受注明細WFクローズ
  *
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,7 +28,9 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2009-09-01    1.0   Kazuo.Satomura   新規作成
+ *  2009/09/01    1.0   K.Satomura       新規作成
+ *  2010/08/24    1.1   S.Miyakoshi      [E_本稼動_01763] INVへの販売実績連携の日中化対応(入力パラメータ：要求IDの追加)
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -123,6 +125,9 @@ AS
   cv_tkn_value       CONSTANT VARCHAR2(20) := 'VALUE';
   cv_tkn_basic_day   CONSTANT VARCHAR2(20) := 'BASIC_DAY';
   cv_tkn_working_day CONSTANT VARCHAR2(20) := 'WORKING_DAY';
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+  cv_tkn_request_id  CONSTANT VARCHAR2(20) := 'REQUEST_ID';
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
   --
   -- DEBUG_LOG用メッセージ
   --cv_debug_msg1_1       CONSTANT VARCHAR2(200) := '<< 業務処理日付取得処理 >>';
@@ -169,6 +174,9 @@ AS
    ***********************************************************************************/
   PROCEDURE start_proc(
      in_exe_div      IN         NUMBER                                              -- 実行区分
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+    ,in_request_id   IN         NUMBER                                              -- 要求ID
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
     ,od_process_date OUT        DATE                                                -- 業務処理日付
     ,ot_delete_days  OUT        fnd_profile_option_values.profile_option_value%TYPE -- 受注クローズ削除日数
     ,ov_errbuf       OUT NOCOPY VARCHAR2                                            -- エラー・メッセージ            --# 固定 #
@@ -274,6 +282,10 @@ AS
                  ,iv_name         => cv_tkn_number_14    -- メッセージコード
                  ,iv_token_name1  => cv_tkn_param        -- トークンコード1
                  ,iv_token_value1 => TO_CHAR(in_exe_div) -- トークン値1
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+                 ,iv_token_name2  => cv_tkn_request_id      -- トークンコード2
+                 ,iv_token_value2 => TO_CHAR(in_request_id) -- トークン値2(要求ID)
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
                );
     --
     fnd_file.put_line(
@@ -366,6 +378,9 @@ AS
    ***********************************************************************************/
   PROCEDURE get_order_close(
      it_sel_process_status IN         xxcos_order_close.process_status%TYPE -- 処理ステータス
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+    ,in_request_id         IN         NUMBER                                -- 要求ID
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
     ,ov_errbuf             OUT NOCOPY VARCHAR2                              -- エラー・メッセージ            --# 固定 #
     ,ov_retcode            OUT NOCOPY VARCHAR2                              -- リターン・コード              --# 固定 #
     ,ov_errmsg             OUT NOCOPY VARCHAR2                              -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -411,6 +426,14 @@ AS
       BULK COLLECT INTO gt_order_line_id_tab
       FROM   xxcos_order_close xoc -- 受注クローズ対象情報テーブル
       WHERE  xoc.process_status = it_sel_process_status
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+      AND    (
+              ( in_request_id IS NULL )
+              OR
+              ( in_request_id IS NOT NULL 
+                AND xoc.request_id = in_request_id )
+             )
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
       FOR UPDATE NOWAIT
       ;
       --
@@ -804,6 +827,9 @@ AS
    ***********************************************************************************/
   PROCEDURE submain(
      in_exe_div IN         NUMBER   -- 実行区分
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+    ,in_request_id IN      NUMBER   -- 要求ID
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
     ,ov_errbuf  OUT NOCOPY VARCHAR2 -- エラー・メッセージ            --# 固定 #
     ,ov_retcode OUT NOCOPY VARCHAR2 -- リターン・コード              --# 固定 #
     ,ov_errmsg  OUT NOCOPY VARCHAR2 -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -862,6 +888,9 @@ AS
     -- ========================================
     start_proc(
        in_exe_div      => in_exe_div      -- 実行区分
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+      ,in_request_id   => in_request_id   -- 要求ID
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
       ,od_process_date => ld_process_date -- 業務処理日付
       ,ot_delete_days  => lt_delete_days  -- 受注クローズ削除日数
       ,ov_errbuf       => lv_errbuf       -- エラー・メッセージ            --# 固定 #
@@ -889,6 +918,9 @@ AS
     --
     get_order_close(
        it_sel_process_status => lt_sel_process_status -- 処理ステータス
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+      ,in_request_id         => in_request_id         -- 要求ID
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
       ,ov_errbuf             => lv_errbuf             -- エラー・メッセージ            --# 固定 #
       ,ov_retcode            => lv_retcode            -- リターン・コード              --# 固定 #
       ,ov_errmsg             => lv_errmsg             -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -1011,6 +1043,9 @@ AS
      errbuf     OUT NOCOPY VARCHAR2 -- エラー・メッセージ  --# 固定 #
     ,retcode    OUT NOCOPY VARCHAR2 -- リターン・コード    --# 固定 #
     ,in_exe_div IN         NUMBER   -- 実行区分
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+    ,in_request_id IN      NUMBER   -- 要求ID
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
   )
   IS
 --
@@ -1062,6 +1097,9 @@ AS
     -- ===============================================
     submain(
        in_exe_div => in_exe_div -- 実行区分
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD START ************************ --
+      ,in_request_id => in_request_id -- 要求ID
+-- ************************ 2010/08/24 S.Miyakoshi Var1.1 ADD  END  ************************ --
       ,ov_errbuf  => lv_errbuf  -- エラー・メッセージ            --# 固定 #
       ,ov_retcode => lv_retcode -- リターン・コード              --# 固定 #
       ,ov_errmsg  => lv_errmsg  -- ユーザー・エラー・メッセージ  --# 固定 #

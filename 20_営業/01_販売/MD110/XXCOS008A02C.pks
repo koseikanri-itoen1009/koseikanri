@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流システムの工場直送出荷実績データから販売実績を作成し、
  *                    販売実績を作成したＯＭ受注をクローズします。
  * MD.050           : 出荷確認（生産物流出荷）  MD050_COS_008_A02
- * Version          : 1.23
+ * Version          : 1.26
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2010/01/05    1.21  N.Maeda          [E_本稼動_00895] ログ出力用フラグの初期設定値設定
  *  2010/01/20    1.22  N.Maeda          [E_本稼動_01252] 納品日エラー対応
  *  2010/02/04    1.23  M.Hokkanji       [E_T4_00195] 会計期間情報取得関数パラメータ修正[AR → INV]
+ *  2010/08/24    1.26  H.Sasaki         [E_本稼動_01763][E_本稼動_02635]INV連携日中化対応
  *
  *****************************************************************************************/
 --
@@ -59,6 +60,16 @@ AS
     errbuf          OUT    VARCHAR2,    -- エラーメッセージ #固定#
     retcode         OUT    VARCHAR2,    -- エラーコード     #固定#
     iv_target_date  IN     VARCHAR2     -- 処理日付
+-- == 2010/08/24 V1.26 Added START ===============================================================
+  , iv_exec_flg         IN  VARCHAR2  --  随時定期区分
+  , iv_dlv_base_code    IN  VARCHAR2  --  納品拠点
+  , iv_edi_chain_code   IN  VARCHAR2  --  EDIチェーン店コード
+  , iv_cust_code        IN  VARCHAR2  --  顧客コード
+  , iv_date_from        IN  VARCHAR2  --  納品日FROM
+  , iv_date_to          IN  VARCHAR2  --  納品日TO
+  , iv_creator_code     IN  VARCHAR2  --  作成者
+  , iv_reqno            IN  VARCHAR2  --  出荷依頼No
+-- == 2010/08/24 V1.26 Added END   ===============================================================
   );
 --
 END XXCOS008A02C;
