@@ -7,7 +7,7 @@ AS
  * Description      : ëºä®íËêUë÷å¥âøç∑àŸï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD050_BPO_770)
  *                  : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/01/14    1.16  N.Yoshida        ñ{î‘#1015ëŒâû
  *  2009/05/12    1.17  M.Nomura         ñ{î‘#1469ëŒâû
  *  2009/05/29    1.18  Marushita        ñ{î‘è·äQ1511ëŒâû
+ *  2009/11/30    1.19  Marushita        ñ{î‘#200ëŒâû
  *
  *****************************************************************************************/
 --
@@ -1945,7 +1946,10 @@ AS
       -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
       -- ----------------------------------------------------
 --      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
-      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2009/11/30 MOD START
+--      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+      SELECT 
+-- 2009/11/30 MOD END
              iimb2.item_no               item_code_from
             ,ximb2.item_short_name       item_name_from
             ,iimb.item_no                item_code_to
@@ -1953,23 +1957,49 @@ AS
             ,mcb3.segment1               gun_code
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
+--2009/11/30 MOD START
+--            ,SUM(
+---- 2008/11/29 v1.13 UPDATE START
+----               DECODE(iimb.attribute15
+--               DECODE(iimb2.attribute15
+--                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
+----                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb2.lot_ctl
+--                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
+--            ,SUM(ROUND(
+----               DECODE(iimb.attribute15
+--               DECODE(iimb2.attribute15
+--                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
+----                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb2.lot_ctl
+---- 2008/11/29 v1.13 UPDATE END
+--                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
+--               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
             ,SUM(
--- 2008/11/29 v1.13 UPDATE START
---               DECODE(iimb.attribute15
-               DECODE(iimb2.attribute15
-                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
---                    ,DECODE(iimb.lot_ctl
-                    ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
+               CASE 
+                 WHEN iimb2.attribute15 <> '1' AND iimb2.lot_ctl = '1' THEN
+                   xlc.unit_ploce
+                 ELSE
+                   (SELECT x.stnd_unit_price
+                   FROM   xxcmn_stnd_unit_price2_v x
+                   WHERE  x.item_id            = iimb2.item_id
+                   AND    x.start_date_active <= xoha.arrival_date
+                   AND    x.end_date_active   >= xoha.arrival_date)
+                END
+              ) AS from_price
             ,SUM(ROUND(
---               DECODE(iimb.attribute15
-               DECODE(iimb2.attribute15
-                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
---                    ,DECODE(iimb.lot_ctl
-                    ,DECODE(iimb2.lot_ctl
--- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
-               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
+                 CASE 
+                 WHEN iimb2.attribute15 <> '1' AND iimb2.lot_ctl = '1' THEN
+                   xlc.unit_ploce * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj))
+                 ELSE
+                   (SELECT x.stnd_unit_price * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj))
+                   FROM   xxcmn_stnd_unit_price2_v x
+                   WHERE  x.item_id            = iimb2.item_id
+                   AND    x.start_date_active <= xoha.arrival_date
+                   AND    x.end_date_active   >= xoha.arrival_date)
+                END
+                ))AS from_cost
+--2009/11/30 MOD END
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
 --            ,SUM(ROUND(xsup.stnd_unit_price
@@ -1979,7 +2009,9 @@ AS
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/30 DEL START
+--            ,oe_order_headers_all             ooha
+-- 2009/11/30 DEL END
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -2001,7 +2033,9 @@ AS
 -- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
 --            ,xxcmn_stnd_unit_price_v          xsup_m
 --            ,xxcmn_stnd_unit_price_v          xsup
-            ,xxcmn_stnd_unit_price2_v          xsup_m
+-- 2009/11/30 DEL START
+--            ,xxcmn_stnd_unit_price2_v          xsup_m
+-- 2009/11/30 DEL END
             ,xxcmn_stnd_unit_price2_v          xsup
 -- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
@@ -2040,8 +2074,11 @@ AS
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
-      AND    xoha.header_id          = ooha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/30 MOD START
+--      AND    xoha.header_id          = ooha.header_id
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/30 MOD END
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
@@ -2072,9 +2109,11 @@ AS
 --      AND    xsup.item_id            = iimb.item_id
 --      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
 -- 2009/05/29 MOD START v1.6 DEL
-      AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
-      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
+--2009/11/30 DEL START
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+--      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
+--2009/11/30 DEL END
       AND    xsup.item_id            = iimb.item_id
       AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
 -- 2009/05/29 MOD END
@@ -3705,7 +3744,10 @@ AS
       -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
       -- ----------------------------------------------------
 --      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
-      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2009/11/30 MOD START
+--      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+      SELECT 
+-- 2009/11/30 MOD END
              iimb2.item_no               item_code_from
             ,ximb2.item_short_name       item_name_from
             ,iimb.item_no                item_code_to
@@ -3713,23 +3755,49 @@ AS
             ,mcb3.segment1               gun_code
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
+--2009/11/30 MOD START
+--            ,SUM(
+---- 2008/11/29 v1.13 UPDATE START
+----               DECODE(iimb.attribute15
+--               DECODE(iimb2.attribute15
+--                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
+----                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb2.lot_ctl
+--                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
+--            ,SUM(ROUND(
+----               DECODE(iimb.attribute15
+--               DECODE(iimb2.attribute15
+--                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
+----                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb2.lot_ctl
+---- 2008/11/29 v1.13 UPDATE END
+--                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
+--               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
             ,SUM(
--- 2008/11/29 v1.13 UPDATE START
---               DECODE(iimb.attribute15
-               DECODE(iimb2.attribute15
-                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
---                    ,DECODE(iimb.lot_ctl
-                    ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
+               CASE 
+                 WHEN iimb2.attribute15 <> '1' AND iimb2.lot_ctl = '1' THEN
+                   xlc.unit_ploce
+                 ELSE
+                   (SELECT x.stnd_unit_price
+                   FROM   xxcmn_stnd_unit_price2_v x
+                   WHERE  x.item_id            = iimb2.item_id
+                   AND    x.start_date_active <= xoha.arrival_date
+                   AND    x.end_date_active   >= xoha.arrival_date)
+                END
+              ) AS from_price
             ,SUM(ROUND(
---               DECODE(iimb.attribute15
-               DECODE(iimb2.attribute15
-                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
---                    ,DECODE(iimb.lot_ctl
-                    ,DECODE(iimb2.lot_ctl
--- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
-               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
+                 CASE 
+                 WHEN iimb2.attribute15 <> '1' AND iimb2.lot_ctl = '1' THEN
+                   xlc.unit_ploce * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj))
+                 ELSE
+                   (SELECT x.stnd_unit_price * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj))
+                   FROM   xxcmn_stnd_unit_price2_v x
+                   WHERE  x.item_id            = iimb2.item_id
+                   AND    x.start_date_active <= xoha.arrival_date
+                   AND    x.end_date_active   >= xoha.arrival_date)
+                END
+                ))AS from_cost
+--2009/11/30 MOD END
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
 --            ,SUM(ROUND(xsup.stnd_unit_price
@@ -3739,7 +3807,9 @@ AS
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/30 DEL START
+--            ,oe_order_headers_all             ooha
+-- 2009/11/30 DEL END
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -3761,7 +3831,9 @@ AS
 -- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
 --            ,xxcmn_stnd_unit_price_v          xsup_m
 --            ,xxcmn_stnd_unit_price_v          xsup
-            ,xxcmn_stnd_unit_price2_v          xsup_m
+-- 2009/11/30 DEL START
+--            ,xxcmn_stnd_unit_price2_v          xsup_m
+-- 2009/11/30 DEL END
             ,xxcmn_stnd_unit_price2_v          xsup
 -- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
@@ -3800,8 +3872,11 @@ AS
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
-      AND    xoha.header_id          = ooha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/30 MOD START
+--      AND    xoha.header_id          = ooha.header_id
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/30 MOD END
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
@@ -3832,9 +3907,11 @@ AS
 --      AND    xsup.item_id            = iimb.item_id
 --      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
 -- 2009/05/29 MOD START v1.6 DEL
-      AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
-      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
+--2009/11/30 DEL START
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+--      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
+--2009/11/30 DEL END
       AND    xsup.item_id            = iimb.item_id
       AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
 -- 2009/05/29 MOD END
@@ -5467,7 +5544,10 @@ AS
       -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
       -- ----------------------------------------------------
 --      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
-      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2009/11/30 MOD START
+--      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+      SELECT 
+-- 2009/11/30 MOD END
              iimb2.item_no               item_code_from
             ,ximb2.item_short_name       item_name_from
             ,iimb.item_no                item_code_to
@@ -5475,23 +5555,49 @@ AS
             ,mcb3.segment1               gun_code
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
+--2009/11/30 MOD START
+--            ,SUM(
+---- 2008/11/29 v1.13 UPDATE START
+----               DECODE(iimb.attribute15
+--               DECODE(iimb2.attribute15
+--                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
+----                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb2.lot_ctl
+--                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
+--            ,SUM(ROUND(
+----               DECODE(iimb.attribute15
+--               DECODE(iimb2.attribute15
+--                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
+----                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb2.lot_ctl
+---- 2008/11/29 v1.13 UPDATE END
+--                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
+--               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
             ,SUM(
--- 2008/11/29 v1.13 UPDATE START
---               DECODE(iimb.attribute15
-               DECODE(iimb2.attribute15
-                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
---                    ,DECODE(iimb.lot_ctl
-                    ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
+               CASE 
+                 WHEN iimb2.attribute15 <> '1' AND iimb2.lot_ctl = '1' THEN
+                   xlc.unit_ploce
+                 ELSE
+                   (SELECT x.stnd_unit_price
+                   FROM   xxcmn_stnd_unit_price2_v x
+                   WHERE  x.item_id            = iimb2.item_id
+                   AND    x.start_date_active <= xoha.arrival_date
+                   AND    x.end_date_active   >= xoha.arrival_date)
+                END
+              ) AS from_price
             ,SUM(ROUND(
---               DECODE(iimb.attribute15
-               DECODE(iimb2.attribute15
-                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
---                    ,DECODE(iimb.lot_ctl
-                    ,DECODE(iimb2.lot_ctl
--- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
-               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
+                 CASE 
+                 WHEN iimb2.attribute15 <> '1' AND iimb2.lot_ctl = '1' THEN
+                   xlc.unit_ploce * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj))
+                 ELSE
+                   (SELECT x.stnd_unit_price * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj))
+                   FROM   xxcmn_stnd_unit_price2_v x
+                   WHERE  x.item_id            = iimb2.item_id
+                   AND    x.start_date_active <= xoha.arrival_date
+                   AND    x.end_date_active   >= xoha.arrival_date)
+                END
+                ))AS from_cost
+--2009/11/30 MOD END
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
 --            ,SUM(ROUND(xsup.stnd_unit_price
@@ -5501,7 +5607,9 @@ AS
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/30 DEL START
+--            ,oe_order_headers_all             ooha
+-- 2009/11/30 DEL END
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -5523,7 +5631,9 @@ AS
 -- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
 --            ,xxcmn_stnd_unit_price_v          xsup_m
 --            ,xxcmn_stnd_unit_price_v          xsup
-            ,xxcmn_stnd_unit_price2_v          xsup_m
+-- 2009/11/30 DEL START
+--            ,xxcmn_stnd_unit_price2_v          xsup_m
+-- 2009/11/30 DEL END
             ,xxcmn_stnd_unit_price2_v          xsup
 -- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
@@ -5562,8 +5672,11 @@ AS
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
-      AND    xoha.header_id          = ooha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/30 MOD START
+--      AND    xoha.header_id          = ooha.header_id
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/30 MOD END
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
@@ -5594,9 +5707,11 @@ AS
 --      AND    xsup.item_id            = iimb.item_id
 --      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
 -- 2009/05/29 MOD START v1.6 DEL
-      AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
-      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
+--2009/11/30 DEL START
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+--      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
+--2009/11/30 DEL END
       AND    xsup.item_id            = iimb.item_id
       AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
 -- 2009/05/29 MOD END
@@ -7239,7 +7354,10 @@ AS
       -- OMSO5 :åoóùéÛï•ãÊï™çwîÉä÷òA (éÛì¸_å¥ÅAéÛì¸_îº)
       -- ----------------------------------------------------
 --      SELECT /*+ leading (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) use_nl (xoha xola iimb gic1 mcb1 gic2 mcb2 ooha otta xrpm wdd itp) */
-      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+-- 2009/11/30 MOD START
+--      SELECT /*+ leading (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */
+      SELECT 
+-- 2009/11/30 MOD END
              iimb2.item_no               item_code_from
             ,ximb2.item_short_name       item_name_from
             ,iimb.item_no                item_code_to
@@ -7247,23 +7365,49 @@ AS
             ,mcb3.segment1               gun_code
             ,xrpm.new_div_account        rcv_pay_div
             ,SUM(itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)) trans_qty
+--2009/11/30 MOD START
+--            ,SUM(
+---- 2008/11/29 v1.13 UPDATE START
+----               DECODE(iimb.attribute15
+--               DECODE(iimb2.attribute15
+--                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
+----                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb2.lot_ctl
+--                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
+--            ,SUM(ROUND(
+----               DECODE(iimb.attribute15
+--               DECODE(iimb2.attribute15
+--                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
+----                    ,DECODE(iimb.lot_ctl
+--                    ,DECODE(iimb2.lot_ctl
+---- 2008/11/29 v1.13 UPDATE END
+--                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
+--               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
             ,SUM(
--- 2008/11/29 v1.13 UPDATE START
---               DECODE(iimb.attribute15
-               DECODE(iimb2.attribute15
-                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
---                    ,DECODE(iimb.lot_ctl
-                    ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
+               CASE 
+                 WHEN iimb2.attribute15 <> '1' AND iimb2.lot_ctl = '1' THEN
+                   xlc.unit_ploce
+                 ELSE
+                   (SELECT x.stnd_unit_price
+                   FROM   xxcmn_stnd_unit_price2_v x
+                   WHERE  x.item_id            = iimb2.item_id
+                   AND    x.start_date_active <= xoha.arrival_date
+                   AND    x.end_date_active   >= xoha.arrival_date)
+                END
+              ) AS from_price
             ,SUM(ROUND(
---               DECODE(iimb.attribute15
-               DECODE(iimb2.attribute15
-                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
---                    ,DECODE(iimb.lot_ctl
-                    ,DECODE(iimb2.lot_ctl
--- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
-               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
+                 CASE 
+                 WHEN iimb2.attribute15 <> '1' AND iimb2.lot_ctl = '1' THEN
+                   xlc.unit_ploce * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj))
+                 ELSE
+                   (SELECT x.stnd_unit_price * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj))
+                   FROM   xxcmn_stnd_unit_price2_v x
+                   WHERE  x.item_id            = iimb2.item_id
+                   AND    x.start_date_active <= xoha.arrival_date
+                   AND    x.end_date_active   >= xoha.arrival_date)
+                END
+                ))AS from_cost
+--2009/11/30 MOD END
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
 --            ,SUM(ROUND(xsup.stnd_unit_price
@@ -7273,7 +7417,9 @@ AS
               * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) to_cost
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/11/30 DEL START
+--            ,oe_order_headers_all             ooha
+-- 2009/11/30 DEL END
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -7295,7 +7441,9 @@ AS
 -- %%%%%%%%%% 2009/5/12 v1.17 S %%%%%%%%%%
 --            ,xxcmn_stnd_unit_price_v          xsup_m
 --            ,xxcmn_stnd_unit_price_v          xsup
-            ,xxcmn_stnd_unit_price2_v          xsup_m
+-- 2009/11/30 DEL START
+--            ,xxcmn_stnd_unit_price2_v          xsup_m
+-- 2009/11/30 DEL END
             ,xxcmn_stnd_unit_price2_v          xsup
 -- %%%%%%%%%% 2009/5/12 v1.17 E %%%%%%%%%%
       WHERE  itp.doc_type            = xrpm.doc_type
@@ -7334,8 +7482,11 @@ AS
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.line_id            = wdd.source_line_id
-      AND    xoha.header_id          = ooha.header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/11/30 MOD START
+--      AND    xoha.header_id          = ooha.header_id
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/11/30 MOD END
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
@@ -7366,9 +7517,11 @@ AS
 --      AND    xsup.item_id            = iimb.item_id
 --      AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
 -- 2009/05/29 MOD START v1.6 DEL
-      AND    xsup_m.item_id(+)       = iimb2.item_id
-      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
-      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
+--2009/11/30 DEL START
+--      AND    xsup_m.item_id(+)       = iimb2.item_id
+--      AND    NVL(xsup_m.start_date_active, xoha.arrival_date) <= xoha.arrival_date
+--      AND    NVL(xsup_m.end_date_active, xoha.arrival_date)   >= xoha.arrival_date
+--2009/11/30 DEL END
       AND    xsup.item_id            = iimb.item_id
       AND    xoha.arrival_date BETWEEN xsup.start_date_active AND xsup.end_date_active
 -- 2009/05/29 MOD END
