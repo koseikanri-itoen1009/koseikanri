@@ -56,7 +56,7 @@ SELECT ximv.item_id                item_id                           -- OPM品目I
          ELSE '1'
        END                         conversion_factor                 -- 換算入数
 FROM   xxcmn_item_mst_v          ximv    -- OPM品目情報V
-      ,xxcmn_item_categories3_v  xicv    -- 品目カテゴリ情報V3
+      ,xxcmn_item_categories5_v  xicv    -- 品目カテゴリ情報V5
 WHERE  xicv.item_id           = ximv.item_id
 AND    ximv.lot_ctl = 1
    ]]></SQLQuery>

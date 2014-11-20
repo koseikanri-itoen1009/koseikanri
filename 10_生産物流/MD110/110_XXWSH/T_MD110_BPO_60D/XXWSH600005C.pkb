@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/06/24    1.3  Oracle 上原正好   配送L/Tアドオンのリレーションに配送区分を追加
  *  2008/08/04    1.4  Oracle 二瓶大輔   結合テスト不具合対応(T_TE080_BPO_400#160)
  *                                       カテゴリ情報VIEW変更
+ *  2008/08/07    1.5  Oracle 大橋孝郎   結合出荷テスト(出荷追加_30)修正
  *
  *****************************************************************************************/
 --
@@ -171,6 +172,9 @@ AS
   -- 運賃区分
   gv_freight_charge_class_on  CONSTANT VARCHAR2(1) :=  '1';    -- 運賃区分「対象」
   gv_freight_charge_class_off CONSTANT VARCHAR2(1) :=  '0';    -- 運賃区分「対象外」
+-- add start 1.5
+  gv_d1_whse_flg_1            CONSTANT VARCHAR2(1) :=  '1';    -- D+1倉庫フラグ「対象」
+-- add end 1.5
   -- エラーメッセージ
   gv_output_msg               CONSTANT VARCHAR2(100) := 'APP-XXWSH-01701';
                                                              -- 出力件数
@@ -2053,9 +2057,12 @@ AS
       AND (gr_chk_line_data_tab(gn_cnt_line).item_class_code = gv_cons_item_product)
       -- 商品区分が'2'ドリンク
       AND ((gr_chk_header_data_tab(ln_cnt).prod_class = gv_prod_class_drink)
-      -- もしくは、商品区分が'1'リーフでD+1倉庫フラグが'Y'
+      -- もしくは、商品区分が'1'リーフでD+1倉庫フラグが'1'
       OR  (gr_chk_header_data_tab(ln_cnt).prod_class = gv_prod_class_leaf)
-        AND (gr_chk_header_data_tab(ln_cnt).d1_whse_code = gc_yn_div_y)))
+-- mod start 1.5
+--        AND (gr_chk_header_data_tab(ln_cnt).d1_whse_code = gc_yn_div_y)))
+        AND (gr_chk_header_data_tab(ln_cnt).d1_whse_code = gv_d1_whse_flg_1)))
+-- mod end 4.5
     -- データ区分が'2'支給指示
     OR (gr_chk_header_data_tab(ln_cnt).data_class = gc_data_class_prov)
     -- データ区分が'3'移動指示

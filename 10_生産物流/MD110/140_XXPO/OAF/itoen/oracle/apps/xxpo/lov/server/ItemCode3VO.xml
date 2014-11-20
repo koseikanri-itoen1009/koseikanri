@@ -15,10 +15,10 @@ SELECT ximv.item_no              item_code  -- 品目コード
       ,ximv.item_short_name      item_name  -- 品目・略称(品目名)
       ,ximv.item_id              item_id    -- 品目ID
 FROM   xxcmn_item_mst_v          ximv       -- OPM品目情報V
-      ,xxcmn_item_categories3_v  xicv       -- 品目カテゴリ割当情報VIEW3
+      ,xxcmn_item_categories5_v  xicv       -- 品目カテゴリ割当情報VIEW5
 WHERE  ximv.item_id          = xicv.item_id
 AND    ximv.lot_ctl          = 1
-AND    xicv.item_class_code != 5
+AND    xicv.item_class_code != '5'
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />

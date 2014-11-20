@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -28,7 +28,7 @@ SELECT ximv.item_id                item_id             -- OPM品目ID
       ,TO_CHAR(ximv.lot_ctl)       lot_ctl             -- ロット管理区分
       ,ximv.weight_capacity_class  weight_capacity_class -- 重量容積区分
 FROM   xxcmn_item_mst_v          ximv    -- OPM品目情報VIEW
-      ,xxcmn_item_categories3_v  xicv    -- 品目カテゴリ情報VIEW3
+      ,xxcmn_item_categories5_v  xicv    -- 品目カテゴリ情報VIEW5
       ,xxcmn_item_mst_v          whximv  -- OPM品目情報VIEW(倉庫品目用)
 WHERE  xicv.item_id           = ximv.item_id
 AND    ximv.whse_item_id      = whximv.item_id(+)

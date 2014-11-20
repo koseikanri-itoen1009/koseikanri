@@ -3,6 +3,7 @@
 
 <ViewObject
    Name="XxpoInspectLotSummaryVO"
+   OrderBy="ATTRIBUTE8,TO_NUMBER(ITEM_NO),TO_NUMBER(LOT_NO)"
    BindingStyle="Oracle"
    CustomQuery="true"
    RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
@@ -27,30 +28,27 @@ SELECT   ilm.attribute8               -- 取引先
         ,clvv1.meaning qt_effect1     -- 結果１
         ,clvv2.meaning qt_effect2     -- 結果２
         ,clvv3.meaning qt_effect3     -- 結果３
-FROM     ic_lots_mst         ilm      -- OPMロットマスタ
-        ,xxwip_qt_inspection xqi      -- 品質検査依頼情報アドオン
-        ,xxcmn_item_mst_v    ximv     -- OPM品目情報VIEW
-        ,xxcmn_vendors_v     xvv      -- OPM仕入先情報VIEW
-        ,xxcmn_item_categories3_v  xicv       -- 品目カテゴリ割当情報VIEW3
-        ,xxcmn_lookup_values_v clvv1  -- ルックアップ1
-        ,xxcmn_lookup_values_v clvv2  -- ルックアップ2
-        ,xxcmn_lookup_values_v clvv3  -- ルックアップ3
+FROM     ic_lots_mst               ilm    -- OPMロットマスタ
+        ,xxwip_qt_inspection       xqi    -- 品質検査依頼情報アドオン
+        ,xxcmn_item_mst_v          ximv   -- OPM品目情報VIEW
+        ,xxcmn_vendors_v           xvv    -- OPM仕入先情報VIEW
+        ,xxcmn_item_categories5_v  xicv   -- 品目カテゴリ割当情報VIEW5
+        ,xxcmn_lookup_values_v     clvv1  -- ルックアップ1
+        ,xxcmn_lookup_values_v     clvv2  -- ルックアップ2
+        ,xxcmn_lookup_values_v     clvv3  -- ルックアップ3
 WHERE    ilm.item_id = ximv.item_id
-AND      ilm.attribute8 = xvv.segment1
-AND      ilm.attribute22 = xqi.qt_inspect_req_no(+)
-AND      ilm.attribute24   = '1'
-AND      ximv.item_id         = xicv.item_id
-AND      ximv.lot_ctl          = 1
-AND      xicv.item_class_code != 5
+AND      ilm.attribute8          = xvv.segment1
+AND      ilm.attribute22         = xqi.qt_inspect_req_no(+)
+AND      ilm.attribute24         = '1'
+AND      ximv.item_id            = xicv.item_id
+AND      ximv.lot_ctl            = 1
+AND      xicv.item_class_code   != '5'
 AND      clvv1.lookup_type(+)    = 'XXWIP_QT_STATUS'
 AND      clvv1.lookup_code(+)    = xqi.qt_effect1
 AND      clvv2.lookup_type(+)    = 'XXWIP_QT_STATUS'
 AND      clvv2.lookup_code(+)    = xqi.qt_effect2
 AND      clvv3.lookup_type(+)    = 'XXWIP_QT_STATUS'
 AND      clvv3.lookup_code(+)    = xqi.qt_effect3
-ORDER BY ilm.attribute8
-        ,TO_NUMBER(ximv.item_no)
-        ,TO_NUMBER(ilm.lot_no)
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_version" Value="9.0.3.14.00" />
