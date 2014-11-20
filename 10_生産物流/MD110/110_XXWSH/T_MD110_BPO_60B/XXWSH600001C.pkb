@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/01/08    1.18 SCS    H.Itou     本番障害#558,599対応
  *  2009/01/27    1.19 SCS    H.Itou     本番障害#1028対応
  *  2009/02/27    1.20 SCS    M.Hokkanji 本番障害#1228対応
+ *  2009/04/17    1.21 SCS    H.Itou     本番障害#1398対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -966,7 +967,10 @@ debug_log(FND_FILE.LOG,'処理種別：'|| iv_shipping_biz_type);
     lv_sql_0 := lv_sql_0 || ', xoha.prod_class  item_class';                    -- 商品区分
     lv_sql_0 := lv_sql_0 || ', xotv.transaction_type_id business_type_id';      -- 取引タイプ
     lv_sql_0 := lv_sql_0 || ', xcav.reserve_order reserve_order';               -- 引当順
-    lv_sql_0 := lv_sql_0 || ', xoha.head_sales_branch sales_branch';            -- 管轄拠点
+-- 2009/04/17 H.Itou Mod Start 本番障害#1398
+--    lv_sql_0 := lv_sql_0 || ', xoha.head_sales_branch sales_branch';            -- 管轄拠点
+    lv_sql_0 := lv_sql_0 || ', xcasv.base_code sales_branch';                   -- 管轄拠点
+-- 2009/04/17 H.Itou Mod End
     lv_sql_0 := lv_sql_0 || ' FROM xxwsh_order_headers_all xoha';   -- 受注ヘッダアドオン
     lv_sql_0 := lv_sql_0 || ', xxwsh_carriers_schedule xcs';        -- 配車配送計画アドオン
     lv_sql_0 := lv_sql_0 || ', xxcmn_item_locations2_v xilv';       -- OPM保管場所情報VIEW2
@@ -1047,15 +1051,26 @@ debug_log(FND_FILE.LOG,'処理種別：'|| iv_shipping_biz_type);
                                                                 -- クイックコード：適用終了日
     lv_sql_4 := lv_sql_4 || ' AND xlv.enabled_flag = '''|| cv_yes ||'''';
                                                                 -- クイックコード：有効フラグ
-    lv_sql_4 := lv_sql_4 || ' AND xoha.head_sales_branch = xcav.party_number';   -- 管轄拠点
+-- 2009/04/17 H.Itou Del Start 本番障害#1398 顧客付け替え時にIDが最新でないので出荷先コードで結合し、顧客マスタを参照するため、受注ヘッダと結合しない
+--    lv_sql_4 := lv_sql_4 || ' AND xoha.head_sales_branch = xcav.party_number';   -- 管轄拠点
+-- 2009/04/17 H.Itou Del End
     lv_sql_4 := lv_sql_4 || ' AND xcasv.start_date_active <= TO_DATE(
                               '''|| TO_CHAR(id_date_from, 'YYYY/MM/DD') ||''',''YYYY/MM/DD'')';
                                                                 -- 顧客サイト情報VIEW2：適用開始日
     lv_sql_4 := lv_sql_4 || ' AND xcasv.end_date_active >= TO_DATE(
                               '''|| TO_CHAR(id_date_from, 'YYYY/MM/DD') ||''',''YYYY/MM/DD'')';
                                                                 -- 顧客サイト情報VIEW2：適用終了日
-    lv_sql_4 := lv_sql_4 || ' AND xcasv.party_site_id = xoha.deliver_to_id';      -- 出荷先ID
-    lv_sql_4 := lv_sql_4 || ' AND xcav.party_id = xcav.party_id';                  -- パーティID
+-- 2009/04/17 H.Itou Mod Start 本番障害#1398 顧客付け替え時にIDが最新でないので出荷先コードで結合
+--    lv_sql_4 := lv_sql_4 || ' AND xcasv.party_site_id = xoha.deliver_to_id';      -- 出荷先ID
+    lv_sql_4 := lv_sql_4 || ' AND xcasv.party_site_number = xoha.deliver_to';      -- 出荷先コード
+    lv_sql_4 := lv_sql_4 || ' AND xcasv.party_site_status =''A''';                 -- サイトステータス：有効
+-- 2009/04/17 H.Itou Mod End
+-- 2009/04/17 H.Itou Mod Start 本番障害#1398 顧客付け替え時にIDが最新でないので出荷先コードで結合し、顧客マスタを参照
+--    lv_sql_4 := lv_sql_4 || ' AND xcav.party_id = xcav.party_id';                  -- パーティID
+    lv_sql_4 := lv_sql_4 || ' AND xcav.party_id = xcasv.party_id';                  -- パーティID
+    lv_sql_4 := lv_sql_4 || ' AND xcav.party_status       = ''A'' ';
+    lv_sql_4 := lv_sql_4 || ' AND xcav.account_status     = ''A'' ';
+-- 2009/04/17 H.Itou Mod End
     lv_sql_4 := lv_sql_4 || ' AND xcav.start_date_active <= TO_DATE(
                               '''|| TO_CHAR(id_date_from, 'YYYY/MM/DD') ||''',''YYYY/MM/DD'')';
                                                                 -- 顧客情報VIEW2：適用開始日
@@ -8491,10 +8506,27 @@ debug_log(FND_FILE.LOG,'・配送先ID:'|| cur_rec.deliver_to_id);
       BEGIN
         SELECT xcav.customer_class_code            -- 顧客区分
         INTO   lv_class_code
-        FROM   xxcmn_cust_acct_sites_v xcsv        -- 顧客サイト情報ビュー
-              ,xxcmn_cust_accounts_v   xcav        -- 顧客情報ビュー
+-- 2009/04/17 H.Itou Mod Start 本番障害#1398
+--        FROM   xxcmn_cust_acct_sites_v xcsv        -- 顧客サイト情報ビュー
+--              ,xxcmn_cust_accounts_v   xcav        -- 顧客情報ビュー
+        FROM   xxcmn_cust_acct_sites2_v xcsv        -- 顧客サイト情報ビュー2
+              ,xxcmn_cust_accounts2_v   xcav        -- 顧客情報ビュー2
+-- 2009/04/17 H.Itou Mod End
         WHERE xcsv.party_id      = xcav.party_id
-        AND   xcsv.party_site_id = cur_rec.deliver_to_id;
+-- 2009/04/17 H.Itou Mod Start 本番障害#1398 顧客付け替え時にIDが最新でないので出荷先コードで結合し、顧客マスタを参照
+--        AND   xcsv.party_site_id = cur_rec.deliver_to_id;
+        AND   xcsv.party_site_number  = cur_rec.deliver_to
+        AND   xcsv.start_date_active <= TRUNC(cur_rec.ship_date)
+        AND  (xcsv.end_date_active   IS NULL OR
+              xcsv.end_date_active   >= TRUNC(cur_rec.ship_date))
+        AND   xcsv.party_site_status  = 'A'                       -- サイトステータス：有効
+        AND   xcav.start_date_active <= TRUNC(cur_rec.ship_date)
+        AND  (xcav.end_date_active   IS NULL OR
+              xcav.end_date_active   >= TRUNC(cur_rec.ship_date))
+        AND   xcav.party_status       = 'A'
+        AND   xcav.account_status     = 'A'
+        ;
+-- 2009/04/17 H.Itou Mod End
 --
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -8798,9 +8830,20 @@ debug_log(FND_FILE.LOG,'3-2-6運賃形態:出荷');
                 ,lv_delivery_no                 -- 配送No
                 ,lv_default_line_number         -- 基準明細No
             FROM xxcmn_cust_accounts2_v    xca                  -- 顧客情報VIEW2
+-- 2009/04/17 H.Itou Add Start 本番障害#1398 顧客付け替え時にIDが最新でないので出荷先コードで結合し、顧客マスタを参照
+               , xxcmn_cust_acct_sites2_v  xcsv                 -- 顧客サイト情報VIEW2
+-- 2009/04/17 H.Itou Add End
                , xxwsh_mixed_carriers_tmp  xmct                 -- 自動配車混載中間テーブル
                , xxwsh_order_headers_all   xoha                 -- 受注ヘッダアドオン
-           WHERE xca.party_number = xoha.head_sales_branch
+-- 2009/04/17 H.Itou Mod Start 本番障害#1398 顧客付け替え時にIDが最新でないので出荷先コードで結合し、顧客マスタを参照
+--           WHERE xca.party_number = xoha.head_sales_branch
+           WHERE xca.party_id           = xcsv.party_id
+             AND xcsv.party_site_number = xoha.deliver_to  -- 出荷先コードで顧客サイトを結合
+             AND xcsv.party_site_status = 'A'              -- サイトステータス：有効
+             AND xcsv.start_date_active <= TRUNC(cur_rec.ship_date)
+             AND (xcsv.end_date_active IS NULL OR
+                  xcsv.end_date_active >= TRUNC(cur_rec.ship_date))
+-- 2009/04/17 H.Itou Mod End
              AND xca.start_date_active <= TRUNC(cur_rec.ship_date)
              AND (xca.end_date_active IS NULL OR
                   xca.end_date_active >= TRUNC(cur_rec.ship_date))
