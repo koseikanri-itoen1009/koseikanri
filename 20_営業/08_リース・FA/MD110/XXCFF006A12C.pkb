@@ -28,6 +28,7 @@ AS
  *  2008/12/22    1.0   SCS奥河          main新規作成
  *  2009/03/04    1.1   SCS松中          [障害CFF_069] 現契約リース料(税抜)不正出力不具合対応
  *  2009/05/21    1.2   SCS礒崎          [障害T1_1054] 不要なリース契約情報を作成してしまう。
+ *  2009/05/28    1.3   SCS礒崎          [障害T1_1224] 連携機能がエラーの際にCSVファイルが削除される。
  *
  *****************************************************************************************/
 --
@@ -786,7 +787,9 @@ AS
       --↓ファイルクローズ関数を追加
       IF UTL_FILE.IS_OPEN ( lf_file_hand ) THEN
         UTL_FILE.FCLOSE   ( lf_file_hand );
-        UTL_FILE.FREMOVE  (  gn_file_dir_enter , gn_file_name_enter);
+-- T1_1224 2009/05/28 DEL START --
+--      UTL_FILE.FREMOVE  (  gn_file_dir_enter , gn_file_name_enter);
+-- T1_1224 2009/05/28 DEL END   --
       END IF;
       lv_errmsg := SUBSTRB( xxccp_common_pkg.get_msg
       (
@@ -838,7 +841,9 @@ AS
       --↓ファイルクローズ関数を追加
       IF UTL_FILE.IS_OPEN ( lf_file_hand ) THEN
         UTL_FILE.FCLOSE   ( lf_file_hand );
-        UTL_FILE.FREMOVE  (  gn_file_dir_enter , gn_file_name_enter);
+-- T1_1224 2009/05/28 DEL START --
+--      UTL_FILE.FREMOVE  (  gn_file_dir_enter , gn_file_name_enter);
+-- T1_1224 2009/05/28 DEL END   --
       END IF;
       gn_normal_cnt := ln_target_cnt;
       lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg

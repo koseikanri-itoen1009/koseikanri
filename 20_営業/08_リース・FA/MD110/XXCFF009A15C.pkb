@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF009A15C(body)
  * Description      : リース管理情報連携
  * MD.050           : リース管理情報連携 MD050_CFF_009_A15
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  *                                       ③リース種類の文字数は短縮名を設定する。
  *  2009/04/08    1.1   SCS大井          [T1_0354]対応
  *                                       ①連携CSVの出力時間のフォーマットを'YYYYMMDDHH24MISS'に変更
+ *  2009/05/28    1.2   SCS礒崎          [障害T1_1224] 連携機能がエラーの際にCSVファイルが削除される。
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -712,7 +714,9 @@ AS
     WHEN lock_expt THEN
       IF UTL_FILE.IS_OPEN  ( lf_file_hand ) THEN
          UTL_FILE.FCLOSE   ( lf_file_hand );
-         UTL_FILE.FREMOVE  ( gn_file_dir_enter , gn_file_name_enter);
+-- T1_1224 2009/05/28 DEL START --
+--       UTL_FILE.FREMOVE  ( gn_file_dir_enter , gn_file_name_enter);
+-- T1_1224 2009/05/28 DEL END   --
       END IF;
       lv_errmsg := SUBSTRB( xxccp_common_pkg.get_msg
       (
@@ -763,7 +767,9 @@ AS
     WHEN UTL_FILE.WRITE_ERROR THEN
       IF UTL_FILE.IS_OPEN  ( lf_file_hand ) THEN
          UTL_FILE.FCLOSE   ( lf_file_hand );
-         UTL_FILE.FREMOVE  ( gn_file_dir_enter , gn_file_name_enter);
+-- T1_1224 2009/05/28 DEL START --
+--       UTL_FILE.FREMOVE  ( gn_file_dir_enter , gn_file_name_enter);
+-- T1_1224 2009/05/28 DEL END   --
       END IF;
       gn_normal_cnt := ln_target_cnt;
       lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg
