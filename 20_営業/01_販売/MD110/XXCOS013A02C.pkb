@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/04/28    1.4   N.Maeda          資材取引OIFデータの集約条件に部門コードを追加
  *  2009/05/13    1.5   K.Kiriu          [T1_0984]製品、商品判定の追加
  *  2009/06/17    1.6   K.Kiriu          [T1_1472]取引数量0のデータ対応
+ *  2009/07/16    1.7   K.Kiriu          [0000701]PT対応
  *
  *****************************************************************************************/
 --
@@ -122,6 +123,9 @@ AS
   cv_msg_cok_prof_err       CONSTANT  VARCHAR2(100) := 'APP-XXCOK1-00003';     --プロファイル取得エラー(個別領域)
   cv_msg_dispt_err          CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12811';     --勘定科目別名ID取得エラーメッセージ
   cv_msg_ccid_err           CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12812';     --勘定科目ID(CCID)取得エラーメッセージ
+/* 2009/07/16 Ver1.6 Add Start */
+  cv_msg_category_err       CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12817';     --カテゴリセットID取得エラーメッセージ
+/* 2009/07/16 Ver1.6 Add End   */
   --トークン名
   cv_tkn_nm_table_name      CONSTANT  VARCHAR2(100) := 'TABLE_NAME';           --テーブル名称
   cv_tkn_nm_table_lock      CONSTANT  VARCHAR2(100) := 'TABLE';                --テーブル名称(ロックエラー時用)
@@ -196,6 +200,11 @@ AS
   cv_prof_ent_dummy         CONSTANT  VARCHAR2(100) := 'XXCOK1_AFF6_COMPANY_DUMMY';     -- 企業コード_ダミー値
   cv_prof_res1_dummy        CONSTANT  VARCHAR2(100) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';-- 予備1_ダミー値
   cv_prof_res2_dummy        CONSTANT  VARCHAR2(100) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';-- 予備2_ダミー値
+/* 2009/07/16 Ver1.7 Add Start */
+  cv_prof_g_prd_class       CONSTANT  VARCHAR2(100) := 'XXCOI1_GOODS_PRODUCT_CLASS';    --商品製品区分カテゴリセット名
+  --商品製品区分日付判定用
+  cd_sysdate                CONSTANT  DATE          := SYSDATE;
+/* 2009/07/16 Ver1.7 Add Start */
   --カテゴリ／ステータス
   cv_inv_flg_n              CONSTANT  VARCHAR2(100) := 'N';                    --在庫未連携
   cv_inv_flg_y              CONSTANT  VARCHAR2(100) := 'Y';                    --在庫連携済
@@ -331,6 +340,9 @@ AS
   gv_ent_dummy              VARCHAR2(100);                                      --企業コード(ダミー値)
   gv_res1_dummy             VARCHAR2(100);                                      --予備１コード(ダミー値)
   gv_res2_dummy             VARCHAR2(100);                                      --予備２コード(ダミー値)
+/* 2009/07/16 Ver1.7 Add Start */
+  gt_category_set_id        mtl_category_sets_tl.category_set_id%TYPE;          --カテゴリセットID
+/* 2009/07/16 Ver1.7 Add End   */
   g_mtl_txn_oif_tab         g_mtl_txn_oif_ttype;                                --資材取引OIFコレクション
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD START *********************************************
   g_mtl_txn_oif_tab_spare   g_mtl_txn_oif_ttype_var;
@@ -338,6 +350,7 @@ AS
 --************************************* 2009/04/28 N.Maeda Var1.4 ADD  END  *********************************************
   g_disposition_tab         g_disposition_ttype;                                --勘定科目別名コレクション
   g_ccid_tab                g_ccid_ttype;                                       --勘定科目ID(CCID)コレクション
+ 
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -591,6 +604,27 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+/* 2009/07/16 Ver1.7 Add Start */
+    --========================================
+    -- 12.カテゴリセットID取得処理
+    --========================================
+    BEGIN
+      SELECT mcst.category_set_id
+      INTO   gt_category_set_id
+      FROM   mtl_category_sets_tl mcst
+      WHERE  mcst.category_set_name = FND_PROFILE.VALUE( cv_prof_g_prd_class )
+      AND    mcst.language          = cv_lang;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg               :=  xxccp_common_pkg.get_msg(
+          iv_application        =>  cv_xxcos_short_name,
+          iv_name               =>  cv_msg_category_err
+        );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+/* 2009/07/16 Ver1.7 Add End   */
+--
 --#################################  固定例外処理部 START   ####################################
 --
   EXCEPTION
@@ -682,10 +716,38 @@ AS
            xxcos_sales_exp_lines    sel,          --販売実績明細テーブル
 /* 2009/05/13 Ver1.5 Mod Start */
 --           xxcos_good_prod_class_v  gpcv          --商品製品区分ビュー
-           xxcos_good_prod_class_v  gpcv,         --商品製品区分ビュー
+/* 2009/07/16 Ver1.7 Add Start */
+--           xxcos_good_prod_class_v  gpcv,         --商品製品区分ビュー
+           ( SELECT msib.inventory_item_id inventory_item_id,
+                    msib.segment1          segment1,
+                    mcb.segment1           goods_prod_class_code
+             FROM   mtl_system_items_b     msib,  --品目マスタ
+                    mtl_item_categories    mic,   --品目カテゴリマスタ
+                    mtl_categories_b       mcb    --カテゴリマスタ
+             WHERE  msib.organization_id    = gt_org_id
+             AND    msib.enabled_flag       = ct_enabled_flg_y
+             AND    cd_sysdate              BETWEEN NVL( msib.start_date_active, cd_sysdate )
+                                            AND     NVL( msib.end_date_active, cd_sysdate)
+             AND    msib.organization_id    = mic.organization_id
+             AND    msib.inventory_item_id  = mic.inventory_item_id
+             AND    mic.category_set_id     = gt_category_set_id
+             AND    mic.category_id         = mcb.category_id
+             AND    (
+                      mcb.disable_date IS NULL
+                    OR
+                      mcb.disable_date > cd_sysdate
+                    )
+             AND    mcb.enabled_flag        = ct_enabled_flg_y
+             AND    cd_sysdate              BETWEEN NVL( mcb.start_date_active, cd_sysdate ) 
+                                            AND     NVL( mcb.end_date_active, cd_sysdate )
+           ) gpcv,                                --商品製品区分
+/* 2009/07/16 Ver1.7 Add End   */
 /* 2009/05/13 Ver1.5 Mod End   */
 /* 2009/05/13 Ver1.5 Add Start */
            ( SELECT DISTINCT
+/* 2009/07/16 Ver1.7 Add Start */
+                    mcav.organization_id     organization_id,
+/* 2009/07/16 Ver1.7 Add End   */
                     mcav.subinventory_code   subinventory_code
              FROM   mtl_category_accounts_v  mcav  -- 専門店View
            )                        mcavd
@@ -694,54 +756,105 @@ AS
     WHERE  seh.sales_exp_header_id = sel.sales_exp_header_id
            --納品日<=業務日付
     AND    seh.delivery_date       <= gd_proc_date
+/* 2009/07/16 Ver1.7 Mod Start */
+--           --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
+--    AND    EXISTS(
+--             SELECT  'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val,
+--                     fnd_lookup_types_tl         types_tl,
+--                     fnd_lookup_types            types,
+--                     fnd_application_tl          appl,
+--                     fnd_application             app
+--             WHERE   appl.application_id         = types.application_id
+--             AND     app.application_id          = appl.application_id
+--             AND     types_tl.lookup_type        = look_val.lookup_type
+--             AND     types.lookup_type           = types_tl.lookup_type
+--             AND     types.security_group_id     = types_tl.security_group_id
+--             AND     types.view_application_id   = types_tl.view_application_id
+--             AND     types_tl.language           = cv_lang
+--             AND     look_val.language           = cv_lang
+--             AND     appl.language               = cv_lang
+--             AND     app.application_short_name  = cv_xxcos_short_name
+--             AND     look_val.lookup_type        = cv_dlv_slp_cls_type
+--             AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
+--             AND     look_val.meaning            = seh.dlv_invoice_class
+--             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
+--           --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
+--    AND    EXISTS(
+--             SELECT  'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val,
+--                     fnd_lookup_types_tl         types_tl,
+--                     fnd_lookup_types            types,
+--                     fnd_application_tl          appl,
+--                     fnd_application             app
+--             WHERE   appl.application_id         = types.application_id
+--             AND     app.application_id          = appl.application_id
+--             AND     types_tl.lookup_type        = look_val.lookup_type
+--             AND     types.lookup_type           = types_tl.lookup_type
+--             AND     types.security_group_id     = types_tl.security_group_id
+--             AND     types.view_application_id   = types_tl.view_application_id
+--             AND     types_tl.language           = cv_lang
+--             AND     look_val.language           = cv_lang
+--             AND     appl.language               = cv_lang
+--             AND     app.application_short_name  = cv_xxcos_short_name
+--             AND     look_val.lookup_type        = cv_dlv_ptn_cls_type
+--             AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
+--             AND     look_val.meaning            = sel.delivery_pattern_class
+--             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
+--           --商品製品区分
+--    AND    sel.item_code       = gpcv.segment1
+--           --非在庫品目を取除く
+--    AND    NOT EXISTS(
+--             SELECT  'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val,
+--                     fnd_lookup_types_tl         types_tl,
+--                     fnd_lookup_types            types,
+--                     fnd_application_tl          appl,
+--                     fnd_application             app
+--             WHERE   appl.application_id         = types.application_id
+--             AND     app.application_id          = appl.application_id
+--             AND     types_tl.lookup_type        = look_val.lookup_type
+--             AND     types.lookup_type           = types_tl.lookup_type
+--            AND     types.security_group_id     = types_tl.security_group_id
+--             AND     types.view_application_id   = types_tl.view_application_id
+--             AND     types_tl.language           = cv_lang
+--             AND     look_val.language           = cv_lang
+--             AND     appl.language               = cv_lang
+--             AND     app.application_short_name  = cv_xxcos_short_name
+--             AND     look_val.lookup_type        = cv_no_inv_item_type
+--             AND     look_val.lookup_code        = sel.item_code
+--             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
+--           )
            --納品伝票区分 IN(納品,返品,納品訂正,返品訂正)
     AND    EXISTS(
              SELECT  'Y'                         ext_flg
-             FROM    fnd_lookup_values           look_val,
-                     fnd_lookup_types_tl         types_tl,
-                     fnd_lookup_types            types,
-                     fnd_application_tl          appl,
-                     fnd_application             app
-             WHERE   appl.application_id         = types.application_id
-             AND     app.application_id          = appl.application_id
-             AND     types_tl.lookup_type        = look_val.lookup_type
-             AND     types.lookup_type           = types_tl.lookup_type
-             AND     types.security_group_id     = types_tl.security_group_id
-             AND     types.view_application_id   = types_tl.view_application_id
-             AND     types_tl.language           = cv_lang
-             AND     look_val.language           = cv_lang
-             AND     appl.language               = cv_lang
-             AND     app.application_short_name  = cv_xxcos_short_name
-             AND     look_val.lookup_type        = cv_dlv_slp_cls_type
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type        = cv_dlv_slp_cls_type
              AND     look_val.lookup_code        LIKE cv_dlv_slp_cls_code
              AND     look_val.meaning            = seh.dlv_invoice_class
-             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+             AND     look_val.language           = cv_lang
+             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                                 AND     NVL( look_val.end_date_active, gd_max_date )
              AND     look_val.enabled_flag       = ct_enabled_flg_y
            )
            --納品形態区分 IN(営業車,工場直送,メイン倉庫, 他倉庫,他拠点倉庫売上)
     AND    EXISTS(
              SELECT  'Y'                         ext_flg
-             FROM    fnd_lookup_values           look_val,
-                     fnd_lookup_types_tl         types_tl,
-                     fnd_lookup_types            types,
-                     fnd_application_tl          appl,
-                     fnd_application             app
-             WHERE   appl.application_id         = types.application_id
-             AND     app.application_id          = appl.application_id
-             AND     types_tl.lookup_type        = look_val.lookup_type
-             AND     types.lookup_type           = types_tl.lookup_type
-             AND     types.security_group_id     = types_tl.security_group_id
-             AND     types.view_application_id   = types_tl.view_application_id
-             AND     types_tl.language           = cv_lang
-             AND     look_val.language           = cv_lang
-             AND     appl.language               = cv_lang
-             AND     app.application_short_name  = cv_xxcos_short_name
-             AND     look_val.lookup_type        = cv_dlv_ptn_cls_type
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type        = cv_dlv_ptn_cls_type
              AND     look_val.lookup_code        LIKE cv_dlv_ptn_cls_code
              AND     look_val.meaning            = sel.delivery_pattern_class
-             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+             AND     look_val.language           = cv_lang
+             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                                 AND     NVL( look_val.end_date_active, gd_max_date )
              AND     look_val.enabled_flag       = ct_enabled_flg_y
            )
            --商品製品区分
@@ -749,32 +862,23 @@ AS
            --非在庫品目を取除く
     AND    NOT EXISTS(
              SELECT  'Y'                         ext_flg
-             FROM    fnd_lookup_values           look_val,
-                     fnd_lookup_types_tl         types_tl,
-                     fnd_lookup_types            types,
-                     fnd_application_tl          appl,
-                     fnd_application             app
-             WHERE   appl.application_id         = types.application_id
-             AND     app.application_id          = appl.application_id
-             AND     types_tl.lookup_type        = look_val.lookup_type
-             AND     types.lookup_type           = types_tl.lookup_type
-             AND     types.security_group_id     = types_tl.security_group_id
-             AND     types.view_application_id   = types_tl.view_application_id
-             AND     types_tl.language           = cv_lang
-             AND     look_val.language           = cv_lang
-             AND     appl.language               = cv_lang
-             AND     app.application_short_name  = cv_xxcos_short_name
-             AND     look_val.lookup_type        = cv_no_inv_item_type
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type        = cv_no_inv_item_type
              AND     look_val.lookup_code        = sel.item_code
-             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+             AND     look_val.language           = cv_lang
+             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                                 AND     NVL( look_val.end_date_active, gd_max_date )
              AND     look_val.enabled_flag       = ct_enabled_flg_y
            )
+/* 2009/07/16 Ver1.7 Mod End   */
            --INVインタフェース済フラグ(未連携)
     AND    sel.inv_interface_flag       = cv_inv_flg_n
 /* 2009/05/13 Ver1.5 Add Start */
     AND    sel.ship_from_subinventory_code = mcavd.subinventory_code(+)
 /* 2009/05/13 Ver1.5 Add End   */
+/* 2009/07/16 Ver1.7 Add Start */
+    AND    gt_org_id                       = mcavd.organization_id(+)
+/* 2009/07/16 Ver1.7 Add End   */
     ORDER BY
            sel.ship_from_subinventory_code,     --出荷元保管場所
            gpcv.inventory_item_id,              --品目ID
@@ -1113,28 +1217,39 @@ AS
            l_txn_src_type_tab
     FROM   mtl_txn_source_types  mtst                           --取引ソースタイプテーブル
     WHERE  EXISTS(
+/* 2009/07/16 Ver1.7 Mod Start */
+--             SELECT  'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val,
+--                     fnd_lookup_types_tl         types_tl,
+--                     fnd_lookup_types            types,
+--                     fnd_application_tl          appl,
+--                     fnd_application             app
+--             WHERE   appl.application_id         = types.application_id
+--             AND     app.application_id          = appl.application_id
+--             AND     types_tl.lookup_type        = look_val.lookup_type
+--             AND     types.lookup_type           = types_tl.lookup_type
+--             AND     types.security_group_id     = types_tl.security_group_id
+--             AND     types.view_application_id   = types_tl.view_application_id
+--             AND     types_tl.language           = cv_lang
+--             AND     look_val.language           = cv_lang
+--             AND     appl.language               = cv_lang
+--             AND     app.application_short_name  = cv_xxcos_short_name
+--             AND     look_val.lookup_type        = cv_txn_src_type
+--             AND     look_val.lookup_code        LIKE cv_txn_src_code
+--             AND     look_val.meaning            = mtst.transaction_source_type_name
+--             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
              SELECT  'Y'                         ext_flg
-             FROM    fnd_lookup_values           look_val,
-                     fnd_lookup_types_tl         types_tl,
-                     fnd_lookup_types            types,
-                     fnd_application_tl          appl,
-                     fnd_application             app
-             WHERE   appl.application_id         = types.application_id
-             AND     app.application_id          = appl.application_id
-             AND     types_tl.lookup_type        = look_val.lookup_type
-             AND     types.lookup_type           = types_tl.lookup_type
-             AND     types.security_group_id     = types_tl.security_group_id
-             AND     types.view_application_id   = types_tl.view_application_id
-             AND     types_tl.language           = cv_lang
-             AND     look_val.language           = cv_lang
-             AND     appl.language               = cv_lang
-             AND     app.application_short_name  = cv_xxcos_short_name
-             AND     look_val.lookup_type        = cv_txn_src_type
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type        = cv_txn_src_type
              AND     look_val.lookup_code        LIKE cv_txn_src_code
              AND     look_val.meaning            = mtst.transaction_source_type_name
-             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+             AND     look_val.language           = cv_lang
+             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                                 AND     NVL( look_val.end_date_active, gd_max_date )
              AND     look_val.enabled_flag       = ct_enabled_flg_y
+/* 2009/07/16 Ver1.7 Mod End   */
             )
             ;
     --取引ソースタイプマスタ情報取得失敗
@@ -1153,28 +1268,39 @@ AS
            l_txn_type_tab
     FROM   mtl_transaction_types  mtt                           --取引タイプテーブル
     WHERE  EXISTS(
+/* 2009/07/16 Ver1.7 Mod Start */
+--             SELECT  'Y'                         ext_flg
+--             FROM    fnd_lookup_values           look_val,
+--                     fnd_lookup_types_tl         types_tl,
+--                     fnd_lookup_types            types,
+--                     fnd_application_tl          appl,
+--                     fnd_application             app
+--             WHERE   appl.application_id         = types.application_id
+--             AND     app.application_id          = appl.application_id
+--             AND     types_tl.lookup_type        = look_val.lookup_type
+--             AND     types.lookup_type           = types_tl.lookup_type
+--             AND     types.security_group_id     = types_tl.security_group_id
+--             AND     types.view_application_id   = types_tl.view_application_id
+--             AND     types_tl.language           = cv_lang
+--             AND     look_val.language           = cv_lang
+--             AND     appl.language               = cv_lang
+--             AND     app.application_short_name  = cv_xxcos_short_name
+--             AND     look_val.lookup_type        = cv_txn_type_type
+--             AND     look_val.lookup_code        LIKE cv_txn_type_code
+--             AND     look_val.meaning            = mtt.transaction_type_name
+--             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--             AND     look_val.enabled_flag       = ct_enabled_flg_y
              SELECT  'Y'                         ext_flg
-             FROM    fnd_lookup_values           look_val,
-                     fnd_lookup_types_tl         types_tl,
-                     fnd_lookup_types            types,
-                     fnd_application_tl          appl,
-                     fnd_application             app
-             WHERE   appl.application_id         = types.application_id
-             AND     app.application_id          = appl.application_id
-             AND     types_tl.lookup_type        = look_val.lookup_type
-             AND     types.lookup_type           = types_tl.lookup_type
-             AND     types.security_group_id     = types_tl.security_group_id
-             AND     types.view_application_id   = types_tl.view_application_id
-             AND     types_tl.language           = cv_lang
-             AND     look_val.language           = cv_lang
-             AND     appl.language               = cv_lang
-             AND     app.application_short_name  = cv_xxcos_short_name
-             AND     look_val.lookup_type        = cv_txn_type_type
+             FROM    fnd_lookup_values           look_val
+             WHERE   look_val.lookup_type        = cv_txn_type_type
              AND     look_val.lookup_code        LIKE cv_txn_type_code
+             AND     look_val.language           = cv_lang
              AND     look_val.meaning            = mtt.transaction_type_name
-             AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-             AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+             AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                                 AND     NVL( look_val.end_date_active, gd_max_date )
              AND     look_val.enabled_flag       = ct_enabled_flg_y
+/* 2009/07/16 Ver1.7 Mod End   */
             )
             ;
     --取引タイプマスタ情報取得失敗
@@ -1200,140 +1326,198 @@ AS
             look_val.attribute10         ass_item            --補助科目コード
     BULK COLLECT INTO
             l_jor_map_tab
+/* 2009/07/16 Ver1.7 Mod Start */
+--            --取引タイプ・仕訳パターン特定区分
+--    FROM    fnd_lookup_values            look_val,
+--            fnd_lookup_types_tl          types_tl,
+--            fnd_lookup_types             types,
+--            fnd_application_tl           appl,
+--            fnd_application              app,
+--            --赤黒フラグ
+--            fnd_lookup_values            look_val1,
+--            fnd_lookup_types_tl          types_tl1,
+--            fnd_lookup_types             types1,
+--            fnd_application_tl           appl1,
+--            fnd_application              app1,
+--            --納品伝票区分特定マスタ
+--            fnd_lookup_values            look_val2,
+--            fnd_lookup_types_tl          types_tl2,
+--            fnd_lookup_types             types2,
+--            fnd_application_tl           appl2,
+--            fnd_application              app2,
+--            --納品形態区分特定マスタ
+--            fnd_lookup_values            look_val3,
+--            fnd_lookup_types_tl          types_tl3,
+--            fnd_lookup_types             types3,
+--            fnd_application_tl           appl3,
+--            fnd_application              app3,
+--            --売上区分特定マスタ
+--            fnd_lookup_values            look_val4,
+--            fnd_lookup_types_tl          types_tl4,
+--            fnd_lookup_types             types4,
+--            fnd_application_tl           appl4,
+--            fnd_application              app4,
+--            --商品製品区分特定マスタ
+--            fnd_lookup_values            look_val5,
+--            fnd_lookup_types_tl          types_tl5,
+--            fnd_lookup_types             types5,
+--            fnd_application_tl           appl5,
+--            fnd_application              app5
+--    WHERE   appl.application_id          = types.application_id
+--    AND     app.application_id           = appl.application_id
+--    AND     types_tl.lookup_type         = look_val.lookup_type
+--    AND     types.lookup_type            = types_tl.lookup_type
+--    AND     types.security_group_id      = types_tl.security_group_id
+--    AND     types.view_application_id    = types_tl.view_application_id
+--    AND     types_tl.language            = cv_lang
+--    AND     look_val.language            = cv_lang
+--    AND     appl.language                = cv_lang
+--    AND     app.application_short_name   = cv_xxcos_short_name
+--    AND     look_val.lookup_type         = cv_txn_jor_type
+--    AND     gd_proc_date                 >= NVL( look_val.start_date_active, gd_min_date )
+--    AND     gd_proc_date                 <= NVL( look_val.end_date_active, gd_max_date )
+--    AND     look_val.enabled_flag        = ct_enabled_flg_y
+--            --赤黒フラグ特定
+--    AND     appl1.application_id         = types1.application_id
+--    AND     app1.application_id          = appl1.application_id
+--    AND     types_tl1.lookup_type        = look_val1.lookup_type
+--    AND     types1.lookup_type           = types_tl1.lookup_type
+--    AND     types1.security_group_id     = types_tl1.security_group_id
+--    AND     types1.view_application_id   = types_tl1.view_application_id
+--    AND     types_tl1.language           = cv_lang
+--    AND     look_val1.language           = cv_lang
+--    AND     appl1.language               = cv_lang
+--    AND     app1.application_short_name  = cv_xxcos_short_name
+--    AND     look_val1.lookup_type        = cv_red_black_type
+--    AND     gd_proc_date                 >= NVL( look_val1.start_date_active, gd_min_date )
+--    AND     gd_proc_date                 <= NVL( look_val1.end_date_active, gd_max_date )
+--    AND     look_val1.enabled_flag       = ct_enabled_flg_y
+--    AND     look_val.attribute1          = look_val1.attribute1
+--            --納品伝票区分特定
+--    AND     appl2.application_id         = types2.application_id
+--    AND     app2.application_id          = appl2.application_id
+--    AND     types_tl2.lookup_type        = look_val2.lookup_type
+--    AND     types2.lookup_type           = types_tl2.lookup_type
+--    AND     types2.security_group_id     = types_tl2.security_group_id
+--    AND     types2.view_application_id   = types_tl2.view_application_id
+--    AND     types_tl2.language           = cv_lang
+--    AND     look_val2.language           = cv_lang
+--    AND     appl2.language               = cv_lang
+--    AND     app2.application_short_name  = cv_xxcos_short_name
+--    AND     look_val2.lookup_type        = cv_dlv_slp_cls_type
+--    AND     look_val2.lookup_code        LIKE cv_dlv_slp_cls_code
+--    AND     gd_proc_date                 >= NVL( look_val2.start_date_active, gd_min_date )
+--    AND     gd_proc_date                 <= NVL( look_val2.end_date_active, gd_max_date )
+--    AND     look_val2.enabled_flag       = ct_enabled_flg_y
+--    AND     look_val.attribute2          = look_val2.attribute1
+--            --納品形態区分特定
+--    AND     appl3.application_id         = types3.application_id
+--    AND     app3.application_id          = appl3.application_id
+--    AND     types_tl3.lookup_type        = look_val3.lookup_type
+--    AND     types3.lookup_type           = types_tl3.lookup_type
+--    AND     types3.security_group_id     = types_tl3.security_group_id
+--    AND     types3.view_application_id   = types_tl3.view_application_id
+--    AND     types_tl3.language           = cv_lang
+--    AND     look_val3.language           = cv_lang
+--    AND     appl3.language               = cv_lang
+--    AND     app3.application_short_name  = cv_xxcos_short_name
+--    AND     look_val3.lookup_type        = cv_dlv_ptn_cls_type
+--    AND     look_val3.lookup_code        LIKE cv_dlv_ptn_cls_code
+--    AND     gd_proc_date                 >= NVL( look_val3.start_date_active, gd_min_date )
+--    AND     gd_proc_date                 <= NVL( look_val3.end_date_active, gd_max_date )
+--    AND     look_val3.enabled_flag       = ct_enabled_flg_y      
+--    AND     look_val.attribute3          = look_val3.attribute1
+--            --売上区分特定
+--    AND     appl4.application_id         = types4.application_id
+--    AND     app4.application_id          = appl4.application_id
+--    AND     types_tl4.lookup_type        = look_val4.lookup_type
+--    AND     types4.lookup_type           = types_tl4.lookup_type
+--    AND     types4.security_group_id     = types_tl4.security_group_id
+--    AND     types4.view_application_id   = types_tl4.view_application_id
+--    AND     types_tl4.language           = cv_lang
+--    AND     look_val4.language           = cv_lang
+--    AND     appl4.language               = cv_lang
+--    AND     app4.application_short_name  = cv_xxcos_short_name
+--    AND     look_val4.lookup_type        = cv_sale_cls_type
+--    AND     look_val4.lookup_code        LIKE cv_sale_cls_code
+--    AND     gd_proc_date                 >= NVL( look_val4.start_date_active, gd_min_date )
+--    AND     gd_proc_date                 <= NVL( look_val4.end_date_active, gd_max_date )
+--    AND     look_val4.enabled_flag       = ct_enabled_flg_y
+--    AND     look_val.attribute4          = look_val4.attribute1
+--            --商品製品区分特定
+--    AND     appl5.application_id         = types5.application_id
+--    AND     app5.application_id          = appl5.application_id
+--    AND     types_tl5.lookup_type        = look_val5.lookup_type
+--    AND     types5.lookup_type           = types_tl5.lookup_type
+--    AND     types5.security_group_id     = types_tl5.security_group_id
+--    AND     types5.view_application_id   = types_tl5.view_application_id
+--    AND     types_tl5.language           = cv_lang
+--    AND     look_val5.language           = cv_lang
+--    AND     appl5.language               = cv_lang
+--    AND     app5.application_short_name  = cv_xxcos_short_name
+--    AND     look_val5.lookup_type        = cv_goods_prod_type
+--    AND     look_val5.lookup_code        LIKE cv_goods_prod_code
+--    AND     gd_proc_date                 >= NVL( look_val5.start_date_active, gd_min_date )
+--    AND     gd_proc_date                 <= NVL( look_val5.end_date_active, gd_max_date )
+--    AND     look_val5.enabled_flag       = ct_enabled_flg_y
+--    AND     look_val.attribute5          = look_val5.attribute1
             --取引タイプ・仕訳パターン特定区分
     FROM    fnd_lookup_values            look_val,
-            fnd_lookup_types_tl          types_tl,
-            fnd_lookup_types             types,
-            fnd_application_tl           appl,
-            fnd_application              app,
             --赤黒フラグ
             fnd_lookup_values            look_val1,
-            fnd_lookup_types_tl          types_tl1,
-            fnd_lookup_types             types1,
-            fnd_application_tl           appl1,
-            fnd_application              app1,
             --納品伝票区分特定マスタ
             fnd_lookup_values            look_val2,
-            fnd_lookup_types_tl          types_tl2,
-            fnd_lookup_types             types2,
-            fnd_application_tl           appl2,
-            fnd_application              app2,
             --納品形態区分特定マスタ
             fnd_lookup_values            look_val3,
-            fnd_lookup_types_tl          types_tl3,
-            fnd_lookup_types             types3,
-            fnd_application_tl           appl3,
-            fnd_application              app3,
             --売上区分特定マスタ
             fnd_lookup_values            look_val4,
-            fnd_lookup_types_tl          types_tl4,
-            fnd_lookup_types             types4,
-            fnd_application_tl           appl4,
-            fnd_application              app4,
             --商品製品区分特定マスタ
-            fnd_lookup_values            look_val5,
-            fnd_lookup_types_tl          types_tl5,
-            fnd_lookup_types             types5,
-            fnd_application_tl           appl5,
-            fnd_application              app5
-    WHERE   appl.application_id          = types.application_id
-    AND     app.application_id           = appl.application_id
-    AND     types_tl.lookup_type         = look_val.lookup_type
-    AND     types.lookup_type            = types_tl.lookup_type
-    AND     types.security_group_id      = types_tl.security_group_id
-    AND     types.view_application_id    = types_tl.view_application_id
-    AND     types_tl.language            = cv_lang
+            fnd_lookup_values            look_val5
+    WHERE   look_val.lookup_type         = cv_txn_jor_type
     AND     look_val.language            = cv_lang
-    AND     appl.language                = cv_lang
-    AND     app.application_short_name   = cv_xxcos_short_name
-    AND     look_val.lookup_type         = cv_txn_jor_type
-    AND     gd_proc_date                 >= NVL( look_val.start_date_active, gd_min_date )
-    AND     gd_proc_date                 <= NVL( look_val.end_date_active, gd_max_date )
+    AND     gd_proc_date                 BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                         AND     NVL( look_val.end_date_active, gd_max_date )
     AND     look_val.enabled_flag        = ct_enabled_flg_y
             --赤黒フラグ特定
-    AND     appl1.application_id         = types1.application_id
-    AND     app1.application_id          = appl1.application_id
-    AND     types_tl1.lookup_type        = look_val1.lookup_type
-    AND     types1.lookup_type           = types_tl1.lookup_type
-    AND     types1.security_group_id     = types_tl1.security_group_id
-    AND     types1.view_application_id   = types_tl1.view_application_id
-    AND     types_tl1.language           = cv_lang
-    AND     look_val1.language           = cv_lang
-    AND     appl1.language               = cv_lang
-    AND     app1.application_short_name  = cv_xxcos_short_name
     AND     look_val1.lookup_type        = cv_red_black_type
-    AND     gd_proc_date                 >= NVL( look_val1.start_date_active, gd_min_date )
-    AND     gd_proc_date                 <= NVL( look_val1.end_date_active, gd_max_date )
+    AND     look_val1.language           = cv_lang
+    AND     gd_proc_date                 BETWEEN NVL( look_val1.start_date_active, gd_min_date )
+                                         AND     NVL( look_val1.end_date_active, gd_max_date )
     AND     look_val1.enabled_flag       = ct_enabled_flg_y
     AND     look_val.attribute1          = look_val1.attribute1
             --納品伝票区分特定
-    AND     appl2.application_id         = types2.application_id
-    AND     app2.application_id          = appl2.application_id
-    AND     types_tl2.lookup_type        = look_val2.lookup_type
-    AND     types2.lookup_type           = types_tl2.lookup_type
-    AND     types2.security_group_id     = types_tl2.security_group_id
-    AND     types2.view_application_id   = types_tl2.view_application_id
-    AND     types_tl2.language           = cv_lang
-    AND     look_val2.language           = cv_lang
-    AND     appl2.language               = cv_lang
-    AND     app2.application_short_name  = cv_xxcos_short_name
     AND     look_val2.lookup_type        = cv_dlv_slp_cls_type
     AND     look_val2.lookup_code        LIKE cv_dlv_slp_cls_code
-    AND     gd_proc_date                 >= NVL( look_val2.start_date_active, gd_min_date )
-    AND     gd_proc_date                 <= NVL( look_val2.end_date_active, gd_max_date )
+    AND     look_val2.language           = cv_lang
+    AND     gd_proc_date                 BETWEEN NVL( look_val2.start_date_active, gd_min_date )
+                                         AND     NVL( look_val2.end_date_active, gd_max_date )
     AND     look_val2.enabled_flag       = ct_enabled_flg_y
     AND     look_val.attribute2          = look_val2.attribute1
             --納品形態区分特定
-    AND     appl3.application_id         = types3.application_id
-    AND     app3.application_id          = appl3.application_id
-    AND     types_tl3.lookup_type        = look_val3.lookup_type
-    AND     types3.lookup_type           = types_tl3.lookup_type
-    AND     types3.security_group_id     = types_tl3.security_group_id
-    AND     types3.view_application_id   = types_tl3.view_application_id
-    AND     types_tl3.language           = cv_lang
-    AND     look_val3.language           = cv_lang
-    AND     appl3.language               = cv_lang
-    AND     app3.application_short_name  = cv_xxcos_short_name
     AND     look_val3.lookup_type        = cv_dlv_ptn_cls_type
     AND     look_val3.lookup_code        LIKE cv_dlv_ptn_cls_code
-    AND     gd_proc_date                 >= NVL( look_val3.start_date_active, gd_min_date )
-    AND     gd_proc_date                 <= NVL( look_val3.end_date_active, gd_max_date )
+    AND     look_val3.language           = cv_lang
+    AND     gd_proc_date                 BETWEEN NVL( look_val3.start_date_active, gd_min_date )
+                                         AND     NVL( look_val3.end_date_active, gd_max_date )
     AND     look_val3.enabled_flag       = ct_enabled_flg_y      
     AND     look_val.attribute3          = look_val3.attribute1
             --売上区分特定
-    AND     appl4.application_id         = types4.application_id
-    AND     app4.application_id          = appl4.application_id
-    AND     types_tl4.lookup_type        = look_val4.lookup_type
-    AND     types4.lookup_type           = types_tl4.lookup_type
-    AND     types4.security_group_id     = types_tl4.security_group_id
-    AND     types4.view_application_id   = types_tl4.view_application_id
-    AND     types_tl4.language           = cv_lang
-    AND     look_val4.language           = cv_lang
-    AND     appl4.language               = cv_lang
-    AND     app4.application_short_name  = cv_xxcos_short_name
     AND     look_val4.lookup_type        = cv_sale_cls_type
     AND     look_val4.lookup_code        LIKE cv_sale_cls_code
-    AND     gd_proc_date                 >= NVL( look_val4.start_date_active, gd_min_date )
-    AND     gd_proc_date                 <= NVL( look_val4.end_date_active, gd_max_date )
+    AND     look_val4.language           = cv_lang
+    AND     gd_proc_date                 BETWEEN NVL( look_val4.start_date_active, gd_min_date )
+                                         AND     NVL( look_val4.end_date_active, gd_max_date )
     AND     look_val4.enabled_flag       = ct_enabled_flg_y
     AND     look_val.attribute4          = look_val4.attribute1
             --商品製品区分特定
-    AND     appl5.application_id         = types5.application_id
-    AND     app5.application_id          = appl5.application_id
-    AND     types_tl5.lookup_type        = look_val5.lookup_type
-    AND     types5.lookup_type           = types_tl5.lookup_type
-    AND     types5.security_group_id     = types_tl5.security_group_id
-    AND     types5.view_application_id   = types_tl5.view_application_id
-    AND     types_tl5.language           = cv_lang
-    AND     look_val5.language           = cv_lang
-    AND     appl5.language               = cv_lang
-    AND     app5.application_short_name  = cv_xxcos_short_name
     AND     look_val5.lookup_type        = cv_goods_prod_type
     AND     look_val5.lookup_code        LIKE cv_goods_prod_code
-    AND     gd_proc_date                 >= NVL( look_val5.start_date_active, gd_min_date )
-    AND     gd_proc_date                 <= NVL( look_val5.end_date_active, gd_max_date )
+    AND     look_val5.language           = cv_lang
+    AND     gd_proc_date                 BETWEEN NVL( look_val5.start_date_active, gd_min_date )
+                                         AND     NVL( look_val5.end_date_active, gd_max_date )
     AND     look_val5.enabled_flag       = ct_enabled_flg_y
     AND     look_val.attribute5          = look_val5.attribute1
+/* 2009/07/16 Ver1.7 Mod END   */
     ORDER BY
             look_val1.lookup_code        DESC,
             look_val2.meaning            ASC,
@@ -1354,27 +1538,37 @@ AS
     BEGIN
       SELECT  look_val.meaning            dlv_ptn_cls
       INTO    lt_dlv_ptn_dir
-      FROM    fnd_lookup_values           look_val,
-              fnd_lookup_types_tl         types_tl,
-              fnd_lookup_types            types,
-              fnd_application_tl          appl,
-              fnd_application             app
-      WHERE   appl.application_id         = types.application_id
-      AND     app.application_id          = appl.application_id
-      AND     types_tl.lookup_type        = look_val.lookup_type
-      AND     types.lookup_type           = types_tl.lookup_type
-      AND     types.security_group_id     = types_tl.security_group_id
-      AND     types.view_application_id   = types_tl.view_application_id
-      AND     types_tl.language           = cv_lang
-      AND     look_val.language           = cv_lang
-      AND     appl.language               = cv_lang
-      AND     app.application_short_name  = cv_xxcos_short_name
-      AND     look_val.lookup_type        = cv_dlv_ptn_cls_type
+/* 2009/07/16 Ver1.7 Mod Start */
+--      FROM    fnd_lookup_values           look_val,
+--              fnd_lookup_types_tl         types_tl,
+--              fnd_lookup_types            types,
+--              fnd_application_tl          appl,
+--              fnd_application             app
+--      WHERE   appl.application_id         = types.application_id
+--      AND     app.application_id          = appl.application_id
+--      AND     types_tl.lookup_type        = look_val.lookup_type
+--      AND     types.lookup_type           = types_tl.lookup_type
+--      AND     types.security_group_id     = types_tl.security_group_id
+--      AND     types.view_application_id   = types_tl.view_application_id
+--      AND     types_tl.language           = cv_lang
+--      AND     look_val.language           = cv_lang
+--      AND     appl.language               = cv_lang
+--      AND     app.application_short_name  = cv_xxcos_short_name
+--      AND     look_val.lookup_type        = cv_dlv_ptn_cls_type
+--      AND     look_val.lookup_code        = cv_dlv_ptn_dir_code
+--      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--      AND     look_val.enabled_flag       = ct_enabled_flg_y
+--      AND     rownum                      = 1
+      FROM    fnd_lookup_values           look_val
+      WHERE   look_val.lookup_type        = cv_dlv_ptn_cls_type
       AND     look_val.lookup_code        = cv_dlv_ptn_dir_code
-      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+      AND     look_val.language           = cv_lang
+      AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                          AND     NVL( look_val.end_date_active, gd_max_date )
       AND     look_val.enabled_flag       = ct_enabled_flg_y
       AND     rownum                      = 1
+/* 2009/07/16 Ver1.7 Mod End   */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1389,27 +1583,37 @@ AS
     BEGIN
       SELECT  look_val.meaning            another_name
       INTO    lv_another_nm
-      FROM    fnd_lookup_values           look_val,
-              fnd_lookup_types_tl         types_tl,
-              fnd_lookup_types            types,
-              fnd_application_tl          appl,
-              fnd_application             app
-      WHERE   appl.application_id         = types.application_id
-      AND     app.application_id          = appl.application_id
-      AND     types_tl.lookup_type        = look_val.lookup_type
-      AND     types.lookup_type           = types_tl.lookup_type
-      AND     types.security_group_id     = types_tl.security_group_id
-      AND     types.view_application_id   = types_tl.view_application_id
-      AND     types_tl.language           = cv_lang
-      AND     look_val.language           = cv_lang
-      AND     appl.language               = cv_lang
-      AND     app.application_short_name  = cv_xxcos_short_name
-      AND     look_val.lookup_type        = cv_txn_src_type
+/* 2009/07/16 Ver1.7 Mod Start */
+--      FROM    fnd_lookup_values           look_val,
+--              fnd_lookup_types_tl         types_tl,
+--              fnd_lookup_types            types,
+--              fnd_application_tl          appl,
+--              fnd_application             app
+--      WHERE   appl.application_id         = types.application_id
+--      AND     app.application_id          = appl.application_id
+--      AND     types_tl.lookup_type        = look_val.lookup_type
+--      AND     types.lookup_type           = types_tl.lookup_type
+--      AND     types.security_group_id     = types_tl.security_group_id
+--      AND     types.view_application_id   = types_tl.view_application_id
+--      AND     types_tl.language           = cv_lang
+--      AND     look_val.language           = cv_lang
+--      AND     appl.language               = cv_lang
+--      AND     app.application_short_name  = cv_xxcos_short_name
+--      AND     look_val.lookup_type        = cv_txn_src_type
+--      AND     look_val.lookup_code        = cv_another_nm_code
+--      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--      AND     look_val.enabled_flag       = ct_enabled_flg_y
+--      AND     rownum                      = 1
+      FROM    fnd_lookup_values           look_val
+      WHERE   look_val.lookup_type        = cv_txn_src_type
       AND     look_val.lookup_code        = cv_another_nm_code
-      AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-      AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+      AND     look_val.language           = cv_lang
+      AND     gd_proc_date                BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                                          AND     NVL( look_val.end_date_active, gd_max_date )
       AND     look_val.enabled_flag       = ct_enabled_flg_y
       AND     rownum                      = 1
+/* 2009/07/16 Ver1.7 Mod End   */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
