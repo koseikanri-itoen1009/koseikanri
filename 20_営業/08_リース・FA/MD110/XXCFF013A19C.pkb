@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF013A19C(body)
  * Description      : リース契約月次更新
  * MD.050           : MD050_CFF_013_A19_リース契約月次更新
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/02/25    1.3   SCS 嶋田         （再リース要否）物件契約情報抽出の条件に'再リー
  *                                       ス回数'を追加
  *  2009/08/28    1.4   SCS 渡辺         [統合テスト障害0001058(PT対応)]
+ *  2013/07/24    1.5   SCSK 中野        [E_本稼動_10871]消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -221,6 +222,9 @@ AS
     IS TABLE OF xxcff_contract_lines.first_installation_address%TYPE INDEX BY PLS_INTEGER;
   TYPE g_fst_inst_place_ttype
     IS TABLE OF xxcff_contract_lines.first_installation_place%TYPE INDEX BY PLS_INTEGER;
+-- 2013/07/24 Ver.1.5 T.Nakano ADD Start
+  TYPE g_tax_code_ttype               IS TABLE OF xxcff_contract_lines.tax_code%TYPE INDEX BY PLS_INTEGER;
+-- 2013/07/24 Ver.1.5 T.Nakano ADD END
 --
   --（再リース要否）物件契約情報抽出カーソル用定義
   TYPE g_lease_end_date_ttype         IS TABLE OF xxcff_contract_headers.lease_end_date%TYPE INDEX BY PLS_INTEGER;
@@ -330,6 +334,9 @@ AS
   g_info_sys_if_date_tab                 g_info_sys_if_date_ttype;
   g_fst_inst_address_tab                 g_fst_inst_address_ttype;
   g_fst_inst_place_tab                   g_fst_inst_place_ttype;
+-- 2013/07/24 Ver.1.5 T.Nakano ADD Start
+  g_tax_code_tab                         g_tax_code_ttype;
+-- 2013/07/24 Ver.1.5 T.Nakano ADD END
 --
   --（再リース要否）物件契約情報抽出カーソル用定義
   g_lease_end_date_tab                   g_lease_end_date_ttype;
@@ -674,6 +681,9 @@ AS
              ,xcl.info_sys_if_date            AS info_sys_if_date            --リース管理情報連携日
              ,xcl.first_installation_address  AS first_installation_address  --初回設置場所
              ,xcl.first_installation_place    AS first_installation_place    --初回設置先
+-- 2013/07/24 Ver.1.5 T.Nakano ADD Start
+             ,xcl.tax_code                    AS tax_code                    --税金コード
+-- 2013/07/24 Ver.1.5 T.Nakano ADD END
         FROM
               xxcff_contract_lines    xcl --リース契約明細
              ,xxcff_object_headers    xoh --リース物件
@@ -744,6 +754,9 @@ AS
                       ,g_info_sys_if_date_tab             --リース管理情報連携日
                       ,g_fst_inst_address_tab             --初回設置場所
                       ,g_fst_inst_place_tab               --初回設置先
+-- 2013/07/24 Ver.1.5 T.Nakano ADD Start
+                      ,g_tax_code_tab                     --税金コード
+-- 2013/07/24 Ver.1.5 T.Nakano ADD END
     ;
     --対象件数が0件の場合
     IF ( ctrcted_les_info_cur%ROWCOUNT = 0 ) THEN
@@ -925,6 +938,9 @@ AS
         g_ct_lin_rec.info_sys_if_date       := g_info_sys_if_date_tab(ln_loop_cnt);      --リース管理情報連携日
         g_ct_lin_rec.first_installation_address  := g_fst_inst_address_tab(ln_loop_cnt); --初回設置場所
         g_ct_lin_rec.first_installation_place    := g_fst_inst_place_tab(ln_loop_cnt);   --初回設置先
+-- 2013/07/24 Ver.1.5 T.Nakano ADD Start
+        g_ct_lin_rec.tax_code               := g_tax_code_tab(ln_loop_cnt);              --税金コード
+-- 2013/07/24 Ver.1.5 T.Nakano ADD END
         -- 以下、WHOカラム情報
         g_ct_lin_rec.created_by             := cn_created_by;              --作成者
         g_ct_lin_rec.creation_date          := cd_creation_date;           --作成日
@@ -1053,6 +1069,9 @@ AS
              ,xcl.info_sys_if_date            AS info_sys_if_date            --リース管理情報連携日
              ,xcl.first_installation_address  AS first_installation_address  --初回設置場所
              ,xcl.first_installation_place    AS first_installation_place    --初回設置先
+-- 2013/07/24 Ver.1.5 T.Nakano ADD Start
+             ,xcl.tax_code                    AS tax_code                    --税金コード
+-- 2013/07/24 Ver.1.5 T.Nakano ADD END
              ,xoh.object_code                 AS object_code                 --物件コード
              ,xoh.lease_class                 AS lease_class                 --リース種別
              ,xoh.lease_type                  AS lease_type                  --リース区分
@@ -1157,6 +1176,9 @@ AS
                       ,g_info_sys_if_date_tab             --リース管理情報連携日
                       ,g_fst_inst_address_tab             --初回設置場所
                       ,g_fst_inst_place_tab               --初回設置先
+-- 2013/07/24 Ver.1.5 T.Nakano ADD Start
+                      ,g_tax_code_tab                     --税金コード
+-- 2013/07/24 Ver.1.5 T.Nakano ADD END
                       ,g_object_code_tab                  --物件コード
                       ,g_lease_class_tab                  --リース種別
                       ,g_lease_type_tab                   --リース区分
@@ -1372,6 +1394,9 @@ AS
         g_ct_lin_rec.info_sys_if_date       := g_info_sys_if_date_tab(ln_loop_cnt);      --リース管理情報連携日
         g_ct_lin_rec.first_installation_address  := g_fst_inst_address_tab(ln_loop_cnt); --初回設置場所
         g_ct_lin_rec.first_installation_place    := g_fst_inst_place_tab(ln_loop_cnt);   --初回設置先
+-- 2013/07/24 Ver.1.5 T.Nakano ADD Start
+        g_ct_lin_rec.tax_code               := g_tax_code_tab(ln_loop_cnt);              --税金コード
+-- 2013/07/24 Ver.1.5 T.Nakano ADD END
         -- 以下、WHOカラム情報
         g_ct_lin_rec.created_by             := cn_created_by;              --作成者
         g_ct_lin_rec.creation_date          := cd_creation_date;           --作成日
