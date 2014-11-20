@@ -12,4 +12,4 @@
  *  2009/01/14    1.0   SCS K.Oomata     êVãKçÏê¨
  *
  ****************************************************************************************/
-CREATE SYNONYM apps.XXCCP_IF_JOB_STATUS FOR XXCCP.XXCCP_IF_JOB_STATUS;
+CREATE OR REPLACE SYNONYM apps.XXCCP_IF_JOB_STATUS FOR XXCCP.XXCCP_IF_JOB_STATUS;

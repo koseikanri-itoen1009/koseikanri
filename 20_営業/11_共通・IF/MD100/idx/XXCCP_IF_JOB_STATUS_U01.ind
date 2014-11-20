@@ -12,7 +12,7 @@
  *  2009/04/03    1.0   Masayuki.Sano    êVãKçÏê¨
  *
  ****************************************************************************************/
-CREATE UNIQUE INDEX xxccp.xxccp_if_job_status_u01 ON xxccp_if_job_status (
+CREATE UNIQUE INDEX xxccp.xxccp_if_job_status_u01 ON xxccp.xxccp_if_job_status (
   request_id_val
 )
 TABLESPACE xxidx2
