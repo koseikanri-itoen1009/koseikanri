@@ -7,8 +7,8 @@
 ##                                                                            ##
 ##   [作成/更新履歴]                                                          ##
 ##        作成者  ：   Oracle 堀井           2008/05/22 1.0.1                 ##
-##        更新履歴：   Oracle 堀井           2008/05/22 1.0.1                 ##
-##                       初版                                                 ##
+##        更新履歴：   Oracle 中村           2008/10/02 1.1.0                 ##
+##                       1.1版                                                ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -138,18 +138,29 @@ trap 'L_shuryo 8' 1 2 3 15
 
   L_rogushuturyoku "CRS停止確認"
   L_rogushuturyoku "CRSの停止を待っています。"
-  sleep ${TE_ZCZZTAIKI}
+  
+  let cnt=1
+  while [ "$cnt" -le "${TE_ZCZZ_WAITCNT}" ]
+  do
+     sleep ${TE_ZCZZCRSTAIKI}
+     /usr/bin/ps -ef | /usr/bin/egrep "ocssd.bin |evmd.bin |evmlogger.bin |oclsomon.bin |crsd.bin |ons -d |crs/10.2.0/jdk/jre/bin/java" |/usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
+     if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ne 0 ]
+       then
+        if [ "$cnt" -eq "${TE_ZCZZ_WAITCNT}" ]
+         then
+            L_rogushuturyoku "${TE_ZCZZ01401}"
+            echo "${TE_ZCZZ01401}" 1>&2
+            L_shuryo ${L_ijou}
+        fi
+     
+     else
+        break;
+     fi
 
-  /usr/bin/ps -ef | /usr/bin/grep "ocssd.bin" | /usr/bin/grep -v "grep" | /usr/bin/wc -l > ${TE_ZCZZHYOUJUNSHUTURYOKU}
-  if [ `/usr/bin/cat ${TE_ZCZZHYOUJUNSHUTURYOKU}` -ne 0 ]
-    then
-      L_rogushuturyoku "${TE_ZCZZ01401}"
-      echo "${TE_ZCZZ01401}" 1>&2
-      L_shuryo ${L_ijou}
-  fi
+     let cnt=cnt+1
+  done
 
   L_rogushuturyoku "CRSの停止を確認しました。"
-
 
 ### シェルの終了 ###
 
