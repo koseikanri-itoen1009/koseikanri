@@ -39,6 +39,7 @@ AS
  *                                         よう修正
  *  2009-02-20          Kazuo.Satomura   仕様変更対応
  *                                       ・顧客ステータス、顧客区分を定数に変更
+ *  2009-04-21          Kazuo.Satomura   システムテスト障害対応(T1_0685)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1110,30 +1111,32 @@ AS
       -- ====================
       -- 顧客事業所マスタ新規
       -- ====================
-      -- 顧客番号の取得
-      BEGIN
-        SELECT hz_cust_accounts_s1.NEXTVAL account_number
-        INTO   ot_account_number
-        FROM   DUAL
-        ;
-        --
-      EXCEPTION
-        WHEN OTHERS THEN
-          -- その他のエラーの場合 
-          lv_errbuf := xxccp_common_pkg.get_msg(
-                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                         ,iv_name         => cv_tkn_number_08         -- メッセージコード
-                         ,iv_token_name1  => cv_tkn_sequence          -- トークンコード1
-                         ,iv_token_value1 => cv_tkn_value_sequence    -- トークン値1
-                         ,iv_token_name2  => cv_tkn_err_msg           -- トークンコード2
-                         ,iv_token_value2 => SQLERRM                  -- トークン値2
-                      );
-          --
-          RAISE global_api_expt;
-          --
-      END;
-      --
-      lt_cust_account_rec.account_number      := SUBSTRB(ot_account_number, 1, 30);                  -- 顧客番号
+      /* 2009.04.21 K.Satomura T1_0685対応 START */
+      ---- 顧客番号の取得
+      --BEGIN
+      --  SELECT hz_cust_accounts_s1.NEXTVAL account_number
+      --  INTO   ot_account_number
+      --  FROM   DUAL
+      --  ;
+      --  --
+      --EXCEPTION
+      --  WHEN OTHERS THEN
+      --    -- その他のエラーの場合 
+      --    lv_errbuf := xxccp_common_pkg.get_msg(
+      --                    iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+      --                   ,iv_name         => cv_tkn_number_08         -- メッセージコード
+      --                   ,iv_token_name1  => cv_tkn_sequence          -- トークンコード1
+      --                   ,iv_token_value1 => cv_tkn_value_sequence    -- トークン値1
+      --                   ,iv_token_name2  => cv_tkn_err_msg           -- トークンコード2
+      --                   ,iv_token_value2 => SQLERRM                  -- トークン値2
+      --                );
+      --    --
+      --    RAISE global_api_expt;
+      --    --
+      --END;
+      ----
+      --lt_cust_account_rec.account_number      := SUBSTRB(ot_account_number, 1, 30);                  -- 顧客番号
+      /* 2009.04.21 K.Satomura T1_0685対応 END */
       lt_cust_account_rec.account_name        := SUBSTRB(it_mst_regist_info_rec.party_name, 1, 240); -- アカウント名
       lt_cust_account_rec.customer_class_code := SUBSTRB(cv_customer_class_code, 1, 30);             -- 顧客区分
       lt_organization_rec.party_rec.party_id  := it_party_id;                                        -- パーティＩＤ
@@ -1179,6 +1182,9 @@ AS
       END IF;
       --
       ot_cust_account_id := lt_cust_account_id;
+      /* 2009.04.21 K.Satomura T1_0685対応 START */
+      ot_account_number  := lt_account_number;
+      /* 2009.04.21 K.Satomura T1_0685対応 END */
       --
     ELSIF (iv_proc_type = cv_proc_type_update) THEN
       -- 処理区分がUの場合
