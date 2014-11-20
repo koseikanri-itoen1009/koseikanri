@@ -44,7 +44,7 @@ AS
  *  2009/04/22    1.13  K.KIN            T1_0116
  *  2009/05/07    1.14  K.KIN            T1_0908
  *  2009/05/07    1.15  K.KIN            T1_0914、T1_0915
- *  2009/05/08    1.16  K.KIN            T1_0453
+ *  2009/05/11    1.16  K.KIN            T1_0453、T1_0938
  *
  *****************************************************************************************/
 --
@@ -1098,7 +1098,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
            , xsel.item_code                    item_code               -- 品目コード
            , xsel.sales_class                  sales_class             -- 売上区分
            , xsel.red_black_flag               red_black_flag          -- 赤黒フラグ
-           , xgpc.goods_prod_class_code        goods_prod_cls          -- 品目区分（製品・商品）
+           , CASE 
+               WHEN mcavd.subinventory_code IS NULL THEN cv_goods_prod_sei
+               ELSE                            xgpc.goods_prod_class_code
+             END AS                            goods_prod_cls          -- 品目区分（製品・商品）
            , xsel.pure_amount                  pure_amount             -- 本体金額
            , xsel.tax_amount                   tax_amount              -- 消費税額
            , NVL( xsel.cash_and_card, 0 )      cash_and_card           -- 現金・カード併用額
@@ -1135,6 +1138,10 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
            , xxcos_good_prod_class_v           xgpc                    -- 品目区分View
            , xxcos_cust_hierarchy_v            xchv                    -- 顧客階層ビュー
            , hz_cust_site_uses_all             scsua                   -- 顧客使用目的
+           , ( SELECT DISTINCT
+                   mcav.subinventory_code      subinventory_code
+               FROM mtl_category_accounts_v    mcav                    -- 専門店View
+             ) mcavd
       WHERE
           xseh.sales_exp_header_id              = xsel.sales_exp_header_id
       AND xseh.dlv_invoice_number               = xsel.dlv_invoice_number
@@ -1201,6 +1208,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       AND gd_process_date BETWEEN               NVL( rcrm.start_date, gd_process_date )
                           AND                   NVL( rcrm.end_date,   gd_process_date )
       AND scsua.site_use_code                   = cv_site_code
+      AND mcavd.subinventory_code( + )          = xsel.ship_from_subinventory_code
       ORDER BY xseh.sales_exp_header_id
              , xseh.dlv_invoice_number
              , xseh.dlv_invoice_class
