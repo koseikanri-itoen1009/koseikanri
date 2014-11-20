@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2010/09/22    1.15  Shigeto.Niki     障害E_本稼動_02021の対応
  *  2011/01/21    1.16  Shigeto.Niki     障害E_本稼動_02266の対応
  *  2011/02/21    1.17  Shigeto.Niki     障害E_本稼動_06495の対応
+ *  2011/11/09    1.18  Shigeto.Niki     障害E_本稼動_08648の対応
  *
  *****************************************************************************************/
 --
@@ -1193,15 +1194,32 @@ AS
       END IF;
       -- 顧客ステータスが'10'(MC候補),'20'(MC),'25'(SP決裁済)の場合
       IF (cust_data_rec.duns_number_c IN (cv_mc_kouho_sts, cv_mc_sts, cv_sp_kessai_sts)) THEN
+-- 2011/11/09 Ver1.18 add start by Shigeto.Niki
+        -- 獲得、請求、入金、納品拠点のいずれかがNULLかつ、売上拠点がNULLの場合
+        IF ( (cust_data_rec.cnvs_base_code IS NULL)
+          OR (cust_data_rec.bill_base_code IS NULL)
+          OR (cust_data_rec.receiv_base_code IS NULL)
+          OR (cust_data_rec.delivery_base_code IS NULL) )
+          AND (cust_data_rec.sale_base_code IS NULL) THEN
+--
+          -- 担当営業員の所属拠点を取得
+          OPEN resource_location_code_cur(cust_data_rec.resource_no);
+          FETCH resource_location_code_cur INTO resource_location_code_rec;
+          CLOSE resource_location_code_cur;
+--
+        END IF;
+-- 2011/11/09 Ver1.18 add end by Shigeto.Niki
         -- 獲得拠点設定
         -- 獲得拠点がNULLの場合
         IF (cust_data_rec.cnvs_base_code IS NULL) THEN
           -- 売上拠点がNULLの場合
           IF (cust_data_rec.sale_base_code IS NULL) THEN
-            -- 担当営業員の所属拠点を取得
-            OPEN resource_location_code_cur(cust_data_rec.resource_no);
-            FETCH resource_location_code_cur INTO resource_location_code_rec;
-            CLOSE resource_location_code_cur;
+-- 2011/11/09 Ver1.18 delete start by Shigeto.Niki
+--            -- 担当営業員の所属拠点を取得
+--            OPEN resource_location_code_cur(cust_data_rec.resource_no);
+--            FETCH resource_location_code_cur INTO resource_location_code_rec;
+--            CLOSE resource_location_code_cur;
+-- 2011/11/09 Ver1.18 delete end by Shigeto.Niki
             -- 獲得拠点に担当営業員の所属拠点をセット
             cust_data_rec.cnvs_base_code := resource_location_code_rec.location_code;
           ELSE
@@ -1216,6 +1234,47 @@ AS
           cust_data_rec.cnvs_business_person := cust_data_rec.resource_no;
         END IF;
 -- 2010/01/08 Ver1.12 E_本稼動_00934 add start by  Yutaka.Kuboshima
+-- 2011/11/09 Ver1.18 add start by Shigeto.Niki
+        -- 入金拠点設定
+        -- 入金拠点がNULLの場合
+        IF (cust_data_rec.receiv_base_code IS NULL) THEN
+          -- 売上拠点がNULLの場合
+          IF (cust_data_rec.sale_base_code IS NULL) THEN
+            -- 入金拠点に担当営業員の所属拠点をセット
+            cust_data_rec.receiv_base_code := resource_location_code_rec.location_code;
+          ELSE
+            -- 入金拠点に売上拠点をセット
+            cust_data_rec.receiv_base_code := cust_data_rec.sale_base_code;
+          END IF;
+        END IF;
+--
+        -- 請求拠点設定
+        -- 請求拠点がNULLの場合
+        IF (cust_data_rec.bill_base_code IS NULL) THEN
+          -- 売上拠点がNULLの場合
+          IF (cust_data_rec.sale_base_code IS NULL) THEN
+            -- 請求拠点に担当営業員の所属拠点をセット
+            cust_data_rec.bill_base_code := resource_location_code_rec.location_code;
+          ELSE
+            -- 請求拠点に売上拠点をセット
+            cust_data_rec.bill_base_code := cust_data_rec.sale_base_code;
+          END IF;
+        END IF;
+--
+        -- 納品拠点設定
+        -- 納品拠点がNULLの場合
+        IF (cust_data_rec.delivery_base_code IS NULL) THEN
+          -- 売上拠点がNULLの場合
+          IF (cust_data_rec.sale_base_code IS NULL) THEN
+            -- 納品拠点に担当営業員の所属拠点をセット
+            cust_data_rec.delivery_base_code := resource_location_code_rec.location_code;
+          ELSE
+            -- 納品拠点に売上拠点をセット
+            cust_data_rec.delivery_base_code := cust_data_rec.sale_base_code;
+          END IF;
+        END IF;
+--
+-- 2011/11/09 Ver1.18 add end by Shigeto.Niki
         -- 業態設定
         -- 業態小分類がNULLの場合
         IF (cust_data_rec.business_low_type IS NULL) THEN
