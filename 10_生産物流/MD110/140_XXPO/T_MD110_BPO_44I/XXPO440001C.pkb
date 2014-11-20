@@ -7,7 +7,7 @@ AS
  * Description      : 有償出庫指示書
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_444)
  *                    有償支給帳票Issue1.0(T_MD070_BPO_44I)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -42,6 +42,8 @@ AS
  *                                         1.レビュー指摘事項No.11：適用日管理を行う。
  *                                         2.レビュー指摘事項No.13：取引先名、配送先名の
  *                                           折り返しをコンカレント側で行う。
+ *  2008/06/23    1.5   Oracle山本恭久   変更要求対応No.42、91
+ *                                       内部変更要求対応No.160
  *
  *****************************************************************************************/
 --
@@ -369,6 +371,10 @@ AS
        ,shipping_method_code        xxwsh_order_headers_all.shipping_method_code%TYPE
        ,delivery_no                 xxwsh_order_headers_all.delivery_no%TYPE
        ,po_no                       xxwsh_order_headers_all.po_no%TYPE
+-- 2008/06/23 v1.5 Y.Yamamoto ADD Start
+       ,base_request_no             xxwsh_order_headers_all.base_request_no%TYPE
+       ,complusion_output_code      xxcmn_carriers2_v.complusion_output_code%TYPE
+-- 2008/06/23 v1.5 Y.Yamamoto ADD End
        ,shipping_instructions       xxwsh_order_headers_all.shipping_instructions%TYPE
        ,performance_management_dept xxwsh_order_headers_all.performance_management_dept%TYPE
        ,instruction_dept            xxwsh_order_headers_all.instruction_dept%TYPE
@@ -685,6 +691,10 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'freight_charge_class_name';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := lv_freight_charge_class;
+-- 2008/06/23 v1.5 Y.Yamamoto Update Start
+      -- 運賃区分もしくは、強制出力区分が「対象」のときに、運送会社情報を出力する。
+      IF  (lr_ref.freight_charge_class   = '1')      -- 運賃区分が対象
+       OR (lr_ref.complusion_output_code = '1') THEN -- 強制出力区分が対象
         -- 運送会社コード
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'freight_carrier_code' ;
@@ -695,6 +705,8 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'freight_carrier_name' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.party_short_name;
+      END IF;
+-- 2008/06/23 v1.5 Y.Yamamoto Update End
         -- 配送区分コード
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'shipping_method_code' ;
@@ -715,6 +727,13 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'po_no';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.po_no;
+-- 2008/06/23 v1.5 Y.Yamamoto ADD Start
+        -- 元依頼Ｎｏ
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'base_request_no';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.base_request_no;
+-- 2008/06/23 v1.5 Y.Yamamoto ADD End
         -- 摘要
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'shipping_instructions';
@@ -1028,6 +1047,10 @@ AS
       ||',xoha.shipping_method_code        AS shipping_method_code'        --配送区分
       ||',xoha.delivery_no                 AS delivery_no'                 --配送No
       ||',xoha.po_no                       AS po_no'                       --発注No
+-- 2008/06/23 v1.5 Y.Yamamoto ADD Start
+      ||',xoha.base_request_no             AS base_request_no'             --元依頼No
+      ||',xxcv.complusion_output_code      AS complusion_output_code'      --強制出力区分
+-- 2008/06/23 v1.5 Y.Yamamoto ADD End
       ||',xoha.shipping_instructions       AS shipping_instructions'       --摘要
       ||',xoha.performance_management_dept AS performance_management_dept' --成績管理部署
       ||',xoha.instruction_dept            AS instruction_dept'            --指示部署
@@ -1382,7 +1405,10 @@ AS
   BEGIN
 --
     IF ( ic_type = 'D' ) THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+-- Ver1.5 Mod 2008/07/11
+--      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>' ;
+-- Ver1.5 Mod 2008/07/11
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;

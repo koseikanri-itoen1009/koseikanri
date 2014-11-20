@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,7 +11,8 @@
 * 2008-06-17 1.1  二瓶大輔     ST不具合#126対応
 * 2008-06-18 1.2  二瓶大輔     不具合対応
 * 2008-06-02 1.3  二瓶大輔     変更要求#42対応
-*                             ST不具合#199対応
+*                              ST不具合#199対応
+* 2008-07-04 1.4  二瓶大輔     変更要求#91対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -45,7 +46,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.3
+ * @version 1.4
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -161,7 +162,6 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
   {
     // 支給指示検索VO取得
     XxpoProvSearchVOImpl svo = getXxpoProvSearchVO1();
-
 
     // 検索条件設定
     OARow shRow = (OARow)svo.first();
@@ -903,6 +903,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           prow.setAttribute("ReqDeptReadOnly",        Boolean.TRUE); // 依頼部署
           prow.setAttribute("ShipWhseReadOnly",       Boolean.TRUE); // 出庫倉庫
           prow.setAttribute("ShippedDateReadOnly",    Boolean.TRUE); // 出庫日
+          prow.setAttribute("FreightChargeReadOnly",  Boolean.TRUE); // 運賃区分
           
         // 受領タイプが「3：配車済・未引当」の場合
         } else if (XxpoConstants.RCV_TYPE_3.equals(rcvType))
@@ -911,6 +912,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           prow.setAttribute("ProvCancelBtnReject", Boolean.TRUE); // 支給取消ボタン
           // 項目制御
           prow.setAttribute("ReqDeptReadOnly",        Boolean.TRUE); // 依頼部署
+          prow.setAttribute("FreightChargeReadOnly",  Boolean.TRUE); // 運賃区分
 
         // 受領タイプが「2：引当有」の場合
         } else if (XxpoConstants.RCV_TYPE_2.equals(rcvType))
@@ -977,12 +979,14 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           // 項目制御
           prow.setAttribute("ShipWhseReadOnly",       Boolean.TRUE); // 出庫倉庫
           prow.setAttribute("ShippedDateReadOnly",    Boolean.TRUE); // 出庫日
+          prow.setAttribute("FreightChargeReadOnly",  Boolean.TRUE); // 運賃区分
 
         // 受領タイプが「3：配車済・未引当」の場合
         } else if (XxpoConstants.RCV_TYPE_3.equals(rcvType))
         {
           // ボタン制御
           prow.setAttribute("ProvCancelBtnReject",    Boolean.TRUE); // 支給取消ボタン
+          prow.setAttribute("FreightChargeReadOnly",  Boolean.TRUE); // 運賃区分
 
         // 受領タイプが「2：引当有」の場合
         } else if (XxpoConstants.RCV_TYPE_2.equals(rcvType))
@@ -1578,6 +1582,28 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
                                     sumWeight,
                                     sumCapacity);
 
+      /******************
+       * 配車解除処理
+       ******************/
+      String retCode = XxwshUtility.cancelCareersSchedile(
+                         getOADBTransaction(),
+                         XxcmnConstants.BIZ_TYPE_PROV,
+                         reqNo);
+      // パラメータチェックエラーの場合
+      if (XxcmnConstants.API_PARAM_ERROR.equals(retCode)) 
+      {
+        // 予期せぬエラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123
+                              );
+            
+      // 配車処理失敗の場合
+      } else if (XxcmnConstants.API_CANCEL_CARRER_ERROR.equals(retCode)) 
+      {
+        XxcmnUtility.putErrorMessage(XxpoConstants.TOKEN_NAME_CAN_CAREERS);
+
+      }
+
       // コミット処理
       doCommit(reqNo);
 
@@ -1662,13 +1688,11 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     {
       // 項目制御
       prow.setAttribute("UnitPriceColRender" , Boolean.FALSE); // 単価列
-
     }
 
     // ステータスが「受領済」の場合 
     if (XxpoConstants.PROV_STATUS_ZRZ.equals(transStatus))
     {
-
       // 発注Noを取得
       String poNo = (String)hdrRow.getAttribute("PoNo");
       // 起動タイプが「11：伊藤園用」以外の場合
@@ -1814,6 +1838,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
 
     } else
     {
+      // ロールバック処理
+      XxpoUtility.rollBack(getOADBTransaction());
       tokenName = null;
 
     }
@@ -1842,29 +1868,31 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     String exeType
     ) throws OAException
   {
-    boolean sumQtyFlag         = false; // 合計数量変更フラグ
-    boolean lineExeFlag        = false; // 明細実行フラグ
-    boolean hdrExeFlag         = false; // ヘッダ実行フラグ
-    boolean cancelCarriersFlag = false; // 配車解除フラグ
-    boolean changeHdrFlag      = false; // 重要ヘッダ項目変更フラグ
-    boolean changeLineFlag     = false; // 重要明細項目変更フラグ
-    boolean setMaxShipToFlag   = false; // 最大配送区分設定フラグ
-    boolean freightOnFlag      = false; // 運賃区分「対象外⇒対象」設定フラグ
-    boolean freightOffFlag     = false; // 運賃区分「対象⇒対象外」設定フラグ
+    boolean sumQtyFlag            = false; // 合計数量変更フラグ
+    boolean lineExeFlag           = false; // 明細実行フラグ
+    boolean hdrExeFlag            = false; // ヘッダ実行フラグ
+    boolean cancelCarriersFlag    = false; // 配車解除フラグ
+    boolean changeHdrFlag         = false; // 重要ヘッダ項目変更フラグ
+    boolean changeLineFlag        = false; // 重要明細項目変更フラグ
+    boolean setMaxShipToFlag      = false; // 最大配送区分設定フラグ
+    boolean freightOnFlag         = false; // 運賃区分「対象外⇒対象」設定フラグ
+    boolean freightOffFlag        = false; // 運賃区分「対象⇒対象外」設定フラグ
 
     /****************************
      * ヘッダ各種情報取得
      ****************************/
-    String rcvType         = (String)hdrRow.getAttribute("RcvType");             // 受領タイプ
-    String transStatus     = (String)hdrRow.getAttribute("TransStatus");         // ステータス
-    String freightClass    = (String)hdrRow.getAttribute("FreightChargeClass");  // 運賃区分
-    String dbFreightClass  = (String)hdrRow.getAttribute("DbFreightChargeClass");// 運賃区分(DB)
-    String vendorCode      = (String)hdrRow.getAttribute("VendorCode");          // 取引先
-    String weightCapaClass = (String)hdrRow.getAttribute("WeightCapacityClass"); // 重量容積区分
-    String shipToCode      = (String)hdrRow.getAttribute("ShipToCode");          // 配送先
-    String shipWhseCode    = (String)hdrRow.getAttribute("ShipWhseCode");        // 出庫倉庫
-    Date shippedDate       = (Date)hdrRow.getAttribute("ShippedDate");           // 出庫日
-    String reqNo           = (String)hdrRow.getAttribute("RequestNo");           // 依頼No
+    String rcvType            = (String)hdrRow.getAttribute("RcvType");             // 受領タイプ
+    String transStatus        = (String)hdrRow.getAttribute("TransStatus");         // ステータス
+    String freightClass       = (String)hdrRow.getAttribute("FreightChargeClass");  // 運賃区分
+    String dbFreightClass     = (String)hdrRow.getAttribute("DbFreightChargeClass");// 運賃区分(DB)
+    String vendorCode         = (String)hdrRow.getAttribute("VendorCode");          // 取引先
+    String weightCapaClass    = (String)hdrRow.getAttribute("WeightCapacityClass"); // 重量容積区分
+    String shipToCode         = (String)hdrRow.getAttribute("ShipToCode");          // 配送先
+    String shipWhseCode       = (String)hdrRow.getAttribute("ShipWhseCode");        // 出庫倉庫
+    Date shippedDate          = (Date)hdrRow.getAttribute("ShippedDate");           // 出庫日
+    String reqNo              = (String)hdrRow.getAttribute("RequestNo");           // 依頼No
+    Object freightCarrierCode = hdrRow.getAttribute("FreightCarrierCode");          // 運送業者
+    Date arrivalDate          = (Date)hdrRow.getAttribute("ArrivalDate");           // 入庫日
 
     /****************************
      * 運賃区分判定
@@ -1887,11 +1915,14 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
 
     }
     /****************************
-     * 重要ヘッダ項目変更判定(取引先、配送先、出庫倉庫)
+     * 重要ヘッダ項目変更判定(取引先、配送先、出庫倉庫、出庫日、入庫日、運送業者)
      ****************************/
-    if (!XxcmnUtility.isEquals(vendorCode,   hdrRow.getAttribute("DbVendorCode"))
-     || !XxcmnUtility.isEquals(shipToCode,   hdrRow.getAttribute("DbShipToCode"))
-     || !XxcmnUtility.isEquals(shipWhseCode, hdrRow.getAttribute("DbShipWhseCode"))) 
+    if (!XxcmnUtility.isEquals(vendorCode,         hdrRow.getAttribute("DbVendorCode"))
+     || !XxcmnUtility.isEquals(shipToCode,         hdrRow.getAttribute("DbShipToCode"))
+     || !XxcmnUtility.isEquals(shipWhseCode,       hdrRow.getAttribute("DbShipWhseCode"))
+     || !XxcmnUtility.isEquals(shippedDate,        hdrRow.getAttribute("DbShippedDate"))
+     || !XxcmnUtility.isEquals(arrivalDate,        hdrRow.getAttribute("DbArrivalDate"))
+     || !XxcmnUtility.isEquals(freightCarrierCode, hdrRow.getAttribute("DbFreightCarrierCode"))) 
     {
       changeHdrFlag = true;
 
@@ -1992,8 +2023,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
          || !XxcmnUtility.isBlankOrNull(reqQuantity)
          || !XxcmnUtility.isBlankOrNull(description)) 
         {
-          // 配車解除要否判定
-          if (XxpoConstants.RCV_TYPE_3.equals(rcvType)) 
+          // 配車解除要否判定(配車済の場合)
+          if (XxpoConstants.RCV_TYPE_3.equals(rcvType)
+           || XxpoConstants.RCV_TYPE_4.equals(rcvType)) 
           {
             // 配車解除フラグをtrueにする
             cancelCarriersFlag = true;  
@@ -2124,39 +2156,6 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         hdrRow.setAttribute("EfficiencyCapacity", params.get("loadEfficiencyCapacity")); // 容積積載効率
       }
     }
-    /******************
-     * 配車解除判定
-     ******************/
-    // 受領タイプがNull以外且つ「5」以外で且つ、
-    // 明細の配車解除フラグがtrue、「運賃区分」を対象⇒対象外にした、
-    // または、取引先、配送先、出庫倉庫のいずれかが変更された場合
-    if (!XxcmnUtility.isBlankOrNull(rcvType) 
-     && !XxpoConstants.RCV_TYPE_5.equals(rcvType)
-     && (freightOffFlag || cancelCarriersFlag || changeHdrFlag)) 
-    {
-      /******************
-       * 配車解除処理
-       ******************/
-      String retCode = XxwshUtility.cancelCareersSchedile(
-                         getOADBTransaction(),
-                         XxcmnConstants.BIZ_TYPE_PROV,
-                         reqNo);
-      // パラメータチェックエラーの場合
-      if (XxcmnConstants.API_PARAM_ERROR.equals(retCode)) 
-      {
-        // 予期せぬエラーメッセージ出力
-        throw new OAException(XxcmnConstants.APPL_XXCMN, 
-                              XxcmnConstants.XXCMN10123
-                              );
-            
-      // 配車処理失敗の場合
-      } else if (XxcmnConstants.API_CANCEL_CARRER_ERROR.equals(retCode)) 
-      {
-        XxcmnUtility.putErrorMessage(XxpoConstants.TOKEN_NAME_CAN_CAREERS);
-
-      }
-    }
-
     /****************************
      * ヘッダ新規追加・更新処理
      ****************************/
@@ -2176,11 +2175,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       /******************
        * ヘッダ各種情報取得
        ******************/
-      Object orderTypeId        = hdrRow.getAttribute("OrderTypeId");        // 発生区分
-      Object reqDeptCode        = hdrRow.getAttribute("ReqDeptCode");        // 依頼部署
-      Object instDeptCode       = hdrRow.getAttribute("InstDeptCode");       // 指示部署
-      Object freightCarrierCode = hdrRow.getAttribute("FreightCarrierCode"); // 運送業者
-      Date arrivalDate          = (Date)hdrRow.getAttribute("ArrivalDate");  // 入庫日
+      Object orderTypeId  = hdrRow.getAttribute("OrderTypeId");        // 発生区分
+      Object reqDeptCode  = hdrRow.getAttribute("ReqDeptCode");        // 依頼部署
+      Object instDeptCode = hdrRow.getAttribute("InstDeptCode");       // 指示部署
     
       // 以下が変更された場合
       // ・発生区分 ・重量容積区分 ・依頼部署    ・指示部署 ・取引先
@@ -2193,9 +2190,6 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
        || !XxcmnUtility.isEquals(weightCapaClass,    hdrRow.getAttribute("DbWeightCapacityClass"))
        || !XxcmnUtility.isEquals(reqDeptCode,        hdrRow.getAttribute("DbReqDeptCode"))
        || !XxcmnUtility.isEquals(instDeptCode,       hdrRow.getAttribute("DbInstDeptCode"))
-       || !XxcmnUtility.isEquals(freightCarrierCode, hdrRow.getAttribute("DbFreightCarrierCode"))
-       || !XxcmnUtility.isEquals(shippedDate,        hdrRow.getAttribute("DbShippedDate"))
-       || !XxcmnUtility.isEquals(arrivalDate,        hdrRow.getAttribute("DbArrivalDate"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeFrom"),      hdrRow.getAttribute("DbArrivalTimeFrom"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ArrivalTimeTo"),        hdrRow.getAttribute("DbArrivalTimeTo"))
        || !XxcmnUtility.isEquals(hdrRow.getAttribute("ShippingMethodCode"),   hdrRow.getAttribute("DbShippingMethodCode"))
@@ -2220,8 +2214,6 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           hdrRow.setAttribute("EfficiencyCapacity", null); // 容積積載効率
           hdrRow.setAttribute("BasedWeight",        null); // 基本重量
           hdrRow.setAttribute("BasedCapacity",      null); // 基本容積
-          hdrRow.setAttribute("SmallQuantity" ,     null); // 小口個数
-          hdrRow.setAttribute("LabelQuantity" ,     null); // ラベル枚数
 
         }
         /******************
@@ -2230,6 +2222,49 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         updateOrderHdr(hdrRow);
         // ヘッダ実行フラグをtrueに変更
         hdrExeFlag = true;
+
+      }
+    }
+    /******************
+     * 配車解除判定
+     ******************/
+    // 受領タイプがNull以外、「運賃区分」を対象⇒対象外にした、
+    // または、ヘッダの重要項目が変更された場合
+    if (!XxcmnUtility.isBlankOrNull(rcvType) 
+     && (freightOffFlag || changeHdrFlag)) 
+    {
+      // 配車解除フラグをtrueにする
+      cancelCarriersFlag = true;
+
+    // 配送NoがNullでいずれかの項目が変更された場合
+    } else if (XxcmnUtility.isBlankOrNull(hdrRow.getAttribute("ShipToNo"))
+            && (hdrExeFlag || lineExeFlag))
+    {
+      // 配車解除フラグをtrueにする
+      cancelCarriersFlag = true;
+
+    }
+    /******************
+     * 配車解除処理
+     ******************/
+    if (cancelCarriersFlag) 
+    {
+      String retCode = XxwshUtility.cancelCareersSchedile(
+                         getOADBTransaction(),
+                         XxcmnConstants.BIZ_TYPE_PROV,
+                         reqNo);
+      // パラメータチェックエラーの場合
+      if (XxcmnConstants.API_PARAM_ERROR.equals(retCode)) 
+      {
+        // 予期せぬエラーメッセージ出力
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123
+                              );
+            
+      // 配車処理失敗の場合
+      } else if (XxcmnConstants.API_CANCEL_CARRER_ERROR.equals(retCode)) 
+      {
+        XxcmnUtility.putErrorMessage(XxpoConstants.TOKEN_NAME_CAN_CAREERS);
 
       }
     }
@@ -4728,6 +4763,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       }
       // 明細番号：最大の明細番号+1をセット
       destRow.setAttribute("OrderLineNumber", new Number(lineNum++));  
+      // 受注明細アドオンIDにNullを設定
+      destRow.setAttribute("OrderLineId",     null);  
       // コピー先を一行挿入します。
       destVo.insertRow(destRow);
       // 挿入フラグをtrue
