@@ -7,7 +7,7 @@ AS
  * Description      : 仕入・有償・移動情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : 仕入・有償・移動情報抽出処理  T_MD070_BPO_94D
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/06/10    1.0   Oracle 山根 一浩 初回作成
  *  2008/08/20    1.1   Oracle 山根 一浩 T_S_593,T_TE080_BPO_940 指摘6,指摘7,指摘8,指摘9対応
  *  2008/09/02    1.2   Oracle 山根 一浩 T_S_626,T_TE080_BPO_940 指摘10対応
+ *  2008/09/18    1.3   Oracle 大橋 孝郎 T_S_460対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3236,6 +3237,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
+-- add start ver1.3
+    cv_crlf         CONSTANT VARCHAR2(1)  := CHR(13); -- 改行コード
+-- add end ver1.3
 --
     -- *** ローカル変数 ***
     lv_data         VARCHAR2(5000);
@@ -3353,7 +3357,10 @@ AS
                ir_mst_rec.amt_h             || cv_sep_com ||                    -- お金Ｈ
                ir_mst_rec.amt_i             || cv_sep_com ||                    -- お金Ｉ
                ir_mst_rec.amt_j             || cv_sep_com ||                    -- お金Ｊ
-               ir_mst_rec.v_update_date                                         -- 更新日時
+-- mod start ver1.3
+--               ir_mst_rec.v_update_date                                         -- 更新日時
+               ir_mst_rec.v_update_date     || cv_crlf                          -- 更新日時
+-- mod end ver1.3
                ;
 --
     -- データ出力
