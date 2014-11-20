@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/05/15    1.2   H.Sasaki         [T1_0785]帳票出力のソート項目の設定値を変更
  *  2009/06/03    1.3   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *  2009/06/19    1.4   H.Sasaki         [I_E_453][T1_1090]HHT入出庫取得データを変更
+ *  2009/07/02    1.5   H.Sasaki         [0000275]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -1086,7 +1087,10 @@ AS
              ,xxcmn_item_mst_b                ximb                        -- OPM品目アドオンマスタ
              ,fnd_lookup_values               flv                         -- クイックコードマスタ
       WHERE   xhit.output_flag                          =   gr_param.output_kbn
-      AND     TO_CHAR(xhit.invoice_date, 'YYYY/MM/DD')  =   SUBSTR(gr_param.target_date, 1, 10)
+-- == 2009/07/02 V1.5 Modified START ===============================================================
+--      AND     TO_CHAR(xhit.invoice_date, 'YYYY/MM/DD')  =   SUBSTR(gr_param.target_date, 1, 10)
+      AND     xhit.invoice_date                         =   TO_DATE(SUBSTR(gr_param.target_date, 1, 10), 'YYYY/MM/DD')
+-- == 2009/07/02 V1.5 Modified END   ===============================================================
       AND     xhit.outside_base_code                    =   gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
       AND     ((    (gr_param.reverse_kbn   =   cv_1)
                 AND (xhit.total_quantity    <   0)
