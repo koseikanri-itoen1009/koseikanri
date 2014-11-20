@@ -648,8 +648,8 @@ L_konkarentomei="POXPOIPR"                                 #プログラムアプリケー
 
 L_hikisu01='""'                                            #Document Type
 L_hikisu02='""'                                            #Document SubType
-L_hikisu03='Yes'                                           #Purge Accepted Data
-L_hikisu04='No'                                            #Purge Rejected Data
+L_hikisu03='Y'                                             #Purge Accepted Data
+L_hikisu04='N'                                             #Purge Rejected Data
 L_hikisu05='""'                                            #Start Date
 L_hikisu06='""'                                            #End Date
 L_hikisu07='""'                                            #Batch id
