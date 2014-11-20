@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/06/17    1.5   N.Nishimura      [T1_1439]対象件数0件時、正常終了とする
  *  2009/06/25    1.6   N.Nishimura      [T1_1437]データパージ不具合対応
  *  2009/07/08    1.7   N.Maeda          [0000484]出荷品目を依頼品目に変更
+ *  2009/07/27    1.8   N.Maeda          [0000834]単位設定取得箇所変更対応
  *
  *****************************************************************************************/
 --
@@ -475,7 +476,10 @@ AS
         ,ooa2.arrival_date               arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
         ,ooa1.order_quantity             order_quantity           -- 受注明細.受注数量           ：受注数
         ,ooa2.deliver_actual_quantity    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-        ,ooa1.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+-- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
+--        ,ooa1.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+        ,ooa2.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+-- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
         ,ooa1.order_quantity
           - ooa2.deliver_actual_quantity output_quantity          -- 差異数
         ,cv_data_class_1                 data_class               -- 例外データ１                ：データ区分
@@ -683,11 +687,14 @@ AS
              xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
             ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
 -- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-            ,xola.request_item_code       item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+            ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
 --            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
 -- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
             ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
             ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+-- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
+            ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+-- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
           FROM
              xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
             ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
@@ -750,7 +757,10 @@ AS
         ,ooa2.arrival_date               arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
         ,ooa3.order_quantity             order_quantity           -- 受注明細.受注数量           ：受注数
         ,ooa2.deliver_actual_quantity    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-        ,ooa1.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+-- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
+--        ,ooa1.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+        ,ooa2.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+-- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
         ,ooa3.order_quantity
           - ooa2.deliver_actual_quantity output_quantity          -- 差異数
         ,cv_data_class_2                 data_class               -- 例外データ２                ：データ区分
@@ -874,6 +884,9 @@ AS
 --MIYATA MODIFY 出荷実績済みではないので数量に変更
 --            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
             ,xola.quantity              deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.数量          ：出荷実績数
+-- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
+            ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+-- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
 --MIYATA MODIFY
           FROM
              xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
