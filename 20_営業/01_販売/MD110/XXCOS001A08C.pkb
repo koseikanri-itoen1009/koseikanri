@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2010/03/01    1.23  N.Maeda          [E_本稼動_01601] 受注取込納品伝票入力画面以外からのデータに対して
  *                                                 INVカレンダのチェック処理追加
  *  2010/09/10    1.24  S.Arizumi        [E_本稼動_02635] 汎用エラーリスト出力対応
+ *  2011/03/24    1.25  Y.Nishino        [E_本稼動_06590] オーダーNo連携対応
  *
  *****************************************************************************************/
 --
@@ -1614,6 +1615,9 @@ AS
     lt_secondary_inventory_name  mtl_secondary_inventories.secondary_inventory_name%TYPE; -- 保管場所コード
     lt_dlv_base_code             xxcos_rs_info_v.base_code%TYPE;             -- 拠点コード
     lt_red_black_flag            xxcos_dlv_headers.red_black_flag%TYPE;      -- 赤黒フラグ
+-- 2011/03/24 Ver.1.25 Y.Nishino Add Start --
+    lt_order_number              xxcos_dlv_headers.order_number%TYPE;        -- オーダーNo
+-- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
      --
     lt_state_order_no_hht              xxcos_dlv_lines.order_no_hht%TYPE;    -- 受注No.（HHT）
     lt_state_line_no_hht               xxcos_dlv_lines.line_no_hht%TYPE;     -- 行No.（HHT）
@@ -1748,6 +1752,9 @@ AS
                dhs.results_forward_date,      -- 販売実績連携済み日付
                dhs.cancel_correct_class,      -- 取消・訂正区分
                dhs.red_black_flag             -- 赤黒フラグ
+-- 2011/03/24 Ver.1.25 Y.Nishino Add Start -- 
+              ,dhs.order_number               -- オーダーNo
+-- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
           FROM xxcos_dlv_headers dhs          -- 納品ヘッダ
          WHERE dhs.order_no_hht        = lt_order_no_hht
            AND dhs.digestion_ln_number = lt_digestion_ln_number
@@ -1866,6 +1873,9 @@ AS
         lt_results_forward_date     := l_get_headers_cur.results_forward_date;      -- 販売実績連携済み日付
         lt_cancel_correct_class     := l_get_headers_cur.cancel_correct_class;      -- 取消・訂正区分
         lt_red_black_flag           := l_get_headers_cur.red_black_flag;            -- 赤黒フラグ
+-- 2011/03/24 Ver.1.25 Y.Nishino Add Start --
+        lt_order_number             := l_get_headers_cur.order_number;                         -- オーダーNo
+-- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
         -- 
 -- ******************* 2009/09/03 1.19 N.Maeda ADD START ***************** --
       --==================================
@@ -3416,7 +3426,10 @@ AS
           -- ==================================
           gt_dlv_head_row_id( gn_head_no )          := lt_row_id;
           gt_head_id( gn_head_no )                   := ln_actual_id;               -- 販売実績ヘッダID
-          gt_head_order_invoice_number( gn_head_no ) := cv_tkn_null;                -- 注文伝票番号
+-- 2011/03/24 Ver.1.25 Y.Nishino Mod Start --
+--          gt_head_order_invoice_number( gn_head_no ) := cv_tkn_null;                -- 注文伝票番号
+          gt_head_order_invoice_number( gn_head_no ) := lt_order_number;                --  注文伝票番号
+-- 2011/03/24 Ver.1.25 Y.Nishino Mod End   --
           gt_head_order_no_ebs( gn_head_no )         := lt_order_no_ebs;            -- 受注番号
           gt_head_order_no_hht( gn_head_no )         := lt_order_no_hht;            -- 受注No（HHT)
           gt_head_digestion_ln_number( gn_head_no )  := lt_digestion_ln_number;     -- 受注No（HHT）枝番
@@ -5754,7 +5767,10 @@ AS
     lt_secondary_inventory_name  mtl_secondary_inventories.secondary_inventory_name%TYPE; -- 保管場所コード
     lt_dlv_base_code             xxcos_rs_info_v.base_code%TYPE;             -- 拠点コード
     lt_red_black_flag            xxcos_dlv_headers.red_black_flag%TYPE;      -- 赤黒フラグ
-     --
+-- 2011/03/24 Ver.1.25 Y.Nishino Add Start --
+    lt_order_number              xxcos_dlv_headers.order_number%TYPE;        -- オーダーNo
+-- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
+    --
     lt_state_order_no_hht              xxcos_dlv_lines.order_no_hht%TYPE;    -- 受注No.（HHT）
     lt_state_line_no_hht               xxcos_dlv_lines.line_no_hht%TYPE;     -- 行No.（HHT）
     lt_state_digestion_ln_number       xxcos_dlv_lines.digestion_ln_number%TYPE;-- 枝番
@@ -5888,6 +5904,9 @@ AS
                dhs.results_forward_date,      -- 販売実績連携済み日付
                dhs.cancel_correct_class,      -- 取消・訂正区分
                dhs.red_black_flag             -- 赤黒フラグ
+-- 2011/03/24 Ver.1.25 Y.Nishino Add Start -- 
+              ,dhs.order_number               -- オーダーNo
+-- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
           FROM xxcos_dlv_headers dhs          -- 納品ヘッダ
          WHERE dhs.order_no_hht        = lt_order_no_hht
            AND dhs.digestion_ln_number = lt_digestion_ln_number
@@ -6015,6 +6034,9 @@ AS
         lt_results_forward_date     := l_get_headers_cur.results_forward_date;                 -- 販売実績連携済み日付
         lt_cancel_correct_class     := l_get_headers_cur.cancel_correct_class;                 -- 取消・訂正区分
         lt_red_black_flag           := l_get_headers_cur.red_black_flag;                       -- 赤黒フラグ
+-- 2011/03/24 Ver.1.25 Y.Nishino Add Start --
+        lt_order_number             := l_get_headers_cur.order_number;                         -- オーダーNo
+-- 2011/03/24 Ver.1.25 Y.Nishino Add End   --
 --
 --******************************* 2010/03/01 1.23 N.Maeda ADD START ***************************************
       --==================================
@@ -7502,7 +7524,10 @@ AS
         -- ==================================
           gt_dlv_head_row_id( gn_head_no )          := lt_row_id;
           gt_head_id( gn_head_no )                   := ln_actual_id;               --  販売実績ヘッダID
-          gt_head_order_invoice_number( gn_head_no ) := cv_tkn_null;                --  注文伝票番号
+-- 2011/03/24 Ver.1.25 Y.Nishino Mod Start --
+--          gt_head_order_invoice_number( gn_head_no ) := cv_tkn_null;                --  注文伝票番号
+          gt_head_order_invoice_number( gn_head_no ) := lt_order_number;                --  注文伝票番号
+-- 2011/03/24 Ver.1.25 Y.Nishino Mod End   --
           gt_head_order_no_ebs( gn_head_no )         := lt_order_no_ebs;            --  受注番号
           gt_head_order_no_hht( gn_head_no )         := lt_order_no_hht;            --  受注No（HHT)
           gt_head_digestion_ln_number( gn_head_no )  := lt_digestion_ln_number;     --  受注No（HHT）枝番
