@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxinvUtility
 * 概要説明   : 移動共通関数
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-14 1.0  大橋 孝郎    新規作成
+* 2008-07-10 1.1  伊藤ひとみ   isMovHdrUpdForOwnConc,isMovLineUpdForOwnConc追加
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.util;
@@ -29,7 +30,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 移動共通関数クラスです。
  * @author  ORACLE 大橋孝郎
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxinvUtility 
@@ -3283,4 +3284,220 @@ public class XxinvUtility
       }
     }
   } // getActualQuantity
+// 2008-07-10 H.Itou ADD START
+
+ /*****************************************************************************
+   * 移動依頼/指示ヘッダアドオンが自分自身のコンカレント起動により更新されたかどうかチェックするメソッドです。
+   * @param trans          - トランザクション
+   * @param movHeaderId    - ヘッダID
+   * @param concName       - コンカレント名
+   * @return boolean  - true:自分が起動したコンカレントより更新されている
+   *                   - false:自分が起動したコンカレントより更新されていない
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static boolean isMovHdrUpdForOwnConc(
+    OADBTransaction trans,
+    Number movHeaderId,
+    String concName
+  ) throws OAException
+  {
+    String apiName     = "isMovHdrUpdForOwnConc";
+
+    // PL/SQLの作成
+    StringBuffer sb = new StringBuffer(1000);
+
+    sb.append("BEGIN                                                                        ");
+    sb.append("  SELECT TO_CHAR(COUNT(1))                                                   ");
+    sb.append("  INTO   :1                                                                  "); // 1:件数
+    sb.append("  FROM   xxinv_mov_req_instr_headers xmrih                                   "); // 移動依頼/指示ヘッダアドオン
+    sb.append("  WHERE  xmrih.mov_hdr_id  = :2                                              "); // 2:ヘッダID
+    sb.append("  AND    xmrih.last_updated_by  = FND_GLOBAL.USER_ID                         "); // ユーザーID
+    sb.append("  AND    xmrih.last_update_date = xmrih.program_update_date                  "); // 最終更新日とプログラム更新日が同じ
+    sb.append("  AND    EXISTS (                                                            "); // 指定したコンカレントで更新されたレコード
+    sb.append("           SELECT 1                                                          ");
+    sb.append("           FROM   fnd_concurrent_programs     fcp                            "); // コンカレントプログラムテーブル
+    sb.append("           WHERE  fcp.concurrent_program_name = :3                           "); // 3:コンカレント名
+    sb.append("           AND    fcp.concurrent_program_id   = xmrih.program_id             "); // コンカレントプログラムID
+    sb.append("           AND    fcp.application_id          = xmrih.program_application_id "); // アプリケーションID
+    sb.append("           )                                                                 ");
+    sb.append("  AND    ROWNUM = 1;                                                         ");
+    sb.append("END;                                                                         ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+  
+    try
+    { 
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR);
+      
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(movHeaderId));   // ヘッダID
+      cstmt.setString(3, concName);                          // コンカレント名
+      
+      // PL/SQL実行
+      cstmt.execute();
+
+      // OUTパラメータ取得
+      String cnt = cstmt.getString(1);  // 戻り値
+
+      // 0件の場合、自分が起動したコンカレントより更新されていないので、falseを返す。
+      if (XxcmnConstants.STRING_ZERO.equals(cnt))
+      {
+        return false;
+
+      // 1件の場合、自分が起動したコンカレントより更新されているので、trueを返す。
+      } else
+      {
+        return true;
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+        // ロールバック
+        XxinvUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxinvConstants.CLASS_XXINV_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxinvUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxinvConstants.CLASS_XXINV_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // isMovHdrUpdForOwnConc
+
+ /*****************************************************************************
+   * 移動依頼/指示明細アドオンが自分自身のコンカレント起動により更新されたかどうかチェックするメソッドです。
+   * @param trans          - トランザクション
+   * @param movLineId      - 明細ID
+   * @param concName       - コンカレント名
+   * @return boolean   - true:自分が起動したコンカレントより更新されている
+   *                   - false:自分が起動したコンカレントより更新されていない
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public static boolean isMovLineUpdForOwnConc(
+    OADBTransaction trans,
+    Number movLineId,
+    String concName
+  ) throws OAException
+  {
+    String apiName     = "isMovLineUpdForOwnConc";
+
+    // PL/SQLの作成
+    StringBuffer sb = new StringBuffer(1000);
+
+    sb.append("BEGIN                                                                        ");
+    sb.append("  SELECT TO_CHAR(COUNT(1))                                                   ");
+    sb.append("  INTO   :1                                                                  "); // 1:件数
+    sb.append("  FROM   xxinv_mov_req_instr_lines xmril                                     "); // 移動依頼/指示明細アドオン
+    sb.append("  WHERE  xmril.mov_line_id  = :2                                             "); // 2:明細ID
+    sb.append("  AND    xmril.last_updated_by  = FND_GLOBAL.USER_ID                         "); // ユーザーID
+    sb.append("  AND    xmril.last_update_date = xmril.program_update_date                  "); // 最終更新日とプログラム更新日が同じ
+    sb.append("  AND    EXISTS (                                                            "); // 指定したコンカレントで更新されたレコード
+    sb.append("           SELECT 1                                                          ");
+    sb.append("           FROM   fnd_concurrent_programs     fcp                            "); // コンカレントプログラムテーブル
+    sb.append("           WHERE  fcp.concurrent_program_name = :3                           "); // 3:コンカレント名
+    sb.append("           AND    fcp.concurrent_program_id   = xmril.program_id             "); // コンカレントプログラムID
+    sb.append("           AND    fcp.application_id          = xmril.program_application_id "); // アプリケーションID
+    sb.append("           )                                                                 ");
+    sb.append("  AND    ROWNUM = 1;                                                         ");
+    sb.append("END;                                                                         ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+  
+    try
+    { 
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR);
+      
+      // パラメータ設定(INパラメータ)
+      cstmt.setInt(2, XxcmnUtility.intValue(movLineId));     // 明細ID
+      cstmt.setString(3, concName);                          // コンカレント名
+      
+      // PL/SQL実行
+      cstmt.execute();
+
+      // OUTパラメータ取得
+      String cnt = cstmt.getString(1);  // 戻り値
+
+      // 0件の場合、自分が起動したコンカレントより更新されていないので、falseを返す。
+      if (XxcmnConstants.STRING_ZERO.equals(cnt))
+      {
+        return false;
+
+      // 1件の場合、自分が起動したコンカレントより更新されているので、trueを返す。
+      } else
+      {
+        return true;
+      }
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+        // ロールバック
+        XxinvUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxinvConstants.CLASS_XXINV_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+
+    } finally
+    {
+      try
+      {
+        //処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxinvUtility.rollBack(trans);
+        // ログ出力
+        XxcmnUtility.writeLog(
+          trans,
+          XxinvConstants.CLASS_XXINV_UTILITY + XxcmnConstants.DOT + apiName,
+          s.toString(),
+          6);
+        // エラーメッセージ出力
+        throw new OAException(
+          XxcmnConstants.APPL_XXCMN, 
+          XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // isMovLineUpdForOwnConc
+// 2008-07-10 H.Itou ADD END
 }

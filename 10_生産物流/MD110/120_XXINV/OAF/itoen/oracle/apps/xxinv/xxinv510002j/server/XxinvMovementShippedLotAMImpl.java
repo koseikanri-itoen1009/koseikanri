@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxinvMovementShippedLotAMImpl
 * 概要説明   : 出庫・入庫ロット明細画面アプリケーションモジュール
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-04-11 1.0  伊藤ひとみ     新規作成
+* 2008-07-10 1.1  伊藤ひとみ     内部変更 自身のコンカレントコールで変更した場合、排他エラーとしない。
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510002j.server;
@@ -34,7 +35,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出庫ロット明細画面アプリケーションモジュールです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1692,10 +1693,22 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
     // 排他エラーの場合
     if (!XxinvUtility.chkExclusiveMovReqInstrHdr(getOADBTransaction(), movHdrId, headerUpdateDate))
     {
-      // 排他エラーメッセージ出力
-      throw new OAException(
-          XxcmnConstants.APPL_XXCMN, 
-          XxcmnConstants.XXCMN10147);
+// 2008-07-10 H.Itou Mod START
+      // 自分自身のコンカレント起動により更新された場合は排他エラーとしない
+      if (!XxinvUtility.isMovHdrUpdForOwnConc(
+             getOADBTransaction(),
+             movHdrId,
+             XxinvConstants.CONC_NAME_XXINV570001C))
+      {
+        // ロールバック
+        XxinvUtility.rollBack(getOADBTransaction());
+        
+        // 排他エラーメッセージ出力
+        throw new OAException(
+            XxcmnConstants.APPL_XXCMN, 
+            XxcmnConstants.XXCMN10147);
+      }
+// 2008-06-27 H.Itou Mod END
     }
 
     // ******************************** //
@@ -1704,10 +1717,22 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
     // 排他エラーの場合
     if (!XxinvUtility.chkExclusiveMovReqInstrLine(getOADBTransaction(), movLineId, lineUpdateDate))
     {
-      // 排他エラーメッセージ出力
-      throw new OAException(
-          XxcmnConstants.APPL_XXCMN, 
-          XxcmnConstants.XXCMN10147);
+// 2008-07-10 H.Itou Mod START
+      // 自分自身のコンカレント起動により更新された場合は排他エラーとしない
+      if (!XxinvUtility.isMovLineUpdForOwnConc(
+             getOADBTransaction(),
+             movLineId,
+             XxinvConstants.CONC_NAME_XXINV570001C))
+      {
+        // ロールバック
+        XxinvUtility.rollBack(getOADBTransaction());
+
+        // 排他エラーメッセージ出力
+        throw new OAException(
+            XxcmnConstants.APPL_XXCMN, 
+            XxcmnConstants.XXCMN10147);
+      }
+// 2008-06-27 H.Itou Mod END
     }
   }
 
