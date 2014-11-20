@@ -1,0 +1,1 @@
+CREATE INDEX ont.ont_oot_n01 ON ont.oe_transaction_types_all( attribute1 ) TABLESPACE apps_ts_tx_data;
