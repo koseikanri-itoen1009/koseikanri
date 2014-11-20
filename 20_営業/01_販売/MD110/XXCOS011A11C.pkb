@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A11C (body)
  * Description      : 個別商品販売実績ＥＤＩデータ作成
  * MD.050           : 個別商品販売実績ＥＤＩデータ作成 MD050_COS_011_A11
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2011/02/25    1.0   Oukou            新規作成
+ *  2011/03/25    1.1   Oukou            [E_本稼動_06945]個別商品販売実績作成の内容の対応
  *****************************************************************************************/
 --
 --
@@ -103,6 +104,12 @@ AS
   ct_prf_start_date               CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_SPECIFIC_START_DATE';  -- XXCOS:個別商品販売実績対象開始日付
   ct_prf_past_day                 CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_SPECIFIC_PAST_DAY';    -- XXCOS:個別商品販売実績対象日数
   cv_prf_org_id                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'ORG_ID';                      -- MO:営業単位
+/* 2011/03/25 Ver1.1 ADD Start */
+  ct_prf_if_header                CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCCP1_IF_HEADER';            -- XXCCP:IFレコード区分_ヘッダ
+  ct_prf_dept_code                CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_BIZ_MAN_DEPT_CODE';    -- XXCOS:業務管理部コード
+  ct_prf_specific_chain_code      CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_SPECIFIC_CHAIN_CODE';  -- XXCOS:個別商品販売実績用チェーン店コード
+  ct_prf_parallel_process_num     CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_PARALLEL_PROCESS_NUM'; -- XXCOS:個別商品販売実績用並列処理番号
+/* 2011/03/25 Ver1.1 ADD End   */
   --
   --メッセージ
   ct_msg_param_out_err            CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-14151';  -- パラメータ出力メッセージ
@@ -129,6 +136,18 @@ AS
   cv_msg_upd_err                  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00011';  -- データ更新エラー
   cv_msg_non_business_date        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-11601';  -- 業務日付取得エラー
   cv_msg_org_id                   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00047';  -- MO:営業単位
+/* 2011/03/25 Ver1.1 ADD Start */
+  ct_msg_f_h                      CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00104';  -- XXCCP:IFレコード区分_ヘッダ(文言)
+  ct_msg_dept_c                   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12358';  -- XXCOS:業務管理部コード(文言)
+  ct_msg_specific_chain_code      CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-14164';  -- XXCOS:個別商品販売実績用チェーン店コード(文言)
+  ct_msg_parallel_process_num     CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-14165';  -- XXCOS:個別商品販売実績用並列処理番号(文言)
+  ct_msg_base_code_err            CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00035';  -- 拠点情報取得エラー
+  ct_msg_chain_inf_err            CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00036';  -- チェーン店情報取得エラー
+  ct_msg_proc_err                 CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00037';  -- 共通関数エラー
+  ct_msg_table_tkn1               CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00046';  -- クイックコード(文言)
+  ct_msg_data_type_c              CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12362';  -- データ種コード(文言)
+  ct_msg_mst_chk_err              CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10002';  -- マスタチェックエラー
+/* 2011/03/25 Ver1.1 ADD End   */
   --
   -- トークン
   cv_tkn_profile                  CONSTANT VARCHAR2(20)  := 'PROFILE';           -- プロファイル名
@@ -147,6 +166,12 @@ AS
   cv_tkn_count2                   CONSTANT VARCHAR2(20)  := 'COUNT2';            -- 処理件数2
   cv_tkn_count3                   CONSTANT VARCHAR2(20)  := 'COUNT3';            -- 処理件数3
   cv_tkn_count4                   CONSTANT VARCHAR2(20)  := 'COUNT4';            -- 処理件数4
+/* 2011/03/25 Ver1.1 ADD Start */
+  cv_tkn_base_code                CONSTANT VARCHAR2(20)  := 'CODE';              -- 拠点コード
+  cv_tkn_chain_code               CONSTANT VARCHAR2(20)  := 'CHAIN_SHOP_CODE';   -- チェーン店コード
+  cv_tkn_column                   CONSTANT VARCHAR2(20)  := 'COLMUN';            -- カラム名
+  cv_tkn_err_msg                  CONSTANT VARCHAR2(20)  := 'ERRMSG';            -- エラーメッセージ名
+/* 2011/03/25 Ver1.1 ADD End   */
   --
   -- クイックコードタイプ
   cv_lt_edi_specific_item         CONSTANT VARCHAR2(30)  := 'XXCOS1_EDI_SPECIFIC_ITEM';      -- 品目コード
@@ -162,6 +187,14 @@ AS
   cv_n                            CONSTANT VARCHAR2(1)   := 'N';                 -- 固定値：N
   cn_x                            CONSTANT VARCHAR2(1)   := 'X';                 -- 固定値：46(NUMBER)
   cv_0                            CONSTANT VARCHAR2(1)   := '0';                 -- 固定値：0
+/* 2011/03/25 Ver1.1 ADD Start */
+  cv_1                            CONSTANT VARCHAR2(1)   := '1';                 -- 固定値：1
+  -- 顧客マスタ取得用固定値
+  cv_cust_code_chain              CONSTANT VARCHAR2(2)   := '18';                -- 顧客区分(チェーン店)
+  cv_status_a                     CONSTANT VARCHAR2(1)   := 'A';                 -- ステータス
+  cv_data_type                    CONSTANT VARCHAR2(50)  := 'XXCOS1_DATA_TYPE_CODE';    -- データ種
+  cv_data_type_code               CONSTANT VARCHAR2(3)   := '180';                      -- 販売実績
+/* 2011/03/25 Ver1.1 ADD End   */ 
   cv_run_class_cd_create          CONSTANT VARCHAR2(1)   := '1';                 -- 実行区分：「作成」
   cv_run_class_cd_cancel          CONSTANT VARCHAR2(1)   := '2';                 -- 実行区分：「解除」
   cv_run_class_cd_resend          CONSTANT VARCHAR2(1)   := '3';                 -- 実行区分：「再送信」
@@ -221,6 +254,16 @@ AS
   gt_sale_update_rec              g_sales_update_rtype;                                     -- 販売実績更新データ格納
   gt_update_header_id             g_header_id_ttype;                                        -- 販売実績更新データ格納（ヘッダID）
   gt_update_cust_code             g_cust_code_ttype;                                        -- 販売実績更新データ格納（顧客コード）
+/* 2011/03/25 Ver1.1 ADD Start */
+  gt_if_header                    fnd_profile_option_values.profile_option_value%TYPE;      -- IFレコード区分_ヘッダ
+  gt_dept_code                    fnd_profile_option_values.profile_option_value%TYPE;      -- 業務管理部コード
+  gt_specific_chain_code          fnd_profile_option_values.profile_option_value%TYPE;      -- 個別商品販売実績用チェーン店コード
+  gt_parallel_process_num         fnd_profile_option_values.profile_option_value%TYPE;      -- 個別商品販売実績用並列処理番号
+  gt_sales_base_name              hz_parties.party_name%TYPE;                               -- 拠点名
+  gt_chain_name                   hz_parties.party_name%TYPE;                               -- チェーン店名
+  gt_data_type_code               xxcos_lookup_values_v.lookup_code%TYPE;                   -- データ種コード
+  gt_from_series                  xxcos_lookup_values_v.attribute1%TYPE;                    -- IF元業務系列コード
+/* 2011/03/25 Ver1.1 ADD End   */
 --
   -- ===============================
   -- ユーザー定義例外
@@ -261,6 +304,10 @@ AS
 --
     -- *** ローカル変数 ***
     lv_profile_name   VARCHAR2(100) DEFAULT NULL;  -- プロファイル名
+/* 2011/03/25 Ver1.1 ADD Start */
+    lv_tkn_name1      VARCHAR2(50)  DEFAULT NULL;  -- トークン取得用1
+    lv_tkn_name2      VARCHAR2(50)  DEFAULT NULL;  -- トークン取得用2
+/* 2011/03/25 Ver1.1 ADD End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -492,6 +539,188 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+/* 2011/03/25 Ver1.1 ADD Start */
+    -- ===============================
+    --  IFレコード区分_ヘッダ取得
+    -- ===============================
+    gt_if_header := FND_PROFILE.VALUE(
+      name => ct_prf_if_header);
+    --
+    IF ( gt_if_header IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      -- プロファイル名取得(IFレコード区分_ヘッダ)
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name          -- アプリケーション短縮名
+        ,iv_name        => ct_msg_f_h                   -- メッセージID
+      );
+      -- メッセージ作成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+        ,iv_name         => ct_msg_notfound_profile     -- メッセージ
+        ,iv_token_name1  => cv_tkn_profile              -- トークン1名
+        ,iv_token_value1 => lv_profile_name);           -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- ===============================
+    -- 業務管理部コード取得
+    -- ===============================
+    gt_dept_code := FND_PROFILE.VALUE(
+      name => ct_prf_dept_code);
+    --
+    IF ( gt_dept_code IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      -- プロファイル名取得(業務管理部コード)
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name          -- アプリケーション短縮名
+        ,iv_name        => ct_msg_dept_c                -- メッセージID
+      );
+      -- メッセージ作成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+        ,iv_name         => ct_msg_notfound_profile     -- メッセージ
+        ,iv_token_name1  => cv_tkn_profile              -- トークン1名
+        ,iv_token_value1 => lv_profile_name);           -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- ===============================
+    -- 個別商品販売実績用チェーン店コード
+    -- ===============================
+    gt_specific_chain_code := FND_PROFILE.VALUE(
+      name => ct_prf_specific_chain_code);
+    --
+    IF ( gt_specific_chain_code IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      -- プロファイル名取得(個別商品販売実績用チェーン店コード)
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name          -- アプリケーション短縮名
+        ,iv_name        => ct_msg_specific_chain_code   -- メッセージID
+      );
+      -- メッセージ作成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+        ,iv_name         => ct_msg_notfound_profile     -- メッセージ
+        ,iv_token_name1  => cv_tkn_profile              -- トークン1名
+        ,iv_token_value1 => lv_profile_name);           -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- ===============================
+    -- 個別商品販売実績用並列処理番号
+    -- ===============================
+    gt_parallel_process_num := FND_PROFILE.VALUE(
+      name => ct_prf_parallel_process_num);
+    --
+    IF ( gt_parallel_process_num IS NULL ) THEN
+      -- プロファイルが取得できない場合
+      -- プロファイル名取得(個別商品販売実績用並列処理番号)
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name          -- アプリケーション短縮名
+        ,iv_name        => ct_msg_parallel_process_num  -- メッセージID
+      );
+      -- メッセージ作成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+        ,iv_name         => ct_msg_notfound_profile     -- メッセージ
+        ,iv_token_name1  => cv_tkn_profile              -- トークン1名
+        ,iv_token_value1 => lv_profile_name);           -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- ===============================
+    -- 拠点情報取得
+    -- ===============================
+    BEGIN
+      SELECT  hp.party_name       sales_base_name      -- 拠点名
+      INTO    gt_sales_base_name
+      FROM    hz_cust_accounts    hca                  -- 拠点(顧客)
+             ,hz_parties          hp                   -- 拠点(パーティ)
+      WHERE   hca.party_id             = hp.party_id   -- 結合(拠点(顧客) = 拠点(パーティ))
+      AND     hca.account_number       = gt_dept_code  -- 業務管理部コード
+      AND     hca.customer_class_code  = cv_1          -- 顧客区分=1
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- メッセージ作成
+        lv_errmsg := xxccp_common_pkg.get_msg(
+           iv_application  => cv_xxcos_short_name      -- アプリケーション
+          ,iv_name         => ct_msg_base_code_err     -- 拠点情報取得エラー
+          ,iv_token_name1  => cv_tkn_base_code         -- トークンコード1
+          ,iv_token_value1 => gt_dept_code);           -- 業務管理部コード
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+    -- ===============================
+    -- チェーン店情報取得
+    -- ===============================
+    BEGIN
+      SELECT  hp.party_name                chain_name              -- チェーン店名
+      INTO    gt_chain_name
+      FROM    hz_cust_accounts             hca                     -- 顧客マスタ
+             ,xxcmm_cust_accounts          xca                     -- 顧客アドオンマスタ
+             ,hz_parties                   hp                      -- パーティマスタ
+      WHERE   hca.cust_account_id       =  xca.customer_id         -- 結合(顧客 = 顧客アドオン)
+      AND     hca.party_id              =  hp.party_id             -- 結合(顧客 = パーティ)
+      AND     xca.edi_chain_code        =  gt_specific_chain_code  -- チェーン店コード
+      AND     hca.customer_class_code   =  cv_cust_code_chain      -- 顧客区分(チェーン店)
+      AND     hca.status                =  cv_status_a             -- ステータス(有効)
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        --メッセージ編集
+        lv_errmsg := xxccp_common_pkg.get_msg(
+           iv_application  => cv_xxcos_short_name        -- アプリケーション
+          ,iv_name         => ct_msg_chain_inf_err       -- チェーン店情報取得エラー
+          ,iv_token_name1  => cv_tkn_chain_code          -- トークンコード1
+          ,iv_token_value1 => gt_specific_chain_code);   -- チェーン店コード
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+    -- ===============================
+    -- データ種情報取得
+    -- ===============================
+    BEGIN
+      SELECT  xlvv.meaning     meaning                       -- データ種
+             ,xlvv.attribute1  attribute1                    -- IF元業務系列コード
+      INTO    gt_data_type_code
+             ,gt_from_series
+      FROM    xxcos_lookup_values_v xlvv
+      WHERE   xlvv.lookup_type  = cv_data_type               -- データ種
+      AND     xlvv.lookup_code  = cv_data_type_code          -- 「180」
+      AND     (
+                ( xlvv.start_date_active IS NULL )
+                OR
+                ( xlvv.start_date_active <= gd_business_date )
+              )
+      AND     (
+                ( xlvv.end_date_active   IS NULL )
+                OR
+                ( xlvv.end_date_active >= gd_business_date )
+              )  -- 業務日付がFROM-TO内
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                           iv_application =>  cv_xxcos_short_name
+                          ,iv_name        =>  ct_msg_data_type_c    --「データ種コード」
+                        );
+        lv_tkn_name2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_xxcos_short_name
+                          ,iv_name         => ct_msg_table_tkn1     --「クイックコード」
+                        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_xxcos_short_name     -- アプリケーション
+                        ,iv_name         => ct_msg_mst_chk_err      -- マスタチェックエラー
+                        ,iv_token_name1  => cv_tkn_column           -- トークンコード１
+                        ,iv_token_value1 => lv_tkn_name1            -- データ種コード
+                        ,iv_token_name2  => cv_tkn_table            -- トークンコード２
+                        ,iv_token_value2 => lv_tkn_name2            -- クイックコードテーブル
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+/* 2011/03/25 Ver1.1 ADD End   */
 --
   EXCEPTION
 --
@@ -630,6 +859,7 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+    lv_header_output  VARCHAR2(5000) DEFAULT NULL;        --IFヘッダー出力用
 --
     -- *** ローカル・カーソル ***
 --
@@ -682,7 +912,45 @@ AS
                      );
         lv_errbuf := SQLERRM;
         RAISE global_api_expt;
-    END;--
+    END;
+    --
+/* 2011/03/25 Ver1.1 ADD Start */
+    -- ===============================
+    -- 共通関数呼び出し
+    -- ===============================
+    --EDIヘッダ・フッタ付与
+    xxccp_ifcommon_pkg.add_edi_header_footer(
+      iv_add_area        =>  gt_if_header             --付与区分
+     ,iv_from_series     =>  gt_from_series           --IF元業務系列コード
+     ,iv_base_code       =>  gt_dept_code             --拠点コード(業務処理部コード)
+     ,iv_base_name       =>  gt_sales_base_name       --拠点名称
+     ,iv_chain_code      =>  gt_specific_chain_code   --チェーン店コード
+     ,iv_chain_name      =>  gt_chain_name            --チェーン店名称
+     ,iv_data_kind       =>  gt_data_type_code        --データ種コード
+     ,iv_row_number      =>  gt_parallel_process_num  --並列処理番号
+     ,in_num_of_records  =>  NULL                     --レコード件数
+     ,ov_retcode         =>  lv_retcode
+     ,ov_output          =>  lv_header_output
+     ,ov_errbuf          =>  lv_errbuf
+     ,ov_errmsg          =>  lv_errmsg
+    );
+    IF ( lv_retcode <> cv_status_normal ) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name   --アプリケーション
+        ,iv_name         => ct_msg_proc_err       --共通関数エラー
+        ,iv_token_name1  => cv_tkn_err_msg        --トークンコード１
+        ,iv_token_value1 => lv_errmsg);           --共通関数のエラーメッセージ
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    -- ===============================
+    -- 共通関数呼び出し
+    -- ===============================
+    UTL_FILE.PUT_LINE(
+      file   => gf_file_handle    --ファイルハンドル
+     ,buffer => lv_header_output  --出力文字(データ)
+    );
+/* 2011/03/25 Ver1.1 ADD End   */
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1837,18 +2105,6 @@ AS
         END IF;
         --
         -- ==============================================================
-        -- ファイル終了処理(A-7)
-        -- ==============================================================
-        output_footer(
-          ov_errbuf     =>  lv_errbuf
-         ,ov_retcode    =>  lv_retcode
-         ,ov_errmsg     =>  lv_errmsg
-        );
-        IF (lv_retcode != cv_status_normal) THEN
-          RAISE global_process_expt;
-        END IF;
-        --
-        -- ==============================================================
         -- 販売実績ヘッダテーブルフラグ更新「送信済」(A-8)
         -- ==============================================================
         update_sale_header(
@@ -1862,6 +2118,18 @@ AS
           RAISE global_process_expt;
         END IF;
       END IF;
+      -- ==============================================================
+      -- ファイル終了処理(A-7)
+      -- ==============================================================
+      output_footer(
+        ov_errbuf     =>  lv_errbuf
+       ,ov_retcode    =>  lv_retcode
+       ,ov_errmsg     =>  lv_errmsg
+      );
+      IF (lv_retcode != cv_status_normal) THEN
+        RAISE global_process_expt;
+      END IF;
+      --
     ELSE
       -- パラメータ.実行区分が「2:解除」の場合
       --
