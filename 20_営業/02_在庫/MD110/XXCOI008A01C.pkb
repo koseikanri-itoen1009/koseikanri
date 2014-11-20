@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A01C(body)
  * Description      : 情報系システムへの連携の為、EBSの手持数量(標準)をCSVファイルに出力
  * MD.050           : 手持数量情報系連携 <MD050_COI_008_A01>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/03    1.0   S.Kanda          新規作成
  *  2009/04/14    1.1   H.Sasaki         [T1_0515]手持数量を保管場所、品目単位でサマリ
+ *  2009/08/25    1.2   H.Sasaki         [0001158]PT対応
  *
  *****************************************************************************************/
 --
@@ -522,41 +523,67 @@ AS
     -- 手持数量情報取得
     CURSOR onhand_cur
     IS
--- == 2009/04/14 V1.1 Modified START ===============================================================
---      SELECT  moq.subinventory_code           -- 保管場所コード
---            , moq.transaction_quantity        -- 数量
---            , msib.segment1                   -- 品目コード
---            , msi.attribute7                  -- 拠点コード
---            , msi.attribute1                  -- 保管場所区分
---      FROM    mtl_onhand_quantities     moq   -- 手持数量テーブル
---            , mtl_system_items_b        msib  -- 品目マスタ
---            , mtl_secondary_inventories msi   -- 保管場所マスタ
---      WHERE   moq.organization_id           = gn_organization_id     -- A-1.で取得した在庫組織ID
---      AND     msib.inventory_item_id        = moq.inventory_item_id
---      AND     msib.organization_id          = moq.organization_id
---      AND     msi.secondary_inventory_name  = moq.subinventory_code
---      AND     msi.organization_id           = moq.organization_id;
-      --
-      SELECT  ohq.subinventory_code         subinventory_code       -- 保管場所コード
+-- == 2009/08/25 V1.2 Modified START ===============================================================
+---- == 2009/04/14 V1.1 Modified START ===============================================================
+----      SELECT  moq.subinventory_code           -- 保管場所コード
+----            , moq.transaction_quantity        -- 数量
+----            , msib.segment1                   -- 品目コード
+----            , msi.attribute7                  -- 拠点コード
+----            , msi.attribute1                  -- 保管場所区分
+----      FROM    mtl_onhand_quantities     moq   -- 手持数量テーブル
+----            , mtl_system_items_b        msib  -- 品目マスタ
+----            , mtl_secondary_inventories msi   -- 保管場所マスタ
+----      WHERE   moq.organization_id           = gn_organization_id     -- A-1.で取得した在庫組織ID
+----      AND     msib.inventory_item_id        = moq.inventory_item_id
+----      AND     msib.organization_id          = moq.organization_id
+----      AND     msi.secondary_inventory_name  = moq.subinventory_code
+----      AND     msi.organization_id           = moq.organization_id;
+--      --
+--      SELECT  ohq.subinventory_code         subinventory_code       -- 保管場所コード
+--             ,ohq.transaction_quantity      transaction_quantity    -- 数量
+--             ,ohq.segment1                  segment1                -- 品目コード
+--             ,msi.attribute7                attribute7              -- 拠点コード
+--             ,msi.attribute1                attribute1              -- 保管場所区分
+--      FROM    mtl_secondary_inventories     msi                     -- 保管場所マスタ
+--             ,(SELECT  moq.subinventory_code            subinventory_code
+--                      ,SUM(moq.transaction_quantity)    transaction_quantity
+--                      ,msib.segment1                    segment1
+--               FROM    mtl_onhand_quantities     moq                -- 手持数量テーブル
+--                      ,mtl_system_items_b        msib               -- 品目マスタ
+--               WHERE   moq.organization_id       =   gn_organization_id
+--               AND     moq.inventory_item_id     =   msib.inventory_item_id
+--               AND     moq.organization_id       =   msib.organization_id
+--               GROUP BY  moq.subinventory_code
+--                        ,msib.segment1
+--              )                             ohq                     -- 手持数量
+--      WHERE   ohq.subinventory_code   =   msi.secondary_inventory_name
+--      AND     msi.organization_id     =   gn_organization_id;
+---- == 2009/04/14 V1.1 Modified END   ===============================================================
+--
+      SELECT  /*+ leading(msi) use_nl(msi ohq.moq.moqd ohq.msib) index(msi MTL_SECONDARY_INVENTORIES_U1) */
+              ohq.subinventory_code         subinventory_code       -- 保管場所コード
              ,ohq.transaction_quantity      transaction_quantity    -- 数量
              ,ohq.segment1                  segment1                -- 品目コード
              ,msi.attribute7                attribute7              -- 拠点コード
              ,msi.attribute1                attribute1              -- 保管場所区分
       FROM    mtl_secondary_inventories     msi                     -- 保管場所マスタ
-             ,(SELECT  moq.subinventory_code             subinventory_code
-                      ,SUM(moq.transaction_quantity)     transaction_quantity
-                      ,msib.segment1                     segment1
+             ,(SELECT  moq.subinventory_code            subinventory_code
+                      ,moq.organization_id              organization_id
+                      ,SUM(moq.transaction_quantity)    transaction_quantity
+                      ,msib.segment1                    segment1
                FROM    mtl_onhand_quantities     moq                -- 手持数量テーブル
                       ,mtl_system_items_b        msib               -- 品目マスタ
                WHERE   moq.organization_id       =   gn_organization_id
                AND     moq.inventory_item_id     =   msib.inventory_item_id
                AND     moq.organization_id       =   msib.organization_id
                GROUP BY  moq.subinventory_code
+                        ,moq.organization_id
                         ,msib.segment1
               )                             ohq                     -- 手持数量
       WHERE   ohq.subinventory_code   =   msi.secondary_inventory_name
+      AND     ohq.organization_id     =   msi.organization_id
       AND     msi.organization_id     =   gn_organization_id;
--- == 2009/04/14 V1.1 Modified END   ===============================================================
+-- == 2009/08/25 V1.2 Modified END   ===============================================================
       --
       -- onhandレコード型
       onhand_rec  onhand_cur%ROWTYPE;

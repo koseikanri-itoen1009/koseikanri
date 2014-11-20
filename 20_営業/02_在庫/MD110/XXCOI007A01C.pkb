@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/07/14    1.4   S.Moriyama      [0000261]記帳日を取引日からパラメータ指定日or業務日付へ変更
  *                                      取引日が前月の場合は前月末日を記帳日とする
  *  2009/08/17    1.5   N.Abe           [0001089]PT対応
+ *  2009/08/25    1.6   H.Sasaki        [0001159]PT対応
  *
  *****************************************************************************************/
 --
@@ -646,14 +647,58 @@ AS
     -- 資材配賦情報取得
     CURSOR mtl_txn_acct_cur
     IS
--- == 2009/07/14 V1.4 Added START ===============================================================
---      SELECT mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
--- == 2009/08/17 V1.5 Modified START ===============================================================
---      SELECT /*+ index(gcc xxcoi_gl_code_combinations_n34) */
-      SELECT /*+ use_nl(mta,gcc,mmt,msib) index(gcc xxcoi_gl_code_combinations_n34) */
--- == 2009/08/17 V1.5 Modified END   ===============================================================
+-- == 2009/08/25 V1.6 Modified START ===============================================================
+---- == 2009/07/14 V1.4 Added START ===============================================================
+----      SELECT mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
+---- == 2009/08/17 V1.5 Modified START ===============================================================
+----      SELECT /*+ index(gcc xxcoi_gl_code_combinations_n34) */
+--      SELECT /*+ use_nl(mta,gcc,mmt,msib) index(gcc xxcoi_gl_code_combinations_n34) */
+---- == 2009/08/17 V1.5 Modified END   ===============================================================
+--             mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
+---- == 2009/07/14 V1.4 Added End ===============================================================
+--           , gcc.segment2                AS gcc_dept_code                --  2.部門コード
+--           , CASE WHEN gcc.segment3      = gt_aff3_shizuoka_factory THEN --   5.勘定科目コードが静岡工場勘定の場合
+--                    gcc.segment2                                         --     2.部門コード
+--                  ELSE                                                   --   それ以外の場合
+--                    gt_aff2_adj_dept_code                                --     A-1.で取得した調整部門コード
+--             END                         AS xwcv_adj_dept_code           --  3.調整部門コード
+--           , mta.reference_account       AS mta_account_id               --  4.勘定科目ID
+--           , gcc.segment3                AS gcc_account_code             --  5.勘定科目コード
+---- == 2009/03/26 V1.1 Added START ===============================================================
+--           , gcc.segment4                AS gcc_subacct_code             --  6.補助科目コード
+---- == 2009/03/26 V1.1 Added END   ===============================================================
+--           , mta.inventory_item_id       AS mta_inventory_item_id        --  7.品目ID
+--           , msib.segment1               AS msib_item_code               --  8.品目コード
+--           , mta.transaction_date        AS mta_transaction_date         --  9.取引日
+--           , mta.transaction_value       AS mta_transaction_value        -- 10.取引金額
+--           , mta.primary_quantity        AS mta_primary_quantity         -- 11.取引数量
+--           , mta.base_transaction_value  AS mta_base_transaction_value   -- 12.基準単位金額
+--           , mta.organization_id         AS mta_organization_id          -- 13.組織ID
+--           , mta.gl_batch_id             AS mta_gl_batch_id              -- 14.GLバッチID
+---- == 2009/06/04 V1.3 Added START ===============================================================
+--           , mmt.transaction_type_id     AS transaction_type_id          -- 15.取引タイプID
+---- == 2009/06/04 V1.3 Added END   ===============================================================
+--      FROM   mtl_transaction_accounts    mta                             -- 資材配賦テーブル
+--           , gl_code_combinations        gcc                             -- 勘定科目テーブル
+--           , mtl_system_items_b          msib                            -- Disc品目マスタ
+---- == 2009/06/04 V1.3 Added START ===============================================================
+--           ,mtl_material_transactions    mmt                             -- 資材取引
+---- == 2009/06/04 V1.3 Added END   ===============================================================
+--      WHERE  mta.reference_account       = gcc.code_combination_id       -- CCID
+--      AND    mta.gl_batch_id             > gt_last_gl_batch_id           -- GLバッチID > 前回GLバッチID
+--      AND    msib.inventory_item_id      = mta.inventory_item_id         -- 品目ID
+--      AND    msib.organization_id        = mta.organization_id           -- 組織ID
+---- == 2009/06/04 V1.3 Added START ===============================================================
+--      AND    mta.transaction_id          = mmt.transaction_id            -- 取引ID
+---- == 2009/06/04 V1.3 Added END   ===============================================================
+---- == 2009/07/14 V1.4 Added START ===============================================================
+--      AND    mta.transaction_date        BETWEEN gt_min_org_acct_date AND TRUNC(SYSDATE)
+---- == 2009/07/14 V1.4 Added END   ===============================================================
+--      ORDER BY mta.inventory_item_id                                     -- 品目ID
+--             , mta.transaction_date;                                     -- 取引日
+--
+      SELECT /*+ LEADING(MTA) USE_NL(MTA MMT GCC MSIB) */
              mta.transaction_id          AS mta_transaction_id           --  1.在庫取引ID
--- == 2009/07/14 V1.4 Added End ===============================================================
            , gcc.segment2                AS gcc_dept_code                --  2.部門コード
            , CASE WHEN gcc.segment3      = gt_aff3_shizuoka_factory THEN --   5.勘定科目コードが静岡工場勘定の場合
                     gcc.segment2                                         --     2.部門コード
@@ -662,9 +707,7 @@ AS
              END                         AS xwcv_adj_dept_code           --  3.調整部門コード
            , mta.reference_account       AS mta_account_id               --  4.勘定科目ID
            , gcc.segment3                AS gcc_account_code             --  5.勘定科目コード
--- == 2009/03/26 V1.1 Added START ===============================================================
            , gcc.segment4                AS gcc_subacct_code             --  6.補助科目コード
--- == 2009/03/26 V1.1 Added END   ===============================================================
            , mta.inventory_item_id       AS mta_inventory_item_id        --  7.品目ID
            , msib.segment1               AS msib_item_code               --  8.品目コード
            , mta.transaction_date        AS mta_transaction_date         --  9.取引日
@@ -673,27 +716,20 @@ AS
            , mta.base_transaction_value  AS mta_base_transaction_value   -- 12.基準単位金額
            , mta.organization_id         AS mta_organization_id          -- 13.組織ID
            , mta.gl_batch_id             AS mta_gl_batch_id              -- 14.GLバッチID
--- == 2009/06/04 V1.3 Added START ===============================================================
            , mmt.transaction_type_id     AS transaction_type_id          -- 15.取引タイプID
--- == 2009/06/04 V1.3 Added END   ===============================================================
       FROM   mtl_transaction_accounts    mta                             -- 資材配賦テーブル
            , gl_code_combinations        gcc                             -- 勘定科目テーブル
            , mtl_system_items_b          msib                            -- Disc品目マスタ
--- == 2009/06/04 V1.3 Added START ===============================================================
            ,mtl_material_transactions    mmt                             -- 資材取引
--- == 2009/06/04 V1.3 Added END   ===============================================================
       WHERE  mta.reference_account       = gcc.code_combination_id       -- CCID
       AND    mta.gl_batch_id             > gt_last_gl_batch_id           -- GLバッチID > 前回GLバッチID
       AND    msib.inventory_item_id      = mta.inventory_item_id         -- 品目ID
       AND    msib.organization_id        = mta.organization_id           -- 組織ID
--- == 2009/06/04 V1.3 Added START ===============================================================
       AND    mta.transaction_id          = mmt.transaction_id            -- 取引ID
--- == 2009/06/04 V1.3 Added END   ===============================================================
--- == 2009/07/14 V1.4 Added START ===============================================================
       AND    mta.transaction_date        BETWEEN gt_min_org_acct_date AND TRUNC(SYSDATE)
--- == 2009/07/14 V1.4 Added END   ===============================================================
       ORDER BY mta.inventory_item_id                                     -- 品目ID
              , mta.transaction_date;                                     -- 取引日
+-- == 2009/08/25 V1.6 Modified END   ===============================================================
 --
   BEGIN
 --
