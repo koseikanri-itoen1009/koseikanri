@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -113,6 +113,7 @@ AS
  *  2008/12/26    1.18 Oracle 野村       本番#323対応（ログ対応）
  *  2008/12/29    1.19 Oracle 野村       本番#882対応
  *  2009/01/23    1.20 Oracle 野村       本番#1074対応
+ *  2009/02/03    1.21 Oracle 野村       本番#1017対応
  *
  *****************************************************************************************/
 --
@@ -301,6 +302,9 @@ AS
     , pay_picking_amount            xxwip_delivery_company.pay_picking_amount%TYPE            -- 運送業者：支払ピッキング単価
     , qty                           xxwip_deliverys.qty1%TYPE                                 -- 個数
     , delivery_weight               xxwip_deliverys.delivery_weight1%TYPE                     -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+    , sum_pallet_weight             xxwsh_order_headers_all.sum_pallet_weight%TYPE            -- 合計パレット重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
   );
 --
   -- 対象データ情報を格納するテーブル型の定義
@@ -352,6 +356,9 @@ AS
     , pay_picking_amount            xxwip_delivery_company.pay_picking_amount%TYPE            -- 運送業者：支払ピッキング単価
     , qty                           xxwip_deliverys.qty1%TYPE                                 -- 個数
     , delivery_weight               xxwip_deliverys.delivery_weight1%TYPE                     -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+    , sum_pallet_weight             xxinv_mov_req_instr_headers.sum_pallet_weight%TYPE        -- 合計パレット重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
   );
 --
   -- 対象データ情報を格納するテーブル型の定義
@@ -1496,6 +1503,9 @@ AS
      ,order_info.pay_picking_amount
      ,order_info.qty
      ,order_info.delivery_weight
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+     ,order_info.sum_pallet_weight
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
     BULK COLLECT INTO gt_order_inf_tab
     FROM (
       -- 着日基準_支給依頼
@@ -1534,6 +1544,9 @@ AS
             , NULL                                pay_picking_amount           -- 支払ピッキング単価
             , NULL                                qty                          -- 個数
             , NULL                                delivery_weight              -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+            , NVL(xoha.sum_pallet_weight, 0)      sum_pallet_weight            -- 合計パレット重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
       FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
             oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
             xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
@@ -1607,6 +1620,9 @@ AS
             , NULL                                pay_picking_amount           -- 支払ピッキング単価
             , NULL                                qty                          -- 個数
             , NULL                                delivery_weight              -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+            , NVL(xoha.sum_pallet_weight, 0)      sum_pallet_weight            -- 合計パレット重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
       FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
             oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
             xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
@@ -1680,6 +1696,9 @@ AS
             , NULL                                pay_picking_amount           -- 支払ピッキング単価
             , NULL                                qty                          -- 個数
             , NULL                                delivery_weight              -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+            , NVL(xoha.sum_pallet_weight, 0)      sum_pallet_weight            -- 合計パレット重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
       FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
             oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
             xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
@@ -1752,6 +1771,9 @@ AS
             , NULL                                pay_picking_amount           -- 支払ピッキング単価
             , NULL                                qty                          -- 個数
             , NULL                                delivery_weight              -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+            , NVL(xoha.sum_pallet_weight, 0)      sum_pallet_weight            -- 合計パレット重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
       FROM  xxwsh_order_headers_all        xoha,      -- 受注ヘッダアドオン
             oe_transaction_types_all       otta,    -- 受注タイプ情報VIEW2
             xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
@@ -2031,9 +2053,15 @@ AS
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
     ln_qty                           xxwip_deliverys.qty1%TYPE;             -- 個数
-    ln_delivery_weight               xxwip_deliverys.delivery_weight1%TYPE; -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--    ln_delivery_weight               xxwip_deliverys.delivery_weight1%TYPE; -- 重量
+    ln_delivery_weight               NUMBER;                                -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
     ln_sum_qty                       xxwip_deliverys.qty1%TYPE;             -- 個数（合計）
-    ln_sum_delivery_weight           xxwip_deliverys.delivery_weight1%TYPE; -- 重量（合計）
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--    ln_sum_delivery_weight           xxwip_deliverys.delivery_weight1%TYPE; -- 重量（合計）
+    ln_sum_delivery_weight           NUMBER;                                -- 重量（合計）
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 --
     -- *** ローカル・カーソル ***
 --
@@ -2194,7 +2222,10 @@ AS
           ln_delivery_weight :=
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
 --                ln_qty * gt_order_inf_tab(ln_index).small_weight;
-                CEIL(ln_qty * gt_order_inf_tab(ln_index).small_weight);
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--                CEIL(ln_qty * gt_order_inf_tab(ln_index).small_weight);
+                ln_qty * gt_order_inf_tab(ln_index).small_weight;
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
         -- 上記以外
@@ -2204,7 +2235,10 @@ AS
           IF (gt_order_inf_tab(ln_index).weight_capacity_class = gv_capacity) THEN
             -- 容積 × 出荷実績数量（切上）×1000000
             ln_delivery_weight :=
-                  CEIL(ln_capacity * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000000);
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--                  CEIL(ln_capacity * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000000);
+                  ln_capacity * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000000;
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 --
           -- 重量容積区分＝「重量」の場合
           ELSE
@@ -2213,9 +2247,12 @@ AS
             ln_delivery_weight :=
 -- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
 --                ROUND(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
-                  CEIL(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--                  CEIL(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+                  ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000;
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 -- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
-
+--
           END IF;
         END IF;
 --
@@ -2264,7 +2301,22 @@ AS
 --
       -- 合計（個数、重量）設定
       gt_order_inf_tab(ln_index).qty              := ln_sum_qty;
-      gt_order_inf_tab(ln_index).delivery_weight  := ln_sum_delivery_weight;
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--      gt_order_inf_tab(ln_index).delivery_weight  := ln_sum_delivery_weight;
+--
+      -- 重量容積区分＝「重量」・小口区分＝「車立」の場合
+      IF   ((gt_order_inf_tab(ln_index).weight_capacity_class = gv_weight)
+        AND (gt_order_inf_tab(ln_index).small_amount_class    = gv_small_sum_no)) THEN
+        -- 明細重量をサマリし小数点以下第一を切上し、合計パレット重量を加算
+        gt_order_inf_tab(ln_index).delivery_weight  := CEIL(TRUNC(ln_sum_delivery_weight, 1)) + 
+                                                     gt_order_inf_tab(ln_index).sum_pallet_weight ;
+--
+      -- 上記以外
+      ELSE
+        -- 明細重量をサマリし小数点以下第一を切上
+        gt_order_inf_tab(ln_index).delivery_weight  := CEIL(TRUNC(ln_sum_delivery_weight, 1));
+      END IF;
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
       IF (gv_debug_flg = gv_debug_on) THEN
@@ -2956,6 +3008,9 @@ AS
      ,move_info.pay_picking_amount
      ,move_info.qty
      ,move_info.delivery_weight
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+     ,move_info.sum_pallet_weight
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
     BULK COLLECT INTO gt_move_inf_tab
     FROM (
       -- 着日
@@ -2995,6 +3050,9 @@ AS
               , NULL                                              pay_picking_amount         -- 運送業者：支払ピッキング単価
               , NULL                                              qty                        -- 個数
               , NULL                                              delivery_weight            -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+              , NVL(xmrih.sum_pallet_weight, 0)                   sum_pallet_weight          -- 合計パレット重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
       FROM  xxinv_mov_req_instr_headers    xmrih,   -- 移動依頼/指示ヘッダ(アドオン)
             xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
       WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
@@ -3062,6 +3120,9 @@ AS
               , NULL                                              pay_picking_amount         -- 運送業者：支払ピッキング単価
               , NULL                                              qty                        -- 個数
               , NULL                                              delivery_weight            -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+              , NVL(xmrih.sum_pallet_weight, 0)                   sum_pallet_weight          -- 合計パレット重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
       FROM  xxinv_mov_req_instr_headers    xmrih,   -- 移動依頼/指示ヘッダ(アドオン)
             xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
       WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
@@ -3340,9 +3401,15 @@ AS
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
     ln_qty                     xxwip_deliverys.qty1%TYPE;             -- 個数
-    ln_delivery_weight         xxwip_deliverys.delivery_weight1%TYPE; -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--    ln_delivery_weight         xxwip_deliverys.delivery_weight1%TYPE; -- 重量
+    ln_delivery_weight         NUMBER;                                -- 重量
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
     ln_sum_qty                 xxwip_deliverys.qty1%TYPE;             -- 個数（合計）
-    ln_sum_delivery_weight     xxwip_deliverys.delivery_weight1%TYPE; -- 重量（合計）
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--    ln_sum_delivery_weight     xxwip_deliverys.delivery_weight1%TYPE; -- 重量（合計）
+    ln_sum_delivery_weight     NUMBER;                                -- 重量（合計）
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 --
     -- *** ローカル・カーソル ***
 --
@@ -3510,7 +3577,10 @@ AS
           ln_delivery_weight :=
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
 --                ln_qty * gt_move_inf_tab(ln_index).small_weight;
-                CEIL(ln_qty * gt_move_inf_tab(ln_index).small_weight);
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--                CEIL(ln_qty * gt_move_inf_tab(ln_index).small_weight);
+                ln_qty * gt_move_inf_tab(ln_index).small_weight;
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
         -- 上記以外
@@ -3520,7 +3590,10 @@ AS
           IF (gt_move_inf_tab(ln_index).weight_capacity_class = gv_capacity) THEN
             -- 容積 × 出荷実績数量（切上）
             ln_delivery_weight :=
-                CEIL(ln_capacity * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000000);
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--                CEIL(ln_capacity * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000000);
+                ln_capacity * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000000;
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 --
           -- 重量容積区分＝「重量」の場合
           ELSE
@@ -3528,7 +3601,10 @@ AS
             ln_delivery_weight :=
 -- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
 --                ROUND(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
-                CEIL(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--                CEIL(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+                ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000;
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 -- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           END IF;
@@ -3582,7 +3658,23 @@ AS
 --
       -- 合計（個数、重量）設定
       gt_move_inf_tab(ln_index).qty              := ln_sum_qty;
-      gt_move_inf_tab(ln_index).delivery_weight  := ln_sum_delivery_weight;
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--      gt_move_inf_tab(ln_index).delivery_weight  := ln_sum_delivery_weight;
+--
+      -- 重量容積区分＝「重量」小口区分＝「車立」の場合
+      IF   ((gt_move_inf_tab(ln_index).weight_capacity_class = gv_weight)
+        AND (gt_move_inf_tab(ln_index).small_amount_class    = gv_small_sum_no)) THEN
+        -- 明細重量をサマリし小数点以下第一を切上し、合計パレット重量を加算
+        gt_move_inf_tab(ln_index).delivery_weight  := CEIL(TRUNC(ln_sum_delivery_weight, 1)) + 
+                                                      gt_move_inf_tab(ln_index).sum_pallet_weight;
+--
+      -- 上記以外
+      ELSE
+        -- 明細重量をサマリし小数点以下第一を切上
+        gt_move_inf_tab(ln_index).delivery_weight  := CEIL(TRUNC(ln_sum_delivery_weight, 1));
+      END IF;
+--
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
       IF (gv_debug_flg = gv_debug_on) THEN
@@ -6953,8 +7045,12 @@ AS
         -- ***  運賃アドオンマスタ抽出
         -- **************************************************
         -- 重量算出（小口個数×小口重量）
-        ln_weight := gt_carriers_schedule_tab(ln_index).small_quantity *
-                                          lr_delivery_company_tab.small_weight;
+-- ##### 20090203 Ver.1.21 本番#1017対応 START #####
+--        ln_weight := gt_carriers_schedule_tab(ln_index).small_quantity *
+--                                          lr_delivery_company_tab.small_weight;
+        ln_weight := CEIL(TRUNC(gt_carriers_schedule_tab(ln_index).small_quantity *
+                                          lr_delivery_company_tab.small_weight, 1));
+-- ##### 20090203 Ver.1.21 本番#1017対応 END   #####
 --
         xxwip_common3_pkg.get_delivery_charges(
           gv_pay,                                                   -- 支払請求区分
