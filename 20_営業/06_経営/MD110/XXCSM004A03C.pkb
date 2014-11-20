@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSM004A03C
+create or replace PACKAGE BODY XXCSM004A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 従業員マスタと資格ポイントマスタから各営業員の資格ポイントを算出し、
  *                  : 新規獲得ポイント顧客別履歴テーブルに登録します。
  * MD.050           : MD050_CSM_004_A03_新規獲得ポイント集計（資格ポイント集計処理）
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/08/24    1.6   T.Tsukino       ［SCS障害管理番号0001150］障害№0001150対応(発令日の判定方法の不備）
  *  2009/09/03    1.7   K.Kubo          ［SCS障害管理番号0001286］発令日の判定方法の不備(営業員以外から営業員への異動)
  *  2009/10/22    1.8   T.Tsukino       ［障害管理番号E-T4-00065］抽出対象営業員の資格コード判定の追加対応
+ *  2009/10/30    1.9   T.Tsukino       ［障害管理番号E-T4-00064］パフォーマンス障害（部署コード取得処理変更）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -126,6 +127,10 @@ AS
   cv_tkn_count            CONSTANT VARCHAR2(20) := 'COUNT';
   cv_tkn_process          CONSTANT VARCHAR2(20) := 'PROCESS_DATE';
 --
+--//+ADD START  2009/10/20 E-T4-00064 T.Tsukino
+  cv_location_level       CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_LEVEL';                      -- ポイント算出用部署階層
+  cv_flg_y                CONSTANT VARCHAR2(1)   := 'Y';                                            -- フラグ'Y'
+--//+ADD END    2009/10/20 E-T4-00064 T.Tsukino
 --//+ADD START   2009/07/07 0000254 M.Ohtsuki
   TYPE gt_loc_lv_ttype IS TABLE OF VARCHAR2(10)                                                     -- テーブル型の宣言
     INDEX BY BINARY_INTEGER;
@@ -176,10 +181,12 @@ AS
     -- *** ローカル定数 ***
     cv_appl_short_name  CONSTANT VARCHAR2(10)    := 'XXCCP';                      -- アプリケーション短縮名
     cv_tkn_value        CONSTANT VARCHAR2(100)   := 'XXCSM_COMMON_PKG';         -- 共通関数名
---//+ADD START   2009/07/07 0000254 M.Ohtsuki
-    cv_location_level   CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_LEVEL';                        -- ポイント算出用部署階層
-    cv_flg_y            CONSTANT VARCHAR2(1) := 'Y';                                                -- フラグ'Y'
---//+ADD END     2009/07/07 0000254 M.Ohtsuki
+--//+DEL START  2009/10/20 E-T4-00064 T.Tsukino
+----//+ADD START   2009/07/07 0000254 M.Ohtsuki
+--    cv_location_level   CONSTANT VARCHAR2(100) := 'XXCSM1_CALC_POINT_LEVEL';                        -- ポイント算出用部署階層
+--    cv_flg_y            CONSTANT VARCHAR2(1) := 'Y';                                                -- フラグ'Y'
+----//+ADD END     2009/07/07 0000254 M.Ohtsuki
+--//+DEL END    2009/10/20 E-T4-00064 T.Tsukino
     -- *** ローカル変数 ***
     lv_prm_msg          VARCHAR2(4000);                                         -- コンカレント入力パラメータメッセージ格納用
     lv_msg              VARCHAR2(100);                                          --
@@ -400,8 +407,13 @@ AS
 --//+ADD START   2009/07/07 0000254 M.Ohtsuki
     ln_check_cnt         NUMBER;                                                                    -- 部署チェック用カウンタ
 --//+ADD END     2009/07/07 0000254 M.Ohtsuki
+--//+ADD START  2009/10/20 E-T4-00064 T.Tsukino
+    lv_current_level     VARCHAR2(2);                                           -- 拠点の階層
+    ln_count             NUMBER;                                                -- ポイント算出部署階層判定用
+--//+ADD END    2009/10/20 E-T4-00064 T.Tsukino
     -- *** ローカル例外 ***
     get_busyo_cd_expt    EXCEPTION;                                             -- 部署コード取得エラーメッセージ
+--        
 --
 --
   BEGIN
@@ -411,40 +423,91 @@ AS
 --
 --###########################  固定部 END   ############################
 --
---
   -- 部署コード抽出処理
---//+ADD START  2009/07/07 0000254 M.Ohtsuki
-      ln_check_cnt := 0;                                                                            -- 変数の初期化
-      lv_busyo_cd  := NULL;                                                                         -- 変数の初期化
-      LOOP
-        EXIT WHEN ln_check_cnt >= ln_loc_lv_cnt                                                      -- ポイント算出用部署階層の件数分
-              OR  lv_busyo_cd IS NOT NULL;                                                          -- 部署コードが取得できるまで
-        ln_check_cnt := ln_check_cnt + 1;
---//+ADD END    2009/07/07 0000254 M.Ohtsuki
---//+UPD START  2009/07/07 0000254 M.Ohtsuki
---    SELECT DECODE(gv_prf_point, 'L6',xxlllv.cd_level6,
---↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-    SELECT DECODE(gt_loc_lv_tab(ln_check_cnt), 'L6',xxlllv.cd_level6,
---//+UPD END    2009/07/07 0000254 M.Ohtsuki
-                                'L5',xxlllv.cd_level5,
-                                'L4',xxlllv.cd_level4,
-                                'L3',xxlllv.cd_level3,
-                                'L2',xxlllv.cd_level2,
-                                'L1',xxlllv.cd_level1
-                 )
-    INTO   lv_busyo_cd
-    FROM   xxcsm_loc_level_list_v   xxlllv
-    WHERE  iv_kyoten_cd = DECODE(xxlllv.location_level,'L6',xxlllv.cd_level6,
-                                                           'L5',xxlllv.cd_level5,
-                                                           'L4',xxlllv.cd_level4,
-                                                           'L3',xxlllv.cd_level3,
-                                                           'L2',xxlllv.cd_level2,
-                                                           'L1',xxlllv.cd_level1
-                                    )
+--//+ADD START  2009/10/20 E-T4-00064 T.Tsukino
+    -- 拠点の階層を取得
+    SELECT xxlnlv.hierarchy_level
+    INTO   lv_current_level
+    FROM   xxcsm_loc_name_list_v  xxlnlv
+    WHERE  xxlnlv.base_code = iv_kyoten_cd
     ;
---//+ADD START  2009/07/07 0000254 M.Ohtsuki
-      END LOOP;
---//+ADD END    2009/07/07 0000254 M.Ohtsuki
+--
+    -- 拠点の階層が「ポイント算出部署階層」かを判定
+    SELECT COUNT(1)
+    INTO   ln_count
+    FROM   fnd_lookup_values      flv                                           -- クイックコード値
+    WHERE  flv.lookup_type        = cv_location_level                           -- ポイント算出用部署階層
+    AND    flv.language           = USERENV('LANG')                             -- 言語('JA')
+    AND    flv.enabled_flag       = cv_flg_y                                    -- 使用可能フラグ
+    AND    NVL(flv.start_date_active,gd_process_date) <= gd_process_date        -- 適用開始日
+    AND    NVL(flv.end_date_active,gd_process_date)   >= gd_process_date        -- 適用終了日
+    AND    flv.lookup_code        = lv_current_level
+    ;
+--
+    -- 拠点の階層が「ポイント算出部署階層」の場合、
+    -- 拠点コードを部署コードとして、設定する
+    IF (ln_count > 0) THEN
+      lv_busyo_cd := iv_kyoten_cd;
+    -- 拠点の階層が「ポイント算出部署階層」でない場合、
+    -- ポイント算出部署階層の最下層で部署コードを設定する
+    ELSE
+      -- 最下層の部署コード取得用変数設定
+      ln_check_cnt := 1;
+      --
+      SELECT DECODE(gt_loc_lv_tab(ln_check_cnt), 'L6',xxlllv.cd_level6,
+                                                 'L5',xxlllv.cd_level5,
+                                                 'L4',xxlllv.cd_level4,
+                                                 'L3',xxlllv.cd_level3,
+                                                 'L2',xxlllv.cd_level2,
+                                                 'L1',xxlllv.cd_level1
+                   )
+      INTO   lv_busyo_cd
+      FROM   xxcsm_loc_level_list_v   xxlllv
+      WHERE  iv_kyoten_cd = DECODE(lv_current_level,'L6',xxlllv.cd_level6,
+                                                    'L5',xxlllv.cd_level5,
+                                                    'L4',xxlllv.cd_level4,
+                                                    'L3',xxlllv.cd_level3,
+                                                    'L2',xxlllv.cd_level2,
+                                                    'L1',xxlllv.cd_level1
+                                  )
+      AND    ROWNUM = 1
+      ;
+    END IF;
+--//+ADD END    2009/10/20 E-T4-00064 T.Tsukino
+--//+DEL END    2009/10/20 E-T4-00064 T.Tsukino
+----//+ADD START  2009/07/07 0000254 M.Ohtsuki
+--      ln_check_cnt := 0;                                                                            -- 変数の初期化
+--      lv_busyo_cd  := NULL;                                                                         -- 変数の初期化
+--      LOOP
+--        EXIT WHEN ln_check_cnt >= ln_loc_lv_cnt                                                      -- ポイント算出用部署階層の件数分
+--              OR  lv_busyo_cd IS NOT NULL;                                                          -- 部署コードが取得できるまで
+--        ln_check_cnt := ln_check_cnt + 1;
+----//+ADD END    2009/07/07 0000254 M.Ohtsuki
+----//+UPD START  2009/07/07 0000254 M.Ohtsuki
+----    SELECT DECODE(gv_prf_point, 'L6',xxlllv.cd_level6,
+----↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--    SELECT DECODE(gt_loc_lv_tab(ln_check_cnt), 'L6',xxlllv.cd_level6,
+----//+UPD END    2009/07/07 0000254 M.Ohtsuki
+--                                'L5',xxlllv.cd_level5,
+--                                'L4',xxlllv.cd_level4,
+--                                'L3',xxlllv.cd_level3,
+--                                'L2',xxlllv.cd_level2,
+--                                'L1',xxlllv.cd_level1
+--                 )
+--    INTO   lv_busyo_cd
+--    FROM   xxcsm_loc_level_list_v   xxlllv
+--    WHERE  iv_kyoten_cd = DECODE(xxlllv.location_level,'L6',xxlllv.cd_level6,
+--                                                           'L5',xxlllv.cd_level5,
+--                                                           'L4',xxlllv.cd_level4,
+--                                                           'L3',xxlllv.cd_level3,
+--                                                           'L2',xxlllv.cd_level2,
+--                                                           'L1',xxlllv.cd_level1
+--                                    )
+--    ;
+----//+ADD START  2009/07/07 0000254 M.Ohtsuki
+--      END LOOP;
+----//+ADD END    2009/07/07 0000254 M.Ohtsuki
+--//+DEL END    2009/10/20 E-T4-00064 T.Tsukino
 --
   -- 取得結果チェック
     IF (lv_busyo_cd IS NULL) THEN
@@ -781,7 +844,7 @@ AS
     lv_syokumu_cd        VARCHAR2(100);                                         -- 職務コード
     lv_shikaku_cd        VARCHAR2(100);                                         -- 資格コード
     lv_kyoten_cd         VARCHAR2(100);                                         -- 拠点コード
-    -- *** ローカル例外 ***    
+    -- *** ローカル例外 ***
     no_data_inprm        EXCEPTION;                                             -- 入力パラメータNULLチェック
 --
   BEGIN
@@ -798,7 +861,7 @@ AS
       iv_shikaku_cd    IS NULL OR
       iv_kyoten_cd     IS NULL)
   THEN RAISE no_data_inprm;
-  END IF;  
+  END IF;
   --当月度資格ポイントデータ登録処理
     INSERT INTO xxcsm_new_cust_point_hst(
        employee_number
@@ -910,7 +973,7 @@ AS
     cn_shikaku_point           CONSTANT NUMBER      := 0;                             -- 資格ポイント:ポイント0
 --//+ADD START 2009/08/24 0001150 T.Tsukino
     cv_tougetsu_date           CONSTANT VARCHAR2(2) := '01';                          -- 当月比較用一日日付
---//ADD END 2009/08/24 0001150 T.Tsukino   
+--//ADD END 2009/08/24 0001150 T.Tsukino
 --//+ADD START 2009/10/22 E-T4-00065 T.Tsukino
     cv_point_countcd           CONSTANT VARCHAR2(20) := 'XXCSM1_POINT_COUNTCD';       --参照タイプ：資格カウント対象コード
 --//+ADD END 2009/10/22 E-T4-00065 T.Tsukino
@@ -1185,11 +1248,11 @@ AS
         IF (get_eigyo_date_rec.hatsureibi IS NULL) THEN
           RAISE no_data_hatsurei;
         END IF;
---//+UPD START 2009/08/24 0001150 T.Tsukino        
+--//+UPD START 2009/08/24 0001150 T.Tsukino
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
 --        IF (get_eigyo_date_rec.hatsureibi = gv_inprocess_date) THEN               --発令日=入力日付'YYYYMM
           IF (SUBSTRB(get_eigyo_date_rec.hatsureibi,1,6) = gv_inprocess_date) THEN               --発令日=入力日付'YYYYMM
---//+UPD END 2009/08/24 0001150 T.Tsukino 
+--//+UPD END 2009/08/24 0001150 T.Tsukino
            IF(get_eigyo_date_rec.new_syokusyu_cd IS NOT NULL
             AND get_eigyo_date_rec.old_syokusyu_cd IS NOT NULL)
           THEN
@@ -1296,7 +1359,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1322,7 +1385,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1347,7 +1410,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1373,7 +1436,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1412,7 +1475,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1439,7 +1502,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1477,7 +1540,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1499,7 +1562,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1558,7 +1621,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1593,7 +1656,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1615,7 +1678,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1642,7 +1705,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1651,11 +1714,11 @@ AS
               RAISE global_skip_expt;
             END IF;
           END IF;
---//+UPD START 2009/08/24 0001150 T.Tsukino        
+--//+UPD START 2009/08/24 0001150 T.Tsukino
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
 --        ELSIF (get_eigyo_date_rec.hatsureibi > gv_inprocess_date) THEN            -- 発令日＞入力日付'YYYYMM'
         ELSIF (SUBSTRB(get_eigyo_date_rec.hatsureibi,1,6) > gv_inprocess_date) THEN            -- 発令日＞入力日付'YYYYMM'
---//+UPD END 2009/08/24 0001150 T.Tsukino          
+--//+UPD END 2009/08/24 0001150 T.Tsukino
         -- ◇================================◇
         --  旧の処理にて、
         --  ①部署コード抽出/資格ポイントの算出
@@ -1679,7 +1742,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1705,7 +1768,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1727,7 +1790,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1754,7 +1817,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1762,7 +1825,7 @@ AS
 --//+UPD END   2009/07/14 0000663 M.Ohtsuki
               RAISE global_skip_expt;
             END IF;
---//+UPD START 2009/08/24 0001150 T.Tsukino        
+--//+UPD START 2009/08/24 0001150 T.Tsukino
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
 --        ELSIF (get_eigyo_date_rec.hatsureibi < gv_inprocess_date) THEN            -- 発令日＜入力日付'YYYYMM'
         ELSIF (SUBSTRB(get_eigyo_date_rec.hatsureibi,1,6) < gv_inprocess_date) THEN            -- 発令日＜入力日付'YYYYMM'
@@ -1790,7 +1853,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1816,7 +1879,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1838,7 +1901,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1865,7 +1928,7 @@ AS
             IF (lv_retcode = cv_status_error) THEN
               RAISE global_process_expt;
             END IF;
---//+ADD END   2009/07/14 0000663 M.Ohtsuki            
+--//+ADD END   2009/07/14 0000663 M.Ohtsuki
 --//+UPD START 2009/07/14 0000663 M.Ohtsuki
 --            IF (lv_retcode <> cv_status_normal) THEN
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
@@ -1915,7 +1978,7 @@ AS
           --エラー件数のカウント
           gn_error_cnt := gn_error_cnt + 1;
           -- ロールバック
-          ROLLBACK TO eigyo_date_sv; 
+          ROLLBACK TO eigyo_date_sv;
       END;
     END LOOP get_eigyo_date_loop;
 --
