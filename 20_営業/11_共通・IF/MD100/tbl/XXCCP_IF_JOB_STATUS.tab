@@ -15,6 +15,7 @@
  *                                       ・NOT NULL削除
  *                                       (REQUEST_ID_VAL,EXEC_REQUEST_ID,JOBNET_NAME)
  *                                       ・PRIMARY KEY変更
+ *  2009/08/27    1.2   Masayuki.Sano    [障害番号:T1_0521]ファイル移動処理のJOB実行への変更に伴う修正
  *
  ****************************************************************************************/
 CREATE TABLE XXCCP.XXCCP_IF_JOB_STATUS
@@ -26,7 +27,10 @@ CREATE TABLE XXCCP.XXCCP_IF_JOB_STATUS
   ,REQUEST_ID_VAL               VARCHAR2(20)                        --処理順付要求ID
   ,EXEC_REQUEST_ID              NUMBER(15)                          --起動対象要求ID
 -- 2009/04/03 update Ver1.1 Masayuki.Sano END
-  ,STATUS_CODE                  VARCHAR2(1)     NOT NULL            --ステータス
+-- 2009/08/27 update Ver1.1 Masayuki.Sano START
+--  ,STATUS_CODE                  VARCHAR2(1)     NOT NULL            --ステータス
+  ,STATUS_CODE                  VARCHAR2(2)     NOT NULL            --ステータス
+-- 2009/08/27 update Ver1.1 Masayuki.Sano END
   ,IF_SYSTEM_NAME               VARCHAR2(10)    NOT NULL            --対向システム名
   ,IF_FILE_NAME                 VARCHAR2(30)    NOT NULL            --ファイル名
 -- 2009/04/03 update Ver1.1 Masayuki.Sano START
