@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ar_check_pkg(body)
  * Description            : 部門入力(AR)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AR)共通関数 OCSJ/BFAFIN/MD070/F702
- * Version                : 11.5.10.2.15
+ * Version                : 11.5.10.2.16
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2010/11/22   11.5.10.2.13   障害「E_本稼動_05407」対応
  *  2010/12/24   11.5.10.2.14   障害「E_本稼動_02004」対応
  *  2011/11/29   11.5.10.2.15   障害「E_本稼動_07768」対応
+ *  2012/01/10   11.5.10.2.16   障害「E_本稼動_08887」対応
  *
  *****************************************************************************************/
 --
@@ -137,6 +138,10 @@ AS
     cv_ok_exists_code     CONSTANT VARCHAR2(1)  := '1';  -- 該当する
 --
 -- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
+-- ver 11.5.10.2.16 2012/01/10 Add Start [E_本稼動_08887]
+    cv_ship_site_use_code CONSTANT VARCHAR2(7)  := 'SHIP_TO';  -- 出荷先
+    cv_active_flag        CONSTANT VARCHAR2(1)  := 'A';        -- 有効フラグ：有効
+-- ver 11.5.10.2.16 2012/01/10 Add End   [E_本稼動_08887]
 --
     -- *** ローカル変数 ***
     TYPE  errflg_tbl_type IS TABLE OF VARCHAR2(1)    INDEX BY BINARY_INTEGER;    -- エラーフラグ用配列タイプ
@@ -513,6 +518,76 @@ AS
     AND   hzca.cust_account_id = xrs.customer_id
     AND   hzca.customer_class_code = '14';
 -- ver 11.5.10.2.11 Add End
+-- ver 11.5.10.2.16 2012/01/10 Add Start [E_本稼動_08887]
+    --対象顧客チェックカーソル
+    CURSOR xx03_cusomer_number_cur (
+      in_org_id           IN  NUMBER  -- 営業単位ID
+    , in_set_of_books_id  IN  NUMBER  -- 会計帳簿ID
+    ) IS
+    SELECT /*+ LEADING(xrs)  */
+           COUNT( 1 )                AS exist_check
+    FROM   xx03_receivable_slips  xrs   -- AR部門入力ヘッダ
+          ,ra_cust_trx_types_all  rctt  -- 取引タイプマスタ
+    WHERE  xrs.receivable_id     =  in_receivable_id     -- 伝票ID（プロシージャの入力パラメータ）
+    AND    xrs.org_id            =  in_org_id            -- 営業単位ID
+    AND    xrs.set_of_books_id   =  in_set_of_books_id   -- 会計帳簿ID
+    AND    rctt.cust_trx_type_id =  xrs.trans_type_id    -- 取引タイプID
+    AND    rctt.org_id           =  xrs.org_id           -- 営業単位ID
+    AND    rctt.set_of_books_id  =  xrs.set_of_books_id  -- 会計帳簿ID
+    AND    (     rctt.attribute11 IS NULL  -- 顧客コードチェック用参照タイプが未設定
+             OR  EXISTS( SELECT  'X'
+                         FROM    fnd_lookup_values_vl   flvv  -- クイックコード
+                                ,hz_cust_accounts       hca   -- 顧客マスタ
+                                ,hz_cust_acct_sites_all hcas  -- 出荷先顧客サイト
+                                ,hz_cust_site_uses_all  hcsu  -- 出荷先顧客使用目的
+                                ,hz_cust_accounts       hcab  -- 請求先顧客
+                                ,hz_cust_acct_sites_all hcasb -- 請求先顧客サイト
+                                ,hz_cust_site_uses_all  hcsub -- 請求先顧客使用目的
+                         WHERE   flvv.lookup_type        = rctt.attribute11     -- 顧客コードチェック用参照タイプ
+                         AND     flvv.lookup_code        = hcab.account_number  -- 請求先顧客コード
+                         AND     flvv.enabled_flag       = cv_enabled_flag_yes  -- 有効フラグ
+                         AND     hca.cust_account_id     = xrs.customer_id      -- 納品先顧客ID
+                         AND     hcas.cust_account_id    = hca.cust_account_id
+                         AND     hcas.org_id             = in_org_id
+                         AND     hcas.status             = cv_active_flag
+                         AND     hcsu.cust_acct_site_id  = hcas.cust_acct_site_id
+                         AND     hcsu.site_use_code      = cv_ship_site_use_code
+                         AND     hcsu.status             = cv_active_flag
+                         AND     hcsu.org_id             = in_org_id
+                         AND     hcsub.site_use_id       = hcsu.bill_to_site_use_id
+                         AND     hcsub.status            = cv_active_flag
+                         AND     hcsub.org_id            = in_org_id
+                         AND     hcasb.cust_acct_site_id = hcsub.cust_acct_site_id
+                         AND     hcasb.status            = cv_active_flag
+                         AND     hcasb.org_id            = in_org_id
+                         AND     hcab.cust_account_id    = hcasb.cust_account_id
+                         AND     TRUNC( SYSDATE )  BETWEEN NVL( flvv.start_date_active, TRUNC( SYSDATE ) )
+                                                   AND     NVL( flvv.end_date_active  , TRUNC( SYSDATE ) )
+                 )
+           )
+    ;
+--
+    --入力金額上限値チェックカーソル
+    CURSOR xx03_limit_check_cur (
+      in_org_id           IN  NUMBER  -- 営業単位ID
+    , in_set_of_books_id  IN  NUMBER  -- 会計帳簿ID
+    ) IS
+    SELECT /*+ LEADING(xrs)  */
+           COUNT( 1 )      AS exist_check
+    FROM   xx03_receivable_slips  xrs   -- AR部門入力ヘッダ
+          ,ra_cust_trx_types_all  rctt  -- 取引タイプマスタ
+    WHERE  xrs.receivable_id     =  in_receivable_id     -- 伝票ID（プロシージャの入力パラメータ）
+    AND    xrs.org_id            =  in_org_id            -- 営業単位ID
+    AND    xrs.set_of_books_id   =  in_set_of_books_id   -- 会計帳簿ID
+    AND    rctt.cust_trx_type_id =  xrs.trans_type_id    -- 取引タイプID
+    AND    rctt.org_id           =  xrs.org_id           -- 営業単位ID
+    AND    rctt.set_of_books_id  =  xrs.set_of_books_id  -- 会計帳簿ID
+    AND    (   rctt.attribute12  IS NULL                 -- 入力金額上限値が未設定
+            OR ABS(xrs.inv_amount) <= TO_NUMBER(rctt.attribute12)   -- 入力金額上限値が税込金額より大きい場合はエラー 
+           )
+    ;
+--
+-- ver 11.5.10.2.16 2012/01/10 Add End   [E_本稼動_08887]
 --
     --顧客事業所チェックカーソル
     CURSOR xx03_cust_office_cur
@@ -939,6 +1014,12 @@ AS
 -- ver 11.5.10.2.14 2010/12/13 Add Start [E_本稼動_02004]
     xx03_sale_base_rec           xx03_sale_base_cur%ROWTYPE;
 -- ver 11.5.10.2.14 2010/12/13 Add End   [E_本稼動_02004]
+-- ver 11.5.10.2.16 2012/01/10 Add Start [E_本稼動_08887]
+    -- 対象顧客チェックカーソルレコード型
+    xx03_cusomer_number_rec      xx03_cusomer_number_cur%ROWTYPE;
+    -- 入力金額上限値チェックカーソルレコード型
+    xx03_limit_check_rec     xx03_limit_check_cur%ROWTYPE;
+-- ver 11.5.10.2.16 2012/01/10 Add End   [E_本稼動_08887]
 -- ver 11.5.10.2.12 Modify Start
     -- 文字列バイトチェックレコード型
     xx03_length_chk_rec xx03_length_chk_cur%ROWTYPE;
@@ -1372,6 +1453,21 @@ AS
         END IF;
         CLOSE xx03_customer_class_cur;
 -- ver 11.5.10.2.11 Add End
+-- ver 11.5.10.2.16 2012/01/10 Add Start [E_本稼動_08887]
+        --対象顧客チェック
+        OPEN  xx03_cusomer_number_cur(
+                 in_org_id          => ln_org_id    -- 営業単位ID
+               , in_set_of_books_id => ln_books_id  -- 会計帳簿ID
+              );
+        FETCH xx03_cusomer_number_cur INTO xx03_cusomer_number_rec;
+        IF xx03_cusomer_number_rec.exist_check = 0 THEN
+          -- 対象顧客チェックエラー
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR', 'APP-XXCFR1-00144');
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_cusomer_number_cur;
+-- ver 11.5.10.2.16 2012/01/10 Add End   [E_本稼動_08887]
 --
         --顧客事業所チェック
         OPEN xx03_cust_office_cur;
@@ -1608,6 +1704,22 @@ AS
         CLOSE xx03_customer_chk_cur;
 -- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
 --
+-- ver 11.5.10.2.16 2012/01/10 Add Start [E_本稼動_08887]
+        --入力金額上限値チェック
+        OPEN  xx03_limit_check_cur(
+                 in_org_id          => ln_org_id    -- 営業単位ID
+               , in_set_of_books_id => ln_books_id  -- 会計帳簿ID
+              );
+        FETCH xx03_limit_check_cur INTO xx03_limit_check_rec;
+        IF xx03_limit_check_rec.exist_check = 0 THEN
+          -- 入力金額上限値チェックエラー
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR', 'APP-XXCFR1-00145');
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_limit_check_cur;
+--
+-- ver 11.5.10.2.16 2012/01/10 Add End   [E_本稼動_08887]
 -- ver 11.5.10.2.12 Modify Start
         -- 文字列バイトチェック(納品書番号、請求明細備考)
         OPEN  xx03_length_chk_cur;
