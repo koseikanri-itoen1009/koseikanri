@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/4/20     1.5   M.Hiruta         [障害T1_0512]請求配分OIFへ登録するデータの勘定科目が未収入金・売掛金の場合、
  *                                                    明細伝票番号に'1'を設定する。
  *  2009/4/24     1.6   M.Hiruta         [障害T1_0736]取引タイプにより請求書保留ステータスを設定
+ *  2009/10/05    1.7   K.Yamaguchi      [仕様変更I_E_566] 取引タイプを業態（小分類）毎に設定可能に変更
  *
  *****************************************************************************************/
 --
@@ -85,11 +86,17 @@ AS
   cv_aff4_receivable_vd      CONSTANT VARCHAR2(25) := 'XXCOK1_AFF4_RECEIVABLE_VD';          --補助科目:未収入金VD売上
   cv_aff4_subacct_dummy      CONSTANT VARCHAR2(25) := 'XXCOK1_AFF4_SUBACCT_DUMMY';          --補助科目:ダミー値
   cv_sales_category          CONSTANT VARCHAR2(21) := 'XXCOK1_GL_CATEGORY_BM';              --販売手数料:仕訳カテゴリ
-  cv_cust_trx_type_vd        CONSTANT VARCHAR2(35) := 'XXCOK1_CUST_TRX_TYPE_RECEIVABLE_VD'; --取引タイプ:VD未収入金売上
--- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
---  cv_cust_trx_type_elec_cost CONSTANT VARCHAR2(30) := 'XXCOK1_CUST_TRX_TYPE_ELEC_COST';     --取引タイプ:電気料相殺
-  cv_cust_trx_type_gnrl      CONSTANT VARCHAR2(35) := 'XXCOK1_CUST_TRX_TYPE_ALL_PAY';       --取引タイプ:入金値引高
--- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--  cv_cust_trx_type_vd        CONSTANT VARCHAR2(35) := 'XXCOK1_CUST_TRX_TYPE_RECEIVABLE_VD'; --取引タイプ:VD未収入金売上
+---- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+----  cv_cust_trx_type_elec_cost CONSTANT VARCHAR2(30) := 'XXCOK1_CUST_TRX_TYPE_ELEC_COST';     --取引タイプ:電気料相殺
+--  cv_cust_trx_type_gnrl      CONSTANT VARCHAR2(35) := 'XXCOK1_CUST_TRX_TYPE_ALL_PAY';       --取引タイプ:入金値引高
+---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+  cv_ra_trx_type_f_digestion_vd CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_FULL_DIGESTION_VD';  -- 取引タイプ_入金値引_フルサービス（消化）VD
+  cv_ra_trx_type_delivery_vd    CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_DELIVERY_VD';        -- 取引タイプ_入金値引_納品VD
+  cv_ra_trx_type_digestion_vd   CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_DIGESTION_VD';       -- 取引タイプ_入金値引_消化VD
+  cv_ra_trx_type_general        CONSTANT VARCHAR2(50) := 'XXCOK1_RA_TRX_TYPE_GENERAL';            -- 取引タイプ_入金値引_一般店
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
   --メッセージ
   cv_90008_msg               CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90008'; --入力パラメータなし
   cv_00003_err_msg           CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00003'; --プロファイル値取得エラー
@@ -146,7 +153,12 @@ AS
   cv_rate                    CONSTANT VARCHAR2(1)  := '1';       --換算レート
   cv_waiting                 CONSTANT VARCHAR2(7)  := 'WAITING'; --個別請求書印刷/一括請求書印刷
   cv_percent                 CONSTANT NUMBER       := 100;       --割合
-  cv_low_type                CONSTANT VARCHAR2(2)  := '24';      --業態（小分類）フルベンダー
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--  cv_low_type                CONSTANT VARCHAR2(2)  := '24';      --業態（小分類）フルフルベンダー
+  cv_low_type_f_digestion_vd CONSTANT VARCHAR2(2)  := '24';      -- フルサービス（消化）
+  cv_low_type_delivery_vd    CONSTANT VARCHAR2(2)  := '26';      -- 納品VD
+  cv_low_type_digestion_vd   CONSTANT VARCHAR2(2)  := '27';      -- 消化VD
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
   cv_validate_flag           CONSTANT VARCHAR2(1)  := 'N';       --有効フラグ
   cn_no_tax                  CONSTANT NUMBER       := 0;         --消費税率
   cn_rev_num                 CONSTANT NUMBER       := 1;         --明細番号
@@ -180,13 +192,19 @@ AS
   gv_aff4_receivable_vd      VARCHAR2(50)   DEFAULT NULL; --補助科目:未収入金VD売上
   gv_aff4_subacct_dummy      VARCHAR2(50)   DEFAULT NULL; --補助科目:ダミー値
   gv_sales_category          VARCHAR2(50)   DEFAULT NULL; --販売手数料:仕訳カテゴリ
-  gv_cust_trx_type_vd        VARCHAR2(50)   DEFAULT NULL; --取引タイプ:VD未収入金売上
--- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
---  gv_cust_trx_type_elec_cost VARCHAR2(50)   DEFAULT NULL; --取引タイプ:電気料相殺
---  gn_vd_trx_type_id          NUMBER         DEFAULT NULL; --取引タイプID:VD未収入金売上
---  gn_cust_trx_elec_id        NUMBER         DEFAULT NULL; --取引タイプID:電気料相殺
-  gv_cust_trx_type_gnrl      VARCHAR2(50)   DEFAULT NULL; --取引タイプ:入金値引高
--- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--  gv_cust_trx_type_vd        VARCHAR2(50)   DEFAULT NULL; --取引タイプ:VD未収入金売上
+---- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+----  gv_cust_trx_type_elec_cost VARCHAR2(50)   DEFAULT NULL; --取引タイプ:電気料相殺
+----  gn_vd_trx_type_id          NUMBER         DEFAULT NULL; --取引タイプID:VD未収入金売上
+----  gn_cust_trx_elec_id        NUMBER         DEFAULT NULL; --取引タイプID:電気料相殺
+--  gv_cust_trx_type_gnrl      VARCHAR2(50)   DEFAULT NULL; --取引タイプ:入金値引高
+---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+  gv_ra_trx_type_f_digestion_vd VARCHAR2(50) DEFAULT NULL; -- 取引タイプ_入金値引_フルサービス（消化）VD
+  gv_ra_trx_type_delivery_vd    VARCHAR2(50) DEFAULT NULL; -- 取引タイプ_入金値引_納品VD
+  gv_ra_trx_type_digestion_vd   VARCHAR2(50) DEFAULT NULL; -- 取引タイプ_入金値引_消化VD
+  gv_ra_trx_type_general        VARCHAR2(50) DEFAULT NULL; -- 取引タイプ_入金値引_一般店
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
   gn_csh_rcpt                NUMBER         DEFAULT NULL; --入金値引額－入金値引消費税額
   gd_operation_date          DATE           DEFAULT NULL; --業務処理日付
   gv_currency_code           VARCHAR2(50)   DEFAULT NULL; --機能通貨コード
@@ -262,10 +280,16 @@ AS
   -- グローバルレコードタイプ
   -- ===============================
   g_discnt_amount_rtype g_discnt_amount_cur%ROWTYPE;
--- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
-  g_cust_trx_type_vd    g_cust_trx_type_cur%ROWTYPE;
-  g_cust_trx_type_gnrl  g_cust_trx_type_cur%ROWTYPE;
--- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+---- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+--  g_cust_trx_type_vd    g_cust_trx_type_cur%ROWTYPE;
+--  g_cust_trx_type_gnrl  g_cust_trx_type_cur%ROWTYPE;
+---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+  g_ra_trx_type_f_digestion_vd g_cust_trx_type_cur%ROWTYPE; -- 取引タイプ_入金値引_フルサービス（消化）VD
+  g_ra_trx_type_delivery_vd    g_cust_trx_type_cur%ROWTYPE; -- 取引タイプ_入金値引_納品VD
+  g_ra_trx_type_digestion_vd   g_cust_trx_type_cur%ROWTYPE; -- 取引タイプ_入金値引_消化VD
+  g_ra_trx_type_general        g_cust_trx_type_cur%ROWTYPE; -- 取引タイプ_入金値引_一般店
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
   -- ===============================
   -- 共通例外
   -- ===============================
@@ -738,23 +762,42 @@ AS
     <<ins_ra_if_lines_all_loop>>
     FOR ln_cnt IN 1..2 LOOP
 --
--- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+---- Start 2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+----      IF( gv_business_low_type = cv_low_type ) THEN
+----        lt_charge_waiting_status := cv_hold;             -- 小分類の区分HOLD
+----        lt_cust_trx_type_id      := gn_vd_trx_type_id;   -- 取引タイプID:VD未収入金売上
+----      ELSE
+----        lt_charge_waiting_status := cv_open;             -- 小分類の区分OPEN
+----        lt_cust_trx_type_id      := gn_cust_trx_elec_id; -- 取引タイプID:電気料相殺
+----      END IF;
+----
 --      IF( gv_business_low_type = cv_low_type ) THEN
---        lt_charge_waiting_status := cv_hold;             -- 小分類の区分HOLD
---        lt_cust_trx_type_id      := gn_vd_trx_type_id;   -- 取引タイプID:VD未収入金売上
+--        lt_cust_trx_type_id      := g_cust_trx_type_vd.cust_trx_type_id;        -- VD未収入金売上：取引タイプID
+--        lt_charge_waiting_status := g_cust_trx_type_vd.charge_waiting_status;   -- VD未収入金売上：請求書保留ステータス
 --      ELSE
---        lt_charge_waiting_status := cv_open;             -- 小分類の区分OPEN
---        lt_cust_trx_type_id      := gn_cust_trx_elec_id; -- 取引タイプID:電気料相殺
+--        lt_cust_trx_type_id      := g_cust_trx_type_gnrl.cust_trx_type_id;      -- 入金値引高：取引タイプID
+--        lt_charge_waiting_status := g_cust_trx_type_gnrl.charge_waiting_status; -- 入金値引高：請求書保留ステータス
 --      END IF;
---
-      IF( gv_business_low_type = cv_low_type ) THEN
-        lt_cust_trx_type_id      := g_cust_trx_type_vd.cust_trx_type_id;        -- VD未収入金売上：取引タイプID
-        lt_charge_waiting_status := g_cust_trx_type_vd.charge_waiting_status;   -- VD未収入金売上：請求書保留ステータス
+---- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+      -- フルVD（消化）
+      IF(    gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
+        lt_cust_trx_type_id      := g_ra_trx_type_f_digestion_vd.cust_trx_type_id;
+        lt_charge_waiting_status := g_ra_trx_type_f_digestion_vd.charge_waiting_status;
+      -- 納品VD
+      ELSIF( gv_business_low_type = cv_low_type_delivery_vd    ) THEN
+        lt_cust_trx_type_id      := g_ra_trx_type_delivery_vd.cust_trx_type_id;
+        lt_charge_waiting_status := g_ra_trx_type_delivery_vd.charge_waiting_status;
+      -- 消化VD
+      ELSIF( gv_business_low_type = cv_low_type_digestion_vd   ) THEN
+        lt_cust_trx_type_id      := g_ra_trx_type_digestion_vd.cust_trx_type_id;
+        lt_charge_waiting_status := g_ra_trx_type_digestion_vd.charge_waiting_status;
+      -- 一般店
       ELSE
-        lt_cust_trx_type_id      := g_cust_trx_type_gnrl.cust_trx_type_id;      -- 入金値引高：取引タイプID
-        lt_charge_waiting_status := g_cust_trx_type_gnrl.charge_waiting_status; -- 入金値引高：請求書保留ステータス
+        lt_cust_trx_type_id      := g_ra_trx_type_general.cust_trx_type_id;
+        lt_charge_waiting_status := g_ra_trx_type_general.charge_waiting_status;
       END IF;
--- End   2009/04/23 Ver_1.6 T1_0736 M.Hiruta
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
       --================================================================
       --内税フラグの取得する
       --================================================================
@@ -970,7 +1013,10 @@ AS
       --収益/仕訳パターン：貸方(フルベンダー(消化))
       --================================================================
       ELSIF ( ln_cnt = 3 )
-        AND ( gv_business_low_type = cv_low_type ) THEN
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--        AND ( gv_business_low_type = cv_low_type ) THEN
+        AND ( gv_business_low_type = cv_low_type_f_digestion_vd ) THEN
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
         lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
         lv_segment3             := gv_aff3_receivable;                                -- 勘定科目コード :未収入金
         lv_segment4             := gv_aff4_receivable_vd;                             -- 補助科目コード :未収入金VD売上
@@ -1018,7 +1064,10 @@ AS
       --収益/仕訳パターン：貸方(一般)
       --================================================================
       ELSIF ( ln_cnt = 3 )
-        AND  ( gv_business_low_type <> cv_low_type ) THEN
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--        AND  ( gv_business_low_type <> cv_low_type ) THEN
+        AND  ( gv_business_low_type <> cv_low_type_f_digestion_vd ) THEN
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
         lv_segment2             := gv_aff2_dept_fin;                                  -- 部門コード     :財務経理部
         lv_segment3             := gv_aff3_account_receivable;                        -- 勘定科目コード :売掛金
         lv_segment4             := gv_aff4_subacct_dummy;                             -- 補助科目コード :ダミー値
@@ -1533,11 +1582,17 @@ AS
     gv_aff4_receivable_vd      := FND_PROFILE.VALUE( cv_aff4_receivable_vd      );  -- 補助科目:未収入金VD売上
     gv_aff4_subacct_dummy      := FND_PROFILE.VALUE( cv_aff4_subacct_dummy      );  -- 補助科目:ダミー値
     gv_sales_category          := FND_PROFILE.VALUE( cv_sales_category          );  -- 販売手数料:仕訳カテゴリ
-    gv_cust_trx_type_vd        := FND_PROFILE.VALUE( cv_cust_trx_type_vd        );  -- 取引タイプ:VD未収入金売上
--- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
---    gv_cust_trx_type_elec_cost := FND_PROFILE.VALUE( cv_cust_trx_type_elec_cost );  -- 取引タイプ:電気料相殺
-    gv_cust_trx_type_gnrl      := FND_PROFILE.VALUE( cv_cust_trx_type_gnrl      );  -- 取引タイプ:入金値引高
--- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--    gv_cust_trx_type_vd        := FND_PROFILE.VALUE( cv_cust_trx_type_vd        );  -- 取引タイプ:VD未収入金売上
+---- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+----    gv_cust_trx_type_elec_cost := FND_PROFILE.VALUE( cv_cust_trx_type_elec_cost );  -- 取引タイプ:電気料相殺
+--    gv_cust_trx_type_gnrl      := FND_PROFILE.VALUE( cv_cust_trx_type_gnrl      );  -- 取引タイプ:入金値引高
+---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+    gv_ra_trx_type_f_digestion_vd := FND_PROFILE.VALUE( cv_ra_trx_type_f_digestion_vd  );  -- 取引タイプ_入金値引_フルVD（消化）
+    gv_ra_trx_type_delivery_vd    := FND_PROFILE.VALUE( cv_ra_trx_type_delivery_vd     );  -- 取引タイプ_入金値引_納品VD
+    gv_ra_trx_type_digestion_vd   := FND_PROFILE.VALUE( cv_ra_trx_type_digestion_vd    );  -- 取引タイプ_入金値引_消化VD
+    gv_ra_trx_type_general        := FND_PROFILE.VALUE( cv_ra_trx_type_general         );  -- 取引タイプ_入金値引_一般店
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
 --
     IF( gn_set_of_bks_id IS NULL ) THEN
       lv_token_value := cv_set_of_bks_id;
@@ -1599,70 +1654,138 @@ AS
       lv_token_value := cv_sales_category;
       RAISE profile_expt;
 --
-    ELSIF( gv_cust_trx_type_vd IS NULL ) THEN
-      lv_token_value := cv_cust_trx_type_vd;
-      RAISE profile_expt;
---      
--- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
---    ELSIF( gv_cust_trx_type_elec_cost IS NULL ) THEN
---      lv_token_value := cv_cust_trx_type_elec_cost;
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--    ELSIF( gv_cust_trx_type_vd IS NULL ) THEN
+--      lv_token_value := cv_cust_trx_type_vd;
 --      RAISE profile_expt;
-    ELSIF( gv_cust_trx_type_gnrl IS NULL ) THEN
-      lv_token_value := cv_cust_trx_type_gnrl;
+----      
+---- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+----    ELSIF( gv_cust_trx_type_elec_cost IS NULL ) THEN
+----      lv_token_value := cv_cust_trx_type_elec_cost;
+----      RAISE profile_expt;
+--    ELSIF( gv_cust_trx_type_gnrl IS NULL ) THEN
+--      lv_token_value := cv_cust_trx_type_gnrl;
+--      RAISE profile_expt;
+---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+----
+    -- 取引タイプ_入金値引_フルVD（消化）
+    ELSIF( gv_ra_trx_type_f_digestion_vd IS NULL ) THEN
+      lv_token_value := cv_ra_trx_type_f_digestion_vd;
       RAISE profile_expt;
--- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
---
+    -- 取引タイプ_入金値引_納品VD
+    ELSIF( gv_ra_trx_type_delivery_vd IS NULL ) THEN
+      lv_token_value := cv_ra_trx_type_delivery_vd;
+      RAISE profile_expt;
+    -- 取引タイプ_入金値引_消化VD
+    ELSIF( gv_ra_trx_type_digestion_vd IS NULL ) THEN
+      lv_token_value := cv_ra_trx_type_digestion_vd;
+      RAISE profile_expt;
+    -- 取引タイプ_入金値引_一般店
+    ELSIF( gv_ra_trx_type_general IS NULL ) THEN
+      lv_token_value := cv_ra_trx_type_general;
+      RAISE profile_expt;
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
     END IF;
--- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+---- Start 2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+----    --==============================================================
+----    --VD未収入金売上の取引タイプIDを取得
+----    --==============================================================    
+----    OPEN l_cust_trx_type_cur(
+----           gv_cust_trx_type_vd -- VD未収入金売上の取引タイプ
+----         );
+----    FETCH l_cust_trx_type_cur INTO gn_vd_trx_type_id;
+----    CLOSE l_cust_trx_type_cur;
+----    IF( gn_vd_trx_type_id IS NULL ) THEN
+----      lv_token_value := gv_cust_trx_type_vd;
+----      RAISE get_trx_type_expt;
+----    END IF;
+----    --==============================================================
+----    --電気料相殺の取引タイプIDを取得
+----    --==============================================================    
+----    OPEN l_cust_trx_type_cur(
+----           gv_cust_trx_type_elec_cost -- 電気料相殺の取引タイプ
+----         );
+----    FETCH l_cust_trx_type_cur INTO gn_cust_trx_elec_id;
+----    CLOSE l_cust_trx_type_cur;
+----    IF( gn_cust_trx_elec_id IS NULL ) THEN
+----      lv_token_value := gv_cust_trx_type_elec_cost;
+----      RAISE get_trx_type_expt;
+----    END IF;
 --    --==============================================================
---    --VD未収入金売上の取引タイプIDを取得
---    --==============================================================    
---    OPEN l_cust_trx_type_cur(
+--    --VD未収入金売上の取引タイプ情報を取得
+--    --==============================================================
+--    OPEN g_cust_trx_type_cur(
 --           gv_cust_trx_type_vd -- VD未収入金売上の取引タイプ
 --         );
---    FETCH l_cust_trx_type_cur INTO gn_vd_trx_type_id;
---    CLOSE l_cust_trx_type_cur;
---    IF( gn_vd_trx_type_id IS NULL ) THEN
+--    FETCH g_cust_trx_type_cur INTO g_cust_trx_type_vd;
+--    CLOSE g_cust_trx_type_cur;
+--    IF( g_cust_trx_type_vd.cust_trx_type_id IS NULL ) THEN
 --      lv_token_value := gv_cust_trx_type_vd;
 --      RAISE get_trx_type_expt;
 --    END IF;
 --    --==============================================================
---    --電気料相殺の取引タイプIDを取得
---    --==============================================================    
---    OPEN l_cust_trx_type_cur(
---           gv_cust_trx_type_elec_cost -- 電気料相殺の取引タイプ
+--    --入金値引高の取引タイプ情報を取得
+--    --==============================================================
+--    OPEN g_cust_trx_type_cur(
+--           gv_cust_trx_type_gnrl -- 入金値引高の取引タイプ
 --         );
---    FETCH l_cust_trx_type_cur INTO gn_cust_trx_elec_id;
---    CLOSE l_cust_trx_type_cur;
---    IF( gn_cust_trx_elec_id IS NULL ) THEN
---      lv_token_value := gv_cust_trx_type_elec_cost;
+--    FETCH g_cust_trx_type_cur INTO g_cust_trx_type_gnrl;
+--    CLOSE g_cust_trx_type_cur;
+--    IF( g_cust_trx_type_gnrl.cust_trx_type_id IS NULL ) THEN
+--      lv_token_value := cv_cust_trx_type_gnrl;
 --      RAISE get_trx_type_expt;
 --    END IF;
+---- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
     --==============================================================
-    --VD未収入金売上の取引タイプ情報を取得
+    -- 取引タイプ情報を取得（フルVD（消化））
     --==============================================================
     OPEN g_cust_trx_type_cur(
-           gv_cust_trx_type_vd -- VD未収入金売上の取引タイプ
+           gv_ra_trx_type_f_digestion_vd
          );
-    FETCH g_cust_trx_type_cur INTO g_cust_trx_type_vd;
+    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_f_digestion_vd;
     CLOSE g_cust_trx_type_cur;
-    IF( g_cust_trx_type_vd.cust_trx_type_id IS NULL ) THEN
-      lv_token_value := gv_cust_trx_type_vd;
+    IF( g_ra_trx_type_f_digestion_vd.cust_trx_type_id IS NULL ) THEN
+      lv_token_value := gv_ra_trx_type_f_digestion_vd;
       RAISE get_trx_type_expt;
     END IF;
     --==============================================================
-    --入金値引高の取引タイプ情報を取得
+    -- 取引タイプ情報を取得（納品VD）
     --==============================================================
     OPEN g_cust_trx_type_cur(
-           gv_cust_trx_type_gnrl -- 入金値引高の取引タイプ
+           gv_ra_trx_type_delivery_vd
          );
-    FETCH g_cust_trx_type_cur INTO g_cust_trx_type_gnrl;
+    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_delivery_vd;
     CLOSE g_cust_trx_type_cur;
-    IF( g_cust_trx_type_gnrl.cust_trx_type_id IS NULL ) THEN
-      lv_token_value := cv_cust_trx_type_gnrl;
+    IF( g_ra_trx_type_delivery_vd.cust_trx_type_id IS NULL ) THEN
+      lv_token_value := gv_ra_trx_type_delivery_vd;
       RAISE get_trx_type_expt;
     END IF;
--- End   2009/04/24 Ver_1.6 T1_0736 M.Hiruta
+    --==============================================================
+    -- 取引タイプ情報を取得（消化VD）
+    --==============================================================
+    OPEN g_cust_trx_type_cur(
+           gv_ra_trx_type_digestion_vd
+         );
+    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_digestion_vd;
+    CLOSE g_cust_trx_type_cur;
+    IF( g_ra_trx_type_digestion_vd.cust_trx_type_id IS NULL ) THEN
+      lv_token_value := gv_ra_trx_type_digestion_vd;
+      RAISE get_trx_type_expt;
+    END IF;
+    --==============================================================
+    -- 取引タイプ情報を取得（一般店）
+    --==============================================================
+    OPEN g_cust_trx_type_cur(
+           gv_ra_trx_type_general
+         );
+    FETCH g_cust_trx_type_cur INTO g_ra_trx_type_general;
+    CLOSE g_cust_trx_type_cur;
+    IF( g_ra_trx_type_general.cust_trx_type_id IS NULL ) THEN
+      lv_token_value := gv_ra_trx_type_general;
+      RAISE get_trx_type_expt;
+    END IF;
+-- 2009/10/05 Ver.1.7 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
     --==============================================================
     --通貨コードの取得
     --==============================================================

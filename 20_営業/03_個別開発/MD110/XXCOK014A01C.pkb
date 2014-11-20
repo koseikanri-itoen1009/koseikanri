@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.0
+ * Version          : 3.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2009/07/16    2.3   K.Yamaguchi      [障害0000756] パフォーマンスを向上させるためSQLを修正
  *  2009/07/28    2.4   K.Yamaguchi      [障害0000879] パフォーマンスを向上させるためテーブルを追加
  *  2009/08/06    3.0   K.Yamaguchi      [障害0000940] パフォーマンスを向上させるためSQLを修正・修正履歴の削除
+ *  2009/10/02    3.1   K.Yamaguchi      [仕様変更I_E_566] 納品VD・消化VDを処理対象に追加
  *
  *****************************************************************************************/
   --==================================================
@@ -179,6 +180,10 @@ AS
   -- 業態（小分類）
   cv_gyotai_sho_24                 CONSTANT VARCHAR2(2)     := '24'; -- フルサービスVD（消化）
   cv_gyotai_sho_25                 CONSTANT VARCHAR2(2)     := '25'; -- フルサービスVD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi ADD START
+  cv_gyotai_sho_26                 CONSTANT VARCHAR2(2)     := '26'; -- 納品VD
+  cv_gyotai_sho_27                 CONSTANT VARCHAR2(2)     := '27'; -- 消化VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi ADD END
   -- 業態（中分類）
   cv_gyotai_tyu_vd                 CONSTANT VARCHAR2(2)     := '11'; -- VD
   -- 営業日取得関数・処理区分
@@ -322,11 +327,19 @@ AS
          , bill_avtb.tax_rate                          AS tax_rate                   -- 税率
          , bill_hcsu.tax_rounding_rule                 AS tax_rounding_rule          -- 端数処理区分
          , ( CASE
-               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+               WHEN ship_xca.business_low_type IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                  ship_xca.contractor_supplier_code
-               WHEN (     ( gyotai_chu_flvv.lookup_code   <> cv_gyotai_tyu_vd )
-                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--               WHEN (     ( gyotai_chu_flvv.lookup_code   <> cv_gyotai_tyu_vd )
+--                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+--                    )
+               WHEN (     ( ship_xca.business_low_type    NOT IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 ) )
+                      AND ( ship_xca.receiv_discount_rate IS NOT NULL                                   )
                     )
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                THEN
                  gv_vendor_dummy_code
                ELSE
@@ -358,7 +371,10 @@ AS
              END
            )                                           AS bm1_bm_payment_type        -- 【ＢＭ１】BM支払区分
          , ( CASE
-               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+               WHEN ship_xca.business_low_type IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                  ship_xca.bm_pay_supplier_code1
                ELSE
                  NULL
@@ -389,7 +405,10 @@ AS
              END
            )                                           AS bm2_bm_payment_type        -- 【ＢＭ２】BM支払区分
          , ( CASE
-               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--               WHEN gyotai_chu_flvv.lookup_code = cv_gyotai_tyu_vd THEN
+               WHEN ship_xca.business_low_type IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                  ship_xca.bm_pay_supplier_code2
                ELSE
                  NULL
@@ -478,9 +497,18 @@ AS
       AND gd_process_date        BETWEEN NVL( gyotai_chu_flvv.start_date_active, gd_process_date )
                                      AND NVL( gyotai_chu_flvv.end_date_active  , gd_process_date )
       AND gyotai_chu_flvv.lookup_code  = gyotai_sho_flvv.attribute1
-      AND (    ( gyotai_sho_flvv.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 ) )
-            OR ( gyotai_chu_flvv.lookup_code <> cv_gyotai_tyu_vd                      )
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--      AND (    ( gyotai_sho_flvv.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 ) )
+--            OR ( gyotai_chu_flvv.lookup_code <> cv_gyotai_tyu_vd                      )
+--          )
+      AND (    ( gyotai_sho_flvv.lookup_code IN(   cv_gyotai_sho_24
+                                                 , cv_gyotai_sho_25
+                                                 , cv_gyotai_sho_26
+                                                 , cv_gyotai_sho_27
+                                               )                     )
+            OR ( gyotai_chu_flvv.lookup_code <> cv_gyotai_tyu_vd     )
           )
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
       AND tax_flvv.lookup_type         = cv_lookup_type_02
       AND tax_flvv.lookup_code         = bill_xca.tax_div
       AND tax_flvv.enabled_flag        = cv_enable
@@ -625,7 +653,10 @@ AS
                      , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
                      , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
                      , xxcok_cust_bm_info          xcbi
-                  WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--                  WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+                  WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                     AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xt0c.ship_cust_code         = xcbi.cust_code(+)
@@ -850,7 +881,10 @@ AS
                      , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
                      , fnd_lookup_values           flv1  -- 容器群
                      , xxcok_cust_bm_info          xcbi
-                  WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--                  WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+                  WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                     AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
                     AND xseh.delivery_date         <= xt0c.closing_date
                     AND xt0c.ship_cust_code         = xcbi.cust_code(+)
@@ -997,7 +1031,10 @@ AS
        , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
        , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
        , xxcok_cust_bm_info          xcbi
-    WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--    WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+    WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
       AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
       AND xseh.delivery_date         <= xt0c.closing_date
       AND xt0c.ship_cust_code         = xcbi.cust_code(+)
@@ -1167,7 +1204,10 @@ AS
               , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
               , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
               , xxcok_cust_bm_info          xcbi
-           WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--           WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+           WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
              AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
              AND xseh.delivery_date         <= xt0c.closing_date
              AND xt0c.ship_cust_code         = xcbi.cust_code(+)
@@ -1399,7 +1439,10 @@ AS
                                                                      AND NVL( flv2.end_date_active,   gd_process_date )
                                        AND ROWNUM = 1
                         )
-                    AND xt0c.ship_gyotai_tyu              = cv_gyotai_tyu_vd
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--                    AND xt0c.ship_gyotai_tyu              = cv_gyotai_tyu_vd
+                    AND xt0c.ship_gyotai_sho             IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                     AND xmbc.calc_type                    = cv_calc_type_electricity_cost
                     AND xmbc.cust_code                    = xseh.ship_to_customer_code
                     AND xmbc.cust_code                    = xt0c.ship_cust_code
@@ -1669,7 +1712,10 @@ AS
        , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
        , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
        , xxcok_cust_bm_info          xcbi
-    WHERE xt0c.ship_gyotai_tyu       <> cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--    WHERE xt0c.ship_gyotai_tyu       <> cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
+    WHERE xt0c.ship_gyotai_sho   NOT IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
       AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
       AND xseh.delivery_date         <= xt0c.closing_date
       AND xt0c.ship_cust_code         = xcbi.cust_code(+)
@@ -2663,10 +2709,22 @@ END insert_xcbs;
     --==================================================
     -- 4.各連携ステータス
     --==================================================
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi ADD START
+    -- 支払条件が即時払い
+    IF( i_get_sales_data_rec.term_name = gv_instantly_term_name ) THEN
+      lv_cond_bm_interface_status := cv_xcbs_if_status_off;    -- 条件別販手販協 不要
+      lv_bm_interface_status      := cv_xcbs_if_status_off;    -- 販手残高       不要
+      lv_ar_interface_status      := cv_xcbs_if_status_off;    -- AR             不要
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi ADD END
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--    IF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
+--        AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
+--    ) THEN
     -- 販売実績情報の業態(小分類)が '25'：フルサービスVD、かつ業務日付が販売実績情報の計算対象期間(TO)と一致しない
-    IF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
-        AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
+    ELSIF(     ( i_get_sales_data_rec.ship_gyotai_sho  = cv_gyotai_sho_25 )
+           AND ( i_get_sales_data_rec.amount_fix_date <> gd_process_date  )
     ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
       lv_cond_bm_interface_status := cv_xcbs_if_status_off;    -- 条件別販手販協 不要
       lv_bm_interface_status      := cv_xcbs_if_status_no;     -- 販手残高       未処理
       lv_ar_interface_status      := cv_xcbs_if_status_off;    -- AR             不要
@@ -3962,7 +4020,12 @@ END insert_xt0c;
         IF( ld_bm_support_period_to_1 IS NULL ) THEN
           RAISE get_operating_day_expt;
         END IF;
-        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+        IF(    ( i_get_cust_data_rec.ship_gyotai_sho IN ( cv_gyotai_sho_26, cv_gyotai_sho_27 ) )
+            OR ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd                       )
+         ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
           ld_bm_support_period_from_1 := ld_bm_support_period_to_1;
         ELSE
           ld_bm_support_period_from_1 :=
@@ -4036,7 +4099,12 @@ END insert_xt0c;
         IF( ld_bm_support_period_to_2 IS NULL ) THEN
           RAISE get_operating_day_expt;
         END IF;
-        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+        IF(    ( i_get_cust_data_rec.ship_gyotai_sho IN ( cv_gyotai_sho_26, cv_gyotai_sho_27 ) )
+            OR ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd                       )
+         ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
           ld_bm_support_period_from_2 := ld_bm_support_period_to_2;
         ELSE
           ld_bm_support_period_from_2 := 
@@ -4110,7 +4178,12 @@ END insert_xt0c;
         IF( ld_bm_support_period_to_3 IS NULL ) THEN
           RAISE get_operating_day_expt;
         END IF;
-        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
+--        IF( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd ) THEN
+        IF(    ( i_get_cust_data_rec.ship_gyotai_sho IN ( cv_gyotai_sho_26, cv_gyotai_sho_27 ) )
+            OR ( i_get_cust_data_rec.ship_gyotai_tyu <> cv_gyotai_tyu_vd                       )
+         ) THEN
+-- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
           ld_bm_support_period_from_3 := ld_bm_support_period_to_3;
         ELSE
           ld_bm_support_period_from_3 := 
