@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A03R (body)
  * Description      : 直送受注例外データリスト
  * MD.050           : 直送受注例外データリスト MD050_COS_008_A03
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,9 @@ AS
  *                                       [E_本稼動_00275] 出荷実績未計上データ出荷実績数の取得先修正
  *  2009/12/17    1.12  S.Tomita         [E_本稼動_00275] (追加修正)例外1の出荷依頼情報の数量0データ対象化
  *  2010/01/14    1.13  N.Maeda          [E_本稼動_01090] 例外６取得ＳＱＬの追加
+ *  2010/03/25    1.14  N.Maeda          [E_本稼動_01548] 検収予定日違い対応
+ *                                       [E_本稼動_02019] PT対応
+ *  2010/04/09    1.14  M.Sano           [E_本稼動_02019] PT対応(追加)
  *
  *****************************************************************************************/
 --
@@ -238,6 +241,11 @@ AS
 -- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
   cv_user_lang              CONSTANT  fnd_lookup_values.language%TYPE := USERENV( 'LANG' ); -- 'JA'
 -- *********** 2009/11/26 1.11 N.Maeda MOD  END  *********** --
+-- ******* 2010/03/25 1.14 N.Maeda ADD START ****** --
+  cv_key_connect            CONSTANT  VARCHAR2(1)   := ',';
+  cv_date_type_1            CONSTANT  VARCHAR2(1)   := '1';
+  cv_date_type_2            CONSTANT  VARCHAR2(1)   := '2';
+-- ******* 2010/03/25 1.14 N.Maeda ADD  END  ****** --
 --
 --****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
   cn_ship_zero              CONSTANT  NUMBER        := 0;                    -- 出荷実績0
@@ -254,11 +262,74 @@ AS
   -- 帳票ワーク用テーブル型定義
   TYPE g_rpt_data_ttype IS TABLE OF xxcos_rep_direct_list%ROWTYPE INDEX BY BINARY_INTEGER;
 --
+-- ******* 2010/03/25 1.14 N.Maeda ADD START ****** --
+  TYPE g_sum_rpt_data_ttype IS TABLE OF xxcos_rep_direct_list%ROWTYPE INDEX BY VARCHAR2(2000);
+  TYPE g_work_type_rec IS RECORD
+    (
+         ooa1_deliver_requested_no    oe_order_lines_all.packing_instructions%TYPE
+        ,ooa1_item_code               oe_order_lines_all.ordered_item%TYPE
+        ,ooa1_order_quantity          NUMBER
+        ,ooa1_line_id                 oe_order_lines_all.line_id%TYPE
+        ,ooa2_line_no                 xxwsh_order_lines_all.order_line_number%TYPE
+        ,ooa2_arrival_date            xxwsh_order_headers_all.arrival_date%TYPE
+        ,ooa2_deliver_actual_quantity xxwsh_order_lines_all.shipped_quantity%TYPE
+        ,ooa2_uom_code                xxwsh_order_lines_all.uom_code%TYPE
+        ,data_type                    VARCHAR2(1)
+    );
+  TYPE g_work_tab IS TABLE OF g_work_type_rec INDEX BY PLS_INTEGER;
+--
+  TYPE g_work_check_type_rec IS RECORD
+    (
+         ooa1_deliver_requested_no    oe_order_lines_all.packing_instructions%TYPE
+        ,ooa1_item_code               oe_order_lines_all.ordered_item%TYPE
+        ,ooa1_order_quantity          NUMBER
+        ,ooa1_line_id                 oe_order_lines_all.line_id%TYPE
+        ,ooa1_schedule_dlv_date       oe_order_lines_all.request_date%TYPE
+        ,ooa1_min_schedule_inspect_date oe_order_lines_all.attribute4%TYPE
+        ,ooa1_max_schedule_inspect_date oe_order_lines_all.attribute4%TYPE
+        ,ooa2_line_no                 xxwsh_order_lines_all.order_line_number%TYPE
+        ,ooa2_arrival_date            xxwsh_order_headers_all.arrival_date%TYPE
+        ,ooa2_deliver_actual_quantity xxwsh_order_lines_all.shipped_quantity%TYPE
+        ,ooa2_uom_code                xxwsh_order_lines_all.uom_code%TYPE
+    );
+  TYPE g_work_check_tab IS TABLE OF g_work_check_type_rec INDEX BY PLS_INTEGER;
+--
+  TYPE g_work_get_data_rec_type_rec IS RECORD
+    (
+      base_code                xxcmm_cust_accounts.delivery_base_code%TYPE
+     ,base_name                hz_cust_accounts.account_name%TYPE
+     ,order_number             oe_order_headers_all.order_number%TYPE       -- 受注ﾍｯﾀﾞ.受注番号
+     ,order_line_no            oe_order_lines_all.line_number%TYPE          -- 受注明細.明細番号
+     ,line_no                  oe_order_lines_all.line_id%TYPE              -- 受注明細ｱﾄﾞｵﾝ.明細番号
+     ,deliver_requested_no     oe_order_lines_all.packing_instructions%TYPE -- 受注明細.梱包指示
+     ,deliver_from_whse_number oe_order_lines_all.subinventory%TYPE         -- 受注明細.保管場所
+     ,deliver_from_whse_name   mtl_secondary_inventories.description%TYPE   -- 保管場所.保管場所名称
+     ,customer_number          hz_cust_accounts.account_number%TYPE         -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ
+     ,customer_name            hz_cust_accounts.account_name%TYPE           -- 顧客ﾏｽﾀ.顧客名称
+     ,item_code                oe_order_lines_all.ordered_item%TYPE         -- 受注明細.受注品目
+     ,item_name                xxcmn_item_mst_b.item_short_name%TYPE        -- OPM品目ｱﾄﾞｵﾝ
+     ,schedule_dlv_date        oe_order_lines_all.request_date%TYPE         -- 受注明細.要求日
+     ,schedule_inspect_date    oe_order_lines_all.attribute4%TYPE           -- 受注明細.検収予定日
+     ,arrival_date             xxwsh_order_headers_all.arrival_date%TYPE    -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日
+     ,order_quantity           NUMBER                                       -- 受注明細.受注数量
+     ,deliver_actual_quantity  xxwsh_order_lines_all.shipped_quantity%TYPE  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量
+     ,uom_code                 oe_order_lines_all.order_quantity_uom%TYPE   -- 受注明細.受注単位
+     ,output_quantity          NUMBER                                       -- 差異数
+    );
+  TYPE g_work_get_data_rec_tab IS TABLE OF g_work_get_data_rec_type_rec INDEX BY PLS_INTEGER;
+-- ******* 2010/03/25 1.14 N.Maeda ADD  END  ****** --
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
   -- 帳票ワーク内部テーブル
   gt_rpt_data_tab        g_rpt_data_ttype;
+-- ******* 2010/03/15 1.15 N.Maeda ADD START ****** --
+  gt_work_tab_err_quantity        g_work_tab;
+  gt_work_tab_err_req_insp_date   g_work_check_tab;
+  gt_work_tab_err_item            g_work_get_data_rec_tab;
+  gt_rpt_data_sum_tab             g_sum_rpt_data_ttype;       --データサマリ用
+-- ******* 2010/03/15 1.15 N.Maeda ADD  END  ****** --
 --
   -- 初期取得
   gd_process_date        DATE;                     -- 業務日付
@@ -564,187 +635,2475 @@ AS
     lv_key_info      VARCHAR2(5000);
     ln_idx           NUMBER;
     ln_record_id     NUMBER;
+-- ************* 2010/03/12 1.15 N.Maeda ADD START ************* --
+    lv_key_index      VARCHAR2(2000);
+    lv_next_key_index VARCHAR2(2000);
+    lv_exi_data       VARCHAR2(1);
+    --
+    lt_order_number          oe_order_headers_all.order_number%TYPE;
+    lt_line_number           oe_order_lines_all.line_number%TYPE;
+    lt_subinventory_code     oe_order_lines_all.subinventory%TYPE;
+    lt_subinventory_name     mtl_secondary_inventories.description%TYPE;
+    lt_item_code             oe_order_lines_all.ordered_item%TYPE;
+    lt_item_name             xxcmn_item_mst_b.item_short_name%TYPE;
+    lt_schedule_dlv_date     oe_order_lines_all.request_date%TYPE;
+    lt_schedule_inspect_date oe_order_lines_all.attribute4%TYPE;
+    lt_delivery_base_code    xxcmm_cust_accounts.delivery_base_code%TYPE;
+    lt_base_name             hz_cust_accounts.account_name%TYPE;
+    lt_customer_number       hz_cust_accounts.account_number%TYPE;
+    lt_customer_name         hz_cust_accounts.account_name%TYPE;
+    lt_line_id               oe_order_lines_all.line_id%TYPE;
+    ln_order_quantity        NUMBER;
+-- ************* 2010/03/12 1.15 N.Maeda ADD  END  ************* --
 --
     -- *** ローカル・カーソル ***
 --
-    CURSOR data_cur
-    IS
-  --** ■例外１取得SQL
-      SELECT
-         ooa1.base_code                  base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-        ,ooa1.base_name                  base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-        ,ooa1.order_number               order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-        ,ooa1.order_line_no              order_line_no            -- 受注明細.明細番号           ：受注明細No
-        ,ooa2.line_no                    line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
--- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
---        ,ooa1.deliver_requested_no       deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
-        ,SUBSTRB(ooa1.deliver_requested_no, 1, 12) deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
--- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
-        ,ooa1.deliver_from_whse_number   deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
-        ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-        ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
-        ,ooa1.customer_name              customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
-        ,ooa1.item_name                  item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-        ,TRUNC( ooa1.schedule_dlv_date ) schedule_dlv_date        -- 受注ﾍｯﾀﾞ.着日               ：納品予定日
-        ,ooa1.schedule_inspect_date      schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-        ,ooa2.arrival_date               arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-        ,ooa1.order_quantity             order_quantity           -- 受注明細.受注数量           ：受注数
-        ,ooa2.deliver_actual_quantity    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
--- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
---        ,ooa1.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
-        ,ooa2.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
--- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
-        ,ooa1.order_quantity
-          - ooa2.deliver_actual_quantity output_quantity          -- 差異数
-        ,cv_data_class_1                 data_class               -- 例外データ１                ：データ区分
-      FROM
-        -- ****** 例外１営業サブクエリ：ooa1 ******
-        ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-             /*+
-               LEADING(ooha)
-               INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
-               INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
-               USE_NL( ooha hca  )
-               USE_NL( oola mtsi )
-             */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-             xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-            ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-            ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-            ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
-            ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
-            ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
-            ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-            ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
-            ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-            ,NVL( oola.attribute6, oola.ordered_item )
-                                        item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
-            ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-            ,oola.request_date          schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
-            ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-            ,ooas.order_quantity        order_quantity           -- 受注明細.受注数量           ：受注数
-            ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
-          FROM
-             oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-            ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
-            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-            ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
-            ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
-            ,ic_item_mst_b              iimb  -- OPM品目
-            ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
-            -- 最終歴用サブクエリ：ooal
-            ,( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-                 /*+
-                   LEADING( ooha )
-                   INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
-                   INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
-                   INDEX(xca xxcmm_cust_accounts_pk)
-                   USE_NL( ooha hca  )
-                   USE_NL( oola mtsi )
-                 */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
---MIYATA DELETE 明細IDでﾍｯﾀﾞ／明細共に特定できるので不要
---                  MAX(ooha.header_id)        header_id   -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID
---                 ,MAX(line_id)               line_id     -- 受注明細.受注明細ID
-                 MAX( line_id )              line_id     -- 受注明細.受注明細ID
---MIYATA DELETE
-               FROM
-                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
-                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
-                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
-                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
-               WHERE
-                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
---               AND  ooha.flow_status_code  =  cv_status_booked               -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
---                                                                             -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
---               AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
-               AND  ooha.flow_status_code  IN  ( cv_status_booked , cv_status_closed )    -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
-                                                                             -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
-               AND  oola.flow_status_code  <> cv_status_cancelled
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-               AND OOLA.ORG_ID                = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
-               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
-                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
-                                 FROM
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                    fnd_application    fa
---                                   ,fnd_lookup_types   flt
---                                   ,fnd_lookup_values  flv
-                                   fnd_lookup_values  flv
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                 WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                      fa.application_id           = flt.application_id
---                                 AND  flt.lookup_type             = flv.lookup_type
---                                 AND  fa.application_short_name   = cv_xxcos_short_name
---                                 AND  flv.lookup_type             = cv_no_inv_item_code
-                                      flv.lookup_type             = cv_no_inv_item_code
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                 AND  flv.start_date_active      <= gd_process_date
-                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                                 AND  flv.enabled_flag            = cv_yes_flg
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                 AND flv.language                = USERENV( 'LANG' )
-                                 AND flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
-                               )
-               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-               AND  xca.delivery_base_code     =  DECODE( iv_base_code
-                                                         ,cv_base_all
-                                                         ,xca.delivery_base_code
-                                                         ,iv_base_code )
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+-- ************* 2010/03/25 1.14 N.Maeda MOD START ************* --
+--    CURSOR data_cur
+--    IS
+--  --** ■例外１取得SQL
+--      SELECT
+--         ooa1.base_code                  base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--        ,ooa1.base_name                  base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--        ,ooa1.order_number               order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--        ,ooa1.order_line_no              order_line_no            -- 受注明細.明細番号           ：受注明細No
+--        ,ooa2.line_no                    line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+---- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
+----        ,ooa1.deliver_requested_no       deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--        ,SUBSTRB(ooa1.deliver_requested_no, 1, 12) deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+---- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
+--        ,ooa1.deliver_from_whse_number   deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
+--        ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--        ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
+--        ,ooa1.customer_name              customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--        ,ooa1.item_name                  item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--        ,TRUNC( ooa1.schedule_dlv_date ) schedule_dlv_date        -- 受注ﾍｯﾀﾞ.着日               ：納品予定日
+--        ,ooa1.schedule_inspect_date      schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--        ,ooa2.arrival_date               arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--        ,ooa1.order_quantity             order_quantity           -- 受注明細.受注数量           ：受注数
+--        ,ooa2.deliver_actual_quantity    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+---- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
+----        ,ooa1.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--        ,ooa2.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+---- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
+--        ,ooa1.order_quantity
+--          - ooa2.deliver_actual_quantity output_quantity          -- 差異数
+--        ,cv_data_class_1                 data_class               -- 例外データ１                ：データ区分
+--      FROM
+--        -- ****** 例外１営業サブクエリ：ooa1 ******
+--        ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--             /*+
+--               LEADING(ooha)
+--               INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--               INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--               USE_NL( ooha hca  )
+--               USE_NL( oola mtsi )
+--             */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--             xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--            ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--            ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--            ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
+--            ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+--            ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
+--            ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--            ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
+--            ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--            ,NVL( oola.attribute6, oola.ordered_item )
+--                                        item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
+--            ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--            ,oola.request_date          schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
+--            ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--            ,ooas.order_quantity        order_quantity           -- 受注明細.受注数量           ：受注数
+--            ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
+--          FROM
+--             oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--            ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
+--            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--            ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
+--            ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--            ,ic_item_mst_b              iimb  -- OPM品目
+--            ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--            -- 最終歴用サブクエリ：ooal
+--            ,( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--                 /*+
+--                   LEADING( ooha )
+--                   INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                   INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--                   INDEX(xca xxcmm_cust_accounts_pk)
+--                   USE_NL( ooha hca  )
+--                   USE_NL( oola mtsi )
+--                 */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+----MIYATA DELETE 明細IDでﾍｯﾀﾞ／明細共に特定できるので不要
+----                  MAX(ooha.header_id)        header_id   -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID
+----                 ,MAX(line_id)               line_id     -- 受注明細.受注明細ID
+--                 MAX( line_id )              line_id     -- 受注明細.受注明細ID
+----MIYATA DELETE
+--               FROM
+--                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--               WHERE
+--                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+----               AND  ooha.flow_status_code  =  cv_status_booked               -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+----                                                                             -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+----               AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+--               AND  ooha.flow_status_code  IN  ( cv_status_booked , cv_status_closed )    -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
+--                                                                             -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+--               AND  oola.flow_status_code  <> cv_status_cancelled
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--               AND OOLA.ORG_ID                = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                 FROM
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                    fnd_application    fa
+----                                   ,fnd_lookup_types   flt
+----                                   ,fnd_lookup_values  flv
+--                                   fnd_lookup_values  flv
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                      fa.application_id           = flt.application_id
+----                                 AND  flt.lookup_type             = flv.lookup_type
+----                                 AND  fa.application_short_name   = cv_xxcos_short_name
+----                                 AND  flv.lookup_type             = cv_no_inv_item_code
+--                                      flv.lookup_type             = cv_no_inv_item_code
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 AND  flv.start_date_active      <= gd_process_date
+--                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                                 AND  flv.enabled_flag            = cv_yes_flg
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                 AND flv.language                = USERENV( 'LANG' )
+--                                 AND flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                               )
+--               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+------ ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+----               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+------ ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+--               AND  ( ( oola.flow_status_code = cv_status_closed
+--                      AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+--                    OR ( oola.flow_status_code <> cv_status_closed
+--                      AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--                    )
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+--               GROUP BY
+--                  oola.packing_instructions
+--                 ,NVL( oola.attribute6, oola.ordered_item )
+--             ) ooal
+--             ,
+--             -- サマリー用サブクエリ：ooas
+--             ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--                  /*+
+--                    LEADING(ooha)
+--                    INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                    INDEX(ooha XXCOS_OE_ORDER_LINES_ALL_N23)
+--                    INDEX(xca xxcmm_cust_accounts_pk)
+--                    USE_NL( ooha hca  )
+--                    USE_NL( oola mtsi otta ottt )
+--                  */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--                  oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
+--                 ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
+--                 ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                        * CASE oola.order_quantity_uom
+--                          WHEN msib.primary_unit_of_measure THEN 1
+--                          WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+--                          ELSE NVL( xicv.conversion_rate, 0 )
+--                        END
+--                  ) AS order_quantity
+--               FROM
+--                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--                 ,mtl_system_items_b         msib        -- Disc品目（営業組織）
+--                 ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+--                 ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+--                 ,xxcos_item_conversions_v   xicv        -- 品目換算View
+--                 ,(
+--                   SELECT
+--                       flv.meaning      AS UOM_CODE
+--                     , flv.description  AS CNV_VALUE
+--                   FROM
+---- ********** 2009/11/26 1.11 N.Maeda DEL START ********** --
+----                     fnd_application   fa,
+----                     fnd_lookup_types  flt,
+---- ********** 2009/11/26 1.11 N.Maeda DEL  END  ********** --
+--                     fnd_lookup_values flv
+--                   WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                         fa.application_id         = flt.application_id
+----                     AND flt.lookup_type           = flv.lookup_type
+----                     AND fa.application_short_name = cv_xxcos_short_name
+----                     AND flv.enabled_flag          = cv_yes_flg
+----                     AND flv.language                = USERENV( 'LANG' )
+--                         flv.enabled_flag          = cv_yes_flg
+--                     AND flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                     AND flv.start_date_active    <= gd_process_date
+--                     AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
+--                     AND flv.lookup_type           = cv_weight_uom_cnv_mst
+--                 ) item_cnv
+--               WHERE
+--                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--               AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--               AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----               AND  ottt.language            = USERENV( 'LANG' )             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--               AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--               AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--               AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+--               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                 FROM
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                    fnd_application    fa
+----                                   ,fnd_lookup_types   flt
+----                                   ,fnd_lookup_values  flv
+--                                   fnd_lookup_values  flv
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                      fa.application_id           = flt.application_id
+----                                 AND  flt.lookup_type             = flv.lookup_type
+----                                 AND  fa.application_short_name   = cv_xxcos_short_name
+----                                 AND  flv.lookup_type             = cv_no_inv_item_code
+--                                      flv.lookup_type             = cv_no_inv_item_code
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 AND  flv.start_date_active      <= gd_process_date
+--                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                                 AND  flv.enabled_flag            = cv_yes_flg
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                 AND  flv.language                = USERENV( 'LANG' )
+--                                 AND  flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                               )
+--               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--                                                                             --     = Disc品目.品目コード
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
+--               AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
+--               AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
+--               AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
 ---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
---               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+--               AND  TRUNC(oola.request_date)   >= TRUNC(gd_trans_start_date)
 ---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
-               AND  ( ( oola.flow_status_code = cv_status_closed
-                      AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
-                    OR ( oola.flow_status_code <> cv_status_closed
-                      AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--               GROUP BY
+--                  oola.packing_instructions
+--                 ,NVL( oola.attribute6, oola.ordered_item )
+--             ) ooas
+--          WHERE
+--               ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--          AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--          AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--          AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--          AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+----          AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+----                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+----          AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+--          AND  ooha.flow_status_code  IN ( cv_status_booked ,cv_status_closed )   -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
+--          AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--          AND  oola.org_id                = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--          AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
+--          AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--          AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--          AND  xca.delivery_base_code  =  DECODE( iv_base_code
+--                                                 ,cv_base_all
+--                                                 ,xca.delivery_base_code
+--                                                 ,iv_base_code )
+--          AND  hca2.customer_class_code  =  cv_party_type_1               -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--          AND  hca2.account_number       =  xca.delivery_base_code        -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+--          AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no   -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
+--          AND  iimb.item_id              =  ximb.item_id                  -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--          AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--          AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+----MIYATA DELETE 明細IDでﾍｯﾀﾞ／明細共に特定できるので不要
+----          AND  ooha.header_id             = ooal.header_id                -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 最終歴用.受注ﾍｯﾀﾞID
+----MIYATA DELETE
+--          AND  oola.line_id               = ooal.line_id                  -- 受注明細.受注明細ID = 最終歴用.受注明細ID
+--          AND  oola.packing_instructions  = ooas.deliver_requested_no     -- 例外１営業サブクエリ.出荷依頼No = サマリー用サブクエリ.出荷依頼No
+--          AND  NVL( oola.attribute6, oola.ordered_item ) = ooas.item_code -- 例外１営業サブクエリ.品目コード = サマリー用サブクエリ.品目コード
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+------ ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+----          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+------ ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+--          AND  ( ( oola.flow_status_code = cv_status_closed
+--                 AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+--               OR ( oola.flow_status_code <> cv_status_closed
+--                 AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--               )
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+--        )
+--        ooa1,
+--        -- ****** 例外１生産サブクエリ：ooa2 ******
+--        ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--             /*+
+--               INDEX(xca xxcmm_cust_accounts_pk)
+--               USE_NL( xoha xola hca xca )
+--             */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--             xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--            ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+---- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+--            ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+----            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+---- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
+--            ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+---- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
+--            ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+---- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
+--          FROM
+--             xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--            ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--          WHERE
+--               xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--          AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+--          AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--          AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+---- ********** 2009/12/17 1.12 S.Tomita MOD START ********** --
+----****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
+----          AND  NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+--          AND  xola.shipped_quantity IS NOT NULL
+----****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
+---- ********** 2009/12/17 1.12 S.Tomita MOD START ********** --
+----MIYATA MODIFY
+----          AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--          AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+----MIYATA MODIFY
+--          AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--          AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                    ,cv_base_all
+--                                                    ,xca.delivery_base_code
+--                                                    ,iv_base_code )
+--        )
+--        ooa2
+--      WHERE
+--           ooa1.deliver_requested_no =   ooa2.deliver_requested_no -- 例外１営業サブクエリ.出荷依頼No = 例外１生産サブクエリ.出荷依頼No
+--      AND  ooa1.item_code            =   ooa2.item_code            -- 例外１営業サブクエリ.品目コード = 例外１生産サブクエリ.品目コード
+--      AND                                                          -- 例外１営業サブクエリ.受注数 <> 例外１生産サブクエリ.出荷実績数
+--        (  ooa1.order_quantity                 <>  ooa2.deliver_actual_quantity
+--         OR                                                        -- 例外１営業サブクエリ.納品予定日 <> 例外１生産サブクエリ.着日
+--           TRUNC( ooa1.schedule_dlv_date )     <>  ooa2.arrival_date
+--         OR
+--           (                                                       -- 例外１営業サブクエリ.納品予定日 =  例外１生産サブクエリ.着日
+--             ( TRUNC( ooa1.schedule_dlv_date ) =   ooa2.arrival_date )
+--             AND
+--             ( ooa1.schedule_inspect_date IS NOT NULL )            -- 例外１営業サブクエリ.検収予定日 IS NOT NULL
+--             AND                                                   -- 例外１営業サブクエリ.検収予定日 < 例外１生産サブクエリ.着日
+--             ( TO_DATE( ooa1.schedule_inspect_date, cv_yyyymmddhhmiss ) < ooa2.arrival_date )
+--           )
+--        )
+----
+--      UNION
+----
+--  --** ■例外２取得SQL
+--      SELECT
+--         ooa1.base_code                  base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--        ,ooa1.base_name                  base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--        ,ooa1.order_number               order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--        ,ooa1.order_line_no              order_line_no            -- 受注明細.明細番号           ：受注明細No
+--        ,ooa2.line_no                    line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+---- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
+----        ,ooa1.deliver_requested_no       deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--        ,SUBSTRB(ooa1.deliver_requested_no, 1, 12) deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+---- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
+--        ,ooa1.deliver_from_whse_number   deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
+--        ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--        ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
+--        ,ooa1.customer_name              customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--        ,ooa1.item_name                  item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--        ,TRUNC( ooa1.schedule_dlv_date ) schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
+--        ,ooa1.schedule_inspect_date      schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--        ,ooa2.arrival_date               arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--        ,ooa3.order_quantity             order_quantity           -- 受注明細.受注数量           ：受注数
+--        ,ooa2.deliver_actual_quantity    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+---- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
+----        ,ooa1.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--        ,ooa2.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+---- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
+--        ,ooa3.order_quantity
+--          - ooa2.deliver_actual_quantity output_quantity          -- 差異数
+--        ,cv_data_class_2                 data_class               -- 例外データ２                ：データ区分
+--      FROM
+--        -- ****** 例外２営業サブクエリ：ooa1 ******
+--        ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--             /*+
+--               LEADING(ooha)
+--               INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--               INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--               INDEX(mtsi mtl_secondary_inventories_u1 )
+--               USE_NL( ooha hca  )
+--               USE_NL( oola mtsi  )
+--             */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--             xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--            ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--            ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--            ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
+--            ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+--            ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
+--            ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--            ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
+--            ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--            ,NVL( oola.attribute6, oola.ordered_item )
+--                                        item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
+--            ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--            ,oola.request_date          schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
+--            ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--            ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
+--            ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
+--          FROM
+--             oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--            ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
+--            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--            ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
+--            ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--            ,ic_item_mst_b              iimb  -- OPM品目
+--            ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--            ,( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--                 /*+
+--                   LEADING(ooha)
+--                   INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                   INDEX(MTSI MTL_SECONDARY_INVENTORIES_U1 )
+--                   INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--                   USE_NL( ooha hca  )
+--                   USE_NL( oola mtsi  )
+--                 */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+----MIYATA DELETE 明細IDでﾍｯﾀﾞ／明細共に特定できるので不要
+----                  MAX( ooha.header_id )      header_id   -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID
+----                 ,MAX( line_id )             line_id     -- 受注明細.受注明細ID
+--                 MAX( line_id )             line_id     -- 受注明細.受注明細ID
+----MIYATA DELTE
+--               FROM
+--                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--               WHERE
+--                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+----               AND  ooha.flow_status_code  =  cv_status_booked               -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+----                                                                             -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+----               AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+--               AND  ooha.flow_status_code  IN  ( cv_status_booked ,cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
+--               AND  oola.flow_status_code  <> cv_status_cancelled            -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--               AND oola.org_id                = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                 FROM
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                    fnd_application    fa
+----                                   ,fnd_lookup_types   flt
+----                                   ,fnd_lookup_values  flv
+--                                   fnd_lookup_values  flv
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                      fa.application_id           = flt.application_id
+----                                 AND  flt.lookup_type             = flv.lookup_type
+----                                 AND  fa.application_short_name   = cv_xxcos_short_name
+----                                 AND  flv.lookup_type             = cv_no_inv_item_code
+--                                      flv.lookup_type             = cv_no_inv_item_code
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 AND  flv.start_date_active      <= gd_process_date
+--                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                                 AND  flv.enabled_flag            = cv_yes_flg
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                 AND  flv.language                = USERENV( 'LANG' )
+--                                 AND  flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                               )
+--               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+------ ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+----               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+------ ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+--               AND  ( ( oola.flow_status_code = cv_status_closed
+--                      AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+--                    OR ( oola.flow_status_code <> cv_status_closed
+--                      AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--                    )
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+--               GROUP BY
+--                  oola.packing_instructions
+--                 ,NVL( oola.attribute6, oola.ordered_item )
+--             )
+--             ooal   -- 最終歴用サブクエリ
+--          WHERE
+--               ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--          AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--          AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--          AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--          AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+----          AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+----                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+----          AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+--          AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--          AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--          AND oola.org_id                = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--          AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
+--          AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--          AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID   = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--          AND  xca.delivery_base_code  =  DECODE( iv_base_code
+--                                                 ,cv_base_all
+--                                                 ,xca.delivery_base_code
+--                                                 ,iv_base_code )
+--          AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--          AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+--          AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
+--          AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--          AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--          AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+----MIYATA DELETE 明細IDでﾍｯﾀﾞ／明細共に特定できるので不要
+----          AND  ooha.header_id             = ooal.header_id               -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 最終歴用ｻﾌﾞｸｴﾘ.受注ﾍｯﾀﾞID
+----MIYATA DELETE
+--          AND  oola.line_id               = ooal.line_id                 -- 受注明細.受注明細ID = 最終歴用ｻﾌﾞｸｴﾘ.受注明細ID
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+------ ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+----          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+------ ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+--          AND  ( ( oola.flow_status_code = cv_status_closed
+--                 AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+--               OR ( oola.flow_status_code <> cv_status_closed
+--                 AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--               )
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+--        )
+--        ooa1,
+--        -- ****** 例外２生産サブクエリ：ooa2 ******
+--        ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--             /*+
+--             USE_NL( xoha xola hca xca )
+--             */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--             xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--            ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+---- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+--            ,xola.request_item_code       item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+----            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+---- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
+--            ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+---- ******************** 2009/12/11 1.12 N.Maeda MOD START ****************************** --
+------MIYATA MODIFY 出荷実績済みではないので数量に変更
+------            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+----            ,xola.quantity              deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.数量          ：出荷実績数
+--            ,NVL( xola.shipped_quantity , cn_ship_zero ) deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+---- ******************** 2009/12/11 1.12 N.Maeda MOD  END  ****************************** --
+---- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
+--            ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+---- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
+----MIYATA MODIFY
+--          FROM
+--             xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--            ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--          WHERE
+--               xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--                                                                       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ NOT IN( 出荷実績計上済 , 取消 )
+--          AND  xoha.req_status      NOT IN ( cv_h_add_status_04, cv_h_add_status_99 )
+--          AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--          AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+----MIYATA MODIFY
+----          AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--          AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+----MIYATA MODIFY
+--          AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+--          AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                    ,cv_base_all
+--                                                    ,xca.delivery_base_code
+--                                                    ,iv_base_code )
+--        )
+--        ooa2,
+--        -- ****** 例外２数量サブクエリ：ooa3 ******
+--        ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--             /*+
+--               LEADING(ooha)
+--               INDEX(ooha xxcos_oe_order_headers_all_n11)
+--               USE_NL( oola hca xca msib xicv ottt otta mtsi )
+--             */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--             oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
+--            ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
+--            ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                   * CASE oola.order_quantity_uom
+--                     WHEN msib.primary_unit_of_measure THEN 1
+--                     WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+--                     ELSE NVL( xicv.conversion_rate, 0 )
+--                   END
+--             ) AS order_quantity
+--          FROM
+--             oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--            ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--            ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--            ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--            ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--            ,mtl_system_items_b         msib        -- Disc品目（営業組織）
+--            ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+--            ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+--            ,xxcos_item_conversions_v   xicv        -- 品目換算View
+--            ,(
+--              SELECT
+--                  flv.meaning      AS UOM_CODE
+--                , flv.description  AS CNV_VALUE
+--              FROM
+---- ********** 2009/11/26 1.11 N.Maeda DEL START ********** --
+----                fnd_application   fa,
+----                fnd_lookup_types  flt,
+---- ********** 2009/11/26 1.11 N.Maeda DEL  END  ********** --
+--                fnd_lookup_values flv
+--              WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                    fa.application_id         = flt.application_id
+----                AND flt.lookup_type           = flv.lookup_type
+----                AND fa.application_short_name = cv_xxcos_short_name
+----                AND flv.enabled_flag          = cv_yes_flg
+----                AND flv.language              = USERENV( 'LANG' )
+--                    flv.enabled_flag          = cv_yes_flg
+--                AND flv.language              = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                AND flv.start_date_active    <= gd_process_date
+--                AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
+--                AND flv.lookup_type           = cv_weight_uom_cnv_mst
+--            ) item_cnv
+--          WHERE
+--               ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--          AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--          AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--          AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----          AND  ottt.language            = USERENV( 'LANG' )             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--          AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--          AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--          AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--          AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                        -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--          AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--          AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--          AND  oola.org_id                = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--          AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--          AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                              'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                            FROM
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                               fnd_application    fa
+----                              ,fnd_lookup_types   flt
+----                              ,fnd_lookup_values  flv
+--                              fnd_lookup_values  flv
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                            WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                 fa.application_id           = flt.application_id
+----                            AND  flt.lookup_type             = flv.lookup_type
+----                            AND  fa.application_short_name   = cv_xxcos_short_name
+--                                 flv.lookup_type             = cv_no_inv_item_code
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                            AND  flv.start_date_active      <= gd_process_date
+--                            AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                            AND  flv.enabled_flag            = cv_yes_flg
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                            AND  flv.language                = USERENV( 'LANG' )
+--                            AND  flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                            AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                          )
+--          AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--          AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                        -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--          AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                    ,cv_base_all
+--                                                    ,xca.delivery_base_code
+--                                                    ,iv_base_code )
+--                                                                        -- NVL(受注明細.子コード,受注明細.受注品目)
+--                                                                        --     = Disc品目.品目コード
+--          AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
+--          AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--          AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
+--          AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
+--          AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+--          GROUP BY
+--             oola.packing_instructions
+--            ,NVL( oola.attribute6, oola.ordered_item )
+--        )
+--        ooa3
+--      WHERE
+--           ooa1.deliver_requested_no       =  ooa2.deliver_requested_no -- 例外２営業サブクエリ.出荷依頼No = 例外２生産サブクエリ.出荷依頼No
+--      AND  ooa1.item_code                  =  ooa2.item_code            -- 例外２営業サブクエリ.品目コード = 例外２生産サブクエリ.品目コード
+--      AND  ooa1.deliver_requested_no       =  ooa3.deliver_requested_no -- 例外２営業サブクエリ.出荷依頼No = 例外２数量サブクエリ.出荷依頼No
+--      AND  ooa1.item_code                  =  ooa3.item_code            -- 例外２営業サブクエリ.品目コード = 例外２数量サブクエリ.品目コード
+--      AND  TRUNC( ooa1.schedule_dlv_date ) <  gd_process_date           -- 例外２営業サブクエリ.納品予定日(要求日) < A.1取得の業務日付
+----
+--      UNION
+----
+--  --** ■例外３－１取得SQL
+--      SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--         /*+
+--           LEADING(ooha)
+--           INDEX(ooha xxcos_oe_order_headers_all_n11)
+--           INDEX(oola xxcos_oe_order_lines_all_n23)
+--           USE_NL( ooha hca  )
+--           USE_NL( oola mtsi ottt otta )
+--         */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--         xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--        ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--        ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--        ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
+--        ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+---- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
+----        ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+--        ,SUBSTRB(oola.packing_instructions, 1, 12) deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+---- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
+--        ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
+--        ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--        ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
+--        ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--        ,NVL( oola.attribute6, oola.ordered_item )
+--                                    item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
+--        ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--        ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
+--        ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--        ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+----****************************** 2009/05/26 1.4 T.Kitajima MOD START ******************************--
+----        ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
+--        ,oola.ordered_quantity * 
+--          DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                                    order_quantity           -- 受注明細.受注数量           ：受注数
+----****************************** 2009/05/26 1.4 T.Kitajima MOD  END  ******************************--
+--        ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--        ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
+--        ,oola.ordered_quantity      output_quantity          -- 差異数
+--        ,cv_data_class_3            data_class               -- 例外データ３－１            ：データ区分
+--      FROM
+--         oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--        ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
+--        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--        ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
+--        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--        ,ic_item_mst_b              iimb  -- OPM品目
+--        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+----****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
+--        ,oe_transaction_types_tl    ottt  -- 受注取引タイプ（摘要）
+--        ,oe_transaction_types_all   otta  -- 受注取引タイプマスタ
+----****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
+--      WHERE
+--           ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--      AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+----****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
+--      AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--      AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--      AND  ottt.language            = cv_user_lang           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+----****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
+--      AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--      AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--      AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+----      AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+----                                                                  -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+----      AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+--      AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--      AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--      AND  oola.org_id                = gn_org_id
+------ *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--      AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
+--      AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                          'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                        FROM
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                           fnd_application    fa
+----                          ,fnd_lookup_types   flt
+----                          ,fnd_lookup_values  flv
+--                          fnd_lookup_values  flv
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                        WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+-----                             fa.application_id           = flt.application_id
+-----                        AND  flt.lookup_type             = flv.lookup_type
+-----                        AND  fa.application_short_name   = cv_xxcos_short_name
+-----                        AND  flv.lookup_type             = cv_no_inv_item_code
+--                             flv.lookup_type             = cv_no_inv_item_code
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                        AND  flv.start_date_active      <= gd_process_date
+--                        AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                        AND  flv.enabled_flag            = cv_yes_flg
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                        AND  flv.language                = USERENV( 'LANG' )
+--                        AND  flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                        AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                     )
+--      AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--      AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                  -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--      AND  xca.delivery_base_code  =  DECODE( iv_base_code
+--                                             ,cv_base_all
+--                                             ,xca.delivery_base_code
+--                                             ,iv_base_code )
+--      AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--      AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+--      AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
+--      AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--      AND  TRUNC( ximb.start_date_active )                   <= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--      AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+--      AND NOT EXISTS(
+--              SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--               /*+
+--                 USE_NL( xoha xola hca xca mtsi )
+--               */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--                'X'                          exists_flag -- EXISTSﾌﾗｸﾞ
+--              FROM
+--                 xxwsh_order_headers_all     xoha        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--                ,xxwsh_order_lines_all       xola        -- 受注明細ｱﾄﾞｵﾝ
+--                ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+--                ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
+--              WHERE
+--                   xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--              AND  xoha.req_status           <>  cv_h_add_status_99        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ <> 取消
+--              AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--              AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+----MIYATA MODIFY
+----              AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--              AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+----MIYATA MODIFY
+--              AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+--              AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                        ,cv_base_all
+--                                                        ,xca.delivery_base_code
+--                                                        ,iv_base_code )
+--              AND  oola.packing_instructions =   xoha.request_no   -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
+--                                                                   -- NVL(受注明細.子コード,受注明細.受注品目) = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼品目
+---- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+--              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
+----              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
+---- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
+--              )
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+------ ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+----      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+------ ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+--        AND  ( ( oola.flow_status_code = cv_status_closed
+--               AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+--             OR ( oola.flow_status_code <> cv_status_closed
+--               AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--             )
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+----
+--      UNION
+----
+--  --** ■例外３－２取得SQL
+--      SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--        /*+
+--          ORDERED
+--          INDEX(haou hr_all_organizaion_units_pk)
+--          USE_NL( xoha xola iwm mil haou hca xca hca2 iimb ximb )
+--        */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--         xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--        ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--        ,NULL                       order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--        ,NULL                       order_line_no            -- 受注明細.明細番号           ：受注明細No
+--        ,xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--        ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--        ,xoha.deliver_from          deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
+---- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
+----        ,xilv.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--        ,mil.description            deliver_from_whse_name
+---- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
+--        ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
+--        ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+---- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+--        ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+----        ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+---- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
+--        ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--        ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
+--        ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--        ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--        ,0                          order_quantity           -- 受注明細.受注数量           ：受注数
+--        ,NVL( xola.shipped_quantity, 0 )
+--                                    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--        ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--        ,0 - NVL( xola.shipped_quantity, 0 )
+--                                    output_quantity          -- 差異数
+--        ,cv_data_class_4            data_class               -- 例外データ３－２            ：データ区分
+--      FROM
+---- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
+----         xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+----        ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+----        ,xxcmn_item_locations2_v    xilv  -- OPM保管場所ﾏｽﾀ
+----        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+----        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+----        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+----        ,ic_item_mst_b              iimb  -- OPM品目
+----        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--         xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--        ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--        ,inv.mtl_item_locations        mil
+--        ,hr.hr_all_organization_units  haou
+--        ,gmi.ic_whse_mst               iwm
+--        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--        ,ic_item_mst_b              iimb  -- OPM品目
+--        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+---- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
+--      WHERE
+--           xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--      AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+--      AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--      AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+----****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
+--      AND NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+----****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
+---- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
+----      AND  xoha.deliver_from         =   xilv.segment1             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所 = OPM保管場所ﾏｽﾀ.保管倉庫コード
+----      AND  xilv.date_from                            <= gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 <= 業務日付
+----      AND  TRUNC( NVL( xilv.date_to, gd_max_date ) ) >= gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 >= 業務日付
+--      AND     iwm.mtl_organization_id = haou.organization_id
+--      AND     haou.organization_id    = mil.organization_id
+--      AND     XOHA.DELIVER_FROM   = mil.segment1
+--      AND     haou.date_from         <= gd_process_date
+--      AND     TRUNC( NVL( haou.date_to, gd_process_date ) ) >= gd_process_date
+---- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
+----MIYATA MODIFY
+----      AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--      AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+----MIYATA MODIFY
+--      AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+--      AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                ,cv_base_all
+--                                                ,xca.delivery_base_code
+--                                                ,iv_base_code )
+--      AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--      AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+---- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+--      AND  xola.request_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
+----      AND  xola.shipping_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = OPM品目.品目ｺｰﾄﾞ
+---- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
+--      AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--      AND  TRUNC( ximb.start_date_active )                   <= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--      AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+--      AND NOT EXISTS(
+--              SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--                /*+
+--                USE_NL( ooha oola hca xca mtsi )
+--                */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--                'X'                         exists_flag -- EXISTSﾌﾗｸﾞ
+--              FROM
+--                 oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--                ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--                ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--              WHERE
+--                   ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--              AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--              AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--              AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--              AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                            -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--              AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--              AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+--              AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--              AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                  'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                FROM
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                   fnd_application    fa
+----                                  ,fnd_lookup_types   flt
+----                                  ,fnd_lookup_values  flv
+--                                  fnd_lookup_values  flv
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+-----                                     fa.application_id           = flt.application_id
+-----                                AND  flt.lookup_type             = flv.lookup_type
+-----                                AND  fa.application_short_name   = cv_xxcos_short_name
+-----                                AND  flv.lookup_type             = cv_no_inv_item_code
+--                                     flv.lookup_type             = cv_no_inv_item_code
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                AND  flv.start_date_active      <= gd_process_date
+--                                AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                                AND  flv.enabled_flag            = cv_yes_flg
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                AND  flv.language                = USERENV( 'LANG' )
+--                                AND  flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                              )
+--              AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--              AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                            -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--              AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                        ,cv_base_all
+--                                                        ,xca.delivery_base_code
+--                                                        ,iv_base_code )
+--              AND  xoha.request_no            =  oola.packing_instructions -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
+---- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+--                                                                           -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = NVL(受注明細.子コード,受注明細.受注品目)
+--              AND  xola.request_item_code    =  NVL( oola.attribute6, oola.ordered_item )
+----                                                                           -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = NVL(受注明細.子コード,受注明細.受注品目)
+----              AND  xola.shipping_item_code    =  NVL( oola.attribute6, oola.ordered_item )
+---- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
+--              )
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--      AND  TRUNC(xoha.arrival_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+----
+--      UNION
+----
+--  --** ■例外４取得SQL
+--      SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--         /*+
+--           ORDERD
+--           INDEX( haou hr_all_organizaion_units_pk)
+--           USE_NL( XOHA xola iwm mil haou hca xca hca2 iimb ximb )
+--         */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--         xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--        ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--        ,NULL                       order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--        ,NULL                       order_line_no            -- 受注明細.明細番号           ：受注明細No
+--        ,xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--        ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--        ,xoha.deliver_from          deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
+---- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
+----        ,xilv.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--        ,mil.description            deliver_from_whse_name 
+---- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
+--        ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
+--        ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+---- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+--        ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+----        ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
+---- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
+--        ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--        ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
+--        ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--        ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--        ,0                          order_quantity           -- 受注明細.受注数量           ：受注数
+--        ,NVL( xola.shipped_quantity, 0 )
+--                                    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--        ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--        ,0 - NVL( xola.shipped_quantity, 0 )
+--                                    output_quantity          -- 差異数
+--        ,cv_data_class_5            data_class               -- 例外データ４                ：データ区分
+--      FROM
+---- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
+----         xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+----        ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+----        ,xxcmn_item_locations2_v    xilv  -- OPM保管場所ﾏｽﾀ
+----        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+----        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+----        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+----        ,ic_item_mst_b              iimb  -- OPM品目
+----        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--         xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--        ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--        ,inv.mtl_item_locations        mil
+--        ,hr.hr_all_organization_units  haou
+--        ,gmi.ic_whse_mst               iwm
+--        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--        ,ic_item_mst_b              iimb  -- OPM品目
+--        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+---- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
+--      WHERE
+--           xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--      AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+--      AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--      AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+----****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
+--      AND NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+----****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
+---- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
+----      AND  xoha.deliver_from         =   xilv.segment1             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所 = OPM保管場所ﾏｽﾀ.保管倉庫コード
+----      AND  xilv.date_from                             <=  gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 <= 業務日付
+----      AND  TRUNC( NVL( xilv.date_to, gd_max_date ) )  >=  gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 >= 業務日付
+--        AND     iwm.mtl_organization_id = haou.organization_id
+--        AND     haou.organization_id    = mil.organization_id
+--        AND     XOHA.DELIVER_FROM   = mil.segment1
+--        AND     haou.date_from         <= gd_process_date
+--        AND     TRUNC( NVL( haou.date_to, gd_process_date ) ) >= gd_process_date
+---- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
+----MIYATA MODIFY
+----      AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--      AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+----MIYATA MODIFY
+--      AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+--      AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                ,cv_base_all
+--                                                ,xca.delivery_base_code
+--                                                ,iv_base_code )
+--      AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--      AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+---- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
+--      AND  xola.request_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
+----      AND  xola.shipping_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = OPM品目.品目ｺｰﾄﾞ
+---- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
+--      AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--      AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--      AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+--      AND NOT EXISTS(
+--              SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--                 /*+
+--                   USE_NL( ooha oola hca xca mtsi )
+--                 */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--                'X'                       exists_flag -- EXISTSﾌﾗｸﾞ
+--              FROM
+--                 oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--                ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--                ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--              WHERE
+--                   ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--              AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--              AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--              AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--              AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                            -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--              AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--              AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+--              AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--              AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                  'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                FROM
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                   fnd_application    fa
+----                                  ,fnd_lookup_types   flt
+----                                  ,fnd_lookup_values  flv
+--                                  fnd_lookup_values  flv
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                     fa.application_id           = flt.application_id
+----                                AND  flt.lookup_type             = flv.lookup_type
+----                                AND  fa.application_short_name   = cv_xxcos_short_name
+----                                AND  flv.lookup_type             = cv_no_inv_item_code
+--                                     flv.lookup_type             = cv_no_inv_item_code
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                AND  flv.start_date_active      <= gd_process_date
+--                                AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                                AND  flv.enabled_flag            = cv_yes_flg
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                                AND  flv.language                = USERENV( 'LANG' )
+--                                AND  flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                                AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                              )
+--              AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--              AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                            -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--              AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                        ,cv_base_all
+--                                                        ,xca.delivery_base_code
+--                                                        ,iv_base_code )
+--              AND  xoha.request_no            =  oola.packing_instructions  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
+--              )
+---- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+--      AND  TRUNC(xoha.arrival_date)  >= TRUNC(gd_trans_start_date)
+---- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+----
+--      UNION
+----
+--  --** ■例外５取得SQL
+--      SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--         /*+
+--           LEADING(ooha)
+--           INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--           INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--           USE_NL( ooha hca )
+--           USE_NL( oola mtsi ottt otta )
+--         */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--         xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--        ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--        ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--        ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
+--        ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+---- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
+----        ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+--        ,SUBSTRB(oola.packing_instructions, 1, 12) deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+---- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
+--        ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
+--        ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--        ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
+--        ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--        ,NVL( oola.attribute6, oola.ordered_item )
+--                                    item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
+--        ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--        ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
+--        ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--        ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+----****************************** 2009/05/26 1.4 T.Kitajima MOD START ******************************--
+----        ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
+--        ,oola.ordered_quantity * 
+--          DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                                    order_quantity           -- 受注明細.受注数量           ：受注数
+----****************************** 2009/05/26 1.4 T.Kitajima MOD  END  ******************************--
+--        ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--        ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
+--        ,oola.ordered_quantity      output_quantity          -- 差異数
+--        ,cv_data_class_6            data_class               -- 例外データ５                ：データ区分
+--      FROM
+--         oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--        ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
+--        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--        ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
+--        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--        ,ic_item_mst_b              iimb  -- OPM品目
+--        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+----****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
+--        ,oe_transaction_types_tl    ottt  -- 受注取引タイプ（摘要）
+--        ,oe_transaction_types_all   otta  -- 受注取引タイプマスタ
+----****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
+--      WHERE
+--           ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--      AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--      AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+----****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
+--      AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--      AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--      AND  ottt.language            = cv_user_lang           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+----****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
+--      AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--      AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+----      AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+----                                                                  -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+----      AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
+--      AND  ooha.flow_status_code  IN  ( cv_status_booked , cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CANCELLED' )
+--      AND  oola.flow_status_code  <>  cv_status_cancelled         -- 受注明細.ｽﾃｰﾀｽ <> 'CLOSED'
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--      AND  oola.org_id                = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--      AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
+--      AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                          'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                        FROM
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+----                           fnd_application    fa
+----                          ,fnd_lookup_types   flt
+----                          ,fnd_lookup_values  flv
+--                          fnd_lookup_values  flv
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                        WHERE
+---- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
+-----                             fa.application_id           = flt.application_id
+-----                        AND  flt.lookup_type             = flv.lookup_type
+-----                        AND  fa.application_short_name   = cv_xxcos_short_name
+-----                        AND  flv.lookup_type             = cv_no_inv_item_code
+--                             flv.lookup_type             = cv_no_inv_item_code
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                        AND  flv.start_date_active      <= gd_process_date
+--                        AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                        AND  flv.enabled_flag            = cv_yes_flg
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+----                        AND  flv.language                = USERENV( 'LANG' )
+--                        AND  flv.language                = cv_user_lang
+---- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+--                        AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                     )
+--      AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--      AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                  -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--      AND  xca.delivery_base_code  =  DECODE( iv_base_code
+--                                             ,cv_base_all
+--                                             ,xca.delivery_base_code
+--                                             ,iv_base_code )
+--      AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--      AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+--      AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
+--      AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--      AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--      AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+--      AND NOT EXISTS(
+--              SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--                /*+
+--                  USE_NL( xoha xola hca xca )
+--                */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--                'X'                          exists_flag -- EXISTSﾌﾗｸﾞ
+--              FROM
+--                 xxwsh_order_headers_all     xoha        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--                ,xxwsh_order_lines_all       xola        -- 受注明細ｱﾄﾞｵﾝ
+--                ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+--                ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
+--              WHERE
+--                   xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--              AND  xoha.req_status           <>  cv_h_add_status_99        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ <> 取消
+--              AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--              AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+----MIYATA MODIFY
+----              AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--              AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+----MIYATA MODIFY
+--              AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID = 顧客追加情報ﾏｽﾀ.顧客ID
+--              AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                        ,cv_base_all
+--                                                        ,xca.delivery_base_code
+--                                                        ,iv_base_code )
+--              AND  oola.packing_instructions =   xoha.request_no           -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
+--              )
+---- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
+------ ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
+----      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
+------ ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+--      AND  ( ( oola.flow_status_code = cv_status_closed
+--             AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+--           OR ( oola.flow_status_code <> cv_status_closed
+--             AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--           )
+---- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+----
+--      UNION
+----
+--      -- 例外６取得用ＳＱＬ
+--      SELECT
+--         ooa1.base_code                  base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--        ,ooa1.base_name                  base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--        ,ooa1.order_number               order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--        ,ooa1.order_line_no              order_line_no            -- 受注明細.明細番号           ：受注明細No
+--        ,ooa2.line_no                    line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--        ,SUBSTRB(ooa1.deliver_requested_no, 1, 12) deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--        ,ooa1.deliver_from_whse_number   deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
+--        ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--        ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
+--        ,ooa1.customer_name              customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--        ,ooa1.item_name                  item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--        ,TRUNC( ooa1.schedule_dlv_date ) schedule_dlv_date        -- 受注ﾍｯﾀﾞ.着日               ：納品予定日
+--        ,ooa1.schedule_inspect_date      schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--        ,ooa2.arrival_date               arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--        ,ooa1.order_quantity             order_quantity           -- 受注明細.受注数量           ：受注数
+--        ,ooa2.deliver_actual_quantity    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--        ,ooa2.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--        ,ooa1.order_quantity
+--          - ooa2.deliver_actual_quantity output_quantity          -- 差異数
+--        ,cv_data_class_7                 data_class               -- 例外データ６                ：データ区分
+--      FROM
+--        -- ****** 例外６営業サブクエリ：ooa1 ******
+--        ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--             /*+
+--               LEADING(ooha)
+--               USE_NL( ooha hca  )
+--               USE_NL( oola mtsi  )
+--               INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--             */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--             xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--            ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--            ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--            ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
+--            ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+--            ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
+--            ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--            ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
+--            ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--            ,NVL( oola.attribute6, oola.ordered_item )
+--                                        item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
+--            ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--            ,oola.request_date          schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
+--            ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--            ,ooas.order_quantity        order_quantity           -- 受注明細.受注数量           ：受注数
+--            ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
+--          FROM
+--             oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--            ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
+--            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--            ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
+--            ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--            ,ic_item_mst_b              iimb  -- OPM品目
+--            ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--            -- 最終歴用サブクエリ：ooal
+--            ,( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--                 /*+
+--                   LEADING(ooha)
+--                   USE_NL( ooha hca )
+--                   USE_NL( oola mtsi )
+--                   INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                 */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--                 MAX( line_id )              line_id     -- 受注明細.受注明細ID
+--               FROM
+--                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--               WHERE
+--                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--               AND  ooha.flow_status_code  IN  ( cv_status_booked , cv_status_closed )    -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
+--                                                                             -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--               AND  oola.org_id            = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--               AND  oola.flow_status_code  <> cv_status_cancelled
+--               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                 FROM
+--                                   fnd_lookup_values  flv
+--                                 WHERE
+--                                      flv.lookup_type             = cv_no_inv_item_code
+--                                 AND  flv.start_date_active      <= gd_process_date
+--                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                                 AND  flv.enabled_flag            = cv_yes_flg
+--                                 AND flv.language                = cv_user_lang
+--                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                               )
+--               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
+--               AND  ( ( oola.flow_status_code = cv_status_closed
+--                      AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+--                    OR ( oola.flow_status_code <> cv_status_closed
+--                      AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--                    )
+--               GROUP BY
+--                  oola.packing_instructions
+--                 ,NVL( oola.attribute6, oola.ordered_item )
+--                 ,TRUNC( oola.request_date )
+--             ) ooal
+--             ,
+--             -- サマリー用サブクエリ：ooas
+--             ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--                  /*+
+--                    LEADING(ooha)
+--                    USE_NL(ooha hca )
+--                    USE_NL(oola mtsi )
+--                    INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                  */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--                  oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
+--                 ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
+--                 ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                        * CASE oola.order_quantity_uom
+--                          WHEN msib.primary_unit_of_measure THEN 1
+--                          WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+--                          ELSE NVL( xicv.conversion_rate, 0 )
+--                        END
+--                  ) AS order_quantity
+--                 ,TRUNC( oola.request_date ) request_date
+--               FROM
+--                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--                 ,mtl_system_items_b         msib        -- Disc品目（営業組織）
+--                 ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+--                 ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+--                 ,xxcos_item_conversions_v   xicv        -- 品目換算View
+--                 ,(
+--                   SELECT
+--                       flv.meaning      AS UOM_CODE
+--                     , flv.description  AS CNV_VALUE
+--                   FROM
+--                     fnd_lookup_values flv
+--                   WHERE
+--                         flv.enabled_flag          = cv_yes_flg
+--                     AND flv.language                = cv_user_lang
+--                     AND flv.start_date_active    <= gd_process_date
+--                     AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
+--                     AND flv.lookup_type           = cv_weight_uom_cnv_mst
+--                 ) item_cnv
+--               WHERE
+--                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--               AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--               AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+--               AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--               AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--               AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--               AND  oola.org_id            = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                 FROM
+--                                   fnd_lookup_values  flv
+--                                 WHERE
+--                                      flv.lookup_type             = cv_no_inv_item_code
+--                                 AND  flv.start_date_active      <= gd_process_date
+--                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                                 AND  flv.enabled_flag            = cv_yes_flg
+--                                 AND  flv.language                = cv_user_lang
+--                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                               )
+--               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--                                                                             --     = Disc品目.品目コード
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
+--               AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
+--               AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
+--               AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
+--               AND  TRUNC(oola.request_date)   >= TRUNC(gd_trans_start_date)
+--               GROUP BY
+--                  oola.packing_instructions
+--                 ,NVL( oola.attribute6, oola.ordered_item )
+--                 ,TRUNC( oola.request_date )
+--             ) ooas
+--          WHERE
+--               ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--          AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--          AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--          AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--          AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+----                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
+--          AND  ooha.flow_status_code  IN ( cv_status_booked ,cv_status_closed )   -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
+--          AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--          AND  oola.org_id             = gn_org_id
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--          AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
+--          AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--          AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--          AND  xca.delivery_base_code  =  DECODE( iv_base_code
+--                                                 ,cv_base_all
+--                                                 ,xca.delivery_base_code
+--                                                 ,iv_base_code )
+--          AND  hca2.customer_class_code  =  cv_party_type_1               -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--          AND  hca2.account_number       =  xca.delivery_base_code        -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+--          AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no   -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
+--          AND  iimb.item_id              =  ximb.item_id                  -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--          AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--          AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+--          AND  oola.line_id               = ooal.line_id                  -- 受注明細.受注明細ID = 最終歴用.受注明細ID
+--          AND  oola.packing_instructions  = ooas.deliver_requested_no     -- 例外６営業サブクエリ.出荷依頼No = サマリー用サブクエリ.出荷依頼No
+--          AND  NVL( oola.attribute6, oola.ordered_item ) = ooas.item_code -- 例外６営業サブクエリ.品目コード = サマリー用サブクエリ.品目コード
+--          AND  ( ( oola.flow_status_code = cv_status_closed
+--                 AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+--               OR ( oola.flow_status_code <> cv_status_closed
+--                 AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+--               )
+--          AND TRUNC(oola.request_date) = ooas.request_date
+--          AND ooas.order_quantity     != cn_order_sum_zero                -- 受注数量0
+--        )
+--        ooa1,
+--        -- ****** 例外６生産サブクエリ：ooa2 ******
+--        ( SELECT
+---- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--            /*+
+--              USE_NL( xoha xola hca xca )
+--            */
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--             xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--            ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--            ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--            ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--            ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--          FROM
+--             xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--            ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--          WHERE
+--               xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--          AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+--          AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--          AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+--          AND  xola.shipped_quantity IS NOT NULL
+--          AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+--          AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--          AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                    ,cv_base_all
+--                                                    ,xca.delivery_base_code
+--                                                    ,iv_base_code )
+--        )
+--        ooa2
+--      WHERE
+--           ooa1.deliver_requested_no =   ooa2.deliver_requested_no -- 例外６営業サブクエリ.出荷依頼No = 例外６生産サブクエリ.出荷依頼No
+--      AND  ooa1.item_code            =   ooa2.item_code            -- 例外６営業サブクエリ.品目コード = 例外６生産サブクエリ.品目コード
+--      AND                                                          -- 例外６営業サブクエリ.受注数 <> 例外６生産サブクエリ.出荷実績数
+--        (  ooa1.order_quantity                 <>  ooa2.deliver_actual_quantity
+--         OR                                                        -- 例外６営業サブクエリ.納品予定日 <> 例外６生産サブクエリ.着日
+--           TRUNC( ooa1.schedule_dlv_date )     <>  ooa2.arrival_date
+--         OR
+--           (                                                       -- 例外６営業サブクエリ.納品予定日 =  例外６生産サブクエリ.着日
+--             ( TRUNC( ooa1.schedule_dlv_date ) =   ooa2.arrival_date )
+--             AND
+--             ( ooa1.schedule_inspect_date IS NOT NULL )            -- 例外６営業サブクエリ.検収予定日 IS NOT NULL
+--             AND                                                   -- 例外６営業サブクエリ.検収予定日 < 例外６生産サブクエリ.着日
+--             ( TO_DATE( ooa1.schedule_inspect_date, cv_yyyymmddhhmiss ) < ooa2.arrival_date )
+--           )
+--        )
+---- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+--      ;
+--
+-- 2010/04/09 Ver.1.14 Del M.Sano Start
+--     --** ■例外１取得SQL
+--     -- 受注-出荷実績間の数量エラーデータ
+--     CURSOR quantity_excep_cur
+--     IS
+--     SELECT   ooa1.deliver_requested_no      ooa1_deliver_requested_no       -- 受注：出荷依頼No
+--             ,ooa1.item_code                 ooa1_item_code                  -- 受注：品目コード
+--             ,ooa1.order_quantity            ooa1_order_quantity             -- 受注：受注数
+--             ,ooa1.line_id                   ooa1_line_id                    -- 受注：最終履歴_受注明細ID
+--             ,ooa2.line_no                   ooa2_line_no                    -- 出荷：明細番号
+--             ,ooa2.arrival_date              ooa2_arrival_date               -- 出荷：着荷日
+--             ,ooa2.deliver_actual_quantity   ooa2_deliver_actual_quantity    -- 出荷：実績数
+--             ,ooa2.uom_code                  ooa2_uom_code                   -- 出荷：単位
+--             ,cv_date_type_1                 date_type
+--     FROM
+--               (
+--               /* 受注部分のみ */
+--               SELECT
+--                  /*+
+--                    --LEADING(ooha)
+--                    --INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                    --INDEX(ooha XXCOS_OE_ORDER_LINES_ALL_N23)
+--                    --INDEX(xca xxcmm_cust_accounts_pk)
+--                    --USE_NL( ooha hca  )
+--                    --USE_NL( oola mtsi otta ottt )
+--                    LEADING(ooha)
+--                    INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                    INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--                    USE_NL( ooha hca  )
+--                    USE_NL( oola mtsi )
+--                  */
+--                  oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
+--                 ,NVL( oola.attribute6,  oola.ordered_item )   item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
+--                 ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                        * CASE oola.order_quantity_uom
+--                          WHEN msib.primary_unit_of_measure THEN 1
+--                          WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+--                          ELSE NVL( xicv.conversion_rate, 0 )
+--                        END
+--                  )  AS order_quantity
+--                 ,MAX(oola.line_id)  line_id
+--               FROM
+--                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--                 ,mtl_system_items_b         msib        -- Disc品目（営業組織）
+--                 ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+--                 ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+--                 ,xxcos_item_conversions_v  xicv         -- 品目換算View
+--                 ,(
+--                   SELECT
+--                       flv.meaning      AS UOM_CODE
+--                     , flv.description  AS CNV_VALUE
+--                   FROM
+--                     fnd_lookup_values flv
+--                   WHERE
+--                         flv.enabled_flag          = cv_yes_flg
+--                     AND flv.language              = cv_user_lang
+--                     AND flv.start_date_active    <= gd_process_date
+--                     AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
+--                     AND flv.lookup_type           = cv_weight_uom_cnv_mst
+--                 ) item_cnv                              -- 重量換算マスタ
+--               WHERE
+--                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--               AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--               AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+--               AND  ottt.language            = cv_user_lang                  -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--               AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--               AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+--               AND  oola.org_id       =  gn_org_id                           -- 受注明細.組織ID = A-1取得の営業単位
+--               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                 FROM
+--                                   applsys.fnd_lookup_values  flv
+--                                 WHERE
+--                                      flv.lookup_type             = cv_no_inv_item_code
+--                                 AND  flv.start_date_active      <= gd_process_date
+--                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                                 AND  flv.enabled_flag            = cv_yes_flg
+--                                 AND  flv.language                = cv_user_lang
+--                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                               )
+--               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE(ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ,'ALL',顧客追加情報ﾏｽﾀ.納品拠点,ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+----                                                         ,cv_base_all
+----                                                         ,xca.delivery_base_code
+----                                                         ,iv_base_code )
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--                                                                             --     = Disc品目.品目コード
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
+--               AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
+--               AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
+--               AND  oola.order_quantity_uom    = item_cnv.uom_code(+)        -- 受注明細.受注単位 =重量換算マスタ. 単位コード(+)
+--               AND  ( ( oola.flow_status_code = cv_status_closed
+--                      AND oola.request_date >= to_date(gd_target_closed_month))
+--                    OR ( oola.flow_status_code <> cv_status_closed
+--                      AND oola.request_date >= to_date(gd_trans_start_date))
+--                    )
+--               GROUP BY
+--                  oola.packing_instructions
+--                 ,NVL( oola.attribute6, oola.ordered_item )
+--                 ,TRUNC( oola.request_date )
+--               ) ooa1
+--              ,(
+--               /* 生産部分のみ */
+--               SELECT
+--                  /*+
+--                    INDEX(xca xxcmm_cust_accounts_pk)
+--                    USE_NL( xoha xola hca xca )
+--                  */
+--                  xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--                 ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--                 ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--                 ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--                 ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--                 ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--               FROM
+--                  xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--                 ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--                 ,hz_cust_accounts              hca   -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--               WHERE
+--                    xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--               AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+--               AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--               AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+--               AND  xola.shipped_quantity IS NOT NULL
+--               AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+--               AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----               AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE(ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ,'ALL',顧客追加情報ﾏｽﾀ.納品拠点,ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+----                                                         ,cv_base_all
+----                                                         ,xca.delivery_base_code
+----                                                         ,iv_base_code )
+--               AND xoha.arrival_date >= to_date(gd_trans_start_date)
+--               ) ooa2
+--     WHERE
+--          ooa1.deliver_requested_no =   ooa2.deliver_requested_no     -- 例外１営業サブクエリ.出荷依頼No =  例外１生産サブクエリ.出荷依頼No
+--     AND  ooa1.item_code            =   ooa2.item_code                -- 例外１営業サブクエリ.品目コード =  例外１生産サブクエリ.品目コード
+--     AND  ooa1.order_quantity      !=   ooa2.deliver_actual_quantity  -- 例外１営業サブクエリ.受注数    !=  例外１生産サブクエリ.出荷実績数
+----     ;
+----
+--     UNION ALL
+----
+-- 2010/04/09 Ver.1.14 Del M.Sano End
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--     --** ■例外1-２取得SQL(旧例外２)
+--     -- 出荷実績ステータスエラー(納品日経過データのステータスエラー)
+--     CURSOR req_status_excep_cur
+--     IS
+--     SELECT   ooa1.deliver_requested_no      ooa1_deliver_requested_no
+    -- =========================================================================
+    --** [拠点・ALL指定]例外１
+    --** ①、②に該当するエラーデータ抽出SQL
+    --**   ① 納品日経過データで出荷実績ステータスが"出荷実績計上済"以外
+    --**   ② 受注数量の(出荷依頼No・品目単位での)サマリが"0"
+    -- =========================================================================
+     CURSOR quantity_excep_cur
+     IS
+    -- ======================================================
+    -- [拠点・ALL指定]例外１
+    -- ① 納品日経過データで出荷実績ステータスが"出荷実績計上済"以外
+    -- ======================================================
+     SELECT   /*+
+                LEADING( ooa2 )
+                USE_NL( ooa2 ooa1 )
+              */
+              ooa1.deliver_requested_no      ooa1_deliver_requested_no
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+             ,ooa1.item_code                 ooa1_item_code
+             ,ooa1.order_quantity            ooa1_order_quantity
+             ,ooa1.line_id                   ooa1_line_id
+             ,ooa2.line_no                   ooa2_line_no
+             ,ooa2.arrival_date              ooa2_arrival_date
+             ,ooa2.deliver_actual_quantity   ooa2_deliver_actual_quantity
+             ,ooa2.uom_code                  ooa2_uom_code
+             ,cv_date_type_2                 date_type
+     FROM
+       -- ****** 例外２数量サブクエリ：ooa1 ******
+       ( SELECT
+            /*+
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--            --  LEADING(ooha)
+--            --  INDEX(ooha xxcos_oe_order_headers_all_n11)
+--            --  USE_NL( oola hca xca msib xicv ottt otta mtsi )
+--               LEADING(ooha)
+--               INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--               INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--               INDEX(mtsi mtl_secondary_inventories_u1 )
+--               USE_NL( ooha hca  )
+--               USE_NL( oola mtsi  )
+               LEADING( oola )
+               INDEX( xca xxcmm_cust_accounts_n15 )
+               USE_NL( oola item_cnv ) 
+               USE_NL( oola otta ottt )
+               USE_NL( ooha hca )
+               USE_NL( oola mtsi )
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+            */
+            oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
+           ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
+           ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+                  * CASE oola.order_quantity_uom
+                    WHEN msib.primary_unit_of_measure THEN 1
+                    WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+                    ELSE NVL( xicv.conversion_rate, 0 )
+                  END
+            ) AS order_quantity
+           ,MAX(oola.line_id)  line_id
+         FROM
+            oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+           ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+           ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+           ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+           ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+           ,mtl_system_items_b         msib        -- Disc品目（営業組織）
+           ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+           ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+           ,xxcos_item_conversions_v   xicv        -- 品目換算View
+           ,(
+             SELECT
+                 flv.meaning      AS UOM_CODE
+               , flv.description  AS CNV_VALUE
+             FROM
+               fnd_lookup_values flv
+             WHERE
+                   flv.enabled_flag          = cv_yes_flg
+               AND flv.language              = cv_user_lang
+               AND flv.start_date_active    <= gd_process_date
+               AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
+               AND flv.lookup_type           = cv_weight_uom_cnv_mst
+           ) item_cnv
+         WHERE
+              ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+         AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+         AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+         AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+         AND  ottt.language            = cv_user_lang                  -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+         AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+         AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+         AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+                                                                       -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+         AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+         AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+         AND  oola.org_id                = gn_org_id
+         AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+         AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+                             'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+                           FROM
+                             fnd_lookup_values  flv
+                           WHERE
+                                flv.lookup_type             = cv_no_inv_item_code
+                           AND  flv.start_date_active      <= gd_process_date
+                           AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+                           AND  flv.enabled_flag            = cv_yes_flg
+                           AND  flv.language                = cv_user_lang
+                           AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+                         )
+         AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+         AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+                                                                       -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+               AND  ( ( iv_base_code = cv_base_all )
+                      OR
+                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
                     )
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
-               GROUP BY
-                  oola.packing_instructions
-                 ,NVL( oola.attribute6, oola.ordered_item )
-             ) ooal
-             ,
-             -- サマリー用サブクエリ：ooas
-             ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+--         AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                   ,cv_base_all
+--                                                   ,xca.delivery_base_code
+--                                                   ,iv_base_code )
+                                                                       -- NVL(受注明細.子コード,受注明細.受注品目)
+                                                                       --     = Disc品目.品目コード
+         AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
+         AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
+                                                                            -- NVL(受注明細.子コード,受注明細.受注品目)
+         AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
+         AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
+         AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
+         AND  ( ( oola.flow_status_code = cv_status_closed
+                AND oola.request_date >= to_date(gd_target_closed_month))
+              OR ( oola.flow_status_code <> cv_status_cancelled
+                AND oola.request_date >= to_date(gd_trans_start_date))
+                AND oola.request_date <  gd_process_date
+              )
+         GROUP BY
+            oola.packing_instructions
+           ,NVL( oola.attribute6, oola.ordered_item )
+       )
+       ooa1,
+       -- ****** 例外２生産サブクエリ：ooa2 ******
+       ( SELECT
+            /*+
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--            USE_NL( xoha xola hca xca )
+              LEADING( xoha hca xca )
+              INDEX( xca xxcmm_cust_accounts_n15 )
+              USE_NL(xoha hca xca )
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+            */
+            xola.order_line_number           line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+           ,xoha.request_no                  deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+           ,xola.request_item_code           item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+           ,xoha.arrival_date                arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+           ,NVL( xola.shipped_quantity , 0 ) deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+           ,xola.uom_code                    uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+         FROM
+            xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+           ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+           ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+           ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+         WHERE
+              xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+                                                                      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ NOT IN( 出荷実績計上済 , 取消 )
+         AND  xoha.req_status      NOT IN ( cv_h_add_status_04, cv_h_add_status_99 )
+         AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+         AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+         AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+         AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+               AND  ( ( iv_base_code = cv_base_all )
+                      OR
+                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+                    )
+--         AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                   ,cv_base_all
+--                                                   ,xca.delivery_base_code
+--                                                   ,iv_base_code )
+         AND nvl(xoha.arrival_date,xoha.schedule_arrival_date) >= to_date(gd_trans_start_date)
+       )
+       ooa2
+     WHERE
+          ooa1.deliver_requested_no       =  ooa2.deliver_requested_no -- 例外２営業サブクエリ.出荷依頼No = 例外２生産サブクエリ.出荷依頼No
+     AND  ooa1.item_code                  =  ooa2.item_code            -- 例外２営業サブクエリ.品目コード = 例外２生産サブクエリ.品目コード
+-- 2010/04/09 Ver.1.14 Del M.Sano Start
+----
+--     UNION ALL
+----
+--     -- 例外１-３納品日違い情報
+--     SELECT   ooa1.deliver_requested_no      ooa1_deliver_requested_no
+--             ,ooa1.item_code                 ooa1_item_code
+--             ,ooa1.order_quantity            ooa1_order_quantity
+--             ,ooa1.line_id                   ooa1_line_id
+--             ,ooa2.line_no                   ooa2_line_no
+--             ,ooa2.arrival_date              ooa2_arrival_date
+--             ,ooa2.deliver_actual_quantity   ooa2_deliver_actual_quantity
+--             ,ooa2.uom_code                  ooa2_uom_code
+--             ,cv_date_type_1                 date_type
+--     FROM
+--               (
+--               /* 受注部分のみ */
+--               SELECT
+--                  /*+
+--                   -- LEADING(ooha)
+--                    --ORDERD
+--                    --INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                    --INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--                    --INDEX(xca xxcmm_cust_accounts_pk)
+--                    --USE_NL( ooha hca xca )
+--                    --USE_NL( oola mtsi otta ottt item_cnv xicv msib )
+--                    LEADING(ooha)
+--                    INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                    INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--                    USE_NL( ooha hca  )
+--                    USE_NL( oola mtsi )
+--                  */
+--                  oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
+--                 ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
+--                 ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                        * CASE oola.order_quantity_uom
+--                          WHEN msib.primary_unit_of_measure THEN 1
+--                          WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+--                          ELSE NVL( xicv.conversion_rate, 0 )
+--                        END
+--                  ) AS order_quantity
+--                 ,TRUNC( oola.request_date )     schedule_dlv_date
+--                 ,MAX(oola.line_id)              line_id
+--               --  ,oola.attribute4                schedule_inspect_date
+--               FROM
+--                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                 ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts      xca         -- 顧客追加情報ﾏｽﾀ
+--                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--                 ,mtl_system_items_b         msib        -- Disc品目（営業組織）
+--                 ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+--                 ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+--                 ,xxcos_item_conversions_v  xicv        -- 品目換算View
+--                 ,(
+--                   SELECT
+--                       flv.meaning      AS UOM_CODE
+--                     , flv.description  AS CNV_VALUE
+--                   FROM
+--                     applsys.fnd_lookup_values flv
+--                   WHERE
+--                         flv.enabled_flag          = cv_yes_flg
+--                     AND flv.language                = cv_user_lang
+--                     AND flv.start_date_active    <= sysdate
+--                     AND sysdate          <= NVL( flv.end_date_active, gd_max_date )
+--                     AND flv.lookup_type           = cv_weight_uom_cnv_mst
+--                 ) item_cnv
+--               WHERE
+--                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--               AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--               AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+--               AND  ottt.language            = cv_user_lang                  -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = cv_user_lang
+--               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( cv_status_booked,cv_status_closed )
+--               AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--               AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+--               AND  oola.org_id       =  gn_org_id                           -- 受注明細.組織ID = A-1取得の営業単位
+--               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                   /*+
+--                                   USE_NL ( flv )
+--                                   */
+--                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                 FROM
+--                                   applsys.fnd_lookup_values  flv
+--                                 WHERE
+--                                      flv.lookup_type             = cv_no_inv_item_code
+--                                 AND  flv.start_date_active      <= sysdate
+--                                 AND  sysdate            <= NVL( flv.end_date_active, gd_max_date )
+--                                 AND  flv.enabled_flag            = cv_yes_flg
+--                                 AND  flv.language                = cv_user_lang
+--                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                               )
+--               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE(cv_base_all,cv_base_all,ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+----                                                         ,cv_base_all
+----                                                         ,xca.delivery_base_code
+----                                                         ,iv_base_code )
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--                                                                             --     = Disc品目.品目コード
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
+--               AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
+--               AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
+--               AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
+--               AND  ( ( oola.flow_status_code = cv_status_closed
+--                      AND oola.request_date >= to_date(gd_target_closed_month))
+--                    OR ( oola.flow_status_code <> cv_status_closed
+--                      AND oola.request_date >= to_date(gd_trans_start_date))
+--                    )
+--               GROUP BY
+--                  oola.packing_instructions
+--                 ,NVL( oola.attribute6, oola.ordered_item )
+--                 ,TRUNC( oola.request_date )
+--                 --,oola.attribute4
+--               ) ooa1
+--              ,(
+--               /* 生産部分のみ */
+--               SELECT
+--                  /*+
+--                    INDEX(xca xxcmm_cust_accounts_pk)
+--                    USE_NL( xoha xola hca xca )
+--                  */
+--                  xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--                 ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--                 ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--                 ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--                 ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--                 ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--               FROM
+--                  xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--                 ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--                 ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--               WHERE
+--                    xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--               AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+--               AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = cv_yes_flg
+--               AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = cv_no_flg
+--               AND  xola.shipped_quantity IS NOT NULL
+--               AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+--               AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----               AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE(cv_base_all,cv_base_all,ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+----                                                         ,cv_base_all
+----                                                         ,xca.delivery_base_code
+----                                                         ,iv_base_code )
+--               AND xoha.arrival_date >= to_date(gd_trans_start_date)
+--               ) ooa2
+--     WHERE
+--          ooa1.deliver_requested_no =   ooa2.deliver_requested_no      -- 営業サブクエリ.出荷依頼No =  生産サブクエリ.出荷依頼No
+--     AND  ooa1.item_code            =   ooa2.item_code                 -- 営業サブクエリ.品目コード =  生産サブクエリ.品目コード
+--     AND  ooa1.order_quantity      !=   0                              -- 営業サブクエリ.受注数    !=  0
+--     AND  TRUNC( ooa1.schedule_dlv_date )  !=  ooa2.arrival_date       -- 営業サブクエリ.納品予定日!= 生産サブクエリ.着日
+--     --
+-- 2010/04/09 Ver.1.14 Del M.Sano End
+--     UNION ALL
+--     --
+--     -- 例外１-４納品日-検収日逆転エラー
+--     SELECT   ooa1.deliver_requested_no      ooa1_deliver_requested_no
+--             ,ooa1.item_code                 ooa1_item_code
+--             ,ooa1.order_quantity            ooa1_order_quantity
+--             ,ooa1.line_id                   ooa1_line_id
+--             ,ooa2.line_no                   ooa2_line_no
+--             ,ooa2.arrival_date              ooa2_arrival_date
+--             ,ooa2.deliver_actual_quantity   ooa2_deliver_actual_quantity
+--             ,ooa2.uom_code                  ooa2_uom_code
+--             ,cv_date_type_1                 date_type
+--     FROM
+--               (
+--               /* 受注部分のみ */
+--               SELECT
+--                  /*+
+--                   -- LEADING(ooha)
+--                    ORDERD
+--                    INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                    INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--                    INDEX(xca xxcmm_cust_accounts_pk)
+--                    USE_NL( ooha hca xca )
+--                    USE_NL( oola mtsi otta ottt item_cnv xicv msib )
+--                  */
+--                  oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
+--                 ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
+--                 ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                        * CASE oola.order_quantity_uom
+--                          WHEN msib.primary_unit_of_measure THEN 1
+--                          WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+--                          ELSE NVL( xicv.conversion_rate, 0 )
+--                        END
+--                  ) AS order_quantity
+--                 ,TRUNC( oola.request_date )     schedule_dlv_date
+--                 ,MAX(oola.line_id)              line_id
+--                 ,oola.attribute4                schedule_inspect_date
+--               FROM
+--                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--                 ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts      xca         -- 顧客追加情報ﾏｽﾀ
+--                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--                 ,mtl_system_items_b         msib        -- Disc品目（営業組織）
+--                 ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+--                 ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+--                 ,xxcos_item_conversions_v  xicv        -- 品目換算View
+--                 ,(
+--                   SELECT
+--                       flv.meaning      AS UOM_CODE
+--                     , flv.description  AS CNV_VALUE
+--                   FROM
+--                     fnd_lookup_values flv
+--                   WHERE
+--                         flv.enabled_flag          = cv_yes_flg
+--                     AND flv.language                = cv_user_lang
+--                     AND flv.start_date_active    <= sysdate
+--                     AND sysdate          <= NVL( flv.end_date_active, gd_max_date )
+--                     AND flv.lookup_type           = cv_weight_uom_cnv_mst
+--                 ) item_cnv
+--               WHERE
+--                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--               AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--               AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+--               AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = cv_user_lang
+--               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( cv_status_booked,cv_status_closed )
+--               AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--               AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+--               AND  oola.org_id       =  gn_org_id                           -- 受注明細.組織ID = A-1取得の営業単位
+--               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                   /*+
+--                                   USE_NL ( flv )
+--                                   */
+--                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                                 FROM
+--                                   applsys.fnd_lookup_values  flv
+--                                 WHERE
+--                                      flv.lookup_type             = cv_no_inv_item_code
+--                                 AND  flv.start_date_active      <= sysdate
+--                                 AND  sysdate            <= NVL( flv.end_date_active, gd_max_date )
+--                                 AND  flv.enabled_flag            = cv_yes_flg
+--                                 AND  flv.language                = cv_user_lang
+--                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                               )
+--               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE(cv_base_all,cv_base_all,ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+----                                                         ,cv_base_all
+----                                                         ,xca.delivery_base_code
+----                                                         ,iv_base_code )
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--                                                                             --     = Disc品目.品目コード
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
+--               AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--               AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
+--               AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
+--               AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
+--               AND  ( ( oola.flow_status_code = cv_status_closed
+--                      AND oola.request_date >= to_date(gd_target_closed_month))
+--                    OR ( oola.flow_status_code <> cv_status_closed
+--                      AND oola.request_date >= to_date(gd_trans_start_date))
+--                    )
+--               GROUP BY
+--                  oola.packing_instructions
+--                 ,NVL( oola.attribute6, oola.ordered_item )
+--                 ,TRUNC( oola.request_date )
+--                 ,oola.attribute4
+--               ) ooa1
+--              ,(
+--               /* 生産部分のみ */
+--               SELECT
+--                  /*+
+--                    INDEX(xca xxcmm_cust_accounts_pk)
+--                    USE_NL( xoha xola hca xca )
+--                  */
+--                  xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--                 ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--                 ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--                 ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--                 ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--                 ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--               FROM
+--                  xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--                 ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--                 ,hz_cust_accounts              hca   -- 顧客ﾏｽﾀ
+--                 ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--               WHERE
+--                    xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--               AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+--               AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = cv_yes_flg
+--               AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = cv_no_flg
+--               AND  xola.shipped_quantity IS NOT NULL
+--               AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+--               AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----               AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE(cv_base_all,cv_base_all,ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+----                                                         ,cv_base_all
+----                                                         ,xca.delivery_base_code
+----                                                         ,iv_base_code )
+--               AND xoha.arrival_date >= to_date(gd_trans_start_date)
+--               ) ooa2
+--     WHERE
+--          ooa1.deliver_requested_no =   ooa2.deliver_requested_no      -- 営業サブクエリ.出荷依頼No =  生産サブクエリ.出荷依頼No
+--     AND  ooa1.item_code            =   ooa2.item_code                 -- 営業サブクエリ.品目コード =  生産サブクエリ.品目コード
+--     AND  ooa1.order_quantity      !=   0                              -- 営業サブクエリ.受注数    !=  0
+--     AND  TRUNC( ooa1.schedule_dlv_date )     =  ooa2.arrival_date     -- 営業サブクエリ.納品予定日 = 生産サブクエリ.着日
+--     AND  ( ( ooa1.schedule_inspect_date IS NOT NULL )                 -- 営業サブクエリ.検収予定日 IS NOT NULL
+--            AND                                                        -- 営業サブクエリ.検収予定日 < 生産サブクエリ.着日
+--            ( TO_DATE( ooa1.schedule_inspect_date, cv_yyyymmddhhmiss ) < ooa2.arrival_date )
+--          )
+--
+     UNION ALL
+--
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--     --■例外1-5取得SQL
+--     -- 受注数量0データ取得
+--     SELECT   ooa1.deliver_requested_no      ooa1_deliver_requested_no       -- 受注：出荷依頼No
+    -- ======================================================
+    -- [拠点・ALL指定]例外１
+    -- ② 受注数量の(出荷依頼No・品目単位での)サマリが"0"
+    -- ======================================================
+     SELECT   /*+
+                LEADING( ooa2 )
+              */
+              ooa1.deliver_requested_no      ooa1_deliver_requested_no       -- 受注：出荷依頼No
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+             ,ooa1.item_code                 ooa1_item_code                  -- 受注：品目コード
+             ,ooa1.order_quantity            ooa1_order_quantity             -- 受注：受注数
+             ,ooa1.line_id                   ooa1_line_id                    -- 受注：最終履歴_受注明細ID
+             ,ooa2.line_no                   ooa2_line_no                    -- 出荷：明細番号
+             ,ooa2.arrival_date              ooa2_arrival_date               -- 出荷：着荷日
+             ,ooa2.deliver_actual_quantity   ooa2_deliver_actual_quantity    -- 出荷：実績数
+             ,ooa2.uom_code                  ooa2_uom_code                   -- 出荷：単位
+             ,cv_date_type_2                 date_type
+     FROM
+               (
+               /* 受注部分のみ */
+               SELECT
                   /*+
-                    LEADING(ooha)
-                    INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
-                    INDEX(ooha XXCOS_OE_ORDER_LINES_ALL_N23)
-                    INDEX(xca xxcmm_cust_accounts_pk)
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--                    LEADING(ooha)
+--                    INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--                    INDEX(ooha XXCOS_OE_ORDER_LINES_ALL_N23)
+--                    INDEX(xca xxcmm_cust_accounts_pk)
+                    LEADING( oola )
+                    INDEX( xca xxcmm_cust_accounts_n15 )
+                    USE_NL( oola item_cnv ) 
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
                     USE_NL( ooha hca  )
                     USE_NL( oola mtsi otta ottt )
                   */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
                   oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
-                 ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
+                 ,NVL( oola.attribute6,  oola.ordered_item )   item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
                  ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
                         * CASE oola.order_quantity_uom
                           WHEN msib.primary_unit_of_measure THEN 1
                           WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
                           ELSE NVL( xicv.conversion_rate, 0 )
                         END
-                  ) AS order_quantity
+                  )  AS order_quantity
+                 ,MAX(oola.line_id)  line_id
                FROM
                   oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
                  ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
@@ -754,1359 +3113,927 @@ AS
                  ,mtl_system_items_b         msib        -- Disc品目（営業組織）
                  ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
                  ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
-                 ,xxcos_item_conversions_v   xicv        -- 品目換算View
+                 ,xxcos_item_conversions_v  xicv         -- 品目換算View
                  ,(
                    SELECT
                        flv.meaning      AS UOM_CODE
                      , flv.description  AS CNV_VALUE
                    FROM
--- ********** 2009/11/26 1.11 N.Maeda DEL START ********** --
---                     fnd_application   fa,
---                     fnd_lookup_types  flt,
--- ********** 2009/11/26 1.11 N.Maeda DEL  END  ********** --
                      fnd_lookup_values flv
                    WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                         fa.application_id         = flt.application_id
---                     AND flt.lookup_type           = flv.lookup_type
---                     AND fa.application_short_name = cv_xxcos_short_name
---                     AND flv.enabled_flag          = cv_yes_flg
---                     AND flv.language                = USERENV( 'LANG' )
                          flv.enabled_flag          = cv_yes_flg
-                     AND flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+                     AND flv.language              = cv_user_lang
                      AND flv.start_date_active    <= gd_process_date
                      AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
                      AND flv.lookup_type           = cv_weight_uom_cnv_mst
-                 ) item_cnv
+                 ) item_cnv                              -- 重量換算マスタ
                WHERE
                     ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
                AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
                AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
                AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---               AND  ottt.language            = USERENV( 'LANG' )             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
-               AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+               AND  ottt.language            = cv_user_lang                  -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
                AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
                AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
                AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
                                                                              -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
                AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
                AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+               AND  oola.org_id       =  gn_org_id                           -- 受注明細.組織ID = A-1取得の営業単位
                AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
                AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                    'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                                  FROM
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                    fnd_application    fa
---                                   ,fnd_lookup_types   flt
---                                   ,fnd_lookup_values  flv
-                                   fnd_lookup_values  flv
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
+                                   applsys.fnd_lookup_values  flv
                                  WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                      fa.application_id           = flt.application_id
---                                 AND  flt.lookup_type             = flv.lookup_type
---                                 AND  fa.application_short_name   = cv_xxcos_short_name
---                                 AND  flv.lookup_type             = cv_no_inv_item_code
                                       flv.lookup_type             = cv_no_inv_item_code
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  AND  flv.start_date_active      <= gd_process_date
                                  AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
                                  AND  flv.enabled_flag            = cv_yes_flg
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                 AND  flv.language                = USERENV( 'LANG' )
                                  AND  flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
                                  AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                                )
                AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
                AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-               AND  xca.delivery_base_code     =  DECODE( iv_base_code
-                                                         ,cv_base_all
-                                                         ,xca.delivery_base_code
-                                                         ,iv_base_code )
-                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
-                                                                             --     = Disc品目.品目コード
+               AND  ( ( iv_base_code = cv_base_all )
+                      OR
+                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+                    )
+                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE(ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ,'ALL',顧客追加情報ﾏｽﾀ.納品拠点,ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
+--                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
+--                                                                             --     = Disc品目.品目コード
                AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
                AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
                                                                              -- NVL(受注明細.子コード,受注明細.受注品目)
                AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
                AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
-               AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-               AND  TRUNC(oola.request_date)   >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
-               GROUP BY
-                  oola.packing_instructions
-                 ,NVL( oola.attribute6, oola.ordered_item )
-             ) ooas
-          WHERE
-               ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-          AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-          AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-          AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-          AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
---          AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
---                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
---          AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
-          AND  ooha.flow_status_code  IN ( cv_status_booked ,cv_status_closed )   -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
-          AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-          AND  oola.org_id                = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-          AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
-          AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-          AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-          AND  xca.delivery_base_code  =  DECODE( iv_base_code
-                                                 ,cv_base_all
-                                                 ,xca.delivery_base_code
-                                                 ,iv_base_code )
-          AND  hca2.customer_class_code  =  cv_party_type_1               -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
-          AND  hca2.account_number       =  xca.delivery_base_code        -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
-          AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no   -- NVL(受注明細.子コード,受注明細.受注品目 = OPM品目.品目ｺｰﾄﾞ
-          AND  iimb.item_id              =  ximb.item_id                  -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
-          AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
-          AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
---MIYATA DELETE 明細IDでﾍｯﾀﾞ／明細共に特定できるので不要
---          AND  ooha.header_id             = ooal.header_id                -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 最終歴用.受注ﾍｯﾀﾞID
---MIYATA DELETE
-          AND  oola.line_id               = ooal.line_id                  -- 受注明細.受注明細ID = 最終歴用.受注明細ID
-          AND  oola.packing_instructions  = ooas.deliver_requested_no     -- 例外１営業サブクエリ.出荷依頼No = サマリー用サブクエリ.出荷依頼No
-          AND  NVL( oola.attribute6, oola.ordered_item ) = ooas.item_code -- 例外１営業サブクエリ.品目コード = サマリー用サブクエリ.品目コード
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
----- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
---          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
----- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
-          AND  ( ( oola.flow_status_code = cv_status_closed
-                 AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
-               OR ( oola.flow_status_code <> cv_status_closed
-                 AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
-               )
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
-        )
-        ooa1,
-        -- ****** 例外１生産サブクエリ：ooa2 ******
-        ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-             /*+
-               INDEX(xca xxcmm_cust_accounts_pk)
-               USE_NL( xoha xola hca xca )
-             */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-             xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-            ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
--- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-            ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
---            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
--- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
-            ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
--- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
-            ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
--- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
-          FROM
-             xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
-            ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
-            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-          WHERE
-               xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
-          AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
-          AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
-          AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
--- ********** 2009/12/17 1.12 S.Tomita MOD START ********** --
---****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
---          AND  NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
-          AND  xola.shipped_quantity IS NOT NULL
---****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
--- ********** 2009/12/17 1.12 S.Tomita MOD START ********** --
---MIYATA MODIFY
---          AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-          AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
---MIYATA MODIFY
-          AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-          AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-                                                    ,cv_base_all
-                                                    ,xca.delivery_base_code
-                                                    ,iv_base_code )
-        )
-        ooa2
-      WHERE
-           ooa1.deliver_requested_no =   ooa2.deliver_requested_no -- 例外１営業サブクエリ.出荷依頼No = 例外１生産サブクエリ.出荷依頼No
-      AND  ooa1.item_code            =   ooa2.item_code            -- 例外１営業サブクエリ.品目コード = 例外１生産サブクエリ.品目コード
-      AND                                                          -- 例外１営業サブクエリ.受注数 <> 例外１生産サブクエリ.出荷実績数
-        (  ooa1.order_quantity                 <>  ooa2.deliver_actual_quantity
-         OR                                                        -- 例外１営業サブクエリ.納品予定日 <> 例外１生産サブクエリ.着日
-           TRUNC( ooa1.schedule_dlv_date )     <>  ooa2.arrival_date
-         OR
-           (                                                       -- 例外１営業サブクエリ.納品予定日 =  例外１生産サブクエリ.着日
-             ( TRUNC( ooa1.schedule_dlv_date ) =   ooa2.arrival_date )
-             AND
-             ( ooa1.schedule_inspect_date IS NOT NULL )            -- 例外１営業サブクエリ.検収予定日 IS NOT NULL
-             AND                                                   -- 例外１営業サブクエリ.検収予定日 < 例外１生産サブクエリ.着日
-             ( TO_DATE( ooa1.schedule_inspect_date, cv_yyyymmddhhmiss ) < ooa2.arrival_date )
-           )
-        )
---
-      UNION
---
-  --** ■例外２取得SQL
-      SELECT
-         ooa1.base_code                  base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-        ,ooa1.base_name                  base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-        ,ooa1.order_number               order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-        ,ooa1.order_line_no              order_line_no            -- 受注明細.明細番号           ：受注明細No
-        ,ooa2.line_no                    line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
--- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
---        ,ooa1.deliver_requested_no       deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
-        ,SUBSTRB(ooa1.deliver_requested_no, 1, 12) deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
--- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
-        ,ooa1.deliver_from_whse_number   deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
-        ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-        ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
-        ,ooa1.customer_name              customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
-        ,ooa1.item_name                  item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-        ,TRUNC( ooa1.schedule_dlv_date ) schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
-        ,ooa1.schedule_inspect_date      schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-        ,ooa2.arrival_date               arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-        ,ooa3.order_quantity             order_quantity           -- 受注明細.受注数量           ：受注数
-        ,ooa2.deliver_actual_quantity    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
--- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
---        ,ooa1.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
-        ,ooa2.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
--- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
-        ,ooa3.order_quantity
-          - ooa2.deliver_actual_quantity output_quantity          -- 差異数
-        ,cv_data_class_2                 data_class               -- 例外データ２                ：データ区分
-      FROM
-        -- ****** 例外２営業サブクエリ：ooa1 ******
-        ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-             /*+
-               LEADING(ooha)
-               INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
-               INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
-               INDEX(mtsi mtl_secondary_inventories_u1 )
-               USE_NL( ooha hca  )
-               USE_NL( oola mtsi  )
-             */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-             xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-            ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-            ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-            ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
-            ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
-            ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
-            ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-            ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
-            ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-            ,NVL( oola.attribute6, oola.ordered_item )
-                                        item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
-            ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-            ,oola.request_date          schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
-            ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-            ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
-            ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
-          FROM
-             oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-            ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
-            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-            ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
-            ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
-            ,ic_item_mst_b              iimb  -- OPM品目
-            ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
-            ,( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-                 /*+
-                   LEADING(ooha)
-                   INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
-                   INDEX(MTSI MTL_SECONDARY_INVENTORIES_U1 )
-                   INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
-                   USE_NL( ooha hca  )
-                   USE_NL( oola mtsi  )
-                 */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
---MIYATA DELETE 明細IDでﾍｯﾀﾞ／明細共に特定できるので不要
---                  MAX( ooha.header_id )      header_id   -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID
---                 ,MAX( line_id )             line_id     -- 受注明細.受注明細ID
-                 MAX( line_id )             line_id     -- 受注明細.受注明細ID
---MIYATA DELTE
-               FROM
-                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
-                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
-                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
-                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
-               WHERE
-                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
---               AND  ooha.flow_status_code  =  cv_status_booked               -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
---                                                                             -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
---               AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
-               AND  ooha.flow_status_code  IN  ( cv_status_booked ,cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
-               AND  oola.flow_status_code  <> cv_status_cancelled            -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-               AND oola.org_id                = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
-               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
-                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
-                                 FROM
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                    fnd_application    fa
---                                   ,fnd_lookup_types   flt
---                                   ,fnd_lookup_values  flv
-                                   fnd_lookup_values  flv
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                 WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                      fa.application_id           = flt.application_id
---                                 AND  flt.lookup_type             = flv.lookup_type
---                                 AND  fa.application_short_name   = cv_xxcos_short_name
---                                 AND  flv.lookup_type             = cv_no_inv_item_code
-                                      flv.lookup_type             = cv_no_inv_item_code
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                 AND  flv.start_date_active      <= gd_process_date
-                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                                 AND  flv.enabled_flag            = cv_yes_flg
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                 AND  flv.language                = USERENV( 'LANG' )
-                                 AND  flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
-                               )
-               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-               AND  xca.delivery_base_code     =  DECODE( iv_base_code
-                                                         ,cv_base_all
-                                                         ,xca.delivery_base_code
-                                                         ,iv_base_code )
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
----- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
---               AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
----- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
+               AND  oola.order_quantity_uom    = item_cnv.uom_code(+)        -- 受注明細.受注単位 =重量換算マスタ. 単位コード(+)
                AND  ( ( oola.flow_status_code = cv_status_closed
-                      AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
+                      AND oola.request_date >= to_date(gd_target_closed_month))
                     OR ( oola.flow_status_code <> cv_status_closed
-                      AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+                      AND oola.request_date >= to_date(gd_trans_start_date))
                     )
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
                GROUP BY
                   oola.packing_instructions
                  ,NVL( oola.attribute6, oola.ordered_item )
-             )
-             ooal   -- 最終歴用サブクエリ
-          WHERE
-               ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-          AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-          AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-          AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-          AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
---          AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
---                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
---          AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
-          AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
-          AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-          AND oola.org_id                = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-          AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
-          AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-          AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID   = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-          AND  xca.delivery_base_code  =  DECODE( iv_base_code
-                                                 ,cv_base_all
-                                                 ,xca.delivery_base_code
-                                                 ,iv_base_code )
-          AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
-          AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
-          AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目 = OPM品目.品目ｺｰﾄﾞ
-          AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
-          AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
-          AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
---MIYATA DELETE 明細IDでﾍｯﾀﾞ／明細共に特定できるので不要
---          AND  ooha.header_id             = ooal.header_id               -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 最終歴用ｻﾌﾞｸｴﾘ.受注ﾍｯﾀﾞID
---MIYATA DELETE
-          AND  oola.line_id               = ooal.line_id                 -- 受注明細.受注明細ID = 最終歴用ｻﾌﾞｸｴﾘ.受注明細ID
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
----- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
---          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
----- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
-          AND  ( ( oola.flow_status_code = cv_status_closed
-                 AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
-               OR ( oola.flow_status_code <> cv_status_closed
-                 AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
-               )
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
-        )
-        ooa1,
-        -- ****** 例外２生産サブクエリ：ooa2 ******
-        ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-             /*+
-             USE_NL( xoha xola hca xca )
-             */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-             xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-            ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
--- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-            ,xola.request_item_code       item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
---            ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
--- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
-            ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
--- ******************** 2009/12/11 1.12 N.Maeda MOD START ****************************** --
-----MIYATA MODIFY 出荷実績済みではないので数量に変更
-----            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
---            ,xola.quantity              deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.数量          ：出荷実績数
-            ,NVL( xola.shipped_quantity , cn_ship_zero ) deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
--- ******************** 2009/12/11 1.12 N.Maeda MOD  END  ****************************** --
--- ******************** 2009/07/27 1.8 N.Maeda MOD start ******************************* --
-            ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
--- ******************** 2009/07/27 1.8 N.Maeda MOD  end  ******************************* --
---MIYATA MODIFY
-          FROM
-             xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
-            ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
-            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-          WHERE
-               xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
-                                                                       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ NOT IN( 出荷実績計上済 , 取消 )
-          AND  xoha.req_status      NOT IN ( cv_h_add_status_04, cv_h_add_status_99 )
-          AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
-          AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
---MIYATA MODIFY
---          AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-          AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
---MIYATA MODIFY
-          AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
-          AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-                                                    ,cv_base_all
-                                                    ,xca.delivery_base_code
-                                                    ,iv_base_code )
-        )
-        ooa2,
-        -- ****** 例外２数量サブクエリ：ooa3 ******
-        ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-             /*+
-               LEADING(ooha)
-               INDEX(ooha xxcos_oe_order_headers_all_n11)
-               USE_NL( oola hca xca msib xicv ottt otta mtsi )
-             */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-             oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
-            ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
-            ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
-                   * CASE oola.order_quantity_uom
-                     WHEN msib.primary_unit_of_measure THEN 1
-                     WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
-                     ELSE NVL( xicv.conversion_rate, 0 )
-                   END
-             ) AS order_quantity
-          FROM
-             oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-            ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
-            ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
-            ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
-            ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
-            ,mtl_system_items_b         msib        -- Disc品目（営業組織）
-            ,oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
-            ,oe_transaction_types_all   otta        -- 受注取引タイプマスタ
-            ,xxcos_item_conversions_v   xicv        -- 品目換算View
-            ,(
-              SELECT
-                  flv.meaning      AS UOM_CODE
-                , flv.description  AS CNV_VALUE
-              FROM
--- ********** 2009/11/26 1.11 N.Maeda DEL START ********** --
---                fnd_application   fa,
---                fnd_lookup_types  flt,
--- ********** 2009/11/26 1.11 N.Maeda DEL  END  ********** --
-                fnd_lookup_values flv
-              WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                    fa.application_id         = flt.application_id
---                AND flt.lookup_type           = flv.lookup_type
---                AND fa.application_short_name = cv_xxcos_short_name
---                AND flv.enabled_flag          = cv_yes_flg
---                AND flv.language              = USERENV( 'LANG' )
-                    flv.enabled_flag          = cv_yes_flg
-                AND flv.language              = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                AND flv.start_date_active    <= gd_process_date
-                AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
-                AND flv.lookup_type           = cv_weight_uom_cnv_mst
-            ) item_cnv
-          WHERE
-               ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-          AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-          AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
-          AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---          AND  ottt.language            = USERENV( 'LANG' )             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
-          AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-          AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-          AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-          AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-                                                                        -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
-          AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
-          AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-          AND  oola.org_id                = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-          AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
-          AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
-                              'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
-                            FROM
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                               fnd_application    fa
---                              ,fnd_lookup_types   flt
---                              ,fnd_lookup_values  flv
-                              fnd_lookup_values  flv
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                            WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                 fa.application_id           = flt.application_id
---                            AND  flt.lookup_type             = flv.lookup_type
---                            AND  fa.application_short_name   = cv_xxcos_short_name
-                                 flv.lookup_type             = cv_no_inv_item_code
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                            AND  flv.start_date_active      <= gd_process_date
-                            AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                            AND  flv.enabled_flag            = cv_yes_flg
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                            AND  flv.language                = USERENV( 'LANG' )
-                            AND  flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                            AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
-                          )
-          AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-          AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                        -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-          AND  xca.delivery_base_code     =  DECODE( iv_base_code
-                                                    ,cv_base_all
-                                                    ,xca.delivery_base_code
-                                                    ,iv_base_code )
-                                                                        -- NVL(受注明細.子コード,受注明細.受注品目)
-                                                                        --     = Disc品目.品目コード
-          AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
-          AND  oola.ship_from_org_id      = msib.organization_id        -- 受注明細.出荷元組織 = Disc品目.組織ID
-                                                                             -- NVL(受注明細.子コード,受注明細.受注品目)
-          AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
-          AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
-          AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-          AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
-          GROUP BY
-             oola.packing_instructions
-            ,NVL( oola.attribute6, oola.ordered_item )
-        )
-        ooa3
-      WHERE
-           ooa1.deliver_requested_no       =  ooa2.deliver_requested_no -- 例外２営業サブクエリ.出荷依頼No = 例外２生産サブクエリ.出荷依頼No
-      AND  ooa1.item_code                  =  ooa2.item_code            -- 例外２営業サブクエリ.品目コード = 例外２生産サブクエリ.品目コード
-      AND  ooa1.deliver_requested_no       =  ooa3.deliver_requested_no -- 例外２営業サブクエリ.出荷依頼No = 例外２数量サブクエリ.出荷依頼No
-      AND  ooa1.item_code                  =  ooa3.item_code            -- 例外２営業サブクエリ.品目コード = 例外２数量サブクエリ.品目コード
-      AND  TRUNC( ooa1.schedule_dlv_date ) <  gd_process_date           -- 例外２営業サブクエリ.納品予定日(要求日) < A.1取得の業務日付
+               ) ooa1
+              ,(
+               /* 生産部分のみ */
+               SELECT
+                  /*+
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--                    INDEX(xca xxcmm_cust_accounts_pk)
+--                    USE_NL( xoha xola hca xca )
+                    LEADING( xoha hca xca )
+                    INDEX( xca xxcmm_cust_accounts_n15 )
+                    USE_NL(xoha hca xca )
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+                  */
+                  xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+                 ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+                 ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+                 ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+                 ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+                 ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+               FROM
+                  xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+                 ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+                 ,hz_cust_accounts              hca   -- 顧客ﾏｽﾀ
+                 ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+               WHERE
+                    xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+               AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+               AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+               AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+               AND  xola.shipped_quantity IS NOT NULL
+               AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+               AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+               AND  ( ( iv_base_code = cv_base_all )
+                      OR
+                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+                    )
+--               AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE(ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ,'ALL',顧客追加情報ﾏｽﾀ.納品拠点,ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
+               AND xoha.arrival_date >= to_date(gd_trans_start_date)
+               ) ooa2
+     WHERE
+          ooa1.deliver_requested_no =   ooa2.deliver_requested_no     -- 例外１営業サブクエリ.出荷依頼No =  例外１生産サブクエリ.出荷依頼No
+     AND  ooa1.item_code            =   ooa2.item_code                -- 例外１営業サブクエリ.品目コード =  例外１生産サブクエリ.品目コード
+     AND  ooa1.order_quantity      !=   ooa2.deliver_actual_quantity
+     AND  ooa1.order_quantity       =   0                             -- 例外１営業サブクエリ.受注数    =  0
+     ;
 --
-      UNION
---
-  --** ■例外３－１取得SQL
-      SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-         /*+
+-- 2010/04/09 Ver.1.14 Add M.Sano Start
+    -- =========================================================================
+    --** [ALL指定]例外２
+    --** ①～④に該当するエラーデータの抽出SQL
+    --**   ① 受注あり-出荷実績なし ※出荷依頼No存在なしエラー
+    --**   ② 受注あり-出荷実績なし ※明細品目不一致エラー
+    --**   ③ 受注なし-出荷実績あり ※出荷依頼No存在なしエラー
+    --**   ④ 受注なし-出荷実績あり ※明細品目不一致エラー
+    -- =========================================================================
+-- 2010/04/09 Ver.1.14 Add M.Sano End
+     CURSOR line_item_excep_cur
+     IS
+    -- ======================================================
+    -- [ALL指定]例外２
+    -- ① 受注あり-出荷実績なし ※出荷依頼No存在なしエラー
+    -- ② 受注あり-出荷実績なし ※明細品目不一致エラー
+    -- ======================================================
+     SELECT
+        /*+
+         -- LEADING(ooha)
+         -- INDEX(ooha xxcos_oe_order_headers_all_n11)
+         -- USE_NL( ooha hca xca hca2 )
+         -- USE_NL( oola mtsi ottt otta iimb ximb )
            LEADING(ooha)
            INDEX(ooha xxcos_oe_order_headers_all_n11)
            INDEX(oola xxcos_oe_order_lines_all_n23)
            USE_NL( ooha hca  )
            USE_NL( oola mtsi ottt otta )
-         */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-         xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-        ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-        ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-        ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
-        ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
--- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
---        ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
-        ,SUBSTRB(oola.packing_instructions, 1, 12) deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
--- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
-        ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
-        ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-        ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
-        ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,NVL( oola.attribute6, oola.ordered_item )
-                                    item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
-        ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-        ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
-        ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-        ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
---****************************** 2009/05/26 1.4 T.Kitajima MOD START ******************************--
---        ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
-        ,oola.ordered_quantity * 
-          DECODE ( otta.order_category_code, cv_order, 1, -1 )
-                                    order_quantity           -- 受注明細.受注数量           ：受注数
---****************************** 2009/05/26 1.4 T.Kitajima MOD  END  ******************************--
-        ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-        ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
-        ,oola.ordered_quantity      output_quantity          -- 差異数
-        ,cv_data_class_3            data_class               -- 例外データ３－１            ：データ区分
-      FROM
-         oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-        ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
-        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-        ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
-        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
-        ,ic_item_mst_b              iimb  -- OPM品目
-        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
---****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
-        ,oe_transaction_types_tl    ottt  -- 受注取引タイプ（摘要）
-        ,oe_transaction_types_all   otta  -- 受注取引タイプマスタ
---****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
-      WHERE
-           ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-      AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
---****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
-      AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
-      AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
-      AND  ottt.language            = cv_user_lang           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
---****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
-      AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-      AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-      AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
---      AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
---                                                                  -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
---      AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
-      AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
-      AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-      AND  oola.org_id                = gn_org_id
----- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-      AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
-      AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
-                          'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
-                        FROM
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                           fnd_application    fa
---                          ,fnd_lookup_types   flt
---                          ,fnd_lookup_values  flv
-                          fnd_lookup_values  flv
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                        WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
----                             fa.application_id           = flt.application_id
----                        AND  flt.lookup_type             = flv.lookup_type
----                        AND  fa.application_short_name   = cv_xxcos_short_name
----                        AND  flv.lookup_type             = cv_no_inv_item_code
-                             flv.lookup_type             = cv_no_inv_item_code
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                        AND  flv.start_date_active      <= gd_process_date
-                        AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                        AND  flv.enabled_flag            = cv_yes_flg
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                        AND  flv.language                = USERENV( 'LANG' )
-                        AND  flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                        AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
-                     )
-      AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-      AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                  -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-      AND  xca.delivery_base_code  =  DECODE( iv_base_code
-                                             ,cv_base_all
-                                             ,xca.delivery_base_code
-                                             ,iv_base_code )
-      AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
-      AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
-      AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目 = OPM品目.品目ｺｰﾄﾞ
-      AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
-      AND  TRUNC( ximb.start_date_active )                   <= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
-      AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
-      AND NOT EXISTS(
-              SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-               /*+
-                 USE_NL( xoha xola hca xca mtsi )
-               */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-                'X'                          exists_flag -- EXISTSﾌﾗｸﾞ
-              FROM
-                 xxwsh_order_headers_all     xoha        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
-                ,xxwsh_order_lines_all       xola        -- 受注明細ｱﾄﾞｵﾝ
-                ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
-                ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
-              WHERE
-                   xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
-              AND  xoha.req_status           <>  cv_h_add_status_99        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ <> 取消
-              AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
-              AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
---MIYATA MODIFY
---              AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-              AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
---MIYATA MODIFY
-              AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
-              AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-                                                        ,cv_base_all
-                                                        ,xca.delivery_base_code
-                                                        ,iv_base_code )
-              AND  oola.packing_instructions =   xoha.request_no   -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
-                                                                   -- NVL(受注明細.子コード,受注明細.受注品目 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼品目
--- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
---              AND  NVL( oola.attribute6, oola.ordered_item ) = xola.shipping_item_code
--- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
-              )
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
----- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
---      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
----- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
-        AND  ( ( oola.flow_status_code = cv_status_closed
-               AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
-             OR ( oola.flow_status_code <> cv_status_closed
-               AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
-             )
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
---
-      UNION
---
-  --** ■例外３－２取得SQL
-      SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-        /*+
-          ORDERED
-          INDEX(haou hr_all_organizaion_units_pk)
-          USE_NL( xoha xola iwm mil haou hca xca hca2 iimb ximb )
+-- 2010/04/09 Ver.1.14 Add M.Sano Start
+           USE_NL( oola iimb ximb )
+-- 2010/04/09 Ver.1.14 Add M.Sano End
         */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-         xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-        ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-        ,NULL                       order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-        ,NULL                       order_line_no            -- 受注明細.明細番号           ：受注明細No
-        ,xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-        ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
-        ,xoha.deliver_from          deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
--- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
---        ,xilv.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-        ,mil.description            deliver_from_whse_name
--- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
-        ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
-        ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
--- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-        ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
---        ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
--- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
-        ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-        ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
-        ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-        ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-        ,0                          order_quantity           -- 受注明細.受注数量           ：受注数
-        ,NVL( xola.shipped_quantity, 0 )
-                                    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-        ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
-        ,0 - NVL( xola.shipped_quantity, 0 )
-                                    output_quantity          -- 差異数
-        ,cv_data_class_4            data_class               -- 例外データ３－２            ：データ区分
-      FROM
--- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
---         xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
---        ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
---        ,xxcmn_item_locations2_v    xilv  -- OPM保管場所ﾏｽﾀ
---        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
---        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
---        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
---        ,ic_item_mst_b              iimb  -- OPM品目
---        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
-         xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
-        ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
-        ,inv.mtl_item_locations        mil
-        ,hr.hr_all_organization_units  haou
-        ,gmi.ic_whse_mst               iwm
-        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
-        ,ic_item_mst_b              iimb  -- OPM品目
-        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
--- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
-      WHERE
-           xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
-      AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
-      AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
-      AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
---****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
-      AND NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
---****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
--- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
---      AND  xoha.deliver_from         =   xilv.segment1             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所 = OPM保管場所ﾏｽﾀ.保管倉庫コード
---      AND  xilv.date_from                            <= gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 <= 業務日付
---      AND  TRUNC( NVL( xilv.date_to, gd_max_date ) ) >= gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 >= 業務日付
-      AND     iwm.mtl_organization_id = haou.organization_id
-      AND     haou.organization_id    = mil.organization_id
-      AND     XOHA.DELIVER_FROM   = mil.segment1
-      AND     haou.date_from         <= gd_process_date
-      AND     TRUNC( NVL( haou.date_to, gd_process_date ) ) >= gd_process_date
--- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
---MIYATA MODIFY
---      AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-      AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
---MIYATA MODIFY
-      AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
-      AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-                                                ,cv_base_all
-                                                ,xca.delivery_base_code
-                                                ,iv_base_code )
-      AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
-      AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
--- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-      AND  xola.request_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
---      AND  xola.shipping_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = OPM品目.品目ｺｰﾄﾞ
--- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
-      AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
-      AND  TRUNC( ximb.start_date_active )                   <= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
-      AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
-      AND NOT EXISTS(
-              SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-                /*+
-                USE_NL( ooha oola hca xca mtsi )
-                */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-                'X'                         exists_flag -- EXISTSﾌﾗｸﾞ
-              FROM
-                 oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-                ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
-                ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
-                ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
-                ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
-              WHERE
-                   ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-              AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-              AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-              AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-              AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-                                                                            -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
-              AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
-              AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
-              AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
-              AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
-                                  'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
-                                FROM
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                   fnd_application    fa
---                                  ,fnd_lookup_types   flt
---                                  ,fnd_lookup_values  flv
-                                  fnd_lookup_values  flv
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
----                                     fa.application_id           = flt.application_id
----                                AND  flt.lookup_type             = flv.lookup_type
----                                AND  fa.application_short_name   = cv_xxcos_short_name
----                                AND  flv.lookup_type             = cv_no_inv_item_code
-                                     flv.lookup_type             = cv_no_inv_item_code
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                AND  flv.start_date_active      <= gd_process_date
-                                AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                                AND  flv.enabled_flag            = cv_yes_flg
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                AND  flv.language                = USERENV( 'LANG' )
-                                AND  flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
-                              )
-              AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-              AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                            -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-              AND  xca.delivery_base_code     =  DECODE( iv_base_code
-                                                        ,cv_base_all
-                                                        ,xca.delivery_base_code
-                                                        ,iv_base_code )
-              AND  xoha.request_no            =  oola.packing_instructions -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
--- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-                                                                           -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = NVL(受注明細.子コード,受注明細.受注品目
-              AND  xola.request_item_code    =  NVL( oola.attribute6, oola.ordered_item )
---                                                                           -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = NVL(受注明細.子コード,受注明細.受注品目
---              AND  xola.shipping_item_code    =  NVL( oola.attribute6, oola.ordered_item )
--- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
-              )
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-      AND  TRUNC(xoha.arrival_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
---
-      UNION
---
-  --** ■例外４取得SQL
-      SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-         /*+
-           ORDERD
-           INDEX( haou hr_all_organizaion_units_pk)
-           USE_NL( XOHA xola iwm mil haou hca xca hca2 iimb ximb )
-         */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-         xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-        ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-        ,NULL                       order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-        ,NULL                       order_line_no            -- 受注明細.明細番号           ：受注明細No
-        ,xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-        ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
-        ,xoha.deliver_from          deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
--- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
---        ,xilv.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-        ,mil.description            deliver_from_whse_name 
--- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
-        ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
-        ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
--- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-        ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
---        ,xola.shipping_item_code    item_code                -- 受注明細ｱﾄﾞｵﾝ.出荷品目      ：品目ｺｰﾄﾞ
--- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
-        ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-        ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
-        ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-        ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-        ,0                          order_quantity           -- 受注明細.受注数量           ：受注数
-        ,NVL( xola.shipped_quantity, 0 )
-                                    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-        ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
-        ,0 - NVL( xola.shipped_quantity, 0 )
-                                    output_quantity          -- 差異数
-        ,cv_data_class_5            data_class               -- 例外データ４                ：データ区分
-      FROM
--- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
---         xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
---        ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
---        ,xxcmn_item_locations2_v    xilv  -- OPM保管場所ﾏｽﾀ
---        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
---        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
---        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
---        ,ic_item_mst_b              iimb  -- OPM品目
---        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
-         xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
-        ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
-        ,inv.mtl_item_locations        mil
-        ,hr.hr_all_organization_units  haou
-        ,gmi.ic_whse_mst               iwm
-        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
-        ,ic_item_mst_b              iimb  -- OPM品目
-        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
--- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
-      WHERE
-           xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
-      AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
-      AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
-      AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
---****************************** 2009/04/10 1.3 T.Kitajima ADD START ******************************--
-      AND NVL( xola.shipped_quantity, cn_ship_zero ) != cn_ship_zero  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
---****************************** 2009/04/10 1.3 T.Kitajima ADD  END  ******************************--
--- *********** 2010/01/14 1.13 N.Maeda MOD START *********** --
---      AND  xoha.deliver_from         =   xilv.segment1             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所 = OPM保管場所ﾏｽﾀ.保管倉庫コード
---      AND  xilv.date_from                             <=  gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 <= 業務日付
---      AND  TRUNC( NVL( xilv.date_to, gd_max_date ) )  >=  gd_process_date  -- OPM保管場所ﾏｽﾀ.組織有効開始日 >= 業務日付
-        AND     iwm.mtl_organization_id = haou.organization_id
-        AND     haou.organization_id    = mil.organization_id
-        AND     XOHA.DELIVER_FROM   = mil.segment1
-        AND     haou.date_from         <= gd_process_date
-        AND     TRUNC( NVL( haou.date_to, gd_process_date ) ) >= gd_process_date
--- *********** 2010/01/14 1.13 N.Maeda MOD  END  *********** --
---MIYATA MODIFY
---      AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-      AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
---MIYATA MODIFY
-      AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
-      AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-                                                ,cv_base_all
-                                                ,xca.delivery_base_code
-                                                ,iv_base_code )
-      AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
-      AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
--- ******************** 2009/07/08 1.7 N.Maeda MOD start ******************************* --
-      AND  xola.request_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
---      AND  xola.shipping_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.出荷品目 = OPM品目.品目ｺｰﾄﾞ
--- ******************** 2009/07/08 1.7 N.Maeda MOD  end  ******************************* --
-      AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
-      AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
-      AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
-      AND NOT EXISTS(
-              SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-                 /*+
-                   USE_NL( ooha oola hca xca mtsi )
-                 */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-                'X'                       exists_flag -- EXISTSﾌﾗｸﾞ
-              FROM
-                 oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-                ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
-                ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
-                ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
-                ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
-              WHERE
-                   ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-              AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-              AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-              AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-              AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-                                                                            -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
-              AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
-              AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
-              AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
-              AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
-                                  'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
-                                FROM
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                   fnd_application    fa
---                                  ,fnd_lookup_types   flt
---                                  ,fnd_lookup_values  flv
-                                  fnd_lookup_values  flv
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                     fa.application_id           = flt.application_id
---                                AND  flt.lookup_type             = flv.lookup_type
---                                AND  fa.application_short_name   = cv_xxcos_short_name
---                                AND  flv.lookup_type             = cv_no_inv_item_code
-                                     flv.lookup_type             = cv_no_inv_item_code
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                AND  flv.start_date_active      <= gd_process_date
-                                AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                                AND  flv.enabled_flag            = cv_yes_flg
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                                AND  flv.language                = USERENV( 'LANG' )
-                                AND  flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                                AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
-                              )
-              AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-              AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                            -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-              AND  xca.delivery_base_code     =  DECODE( iv_base_code
-                                                        ,cv_base_all
-                                                        ,xca.delivery_base_code
-                                                        ,iv_base_code )
-              AND  xoha.request_no            =  oola.packing_instructions  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
-              )
--- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
-      AND  TRUNC(xoha.arrival_date)  >= TRUNC(gd_trans_start_date)
--- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
---
-      UNION
---
-  --** ■例外５取得SQL
-      SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-         /*+
-           LEADING(ooha)
-           INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
-           INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
-           USE_NL( ooha hca )
-           USE_NL( oola mtsi ottt otta )
-         */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-         xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-        ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-        ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-        ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
-        ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
--- ******************** 2009/10/07 1.10 K.Satomura MOD START ******************************* --
---        ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
-        ,SUBSTRB(oola.packing_instructions, 1, 12) deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
--- ******************** 2009/10/07 1.10 K.Satomura MOD END   ******************************* --
-        ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
-        ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-        ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
-        ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,NVL( oola.attribute6, oola.ordered_item )
-                                    item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
-        ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-        ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
-        ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-        ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
---****************************** 2009/05/26 1.4 T.Kitajima MOD START ******************************--
---        ,oola.ordered_quantity      order_quantity           -- 受注明細.受注数量           ：受注数
-        ,oola.ordered_quantity * 
-          DECODE ( otta.order_category_code, cv_order, 1, -1 )
-                                    order_quantity           -- 受注明細.受注数量           ：受注数
---****************************** 2009/05/26 1.4 T.Kitajima MOD  END  ******************************--
-        ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-        ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
-        ,oola.ordered_quantity      output_quantity          -- 差異数
-        ,cv_data_class_6            data_class               -- 例外データ５                ：データ区分
-      FROM
-         oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-        ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
-        ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-        ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-        ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
-        ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
-        ,ic_item_mst_b              iimb  -- OPM品目
-        ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
---****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
-        ,oe_transaction_types_tl    ottt  -- 受注取引タイプ（摘要）
-        ,oe_transaction_types_all   otta  -- 受注取引タイプマスタ
---****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
-      WHERE
-           ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-      AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-      AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
---****************************** 2009/05/26 1.4 T.Kitajima ADD START ******************************--
-      AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
-      AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---      AND  ottt.language            = USERENV( 'LANG' )           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
-      AND  ottt.language            = cv_user_lang           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
---****************************** 2009/05/26 1.4 T.Kitajima ADD  END  ******************************--
-      AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-      AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
---      AND  ooha.flow_status_code  =  cv_status_booked             -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
---                                                                  -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
---      AND  oola.flow_status_code  NOT IN ( cv_status_closed, cv_status_cancelled )
-      AND  ooha.flow_status_code  IN  ( cv_status_booked , cv_status_closed )  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CANCELLED' )
-      AND  oola.flow_status_code  <>  cv_status_cancelled         -- 受注明細.ｽﾃｰﾀｽ <> 'CLOSED'
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-      AND  oola.org_id                = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-      AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
-      AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
-                          'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
-                        FROM
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
---                           fnd_application    fa
---                          ,fnd_lookup_types   flt
---                          ,fnd_lookup_values  flv
-                          fnd_lookup_values  flv
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                        WHERE
--- ********** 2009/11/26 1.11 N.Maeda MOD START ********** --
----                             fa.application_id           = flt.application_id
----                        AND  flt.lookup_type             = flv.lookup_type
----                        AND  fa.application_short_name   = cv_xxcos_short_name
----                        AND  flv.lookup_type             = cv_no_inv_item_code
-                             flv.lookup_type             = cv_no_inv_item_code
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                        AND  flv.start_date_active      <= gd_process_date
-                        AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                        AND  flv.enabled_flag            = cv_yes_flg
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
---                        AND  flv.language                = USERENV( 'LANG' )
-                        AND  flv.language                = cv_user_lang
--- ********** 2009/11/26 1.11 N.Maeda MOD  END  ********** --
-                        AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
-                     )
-      AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-      AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                  -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-      AND  xca.delivery_base_code  =  DECODE( iv_base_code
-                                             ,cv_base_all
-                                             ,xca.delivery_base_code
-                                             ,iv_base_code )
-      AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
-      AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
-      AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目 = OPM品目.品目ｺｰﾄﾞ
-      AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
-      AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
-      AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
-      AND NOT EXISTS(
-              SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-                /*+
-                  USE_NL( xoha xola hca xca )
-                */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-                'X'                          exists_flag -- EXISTSﾌﾗｸﾞ
-              FROM
-                 xxwsh_order_headers_all     xoha        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
-                ,xxwsh_order_lines_all       xola        -- 受注明細ｱﾄﾞｵﾝ
-                ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
-                ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
-              WHERE
-                   xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
-              AND  xoha.req_status           <>  cv_h_add_status_99        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ <> 取消
-              AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
-              AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
---MIYATA MODIFY
---              AND  xoha.customer_id          =   hca.cust_account_id       -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-              AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
---MIYATA MODIFY
-              AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID = 顧客追加情報ﾏｽﾀ.顧客ID
-              AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-                                                        ,cv_base_all
-                                                        ,xca.delivery_base_code
-                                                        ,iv_base_code )
-              AND  oola.packing_instructions =   xoha.request_no           -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
-              )
--- ********** 2009/12/11 1.12 N.Maeda MOD START ********** --
----- ********** 2009/11/26 1.11 N.Maeda ADD START ********** --
---      AND  TRUNC(oola.request_date)  >= TRUNC(gd_trans_start_date)
----- ********** 2009/11/26 1.11 N.Maeda ADD  END  ********** --
-      AND  ( ( oola.flow_status_code = cv_status_closed
-             AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
-           OR ( oola.flow_status_code <> cv_status_closed
-             AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
-           )
--- ********** 2009/12/11 1.12 N.Maeda MOD  END  ********** --
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
---
-      UNION
---
-      -- 例外６取得用ＳＱＬ
-      SELECT
-         ooa1.base_code                  base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-        ,ooa1.base_name                  base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-        ,ooa1.order_number               order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-        ,ooa1.order_line_no              order_line_no            -- 受注明細.明細番号           ：受注明細No
-        ,ooa2.line_no                    line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-        ,SUBSTRB(ooa1.deliver_requested_no, 1, 12) deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
-        ,ooa1.deliver_from_whse_number   deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
-        ,ooa1.deliver_from_whse_name     deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-        ,ooa1.customer_number            customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
-        ,ooa1.customer_name              customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-        ,ooa1.item_code                  item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
-        ,ooa1.item_name                  item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-        ,TRUNC( ooa1.schedule_dlv_date ) schedule_dlv_date        -- 受注ﾍｯﾀﾞ.着日               ：納品予定日
-        ,ooa1.schedule_inspect_date      schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-        ,ooa2.arrival_date               arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-        ,ooa1.order_quantity             order_quantity           -- 受注明細.受注数量           ：受注数
-        ,ooa2.deliver_actual_quantity    deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-        ,ooa2.uom_code                   uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
-        ,ooa1.order_quantity
-          - ooa2.deliver_actual_quantity output_quantity          -- 差異数
-        ,cv_data_class_7                 data_class               -- 例外データ６                ：データ区分
-      FROM
-        -- ****** 例外６営業サブクエリ：ooa1 ******
-        ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-             /*+
-               LEADING(ooha)
-               USE_NL( ooha hca  )
-               USE_NL( oola mtsi  )
-               INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
-             */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-             xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
-            ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
-            ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
-            ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
-            ,oola.packing_instructions  deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
-            ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
-            ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
-            ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
-            ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
-            ,NVL( oola.attribute6, oola.ordered_item )
-                                        item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
-            ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
-            ,oola.request_date          schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
-            ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
-            ,ooas.order_quantity        order_quantity           -- 受注明細.受注数量           ：受注数
-            ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
-          FROM
-             oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-            ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
-            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
-            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-            ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
-            ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
-            ,ic_item_mst_b              iimb  -- OPM品目
-            ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
-            -- 最終歴用サブクエリ：ooal
-            ,( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-                 /*+
-                   LEADING(ooha)
-                   USE_NL( ooha hca )
-                   USE_NL( oola mtsi )
-                   INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
-                 */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-                 MAX( line_id )              line_id     -- 受注明細.受注明細ID
-               FROM
-                  oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
-                 ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
-                 ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
-                 ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
-                 ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
-               WHERE
-                    ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-               AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-               AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-               AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-               AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
-               AND  ooha.flow_status_code  IN  ( cv_status_booked , cv_status_closed )    -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
-                                                                             -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-               AND  oola.org_id            = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-               AND  oola.flow_status_code  <> cv_status_cancelled
-               AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
-               AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
-                                   'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
-                                 FROM
-                                   fnd_lookup_values  flv
-                                 WHERE
-                                      flv.lookup_type             = cv_no_inv_item_code
-                                 AND  flv.start_date_active      <= gd_process_date
-                                 AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
-                                 AND  flv.enabled_flag            = cv_yes_flg
-                                 AND flv.language                = cv_user_lang
-                                 AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
-                               )
-               AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-               AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                             -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-               AND  xca.delivery_base_code     =  DECODE( iv_base_code
-                                                         ,cv_base_all
-                                                         ,xca.delivery_base_code
-                                                         ,iv_base_code )
-               AND  ( ( oola.flow_status_code = cv_status_closed
-                      AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
-                    OR ( oola.flow_status_code <> cv_status_closed
-                      AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
+        xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+       ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+       ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+       ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
+       ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+       ,SUBSTRB(oola.packing_instructions, 1, 12) deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+       ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
+       ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+       ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
+       ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+       ,NVL( oola.attribute6, oola.ordered_item )
+                                   item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
+       ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+       ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
+       ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+       ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+       ,oola.ordered_quantity * 
+         DECODE ( otta.order_category_code, cv_order, 1, -1 )
+                                   order_quantity           -- 受注明細.受注数量           ：受注数
+       ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+       ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
+       ,oola.ordered_quantity      output_quantity          -- 差異数
+     FROM
+        oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+       ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
+       ,hz_cust_accounts            hca   -- 顧客ﾏｽﾀ
+       ,xxcmm_cust_accounts      xca   -- 顧客追加情報ﾏｽﾀ
+       ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
+       ,hz_cust_accounts            hca2  -- 顧客ﾏｽﾀ2
+       ,ic_item_mst_b              iimb  -- OPM品目
+       ,xxcmn_item_mst_b         ximb  -- OPM品目ｱﾄﾞｵﾝ
+       ,oe_transaction_types_tl    ottt  -- 受注取引タイプ（摘要）
+       ,oe_transaction_types_all   otta  -- 受注取引タイプマスタ
+     WHERE
+          ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+     AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+     AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+     AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+     AND  ottt.language            = cv_user_lang           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+     AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+     AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+     AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+     AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+     AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+     AND  oola.org_id       = gn_org_id
+     AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
+     AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+                         'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+                       FROM
+                         fnd_lookup_values  flv
+                       WHERE
+                            flv.lookup_type             = cv_no_inv_item_code
+                       AND  flv.start_date_active      <= gd_process_date
+                       AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+                       AND  flv.enabled_flag            = cv_yes_flg
+                       AND  flv.language                = cv_user_lang
+                       AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
                     )
-               GROUP BY
-                  oola.packing_instructions
-                 ,NVL( oola.attribute6, oola.ordered_item )
-                 ,TRUNC( oola.request_date )
-             ) ooal
-             ,
-             -- サマリー用サブクエリ：ooas
-             ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+     AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+     AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+-- 2010/04/09 Ver.1.14 Del M.Sano Start
+--                                                                 -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----     AND  xca.delivery_base_code  =  DECODE( iv_base_code
+----                                            ,cv_base_all
+----                                            ,xca.delivery_base_code
+----                                            ,iv_base_code )
+-- 2010/04/09 Ver.1.14 Del M.Sano End
+     AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+     AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+     AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
+     AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+     AND  TRUNC( ximb.start_date_active )                   <= gd_process_date   -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+     AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date   -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+     AND NOT EXISTS(
+             SELECT
+              /*+
+                USE_NL( xoha xola hca xca mtsi )
+              */
+               'X'                          exists_flag -- EXISTSﾌﾗｸﾞ
+             FROM
+                xxwsh_order_headers_all     xoha        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+               ,xxwsh_order_lines_all       xola        -- 受注明細ｱﾄﾞｵﾝ
+               ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+               ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
+             WHERE
+                  xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+             AND  xoha.req_status           <>  cv_h_add_status_99        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ <> 取消
+             AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+             AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+             AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+             AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+-- 2010/04/09 Ver.1.14 Del M.Sano Start
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----             AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+----                                                       ,cv_base_all
+----                                                       ,xca.delivery_base_code
+----                                                       ,iv_base_code )
+-- 2010/04/09 Ver.1.14 Del M.Sano End
+             AND NVL(xoha.arrival_date,xoha.schedule_arrival_date) >= to_date( gd_trans_start_date )
+             AND  oola.packing_instructions =   xoha.request_no   -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
+                                                                  -- NVL(受注明細.子コード,受注明細.受注品目) = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼品目
+             AND  NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
+             )
+       AND  ( ( oola.flow_status_code = cv_status_closed
+              AND oola.request_date >= to_date( gd_target_closed_month ) )
+            OR ( oola.flow_status_code <> cv_status_closed
+              AND oola.request_date >= to_date( gd_trans_start_date ) )
+            )
+     UNION ALL
+    -- ======================================================
+    -- [ALL指定]例外２
+    -- ③ 受注なし-出荷実績あり ※出荷依頼No存在なしエラー
+    -- ④ 受注なし-出荷実績あり ※明細品目不一致エラー
+    -- ======================================================
+     SELECT
+       /*+
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--         ORDERED
+         LEADING(xoha)
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+         INDEX( haou hr_all_organizaion_units_pk )
+         USE_NL( xoha xola iwm mil haou hca xca hca2 iimb ximb )
+       */
+        xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+       ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+       ,NULL                       order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+       ,NULL                       order_line_no            -- 受注明細.明細番号           ：受注明細No
+       ,xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+       ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+       ,xoha.deliver_from          deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
+       ,mil.description            deliver_from_whse_name
+       ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
+       ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+       ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+       ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+       ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
+       ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+       ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+       ,0                          order_quantity           -- 受注明細.受注数量           ：受注数
+       ,NVL( xola.shipped_quantity, 0 )
+                                   deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+       ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+       ,0 - NVL( xola.shipped_quantity, 0 )
+                                   output_quantity          -- 差異数
+     FROM
+        xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+       ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+       ,mtl_item_locations         mil   -- 
+       ,hr_all_organization_units  haou  -- 
+       ,ic_whse_mst                iwm   -- 
+       ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+       ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+       ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+       ,ic_item_mst_b              iimb  -- OPM品目
+       ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+     WHERE
+          xoha.order_header_id      = xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+     AND  xoha.req_status           = cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+     AND  xoha.latest_external_flag = cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+     AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+     AND  iwm.mtl_organization_id   = haou.organization_id        -- 
+     AND  haou.organization_id      = mil.organization_id         -- 
+     AND  xoha.deliver_from         = mil.segment1                -- 
+     AND  haou.date_from           <= gd_process_date             -- 
+     AND  TRUNC( NVL( haou.date_to, gd_process_date ) ) >= gd_process_date
+     AND  xoha.customer_code        = hca.account_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+     AND  hca.cust_account_id       = xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+-- 2010/04/09 Ver.1.14 Del M.Sano Start
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----     AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+----                                               ,cv_base_all
+----                                               ,xca.delivery_base_code
+----                                               ,iv_base_code )
+-- 2010/04/09 Ver.1.14 Del M.Sano End
+     AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+     AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+     AND  xola.request_item_code    =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
+     AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+     AND  TRUNC( ximb.start_date_active )                   <= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+     AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+     AND NOT EXISTS(
+             SELECT
+               /*+
+               USE_NL( ooha oola hca xca mtsi )
+               */
+               'X'                         exists_flag -- EXISTSﾌﾗｸﾞ
+             FROM
+                oe_order_headers_all        ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+               ,oe_order_lines_all          oola        -- 受注明細ﾃｰﾌﾞﾙ
+               ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+               ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
+               ,mtl_secondary_inventories   mtsi        -- 保管場所ﾏｽﾀ
+             WHERE
+                  ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+             AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+             AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+             AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+             AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+                                                                           -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+             AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+             AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+             AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+             AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+                                 'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+                               FROM
+                                 fnd_lookup_values  flv
+                               WHERE
+                                    flv.lookup_type             = cv_no_inv_item_code
+                               AND  flv.start_date_active      <= gd_process_date
+                               AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+                               AND  flv.enabled_flag            = cv_yes_flg
+                               AND  flv.language                = cv_user_lang
+                               AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+                             )
+             AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+             AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+                                                                           -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+-- 2010/04/09 Ver.1.14 Del M.Sano Start
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----             AND  xca.delivery_base_code     =  DECODE( iv_base_code
+----                                                       ,cv_base_all
+----                                                       ,xca.delivery_base_code
+----                                                       ,iv_base_code )
+-- 2010/04/09 Ver.1.14 Del M.Sano End
+             AND  xoha.request_no            =  oola.packing_instructions -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
+                                                                          -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = NVL(受注明細.子コード,受注明細.受注品目)
+             AND  xola.request_item_code    =  NVL( oola.attribute6, oola.ordered_item )
+             AND  oola.request_date         >= TO_DATE(gd_trans_start_date)
+             )
+     AND  NVL( xola.shipped_quantity, 0 ) != 0 -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+     AND  xoha.arrival_date >= to_date(gd_trans_start_date)
+--     ;
+--
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+     ;
+--
+    -- =========================================================================
+    --** [拠点指定]例外２
+    --** ①～④に該当するエラーデータの抽出SQL
+    --**   ① 受注あり-出荷実績なし ※出荷依頼No存在なしエラー
+    --**   ② 受注あり-出荷実績なし ※明細品目不一致エラー
+    --**   ③ 受注なし-出荷実績あり ※出荷依頼No存在なしエラー
+    --**   ④ 受注なし-出荷実績あり ※明細品目不一致エラー
+    -- =========================================================================
+     CURSOR line_item_excep_cur_base
+     IS
+    -- ======================================================
+    -- [拠点指定]例外２
+    -- ① 受注あり-出荷実績なし ※出荷依頼No存在なしエラー
+    -- ② 受注あり-出荷実績なし ※明細品目不一致エラー
+    -- ======================================================
+     SELECT
+        /*+
+         LEADING(hca2 xca hca)
+         USE_NL( oola mtsi ottt otta )
+        */
+        xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+       ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+       ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+       ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
+       ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+       ,SUBSTRB(oola.packing_instructions, 1, 12)
+                                   deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+       ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
+       ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+       ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
+       ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+       ,NVL( oola.attribute6, oola.ordered_item )
+                                   item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
+       ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+       ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
+       ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+       ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+       ,oola.ordered_quantity * 
+         DECODE ( otta.order_category_code, cv_order, 1, -1 )
+                                   order_quantity           -- 受注明細.受注数量           ：受注数
+       ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+       ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
+       ,oola.ordered_quantity      output_quantity          -- 差異数
+     FROM
+        oe_order_headers_all        ooha          -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+       ,oe_order_lines_all          oola          -- 受注明細ﾃｰﾌﾞﾙ
+       ,hz_cust_accounts            hca           -- 顧客ﾏｽﾀ
+       ,xxcmm_cust_accounts         xca           -- 顧客追加情報ﾏｽﾀ
+       ,mtl_secondary_inventories   mtsi          -- 保管場所ﾏｽﾀ
+       ,hz_cust_accounts            hca2          -- 顧客ﾏｽﾀ2
+       ,ic_item_mst_b               iimb          -- OPM品目
+       ,xxcmn_item_mst_b            ximb          -- OPM品目ｱﾄﾞｵﾝ
+       ,oe_transaction_types_tl     ottt          -- 受注取引タイプ（摘要）
+       ,oe_transaction_types_all    otta          -- 受注取引タイプマスタ
+     WHERE
+          ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+     AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+     AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+     AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+     AND  ottt.language            = cv_user_lang                -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+     AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+     AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+     AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+     AND  ooha.flow_status_code  IN ( cv_status_booked , cv_status_closed ) -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+     AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+     AND  oola.org_id       = gn_org_id
+     AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
+     AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+                         'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+                       FROM
+                         fnd_lookup_values  flv
+                       WHERE
+                            flv.lookup_type             = cv_no_inv_item_code
+                       AND  flv.start_date_active      <= gd_process_date
+                       AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+                       AND  flv.enabled_flag            = cv_yes_flg
+                       AND  flv.language                = cv_user_lang
+                       AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+                    )
+     AND  ooha.sold_to_org_id       =  hca.cust_account_id          -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+     AND  hca.cust_account_id       =  xca.customer_id              -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+     AND  xca.delivery_base_code    = iv_base_code
+     AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+     AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+     AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
+     AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+     AND  TRUNC( ximb.start_date_active )                   <= gd_process_date   -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+     AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date   -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+     AND NOT EXISTS(
+             SELECT
+              /*+
+                USE_NL( xoha xola hca xca mtsi )
+              */
+               'X'                          exists_flag -- EXISTSﾌﾗｸﾞ
+             FROM
+                xxwsh_order_headers_all     xoha        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+               ,xxwsh_order_lines_all       xola        -- 受注明細ｱﾄﾞｵﾝ
+               ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+               ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
+             WHERE
+                  xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+             AND  xoha.req_status           <>  cv_h_add_status_99        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ <> 取消
+             AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+             AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+             AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+             AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+             AND  xca.delivery_base_code    =   iv_base_code
+             AND NVL(xoha.arrival_date,xoha.schedule_arrival_date) >= to_date( gd_trans_start_date )
+             AND  oola.packing_instructions =   xoha.request_no   -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
+                                                                  -- NVL(受注明細.子コード,受注明細.受注品目) = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼品目
+             AND  NVL( oola.attribute6, oola.ordered_item ) = xola.request_item_code
+             )
+       AND  ( ( oola.flow_status_code = cv_status_closed
+              AND oola.request_date >= to_date( gd_target_closed_month ) )
+            OR ( oola.flow_status_code <> cv_status_closed
+              AND oola.request_date >= to_date( gd_trans_start_date ) )
+            )
+     UNION ALL
+    -- ======================================================
+    -- [拠点指定]例外２
+    -- ③ 受注なし-出荷実績あり ※出荷依頼No存在なしエラー
+    -- ④ 受注なし-出荷実績あり ※明細品目不一致エラー
+    -- ======================================================
+     SELECT
+       /*+
+         LEADING( xoha hca xca )
+         INDEX( haou hr_all_organizaion_units_pk )
+         USE_NL( xoha xola iwm mil haou hca xca hca2 iimb ximb )
+       */
+        xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+       ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+       ,NULL                       order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+       ,NULL                       order_line_no            -- 受注明細.明細番号           ：受注明細No
+       ,xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+       ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+       ,xoha.deliver_from          deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
+       ,mil.description            deliver_from_whse_name   -- OPM保管場所ﾏｽﾀ.保管場所名称 ：出荷元倉庫名
+       ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
+       ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+       ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+       ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+       ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
+       ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+       ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+       ,0                          order_quantity           -- 受注明細.受注数量           ：受注数
+       ,NVL( xola.shipped_quantity, 0 )
+                                   deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+       ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+       ,0 - NVL( xola.shipped_quantity, 0 )
+                                   output_quantity          -- 差異数
+     FROM
+        xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+       ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+       ,mtl_item_locations         mil   -- OPM保管場所マスタ
+       ,hr_all_organization_units  haou  -- 在庫組織マスタ
+       ,ic_whse_mst                iwm   -- OPM倉庫マスタ
+       ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+       ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+       ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+       ,ic_item_mst_b              iimb  -- OPM品目
+       ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+     WHERE
+          xoha.order_header_id      = xola.order_header_id        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+     AND  xoha.req_status           = cv_h_add_status_04          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+     AND  xoha.latest_external_flag = cv_yes_flg                  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+     AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+     AND  iwm.mtl_organization_id   = haou.organization_id
+     AND  haou.organization_id      = mil.organization_id
+     AND  xoha.deliver_from         = mil.segment1                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所 = OPM保管場所ﾏｽﾀ.保管倉庫コード
+     AND  haou.date_from           <= gd_process_date             -- OPM保管場所ﾏｽﾀ.組織有効開始日 <= 業務日付
+     AND  TRUNC( NVL( haou.date_to, gd_process_date ) ) >= gd_process_date
+     AND  xoha.customer_code        = hca.account_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+     AND  hca.cust_account_id       = xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+     AND  xca.delivery_base_code    = iv_base_code                -- 顧客追加情報ﾏｽﾀ.拠点コード = 入力パラメータ.拠点コード
+     AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+     AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+     AND  xola.request_item_code    =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
+     AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+     AND  TRUNC( ximb.start_date_active )                   <= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+     AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+     AND NOT EXISTS(
+             SELECT
+               /*+
+               USE_NL( ooha oola hca xca mtsi )
+               */
+               'X'                         exists_flag -- EXISTSﾌﾗｸﾞ
+             FROM
+                oe_order_headers_all        ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+               ,oe_order_lines_all          oola        -- 受注明細ﾃｰﾌﾞﾙ
+               ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+               ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
+               ,mtl_secondary_inventories   mtsi        -- 保管場所ﾏｽﾀ
+             WHERE
+                  ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+             AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+             AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+             AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+             AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+                                                                           -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+             AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+             AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+             AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+             AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+                                 'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+                               FROM
+                                 fnd_lookup_values  flv
+                               WHERE
+                                    flv.lookup_type             = cv_no_inv_item_code
+                               AND  flv.start_date_active      <= gd_process_date
+                               AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+                               AND  flv.enabled_flag            = cv_yes_flg
+                               AND  flv.language                = cv_user_lang
+                               AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+                             )
+             AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+             AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+             AND  xca.delivery_base_code     =  iv_base_code
+             AND  xoha.request_no            =  oola.packing_instructions -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
+                                                                          -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = NVL(受注明細.子コード,受注明細.受注品目)
+             AND  xola.request_item_code    =  NVL( oola.attribute6, oola.ordered_item )
+             AND  oola.request_date         >= TO_DATE(gd_trans_start_date)
+             )
+     AND  NVL( xola.shipped_quantity, 0 ) != 0 -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+     AND  xoha.arrival_date >= to_date(gd_trans_start_date)
+     ;
+--     UNION ALL
+----
+--     --** ■例外2-3取得SQL(旧例外４)
+--     -- 受注データなしエラー(出荷実績あり)
+----     CURSOR no_order_excep_cur
+----     IS
+--     SELECT
+--        /*+
+--          LEADING( xoha )
+--          INDEX( haou hr_all_organizaion_units_pk)
+--          --USE_NL( xoha hca xca hca2 mil haou iwm )
+--          --USE_NL( xola iimb ximb )
+--          USE_NL( xoha xola iwm mil haou hca xca hca2 iimb ximb )
+--        */
+--        xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--       ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--       ,NULL                       order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--       ,NULL                       order_line_no            -- 受注明細.明細番号           ：受注明細No
+--       ,xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--       ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+--       ,xoha.deliver_from          deliver_from_whse_number -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.出荷元保管場所：出荷元倉庫番号
+--       ,mil.description            deliver_from_whse_name 
+--       ,xoha.customer_code         customer_number          -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客          ：顧客番号
+--       ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--       ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+--       ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--       ,NULL                       schedule_dlv_date        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着日          ：納品予定日
+--       ,NULL                       schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--       ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--       ,0                          order_quantity           -- 受注明細.受注数量           ：受注数
+--       ,NVL( xola.shipped_quantity, 0 )
+--                                   deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--       ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+--       ,0 - NVL( xola.shipped_quantity, 0 )
+--                                   output_quantity          -- 差異数
+--     FROM
+--        xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--       ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+--       ,mtl_item_locations         mil   -- OPM保管場所マスタ
+--       ,ic_whse_mst                iwm   -- 
+--       ,hr_all_organization_units  haou  -- 在庫組織マスタ
+--       ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--       ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--       ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--       ,ic_item_mst_b              iimb  -- OPM品目
+--       ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--     WHERE
+--          xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--     AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+--     AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--     AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+--     AND  NVL( xola.shipped_quantity, 0 ) != 0                    -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量が0以外
+--     AND  iwm.mtl_organization_id = haou.organization_id
+--     AND  haou.organization_id    = mil.organization_id
+--     AND  haou.date_from         <= gd_process_date
+--     AND  TRUNC( NVL( haou.date_to, gd_process_date ) ) >= gd_process_date
+--     AND  xoha.deliver_from   = mil.segment1
+--     AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+--     AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID       = 顧客追加情報ﾏｽﾀ.顧客ID
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----     AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+----                                               ,cv_base_all
+----                                               ,xca.delivery_base_code
+----                                               ,iv_base_code )
+--     AND  hca2.customer_class_code  =  cv_party_type_1            -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--     AND  hca2.account_number       =  xca.delivery_base_code     -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+--     AND  xola.request_item_code   =  iimb.item_no               -- 受注明細ｱﾄﾞｵﾝ.依頼品目 = OPM品目.品目ｺｰﾄﾞ
+--     AND  iimb.item_id              =  ximb.item_id               -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--     AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--     AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+--     AND NOT EXISTS(
+--             SELECT
+--                /*+
+--                  USE_NL( ooha hca xca )
+--                  USE_NL( oola mtsi )
+--                */
+--               'X'                       exists_flag -- EXISTSﾌﾗｸﾞ
+--             FROM
+--                oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--               ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
+--               ,hz_cust_accounts           hca         -- 顧客ﾏｽﾀ
+--               ,xxcmm_cust_accounts        xca         -- 顧客追加情報ﾏｽﾀ
+--               ,mtl_secondary_inventories  mtsi        -- 保管場所ﾏｽﾀ
+--             WHERE
+--                  ooha.header_id    =  oola.header_id                      -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--             AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--             AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--             AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--             AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--                                                                           -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+--             AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
+--             AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+--             AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
+--             AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                                 'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                               FROM
+--                                 fnd_lookup_values  flv
+--                               WHERE
+--                                    flv.lookup_type             = cv_no_inv_item_code
+--                               AND  flv.start_date_active      <= gd_process_date
+--                               AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                               AND  flv.enabled_flag            = cv_yes_flg
+--                               AND  flv.language                = cv_user_lang
+--                               AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                             )
+--             AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--             AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                           -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----             AND  xca.delivery_base_code     =  DECODE( iv_base_code
+----                                                       ,cv_base_all
+----                                                       ,xca.delivery_base_code
+----                                                       ,iv_base_code )
+--             AND  xoha.request_no            =  oola.packing_instructions  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No = 受注明細.梱包指示
+--             AND  oola.request_date         >= to_date(gd_trans_start_date)
+--             )
+--     AND  xoha.arrival_date >= to_date(gd_trans_start_date)
+----     ;
+----
+--     UNION ALL
+----
+----
+--     --** ■例外2-4取得SQL(旧例外５)
+--     -- 出荷実績なしエラー(受注データあり)
+----     CURSOR no_actual_excep_cur
+----     IS
+--     SELECT
+--        /*+
+--          LEADING(ooha)
+--          INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+--          INDEX(oola XXCOS_OE_ORDER_LINES_ALL_N23)
+--          USE_NL( ooha hca )
+--          USE_NL( oola mtsi ottt otta iimb ximb )
+--        */
+--        xca.delivery_base_code     base_code                -- 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ：拠点ｺｰﾄﾞ
+--       ,hca2.account_name          base_name                -- 顧客ﾏｽﾀ2.顧客名称           ：拠点名称
+--       ,ooha.order_number          order_number             -- 受注ﾍｯﾀﾞ.受注番号           ：受注番号
+--       ,oola.line_number           order_line_no            -- 受注明細.明細番号           ：受注明細No
+--       ,NULL                       line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+--       ,SUBSTRB(oola.packing_instructions, 1, 12) deliver_requested_no     -- 受注明細.梱包指示           ：出荷依頼No
+--       ,oola.subinventory          deliver_from_whse_number -- 受注明細.保管場所           ：出荷元倉庫番号
+--       ,mtsi.description           deliver_from_whse_name   -- 保管場所.保管場所名称       ：出荷元倉庫名
+--       ,hca.account_number         customer_number          -- 顧客ﾏｽﾀ.顧客ｺｰﾄﾞ            ：顧客番号
+--       ,hca.account_name           customer_name            -- 顧客ﾏｽﾀ.顧客名称            ：顧客名
+--       ,NVL( oola.attribute6, oola.ordered_item )
+--                                   item_code                -- 受注明細.受注品目           ：品目ｺｰﾄﾞ
+--       ,ximb.item_short_name       item_name                -- OPM品目ｱﾄﾞｵﾝ                ：品名
+--       ,TRUNC( oola.request_date ) schedule_dlv_date        -- 受注明細.要求日             ：納品予定日
+--       ,oola.attribute4            schedule_inspect_date    -- 受注明細.検収予定日         ：検収予定日
+--       ,NULL                       arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+--       ,oola.ordered_quantity * 
+--         DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                                   order_quantity           -- 受注明細.受注数量           ：受注数
+--       ,0                          deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+--       ,oola.order_quantity_uom    uom_code                 -- 受注明細.受注単位           ：単位
+--       ,oola.ordered_quantity      output_quantity          -- 差異数
+--     FROM
+--        oe_order_headers_all       ooha  -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
+--       ,oe_order_lines_all         oola  -- 受注明細ﾃｰﾌﾞﾙ
+--       ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+--       ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+--       ,mtl_secondary_inventories  mtsi  -- 保管場所ﾏｽﾀ
+--       ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+--       ,ic_item_mst_b              iimb  -- OPM品目
+--       ,xxcmn_item_mst_b           ximb  -- OPM品目ｱﾄﾞｵﾝ
+--       ,oe_transaction_types_tl    ottt  -- 受注取引タイプ（摘要）
+--       ,oe_transaction_types_all   otta  -- 受注取引タイプマスタ
+--     WHERE
+--          ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
+--     AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+--     AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
+--     AND  oola.line_type_id        = ottt.transaction_type_id    -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+--     AND  ottt.transaction_type_id = otta.transaction_type_id    -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+--     AND  ottt.language            = cv_user_lang           -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+--     AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
+--     AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
+--     AND  ooha.flow_status_code  = cv_status_booked  -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ = 'BOOKED'
+--     AND  oola.flow_status_code  NOT IN ( cv_status_cancelled, cv_status_closed )         -- 受注明細.ｽﾃｰﾀｽ NOT IN ('CANCELLED', 'CLOSED')
+--     AND  oola.org_id                = gn_org_id
+--     AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
+--     AND  NOT EXISTS ( SELECT                                    -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
+--                         'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
+--                       FROM
+--                         fnd_lookup_values  flv
+--                       WHERE
+--                            flv.lookup_type             = cv_no_inv_item_code
+--                       AND  flv.start_date_active      <= gd_process_date
+--                       AND  gd_process_date            <= NVL( flv.end_date_active, gd_max_date )
+--                       AND  flv.enabled_flag            = cv_yes_flg
+--                       AND  flv.language                = cv_user_lang
+--                       AND  NVL(oola.attribute6,oola.ordered_item) = flv.lookup_code
+--                    )
+--     AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+--     AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+--                                                                 -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----     AND  xca.delivery_base_code  =  DECODE( iv_base_code 
+----                                            ,cv_base_all
+----                                            ,xca.delivery_base_code
+----                                            ,iv_base_code  )
+--     AND  hca2.customer_class_code  =  cv_party_type_1              -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+--     AND  hca2.account_number       =  xca.delivery_base_code       -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+--     AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no  -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
+--     AND  iimb.item_id              =  ximb.item_id                 -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
+--     AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
+--     AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
+--     AND NOT EXISTS(
+--             SELECT
+--               /*+
+--                 USE_NL( xoha xola hca xca )
+--               */
+--               'X'                          exists_flag -- EXISTSﾌﾗｸﾞ
+--             FROM
+--                xxwsh_order_headers_all     xoha        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+--               ,xxwsh_order_lines_all       xola        -- 受注明細ｱﾄﾞｵﾝ
+--               ,hz_cust_accounts            hca         -- 顧客ﾏｽﾀ
+--               ,xxcmm_cust_accounts         xca         -- 顧客追加情報ﾏｽﾀ
+--             WHERE
+--                  xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+--             AND  xoha.req_status           <>  cv_h_add_status_99        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ <> 取消
+--             AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+--             AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+--             AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+--             AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID = 顧客追加情報ﾏｽﾀ.顧客ID
+--               AND  ( ( iv_base_code = cv_base_all )
+--                      OR
+--                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+--                    )
+----             AND  xca.delivery_base_code    =   DECODE( iv_base_code       -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+----                                                       ,cv_base_all
+----                                                       ,xca.delivery_base_code
+----                                                       ,iv_base_code )
+--             AND  oola.packing_instructions =   xoha.request_no           -- 受注明細.梱包指示 = 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No
+--             AND  NVL(xoha.arrival_date,xoha.schedule_arrival_date) >= to_date( gd_trans_start_date )
+--             )
+--     AND  ( ( oola.flow_status_code = cv_status_closed
+--            AND oola.request_date >= to_date( gd_target_closed_month ) )
+--          OR ( oola.flow_status_code <> cv_status_closed
+--            AND oola.request_date >= to_date( gd_trans_start_date ) )
+--          )
+--     ;
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+--
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--     --** ■例外３チェックデータ取得SQL
+--     CURSOR get_check_data_cur
+--     IS
+--     SELECT   ooa1.deliver_requested_no      ooa1_deliver_requested_no
+    -- =========================================================================
+    --** [ALL・拠点指定]例外３
+    --** ①～③のチェック対象となる[受注-出荷実績]データ抽出SQL
+    --**   ① 数量と出荷依頼実績数量が異なる
+    --**   ② 納品予定日と着荷日が異なる
+    --**   ③ 納品予定日(着荷日)と検収予定日の妥当性
+    -- =========================================================================
+     CURSOR get_check_data_cur
+     IS
+     SELECT   /*+
+                LEADING( ooa2 )
+                USE_NL( ooa2.xoha ooa1.oola )
+              */
+              ooa1.deliver_requested_no      ooa1_deliver_requested_no       -- 受注：出荷依頼No
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+             ,ooa1.item_code                 ooa1_item_code
+             ,ooa1.order_quantity            ooa1_order_quantity
+             ,ooa1.line_id                   ooa1_line_id
+             ,ooa1.schedule_dlv_date         ooa1_schedule_dlv_date
+             ,ooa1.min_schedule_inspect_date ooa1_min_schedule_inspect_date
+             ,ooa1.max_schedule_inspect_date ooa1_max_schedule_inspect_date
+             ,ooa2.line_no                   ooa2_line_no
+             ,ooa2.arrival_date              ooa2_arrival_date
+             ,ooa2.deliver_actual_quantity   ooa2_deliver_actual_quantity
+             ,ooa2.uom_code                  ooa2_uom_code
+     FROM
+               (
+               /* 受注部分のみ */
+               SELECT
                   /*+
-                    LEADING(ooha)
-                    USE_NL(ooha hca )
-                    USE_NL(oola mtsi )
-                    INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N11)
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--                    ORDERED
+--                    INDEX( ooha XXCOS_OE_ORDER_HEADERS_ALL_N11 )
+--                    INDEX( oola XXCOS_OE_ORDER_LINES_ALL_N23 )
+--                    INDEX( xca xxcmm_cust_accounts_pk )
+                    LEADING( oola )
+                    INDEX( xca xxcmm_cust_accounts_n15 )
+                    USE_NL( oola item_cnv ) 
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+                    USE_NL( ooha hca xca )
+                    USE_NL( oola mtsi otta ottt msib xicv )
                   */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
                   oola.packing_instructions                    deliver_requested_no     -- 受注明細.梱包指示（出荷依頼No）
                  ,NVL( oola.attribute6, oola.ordered_item )    item_code                -- NVL(受注明細.子コード,受注明細.受注品目)
                  ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
@@ -2116,7 +4043,10 @@ AS
                           ELSE NVL( xicv.conversion_rate, 0 )
                         END
                   ) AS order_quantity
-                 ,TRUNC( oola.request_date ) request_date
+                 ,TRUNC( oola.request_date )     schedule_dlv_date
+                 ,MAX(oola.line_id)              line_id
+                 ,MIN(oola.attribute4)           min_schedule_inspect_date
+                 ,MAX(oola.attribute4)           max_schedule_inspect_date
                FROM
                   oe_order_headers_all       ooha        -- 受注ﾍｯﾀﾞﾃｰﾌﾞﾙ
                  ,oe_order_lines_all         oola        -- 受注明細ﾃｰﾌﾞﾙ
@@ -2132,7 +4062,7 @@ AS
                        flv.meaning      AS UOM_CODE
                      , flv.description  AS CNV_VALUE
                    FROM
-                     fnd_lookup_values flv
+                     applsys.fnd_lookup_values flv
                    WHERE
                          flv.enabled_flag          = cv_yes_flg
                      AND flv.language                = cv_user_lang
@@ -2145,21 +4075,19 @@ AS
                AND  ooha.org_id       =  gn_org_id                           -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
                AND  oola.line_type_id        = ottt.transaction_type_id      -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
                AND  ottt.transaction_type_id = otta.transaction_type_id      -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
-               AND  ottt.language            = cv_user_lang             -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+               AND  ottt.language            = cv_user_lang                  -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
                AND  oola.subinventory =  mtsi.secondary_inventory_name       -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
                AND  oola.ship_from_org_id  =  mtsi.organization_id           -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
                AND  mtsi.attribute13       =  gv_subinventory_class          -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
                                                                              -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
                AND  ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )
                AND  oola.flow_status_code      <> cv_status_cancelled        -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-               AND  oola.org_id            = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
+               AND  oola.org_id       =  gn_org_id                           -- 受注明細.組織ID = A-1取得の営業単位
                AND  oola.packing_instructions  IS NOT NULL                   -- 受注明細.梱包指示 IS NOT NULL
                AND  NOT EXISTS ( SELECT                                      -- NVL(受注明細.子コード,受注明細.受注品目)≠非在庫品目コード
                                    'X'                 exists_flag -- EXISTSﾌﾗｸﾞ
                                  FROM
-                                   fnd_lookup_values  flv
+                                   applsys.fnd_lookup_values  flv
                                  WHERE
                                       flv.lookup_type             = cv_no_inv_item_code
                                  AND  flv.start_date_active      <= gd_process_date
@@ -2171,10 +4099,14 @@ AS
                AND  ooha.sold_to_org_id        =  hca.cust_account_id        -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
                AND  hca.cust_account_id        =  xca.customer_id            -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
                                                                              -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-               AND  xca.delivery_base_code     =  DECODE( iv_base_code
-                                                         ,cv_base_all
-                                                         ,xca.delivery_base_code
-                                                         ,iv_base_code )
+               AND  ( ( iv_base_code = cv_base_all )
+                      OR
+                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+                    )
+--               AND  xca.delivery_base_code     =  DECODE( iv_base_code
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
                                                                              -- NVL(受注明細.子コード,受注明細.受注品目)
                                                                              --     = Disc品目.品目コード
                AND  NVL( oola.attribute6, oola.ordered_item ) = msib.segment1
@@ -2183,103 +4115,258 @@ AS
                AND  NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)  --     = 品目換算View.品目コード
                AND  oola.order_quantity_uom    = xicv.to_uom_code(+)         -- 受注明細.受注単位 = 品目換算View.変換先単位
                AND  oola.order_quantity_uom    = item_cnv.uom_code(+)
-               AND  TRUNC(oola.request_date)   >= TRUNC(gd_trans_start_date)
+               AND  ( ( oola.flow_status_code = cv_status_closed
+                      AND oola.request_date >= to_date(gd_target_closed_month))
+                    OR ( oola.flow_status_code <> cv_status_closed
+                      AND oola.request_date >= to_date(gd_trans_start_date))
+                    )
                GROUP BY
                   oola.packing_instructions
                  ,NVL( oola.attribute6, oola.ordered_item )
                  ,TRUNC( oola.request_date )
-             ) ooas
-          WHERE
-               ooha.header_id    =  oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID = 受注明細.受注ﾍｯﾀﾞID
-          AND  ooha.org_id       =  gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
-          AND  oola.subinventory =  mtsi.secondary_inventory_name     -- 受注明細.保管場所 = 保管場所ﾏｽﾀ.保管場所ｺｰﾄﾞ
-          AND  oola.ship_from_org_id  =  mtsi.organization_id         -- 受注明細.出荷元組織ID = 保管場所ﾏｽﾀ.組織ID
-          AND  mtsi.attribute13       =  gv_subinventory_class        -- 保管場所ﾏｽﾀ.保管場所分類 = '11':直送
---                                                                      -- 受注明細.ｽﾃｰﾀｽ NOT IN( 'CLOSED','CANCELLED')
-          AND  ooha.flow_status_code  IN ( cv_status_booked ,cv_status_closed )   -- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED' , 'CLOSED' )
-          AND  oola.flow_status_code  <> cv_status_cancelled          -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
-          AND  oola.org_id             = gn_org_id
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-          AND  oola.packing_instructions  IS NOT NULL                 -- 受注明細.梱包指示 IS NOT NULL
-          AND  ooha.sold_to_org_id     =  hca.cust_account_id         -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
-          AND  hca.cust_account_id     =  xca.customer_id             -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-                                                                      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-          AND  xca.delivery_base_code  =  DECODE( iv_base_code
-                                                 ,cv_base_all
-                                                 ,xca.delivery_base_code
-                                                 ,iv_base_code )
-          AND  hca2.customer_class_code  =  cv_party_type_1               -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
-          AND  hca2.account_number       =  xca.delivery_base_code        -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
-          AND  NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no   -- NVL(受注明細.子コード,受注明細.受注品目) = OPM品目.品目ｺｰﾄﾞ
-          AND  iimb.item_id              =  ximb.item_id                  -- OPM品目.品目ID = OPM品目ｱﾄﾞｵﾝ.品目id
-          AND  TRUNC( ximb.start_date_active )                    <=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用開始日 <= 業務日付
-          AND  TRUNC( NVL( ximb.end_date_active, gd_max_date ) )  >=  gd_process_date    -- OPM品目ｱﾄﾞｵﾝ.適用終了日 >= 業務日付
-          AND  oola.line_id               = ooal.line_id                  -- 受注明細.受注明細ID = 最終歴用.受注明細ID
-          AND  oola.packing_instructions  = ooas.deliver_requested_no     -- 例外６営業サブクエリ.出荷依頼No = サマリー用サブクエリ.出荷依頼No
-          AND  NVL( oola.attribute6, oola.ordered_item ) = ooas.item_code -- 例外６営業サブクエリ.品目コード = サマリー用サブクエリ.品目コード
-          AND  ( ( oola.flow_status_code = cv_status_closed
-                 AND TRUNC( oola.request_date ) >= TRUNC( gd_target_closed_month ) )
-               OR ( oola.flow_status_code <> cv_status_closed
-                 AND TRUNC( oola.request_date ) >= TRUNC( gd_trans_start_date ) )
-               )
-          AND TRUNC(oola.request_date) = ooas.request_date
-          AND ooas.order_quantity     != cn_order_sum_zero                -- 受注数量0
-        )
-        ooa1,
-        -- ****** 例外６生産サブクエリ：ooa2 ******
-        ( SELECT
--- *********** 2010/01/14 1.13 N.Maeda ADD START *********** --
+               ) ooa1
+              ,(
+               /* 生産部分のみ */
+               SELECT
+                  /*+
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--                    INDEX(xca xxcmm_cust_accounts_pk)
+--                    USE_NL( xoha xola hca xca )
+                    LEADING( xoha hca xca )
+                    INDEX( xca xxcmm_cust_accounts_n15 )
+                    USE_NL(xoha hca xca )
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+                  */
+                  xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
+                 ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
+                 ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
+                 ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
+                 ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
+                 ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
+               FROM
+                  xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
+                 ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+                 ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+                 ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+               WHERE
+                    xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
+               AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
+               AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
+               AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
+               AND  xola.shipped_quantity IS NOT NULL
+               AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
+               AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+               AND  ( ( iv_base_code = cv_base_all )
+                      OR
+                      ( iv_base_code != cv_base_all ) AND ( xca.delivery_base_code = iv_base_code )
+                    )
+--               AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
+--                                                         ,cv_base_all
+--                                                         ,xca.delivery_base_code
+--                                                         ,iv_base_code )
+               AND xoha.arrival_date >= TO_DATE(gd_trans_start_date)
+               ) ooa2
+     WHERE
+          ooa1.deliver_requested_no =   ooa2.deliver_requested_no      -- 営業サブクエリ.出荷依頼No =  生産サブクエリ.出荷依頼No
+     AND  ooa1.item_code            =   ooa2.item_code                 -- 営業サブクエリ.品目コード =  生産サブクエリ.品目コード
+--     AND  ooa1.order_quantity      !=   0                              -- 営業サブクエリ.受注数    !=  0
+--     AND  ooa1.schedule_dlv_date    =   ooa2.arrival_date
+--     AND  NVL( TO_DATE(ooa1.min_schedule_inspect_date,cv_yyyymmddhhmiss),ooa1.schedule_dlv_date ) >= ooa1.schedule_dlv_date
+--     AND  NVL( TO_DATE(ooa1.max_schedule_inspect_date,cv_yyyymmddhhmiss),ooa1.schedule_dlv_date ) >= ooa1.schedule_dlv_date
+     ;
+--
+--
+     --** ■検収日不整合データ取得SQL
+     CURSOR get_insp_inconsistent_cur (
+                                   it_packing_instructions oe_order_lines_all.packing_instructions%TYPE  -- 出荷依頼No
+                                  ,it_item_code            oe_order_lines_all.ordered_item%TYPE          -- 品目コード
+                                  )
+     IS
+     SELECT 
             /*+
-              USE_NL( xoha xola hca xca )
+            USE_NL( oola ooha mtsi iimb ximb hca xca hca2 xicv item_cnv msib ottt otta )
             */
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-             xola.order_line_number     line_no                  -- 受注明細ｱﾄﾞｵﾝ.明細番号      ：明細No
-            ,xoha.request_no            deliver_requested_no     -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.依頼No        ：出荷依頼No
-            ,xola.request_item_code     item_code                -- 受注明細ｱﾄﾞｵﾝ.依頼品目      ：品目ｺｰﾄﾞ
-            ,xoha.arrival_date          arrival_date             -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.着荷日        ：着日
-            ,xola.shipped_quantity      deliver_actual_quantity  -- 受注明細ｱﾄﾞｵﾝ.出荷実績数量  ：出荷実績数
-            ,xola.uom_code              uom_code                 -- 受注明細ｱﾄﾞｵﾝ.単位          ：単位
-          FROM
-             xxwsh_order_headers_all    xoha  -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ
-            ,xxwsh_order_lines_all      xola  -- 受注明細ｱﾄﾞｵﾝ
+             ooha.order_number                         order_number              -- 受注番号
+            ,oola.line_number                          line_number               -- 受注明細番号
+            ,oola.subinventory                         subinventory_code         -- 受注：保管場所コード
+            ,mtsi.description                          subinventory_name         -- 受注：保管場所名称
+            ,NVL( oola.attribute6, oola.ordered_item ) item_code                 -- 受注：品目コード
+            ,ximb.item_short_name                      item_name                 -- 受注：品目名
+            ,TRUNC(oola.request_date)                  schedule_dlv_date         -- 受注：納品予定日
+            ,oola.attribute4                           schedule_inspect_date     -- 受注：検収予定日
+            ,xca.delivery_base_code                    base_code                 -- 受注：拠点ｺｰﾄﾞ
+            ,hca2.account_name                         base_name                 -- 受注：拠点名称
+            ,hca.account_number                        customer_number           -- 受注：顧客番号
+            ,hca.account_name                          customer_name             -- 受注：顧客名
+            ,oola.line_id                              line_id                   -- 受注：明細ID
+--            ,SUM( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+--                        * CASE oola.order_quantity_uom
+--                          WHEN msib.primary_unit_of_measure THEN 1
+--                          WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+--                          ELSE NVL( xicv.conversion_rate, 0 )
+--                        END
+--                  ) AS order_quantity
+            ,( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+                    * CASE oola.order_quantity_uom
+                      WHEN msib.primary_unit_of_measure THEN 1
+                      WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+                      ELSE NVL( xicv.conversion_rate, 0 )
+                    END
+              ) AS order_quantity
+     FROM    oe_order_lines_all         oola  -- 受注明細
+            ,oe_order_headers_all       ooha  -- 受注ヘッダ
+            ,mtl_secondary_inventories  mtsi  -- 保管場所マスタ
+            ,ic_item_mst_b              iimb  -- OPM品目マスタ
+            ,xxcmn_item_mst_b           ximb  -- OPM品目アドオン
             ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
             ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
-          WHERE
-               xoha.order_header_id      =   xola.order_header_id      -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID = 受注明細ｱﾄﾞｵﾝ.受注ﾍｯﾀﾞｱﾄﾞｵﾝID
-          AND  xoha.req_status           =   cv_h_add_status_04        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.ｽﾃｰﾀｽ = 出荷実績計上済
-          AND  xoha.latest_external_flag =   cv_yes_flg                -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.最新ﾌﾗｸﾞ = 'Y'
-          AND  NVL( xola.delete_flag, cv_no_flg ) = cv_no_flg          -- 受注明細ｱﾄﾞｵﾝ.削除ﾌﾗｸﾞ = 'N'
-          AND  xola.shipped_quantity IS NOT NULL
-          AND  xoha.customer_code        =   hca.account_number        -- 受注ﾍｯﾀﾞｱﾄﾞｵﾝ.顧客 = 顧客ﾏｽﾀ.顧客コード
-          AND  hca.cust_account_id       =   xca.customer_id           -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
-          AND  xca.delivery_base_code    =   DECODE( iv_base_code      -- 顧客追加情報ﾏｽﾀ.納品拠点 = DECODE('ALL','ALL',ﾊﾟﾗﾒｰﾀ.拠点ｺｰﾄﾞ)
-                                                    ,cv_base_all
-                                                    ,xca.delivery_base_code
-                                                    ,iv_base_code )
-        )
-        ooa2
-      WHERE
-           ooa1.deliver_requested_no =   ooa2.deliver_requested_no -- 例外６営業サブクエリ.出荷依頼No = 例外６生産サブクエリ.出荷依頼No
-      AND  ooa1.item_code            =   ooa2.item_code            -- 例外６営業サブクエリ.品目コード = 例外６生産サブクエリ.品目コード
-      AND                                                          -- 例外６営業サブクエリ.受注数 <> 例外６生産サブクエリ.出荷実績数
-        (  ooa1.order_quantity                 <>  ooa2.deliver_actual_quantity
-         OR                                                        -- 例外６営業サブクエリ.納品予定日 <> 例外６生産サブクエリ.着日
-           TRUNC( ooa1.schedule_dlv_date )     <>  ooa2.arrival_date
-         OR
-           (                                                       -- 例外６営業サブクエリ.納品予定日 =  例外６生産サブクエリ.着日
-             ( TRUNC( ooa1.schedule_dlv_date ) =   ooa2.arrival_date )
-             AND
-             ( ooa1.schedule_inspect_date IS NOT NULL )            -- 例外６営業サブクエリ.検収予定日 IS NOT NULL
-             AND                                                   -- 例外６営業サブクエリ.検収予定日 < 例外６生産サブクエリ.着日
-             ( TO_DATE( ooa1.schedule_inspect_date, cv_yyyymmddhhmiss ) < ooa2.arrival_date )
-           )
-        )
--- *********** 2010/01/14 1.13 N.Maeda ADD  END  *********** --
-      ;
+            ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+            ,xxcos_item_conversions_v  xicv   -- 品目換算View
+            ,(
+              SELECT
+                 flv.meaning      AS UOM_CODE
+               , flv.description  AS CNV_VALUE
+              FROM
+                 fnd_lookup_values flv
+              WHERE
+                 flv.enabled_flag          = cv_yes_flg
+              AND flv.language                = cv_user_lang
+              AND flv.start_date_active    <= gd_process_date
+              AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
+              AND flv.lookup_type           = cv_weight_uom_cnv_mst
+              ) item_cnv
+             ,inv.mtl_system_items_b         msib        -- Disc品目（営業組織）
+             ,ont.oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+             ,ont.oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+     WHERE   oola.header_id           =  ooha.header_id
+     AND     ooha.org_id              =  gn_org_id                               -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+     AND     oola.line_type_id        =  ottt.transaction_type_id                -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+     AND     ottt.transaction_type_id =  otta.transaction_type_id                -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+     AND     ottt.language            =  cv_user_lang                            -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+     AND     oola.subinventory        =  mtsi.secondary_inventory_name           -- 受注明細.保管場所 = 保管場所マスタ.保管場所
+     AND     oola.ship_from_org_id    =  mtsi.organization_id                    -- 受注明細.出荷元組織ID = 保管場所マスタ.在庫組織ID
+     AND     mtsi.attribute13         =  gv_subinventory_class                   -- 保管場所区分 = '11':直送
+     AND     ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )-- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+     AND     oola.flow_status_code      <> cv_status_cancelled                   -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+     AND     oola.org_id                =  gn_org_id                             -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+     AND     ooha.sold_to_org_id        =  hca.cust_account_id                   -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+     AND     NVL( oola.attribute6, oola.ordered_item ) = msib.segment1           -- NVL( 受注明細.DFF6,受注明細.受注品目) = Disc品目.品目コード
+     AND     oola.ship_from_org_id      = msib.organization_id                   -- 受注明細.出荷元組織 = Disc品目.組織ID
+     AND     NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)       -- NVL( 受注明細.DFF6,受注明細.受注品目) = 品目換算View.品目コード
+     AND     oola.order_quantity_uom    = xicv.to_uom_code(+)                    -- 受注明細.受注単位 = 品目換算View.変換先単位
+     AND     oola.order_quantity_uom    = item_cnv.uom_code(+)                   -- 受注明細.受注単位 = 重量換算マスタ.単位コード
+--     AND     oola.ship_from_org_id      =  mtsi.organization_id                  -- 受注明細.出荷元組織 = 保管場所マスタ.在庫組織ID
+     AND     NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no            -- NVL( 受注明細.DFF6,受注明細.受注品目) = OPM品目.品目コード
+     AND     iimb.item_id               =  ximb.item_id                          -- OPM品目.品目ID = OPM品目アドオン.品目ID
+     AND     TRUNC( ximb.start_date_active )                   <= gd_process_date-- OPM品目アドオン.適用開始日 ≧ A-1で取得した業務日付
+     AND     TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date-- NVL(OPM品目アドオン.適用終了日,A-1で取得したMAX日付)≦ A-1で取得した業務日付
+     AND     hca.cust_account_id        =  xca.customer_id                       -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+     AND     hca2.customer_class_code   =  cv_party_type_1                       -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+     AND     hca2.account_number        =  xca.delivery_base_code                -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+     AND     oola.packing_instructions                 = it_packing_instructions -- 受注明細.梱包指示 = 対象となる出荷依頼No
+     AND     NVL( oola.attribute6, oola.ordered_item ) = it_item_code            -- NVL(DFF6,受注品目コード) = 対象品目コード
+--     GROUP BY
+--             oola.subinventory
+--            ,mtsi.description
+--            ,NVL( oola.attribute6, oola.ordered_item )
+--            ,ximb.item_short_name
+--            ,TRUNC(oola.request_date)
+--            ,oola.attribute4
+--            ,xca.delivery_base_code
+--            ,hca2.account_name
+--            ,hca.account_number
+--            ,hca.account_name
+     ;
+--
+     -- 検収日逆転データ取得
+     CURSOR get_rev_dlv_inconsistent_cur (
+                                   it_packing_instructions oe_order_lines_all.packing_instructions%TYPE  -- 出荷依頼No
+                                  ,it_item_code            oe_order_lines_all.ordered_item%TYPE          -- 品目コード
+                                  ,it_dlv_date             oe_order_lines_all.request_date%TYPE          -- 納品日
+                                  )
+     IS
+     SELECT 
+            /*+
+            USE_NL( oola ooha mtsi iimb ximb hca xca hca2 xicv item_cnv msib ottt otta )
+            */
+             ooha.order_number                         order_number              -- 受注番号
+            ,oola.line_number                          line_number               -- 受注明細番号
+            ,oola.subinventory                         subinventory_code         -- 受注：保管場所コード
+            ,mtsi.description                          subinventory_name         -- 受注：保管場所名称
+            ,NVL( oola.attribute6, oola.ordered_item ) item_code                 -- 受注：品目コード
+            ,ximb.item_short_name                      item_name                 -- 受注：品目名
+            ,TRUNC(oola.request_date)                  schedule_dlv_date         -- 受注：納品予定日
+            ,oola.attribute4                           schedule_inspect_date     -- 受注：検収予定日
+            ,xca.delivery_base_code                    base_code                 -- 受注：拠点ｺｰﾄﾞ
+            ,hca2.account_name                         base_name                 -- 受注：拠点名称
+            ,hca.account_number                        customer_number           -- 受注：顧客番号
+            ,hca.account_name                          customer_name             -- 受注：顧客名
+            ,oola.line_id                              line_id                   -- 受注：明細ID
+            ,( oola.ordered_quantity * DECODE ( otta.order_category_code, cv_order, 1, -1 )
+                    * CASE oola.order_quantity_uom
+                      WHEN msib.primary_unit_of_measure THEN 1
+                      WHEN item_cnv.uom_code THEN TO_NUMBER( item_cnv.cnv_value )
+                      ELSE NVL( xicv.conversion_rate, 0 )
+                    END
+              ) AS order_quantity
+     FROM    oe_order_lines_all         oola  -- 受注明細
+            ,oe_order_headers_all       ooha  -- 受注ヘッダ
+            ,mtl_secondary_inventories  mtsi  -- 保管場所マスタ
+            ,ic_item_mst_b              iimb  -- OPM品目マスタ
+            ,xxcmn_item_mst_b           ximb  -- OPM品目アドオン
+            ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+            ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+            ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+            ,xxcos_item_conversions_v  xicv   -- 品目換算View
+            ,(
+              SELECT
+                 flv.meaning      AS UOM_CODE
+               , flv.description  AS CNV_VALUE
+              FROM
+                 fnd_lookup_values flv
+              WHERE
+                 flv.enabled_flag          = cv_yes_flg
+              AND flv.language                = cv_user_lang
+              AND flv.start_date_active    <= gd_process_date
+              AND gd_process_date          <= NVL( flv.end_date_active, gd_max_date )
+              AND flv.lookup_type           = cv_weight_uom_cnv_mst
+              ) item_cnv
+             ,inv.mtl_system_items_b         msib        -- Disc品目（営業組織）
+             ,ont.oe_transaction_types_tl    ottt        -- 受注取引タイプ（摘要）
+             ,ont.oe_transaction_types_all   otta        -- 受注取引タイプマスタ
+     WHERE   oola.header_id           =  ooha.header_id
+     AND     ooha.org_id              =  gn_org_id                               -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+     AND     oola.line_type_id        =  ottt.transaction_type_id                -- 受注明細.明細ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID
+     AND     ottt.transaction_type_id =  otta.transaction_type_id                -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 受注取引ﾀｲﾌﾟ.ﾀｲﾌﾟID
+     AND     ottt.language            =  cv_user_lang                            -- 受注取引ﾀｲﾌﾟ(摘要).ﾀｲﾌﾟID = 'JA'
+     AND     oola.subinventory        =  mtsi.secondary_inventory_name           -- 受注明細.保管場所 = 保管場所マスタ.保管場所
+     AND     oola.ship_from_org_id    =  mtsi.organization_id                    -- 受注明細.出荷元組織ID = 保管場所マスタ.在庫組織ID
+     AND     mtsi.attribute13         =  gv_subinventory_class                   -- 保管場所区分 = '11':直送
+     AND     ooha.flow_status_code      IN ( cv_status_booked, cv_status_closed )-- 受注ﾍｯﾀﾞ.ｽﾃｰﾀｽ IN ( 'BOOKED','CLOSED' )
+     AND     oola.flow_status_code      <> cv_status_cancelled                   -- 受注明細.ｽﾃｰﾀｽ <> 'CANCELLED'
+     AND     oola.org_id                =  gn_org_id                             -- 受注ﾍｯﾀﾞ.組織ID = A-1取得の営業単位
+     AND     ooha.sold_to_org_id        =  hca.cust_account_id                   -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+     AND     NVL( oola.attribute6, oola.ordered_item ) = msib.segment1           -- NVL( 受注明細.DFF6,受注明細.受注品目) = Disc品目.品目コード
+     AND     oola.ship_from_org_id      = msib.organization_id                   -- 受注明細.出荷元組織 = Disc品目.組織ID
+     AND     NVL( oola.attribute6, oola.ordered_item ) = xicv.item_code(+)       -- NVL( 受注明細.DFF6,受注明細.受注品目) = 品目換算View.品目コード
+     AND     oola.order_quantity_uom    = xicv.to_uom_code(+)                    -- 受注明細.受注単位 = 品目換算View.変換先単位
+     AND     oola.order_quantity_uom    = item_cnv.uom_code(+)                   -- 受注明細.受注単位 = 重量換算マスタ.単位コード
+     AND     NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no            -- NVL( 受注明細.DFF6,受注明細.受注品目) = OPM品目.品目コード
+     AND     iimb.item_id               =  ximb.item_id                          -- OPM品目.品目ID = OPM品目アドオン.品目ID
+     AND     TRUNC( ximb.start_date_active )                   <= gd_process_date-- OPM品目アドオン.適用開始日 ≧ A-1で取得した業務日付
+     AND     TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date-- NVL(OPM品目アドオン.適用終了日,A-1で取得したMAX日付)≦ A-1で取得した業務日付
+     AND     hca.cust_account_id        =  xca.customer_id                       -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+     AND     hca2.customer_class_code   =  cv_party_type_1                       -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+     AND     hca2.account_number        =  xca.delivery_base_code                -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+     AND     oola.packing_instructions                 = it_packing_instructions -- 受注明細.梱包指示 = 対象となる出荷依頼No
+     AND     NVL( oola.attribute6, oola.ordered_item ) = it_item_code            -- NVL(DFF6,受注品目コード) = 対象品目コード
+     AND     TO_DATE( oola.attribute4 , cv_yyyymmddhhmiss ) < it_dlv_date;
 --
     -- *** ローカル・レコード ***
-    l_data_rec       data_cur%ROWTYPE;
+--    l_data_rec       data_cur%ROWTYPE;
+    l_insp_inconsistent_rec  get_insp_inconsistent_cur%ROWTYPE;
+    l_rev_dlv_inconsistent_rec get_rev_dlv_inconsistent_cur%ROWTYPE;
+-- ************* 2010/03/25 1.14 N.Maeda MOD  END  ************* --
 --
 --
   BEGIN
@@ -2293,83 +4380,803 @@ AS
     --ループカウント初期化
     ln_idx := 0;
 --
+-- ************* 2010/03/25 1.14 N.Maeda MOD START ************* --
     --==================================
     -- 1.データ取得
     --==================================
-    <<loop_get_data>>
-    FOR l_data_rec IN data_cur LOOP
--- *********** 2009/11/26 1.11 N.Maeda DEL START *********** --
----- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
---      IF (
---           (     l_data_rec.data_class IN (cv_data_class_1, cv_data_class_2, cv_data_class_3, cv_data_class_6)
---             AND l_data_rec.schedule_dlv_date >= TRUNC(gd_trans_start_date)
---           )
---         OR
---           (     l_data_rec.data_class IN (cv_data_class_4, cv_data_class_5)
---             AND l_data_rec.arrival_date >= TRUNC(gd_trans_start_date)
---           )
---         )
---      THEN
----- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
--- *********** 2009/11/26 1.11 N.Maeda DEL  END  *********** --
-      -- レコードIDの取得
-      BEGIN
+    --** ■例外１取得SQL(旧例外1,2)
+    OPEN  quantity_excep_cur;
+    FETCH quantity_excep_cur BULK COLLECT INTO gt_work_tab_err_quantity;
+    CLOSE quantity_excep_cur;
+    --** ■例外２取得SQL(旧例外3,4,5)
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--    OPEN  line_item_excep_cur;
+--    FETCH line_item_excep_cur BULK COLLECT INTO gt_work_tab_err_item;
+--    CLOSE line_item_excep_cur;
+    -- 入力パラメータ『拠点コード』が"ALL"の場合
+    IF ( iv_base_code = cv_base_all ) THEN
+      OPEN  line_item_excep_cur;
+      FETCH line_item_excep_cur BULK COLLECT INTO gt_work_tab_err_item;
+      CLOSE line_item_excep_cur;
+    -- 入力パラメータ『拠点コード』に拠点コードを指定した場合
+    ELSE
+      OPEN  line_item_excep_cur_base;
+      FETCH line_item_excep_cur_base BULK COLLECT INTO gt_work_tab_err_item;
+      CLOSE line_item_excep_cur_base;
+    END IF;
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+    --** ■例外３取得SQL
+    -- 納品予定日(着荷日)、検収予定日エラーデータ
+    OPEN  get_check_data_cur;
+    FETCH get_check_data_cur BULK COLLECT INTO gt_work_tab_err_req_insp_date;
+    CLOSE get_check_data_cur;
 --
-        SELECT
-          xxcos_rep_direct_list_s01.nextval
-        INTO
-          ln_record_id
-        FROM
-          dual
+    -- ============================
+    -- ■例外１取得SQL(旧例外1,2)詳細情報取得
+    -- ============================
+    IF ( gt_work_tab_err_quantity.COUNT != 0 ) THEN
+      <<err_quantity_loop>>
+      FOR i IN 1..gt_work_tab_err_quantity.COUNT LOOP
+      --
+        -- 受注数量0以外(受注が取消されている為)
+        IF  ( gt_work_tab_err_quantity(i).ooa1_order_quantity != 0 )
+        OR  ( gt_work_tab_err_quantity(i).data_type = cv_date_type_2)
+        THEN
+          -- 初期化
+          lt_order_number          := NULL;
+          lt_line_number           := NULL;
+          lt_subinventory_code     := NULL;
+          lt_subinventory_name     := NULL;
+          lt_item_code             := NULL;
+          lt_item_name             := NULL;
+          lt_schedule_dlv_date     := NULL;
+          lt_schedule_inspect_date := NULL;
+          lt_delivery_base_code    := NULL;
+          lt_base_name             := NULL;
+          lt_customer_number       := NULL;
+          lt_customer_name         := NULL;
+          lt_line_id               := NULL;
+          ln_order_quantity        := NULL;
+          --
+          -- =============
+          -- 受注詳細情報取得
+          -- =============
+          SELECT  ooha.order_number                         order_number              -- 受注：受注番号
+                 ,oola.line_number                          line_number               -- 受注：明細番号
+                 ,oola.subinventory                         subinventory_code         -- 受注：保管場所コード
+                 ,mtsi.description                          subinventory_name         -- 受注：保管場所名称
+                 ,NVL( oola.attribute6, oola.ordered_item ) item_code                 -- 受注：品目コード
+                 ,ximb.item_short_name                      item_name                 -- 受注：品目名
+                 ,oola.request_date                         schedule_dlv_date         -- 受注：納品予定日
+                 ,oola.attribute4                           schedule_inspect_date     -- 受注：検収予定日
+                 ,xca.delivery_base_code                    base_code                 -- 受注：拠点ｺｰﾄﾞ
+                 ,hca2.account_name                         base_name                 -- 受注：拠点名称
+                 ,hca.account_number                        customer_number           -- 受注：顧客番号
+                 ,hca.account_name                          customer_name             -- 受注：顧客名
+          INTO    lt_order_number
+                 ,lt_line_number
+                 ,lt_subinventory_code
+                 ,lt_subinventory_name
+                 ,lt_item_code
+                 ,lt_item_name
+                 ,lt_schedule_dlv_date
+                 ,lt_schedule_inspect_date
+                 ,lt_delivery_base_code
+                 ,lt_base_name
+                 ,lt_customer_number
+                 ,lt_customer_name
+          FROM    oe_order_lines_all         oola  -- 受注ヘッダ
+                 ,oe_order_headers_all       ooha  -- 受注明細
+                 ,mtl_secondary_inventories  mtsi  -- 保管場所マスタ
+                 ,ic_item_mst_b              iimb  -- OPM品目マスタ
+                 ,xxcmn_item_mst_b           ximb  -- OPM品目アドオン
+                 ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+                 ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+                 ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+          WHERE   oola.header_id         =  ooha.header_id
+          AND     oola.line_id           =  gt_work_tab_err_quantity(i).ooa1_line_id
+          AND     oola.subinventory      =  mtsi.secondary_inventory_name
+          AND     oola.ship_from_org_id  =  mtsi.organization_id
+          AND     mtsi.attribute13       =  gv_subinventory_class
+          AND     NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no
+          AND     iimb.item_id           =  ximb.item_id
+          AND     TRUNC( ximb.start_date_active )                   <= gd_process_date
+          AND     TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date
+          AND     ooha.sold_to_org_id        =  hca.cust_account_id           -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+          AND     hca.cust_account_id        =  xca.customer_id               -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+          AND     hca2.customer_class_code   =  cv_party_type_1               -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+          AND     hca2.account_number        =  xca.delivery_base_code        -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+          ;
+--
+          -- =======================
+          -- キーインデックス作成
+          -- =======================
+          lv_key_index := NULL;
+          lv_key_index := TO_CHAR(lt_delivery_base_code)||cv_key_connect||                                    -- 拠点ｺｰﾄﾞ||','||
+                          TO_CHAR(lt_order_number)||cv_key_connect||                                          -- 受注番号||','||
+                          TO_CHAR(lt_line_number)||cv_key_connect||                                           -- 受注明細No||','||
+                          TO_CHAR(gt_work_tab_err_quantity(i).ooa1_deliver_requested_no)||cv_key_connect||    -- 出荷依頼No||','||
+                          TO_CHAR(lt_subinventory_code)||cv_key_connect||                                     -- 保管場所コード||','||
+                          TO_CHAR(lt_customer_number)||cv_key_connect||                                       -- 顧客コード||','||
+                          TO_CHAR(gt_work_tab_err_quantity(i).ooa1_item_code)||cv_key_connect||               -- 品目コード||','||
+                          TO_CHAR(lt_schedule_dlv_date,cv_fmt_date)||cv_key_connect||                         -- 納品予定日||','||
+                          TO_CHAR(lt_schedule_inspect_date)||cv_key_connect||                                 -- 検収予定日||','||
+                          TO_CHAR(gt_work_tab_err_quantity(i).ooa2_arrival_date,cv_fmt_date)||cv_key_connect||-- 着日||','||
+                          TO_CHAR(gt_work_tab_err_quantity(i).ooa1_order_quantity)||cv_key_connect||          -- 受注数||','||
+                          TO_CHAR(gt_work_tab_err_quantity(i).ooa2_deliver_actual_quantity)||cv_key_connect|| -- 出荷実績数||','||
+                          TO_CHAR(gt_work_tab_err_quantity(i).ooa2_uom_code)||cv_key_connect||                -- 単位||','||
+                          TO_CHAR(gt_work_tab_err_quantity(i).ooa2_line_no)                                   -- 明細No
+                          ;
+--
+          IF ( gt_rpt_data_sum_tab.EXISTS( lv_key_index ) ) THEN
+            NULL;
+          ELSE
+--
+            -- =============
+            -- 取得値セット
+            -- =============
+            gt_rpt_data_sum_tab( lv_key_index ).base_code         := lt_delivery_base_code;                                   -- ：拠点ｺｰﾄﾞ
+            gt_rpt_data_sum_tab( lv_key_index ).base_name         := SUBSTRB(lt_base_name,1,40);                              -- ：拠点名称
+            gt_rpt_data_sum_tab( lv_key_index ).order_number      := lt_order_number;                                         -- ：受注番号
+            gt_rpt_data_sum_tab( lv_key_index ).order_line_no     := lt_line_number;                                          -- ：受注明細No
+            gt_rpt_data_sum_tab( lv_key_index ).line_no           := gt_work_tab_err_quantity(i).ooa2_line_no;                -- ：明細No
+            gt_rpt_data_sum_tab( lv_key_index ).deliver_requested_no                                                          -- ：出荷依頼No
+                                                                  := SUBSTRB(gt_work_tab_err_quantity(i).ooa1_deliver_requested_no, 1, 12);
+            gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_number                                                      -- ：出荷元倉庫番号
+                                                                  := lt_subinventory_code;
+            gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_name                                                        -- ：出荷元倉庫名
+                                                                  := SUBSTRB(lt_subinventory_name,1,20);
+            gt_rpt_data_sum_tab( lv_key_index ).customer_number   := lt_customer_number;                                      -- ：顧客番号
+            gt_rpt_data_sum_tab( lv_key_index ).customer_name     := SUBSTRB(lt_customer_name,1,20);                          -- ：顧客名
+            gt_rpt_data_sum_tab( lv_key_index ).item_code         := gt_work_tab_err_quantity(i).ooa1_item_code;              -- ：品目ｺｰﾄﾞ
+            gt_rpt_data_sum_tab( lv_key_index ).item_name         := SUBSTRB(lt_item_name,1,20);                              -- ：品名
+            gt_rpt_data_sum_tab( lv_key_index ).schedule_dlv_date := lt_schedule_dlv_date;                                    -- ：納品予定
+            gt_rpt_data_sum_tab( lv_key_index ).schedule_inspect_date
+                                                                  := TO_DATE(lt_schedule_inspect_date,cv_yyyymmddhhmiss);                                -- ：検収予定日
+            gt_rpt_data_sum_tab( lv_key_index ).arrival_date      := gt_work_tab_err_quantity(i).ooa2_arrival_date;           -- ：着日
+            gt_rpt_data_sum_tab( lv_key_index ).order_quantity    := gt_work_tab_err_quantity(i).ooa1_order_quantity;         -- ：受注数
+            gt_rpt_data_sum_tab( lv_key_index ).deliver_actual_quantity
+                                                                  := gt_work_tab_err_quantity(i).ooa2_deliver_actual_quantity;-- ：出荷実績数
+            gt_rpt_data_sum_tab( lv_key_index ).uom_code          := gt_work_tab_err_quantity(i).ooa2_uom_code;               -- ：単位
+            gt_rpt_data_sum_tab( lv_key_index ).output_quantity   := ( gt_work_tab_err_quantity(i).ooa1_order_quantity        -- ：差異数
+                                                                     - gt_work_tab_err_quantity(i).ooa2_deliver_actual_quantity );
+            gt_rpt_data_sum_tab( lv_key_index ).data_class        := cv_data_class_1;                                         -- ：データ区分
+          END IF;
+          --
+        END IF;
+--
+      --
+      END LOOP err_quantity_loop;
+    END IF;
+--
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--    -- ======================
+--    -- ■例外３詳細情報取得
+--    -- ======================
+    -- 例外１(例外１-２,１-５)・例外２のチェック対象受注リストの領域開放
+    gt_work_tab_err_quantity.DELETE;
+--
+    -- ==================================================================
+    --** ■『例外１(例外１-１,例外１-３)・例外３』
+    --**   ・数量・出荷実績数量違いデータ
+    --**   ・納品予定日・着荷日違いデータ
+    --**   ・納品予定日(着荷日)、検収予定日エラーデータ
+    -- ==================================================================
+--
+    -- ============================================
+    -- 例外１・例外３詳細情報取得
+    -- ============================================
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+    IF ( gt_work_tab_err_req_insp_date.COUNT != 0 ) THEN
+      <<get_check_loop>>
+      FOR i IN 1..gt_work_tab_err_req_insp_date.COUNT LOOP
+--
+        -- 初期化
+        lt_order_number          := NULL;
+        lt_line_number           := NULL;
+        lt_subinventory_code     := NULL;
+        lt_subinventory_name     := NULL;
+        lt_item_code             := NULL;
+        lt_item_name             := NULL;
+        lt_schedule_dlv_date     := NULL;
+        lt_schedule_inspect_date := NULL;
+        lt_delivery_base_code    := NULL;
+        lt_base_name             := NULL;
+        lt_customer_number       := NULL;
+        lt_customer_name         := NULL;
+        lv_exi_data              := NULL;
+        lt_line_id               := NULL;
+        ln_order_quantity        := NULL;
+        --
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+        -- ============================================
+        -- 対象データが以下の条件を満たすかチェック
+        -- ・例外１-１：数量・出荷実績数量違い
+        -- ・例外１-３：納品予定日・着荷日違い
+        -- ============================================
+        IF ( (  gt_work_tab_err_req_insp_date(i).ooa1_order_quantity <> gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity
+            AND gt_work_tab_err_req_insp_date(i).ooa1_order_quantity != 0 )
+          OR (  gt_work_tab_err_req_insp_date(i).ooa1_schedule_dlv_date <> gt_work_tab_err_req_insp_date(i).ooa2_arrival_date 
+            AND gt_work_tab_err_req_insp_date(i).ooa1_order_quantity    != 0 )
+        )THEN
+          --
+          -- 受注詳細情報取得
+          SELECT  ooha.order_number                         order_number              -- 受注：受注番号
+                 ,oola.line_number                          line_number               -- 受注：明細番号
+                 ,oola.subinventory                         subinventory_code         -- 受注：保管場所コード
+                 ,mtsi.description                          subinventory_name         -- 受注：保管場所名称
+                 ,NVL( oola.attribute6, oola.ordered_item ) item_code                 -- 受注：品目コード
+                 ,ximb.item_short_name                      item_name                 -- 受注：品目名
+                 ,oola.request_date                         schedule_dlv_date         -- 受注：納品予定日
+                 ,oola.attribute4                           schedule_inspect_date     -- 受注：検収予定日
+                 ,xca.delivery_base_code                    base_code                 -- 受注：拠点ｺｰﾄﾞ
+                 ,hca2.account_name                         base_name                 -- 受注：拠点名称
+                 ,hca.account_number                        customer_number           -- 受注：顧客番号
+                 ,hca.account_name                          customer_name             -- 受注：顧客名
+          INTO    lt_order_number
+                 ,lt_line_number
+                 ,lt_subinventory_code
+                 ,lt_subinventory_name
+                 ,lt_item_code
+                 ,lt_item_name
+                 ,lt_schedule_dlv_date
+                 ,lt_schedule_inspect_date
+                 ,lt_delivery_base_code
+                 ,lt_base_name
+                 ,lt_customer_number
+                 ,lt_customer_name
+          FROM    oe_order_lines_all         oola  -- 受注ヘッダ
+                 ,oe_order_headers_all       ooha  -- 受注明細
+                 ,mtl_secondary_inventories  mtsi  -- 保管場所マスタ
+                 ,ic_item_mst_b              iimb  -- OPM品目マスタ
+                 ,xxcmn_item_mst_b           ximb  -- OPM品目アドオン
+                 ,hz_cust_accounts           hca   -- 顧客ﾏｽﾀ
+                 ,xxcmm_cust_accounts        xca   -- 顧客追加情報ﾏｽﾀ
+                 ,hz_cust_accounts           hca2  -- 顧客ﾏｽﾀ2
+          WHERE   oola.header_id         =  ooha.header_id
+          AND     oola.line_id           =  gt_work_tab_err_req_insp_date(i).ooa1_line_id
+          AND     oola.subinventory      =  mtsi.secondary_inventory_name
+          AND     oola.ship_from_org_id  =  mtsi.organization_id
+          AND     mtsi.attribute13       =  gv_subinventory_class
+          AND     NVL( oola.attribute6, oola.ordered_item ) = iimb.item_no
+          AND     iimb.item_id           =  ximb.item_id
+          AND     TRUNC( ximb.start_date_active )                   <= gd_process_date
+          AND     TRUNC( NVL( ximb.end_date_active, gd_max_date ) ) >= gd_process_date
+          AND     ooha.sold_to_org_id        =  hca.cust_account_id           -- 受注ﾍｯﾀﾞ.顧客ID = 顧客ﾏｽﾀ.顧客ID
+          AND     hca.cust_account_id        =  xca.customer_id               -- 顧客ﾏｽﾀ.顧客ID  = 顧客追加情報ﾏｽﾀ.顧客ID
+          AND     hca2.customer_class_code   =  cv_party_type_1               -- 顧客ﾏｽﾀ2.顧客区分 = '1':拠点
+          AND     hca2.account_number        =  xca.delivery_base_code        -- 顧客ﾏｽﾀ2.顧客ｺｰﾄﾞ = 顧客追加情報ﾏｽﾀ.納品拠点ｺｰﾄﾞ
+          ;
+--
+          -- キーインデックス作成
+          lv_key_index := NULL;
+          lv_key_index := TO_CHAR(lt_delivery_base_code)||cv_key_connect||                                         -- 拠点ｺｰﾄﾞ||','||
+                          TO_CHAR(lt_order_number)||cv_key_connect||                                               -- 受注番号||','||
+                          TO_CHAR(lt_line_number)||cv_key_connect||                                                -- 受注明細No||','||
+                          TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no)||cv_key_connect||    -- 出荷依頼No||','||
+                          TO_CHAR(lt_subinventory_code)||cv_key_connect||                                          -- 保管場所コード||','||
+                          TO_CHAR(lt_customer_number)||cv_key_connect||                                            -- 顧客コード||','||
+                          TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa1_item_code)||cv_key_connect||               -- 品目コード||','||
+                          TO_CHAR(lt_schedule_dlv_date,cv_fmt_date)||cv_key_connect||                              -- 納品予定日||','||
+                          TO_CHAR(lt_schedule_inspect_date)||cv_key_connect||                                      -- 検収予定日||','||
+                          TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_arrival_date,cv_fmt_date)||cv_key_connect||-- 着日||','||
+                          TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa1_order_quantity)||cv_key_connect||          -- 受注数||','||
+                          TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity)||cv_key_connect|| -- 出荷実績数||','||
+                          TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_uom_code)||cv_key_connect||                -- 単位||','||
+                          TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_line_no)                                   -- 明細No
+                          ;
+--
+          -- キーインデックスに該当データが存在しない場合、出力対象リストに格納
+          IF ( gt_rpt_data_sum_tab.EXISTS( lv_key_index ) ) THEN
+            NULL;
+          ELSE
+--
+            gt_rpt_data_sum_tab( lv_key_index ).base_code         := lt_delivery_base_code;                                   -- ：拠点ｺｰﾄﾞ
+            gt_rpt_data_sum_tab( lv_key_index ).base_name         := SUBSTRB(lt_base_name,1,40);                              -- ：拠点名称
+            gt_rpt_data_sum_tab( lv_key_index ).order_number      := lt_order_number;                                         -- ：受注番号
+            gt_rpt_data_sum_tab( lv_key_index ).order_line_no     := lt_line_number;                                          -- ：受注明細No
+            gt_rpt_data_sum_tab( lv_key_index ).line_no           := gt_work_tab_err_req_insp_date(i).ooa2_line_no;           -- ：明細No
+            gt_rpt_data_sum_tab( lv_key_index ).deliver_requested_no                                                          -- ：出荷依頼No
+                                                                  := SUBSTRB(gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no, 1, 12);
+            gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_number                                                      -- ：出荷元倉庫番号
+                                                                  := lt_subinventory_code;
+            gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_name                                                        -- ：出荷元倉庫名
+                                                                  := SUBSTRB(lt_subinventory_name,1,20);
+            gt_rpt_data_sum_tab( lv_key_index ).customer_number   := lt_customer_number;                                      -- ：顧客番号
+            gt_rpt_data_sum_tab( lv_key_index ).customer_name     := SUBSTRB(lt_customer_name,1,20);                          -- ：顧客名
+            gt_rpt_data_sum_tab( lv_key_index ).item_code         := gt_work_tab_err_req_insp_date(i).ooa1_item_code;         -- ：品目ｺｰﾄﾞ
+            gt_rpt_data_sum_tab( lv_key_index ).item_name         := SUBSTRB(lt_item_name,1,20);                              -- ：品名
+            gt_rpt_data_sum_tab( lv_key_index ).schedule_dlv_date := lt_schedule_dlv_date;                                    -- ：納品予定
+            gt_rpt_data_sum_tab( lv_key_index ).schedule_inspect_date
+                                                                  := TO_DATE(lt_schedule_inspect_date,cv_yyyymmddhhmiss);     -- ：検収予定日
+            gt_rpt_data_sum_tab( lv_key_index ).arrival_date      := gt_work_tab_err_req_insp_date(i).ooa2_arrival_date;      -- ：着日
+            gt_rpt_data_sum_tab( lv_key_index ).order_quantity    := gt_work_tab_err_req_insp_date(i).ooa1_order_quantity;    -- ：受注数
+            gt_rpt_data_sum_tab( lv_key_index ).deliver_actual_quantity
+                                                                  := gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity;
+                                                                                                                              -- ：出荷実績数
+            gt_rpt_data_sum_tab( lv_key_index ).uom_code          := gt_work_tab_err_req_insp_date(i).ooa2_uom_code;          -- ：単位
+            gt_rpt_data_sum_tab( lv_key_index ).output_quantity   := ( gt_work_tab_err_req_insp_date(i).ooa1_order_quantity   -- ：差異数
+                                                                     - gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity );
+            gt_rpt_data_sum_tab( lv_key_index ).data_class        := cv_data_class_1;                                         -- ：データ区分
+          END IF;
+        END IF;
+--
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+        -- 検収日逆転チェック
+        IF  ( gt_work_tab_err_req_insp_date(i).ooa1_min_schedule_inspect_date IS NOT NULL                    -- 検収日最小値 IS NOT NULL
+            AND gt_work_tab_err_req_insp_date(i).ooa1_max_schedule_inspect_date IS NOT NULL )                -- 検収日最大値 IS NOT NULL
+        AND ( ( TO_DATE(gt_work_tab_err_req_insp_date(i).ooa1_min_schedule_inspect_date,cv_yyyymmddhhmiss)   -- 検収日最小値または検収日最大値が
+                 < gt_work_tab_err_req_insp_date(i).ooa1_schedule_dlv_date )                                 --   納品日よりも後
+            OR  ( TO_DATE(gt_work_tab_err_req_insp_date(i).ooa1_max_schedule_inspect_date,cv_yyyymmddhhmiss)
+                 < gt_work_tab_err_req_insp_date(i).ooa1_schedule_dlv_date ) ) THEN
+        --
+          <<rev_dade_loop>>
+          FOR l_rev_dlv_inconsistent_rec IN get_rev_dlv_inconsistent_cur (
+                                                                    gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no -- 出荷依頼No
+                                                                   ,gt_work_tab_err_req_insp_date(i).ooa1_item_code            -- 品目コード
+                                                                   ,gt_work_tab_err_req_insp_date(i).ooa1_schedule_dlv_date    -- 納品予定日
+                                                                   ) LOOP
+          --
+            lt_order_number          := l_rev_dlv_inconsistent_rec.order_number;              -- 受注：受注番号
+            lt_line_number           := l_rev_dlv_inconsistent_rec.line_number;               -- 受注：受注明細番号
+            lt_subinventory_code     := l_rev_dlv_inconsistent_rec.subinventory_code;         -- 受注：保管場所コード
+            lt_subinventory_name     := l_rev_dlv_inconsistent_rec.subinventory_name;         -- 受注：保管場所名称
+            lt_item_code             := l_rev_dlv_inconsistent_rec.item_code;                 -- 受注：品目コード
+            lt_item_name             := l_rev_dlv_inconsistent_rec.item_name;                 -- 受注：品目名
+            lt_schedule_dlv_date     := l_rev_dlv_inconsistent_rec.schedule_dlv_date;         -- 受注：納品予定日
+            lt_schedule_inspect_date := l_rev_dlv_inconsistent_rec.schedule_inspect_date;     -- 受注：検収予定日
+            lt_delivery_base_code    := l_rev_dlv_inconsistent_rec.base_code;                 -- 受注：拠点ｺｰﾄﾞ
+            lt_base_name             := l_rev_dlv_inconsistent_rec.base_name;                 -- 受注：拠点名称
+            lt_customer_number       := l_rev_dlv_inconsistent_rec.customer_number;           -- 受注：顧客番号
+            lt_customer_name         := l_rev_dlv_inconsistent_rec.customer_name;             -- 受注：顧客名
+            lt_line_id               := l_rev_dlv_inconsistent_rec.line_id;                   -- 受注：明細ID
+            ln_order_quantity        := l_rev_dlv_inconsistent_rec.order_quantity;            -- 受注：受注数量
+          ---- =======================
+            -- キーインデックス作成
+            -- =======================
+            lv_key_index := NULL;
+            lv_key_index := TO_CHAR(lt_delivery_base_code)||cv_key_connect||                                        -- 拠点ｺｰﾄﾞ||','||
+                            TO_CHAR(lt_order_number)||cv_key_connect||                                              -- 受注番号||','||
+                            TO_CHAR(lt_line_number)||cv_key_connect||                                               -- 受注明細No||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no)||cv_key_connect||   -- 出荷依頼No||','||
+                            TO_CHAR(lt_subinventory_code)||cv_key_connect||                                         -- 保管場所コード||','||
+                            TO_CHAR(lt_customer_number)||cv_key_connect||                                           -- 顧客コード||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa1_item_code)||cv_key_connect||              -- 品目コード||','||
+                            TO_CHAR(lt_schedule_dlv_date,cv_fmt_date)||cv_key_connect||                             -- 納品予定日||','||
+                            TO_CHAR(lt_schedule_inspect_date||cv_key_connect)||                                     -- 検収予定日||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_arrival_date,cv_fmt_date)||cv_key_connect||   -- 着日||','||
+                            TO_CHAR(ln_order_quantity)||cv_key_connect||                                            -- 受注数||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity)||cv_key_connect||-- 出荷実績数||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_uom_code)||cv_key_connect||               -- 単位
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_line_no)                                  -- 明細No
+                            ;
+            --
+            IF ( gt_rpt_data_sum_tab.EXISTS( lv_key_index ) ) THEN
+              NULL;
+            ELSE
+--
+              -- =============
+              -- 取得値セット
+              -- =============
+              gt_rpt_data_sum_tab( lv_key_index ).base_code         := lt_delivery_base_code;                                   -- ：拠点ｺｰﾄﾞ
+              gt_rpt_data_sum_tab( lv_key_index ).base_name         := SUBSTRB(lt_base_name,1,40);                              -- ：拠点名称
+              gt_rpt_data_sum_tab( lv_key_index ).order_number      := lt_order_number;                                         -- ：受注番号
+              gt_rpt_data_sum_tab( lv_key_index ).order_line_no     := lt_line_number;                                          -- ：受注明細No
+              gt_rpt_data_sum_tab( lv_key_index ).line_no           := gt_work_tab_err_req_insp_date(i).ooa2_line_no;           -- ：明細No
+              gt_rpt_data_sum_tab( lv_key_index ).deliver_requested_no                                                          -- ：出荷依頼No
+                                                                    := SUBSTRB(gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no, 1, 12);
+              gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_number                                                      -- ：出荷元倉庫番号
+                                                                    := lt_subinventory_code;
+              gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_name                                                        -- ：出荷元倉庫名
+                                                                    := SUBSTRB(lt_subinventory_name,1,20);
+              gt_rpt_data_sum_tab( lv_key_index ).customer_number   := lt_customer_number;                                      -- ：顧客番号
+              gt_rpt_data_sum_tab( lv_key_index ).customer_name     := SUBSTRB(lt_customer_name,1,20);                          -- ：顧客名
+              gt_rpt_data_sum_tab( lv_key_index ).item_code         := gt_work_tab_err_req_insp_date(i).ooa1_item_code;         -- ：品目ｺｰﾄﾞ
+              gt_rpt_data_sum_tab( lv_key_index ).item_name         := SUBSTRB(lt_item_name,1,20);                              -- ：品名
+              gt_rpt_data_sum_tab( lv_key_index ).schedule_dlv_date := lt_schedule_dlv_date;                                    -- ：納品予定日
+              gt_rpt_data_sum_tab( lv_key_index ).schedule_inspect_date
+                                                                    := TO_DATE(lt_schedule_inspect_date,cv_yyyymmddhhmiss);                                -- ：検収予定日
+              gt_rpt_data_sum_tab( lv_key_index ).arrival_date      := gt_work_tab_err_req_insp_date(i).ooa2_arrival_date;      -- ：着日
+              gt_rpt_data_sum_tab( lv_key_index ).order_quantity    := ln_order_quantity;                                       -- ：受注数
+              gt_rpt_data_sum_tab( lv_key_index ).deliver_actual_quantity                                                       -- ：出荷実績数
+                                                                    := gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity;
+              gt_rpt_data_sum_tab( lv_key_index ).uom_code          := gt_work_tab_err_req_insp_date(i).ooa2_uom_code;          -- ：単位
+              gt_rpt_data_sum_tab( lv_key_index ).output_quantity   := ( gt_work_tab_err_req_insp_date(i).ooa1_order_quantity   -- ：差異数(受注数量-実績数量)
+                                                                       - gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity );
+              gt_rpt_data_sum_tab( lv_key_index ).data_class        := cv_data_class_6;                                       -- ：データ区分
+            END IF;
+          --
+          END LOOP rev_dade_loop;
+        --
+        END IF;
+        -- 初期化
+        lt_order_number          := NULL;
+        lt_line_number           := NULL;
+        lt_subinventory_code     := NULL;
+        lt_subinventory_name     := NULL;
+        lt_item_code             := NULL;
+        lt_item_name             := NULL;
+        lt_schedule_dlv_date     := NULL;
+        lt_schedule_inspect_date := NULL;
+        lt_delivery_base_code    := NULL;
+        lt_base_name             := NULL;
+        lt_customer_number       := NULL;
+        lt_customer_name         := NULL;
+        lv_exi_data              := NULL;
+        lt_line_id               := NULL;
+        ln_order_quantity        := NULL;
+--
+        -- 検収日NULLデータ存在確認用sql
+        -- 検収日の最小値が取得されている場合、NULLデータ確認を行う。
+        IF ( gt_work_tab_err_req_insp_date(i).ooa1_min_schedule_inspect_date IS NOT NULL ) THEN
+          BEGIN
+            SELECT cv_yes_flg
+            INTO   lv_exi_data
+            FROM   oe_order_lines_all exi_oola
+            WHERE  exi_oola.packing_instructions = gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no
+            AND    NVL( exi_oola.attribute6, exi_oola.ordered_item )  = gt_work_tab_err_req_insp_date(i).ooa1_item_code
+            AND    TRUNC( exi_oola.request_date ) = gt_work_tab_err_req_insp_date(i).ooa1_schedule_dlv_date
+            AND    exi_oola.attribute4 IS NULL
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+            AND    exi_oola.flow_status_code IN ( cv_status_booked, cv_status_closed )
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+            AND    ROWNUM = 1
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              NULL;
+          END;
+        END IF;
+--
+        -- ==============================
+        -- 検収日違いチェック(受注情報中の確認)
+        -- ==============================
+        IF (   -- 検収日が最大値と最小値で異なる
+             ( NVL( gt_work_tab_err_req_insp_date(i).ooa1_min_schedule_inspect_date,cv_yes_flg )
+                               != NVL( gt_work_tab_err_req_insp_date(i).ooa1_max_schedule_inspect_date,cv_yes_flg ) 
+             )
+             OR (   -- 検収日の最小値が取得されているのに、検収日NULLデータが存在している(検収日設定漏れデータ)
+                  gt_work_tab_err_req_insp_date(i).ooa1_min_schedule_inspect_date IS NOT NULL
+                  AND
+                  lv_exi_data IS NOT NULL
+                )
+           )
+        THEN
+        --
+          -- ========================
+          -- 受注情報取得
+          -- ========================
+          <<insp_inconsistent_loop>>
+          FOR l_insp_inconsistent_rec IN get_insp_inconsistent_cur (
+                                                                    gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no
+                                                                   ,gt_work_tab_err_req_insp_date(i).ooa1_item_code
+                                                                   ) LOOP
+          --
+            lt_order_number          := l_insp_inconsistent_rec.order_number;              -- 受注：受注番号
+            lt_line_number           := l_insp_inconsistent_rec.line_number;               -- 受注：受注明細番号
+            lt_subinventory_code     := l_insp_inconsistent_rec.subinventory_code;         -- 受注：保管場所コード
+            lt_subinventory_name     := l_insp_inconsistent_rec.subinventory_name;         -- 受注：保管場所名称
+            lt_item_code             := l_insp_inconsistent_rec.item_code;                 -- 受注：品目コード
+            lt_item_name             := l_insp_inconsistent_rec.item_name;                 -- 受注：品目名
+            lt_schedule_dlv_date     := l_insp_inconsistent_rec.schedule_dlv_date;         -- 受注：納品予定日
+            lt_schedule_inspect_date := l_insp_inconsistent_rec.schedule_inspect_date;     -- 受注：検収予定日
+            lt_delivery_base_code    := l_insp_inconsistent_rec.base_code;                 -- 受注：拠点ｺｰﾄﾞ
+            lt_base_name             := l_insp_inconsistent_rec.base_name;                 -- 受注：拠点名称
+            lt_customer_number       := l_insp_inconsistent_rec.customer_number;           -- 受注：顧客番号
+            lt_customer_name         := l_insp_inconsistent_rec.customer_name;             -- 受注：顧客名
+            lt_line_id               := l_insp_inconsistent_rec.line_id;                   -- 受注：明細ID
+            ln_order_quantity        := l_insp_inconsistent_rec.order_quantity;            -- 受注：受注数量
+            --
+--            -- 検収日単位で受注数量と出荷実績数量が同じでない場合
+--            IF ( ln_order_quantity != gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity )
+--               AND
+--               -- 検収日単位の受注数量0以外
+--               ( ln_order_quantity != 0 )
+--            THEN
+            -- =======================
+            -- 受注、明細番号取得
+            -- =======================
+--            BEGIN
+--              SELECT
+--                      ooha.order_number         -- 受注番号
+--                     ,oola.line_number          -- 受注明細番号
+--              INTO    lt_order_number
+--                     ,lt_line_number
+--              FROM    oe_order_lines_all   oola
+--                     ,oe_order_headers_all ooha
+--              WHERE   oola.header_id = ooha.header_id
+--              AND     oola.line_id   = lt_line_id
+--              ;
+--            EXCEPTION
+--              WHEN OTHERS THEN
+--                NULL;
+--            END;
+            -- =======================
+            -- キーインデックス作成
+            -- =======================
+            lv_key_index := NULL;
+            lv_key_index := TO_CHAR(lt_delivery_base_code)||cv_key_connect||                                        -- 拠点ｺｰﾄﾞ||','||
+                            TO_CHAR(lt_order_number)||cv_key_connect||                                              -- 受注番号||','||
+                            TO_CHAR(lt_line_number)||cv_key_connect||                                               -- 受注明細No||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no)||cv_key_connect||   -- 出荷依頼No||','||
+                            TO_CHAR(lt_subinventory_code)||cv_key_connect||                                         -- 保管場所コード||','||
+                            TO_CHAR(lt_customer_number)||cv_key_connect||                                           -- 顧客コード||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa1_item_code)||cv_key_connect||              -- 品目コード||','||
+                            TO_CHAR(lt_schedule_dlv_date,cv_fmt_date)||cv_key_connect||                             -- 納品予定日||','||
+                            TO_CHAR(lt_schedule_inspect_date||cv_key_connect)||                                     -- 検収予定日||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_arrival_date,cv_fmt_date)||cv_key_connect||   -- 着日||','||
+                            TO_CHAR(ln_order_quantity)||cv_key_connect||                                            -- 受注数||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity)||cv_key_connect||-- 出荷実績数||','||
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_uom_code)||cv_key_connect||               -- 単位
+                            TO_CHAR(gt_work_tab_err_req_insp_date(i).ooa2_line_no)                                  -- 明細No
+                            ;
+            --
+            IF ( gt_rpt_data_sum_tab.EXISTS( lv_key_index ) ) THEN
+              NULL;
+            ELSE
+--
+              -- =============
+              -- 取得値セット
+              -- =============
+              gt_rpt_data_sum_tab( lv_key_index ).base_code         := lt_delivery_base_code;                                   -- ：拠点ｺｰﾄﾞ
+              gt_rpt_data_sum_tab( lv_key_index ).base_name         := SUBSTRB(lt_base_name,1,40);                              -- ：拠点名称
+              gt_rpt_data_sum_tab( lv_key_index ).order_number      := lt_order_number;                                         -- ：受注番号
+              gt_rpt_data_sum_tab( lv_key_index ).order_line_no     := lt_line_number;                                          -- ：受注明細No
+              gt_rpt_data_sum_tab( lv_key_index ).line_no           := gt_work_tab_err_req_insp_date(i).ooa2_line_no;           -- ：明細No
+              gt_rpt_data_sum_tab( lv_key_index ).deliver_requested_no                                                          -- ：出荷依頼No
+                                                                    := SUBSTRB(gt_work_tab_err_req_insp_date(i).ooa1_deliver_requested_no, 1, 12);
+              gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_number                                                      -- ：出荷元倉庫番号
+                                                                    := lt_subinventory_code;
+              gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_name                                                        -- ：出荷元倉庫名
+                                                                    := SUBSTRB(lt_subinventory_name,1,20);
+              gt_rpt_data_sum_tab( lv_key_index ).customer_number   := lt_customer_number;                                      -- ：顧客番号
+              gt_rpt_data_sum_tab( lv_key_index ).customer_name     := SUBSTRB(lt_customer_name,1,20);                          -- ：顧客名
+              gt_rpt_data_sum_tab( lv_key_index ).item_code         := gt_work_tab_err_req_insp_date(i).ooa1_item_code;         -- ：品目ｺｰﾄﾞ
+              gt_rpt_data_sum_tab( lv_key_index ).item_name         := SUBSTRB(lt_item_name,1,20);                              -- ：品名
+              gt_rpt_data_sum_tab( lv_key_index ).schedule_dlv_date := lt_schedule_dlv_date;                                    -- ：納品予定日
+              gt_rpt_data_sum_tab( lv_key_index ).schedule_inspect_date
+                                                                    := TO_DATE(lt_schedule_inspect_date,cv_yyyymmddhhmiss);                                -- ：検収予定日
+              gt_rpt_data_sum_tab( lv_key_index ).arrival_date      := gt_work_tab_err_req_insp_date(i).ooa2_arrival_date;      -- ：着日
+              gt_rpt_data_sum_tab( lv_key_index ).order_quantity    := ln_order_quantity;                                       -- ：受注数
+              gt_rpt_data_sum_tab( lv_key_index ).deliver_actual_quantity                                                       -- ：出荷実績数
+                                                                    := gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity;
+              gt_rpt_data_sum_tab( lv_key_index ).uom_code          := gt_work_tab_err_req_insp_date(i).ooa2_uom_code;          -- ：単位
+              gt_rpt_data_sum_tab( lv_key_index ).output_quantity   := ( gt_work_tab_err_req_insp_date(i).ooa1_order_quantity   -- ：差異数(受注数量-実績数量)
+                                                                       - gt_work_tab_err_req_insp_date(i).ooa2_deliver_actual_quantity );
+              gt_rpt_data_sum_tab( lv_key_index ).data_class        := cv_data_class_6;                                       -- ：データ区分
+            END IF;
+            --
+--            END IF;
+--
+          END LOOP insp_inconsistent_loop;
+        --
+        END IF;
+--
+      END LOOP get_check_loop;
+    END IF;
+--
+-- 2010/04/09 Ver.1.14 Mod M.Sano Start
+--    -- =================
+--    -- 例外２情報サマリ
+--    -- =================
+    -- 例外１・例外３のチェック対象受注リストの領域開放
+    gt_work_tab_err_req_insp_date.DELETE;
+--
+    -- ===================================================================
+    --** ■例外２(旧例外3-1,3-2,4,5)：受注・出荷実績紐付けチェック
+    --**   ・受注あり-出荷実績なし ※受注、出荷実績間の明細品目不一致エラー
+    --**   ・受注なし-出荷実績あり ※受注、出荷実績間の明細品目不一致エラー
+    --**   ・受注なし-出荷実績あり ※出荷依頼No存在なしエラー
+    --**   ・受注あり-出荷実績なし ※出荷依頼No存在なしエラー
+    -- ===================================================================
+--
+    -- ==================================
+    -- 例外２詳細情報取得
+    -- ==================================
+-- 2010/04/09 Ver.1.14 Mod M.Sano End
+    IF ( gt_work_tab_err_item.COUNT != 0 ) THEN
+      <<line_item_excep_sum_loop>>
+      FOR i IN 1..gt_work_tab_err_item.COUNT LOOP
+      --
+        -- =======================
+        -- キーインデックス作成
+        -- =======================
+        lv_key_index := NULL;
+        lv_key_index := TO_CHAR(gt_work_tab_err_item(i).base_code)||cv_key_connect||                          -- 拠点ｺｰﾄﾞ||','||
+                        TO_CHAR(gt_work_tab_err_item(i).order_number)||cv_key_connect||                       -- 受注番号||','||
+                        TO_CHAR(gt_work_tab_err_item(i).order_line_no)||cv_key_connect||                      -- 受注明細No||','||
+                        TO_CHAR(gt_work_tab_err_item(i).deliver_requested_no)||cv_key_connect||               -- 出荷依頼No||','||
+                        TO_CHAR(gt_work_tab_err_item(i).deliver_from_whse_number)||cv_key_connect||           -- 保管場所コード||','||
+                        TO_CHAR(gt_work_tab_err_item(i).customer_number)||cv_key_connect||                    -- 顧客コード||','||
+                        TO_CHAR(gt_work_tab_err_item(i).item_code)||cv_key_connect||                          -- 品目コード||','||
+                        TO_CHAR(gt_work_tab_err_item(i).schedule_dlv_date,cv_fmt_date)||cv_key_connect||      -- 納品予定日||','||
+                        TO_CHAR(gt_work_tab_err_item(i).schedule_inspect_date)||cv_key_connect||              -- 検収予定日||','||
+                        TO_CHAR(gt_work_tab_err_item(i).arrival_date,cv_fmt_date)||cv_key_connect||           -- 着日||','||
+                        TO_CHAR(gt_work_tab_err_item(i).order_quantity)||cv_key_connect||                     -- 受注数||','||
+                        TO_CHAR(gt_work_tab_err_item(i).deliver_actual_quantity)||cv_key_connect||            -- 出荷実績数||','||
+                        TO_CHAR(gt_work_tab_err_item(i).uom_code)||cv_key_connect||                           -- 単位
+                        TO_CHAR(gt_work_tab_err_item(i).line_no)                                              -- 明細No
+                        ;
+      --
+        IF ( gt_rpt_data_sum_tab.EXISTS( lv_key_index ) ) THEN
+          NULL;
+        ELSE
+--
+          -- =============
+          -- 取得値セット
+          -- =============
+          gt_rpt_data_sum_tab( lv_key_index ).base_code         := gt_work_tab_err_item(i).base_code;                    -- ：拠点ｺｰﾄﾞ
+          gt_rpt_data_sum_tab( lv_key_index ).base_name         := SUBSTRB(gt_work_tab_err_item(i).base_name,1,40);      -- ：拠点名称
+          gt_rpt_data_sum_tab( lv_key_index ).order_number      := gt_work_tab_err_item(i).order_number;                 -- ：受注番号
+          gt_rpt_data_sum_tab( lv_key_index ).order_line_no     := gt_work_tab_err_item(i).order_line_no;                -- ：受注明細No
+          gt_rpt_data_sum_tab( lv_key_index ).line_no           := gt_work_tab_err_item(i).line_no;                      -- ：明細No
+          gt_rpt_data_sum_tab( lv_key_index ).deliver_requested_no                                                       -- ：出荷依頼No
+                                                                := SUBSTRB(gt_work_tab_err_item(i).deliver_requested_no, 1, 12);
+          gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_number                                                   -- ：出荷元倉庫番号
+                                                                := gt_work_tab_err_item(i).deliver_from_whse_number;
+          gt_rpt_data_sum_tab( lv_key_index ).deliver_from_whse_name                                                     -- ：出荷元倉庫名
+                                                                := SUBSTRB(gt_work_tab_err_item(i).deliver_from_whse_name,1,20);
+          gt_rpt_data_sum_tab( lv_key_index ).customer_number   := gt_work_tab_err_item(i).customer_number;              -- ：顧客番号
+          gt_rpt_data_sum_tab( lv_key_index ).customer_name     := SUBSTRB(gt_work_tab_err_item(i).customer_name,1,20);  -- ：顧客名
+          gt_rpt_data_sum_tab( lv_key_index ).item_code         := gt_work_tab_err_item(i).item_code;                    -- ：品目ｺｰﾄﾞ
+          gt_rpt_data_sum_tab( lv_key_index ).item_name         := SUBSTRB(gt_work_tab_err_item(i).item_name,1,20);      -- ：品名
+          gt_rpt_data_sum_tab( lv_key_index ).schedule_dlv_date := gt_work_tab_err_item(i).schedule_dlv_date;            -- ：納品予定日
+          gt_rpt_data_sum_tab( lv_key_index ).schedule_inspect_date                                                      -- ：検収予定日
+                                                                := TO_DATE(gt_work_tab_err_item(i).schedule_inspect_date,cv_yyyymmddhhmiss);
+          gt_rpt_data_sum_tab( lv_key_index ).arrival_date      := gt_work_tab_err_item(i).arrival_date;                 -- ：着日
+          gt_rpt_data_sum_tab( lv_key_index ).order_quantity    := gt_work_tab_err_item(i).order_quantity;               -- ：受注数
+          gt_rpt_data_sum_tab( lv_key_index ).deliver_actual_quantity                                                    -- ：出荷実績数
+                                                                := gt_work_tab_err_item(i).deliver_actual_quantity;
+          gt_rpt_data_sum_tab( lv_key_index ).uom_code          := gt_work_tab_err_item(i).uom_code;                     -- ：単位
+          gt_rpt_data_sum_tab( lv_key_index ).output_quantity   := gt_work_tab_err_item(i).output_quantity;              -- ：差異数(受注数量-実績数量)
+          gt_rpt_data_sum_tab( lv_key_index ).data_class        := cv_data_class_3;                                      -- ：データ区分
+--
+        END IF;
+--
+      --
+      END LOOP line_item_excep_sum_loop;
+    END IF;
+--
+-- 2010/04/09 Ver.1.14 Add M.Sano Start
+    -- 例外２該当データリストの領域開放
+    gt_work_tab_err_item.DELETE;
+-- 2010/04/09 Ver.1.14 Add M.Sano End
+--
+    -- ======================
+    -- サマリデータの登録用変数への移し変え
+    -- ======================
+    IF ( gt_rpt_data_sum_tab.COUNT != 0 ) THEN
+    --
+      -- 初回インデックスを作成
+      lv_next_key_index := gt_rpt_data_sum_tab.FIRST;
+      --
+      WHILE ( lv_next_key_index IS NOT NULL ) LOOP
+      --
+        -- レコードIDの取得
+        SELECT  xxcos_rep_direct_list_s01.nextval
+        INTO    ln_record_id
+        FROM    dual
         ;
-      END;
+        -- インデックスカウントアップ
+        ln_idx := ln_idx + 1;
+        --
+        gt_rpt_data_tab( ln_idx ).record_id                := ln_record_id;
+        gt_rpt_data_tab( ln_idx ).base_code                := gt_rpt_data_sum_tab(lv_next_key_index).base_code;
+        gt_rpt_data_tab( ln_idx ).base_name                := gt_rpt_data_sum_tab(lv_next_key_index).base_name;
+        gt_rpt_data_tab( ln_idx ).order_number             := gt_rpt_data_sum_tab(lv_next_key_index).order_number;
+        gt_rpt_data_tab( ln_idx ).order_line_no            := gt_rpt_data_sum_tab(lv_next_key_index).order_line_no;
+        gt_rpt_data_tab( ln_idx ).line_no                  := gt_rpt_data_sum_tab(lv_next_key_index).line_no;
+        gt_rpt_data_tab( ln_idx ).deliver_requested_no     := gt_rpt_data_sum_tab(lv_next_key_index).deliver_requested_no;
+        gt_rpt_data_tab( ln_idx ).deliver_from_whse_number := gt_rpt_data_sum_tab(lv_next_key_index).deliver_from_whse_number;
+        gt_rpt_data_tab( ln_idx ).deliver_from_whse_name   := gt_rpt_data_sum_tab(lv_next_key_index).deliver_from_whse_name;
+        gt_rpt_data_tab( ln_idx ).customer_number          := gt_rpt_data_sum_tab(lv_next_key_index).customer_number;
+        gt_rpt_data_tab( ln_idx ).customer_name            := gt_rpt_data_sum_tab(lv_next_key_index).customer_name;
+        gt_rpt_data_tab( ln_idx ).item_code                := gt_rpt_data_sum_tab(lv_next_key_index).item_code;
+        gt_rpt_data_tab( ln_idx ).item_name                := gt_rpt_data_sum_tab(lv_next_key_index).item_name;
+        gt_rpt_data_tab( ln_idx ).schedule_dlv_date        := gt_rpt_data_sum_tab(lv_next_key_index).schedule_dlv_date;
+        gt_rpt_data_tab( ln_idx ).schedule_inspect_date    := gt_rpt_data_sum_tab(lv_next_key_index).schedule_inspect_date;
+        gt_rpt_data_tab( ln_idx ).arrival_date             := gt_rpt_data_sum_tab(lv_next_key_index).arrival_date;
+        gt_rpt_data_tab( ln_idx ).order_quantity           := gt_rpt_data_sum_tab(lv_next_key_index).order_quantity;
+        gt_rpt_data_tab( ln_idx ).deliver_actual_quantity  := gt_rpt_data_sum_tab(lv_next_key_index).deliver_actual_quantity;
+        gt_rpt_data_tab( ln_idx ).uom_code                 := gt_rpt_data_sum_tab(lv_next_key_index).uom_code;
+        gt_rpt_data_tab( ln_idx ).output_quantity          := gt_rpt_data_sum_tab(lv_next_key_index).output_quantity;
+        gt_rpt_data_tab( ln_idx ).data_class               := gt_rpt_data_sum_tab(lv_next_key_index).data_class;
+        gt_rpt_data_tab( ln_idx ).created_by               := cn_created_by;
+        gt_rpt_data_tab( ln_idx ).creation_date            := cd_creation_date;
+        gt_rpt_data_tab( ln_idx ).last_updated_by          := cn_last_updated_by;
+        gt_rpt_data_tab( ln_idx ).last_update_date         := cd_last_update_date;
+        gt_rpt_data_tab( ln_idx ).last_update_login        := cn_last_update_login;
+        gt_rpt_data_tab( ln_idx ).request_id               := cn_request_id;
+        gt_rpt_data_tab( ln_idx ).program_application_id   := cn_program_application_id;
+        gt_rpt_data_tab( ln_idx ).program_id               := cn_program_id;
+        gt_rpt_data_tab( ln_idx ).program_update_date      := cd_program_update_date;
+        --
+        --次のインデックスを設定
+        lv_next_key_index := gt_rpt_data_sum_tab.NEXT(lv_next_key_index);
+      --
+      END LOOP;
+    --
+    END IF;
 --
-      -- カウントアップ
-      ln_idx := ln_idx + 1;
 --
-      -- 変数へ格納
-      gt_rpt_data_tab( ln_idx ).record_id                := ln_record_id;                          -- レコードID 
-      gt_rpt_data_tab( ln_idx ).base_code                := l_data_rec.base_code;                  -- 拠点コード
-                                                                                                   -- 拠点名称
-      gt_rpt_data_tab( ln_idx ).base_name                := SUBSTRB( l_data_rec.base_name, 1, 40 );
-      gt_rpt_data_tab( ln_idx ).order_number             := l_data_rec.order_number;               -- 受注番号
-      gt_rpt_data_tab( ln_idx ).order_line_no            := l_data_rec.order_line_no;              -- 受注明細No.
-      gt_rpt_data_tab( ln_idx ).line_no                  := l_data_rec.line_no;                    -- 明細No.
-      gt_rpt_data_tab( ln_idx ).deliver_requested_no     := l_data_rec.deliver_requested_no;       -- 出荷依頼No
-      gt_rpt_data_tab( ln_idx ).deliver_from_whse_number := l_data_rec.deliver_from_whse_number;   -- 出荷元倉庫番号
-                                                                                                   -- 出荷元倉庫名
-      gt_rpt_data_tab( ln_idx ).deliver_from_whse_name   := SUBSTRB( l_data_rec.deliver_from_whse_name, 1, 20 );
-      gt_rpt_data_tab( ln_idx ).customer_number          := l_data_rec.customer_number;            -- 顧客番号
-                                                                                                   -- 顧客名
-      gt_rpt_data_tab( ln_idx ).customer_name            := SUBSTRB( l_data_rec.customer_name, 1, 20 );
-      gt_rpt_data_tab( ln_idx ).item_code                := l_data_rec.item_code;                  -- 品目コード
-      gt_rpt_data_tab( ln_idx ).item_name                := SUBSTRB( l_data_rec.item_name, 1, 20 );-- 品名
-      gt_rpt_data_tab( ln_idx ).schedule_dlv_date        := l_data_rec.schedule_dlv_date;          -- 納品予定日
-                                                                                                   -- 検収予定日
-      gt_rpt_data_tab( ln_idx ).schedule_inspect_date    := TO_DATE( l_data_rec.schedule_inspect_date, cv_yyyymmddhhmiss );
-      gt_rpt_data_tab( ln_idx ).arrival_date             := l_data_rec.arrival_date;               -- 着日
-      gt_rpt_data_tab( ln_idx ).order_quantity           := l_data_rec.order_quantity;             -- 受注数
-      gt_rpt_data_tab( ln_idx ).deliver_actual_quantity  := l_data_rec.deliver_actual_quantity;    -- 出荷実績数
-      gt_rpt_data_tab( ln_idx ).uom_code                 := l_data_rec.uom_code;                   -- 単位
-      gt_rpt_data_tab( ln_idx ).output_quantity          := l_data_rec.output_quantity;            -- 差異数
-      gt_rpt_data_tab( ln_idx ).data_class               := l_data_rec.data_class;                 -- データ区分
-      gt_rpt_data_tab( ln_idx ).created_by               := cn_created_by;                         -- 作成者
-      gt_rpt_data_tab( ln_idx ).creation_date            := cd_creation_date;                      -- 作成日
-      gt_rpt_data_tab( ln_idx ).last_updated_by          := cn_last_updated_by;                    -- 最終更新者
-      gt_rpt_data_tab( ln_idx ).last_update_date         := cd_last_update_date;                   -- 最終更新日
-      gt_rpt_data_tab( ln_idx ).last_update_login        := cn_last_update_login;                  -- 最終更新ﾛｸﾞｲﾝ
-      gt_rpt_data_tab( ln_idx ).request_id               := cn_request_id;                         -- 要求ID
-      gt_rpt_data_tab( ln_idx ).program_application_id   := cn_program_application_id;             -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
-      gt_rpt_data_tab( ln_idx ).program_id               := cn_program_id;                         -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
-      gt_rpt_data_tab( ln_idx ).program_update_date      := cd_program_update_date;                -- ﾌﾟﾛｸﾞﾗﾑ更新日
+--    --==================================
+--    -- 1.データ取得
+--    --==================================
+--    <<loop_get_data>>
+--    FOR l_data_rec IN data_cur LOOP
+---- *********** 2009/11/26 1.11 N.Maeda DEL START *********** --
+------ ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+----      IF (
+----           (     l_data_rec.data_class IN (cv_data_class_1, cv_data_class_2, cv_data_class_3, cv_data_class_6)
+----             AND l_data_rec.schedule_dlv_date >= TRUNC(gd_trans_start_date)
+----           )
+----         OR
+----           (     l_data_rec.data_class IN (cv_data_class_4, cv_data_class_5)
+----             AND l_data_rec.arrival_date >= TRUNC(gd_trans_start_date)
+----           )
+----         )
+----      THEN
+------ ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+---- *********** 2009/11/26 1.11 N.Maeda DEL  END  *********** --
+--      -- レコードIDの取得
+--      BEGIN
+----
+--        SELECT
+--          xxcos_rep_direct_list_s01.nextval
+--        INTO
+--          ln_record_id
+--        FROM
+--          dual
+--        ;
+--      END;
+----
+--      -- カウントアップ
+--      ln_idx := ln_idx + 1;
+----
+--      -- 変数へ格納
+--      gt_rpt_data_tab( ln_idx ).record_id                := ln_record_id;                          -- レコードID 
+--      gt_rpt_data_tab( ln_idx ).base_code                := l_data_rec.base_code;                  -- 拠点コード
+--                                                                                                   -- 拠点名称
+--      gt_rpt_data_tab( ln_idx ).base_name                := SUBSTRB( l_data_rec.base_name, 1, 40 );
+--      gt_rpt_data_tab( ln_idx ).order_number             := l_data_rec.order_number;               -- 受注番号
+--      gt_rpt_data_tab( ln_idx ).order_line_no            := l_data_rec.order_line_no;              -- 受注明細No.
+--      gt_rpt_data_tab( ln_idx ).line_no                  := l_data_rec.line_no;                    -- 明細No.
+--      gt_rpt_data_tab( ln_idx ).deliver_requested_no     := l_data_rec.deliver_requested_no;       -- 出荷依頼No
+--      gt_rpt_data_tab( ln_idx ).deliver_from_whse_number := l_data_rec.deliver_from_whse_number;   -- 出荷元倉庫番号
+--                                                                                                   -- 出荷元倉庫名
+--      gt_rpt_data_tab( ln_idx ).deliver_from_whse_name   := SUBSTRB( l_data_rec.deliver_from_whse_name, 1, 20 );
+--      gt_rpt_data_tab( ln_idx ).customer_number          := l_data_rec.customer_number;            -- 顧客番号
+--                                                                                                   -- 顧客名
+--      gt_rpt_data_tab( ln_idx ).customer_name            := SUBSTRB( l_data_rec.customer_name, 1, 20 );
+--      gt_rpt_data_tab( ln_idx ).item_code                := l_data_rec.item_code;                  -- 品目コード
+--      gt_rpt_data_tab( ln_idx ).item_name                := SUBSTRB( l_data_rec.item_name, 1, 20 );-- 品名
+--      gt_rpt_data_tab( ln_idx ).schedule_dlv_date        := l_data_rec.schedule_dlv_date;          -- 納品予定日
+--                                                                                                   -- 検収予定日
+--      gt_rpt_data_tab( ln_idx ).schedule_inspect_date    := TO_DATE( l_data_rec.schedule_inspect_date, cv_yyyymmddhhmiss );
+--      gt_rpt_data_tab( ln_idx ).arrival_date             := l_data_rec.arrival_date;               -- 着日
+--      gt_rpt_data_tab( ln_idx ).order_quantity           := l_data_rec.order_quantity;             -- 受注数
+--      gt_rpt_data_tab( ln_idx ).deliver_actual_quantity  := l_data_rec.deliver_actual_quantity;    -- 出荷実績数
+--      gt_rpt_data_tab( ln_idx ).uom_code                 := l_data_rec.uom_code;                   -- 単位
+--      gt_rpt_data_tab( ln_idx ).output_quantity          := l_data_rec.output_quantity;            -- 差異数
+--      gt_rpt_data_tab( ln_idx ).data_class               := l_data_rec.data_class;                 -- データ区分
+--      gt_rpt_data_tab( ln_idx ).created_by               := cn_created_by;                         -- 作成者
+--      gt_rpt_data_tab( ln_idx ).creation_date            := cd_creation_date;                      -- 作成日
+--      gt_rpt_data_tab( ln_idx ).last_updated_by          := cn_last_updated_by;                    -- 最終更新者
+--      gt_rpt_data_tab( ln_idx ).last_update_date         := cd_last_update_date;                   -- 最終更新日
+--      gt_rpt_data_tab( ln_idx ).last_update_login        := cn_last_update_login;                  -- 最終更新ﾛｸﾞｲﾝ
+--      gt_rpt_data_tab( ln_idx ).request_id               := cn_request_id;                         -- 要求ID
+--      gt_rpt_data_tab( ln_idx ).program_application_id   := cn_program_application_id;             -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑ･ｱﾌﾟﾘｹｰｼｮﾝID
+--      gt_rpt_data_tab( ln_idx ).program_id               := cn_program_id;                         -- ｺﾝｶﾚﾝﾄ･ﾌﾟﾛｸﾞﾗﾑID
+--      gt_rpt_data_tab( ln_idx ).program_update_date      := cd_program_update_date;                -- ﾌﾟﾛｸﾞﾗﾑ更新日
+----
+---- *********** 2009/11/26 1.11 N.Maeda DEL START *********** --
+------ ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
+----      END IF;
+------ ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
+---- *********** 2009/11/26 1.11 N.Maeda DEL  END  *********** --
+--    END LOOP loop_get_data;
 --
--- *********** 2009/11/26 1.11 N.Maeda DEL START *********** --
----- ******************** 2009/10/05 1.9 K.Satomura ADD START ******************************* --
---      END IF;
----- ******************** 2009/10/05 1.9 K.Satomura ADD END   ******************************* --
--- *********** 2009/11/26 1.11 N.Maeda DEL  END  *********** --
-    END LOOP loop_get_data;
---
+-- ************* 2010/03/25 1.14 N.Maeda MOD  END  ************* --
     --処理件数カウント
     gn_target_cnt := gt_rpt_data_tab.COUNT;
 --
