@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS005A08C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS005A08C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS005A08C (body)
  * Description      : CSVファイルの受注取込
  * MD.050           : CSVファイルの受注取込 MD050_COS_005_A08
- * Version          : 1.6
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  security_check         セキュリティチェック処理                    (A-8)
  *  set_order_data         データ設定処理                              (A-9)
  *  data_insert            データ登録処理                              (A-9)
+ *  call_imp_data          受注のインポート要求                        (A-10)
  * ---------------------- ----------------------------------------------------------
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
@@ -53,6 +54,11 @@ AS
  *                                       [T1_0314]出荷元保管場所取得修正
  *  2009/05/19    1.6   T.Kitajima       [T1_0242]品目取得時、OPM品目マスタ.発売（製造）開始日条件追加
  *                                       [T1_0243]品目取得時、子品目対象外条件追加
+ *  2009/07/10    1.7   T.Tominaga       [0000137]Interval,Max_waitをFND_PROFILEより取得
+ *  2009/07/14    1.8   T.Miyata         [0000478]顧客所在地の抽出条件に有効フラグを追加
+ *  2009/07/15    1.9   T.Miyata         [0000066]起動するコンカレントを変更：受注インポート⇒受注インポートエラー検知
+ *  2009/07/17    1.10  K.Kiriu          [0000469]オーダーNoデータ型不正対応
+ *  2009/07/21    1.11  T.Miyata         [0000478指摘対応]TOO_MANY_ROWS例外取得
  *
  *****************************************************************************************/
 --
@@ -119,6 +125,10 @@ AS
   global_get_order_data_expt        EXCEPTION;                                                       --受注情報データ取得ハンドラ
   global_cut_order_data_expt        EXCEPTION;                                                       --ファイルレコード項目数不一致ハンドラ
   global_item_check_expt            EXCEPTION;                                                       --項目チェックハンドラ
+--****************************** 2009/07/21 1.11 T.Miyata ADD  START ******************************--
+  global_t_cust_too_many_expt       EXCEPTION;                                                       --問屋顧客情報TOO_MANYエラー
+  global_k_cust_too_many_expt       EXCEPTION;                                                       --国際顧客情報TOO_MANYエラー
+--****************************** 2009/07/21 1.11 T.Miyata ADD  END   ******************************--
   global_cust_check_expt            EXCEPTION;                                                       --マスタ情報の取得(顧客マスタチェック問屋)
   global_item_delivery_mst_expt     EXCEPTION;                                                       --マスタ情報の取得(顧客マスタチェック国際)
   global_cus_data_check_expt        EXCEPTION;                                                       --マスタ情報の取得(データ抽出エラー)
@@ -162,6 +172,12 @@ AS
                                              := 'XXCOS1_ODR_SRC_MST_005_A08';                        --クイックコードタイプ
   ct_look_up_type                   CONSTANT fnd_lookup_values.lookup_type%TYPE
                                              := 'XXCOS1_TRAN_TYPE_MST_005_A08';                      --クイックコードタイプ
+--****************************** 2009/07/10 1.7 T.Tominaga ADD START ******************************
+  ct_prof_interval                  CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                             := 'XXCOS1_INTERVAL';                                   --待機間隔
+  ct_prof_max_wait                  CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                             := 'XXCOS1_MAX_WAIT';                                   --最大待機時間
+--****************************** 2009/07/10 1.7 T.Tominaga ADD END   ******************************
 --
   --メッセージ
   ct_msg_get_lock_err               CONSTANT  fnd_new_messages.message_name%TYPE
@@ -288,6 +304,24 @@ AS
                                               := 'APP-XXCOS1-11299';                                 --SEJ商品コード
   ct_msg_get_imp_err                CONSTANT  fnd_new_messages.message_name%TYPE
                                               := 'APP-XXCOS1-11300';                                 --コンカレントエラーメッセージ
+--****************************** 2009/07/14 1.8 T.Miyata MOD  START ******************************--
+  ct_msg_get_imp_warning            CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-13851';                                 --コンカレントワーニングメッセージ
+--****************************** 2009/07/14 1.8 T.Miyata MOD  END   ******************************--
+--
+--****************************** 2009/07/21 1.11 T.Miyata ADD  START ******************************--
+  ct_msg_get_tonya_toomany          CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-13852';                                 --問屋顧客TOO_MANY_ROWS例外エラーメッセージ
+  ct_msg_get_kokusai_toomany        CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-13853';                                 --国際顧客TOO_MANY_ROWS例外エラーメッセージ
+--****************************** 2009/07/21 1.11 T.Miyata ADD  END   ******************************--
+--
+--****************************** 2009/07/10 1.7 T.Tominaga ADD START ******************************
+  ct_msg_get_interval               CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-11325';                                 --XXCOS:待機間隔
+  ct_msg_get_max_wait               CONSTANT  fnd_new_messages.message_name%TYPE
+                                              := 'APP-XXCOS1-11326';                                 --XXCOS:最大待機時間
+--****************************** 2009/07/10 1.7 T.Tominaga ADD END   ******************************
 --
   --トークン
   cv_tkn_profile                    CONSTANT  VARCHAR2(512) := 'PROFILE';                            --プロファイル名
@@ -339,6 +373,9 @@ AS
   cn_customer_div_cust              CONSTANT  VARCHAR2(4)   := '10';                                 --顧客
   cn_customer_div_user              CONSTANT  VARCHAR2(4)   := '12';                                 --上様
   cv_item_status_code_y             CONSTANT  VARCHAR2(2)   := 'Y';                                  --品目ステータス(顧客受注可能フラグ ('Y')(固定値))
+--****************************** 2009/07/14 1.8 T.Miyata ADD  START ******************************--
+  cv_cust_status_active             CONSTANT  VARCHAR2(1)   := 'A';                                  --顧客マスタ系の有効フラグ：有効
+--****************************** 2009/07/14 1.8 T.Miyata ADD  END   ******************************--
   cv_code_div_from                  CONSTANT  VARCHAR2(2)   := '4';                                  --倉庫
   cv_code_div_to                    CONSTANT  VARCHAR2(2)   := '9';                                  --配送先
   cv_yyyymmdd_format                CONSTANT  VARCHAR2(64)  := 'YYYYMMDD';                           --日付フォーマット
@@ -349,7 +386,11 @@ AS
   cv_line                           CONSTANT  VARCHAR2(64)  := 'LINE';                               --ライン
   cv_item_z                         CONSTANT  VARCHAR2(64)  := 'ZZZZZZZ';                            --品目コード
   cv_00                             CONSTANT  VARCHAR2(64)  := '00';
-  cv_con_status_normal              CONSTANT  VARCHAR2(10)  := 'NORMAL';                             -- ステータス（正常）
+--****************************** 2009/07/14 1.8 T.Miyata MOD  START ******************************--
+--  cv_con_status_normal              CONSTANT  VARCHAR2(10)  := 'NORMAL';                             -- ステータス（正常）
+  cv_con_status_error               CONSTANT  VARCHAR2(10)  := 'ERROR';                              -- ステータス（異常）
+  cv_con_status_warning             CONSTANT  VARCHAR2(10)  := 'WARNING';                            -- ステータス（警告）
+--****************************** 2009/07/14 1.8 T.Miyata MOD  END   ******************************--
 --
   cn_c_header                       CONSTANT  NUMBER        := 44;                                   --項目
   cn_begin_line                     CONSTANT  NUMBER        := 2;                                    --最初の行
@@ -382,8 +423,10 @@ AS
   cn_delivery_dlength               CONSTANT  NUMBER        := 12;                                   --納品先
   cn_ship_date_dlength              CONSTANT  NUMBER        := 8;                                    --出荷日
   cn_priod                          CONSTANT  NUMBER        := 0;                                    --小数点
-  cn_interval                       CONSTANT  NUMBER        := 30;                                   --Interval
-  cn_max_wait                       CONSTANT  NUMBER        := 0;                                    --Max_wait
+--****************************** 2009/07/10 1.7 T.Tominaga DEL START ******************************
+--  cn_interval                       CONSTANT  NUMBER        := 30;                                   --Interval
+--  cn_max_wait                       CONSTANT  NUMBER        := 0;                                    --Max_wait
+--****************************** 2009/07/10 1.7 T.Tominaga DEL END   ******************************
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -428,7 +471,10 @@ AS
   gn_line_cnt                       NUMBER;                                                          --明細カウンター
   gn_hed_Suc_cnt                    NUMBER;                                                          --成功ヘッダカウンター
   gn_line_Suc_cnt                   NUMBER;                                                          --成功明細カウンター
-  
+--****************************** 2009/07/10 1.7 T.Tominaga ADD START ******************************
+  gn_interval                       NUMBER;                                                          --待機間隔
+  gn_max_wait                       NUMBER;                                                          --最大待機時間
+--****************************** 2009/07/10 1.7 T.Tominaga ADD END   ******************************
 --
   gt_order_source_id                oe_order_sources.order_source_id%TYPE;                           --受注ソースID
   gt_order_source_name              oe_order_sources.name%TYPE;                                      --受注ソース名
@@ -1247,7 +1293,37 @@ AS
     FETCH get_data_cur BULK COLLECT INTO gr_g_login_base_info;
     -- カーソルCLOSE
     CLOSE get_data_cur;
-
+--****************************** 2009/07/10 1.7 T.Tominaga ADD START ******************************
+    ------------------------------------
+    -- 11.待機間隔の取得
+    ------------------------------------
+    -- XXCOS:待機間隔の取得
+    gn_interval := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_interval ) );
+--
+    -- 待機間隔の取得ができない場合のエラー編集
+    IF ( gn_interval IS NULL ) THEN
+      lv_key_info := xxccp_common_pkg.get_msg(
+                       iv_application  => ct_xxcos_appl_short_name,
+                       iv_name         => ct_msg_get_interval
+                     );
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    ------------------------------------
+    -- 12.最大待機時間の取得
+    ------------------------------------
+    -- XXCOS:最大待機時間の取得
+    gn_max_wait := TO_NUMBER( FND_PROFILE.VALUE( ct_prof_max_wait ) );
+--
+    -- 最大待機時間の取得ができない場合のエラー編集
+    IF ( gn_max_wait IS NULL ) THEN
+      lv_key_info := xxccp_common_pkg.get_msg(
+                       iv_application  => ct_xxcos_appl_short_name,
+                       iv_name         => ct_msg_get_max_wait
+                     );
+      RAISE global_get_profile_expt;
+    END IF;
+--****************************** 2009/07/10 1.7 T.Tominaga ADD END   ******************************
 --
   EXCEPTION
      --***** プロファイル取得例外ハンドラ(MO:営業単位の取得)
@@ -2137,6 +2213,9 @@ AS
         AND     uses.site_use_code             = cv_cust_site_use_code            -- 顧客使用目的：SHIP_TO(出荷先)
         AND     sites.org_id                   = gn_org_id
         AND     uses.org_id                    = gn_org_id
+--****************************** 2009/07/14 1.8 T.Miyata ADD  START ******************************--
+        AND     sites.status                   = cv_cust_status_active            -- 顧客所在地.ステータス：A
+--****************************** 2009/07/14 1.8 T.Miyata ADD  END   ******************************--
         ;
         --
         --
@@ -2157,6 +2236,9 @@ AS
           AND     uses.site_use_code             = cv_cust_site_use_code            -- 顧客使用目的：SHIP_TO(出荷先)
           AND     sites.org_id                   = gn_prod_ou_id
           AND     uses.org_id                    = gn_prod_ou_id
+--****************************** 2009/07/14 1.8 T.Miyata ADD  START ******************************--
+          AND     sites.status                   = cv_cust_status_active            -- 顧客所在地.ステータス：A
+--****************************** 2009/07/14 1.8 T.Miyata ADD  END   ******************************--
           AND     sites.party_site_id            = hps.party_site_id
           AND     hps.location_id                = hl.location_id
           AND     accounts.account_number        = ov_account_number
@@ -2170,6 +2252,10 @@ AS
           RAISE global_cust_check_expt; --マスタ情報の取得
         END IF;
       EXCEPTION
+--****************************** 2009/07/21 1.11 T.Miyata ADD START ******************************--
+        WHEN TOO_MANY_ROWS THEN
+          RAISE global_t_cust_too_many_expt; --問屋顧客情報のTOO_MANY_ROWSエラー
+--****************************** 2009/07/21 1.11 T.Miyata ADD  END  ******************************--
         WHEN NO_DATA_FOUND THEN
           RAISE global_cust_check_expt; --マスタ情報の取得
         WHEN OTHERS THEN
@@ -2236,6 +2322,9 @@ AS
         AND     uses.site_use_code             = cv_cust_site_use_code            -- 顧客使用目的：SHIP_TO(出荷先)
         AND     sites.org_id                   = gn_org_id
         AND     uses.org_id                    = gn_org_id
+--****************************** 2009/07/14 1.8 T.Miyata ADD  START ******************************--
+        AND     sites.status                   = cv_cust_status_active            -- 顧客所在地.ステータス：A
+--****************************** 2009/07/14 1.8 T.Miyata ADD  END   ******************************--
         AND     accounts.account_number        = iv_delivery
         ;
        --
@@ -2256,6 +2345,9 @@ AS
           AND     uses.site_use_code             = cv_cust_site_use_code            -- 顧客使用目的：SHIP_TO(出荷先)
           AND     sites.org_id                   = gn_prod_ou_id
           AND     uses.org_id                    = gn_prod_ou_id
+--****************************** 2009/07/14 1.8 T.Miyata ADD  START ******************************--
+          AND     sites.status                   = cv_cust_status_active            -- 顧客所在地.ステータス：A
+--****************************** 2009/07/14 1.8 T.Miyata ADD  END   ******************************--
           AND     sites.party_site_id            = hps.party_site_id
           AND     hps.location_id                = hl.location_id
           AND     accounts.account_number        = ov_account_number
@@ -2270,6 +2362,10 @@ AS
           RAISE global_item_delivery_mst_expt; --マスタ情報の取得
         END IF;
       EXCEPTION
+--****************************** 2009/07/21 1.11 T.Miyata ADD START ******************************--
+        WHEN TOO_MANY_ROWS THEN
+          RAISE global_k_cust_too_many_expt; --国際顧客情報TOO_MANYエラー
+--****************************** 2009/07/21 1.11 T.Miyata ADD  END  ******************************--
         WHEN NO_DATA_FOUND THEN
           lv_key_info := in_line_no;
           RAISE global_item_delivery_mst_expt; --マスタ情報の取得
@@ -2651,6 +2747,34 @@ AS
     END IF;
 --
   EXCEPTION
+--****************************** 2009/07/21 1.11 T.Miyata ADD START ******************************--
+    -- 問屋顧客情報TOO_MANYエラー
+    WHEN global_t_cust_too_many_expt THEN
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => ct_xxcos_appl_short_name,
+                     iv_name         => ct_msg_get_tonya_toomany,
+                     iv_token_name1  => cv_tkn_param1,
+                     iv_token_value1 => iv_chain_store_code,
+                     iv_token_name2  => cv_tkn_param2,
+                     iv_token_value2 => iv_central_code,
+                     iv_token_name3  => cv_tkn_param3,
+                     iv_token_value3 => gv_temp_line_no
+                  );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+    -- 国際顧客情報TOO_MANYエラー
+    WHEN global_k_cust_too_many_expt THEN
+      ov_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => ct_xxcos_appl_short_name,
+                     iv_name         => ct_msg_get_kokusai_toomany,
+                     iv_token_name1  => cv_tkn_param1,
+                     iv_token_value1 => iv_delivery,
+                     iv_token_name2  => cv_tkn_param2,
+                     iv_token_value2 => gv_temp_line_no
+                  );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--****************************** 2009/07/21 1.11 T.Miyata ADD END   ******************************--
     --マスタ情報の取得(問屋)
     WHEN global_cust_check_expt THEN
       ov_errmsg := xxccp_common_pkg.get_msg(
@@ -3268,7 +3392,9 @@ AS
     iv_delivery_base_code IN  VARCHAR2, -- 納品拠点コード
     iv_customer_code      IN  VARCHAR2, -- 顧客コード
     in_line_no            IN  NUMBER,   -- 行NO.(行番号)
-    in_order_no           IN  NUMBER,   -- オーダNO.
+/* 2009/07/17 Ver1.10 Del Start */
+--    in_order_no           IN  NUMBER,   -- オーダNO.
+/* 2009/07/17 Ver1.10 Del End   */
     ov_errbuf             OUT VARCHAR2, -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT VARCHAR2, -- リターン・コード             --# 固定 #
     ov_errmsg             OUT VARCHAR2) -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3372,7 +3498,10 @@ AS
     in_org_id                IN NUMBER,    -- 組織ID(営業単位)
     id_ordered_date          IN DATE,      -- 受注日(発注日)
     iv_order_type            IN VARCHAR2,  -- 受注タイプ(受注タイプ（通常受注）)
-    in_customer_po_number    IN NUMBER,    -- 顧客PO番号(顧客発注番号)(オーダーNo.)
+/* 2009/07/17 Ver1.10 Mod Start */
+--    in_customer_po_number    IN NUMBER,    -- 顧客PO番号(顧客発注番号)(オーダーNo.)
+    iv_customer_po_number    IN VARCHAR2,  -- 顧客PO番号(顧客発注番号)(オーダーNo.)
+/* 2009/07/17 Ver1.10 Mod End   */
     iv_customer_number       IN VARCHAR2,  -- 顧客番号（コード)(顧客コード(SEJ)or納品先(国際))
     id_request_date          IN DATE,      -- 要求日(発注日"※設定必要")
     iv_orig_sys_line_ref     IN VARCHAR2,  -- 受注ソース明細参照(行No.)
@@ -3423,7 +3552,10 @@ AS
   -- *****************************************
 --
     --保管用のオーダーNOが空か、保管用のオーダーNOと現レコードのオーダーNOに相違ある場合
-    IF ( gt_order_no IS NULL ) OR ( gt_order_no != in_customer_po_number ) THEN
+/* 2009/07/17 Ver1.10 Mod Start */
+--    IF ( gt_order_no IS NULL ) OR ( gt_order_no != in_customer_po_number ) THEN
+    IF ( gt_order_no IS NULL ) OR ( gt_order_no != iv_customer_po_number ) THEN
+/* 2009/07/17 Ver1.10 Mod End */
       --ヘッダを設定します。
       --カウントUP
       gn_hed_cnt := gn_hed_cnt + 1;
@@ -3644,17 +3776,25 @@ AS
     -- *** ローカル定数 ***
     --テーブル定数
     --コンカレント定数
-    cv_application            CONSTANT VARCHAR2(5)   := 'ONT';         -- Application
-    cv_program                CONSTANT VARCHAR2(9)   := 'OEOIMP';      -- Program
-    cv_description            CONSTANT VARCHAR2(9)   := NULL;          -- Description
-    cv_start_time             CONSTANT VARCHAR2(10)  := NULL;          -- Start_time
-    cb_sub_request            CONSTANT BOOLEAN       := FALSE;         -- Sub_request
-    cv_argument4              CONSTANT VARCHAR2(1)   := 'N';           -- Argument1
-    cv_argument5              CONSTANT VARCHAR2(1)   := '1';           -- Argument1
-    cv_argument6              CONSTANT VARCHAR2(1)   := '4';           -- Argument1
-    cv_argument10             CONSTANT VARCHAR2(1)   := 'Y';           -- Argument1
-    cv_argument11             CONSTANT VARCHAR2(1)   := 'N';           -- Argument1
-    cv_argument12             CONSTANT VARCHAR2(1)   := 'Y';           -- Argument1
+--****************************** 2009/07/15 1.9 T.Miyata MOD START ******************************
+--    cv_application            CONSTANT VARCHAR2(5)   := 'ONT';         -- Application
+--    cv_program                CONSTANT VARCHAR2(9)   := 'OEOIMP';      -- Program
+--    cv_description            CONSTANT VARCHAR2(9)   := NULL;          -- Description
+--    cv_start_time             CONSTANT VARCHAR2(10)  := NULL;          -- Start_time
+--    cb_sub_request            CONSTANT BOOLEAN       := FALSE;         -- Sub_request
+--    cv_argument4              CONSTANT VARCHAR2(1)   := 'N';           -- Argument1
+--    cv_argument5              CONSTANT VARCHAR2(1)   := '1';           -- Argument1
+--    cv_argument6              CONSTANT VARCHAR2(1)   := '4';           -- Argument1
+--    cv_argument10             CONSTANT VARCHAR2(1)   := 'Y';           -- Argument1
+--    cv_argument11             CONSTANT VARCHAR2(1)   := 'N';           -- Argument1
+--    cv_argument12             CONSTANT VARCHAR2(1)   := 'Y';           -- Argument1
+--
+    cv_application            CONSTANT VARCHAR2(5)   := 'XXCOS';         -- Application
+    cv_program                CONSTANT VARCHAR2(12)  := 'XXCOS010A06C';  -- Program
+    cv_description            CONSTANT VARCHAR2(9)   := NULL;            -- Description
+    cv_start_time             CONSTANT VARCHAR2(10)  := NULL;            -- Start_time
+    cb_sub_request            CONSTANT BOOLEAN       := FALSE;           -- Sub_request
+--****************************** 2009/07/15 1.9 T.Miyata MOD END   ******************************
     -- *** ローカル変数 ***
     ln_process_set            NUMBER;          -- 処理セット
     ln_request_id             NUMBER;          -- 要求ID
@@ -3676,29 +3816,44 @@ AS
 --###########################  固定部 END   ############################
 --
     -- ***********************************
-    -- ***  顧客品目マスタ登録処理     ***
+    -- ***  受注データ登録処理         ***
     -- ***********************************
     --コンカレント起動
+--
+--****************************** 2009/07/15 1.9 T.Miyata MOD START ******************************
+--    ln_request_id := fnd_request.submit_request(
+--                       application  => cv_application,
+--                       program      => cv_program,
+--                       description  => cv_description,
+--                       start_time   => cv_start_time,
+--                       sub_request  => cb_sub_request,
+--                       argument1    => gt_order_source_id,--受注ソースID
+--                       argument2    => NULL,              --当初システム文書参照
+--                       argument3    => NULL,              --工程コード
+--                       argument4    => cv_argument4,      --検証のみ？
+--                       argument5    => cv_argument5,      --デバッグレベル
+--                       argument6    => cv_argument6,      --受注インポートインスタンス数
+--                       argument7    => NULL,              --販売先組織ID
+--                       argument8    => NULL,              --販売先組織
+--                       argument9    => NULL,              --変更順序
+--                       argument10   => cv_argument10,     --インスタンスの単一明細キュー使用可
+--                       argument11   => cv_argument11,     --後続に続くブランクのトリム
+--                       argument12   => cv_argument12      --付加フレックスのフィールド
+--                     );
     ln_request_id := fnd_request.submit_request(
                        application  => cv_application,
                        program      => cv_program,
                        description  => cv_description,
                        start_time   => cv_start_time,
                        sub_request  => cb_sub_request,
-                       argument1    => gt_order_source_id,--受注ソースID
-                       argument2    => NULL,              --当初システム文書参照
-                       argument3    => NULL,              --工程コード
-                       argument4    => cv_argument4,      --検証のみ？
-                       argument5    => cv_argument5,      --デバッグレベル
-                       argument6    => cv_argument6,      --受注インポートインスタンス数
-                       argument7    => NULL,              --販売先組織ID
-                       argument8    => NULL,              --販売先組織
-                       argument9    => NULL,              --変更順序
-                       argument10   => cv_argument10,     --インスタンスの単一明細キュー使用可
-                       argument11   => cv_argument11,     --後続に続くブランクのトリム
-                       argument12   => cv_argument12      --付加フレックスのフィールド
+                       argument1    => gv_f_description     --受注ソース名
                      );
-    IF ( ln_request_id IS NULL ) THEN
+--****************************** 2009/07/15 1.9 T.Miyata MOD END   ******************************
+--
+--****************************** 2009/07/15 1.9 T.Miyata MOD START ******************************
+--    IF ( ln_request_id IS NULL ) THEN
+    IF ( ln_request_id = 0 ) THEN
+--****************************** 2009/07/15 1.9 T.Miyata MOD END   ******************************
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => ct_xxcos_appl_short_name,
                      iv_name         => ct_msg_get_imp_err,
@@ -3718,17 +3873,27 @@ AS
     --コンカレントの終了待機
     lb_wait_result := fnd_concurrent.wait_for_request(
                         request_id   => ln_request_id,
-                        interval     => cn_interval,
-                        max_wait     => cn_max_wait,
+--****************************** 2009/07/10 1.7 T.Tominaga MOD START ******************************
+--                        interval     => cn_interval,
+--                        max_wait     => cn_max_wait,
+                        interval     => gn_interval,
+                        max_wait     => gn_max_wait,
+--****************************** 2009/07/10 1.7 T.Tominaga MOD END   ******************************
                         phase        => lv_phase,
                         status       => lv_status,
                         dev_phase    => lv_dev_phase,
                         dev_status   => lv_dev_status,
                         message      => lv_message
                       );
+--
+--****************************** 2009/07/15 1.9 T.Miyata MOD START ******************************
+--    IF ( ( lb_wait_result = FALSE ) 
+--      OR ( lv_dev_status <> cv_con_status_normal ) )
     IF ( ( lb_wait_result = FALSE ) 
-      OR ( lv_dev_status <> cv_con_status_normal ) )
+      OR ( lv_dev_status = cv_con_status_error ) )
+--****************************** 2009/07/15 1.9 T.Miyata MOD END   ******************************
     THEN
+--
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => ct_xxcos_appl_short_name,
                      iv_name         => ct_msg_get_imp_err,
@@ -3740,6 +3905,24 @@ AS
                      iv_token_value3 => lv_message
                    );
       RAISE global_api_expt;
+--****************************** 2009/07/15 1.9 T.Miyata ADD START ******************************
+    ELSIF ( lv_dev_status = cv_con_status_warning )
+      THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => ct_xxcos_appl_short_name,
+                       iv_name         => ct_msg_get_imp_warning,
+                       iv_token_name1  => cv_tkn_request_id,
+                       iv_token_value1 => TO_CHAR( ln_request_id ),
+                       iv_token_name2  => cv_tkn_dev_status,
+                       iv_token_value2 => lv_dev_status,
+                       iv_token_name3  => cv_tkn_message,
+                       iv_token_value3 => lv_message
+                     );
+--
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+        ov_retcode := cv_status_warn;
+--****************************** 2009/07/15 1.9 T.Miyata ADD END   ******************************
     END IF;
 --
   EXCEPTION
@@ -4054,7 +4237,9 @@ AS
           iv_delivery_base_code => lv_delivery_base_code,   -- 納品拠点コード
           iv_customer_code      => lv_account_number,       -- 顧客コード
           in_line_no            => lv_line_number,          -- 行NO.(行番号)
-          in_order_no           => lv_order_number,         -- オーダNO.
+/* 2009/07/17 Ver1.10 Del Start */
+--          in_order_no           => lv_order_number,         -- オーダNO.
+/* 2009/07/17 Ver1.10 Del End   */
           ov_errbuf             => lv_errbuf,               -- 1.エラー・メッセージ           --# 固定 #
           ov_retcode            => lv_retcode,              -- 2.リターン・コード             --# 固定 #
           ov_errmsg             => lv_errmsg                -- 3.ユーザー・エラー・メッセージ --# 固定 #
@@ -4102,7 +4287,10 @@ AS
           in_org_id                => gn_org_id,               -- 組織ID(営業単位
           id_ordered_date          => ld_order_date,           -- 受注日(発注日
           iv_order_type            => gt_order_type_name,      -- 受注タイプ(受注タイプ(通常受注)
-          in_customer_po_number    => lv_order_number,         -- 顧客PO番号(顧客発注番号)(オーダーNo.
+/* 2009/07/17 Ver1.10 Mod Start */
+--          in_customer_po_number    => lv_order_number,         -- 顧客PO番号(顧客発注番号)(オーダーNo.
+          iv_customer_po_number    => lv_order_number,         -- 顧客PO番号(顧客発注番号)(オーダーNo.
+/* 2009/07/17 Ver1.10 Mod End   */
           iv_customer_number       => lv_customer_number,      -- 顧客番号（コード)(顧客コード(SEJ)or 納品先(国際)
           id_request_date          => lod_delivery_date,       -- 要求日(納品日"※設定必要"
           iv_orig_sys_line_ref     => lv_line_number,          -- 受注ソース明細参照(行No.
@@ -4153,6 +4341,12 @@ AS
       IF ( lv_retcode = cv_status_error ) THEN
         gn_error_cnt := 1;
         RAISE global_process_expt;
+--****************************** 2009/07/15 1.9 T.Miyata ADD START ******************************
+      ELSIF ( lv_retcode = cv_status_warn ) THEN
+        ov_errmsg  := lv_errmsg;
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+        ov_retcode := cv_status_warn;
+--****************************** 2009/07/15 1.9 T.Miyata ADD END   ******************************
       END IF;
     END IF;
 --
