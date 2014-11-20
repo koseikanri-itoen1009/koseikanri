@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxinvIndicateLotVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="itoen.oracle.apps.xxinv.xxinv510002j.server.XxinvIndicateLotVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xmld.mov_lot_dtl_id     mov_lot_dtl_id    -- ロット詳細ID
+      ,xmld.mov_line_id        mov_line_id       -- 移動明細ID
+      ,xmld.lot_no             lot_no            -- ロットNo
+      ,ilm.item_id             opm_item_id       -- OPM品目ID
+      ,ilm.attribute1          manufactured_date -- 製造年月日
+      ,ilm.attribute3          use_by_date       -- 賞味期限
+      ,ilm.attribute2          koyu_code         -- 固有記号
+      ,CASE
+        WHEN :0 = '1' THEN  -- ロット管理区分が1:ロット管理品の場合
+          REPLACE(TO_CHAR(ilm.attribute6,'99990.000'),' ')
+        -- ロット管理外品の場合は在庫入数は表示しない
+        ELSE
+          NULL
+        END                    stock_quantity    -- 在庫入数
+      ,REPLACE(TO_CHAR(xmld.actual_quantity / :1,'999,999,990.000'),' ') convert_quantity  -- 換算数量
+       ,xmld.actual_quantity   actual_quantity   -- 実績数量    
+FROM xxinv_mov_lot_details     xmld              -- 移動ﾚロット詳細アドオン
+    ,ic_lots_mst               ilm               -- OPMロットマスタ
+WHERE 
+/* 結合条件 */
+     xmld.item_id = ilm.item_id
+AND  xmld.lot_id  = ilm.lot_id
+/* 抽出条件 */
+AND xmld.document_type_code = '20'   -- 文書タイプ：移動
+AND xmld.record_type_code   = '10'   -- レコードタイプ：指示
+AND xmld.mov_line_id        = :2
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="MovLotDtlId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="MOV_LOT_DTL_ID"
+      Expression="MOV_LOT_DTL_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="MovLineId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="MOV_LINE_ID"
+      Expression="MOV_LINE_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="LotNo"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="LOT_NO"
+      Expression="LOT_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OpmItemId"
+      IsPersistent="false"
+      IsNotNull="true"
+      Precision="10"
+      Scale="0"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="OPM_ITEM_ID"
+      Expression="OPM_ITEM_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ManufacturedDate"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="MANUFACTURED_DATE"
+      Expression="MANUFACTURED_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UseByDate"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="USE_BY_DATE"
+      Expression="USE_BY_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="KoyuCode"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="KOYU_CODE"
+      Expression="KOYU_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="StockQuantity"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="STOCK_QUANTITY"
+      Expression="STOCK_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="10" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ConvertQuantity"
+      IsPersistent="false"
+      Precision="16"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CONVERT_QUANTITY"
+      Expression="CONVERT_QUANTITY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="16" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ActualQuantity"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="ACTUAL_QUANTITY"
+      Expression="ACTUAL_QUANTITY"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>

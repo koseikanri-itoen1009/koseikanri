@@ -1,0 +1,71 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" viewName="XxinvMovementResultsVO1" blockSize="20" width="100%">
+   <ui:contents>
+      <oa:column id="Column31">
+         <ui:columnHeader>
+            <oa:sortableHeader id="MovNumHdr4" prompt="移動番号"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:link id="MovNumber3" viewAttr="MovNum" text="">
+               <ui:primaryClientAction>
+                  <ui:fireAction event="MovNumberClick" id="fireAction3">
+                     <ui:parameters>
+                        <ui:parameter key="searchMovHdrId" value="${oa.XxinvMovementResultsVO1.MovHdrId}"/>
+                        <ui:parameter key="updateFlag" value=""/>
+                     </ui:parameters>
+                  </ui:fireAction>
+               </ui:primaryClientAction>
+            </oa:link>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column32">
+         <ui:columnHeader>
+            <oa:sortableHeader id="CollectPalletQtyHdr" prompt="パレット回収枚数"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="CollectPalletQty" styleClass="LegendText" viewAttr="CollectedPalletQty"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column33">
+         <ui:columnHeader>
+            <oa:sortableHeader id="OutPalletQtyHdr" prompt="パレット枚数(出)"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="OutPalletQty" styleClass="LegendText" viewAttr="OutPalletQty"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column34">
+         <ui:columnHeader>
+            <oa:sortableHeader id="LegendTextHdr" prompt="パレット枚数(入)"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="InPalletQty" styleClass="LegendText" viewAttr="InPalletQty"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column35">
+         <ui:columnHeader>
+            <oa:sortableHeader id="WitCapacityClassHdr" prompt="重量容積区分"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="WitCapacityClass" viewAttr="WeightCapacityClassName" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column36">
+         <ui:columnHeader>
+            <oa:sortableHeader id="DescriptionHdr" prompt="摘要"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="Description" styleClass="LegendText" viewAttr="Description"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column37">
+         <ui:columnHeader>
+            <oa:sortableHeader id="BatchNoHdr" prompt="手配No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="BatchNo" styleClass="LegendText" viewAttr="BatchNo"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

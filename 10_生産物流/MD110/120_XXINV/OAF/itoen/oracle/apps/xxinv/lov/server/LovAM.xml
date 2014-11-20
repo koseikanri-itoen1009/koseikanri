@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
+
+<AppModule
+   Name="LovAM"
+   ComponentClass="oracle.apps.fnd.framework.server.OAApplicationModuleImpl"
+   LoadComponentsLazily="true" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_deployType" Value="0" />
+   </DesignTime>
+   <ViewUsage
+      Name="LocationsCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.LocationsCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="DeliveryNoVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.DeliveryNoVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="LocationVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.LocationVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="FreightCarrierVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.FreightCarrierVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ArrivalTimeVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.ArrivalTimeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="WeightCapacityClassVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.WeightCapacityClassVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="MovNumVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.MovNumVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="ItemCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.ItemCodeVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="LotNoVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.LotNoVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="KoyuCodeVO1"
+      ViewObjectName="itoen.oracle.apps.xxinv.lov.server.KoyuCodeVO" >
+   </ViewUsage>
+</AppModule>

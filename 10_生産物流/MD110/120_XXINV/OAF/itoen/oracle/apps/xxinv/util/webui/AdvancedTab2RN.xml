@@ -1,0 +1,71 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" viewName="XxinvMovementResultsVO1" blockSize="20" width="100%">
+   <ui:contents>
+      <oa:column id="Column11">
+         <ui:columnHeader>
+            <oa:sortableHeader id="MovNumHdr2" prompt="移動番号"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:link id="MovNumber1" viewAttr="MovNum" text="">
+               <ui:primaryClientAction>
+                  <ui:fireAction event="MovNumberClick" id="fireAction1">
+                     <ui:parameters>
+                        <ui:parameter key="searchMovHdrId" value="${oa.XxinvMovementResultsVO1.MovHdrId}"/>
+                        <ui:parameter key="updateFlag" value=""/>
+                     </ui:parameters>
+                  </ui:fireAction>
+               </ui:primaryClientAction>
+            </oa:link>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column12">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ShippedCodeHdr" prompt="出庫元"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ShippedCode" viewAttr="ShippedLocatCode" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column13">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ShippedNameHdr" prompt="出庫元名称"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ShippedName" styleClass="LegendText" viewAttr="Description1"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column14">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ShipToCodeHdr" prompt="入庫先"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ShipToCode" styleClass="LegendText" viewAttr="ShipToLocatCode"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column15">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ShipToNameHdr" prompt="入庫先名称"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ShipToName" viewAttr="Description2" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column16">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ScheduleShipDateHdr" prompt="出庫日"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ScheduleShipDate" viewAttr="ScheduleShipDate" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column17">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ScheduleArrivalDateHdr" prompt="着日"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ScheduleArrivalDate" styleClass="LegendText" viewAttr="ScheduleArrivalDate"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

@@ -1,0 +1,439 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxinv.xxinv510001j.server.XxinvMovementResultsAM" windowTitle="入出庫実績" title="入出庫実績：ヘッダ" controllerClass="itoen.oracle.apps.xxinv.xxinv510001j.webui.XxinvMovementResultsHdCO" warnAboutChanges="false">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:formValue id="Actual" viewName="XxinvMovResultsSearchVO1" viewAttr="ActualFlg"/>
+                  <oa:formValue id="Product" viewName="XxinvMovResultsSearchVO1" viewAttr="ProductFlg"/>
+                  <oa:formValue id="Peoplecode" viewName="XxinvMovResultsSearchVO1" viewAttr="PeopleCode"/>
+                  <oa:formValue id="HdrId" viewName="XxinvMovementResultsHdVO1" viewAttr="MovHdrId" dataType="NUMBER"/>
+                  <oa:formValue id="ProcessFlag" viewName="XxinvMovementResultsHdVO1" viewAttr="ProcessFlag"/>
+                  <oa:header id="MovHdr">
+                     <ui:contents>
+                        <oa:tableLayout id="MovTab">
+                           <ui:contents>
+                              <oa:rowLayout id="MovrRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0100" height="25" hAlign="left">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMovNumPrompt" prompt="移動番号"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0101" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMovNum" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="MovNum" maximumLength="12" columns="12"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0200" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtInstPostCodePrompt" prompt="移動指示部署"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0201" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtInstPostCode" styleClass="LegendText" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/LocationRN" columns="4" viewName="XxinvMovementResultsHdVO1" viewAttr="InstructionPostCode" readOnly="${oa.XxinvMovementResultsHdPVO1.InstructionPostReadOnly}" shortDesc="移動指示部署" maximumLength="4">
+                                             <lovMappings>
+                                                <lovMap id="InstPostCodeLovMap" lovItem="LocationCode" resultTo="TxtInstPostCode" criteriaFrom="TxtInstPostCode"/>
+                                                <lovMap id="InstPostNameLovMap" lovItem="LocationName" resultTo="fTxtInstPostName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0202">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtInstPostName" styleClass="LegendText" viewName="XxinvMovResultsHdSearchVO1" viewAttr="LocationName" columns="20"/>
+                                          <oa:formValue id="fTxtInstPostName" viewName="XxinvMovResultsHdSearchVO1" viewAttr="LocationName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0300" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMovTypePrompt" prompt="移動タイプ"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0301" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageChoice id="TxtMovType" styleClass="LegendText" pickListViewDef="itoen.oracle.apps.xxinv.poplist.server.MovTypeVO" pickListDispAttr="MovDisp" pickListValAttr="MovType" viewName="XxinvMovementResultsHdVO1" viewAttr="MovType" defaultValue="1" readOnly="${oa.XxinvMovementResultsHdPVO1.MovTypeReadOnly}" shortDesc="移動タイプ"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0302">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtStatusPrompt" prompt="ステータス"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0303">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtStatus" viewName="XxinvMovementResultsHdVO1" viewAttr="StatusName" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow04">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0400" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtNotifStatusPrompt" prompt="通知ステータス"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0401" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtNotifStatus" viewName="XxinvMovementResultsHdVO1" viewAttr="NotifStatusName" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0402">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtNewMofifyFlgPrompt" prompt="修正フラグ"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0403">
+                                       <ui:contents>
+                                          <oa:messageCheckBox id="TxtNewMofifyFlg" viewName="XxinvMovementResultsHdVO1" viewAttr="NewModifyFlg" checkedValue="Y" unCheckedValue="N" styleClass="LegendText" readOnly="${oa.XxinvMovementResultsHdPVO1.NewModifyFlgReadOnly}" shortDesc="修正フラグ"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow05">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0500" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtShippedLocatPrompt" prompt="出庫元"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0501" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtShippedLocat" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/ShippedLocatLovRN" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="ShippedLocatCode" readOnly="${oa.XxinvMovementResultsHdPVO1.ShippedLocatReadOnly}" shortDesc="出庫元" maximumLength="4" columns="4">
+                                             <lovMappings>
+                                                <lovMap id="ShippedLocateIdLovMap" lovItem="InventoryLocationId" resultTo="TxtShippedLocatId"/>
+                                                <lovMap id="ShippedLocateNameLovMap" lovItem="ShippedLocatName" resultTo="fTxtshippedLocatName"/>
+                                                <lovMap id="ShippedLocateCodeLovMap" lovItem="ShippedLocatCode" resultTo="TxtShippedLocat" criteriaFrom="TxtShippedLocat"/>
+                                                <lovMap id="PeopleCode1LovMap" lovItem="PeopleCode" criteriaFrom="Peoplecode" programmaticQuery="true"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtShippedLocatId" viewName="XxinvMovementResultsHdVO1" viewAttr="ShippedLocatId"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0502" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtshippedLocatName" styleClass="LegendText" viewName="XxinvMovResultsHdSearchVO1" viewAttr="ShipLocationName" shortDesc="出庫元名称"/>
+                                          <oa:formValue id="fTxtshippedLocatName" viewName="XxinvMovResultsHdSearchVO1" viewAttr="ShipLocationName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow06">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0600" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtShipToLocatPrompt" prompt="入庫先"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0601" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtShipToLocat" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/ShipToLocatLovRN" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="ShipToLocatCode" readOnly="${oa.XxinvMovementResultsHdPVO1.ShipToLocatReadOnly}" shortDesc="入庫先" columns="4" maximumLength="4">
+                                             <lovMappings>
+                                                <lovMap id="ShipToLocatIdLovMap" lovItem="InventoryLocationId" resultTo="TxtshipToLocatId"/>
+                                                <lovMap id="ShipToLocatNameLovMap" lovItem="ShipToLocatName" resultTo="fTxtShipToLocatName"/>
+                                                <lovMap id="ShipToLocatCodeLovMap" lovItem="ShipToLocatCode" resultTo="TxtShipToLocat" criteriaFrom="TxtShipToLocat"/>
+                                                <lovMap id="PeopleCode2LovMap" lovItem="PeopleCode" criteriaFrom="Peoplecode" programmaticQuery="true"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtshipToLocatId" viewName="XxinvMovementResultsHdVO1" viewAttr="ShipToLocatId"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0602" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtShipToLocatName" viewName="XxinvMovResultsHdSearchVO1" viewAttr="ArrivalLocationName" styleClass="LegendText" shortDesc="入庫先名称"/>
+                                          <oa:formValue id="fTxtShipToLocatName" viewName="XxinvMovResultsHdSearchVO1" viewAttr="ArrivalLocationName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow07">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0700" height="25" hAlign="left">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtScShipDatePrompt" prompt="出庫日"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0701" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtScShipDate" viewName="XxinvMovementResultsHdVO1" viewAttr="ScheduleShipDate" styleClass="LegendText" shortDesc="出庫日" maximumLength="10" columns="12"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0702">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtScArrivalDatePrompt" prompt="着日"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0703">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtScArrivalDate" viewName="XxinvMovementResultsHdVO1" viewAttr="ScheduleArrivalDate" styleClass="LegendText" shortDesc="着日" maximumLength="10" columns="12"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow08">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0800">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtActualShipDatePrompt" prompt="出庫日(実績)"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0801" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtActualShipDate" dataType="DATE" maximumLength="10" viewName="XxinvMovementResultsHdVO1" viewAttr="ActualShipDate" styleClass="LegendText" columns="12" readOnly="${oa.XxinvMovementResultsHdPVO1.ActualShipDateReadOnly}" shortDesc="出庫日(実績)">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="actualShipDate"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0802">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtActualArrivalDatePrompt" prompt="着日(実績)"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0803">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtActualArrivalDate" dataType="DATE" maximumLength="10" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="ActualArrivalDate" columns="12" readOnly="${oa.XxinvMovementResultsHdPVO1.ActualArrivalDateReadOnly}" shortDesc="着日(実績)">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="actualArrivalDate"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow09">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell0900" height="25" hAlign="left">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtFrtChargeClassPrompt" prompt="運賃区分"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell0901" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageCheckBox id="TxtFrtChargeClass" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="FreightChargeClass" checkedValue="1" unCheckedValue="0" defaultValue="" checked="false" readOnly="${oa.XxinvMovementResultsHdPVO1.FreightChargeClassReadOnly}" shortDesc="運賃区分">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="frtChargeClass">
+                                                   <ui:parameters>
+                                                      <ui:parameter key="freightChargeClass" value="${oa.XxinvMovementResultsHdVO1.FreightChargeClass}"/>
+                                                   </ui:parameters>
+                                                </ui:firePartialAction>
+                                             </ui:primaryClientAction>
+                                          </oa:messageCheckBox>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow10">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell1000" height="25" hAlign="left">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtFrtCarrierCodePrompt" prompt="運送業者"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1001" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtFrtCarrierCode" styleClass="LegendText" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/FreightCarrierLovRN" viewName="XxinvMovementResultsHdVO1" viewAttr="ActualFreightCarrierCode" readOnly="${oa.XxinvMovementResultsHdPVO1.FreightCarrierReadOnly}" shortDesc="運送業者" maximumLength="4" columns="4">
+                                             <lovMappings>
+                                                <lovMap id="FrtCarrierCodeLovMap" lovItem="FreightCarrierNo" resultTo="TxtFrtCarrierCode" criteriaFrom="TxtFrtCarrierCode"/>
+                                                <lovMap id="FrtCarrierIdLovMap" lovItem="FreightCarrierId" resultTo="TxtFrtCarrierId"/>
+                                                <lovMap id="FrtCarrierNameLovMap" lovItem="FreightCarrierName" resultTo="fTxtFrtCarrierName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtFrtCarrierId" viewName="XxinvMovementResultsHdVO1" viewAttr="ActualCareerId"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1002">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtFrtCarrierName" styleClass="LegendText" viewName="XxinvMovResultsHdSearchVO1" viewAttr="FrtCarrierName" shortDesc="運送業者名称"/>
+                                          <oa:formValue id="fTxtFrtCarrierName" viewName="XxinvMovResultsHdSearchVO1" viewAttr="FrtCarrierName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow11">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell1100" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtArrivalTimeFromPrompt" prompt="時間指定From"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1101" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtArrivalTimeFrom" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/ArrivalTimeFromLovRN" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="ArrivalTimeFromName" readOnly="${oa.XxinvMovementResultsHdPVO1.ArrivalTimeFromReadOnly}" shortDesc="時間指定From" maximumLength="5" columns="5">
+                                             <lovMappings>
+                                                <lovMap id="ArrivalTimeFromLovMap" lovItem="ArrivalTime" resultTo="TxtArrivalTimeFrom" criteriaFrom="TxtArrivalTimeFrom"/>
+                                                <lovMap id="FromCodeLovMap" lovItem="ArrivalTimeCode" resultTo="TxtFromCode"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtFromCode" viewName="XxinvMovementResultsHdVO1" viewAttr="ArrivalTimeFrom"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1102">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtArrivalTimeToPrompt" prompt="時間指定To"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1103">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtArrivalTimeTo" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/ArrivalTimeToLovRN" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="ArrivalTimeToName" readOnly="${oa.XxinvMovementResultsHdPVO1.ArrivalTimeToReadOnly}" shortDesc="時間指定To" maximumLength="5" columns="5">
+                                             <lovMappings>
+                                                <lovMap id="ArrivalTimeToLovMap" lovItem="ArrivalTime" resultTo="TxtArrivalTimeTo" criteriaFrom="TxtArrivalTimeTo"/>
+                                                <lovMap id="ToLovMap" lovItem="ArrivalTimeCode" resultTo="TxtToCode"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtToCode" viewName="XxinvMovementResultsHdVO1" viewAttr="ArrivalTimeTo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow12">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell1200" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtShippingMethodPrompt" prompt="配送区分"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1201" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtShippingMethod" viewName="XxinvMovementResultsHdVO1" viewAttr="ShippingMethodName" styleClass="LegendText" shortDesc="配送区分"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow13">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell1300" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtCollectedPalletPrompt" prompt="パレット回収枚数"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1301" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtCollectedPallet" viewName="XxinvMovementResultsHdVO1" viewAttr="CollectedPalletQty" styleClass="LegendText" dataType="NUMBER" maximumLength="3" readOnly="${oa.XxinvMovementResultsHdPVO1.CollectedPalletReadOnly}" shortDesc="パレット回収枚数" columns="3"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1302">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtNoContFrtClassPrompt" prompt="契約外運賃区分"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1303">
+                                       <ui:contents>
+                                          <oa:messageCheckBox id="TxtNoContFrtClass" viewName="XxinvMovementResultsHdVO1" viewAttr="NoContFreightClass" checkedValue="1" unCheckedValue="0" styleClass="LegendText" readOnly="${oa.XxinvMovementResultsHdPVO1.NoContFreightClassReadOnly}" shortDesc="契約外運賃区分"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow14">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell1400" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtInOutPalletPrompt" prompt="パレット枚数(出/入)"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1401">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtOutPallet" viewName="XxinvMovementResultsHdVO1" viewAttr="OutPalletQty" dataType="NUMBER" styleClass="LegendText" maximumLength="3" prompt="" shortDesc="パレット枚数(出)" columns="3"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1402">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtSlash" prompt="／"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1403" columnSpan="1">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtInPallet" viewName="XxinvMovementResultsHdVO1" viewAttr="InPalletQty" dataType="NUMBER" maximumLength="3" prompt="" styleClass="LegendText" shortDesc="パレット枚数(入)" rows="1" columns="3"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow15">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell1500" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtDeliveryNoPrompt" prompt="配送No"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1501" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtDeliveryNo" viewName="XxinvMovementResultsHdVO1" viewAttr="DeliveryNo" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1502">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtPrevDeliveryNoPrompt" prompt="前回配送No"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1503">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtPrevDeliveryNo" viewName="XxinvMovementResultsHdVO1" viewAttr="PrevDeliveryNo" styleClass="LegendText"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow16">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell1600" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtWeightCapacityPrompt" prompt="重量容積区分"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1601" columnSpan="2">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtWeightCapacityCode" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/WeightCapacityClassLovRN" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="WeightCapacityClassName" readOnly="${oa.XxinvMovementResultsHdPVO1.WeightCapacityClassReadOnly}" shortDesc="重量容積区分">
+                                             <lovMappings>
+                                                <lovMap id="WeightCapacityLovMap" lovItem="WeightCapacityClass" resultTo="TxtWeightCapacityCode" criteriaFrom="TxtWeightCapacityCode"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="MovrRow17">
+                                 <ui:contents>
+                                    <oa:cellFormat id="MovCell1700" hAlign="left" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtDescriptionPrompt" prompt="摘要"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="MovCell1701" columnSpan="4">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtDescription" columns="60" styleClass="LegendText" viewName="XxinvMovementResultsHdVO1" viewAttr="Description" maximumLength="60" readOnly="${oa.XxinvMovementResultsHdPVO1.DescriptionReadOnly}" shortDesc="摘要"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:flowLayout>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Cancel" text="取消" prompt="取消"/>
+                  <oa:submitButton id="Next" text="次へ" prompt="次へ" warnAboutChanges="false"/>
+                  <oa:submitButton id="Go" text="適用" prompt="適用" disabled="${oa.XxinvMovementResultsHdPVO1.GoDisabled}"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

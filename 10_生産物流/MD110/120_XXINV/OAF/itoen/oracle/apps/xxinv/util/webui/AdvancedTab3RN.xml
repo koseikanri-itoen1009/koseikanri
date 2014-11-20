@@ -1,0 +1,95 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" viewName="XxinvMovementResultsVO1" blockSize="20" width="100%">
+   <ui:contents>
+      <oa:column id="Column21">
+         <ui:columnHeader>
+            <oa:sortableHeader id="MovNumHdr3" prompt="移動番号"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:link id="MovNumber2" viewAttr="MovNum" text="">
+               <ui:primaryClientAction>
+                  <ui:fireAction event="MovNumberClick" id="fireAction2">
+                     <ui:parameters>
+                        <ui:parameter key="searchMovHdrId" value="${oa.XxinvMovementResultsVO1.MovHdrId}"/>
+                        <ui:parameter key="updateFlag" value=""/>
+                     </ui:parameters>
+                  </ui:fireAction>
+               </ui:primaryClientAction>
+            </oa:link>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column22" columnDataFormat="iconButtonFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="FrtChargClassHdr" prompt="運賃区分"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageCheckBox id="FrtChargClass" checkedValue="1" unCheckedValue="0" viewAttr="FreightChargeClass" readOnly="true"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column23">
+         <ui:columnHeader>
+            <oa:sortableHeader id="DeliveryNoHdr" prompt="配送No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="DeliveryNo" styleClass="LegendText" viewAttr="DeliveryNo"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column24">
+         <ui:columnHeader>
+            <oa:sortableHeader id="PrevDeliveryNoHdr" prompt="前回配送No"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="PrevDeliveryNo" styleClass="LegendText" viewAttr="PrevDeliveryNo"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column25">
+         <ui:columnHeader>
+            <oa:sortableHeader id="FrtCarrierCodeHdr" prompt="運送業者"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FrtCarrierCode" styleClass="LegendText" viewAttr="ActualFreightCarrierCode"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column26">
+         <ui:columnHeader>
+            <oa:sortableHeader id="FrtCarrierNameHdr" prompt="運送業者名称"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="FrtCarrierName" styleClass="LegendText" viewAttr="PartyName2"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column27">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ArrivalTimeFromHdr" prompt="時間指定From"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ArrivalTimeFrom" styleClass="LegendText" viewAttr="ArrivalTimeFromName"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column28">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ArrivalTimeToHdr" prompt="時間指定To"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ArrivalTimeTo" styleClass="LegendText" viewAttr="ArrivalTimeToName"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column29">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ShipMethodCodeHdr" prompt="配送区分"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="ShipMethodCode" styleClass="LegendText" viewAttr="ShippingMethodName"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column210" columnDataFormat="iconButtonFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="NoContFrtClassHdr" prompt="契約外運賃区分"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageCheckBox id="NoContFrtClass" checkedValue="1" unCheckedValue="0" viewAttr="NoContFreightClass" readOnly="true"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

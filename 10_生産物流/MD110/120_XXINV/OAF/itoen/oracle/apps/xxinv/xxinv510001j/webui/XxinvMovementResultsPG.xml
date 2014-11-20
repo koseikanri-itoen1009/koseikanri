@@ -1,0 +1,325 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" title="入出庫実績要約" windowTitle="入出庫実績要約" amDefName="itoen.oracle.apps.xxinv.xxinv510001j.server.XxinvMovementResultsAM" controllerClass="itoen.oracle.apps.xxinv.xxinv510001j.webui.XxinvMovementResultsCO" warnAboutChanges="false">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:flowLayout id="MainRN">
+               <ui:contents>
+                  <oa:formValue id="Actual" viewName="XxinvMovResultsSearchVO1" viewAttr="ActualFlg"/>
+                  <oa:formValue id="Product" viewName="XxinvMovResultsSearchVO1" viewAttr="ProductFlg"/>
+                  <oa:formValue id="Peoplecode" viewName="XxinvMovResultsSearchVO1" viewAttr="PeopleCode"/>
+                  <oa:header id="SearchHdrRN" text="検索">
+                     <ui:contents>
+                        <oa:tableLayout id="SearchTab1" rendered="true">
+                           <ui:contents>
+                              <oa:rowLayout id="SearchRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell100" height="25" hAlign="right" width="100">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMovNumPrompt" prompt="移動番号"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell101">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtMovNum" maximumLength="12" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/MovNumLovRN" columns="15" styleClass="LegendText" shortDesc="移動番号">
+                                             <lovMappings>
+                                                <lovMap id="MovNumLovMap" resultTo="TxtMovNum" lovItem="MovNum" criteriaFrom="TxtMovNum"/>
+                                                <lovMap id="ProductFlgLovMap" criteriaFrom="Product" programmaticQuery="true" lovItem="ProductFlg"/>
+                                                <lovMap id="PeopleCodeLovMap" lovItem="PeopleCode" criteriaFrom="Peoplecode" programmaticQuery="true"/>
+                                                <lovMap id="ShippedLovMap" lovItem="ShippedId" criteriaFrom="TxtShippedLocatId" programmaticQuery="true"/>
+                                                <lovMap id="ShipToLovMap" lovItem="ShipToId" criteriaFrom="TxtShipToLocatId" programmaticQuery="true"/>
+                                                <lovMap id="ActualFlgLovMap" lovItem="ActualFlg" criteriaFrom="Actual" programmaticQuery="true"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow02">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell200" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMovTypePrompt" prompt="移動タイプ"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell201">
+                                       <ui:contents>
+                                          <oa:messageChoice id="TxtMovType" pickListViewDef="itoen.oracle.apps.xxinv.poplist.server.MovTypeVO" pickListDispAttr="MovDisp" pickListValAttr="MovType" styleClass="LegendText" shortDesc="移動タイプ" defaultValue="1"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow03">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell300" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtStatusPrompt" prompt="ステータス"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell301">
+                                       <ui:contents>
+                                          <oa:messageChoice id="TxtStatus" pickListViewDef="itoen.oracle.apps.xxinv.poplist.server.StatusVO" pickListValAttr="Status" pickListDispAttr="StatusDisp" styleClass="LegendText" shortDesc="ステータス"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow04">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell400" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtShippedLocatIdPrompt" prompt="出庫元"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell401">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtshippedLocatCode" styleClass="LegendText" shortDesc="出庫元" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/ShippedLocatLovRN" columns="4" viewName="XxinvMovResultsSearchVO1" viewAttr="ShipLcationCode">
+                                             <lovMappings>
+                                                <lovMap id="ShippedLocateIdLovMap" lovItem="InventoryLocationId" resultTo="TxtShippedLocatId"/>
+                                                <lovMap id="ShippedLocateNameLovMap" lovItem="ShippedLocatName" resultTo="fTxtshippedLocatName"/>
+                                                <lovMap id="ShippedLocateCodeLovMap" lovItem="ShippedLocatCode" resultTo="TxtshippedLocatCode" criteriaFrom="TxtshippedLocatCode"/>
+                                                <lovMap id="People1LocateLovMap" criteriaFrom="Peoplecode" lovItem="PeopleCode" programmaticQuery="true"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtShippedLocatId" viewName="XxinvMovResultsSearchVO1" viewAttr="ShipLocationId"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell402">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtshippedLocatName" viewName="XxinvMovResultsSearchVO1" viewAttr="ShipLocationName" styleClass="LegendText"/>
+                                          <oa:formValue id="fTxtshippedLocatName" viewName="XxinvMovResultsSearchVO1" viewAttr="ShipLocationName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow05">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell500" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtShipToLocatIdPrompt" prompt="入庫先"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell501">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtShipToLocatCode" styleClass="LegendText" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/ShipToLocatLovRN" shortDesc="入庫先" columns="4" viewName="XxinvMovResultsSearchVO1" viewAttr="ArrivalLocationCode">
+                                             <lovMappings>
+                                                <lovMap id="ShipToLocatIdLovMap" lovItem="InventoryLocationId" resultTo="TxtShipToLocatId"/>
+                                                <lovMap id="ShipToLocatNameLovMap" lovItem="ShipToLocatName" resultTo="fTxtShipToLocatName"/>
+                                                <lovMap id="ShipToLocatCodeLovMap" lovItem="ShipToLocatCode" resultTo="TxtShipToLocatCode" criteriaFrom="TxtShipToLocatCode"/>
+                                                <lovMap id="People2LocateLovMap" criteriaFrom="Peoplecode" lovItem="PeopleCode" programmaticQuery="true"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                          <oa:formValue id="TxtShipToLocatId" viewName="XxinvMovResultsSearchVO1" viewAttr="ArrivalLocationId"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell502">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtShipToLocatName" viewName="XxinvMovResultsSearchVO1" viewAttr="ArrivalLocationName" styleClass="LegendText"/>
+                                          <oa:formValue id="fTxtShipToLocatName" viewName="XxinvMovResultsSearchVO1" viewAttr="ArrivalLocationName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                        <oa:tableLayout id="SearchDateTab" rendered="true">
+                           <ui:contents>
+                              <oa:rowLayout id="SearchRow06" hAlign="left">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell600" hAlign="right" height="25" width="100">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxShipDatePrompt" prompt="出庫日"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell601">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtShipDateFrom" styleClass="LegendText" shortDesc="出庫日(FROM)" dataType="DATE" maximumLength="10" columns="12" viewName="XxinvMovResultsSearchVO1" viewAttr="ShipDateFrom">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="shipDate"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell602" hAlign="center" width="80">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMsg01" prompt="-"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell603">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtShipDateTo" dataType="DATE" maximumLength="10" styleClass="LegendText" shortDesc="出庫日(TO)" columns="12" viewName="XxinvMovResultsSearchVO1" viewAttr="ShipDateTo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow07">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell700" hAlign="right" height="25">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtArrivalDatePrompt" prompt="着日"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell701">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtArrivalDateFrom" dataType="DATE" maximumLength="10" columns="12" styleClass="LegendText" shortDesc="着日(FROM)" viewName="XxinvMovResultsSearchVO1" viewAttr="ArrivalDateFrom">
+                                             <ui:primaryClientAction>
+                                                <ui:firePartialAction event="arrivalDate"/>
+                                             </ui:primaryClientAction>
+                                          </oa:messageTextInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell702" hAlign="center">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtMsg02" prompt="-"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell703">
+                                       <ui:contents>
+                                          <oa:messageTextInput id="TxtArrivalDateTo" dataType="DATE" maximumLength="10" columns="12" styleClass="LegendText" shortDesc="着日(TO)" viewName="XxinvMovResultsSearchVO1" viewAttr="ArrivalDateTo"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                        <oa:tableLayout id="SearchTab2">
+                           <ui:contents>
+                              <oa:rowLayout id="SearchRow08">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell800" hAlign="right" height="25" width="100">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtInstructionPostCodePrompt" prompt="移動指示部署"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell801">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtInstructionPostCode" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/LocationRN" styleClass="LegendText" columns="4" shortDesc="移動指示部署" maximumLength="4">
+                                             <lovMappings>
+                                                <lovMap id="InstructionPostCodeLovMap" lovItem="LocationCode" resultTo="TxtInstructionPostCode" criteriaFrom="TxtInstructionPostCode"/>
+                                                <lovMap id="InstructionPostNameLovMap" resultTo="fTxtInstructionPostName" lovItem="LocationName"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell802">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtInstructionPostName" viewName="XxinvMovResultsSearchVO1" viewAttr="LocationName" styleClass="LegendText"/>
+                                          <oa:formValue id="fTxtInstructionPostName" viewName="XxinvMovResultsSearchVO1" viewAttr="LocationName"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow09">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell900" hAlign="right" height="25" width="100">
+                                       <ui:contents>
+                                          <oa:messageStyledText id="TxtDeliveryNoPrompt" prompt="配送No."/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                    <oa:cellFormat id="SearchCell901">
+                                       <ui:contents>
+                                          <oa:messageLovInput id="TxtDeliveryNo" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/DeliveryNoLovRN" styleClass="LegendText" columns="15" shortDesc="配送No." maximumLength="12">
+                                             <lovMappings>
+                                                <lovMap id="DeliveryNoLovMap" lovItem="DeliveryNo" criteriaFrom="TxtDeliveryNo" resultTo="TxtDeliveryNo"/>
+                                                <lovMap id="ProductFlgToLovMap" lovItem="ProductFlg" criteriaFrom="Product" programmaticQuery="true"/>
+                                                <lovMap id="PeopleCodeToLovMap" lovItem="PeopleCode" criteriaFrom="Peoplecode" programmaticQuery="true"/>
+                                                <lovMap id="ShippedToLovMap" lovItem="ShippedId" criteriaFrom="TxtShippedLocatId" programmaticQuery="true"/>
+                                                <lovMap id="ShipToToLovMap" lovItem="ShipToId" criteriaFrom="TxtShipToLocatId" programmaticQuery="true"/>
+                                                <lovMap id="ActualFlgToLovMap" lovItem="ActualFlg" criteriaFrom="Actual" programmaticQuery="true"/>
+                                             </lovMappings>
+                                          </oa:messageLovInput>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                        <oa:tableLayout id="SearchTab3" hAlign="left">
+                           <ui:contents>
+                              <oa:rowLayout id="SearchRow10" hAlign="right">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell1000" width="100" height="25" hAlign="right"/>
+                                    <oa:cellFormat id="SearchCell1001" height="1" columnSpan="1">
+                                       <ui:contents>
+                                          <oa:pageButtonBar id="PageButtonBarRN">
+                                             <ui:contents>
+                                                <oa:submitButton id="Go" text="進む" prompt="進む" hAlign="start"/>
+                                                <oa:submitButton id="Delete" text="消去" prompt="消去"/>
+                                             </ui:contents>
+                                          </oa:pageButtonBar>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                              <oa:rowLayout id="SearchRow11">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchCell1100">
+                                       <ui:contents>
+                                          <oa:submitButton id="New" text="新規" prompt="新規" styleClass="LegendText" warnAboutChanges="false"/>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+                  <oa:header id="SearchResultHdrRN">
+                     <ui:contents>
+                        <oa:tableLayout id="SearchResultTab" hAlign="center" width="100%">
+                           <ui:contents>
+                              <oa:rowLayout id="SearchResultRow01">
+                                 <ui:contents>
+                                    <oa:cellFormat id="SearchResultCell0101" hAlign="left">
+                                       <ui:contents>
+                                          <oa:subTabLayout id="SearchResultSubTab">
+                                             <ui:subTabs>
+                                                <oa:subTabBar id="SearchResultSubTabBar">
+                                                   <ui:contents>
+                                                      <oa:link id="MovInfo" text="移動情報">
+                                                         <ui:primaryClientAction>
+                                                            <ui:firePartialAction/>
+                                                         </ui:primaryClientAction>
+                                                      </oa:link>
+                                                      <oa:link id="ShipInfo" text="入出庫情報">
+                                                         <ui:primaryClientAction>
+                                                            <ui:firePartialAction/>
+                                                         </ui:primaryClientAction>
+                                                      </oa:link>
+                                                      <oa:link id="DeliveryInfo" text="運送情報">
+                                                         <ui:primaryClientAction>
+                                                            <ui:firePartialAction/>
+                                                         </ui:primaryClientAction>
+                                                      </oa:link>
+                                                      <oa:link id="OthersInfo" text="その他">
+                                                         <ui:primaryClientAction>
+                                                            <ui:firePartialAction/>
+                                                         </ui:primaryClientAction>
+                                                      </oa:link>
+                                                   </ui:contents>
+                                                </oa:subTabBar>
+                                             </ui:subTabs>
+                                             <ui:contents>
+                                                <oa:advancedTable id="AdvancedTab1" extends="/itoen/oracle/apps/xxinv/util/webui/AdvancedTab1RN"/>
+                                                <oa:advancedTable id="AdvancedTab2" extends="/itoen/oracle/apps/xxinv/util/webui/AdvancedTab2RN"/>
+                                                <oa:advancedTable id="AdvancedTab3" extends="/itoen/oracle/apps/xxinv/util/webui/AdvancedTab3RN"/>
+                                                <oa:advancedTable id="AdvancedTab4" extends="/itoen/oracle/apps/xxinv/util/webui/AdvancedTab4RN"/>
+                                             </ui:contents>
+                                          </oa:subTabLayout>
+                                       </ui:contents>
+                                    </oa:cellFormat>
+                                 </ui:contents>
+                              </oa:rowLayout>
+                           </ui:contents>
+                        </oa:tableLayout>
+                     </ui:contents>
+                  </oa:header>
+               </ui:contents>
+            </oa:flowLayout>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

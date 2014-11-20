@@ -1,0 +1,147 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<page xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:ui="http://xmlns.oracle.com/uix/ui" version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
+   <content>
+      <oa:pageLayout id="PageLayoutRN" amDefName="itoen.oracle.apps.xxinv.xxinv510001j.server.XxinvMovementResultsAM" windowTitle="入出庫実績" title="入出庫実績：明細" controllerClass="itoen.oracle.apps.xxinv.xxinv510001j.webui.XxinvMovementResultsLnCO">
+         <ui:corporateBranding>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
+         </ui:corporateBranding>
+         <ui:contents>
+            <oa:pageButtonBar id="PageButtonBarRN">
+               <ui:contents>
+                  <oa:submitButton id="Cancel" text="取消" prompt="取消"/>
+                  <oa:submitButton id="Back" text="戻る" prompt="戻る" warnAboutChanges="false"/>
+                  <oa:submitButton id="Go" text="適用" prompt="適用" disabled="false"/>
+               </ui:contents>
+            </oa:pageButtonBar>
+            <oa:advancedTable id="MovLineRN" viewName="XxinvMovementResultsLnVO1" blockSize="200" width="100%">
+               <ui:contents>
+                  <oa:column id="Column1">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col01Hdr" prompt="品目"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageLovInput id="ItemCode" viewAttr="ItemCode" externalListOfValues="/itoen/oracle/apps/xxinv/lov/webui/ItemCodeLovRN" readOnly="${oa.XxinvMovementResultsLnVO1.ItemCodeReadOnly}" maximumLength="7" columns="9">
+                           <lovMappings>
+                              <lovMap id="ItemCodeLovMap" lovItem="ItemCode" resultTo="ItemCode" criteriaFrom="ItemCode"/>
+                              <lovMap id="ItemNameLovMap" lovItem="ItemName" resultTo="fItemName"/>
+                              <lovMap id="LotCtlLovMap" lovItem="LotCtl" resultTo="LotCtl"/>
+                              <lovMap id="ProductFlgLovMap" lovItem="ProductFlg" criteriaFrom="Product" programmaticQuery="true"/>
+                              <lovMap id="weightCapacityLovMap" lovItem="WeightCapacity" criteriaFrom="WeightCapacityClass" programmaticQuery="true"/>
+                              <lovMap id="ItemIdLovMap" lovItem="ItemId" resultTo="fItemId"/>
+                              <lovMap id="ItemUmLovMap" lovItem="ItemUm" resultTo="ItemUm"/>
+                              <lovMap id="disItemUmLovMap" lovItem="DisItemUm" resultTo="DisItemUm"/>
+                           </lovMappings>
+                        </oa:messageLovInput>
+                        <oa:formValue id="LotCtl" viewAttr="LotCtl"/>
+                        <oa:formValue id="fItemName" viewAttr="ItemShortName"/>
+                        <oa:formValue id="fItemId" viewAttr="ItemId"/>
+                        <oa:formValue id="DisItemUm" viewAttr="UomCode"/>
+                        <oa:formValue id="ItemUm" viewAttr="ConvUnit"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Column2">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col02Hdr" prompt="品目名称"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="ItemName" styleClass="LegendText" viewAttr="ItemShortName"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Column3">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col03Hdr" prompt="指示総数"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="InstructSum" viewAttr="InstructSum" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Column4">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col04Hdr" prompt="単位"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="ConvUnit" viewAttr="ConvUnit" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Column5">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col05Hdr" prompt="出庫実績数量"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="ShippedSum" viewAttr="ShippedSum" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Column6">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col06Hdr" prompt="入庫実績数量"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:messageStyledText id="ShipToSum" viewAttr="ShipToSum" styleClass="LegendText"/>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Column7" columnDataFormat="iconButtonFormat">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col07Hdr" prompt="出庫ロット明細"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:switcher id="ShippedLotSwitcher" viewAttr="ShippedLotSwitcher">
+                           <ui:case name="ShippedLotDetails">
+                              <oa:image id="ShippedLotDetails" source="detailsicon_enabled.gif" shortDesc="出庫ロット明細" imageHeight="20" imageWidth="20">
+                                 <ui:primaryClientAction>
+                                    <ui:fireAction event="shippedLot">
+                                       <ui:parameters>
+                                          <ui:parameter key="MOV_LINE_ID" value="${oa.XxinvMovementResultsLnVO1.MovLineId}"/>
+                                       </ui:parameters>
+                                    </ui:fireAction>
+                                 </ui:primaryClientAction>
+                              </oa:image>
+                           </ui:case>
+                           <ui:case name="ShippedLotDetailsDisable">
+                              <oa:image id="ShippedLotDetailsDisable" source="detailsicon_disabled.gif" shortDesc="出庫ロット明細" imageHeight="20" imageWidth="20"/>
+                           </ui:case>
+                        </oa:switcher>
+                     </ui:contents>
+                  </oa:column>
+                  <oa:column id="Column8" columnDataFormat="iconButtonFormat">
+                     <ui:columnHeader>
+                        <oa:sortableHeader id="Col08Hdr" prompt="入庫ロット明細"/>
+                     </ui:columnHeader>
+                     <ui:contents>
+                        <oa:switcher id="ShipToLotSwitcher" viewAttr="ShipToLotSwitcher">
+                           <ui:case name="ShipToLotDetails">
+                              <oa:image id="ShipToLotDetails" source="detailsicon_enabled.gif" shortDesc="入庫ロット明細" imageHeight="20" imageWidth="20">
+                                 <ui:primaryClientAction>
+                                    <ui:fireAction event="shipToLot">
+                                       <ui:parameters>
+                                          <ui:parameter key="MOV_LINE_ID" value="${oa.XxinvMovementResultsLnVO1.MovLineId}"/>
+                                       </ui:parameters>
+                                    </ui:fireAction>
+                                 </ui:primaryClientAction>
+                              </oa:image>
+                           </ui:case>
+                           <ui:case name="ShipToLotDetailsDisable">
+                              <oa:image id="ShipToLotDetailsDisable" source="detailsicon_disabled.gif" shortDesc="入庫ロット明細" imageHeight="20" imageWidth="20"/>
+                           </ui:case>
+                        </oa:switcher>
+                     </ui:contents>
+                  </oa:column>
+               </ui:contents>
+               <ui:footer>
+                  <oa:tableFooter id="footer">
+                     <ui:contents>
+                        <oa:addTableRow id="AddRow" autoInsertion="false" text="行挿入"/>
+                     </ui:contents>
+                  </oa:tableFooter>
+               </ui:footer>
+            </oa:advancedTable>
+            <oa:formValue id="Actual" viewName="XxinvMovResultsSearchVO1" viewAttr="ActualFlg"/>
+            <oa:formValue id="Product" viewName="XxinvMovResultsSearchVO1" viewAttr="ProductFlg"/>
+            <oa:formValue id="Peoplecode" viewName="XxinvMovResultsSearchVO1" viewAttr="PeopleCode"/>
+            <oa:formValue id="HdrId" viewName="XxinvMovResultsSearchVO1" viewAttr="HdrId" dataType="VARCHAR2"/>
+            <oa:formValue id="WeightCapacityClass" viewName="XxinvMovementResultsHdVO1" viewAttr="WeightCapacityClass"/>
+            <oa:formValue id="Update" viewName="XxinvMovResultsSearchVO1" viewAttr="UpdateFlag"/>
+         </ui:contents>
+      </oa:pageLayout>
+   </content>
+</page>

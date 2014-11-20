@@ -1,0 +1,63 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
+<oa:advancedTable version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/" viewName="XxinvMovementResultsVO1" blockSize="20" width="100%">
+   <ui:contents>
+      <oa:column id="Column1">
+         <ui:columnHeader>
+            <oa:sortableHeader id="MovNumHdr1" prompt="移動番号"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:link id="MovNumber" viewAttr="MovNum" text="">
+               <ui:primaryClientAction>
+                  <ui:fireAction event="MovNumberClick" id="fireAction1">
+                     <ui:parameters>
+                        <ui:parameter key="searchMovHdrId" value="${oa.XxinvMovementResultsVO1.MovHdrId}"/>
+                        <ui:parameter key="updateFlag" value=""/>
+                     </ui:parameters>
+                  </ui:fireAction>
+               </ui:primaryClientAction>
+            </oa:link>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column2">
+         <ui:columnHeader>
+            <oa:sortableHeader id="InstructionPostCodeHdr" prompt="移動指示部署"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="InstructionPostCode" viewAttr="LocationShortName" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column3">
+         <ui:columnHeader>
+            <oa:sortableHeader id="MovTypeHdr" prompt="移動タイプ"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="MovType" viewAttr="MovTypeName" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column4">
+         <ui:columnHeader>
+            <oa:sortableHeader id="StatusHdr" prompt="ステータス"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="Status" viewAttr="StatusName" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column5">
+         <ui:columnHeader>
+            <oa:sortableHeader id="NotifStatusHdr" prompt="通知ステータス"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageStyledText id="NotifStatus" viewAttr="NotifStatusName" styleClass="LegendText"/>
+         </ui:contents>
+      </oa:column>
+      <oa:column id="Column6" columnDataFormat="iconButtonFormat">
+         <ui:columnHeader>
+            <oa:sortableHeader id="ModifyFlgHdr" prompt="修正フラグ"/>
+         </ui:columnHeader>
+         <ui:contents>
+            <oa:messageCheckBox id="ModifyFlg" viewAttr="NewModifyFlg" checkedValue="Y" unCheckedValue="N" readOnly="true"/>
+         </ui:contents>
+      </oa:column>
+   </ui:contents>
+</oa:advancedTable>

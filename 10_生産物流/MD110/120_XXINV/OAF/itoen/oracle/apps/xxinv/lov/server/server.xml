@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
+
+<JboPackage
+   Name="server"
+   SeparateXMLFiles="true"
+   PackageName="itoen.oracle.apps.xxinv.lov.server" >
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_ejbPackage" Value="false" />
+   </DesignTime>
+   <Containee
+      Name="LovAM"
+      FullName="itoen.oracle.apps.xxinv.lov.server.LovAM"
+      ObjectType="AppModule" >
+   </Containee>
+   <Containee
+      Name="LocationsCodeVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.LocationsCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="DeliveryNoVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.DeliveryNoVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="LocationVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.LocationVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="FreightCarrierVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.FreightCarrierVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="ArrivalTimeVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.ArrivalTimeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="WeightCapacityClassVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.WeightCapacityClassVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="MovNumVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.MovNumVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="ItemCodeVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.ItemCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="LotNoVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.LotNoVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="KoyuCodeVO"
+      FullName="itoen.oracle.apps.xxinv.lov.server.KoyuCodeVO"
+      ObjectType="ViewObject" >
+   </Containee>
+</JboPackage>
