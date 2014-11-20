@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,10 @@ AS
  *  2009/02/25    1.2   SCS 大川 恵      [障害CFR_017] EDI固定桁数超データ不具合対応
  *  2009/05/07    1.3   SCS 萱原 伸哉    [障害T1_0757] エラー売掛コード1(請求書)設定顧客メッセージ追加
  *  2009/05/08    1.3   SCS 萱原 伸哉    [障害T1_0687] 予備エリア追加、フッタ取得処理修正
+ *  2009/05/22    1.4   SCS 萱原 伸哉    [障害T1_1127] EDI請求書のチェーン店コードへの値の設定対応
+ *  2009/05/26    1.4   SCS 萱原 伸哉    [障害T1_1128] EDI請求書の請求消費税額／支払消費税額処理修正
+                                                       エラー売掛コード1(請求書)設定顧客メッセージ出力箇所変更
+ *  2009/05/26    1.4   SCS 萱原 伸哉    [障害T1_1121] EDI請求書の仕入先コード／取引先コード取得処理修正                               
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -151,6 +155,9 @@ AS
   cv_edi_data_filepath    CONSTANT VARCHAR2(35) := 'XXCFR1_EDI_FILEPATH';            -- XXCFR:EDIファイル格納パス
   cv_edi_output_dept      CONSTANT VARCHAR2(35) := 'XXCFR1_EDI_OUTPUT_DEPT';         -- XXCFR:EDI出力拠点
   cv_edi_data_type        CONSTANT VARCHAR2(35) := 'XXCFR1_INV_EDI_DATA_SET';        -- XXCFR:EDI請求出力項目
+-- Modify 2009.05.26 Ver1.4 Start
+  cv_comp_code            CONSTANT VARCHAR2(35) := 'XXCFR1_INVOICE_VENDER_CODE';     -- XXCFR:EDI請求書取引先コード
+-- Modify 2009.05.26 Ver1.4 End
 --
   -- 参照タイプ
   cv_invoice_grp_code     CONSTANT VARCHAR2(30) := 'XXCMM_INVOICE_GRP_CODE'; -- 売掛コード１（請求書）
@@ -203,6 +210,9 @@ AS
   gv_edi_data_filepath        VARCHAR2(500);      -- XXCFR:EDIファイル格納パス
   gv_edi_output_dept          VARCHAR2(10) ;      -- XXCFR:EDI出力拠点
   gv_discount_code            VARCHAR2(10);       -- XXCFR:EDI値引コード
+-- Modify 2009.05.26 Ver1.4 Start  
+  gv_comp_code                VARCHAR2(30);       -- XXCFR:EDI請求書取引先コード
+-- Modify 2009.05.26 Ver1.4 End
 --
   gv_edi_output_dept_name     VARCHAR2(100) := NULL;     -- EDI出力拠点名
   gv_edi_data_code            VARCHAR2(10)  := NULL;     -- データ種コード
@@ -634,6 +644,23 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- Modify 2009.05.26 Ver1.4 Start
+    -- プロファイルからXXCFR:EDI請求書取引先コード取得
+    gv_comp_code := FND_PROFILE.VALUE(cv_comp_code);
+    -- 取得エラー時
+    IF (gv_comp_code IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                    ,cv_msg_003a04_001 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_comp_code))
+                                                       -- XXCFR:EDI請求書取引先コード
+                          ,1
+                          ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+-- Modify 2009.05.26 Ver1.4 End
     -- プロファイルからXXCFR:EDIファイル格納パス取得
     gv_edi_data_filepath := FND_PROFILE.VALUE(cv_edi_data_filepath);
     -- 取得エラー時
@@ -852,12 +879,18 @@ AS
     IS
       SELECT cv_rec_type_d                            file_rec_type          -- レコード区分
             ,NULL                                     file_rec_num           -- レコード通番
-            ,NULL                                     chain_st_code          -- チェーン店コード
+-- Modify 2009.05.22 Ver1.4 Start
+--            ,NULL                                     chain_st_code          -- チェーン店コード
+            ,gv_edi_chain_code                        chain_st_code          -- チェーン店コード
+-- Modify 2009.05.22 Ver1.4 End
             ,TO_CHAR(xih.inv_creation_date
                     ,cv_format_date_ymd)              inv_creation_day       -- データ作成日
             ,TO_CHAR(xih.inv_creation_date
                     ,cv_format_date_hms)              inv_creation_time      -- データ作成時刻
-            ,NVL(xih.vender_code,cv_nul_v_code)       vender_code            -- 仕入先コード／取引先コード
+-- Modify 2009.05.26 Ver1.4 Start                    
+--            ,NVL(xih.vender_code,cv_nul_v_code)       vender_code            -- 仕入先コード／取引先コード
+            ,gv_comp_code                             vender_code            -- 仕入先コード／取引先コード
+-- Modify 2009.05.26 Ver1.4 End
             ,TO_CHAR(xih.invoice_id)                  invoice_id             -- 一括請求書ID
             ,xih.tax_gap_amount                       tax_gap_amount         -- 税差額
             ,SUBSTRB(xih.itoen_name,1,30)             itoen_name             -- 仕入先名称／取引先名称（漢字）
@@ -979,7 +1012,7 @@ AS
 --###########################  固定部 END   ############################
 --
     --===============================================================
-    -- A-4．EDIデータ取得ループ処理
+    -- 	
     --===============================================================
     -- カーソルオープン
     OPEN get_edi_data_cur(iv_ar_code1);
@@ -1062,7 +1095,11 @@ AS
 --
             lt_set_edi_data_tbl1(ln_data_cnt).file_rec_type
               := lt_get_edi_data_tbl1(i-1).file_rec_type;                      -- レコード区分
-            lt_set_edi_data_tbl1(ln_data_cnt).chain_st_code := NULL ;          -- チェーン店コード
+-- Modify 2009.05.22 Ver1.4 Start
+--            lt_set_edi_data_tbl1(ln_data_cnt).chain_st_code := NULL ;          -- チェーン店コード
+            lt_set_edi_data_tbl1(ln_data_cnt).chain_st_code  
+              := lt_get_edi_data_tbl1(i-1).chain_st_code          ;            -- チェーン店コード
+-- Modify 2009.05.22 Ver1.4 End
             lt_set_edi_data_tbl1(ln_data_cnt). inv_creation_day      
               := lt_get_edi_data_tbl1(i-1). inv_creation_day      ;            -- データ作成日
             lt_set_edi_data_tbl1(ln_data_cnt).inv_creation_time      
@@ -1110,8 +1147,12 @@ AS
             lt_set_edi_data_tbl1(ln_data_cnt).tax_type               
               := lt_get_edi_data_tbl1(i-1).tax_type               ;            -- 消費税区分
             lt_set_edi_data_tbl1(ln_data_cnt).tax_rate               := NULL ; -- 消費税率
-            lt_set_edi_data_tbl1(ln_data_cnt).tax_amount             
-              := lt_get_edi_data_tbl1(i-1).tax_gap_amount       ;              -- 請求消費税額／支払消費税額
+-- Modify 2009.05.22 Ver1.4 Start
+--            lt_set_edi_data_tbl1(ln_data_cnt).tax_amount             
+--              := lt_get_edi_data_tbl1(i-1).tax_gap_amount       ;              -- 請求消費税額／支払消費税額
+            lt_set_edi_data_tbl1(ln_data_cnt).tax_amount         
+              := ABS(lt_get_edi_data_tbl1(i-1).tax_gap_amount)       ;         -- 請求消費税額／支払消費税額
+-- Modify 2009.05.22 Ver1.4 End
             lt_set_edi_data_tbl1(ln_data_cnt).tax_gap_flg            := 1 ; -- 消費税差額フラグ
             lt_set_edi_data_tbl1(ln_data_cnt).mis_calc_type          := NULL ; -- 違算区分
             lt_set_edi_data_tbl1(ln_data_cnt).match_type             := NULL ; -- マッチ区分
@@ -1250,8 +1291,12 @@ AS
           := lt_get_edi_data_tbl1(i).tax_type               ; -- 消費税区分
         lt_set_edi_data_tbl1(ln_data_cnt).tax_rate               
           := lt_get_edi_data_tbl1(i).tax_rate               ; -- 消費税率
-        lt_set_edi_data_tbl1(ln_data_cnt).tax_amount             
-          := lt_get_edi_data_tbl1(i).tax_amount             ; -- 請求消費税額／支払消費税額
+-- Modify 2009.05.22 Ver1.4 Start
+--        lt_set_edi_data_tbl1(ln_data_cnt).tax_amount             
+--          := lt_get_edi_data_tbl1(i).tax_amount             ; -- 請求消費税額／支払消費税額
+        lt_set_edi_data_tbl1(ln_data_cnt).tax_amount
+          := ABS(lt_get_edi_data_tbl1(i).tax_amount)        ; -- 請求消費税額／支払消費税額
+-- Modify 2009.05.22 Ver1.4 End
         lt_set_edi_data_tbl1(ln_data_cnt).tax_gap_flg            
           := lt_get_edi_data_tbl1(i).tax_gap_flg            ; -- 消費税差額フラグ
         lt_set_edi_data_tbl1(ln_data_cnt).mis_calc_type          
@@ -2660,6 +2705,52 @@ AS
         ov_retcode := cv_status_warn;
       END IF;
 --
+-- Modify 2009.05.25 Ver1.4 Start
+      IF (lv_ar_warn_msg IS NOT NULL) THEN
+        -- エラー売掛コード1(請求書)設定顧客ヘッダメッセージ
+         lv_ar_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                        ,cv_msg_003a04_023      -- エラー売掛コード1(請求書)設定顧客ヘッダメッセージ
+                                                        ,cv_tkn_code            -- トークン'CODE'
+                                                        ,lt_arcode1_data(i).ar_code1)                                                   
+                                 ,1
+                                 ,5000);
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_ar_warn_msg
+        );
+        -- カーソルオープン
+        iv_arcode1 := lt_arcode1_data(i).ar_code1;
+        OPEN get_edi_cust_cur(iv_arcode1);
+--
+        -- データの一括取得
+        FETCH get_edi_cust_cur BULK COLLECT INTO lt_edi_cust;
+--
+        -- 処理件数のセット
+        ln_cust_cnt := lt_edi_cust.COUNT;
+--
+        -- カーソルクローズ
+        CLOSE get_edi_cust_cur;
+--
+        -- ループ処理
+        <<cust_cur>>
+        FOR i IN 1..ln_cust_cnt LOOP
+-- 
+        -- エラー売掛コード1(請求書)設定顧客明細メッセージ
+          lv_ar_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                        ,cv_msg_003a04_024      -- エラー売掛コード1(請求書)設定顧客明細メッセージ
+                                                        ,cv_tkn_code            -- トークン'CODE'
+                                                        ,lt_edi_cust(i).cust_code
+                                                        ,cv_tkn_name            -- トークン'NAME'
+                                                        ,lt_edi_cust(i).cust_name)
+                                 ,1
+                                 ,5000);
+          FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_ar_warn_msg
+        );
+        END LOOP cust_cur;
+      END IF;
+-- Modify 2009.05.25 Ver1.4 End
       -- 警告メッセージに値がセットされていない場合
       IF (lv_ar_warn_msg IS NULL) THEN
         -- ファイル重複チェック
@@ -2721,50 +2812,52 @@ AS
 --
       IF (lv_ar_warn_msg IS NOT NULL) THEN
         gn_warn_cnt := gn_warn_cnt + 1;
+-- Modify 2009.05.25 Ver1.4 Start
 -- Modify 2009.05.07 Ver1.3 Start
-        -- エラー売掛コード1(請求書)設定顧客ヘッダメッセージ
-         lv_ar_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
-                                                        ,cv_msg_003a04_023      -- エラー売掛コード1(請求書)設定顧客ヘッダメッセージ
-                                                        ,cv_tkn_code            -- トークン'CODE'
-                                                        ,lt_arcode1_data(i).ar_code1)                                                   
-                                 ,1
-                                 ,5000);
-        FND_FILE.PUT_LINE(
-           which  => FND_FILE.OUTPUT
-          ,buff   => lv_ar_warn_msg
-        );
-        -- カーソルオープン
-        iv_arcode1 := lt_arcode1_data(i).ar_code1;
-        OPEN get_edi_cust_cur(iv_arcode1);
+--        -- エラー売掛コード1(請求書)設定顧客ヘッダメッセージ
+--         lv_ar_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+--                                                        ,cv_msg_003a04_023      -- エラー売掛コード1(請求書)設定顧客ヘッダメッセージ
+--                                                        ,cv_tkn_code            -- トークン'CODE'
+--                                                        ,lt_arcode1_data(i).ar_code1)                                                   
+--                                 ,1
+--                                 ,5000);
+--        FND_FILE.PUT_LINE(
+--           which  => FND_FILE.OUTPUT
+--          ,buff   => lv_ar_warn_msg
+--        );
+--        -- カーソルオープン
+--        iv_arcode1 := lt_arcode1_data(i).ar_code1;
+--        OPEN get_edi_cust_cur(iv_arcode1);
 --
-        -- データの一括取得
-        FETCH get_edi_cust_cur BULK COLLECT INTO lt_edi_cust;
+--        -- データの一括取得
+--        FETCH get_edi_cust_cur BULK COLLECT INTO lt_edi_cust;
 --
-        -- 処理件数のセット
-        ln_cust_cnt := lt_edi_cust.COUNT;
+--        -- 処理件数のセット
+--        ln_cust_cnt := lt_edi_cust.COUNT;
 --
-        -- カーソルクローズ
-        CLOSE get_edi_cust_cur;
+--        -- カーソルクローズ
+--        CLOSE get_edi_cust_cur;
 --
-        -- ループ処理
-        <<cust_cur>>
-        FOR i IN 1..ln_cust_cnt LOOP
+--        -- ループ処理
+--        <<cust_cur>>
+--        FOR i IN 1..ln_cust_cnt LOOP
 -- 
-        -- エラー売掛コード1(請求書)設定顧客明細メッセージ
-          lv_ar_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
-                                                        ,cv_msg_003a04_024      -- エラー売掛コード1(請求書)設定顧客明細メッセージ
-                                                        ,cv_tkn_code            -- トークン'CODE'
-                                                        ,lt_edi_cust(i).cust_code
-                                                        ,cv_tkn_name            -- トークン'NAME'
-                                                        ,lt_edi_cust(i).cust_name)
-                                 ,1
-                                 ,5000);
-          FND_FILE.PUT_LINE(
-           which  => FND_FILE.OUTPUT
-          ,buff   => lv_ar_warn_msg
-        );
-        END LOOP cust_cur;
+--        -- エラー売掛コード1(請求書)設定顧客明細メッセージ
+--          lv_ar_warn_msg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+--                                                        ,cv_msg_003a04_024      -- エラー売掛コード1(請求書)設定顧客明細メッセージ
+--                                                        ,cv_tkn_code            -- トークン'CODE'
+--                                                        ,lt_edi_cust(i).cust_code
+--                                                        ,cv_tkn_name            -- トークン'NAME'
+--                                                        ,lt_edi_cust(i).cust_name)
+--                                 ,1
+--                                 ,5000);
+--          FND_FILE.PUT_LINE(
+--           which  => FND_FILE.OUTPUT
+--          ,buff   => lv_ar_warn_msg
+--        );
+--        END LOOP cust_cur;*/
 -- Modify 2009.05.07 Ver1.3 End
+-- Modify 2009.05.25 Ver1.4 End
         -- 最終レコードでない場合、空白行を挿入
         IF (i <> ln_ar1_cnt) THEN
           FND_FILE.PUT_LINE(
