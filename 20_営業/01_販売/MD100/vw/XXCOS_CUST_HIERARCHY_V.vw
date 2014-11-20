@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOS_CUST_HIERARCHY_V
  * Description     : 顧客階層ビュー
- * Version         : 1.5
+ * Version         : 1.7
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -24,6 +24,7 @@
  *  2009/09/11    1.5   K.Kiriu          [0001337]ヒント句追加
  *                                                SELECT句に別名追加 ※コメント化なし
  *  2009/11/12    1.6   K.Atsushiba      [I_E_648]④の顧客関連の抽出条件追加
+ *  2010/01/05    1.7   S.Miyakoshi      [E_本稼動_00749]顧客使用目的の有効条件追加
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOS_CUST_HIERARCHY_V" ("CASH_ACCOUNT_ID", "CASH_ACCOUNT_NUMBER", "CASH_ACCOUNT_NAME", "BILL_ACCOUNT_ID", "BILL_ACCOUNT_NUMBER", "BILL_ACCOUNT_NAME", "SHIP_ACCOUNT_ID", "SHIP_ACCOUNT_NUMBER", "SHIP_ACCOUNT_NAME", "CASH_RECEIV_BASE_CODE", "BILL_PARTY_ID", "BILL_BILL_BASE_CODE", "BILL_POSTAL_CODE", "BILL_STATE", "BILL_CITY", "BILL_ADDRESS1", "BILL_ADDRESS2", "BILL_TEL_NUM", "BILL_CONS_INV_FLAG", "BILL_TORIHIKISAKI_CODE", "BILL_STORE_CODE", "BILL_CUST_STORE_NAME", "BILL_TAX_DIV", "BILL_CRED_REC_CODE1", "BILL_CRED_REC_CODE2", "BILL_CRED_REC_CODE3", "BILL_INVOICE_TYPE", "BILL_PAYMENT_TERM_ID", "BILL_PAYMENT_TERM2", "BILL_PAYMENT_TERM3", "BILL_TAX_ROUND_RULE", "SHIP_SALE_BASE_CODE") AS
   SELECT cust_hier.cash_account_id                          AS cash_account_id        --入金先顧客ID
@@ -130,6 +131,10 @@
     AND    bill_hasa_1.party_site_id = bill_hzps_1.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID
     AND    bill_hzps_1.location_id = bill_hzlo_1.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID
     AND    bill_hsua_1.site_use_id = bill_hzcp_1.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
+/* 2010/01/05 Ver1.7 Add Start */
+    AND    bill_hsua_1.status = 'A'                                          --請求先顧客使用目的.ステータス = ‘A’
+    AND    ship_hsua_1.status = 'A'                                          --出荷先顧客使用目的.ステータス = ‘A’
+/* 2010/01/05 Ver1.7 Add End   */
     AND NOT EXISTS (
                 SELECT /*+ INDEX( cash_hcar_1 HZ_CUST_ACCT_RELATE_N2 ) */
                        'X'
@@ -215,6 +220,10 @@
     AND    bill_hasa_2.party_site_id = bill_hzps_2.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID
     AND    bill_hzps_2.location_id = bill_hzlo_2.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID
     AND    bill_hsua_2.site_use_id = bill_hzcp_2.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
+/* 2010/01/05 Ver1.7 Add Start */
+    AND    bill_hsua_2.status = 'A'                                          --請求先顧客使用目的.ステータス = ‘A’
+    AND    ship_hsua_2.status = 'A'                                          --出荷先顧客使用目的.ステータス = ‘A’
+/* 2010/01/05 Ver1.7 Add End   */
     UNION ALL
     --③入金先顧客－請求先顧客＆出荷先顧客
     SELECT
@@ -292,6 +301,10 @@
     AND    bill_hasa_3.party_site_id = bill_hzps_3.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID
     AND    bill_hzps_3.location_id = bill_hzlo_3.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID
     AND    bill_hsua_3.site_use_id = bill_hzcp_3.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
+/* 2010/01/05 Ver1.7 Add Start */
+    AND    bill_hsua_3.status = 'A'                                          --請求先顧客使用目的.ステータス = ‘A’
+    AND    ship_hsua_3.status = 'A'                                          --出荷先顧客使用目的.ステータス = ‘A’
+/* 2010/01/05 Ver1.7 Add End   */
     UNION ALL
     --④入金先顧客＆請求先顧客＆出荷先顧客
     SELECT
@@ -375,6 +388,10 @@
     AND    bill_hasa_4.party_site_id = bill_hzps_4.party_site_id             --請求先顧客所在地.パーティサイトID = 請求先パーティサイト.パーティサイトID
     AND    bill_hzps_4.location_id = bill_hzlo_4.location_id                 --請求先パーティサイト.事業所ID = 請求先顧客事業所.事業所ID
     AND    bill_hsua_4.site_use_id = bill_hzcp_4.site_use_id(+)              --請求先顧客使用目的.使用目的ID = 請求先顧客プロファイル.使用目的ID
+/* 2010/01/05 Ver1.7 Add Start */
+    AND    bill_hsua_4.status = 'A'                                          --請求先顧客使用目的.ステータス = ‘A’
+    AND    ship_hsua_4.status = 'A'                                          --出荷先顧客使用目的.ステータス = ‘A’
+/* 2010/01/05 Ver1.7 Add End   */
 ) cust_hier;
 COMMENT ON  COLUMN  xxcos_cust_hierarchy_v.cash_account_id         IS  '入金先顧客ID';
 COMMENT ON  COLUMN  xxcos_cust_hierarchy_v.cash_account_number     IS  '入金先顧客コード';
