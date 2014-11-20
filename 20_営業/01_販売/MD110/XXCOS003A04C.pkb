@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A04C(body)
  * Description      : ベンダ納品実績IF出力
  * MD.050           : ベンダ納品実績IF出力 MD050_COS_003_A04
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/10/14   1.8    K.Satomura       [SCS障害No.0001525対応]補充率桁あふれ対応
  *  2011/04/14   1.9    S.Ochiai         [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応
  *  2011/09/27   1.10   Y.Horikawa       [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応（再）
+ *  2011/10/24   1.11   Y.Horikawa       [障害No.E_本稼動_00184対応]同一VD、同一コラムに対する、複数商品の納品対応（再）（PT追加対応）
  *
  *****************************************************************************************/
 --
@@ -310,7 +311,11 @@ AS
            SUM(NVL(xvdl.sales_qty, 0))  sales_qty_of_day,    -- 合計数量（売上数量）
            b.base_code                  base_code            -- 拠点コード
     FROM (
-         SELECT a.customer_number       customer_number,
+-- 2011/10/24 Mod Ver.1.11 Start
+--         SELECT a.customer_number       customer_number,
+         SELECT /*+ leading(a)  index(msi xxcos_msi_n02) use_nl(a msi xmvc msib) */
+                a.customer_number       customer_number,
+-- 2011/10/24 Mod Ver.1.11 End
                 a.cust_account_id       cust_account_id,
                 a.dlv_date              dlv_date,
                 a.visit_time            visit_time,
@@ -325,7 +330,11 @@ AS
               xxcoi_mst_vd_column       xmvc,  -- VDコラムマスタ
               mtl_system_items_b        msib,  -- 品目マスタ
               (
-              SELECT xvdh.customer_number customer_number,
+-- 2011/10/24 Mod Ver.1.11 Start
+--              SELECT xvdh.customer_number customer_number,
+              SELECT /*+ leading(flv) use_nl(flv xca hca hp xvdh) */
+                     xvdh.customer_number customer_number,
+-- 2011/10/24 Mod Ver.1.11 End
                      hca.cust_account_id  cust_account_id,
                      xvdh.base_code       base_code,
                      xvdh.dlv_date        dlv_date,
@@ -357,13 +366,18 @@ AS
          AND   msi.attribute6 = cv_flag_on
          AND   xmvc.customer_id = a.cust_account_id
          AND   msib.inventory_item_id(+) = xmvc.item_id
-         AND   msib.organization_id(+) = xmvc.organization_id
+-- 2011/10/24 Del Ver.1.11 Start
+--         AND   msib.organization_id(+) = xmvc.organization_id
+-- 2011/10/24 Del Ver.1.11 End
          AND   msib.organization_id(+) = gn_orga_id
          ) b,
          xxcos_vd_deliv_lines xvdl  -- ベンダ納品実績明細
     WHERE b.customer_number = xvdl.customer_number (+)
     AND   b.dlv_date = xvdl.dlv_date (+)
-    AND   b.column_no = xvdl.column_num (+)
+-- 2011/10/24 Mod Ver.1.11 Start
+--    AND   b.column_no = xvdl.column_num (+)
+    AND   TO_CHAR(b.column_no) = xvdl.column_num (+)
+-- 2011/10/24 Mod Ver.1.11 End
     AND   NVL(b.segment1, cv_blank_c) = xvdl.item_code (+)
     AND   b.hot_cold = xvdl.hot_cold_type (+)
     GROUP BY b.customer_number,
@@ -500,6 +514,9 @@ AS
       sales_qty_2                   NUMBER,                                -- 前々回売上数
       sales_qty_3                   NUMBER,                                -- 前々前回売上数
       replacement_rate              NUMBER                                 -- 補充率
+-- 2011/10/24 Add Ver.1.11 Start
+    , vd_change_dlv_date_time       DATE  -- 納品日時（ベンダ変更前）
+-- 2011/10/24 Add Ver.1.11 End
     );
 
 --
@@ -1162,8 +1179,12 @@ AS
     WHERE  xvdl.customer_number = main_rec.account_number
 -- 2011/09/27 ADD Ver.1.10 Start
     AND    xvdl.column_num    = main_rec.column_no
+-- 2011/10/24 Mod Ver.1.11 Start
+--    AND    xvdl.dlv_date_time > GREATEST(TO_DATE(TO_CHAR(ADD_MONTHS(gd_standard_date, -1), 'YYYY/MM/DD') ||' '|| cv_last_time, 'YYYY/MM/DD HH24:MI:SS')
+--                                         , gd_vd_change_dlv_date_time)
     AND    xvdl.dlv_date_time > GREATEST(TO_DATE(TO_CHAR(ADD_MONTHS(gd_standard_date, -1), 'YYYY/MM/DD') ||' '|| cv_last_time, 'YYYY/MM/DD HH24:MI:SS')
-                                         , gd_vd_change_dlv_date_time)
+                                         , gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time)
+-- 2011/10/24 Mod Ver.1.11 End
     AND    xvdl.item_code     = NVL(main_rec.item_code, cv_blank_c);
 -- 2011/09/27 ADD Ver.1.10 End
 -- 2011/09/27 DEL Ver.1.10 Start
@@ -1248,7 +1269,10 @@ AS
 -- 2011/09/27 ADD Ver.1.10 Start
     AND    xvdl.column_num    = main_rec.column_no
     AND    xvdl.item_code     = NVL(main_rec.item_code, cv_blank_c)
-    AND    xvdl.dlv_date_time > gd_vd_change_dlv_date_time;
+-- 2011/10/24 Mod Ver.1.11 Start
+--    AND    xvdl.dlv_date_time > gd_vd_change_dlv_date_time;
+    AND    xvdl.dlv_date_time > gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time;
+-- 2011/10/24 Mod Ver.1.11 End
 -- 2011/09/27 ADD Ver.1.10 END
 -- 2011/09/27 DEL Ver.1.10 Start
 --    AND    xvdl.column_num      = column_rec.column_no
@@ -1386,7 +1410,10 @@ AS
     FROM   xxcos_vd_deliv_lines xvdl
     WHERE  xvdl.customer_number = main_rec.account_number
     AND    xvdl.column_num      = main_rec.column_no
-    AND    xvdl.dlv_date_time   > gd_vd_change_dlv_date_time;
+-- 2011/10/24 Mod Ver.1.11 Start
+--    AND    xvdl.dlv_date_time   > gd_vd_change_dlv_date_time;
+    AND    xvdl.dlv_date_time   > gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time;
+-- 2011/10/24 Mod Ver.1.11 End
 
     IF (main_rec.dlv_date < lt_vd_change_date + TO_NUMBER(main_rec.hot_stock_days)) THEN
       RAISE column_change_data_expt;
@@ -1467,7 +1494,11 @@ AS
       WHERE  xvdl.customer_number = main_rec.account_number
 -- 2011/09/27 ADD Ver.1.10 Start
       AND    xvdl.column_num    = main_rec.column_no
-      AND    xvdl.dlv_date_time > GREATEST((gd_standard_date - TO_NUMBER(main_rec.hot_stock_days)), gd_vd_change_dlv_date_time)
+-- 2011/10/24 Mod Ver.1.11 Start
+--      AND    xvdl.dlv_date_time > GREATEST((gd_standard_date - TO_NUMBER(main_rec.hot_stock_days)), gd_vd_change_dlv_date_time)
+      AND    xvdl.dlv_date_time > GREATEST((gd_standard_date - TO_NUMBER(main_rec.hot_stock_days)),
+                                           gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time)
+-- 2011/10/24 Mod Ver.1.11 End
       AND    xvdl.item_code     = NVL(main_rec.item_code, cv_blank_c);
 -- 2011/09/27 ADD Ver.1.10 End
 -- 2011/09/27 DEL Ver.1.10 Start
@@ -2049,20 +2080,28 @@ AS
             gn_total_amount_3 := main_rec.total_amount;
           END IF;
         END IF;
-
-        -- ==================================================
-        --A-19．ベンダコラム変更日取得
-        -- ==================================================
-        proc_get_vd_col_change_date(
-                             lv_errbuf   -- エラー・メッセージ           --# 固定 #
-                            ,lv_retcode  -- リターン・コード             --# 固定 #
-                            ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
-                            );
-        IF (lv_retcode <> cv_status_normal) THEN
-          RAISE tran_in_expt;
+-- 2011/10/24 Add Ver1.11 Start
+        IF (ln_cnt = 1) THEN
+-- 2011/10/24 Add Ver1.11 End
+          -- ==================================================
+          --A-19．ベンダコラム変更日取得
+          -- ==================================================
+          proc_get_vd_col_change_date(
+                               lv_errbuf   -- エラー・メッセージ           --# 固定 #
+                              ,lv_retcode  -- リターン・コード             --# 固定 #
+                              ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
+                              );
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE tran_in_expt;
+          END IF;
+-- 2011/10/24 Add Ver1.11 Start
+          gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time := gd_vd_change_dlv_date_time;
         END IF;
-
-        IF (main_rec.dlv_date >= TRUNC(gd_vd_change_dlv_date_time)) THEN
+-- 2011/10/24 Add Ver1.11 End
+-- 2011/10/24 Mod Ver1.11 Start
+--        IF (main_rec.dlv_date >= TRUNC(gd_vd_change_dlv_date_time)) THEN
+        IF (main_rec.dlv_date >= TRUNC(gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time)) THEN
+-- 2011/10/24 Mod Ver1.11 End
           -- ヘッダ売上数サマリ（A-8）
           -- 品目・Hot/Cold区分のどちらかが変更されている場合、変更前は考慮しない
           IF (ln_cnt = 1) THEN
@@ -2157,8 +2196,10 @@ AS
           gt_deli_l_tab(main_rec.column_no).hot_warn_qty           := gn_hot_warn_qty;           -- A-11で抽出したホット警告残数
           gt_deli_l_tab(main_rec.column_no).replacement_rate       := gn_replacement_rate;       -- A-12で抽出した補充率
         END IF;
-
-        IF (main_rec.dlv_date >= TRUNC(gd_vd_change_dlv_date_time)) THEN
+-- 2011/10/24 Mod Ver.1.11 Start
+--        IF (main_rec.dlv_date >= TRUNC(gd_vd_change_dlv_date_time)) THEN
+        IF (main_rec.dlv_date >= TRUNC(gt_deli_l_tab(main_rec.column_no).vd_change_dlv_date_time)) THEN
+-- 2011/10/24 Mod Ver.1.11 End
           -- 品目・Hot/Cold区分のどちらかが変更されている場合、変更前は考慮しない
           IF (ln_cnt = 1) THEN
             gt_deli_l_tab(main_rec.column_no).sales_qty_1            := main_rec.sales_qty_of_day; -- A-6で抽出した1件目の売上数
