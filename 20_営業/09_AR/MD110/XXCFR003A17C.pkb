@@ -7,7 +7,7 @@ AS
  * Description      : イセトー請求書データ作成
  * MD.050           : MD050_CFR_003_A17_イセトー請求書データ作成
  * MD.070           : MD050_CFR_003_A17_イセトー請求書データ作成
- * Version          : 1.20
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009-02-23    1.00 SCS 白砂 幸世     新規作成
  *  2009-09-29    1.10 SCS 安川 智博     共通課題「IE535」対応
  *  2009-11-20    1.20 SCS 安川 智博     共通課題「IE691」対応
+ *  2009-12-11    1.30 SCS 安川 智博     障害「E_本稼動_00423」対応
  *
  *****************************************************************************************/
 --
@@ -157,6 +158,7 @@ AS
   cv_file_type_log    CONSTANT VARCHAR2(10)  := 'LOG';                         -- ログ出力
 --
   cv_flag_yes         CONSTANT VARCHAR2(1)   := 'Y';                           -- 有効フラグ（Ｙ）
+  cv_flag_no          CONSTANT VARCHAR2(1)   := 'N';                           -- 無効フラグ（Ｎ）
 --
   cv_status_yes       CONSTANT VARCHAR2(1)   := '1';                           -- 有効ステータス（1：有効）
   cv_status_no        CONSTANT VARCHAR2(1)   := '0';                           -- 有効ステータス（0：無効）
@@ -650,6 +652,13 @@ AS
 --
     lv_no_data_msg  VARCHAR2(5000); -- 帳票０件メッセージ
     lv_func_status  VARCHAR2(1);    -- SVF帳票共通関数(0件出力メッセージ)終了ステータス
+--
+-- Modify 2009-12-11 Ver1.30 Start
+    lv_14_cons_inv_flag    hz_customer_profiles.cons_inv_flag%TYPE;  -- 顧客区分14一括請求書発行フラグ
+    lv_14_invoice_type     hz_cust_site_uses.attribute7%TYPE;        -- 顧客区分14請求書出力形式
+    lv_14_tax_div          xxcmm_cust_accounts.tax_div%TYPE;         -- 顧客区分14消費税区分
+    lv_14_exist            VARCHAR2(1);                              -- 顧客区分14顧客存在フラグ
+-- Modify 2009-12-11 Ver1.30 End
 --
     -- *** ローカル・カーソル ***
 -- Modify 2009-09-29 Ver1.10 Start
@@ -2547,10 +2556,32 @@ AS
         -- 請求書印刷単位が'N4'(単独店)の場合、
         ELSIF (all_account_rec.invoice_printing_unit = cv_invoice_printing_unit_n4) THEN
           -- 請求書出力形式取得
+-- Modify 2009-12-11 Ver1.30 Start
+          lv_14_exist := NULL;
+          lv_14_cons_inv_flag := NULL;
+          lv_14_invoice_type := NULL;
+          lv_14_tax_div := NULL;
+          OPEN get_14account_cur(all_account_rec.customer_id);
+          FETCH get_14account_cur INTO get_14account_rec;
+          IF (get_14account_cur%FOUND) THEN
+            lv_14_exist := cv_flag_yes;
+            lv_14_cons_inv_flag := get_14account_rec.cons_inv_flag;
+            lv_14_invoice_type := get_14account_rec.bill_invoice_type;
+            lv_14_tax_div := get_14account_rec.bill_tax_div;
+          ELSE
+            lv_14_exist := cv_flag_no;
+          END IF;
+          CLOSE get_14account_cur;
+-- Modify 2009-12-11 Ver1.30 End
           OPEN get_10inv_type_cur(all_account_rec.customer_id);
           FETCH get_10inv_type_cur INTO get_10inv_type_rec;
-          -- 請求書出力形式が'4'かつ、一括請求書発行フラグ = 'Y'の場合
-          IF  (get_10inv_type_cur%FOUND) THEN
+-- Modify 2009-12-11 Ver1.30 Start 
+          -- 顧客14が存在するかつ、顧客14の請求書出力形式が'4'かつ、一括請求書発行フラグ = 'Y'の場合 
+          -- 顧客14が存在しないかつ、顧客10の請求書出力形式が'4'かつ、一括請求書発行フラグ = 'Y'の場合 
+          --IF  (get_10inv_type_cur%FOUND) THEN
+          IF (lv_14_exist = cv_flag_yes AND lv_14_cons_inv_flag = cv_flag_yes AND lv_14_invoice_type = cv_inv_prt_type)
+          OR (lv_14_exist = cv_flag_no AND get_10inv_type_cur%FOUND) THEN
+-- Modify 2009-12-11 Ver1.30 Start
             INSERT INTO xxcfr_csv_outs_temp(
               request_id       -- 要求ID
              ,seq              -- 出力順
@@ -2605,9 +2636,15 @@ AS
                   ,NULL                                                       phone_num          -- 電話番号
                   ,xih.object_month                                           object_month       -- 対象年月
                   ,xil.ship_cust_code||' '||xih.term_name                     ar_concat_text     -- 売掛管理コード連結文字列
-                  ,DECODE(xxca.tax_div,cv_tax_div_excluded,cv_out_div_excluded
-                                      ,cv_tax_div_nontax,cv_out_div_excluded
-                                      ,cv_out_div_included)
+-- Modify 2009-12-11 Ver1.30 Start 
+--                  ,DECODE(xxca.tax_div,cv_tax_div_excluded,cv_out_div_excluded
+--                                      ,cv_tax_div_nontax,cv_out_div_excluded
+--                                      ,cv_out_div_included)
+                  ,DECODE(DECODE(lv_14_exist,cv_flag_yes,lv_14_tax_div,xxca.tax_div)
+                                ,cv_tax_div_excluded,cv_out_div_excluded
+                                ,cv_tax_div_nontax,cv_out_div_excluded
+                                ,cv_out_div_included)
+-- Modify 2009-12-11 Ver1.30 End
                                                                               out_put_div        -- 請求書出力区分
                   ,NULL                                                       inv_amount         -- 当月お買い上げ額
                   ,NULL                                                       tax_amount         -- 消費税等
@@ -2675,8 +2712,12 @@ AS
                                   ,cv_format_date_yyyymmdd)                          slip_date    -- 伝票日付
                   ,xil.slip_num                                                      slip_num     -- 伝票番号
                   ,SUM(CASE
-                        WHEN xxca.tax_div IN (cv_tax_div_nontax
-                                             ,cv_tax_div_excluded)
+-- Modify 2009-12-11 Ver1.30 Start
+--                        WHEN xxca.tax_div IN (cv_tax_div_nontax
+--                                             ,cv_tax_div_excluded)
+                        WHEN DECODE(lv_14_exist,cv_flag_yes,lv_14_tax_div,xxca.tax_div) IN (cv_tax_div_nontax
+                                                                                           ,cv_tax_div_excluded)
+-- Modify 2009-12-11 Ver1.30 End
                         THEN
                             xil.ship_amount
                         ELSE
@@ -2727,7 +2768,10 @@ AS
                      xil.ship_cust_code,                                                  -- 顧客コード
                      xih.object_month,                                                    -- 対象年月
                      xih.term_name,                                                       -- 支払条件
-                     xxca.tax_div,                                                        -- 消費税区分
+-- Modify 2009-12-11 Ver1.30 Start
+--                     xxca.tax_div,
+                     DECODE(lv_14_exist,cv_flag_yes,lv_14_tax_div,xxca.tax_div),                                                        -- 消費税区分
+-- Modify 2009-12-11 Ver1.30 End
                      xih.payment_date,                                                    -- 入金予定日
                      CASE WHEN bank.bank_account_num IS NULL THEN
                        NULL
