@@ -47,76 +47,86 @@ AS
         ,cm_cmpt_dtl    cmpd8
         ,cm_cmpt_dtl    cmpd9
         ,cm_cmpt_dtl    cmpd10
-        ,cm_cmpt_mst_b  cmpm1
-        ,cm_cmpt_mst_b  cmpm2
-        ,cm_cmpt_mst_b  cmpm3
-        ,cm_cmpt_mst_b  cmpm4
-        ,cm_cmpt_mst_b  cmpm5
-        ,cm_cmpt_mst_b  cmpm6
-        ,cm_cmpt_mst_b  cmpm7
-        ,cm_cmpt_mst_b  cmpm8
-        ,cm_cmpt_mst_b  cmpm9
-        ,cm_cmpt_mst_b  cmpm10
+--        ,cm_cmpt_mst_b  cmpm1
+--        ,cm_cmpt_mst_b  cmpm2
+--        ,cm_cmpt_mst_b  cmpm3
+--        ,cm_cmpt_mst_b  cmpm4
+--        ,cm_cmpt_mst_b  cmpm5
+--        ,cm_cmpt_mst_b  cmpm6
+--        ,cm_cmpt_mst_b  cmpm7
+--        ,cm_cmpt_mst_b  cmpm8
+--        ,cm_cmpt_mst_b  cmpm9
+--        ,cm_cmpt_mst_b  cmpm10
   WHERE  cldh.calendar_code        = cldd.calendar_code
   AND    cldd.calendar_code        = cmpd1.calendar_code
   AND    cldd.period_code          = cmpd1.period_code
   AND    cmpd1.whse_code           = FND_PROFILE.VALUE( 'XXCMN_COST_PRICE_WHSE_CODE' )
-  AND    cmpd1.cost_cmpntcls_id    = cmpm1.cost_cmpntcls_id
-  AND    cmpm1.cost_cmpntcls_code  = '01GEN'
+  AND    cmpd1.cost_cmpntcls_id    = 1
+--  AND    cmpd1.cost_cmpntcls_id    = cmpm1.cost_cmpntcls_id
+--  AND    cmpm1.cost_cmpntcls_code  = '01GEN'
   AND    cldd.calendar_code        = cmpd2.calendar_code
   AND    cldd.period_code          = cmpd2.period_code
   AND    cmpd2.whse_code           = cmpd1.whse_code
   AND    cmpd2.item_id             = cmpd1.item_id
-  AND    cmpd2.cost_cmpntcls_id    = cmpm2.cost_cmpntcls_id
-  AND    cmpm2.cost_cmpntcls_code  = '02SAI'
+  AND    cmpd2.cost_cmpntcls_id    = 2
+--  AND    cmpd2.cost_cmpntcls_id    = cmpm2.cost_cmpntcls_id
+--  AND    cmpm2.cost_cmpntcls_code  = '02SAI'
   AND    cldd.calendar_code        = cmpd3.calendar_code
   AND    cldd.period_code          = cmpd3.period_code
   AND    cmpd3.whse_code           = cmpd1.whse_code
   AND    cmpd3.item_id             = cmpd1.item_id
-  AND    cmpd3.cost_cmpntcls_id    = cmpm3.cost_cmpntcls_id
-  AND    cmpm3.cost_cmpntcls_code  = '03SZI'
+  AND    cmpd3.cost_cmpntcls_id    = 3
+--  AND    cmpd3.cost_cmpntcls_id    = cmpm3.cost_cmpntcls_id
+--  AND    cmpm3.cost_cmpntcls_code  = '03SZI'
   AND    cldd.calendar_code        = cmpd4.calendar_code
   AND    cldd.period_code          = cmpd4.period_code
   AND    cmpd4.whse_code           = cmpd1.whse_code
   AND    cmpd4.item_id             = cmpd1.item_id
-  AND    cmpd4.cost_cmpntcls_id    = cmpm4.cost_cmpntcls_id
-  AND    cmpm4.cost_cmpntcls_code  = '04HOU'
+  AND    cmpd4.cost_cmpntcls_id    = 4
+--  AND    cmpd4.cost_cmpntcls_id    = cmpm4.cost_cmpntcls_id
+--  AND    cmpm4.cost_cmpntcls_code  = '04HOU'
   AND    cldd.calendar_code        = cmpd5.calendar_code
   AND    cldd.period_code          = cmpd5.period_code
   AND    cmpd5.whse_code           = cmpd1.whse_code
   AND    cmpd5.item_id             = cmpd1.item_id
-  AND    cmpd5.cost_cmpntcls_id    = cmpm5.cost_cmpntcls_id
-  AND    cmpm5.cost_cmpntcls_code  = '05GAI'
+  AND    cmpd5.cost_cmpntcls_id    = 5
+--  AND    cmpd5.cost_cmpntcls_id    = cmpm5.cost_cmpntcls_id
+--  AND    cmpm5.cost_cmpntcls_code  = '05GAI'
   AND    cldd.calendar_code        = cmpd6.calendar_code
   AND    cldd.period_code          = cmpd6.period_code
   AND    cmpd6.whse_code           = cmpd1.whse_code
   AND    cmpd6.item_id             = cmpd1.item_id
-  AND    cmpd6.cost_cmpntcls_id    = cmpm6.cost_cmpntcls_id
-  AND    cmpm6.cost_cmpntcls_code  = '06HKN'
+  AND    cmpd6.cost_cmpntcls_id    = 6
+--  AND    cmpd6.cost_cmpntcls_id    = cmpm6.cost_cmpntcls_id
+--  AND    cmpm6.cost_cmpntcls_code  = '06HKN'
   AND    cldd.calendar_code        = cmpd7.calendar_code
   AND    cldd.period_code          = cmpd7.period_code
   AND    cmpd7.whse_code           = cmpd1.whse_code
   AND    cmpd7.item_id             = cmpd1.item_id
-  AND    cmpd7.cost_cmpntcls_id    = cmpm7.cost_cmpntcls_id
-  AND    cmpm7.cost_cmpntcls_code  = '07KEI'
+  AND    cmpd7.cost_cmpntcls_id    = 7
+--  AND    cmpd7.cost_cmpntcls_id    = cmpm7.cost_cmpntcls_id
+--  AND    cmpm7.cost_cmpntcls_code  = '07KEI'
   AND    cldd.calendar_code        = cmpd8.calendar_code
   AND    cldd.period_code          = cmpd8.period_code
   AND    cmpd8.whse_code           = cmpd1.whse_code
   AND    cmpd8.item_id             = cmpd1.item_id
-  AND    cmpd8.cost_cmpntcls_id    = cmpm8.cost_cmpntcls_id
-  AND    cmpm8.cost_cmpntcls_code  = '08YB1'
+  AND    cmpd8.cost_cmpntcls_id    = 8
+--  AND    cmpd8.cost_cmpntcls_id    = cmpm8.cost_cmpntcls_id
+--  AND    cmpm8.cost_cmpntcls_code  = '08YB1'
   AND    cldd.calendar_code        = cmpd9.calendar_code
   AND    cldd.period_code          = cmpd9.period_code
   AND    cmpd9.whse_code           = cmpd1.whse_code
   AND    cmpd9.item_id             = cmpd1.item_id
-  AND    cmpd9.cost_cmpntcls_id    = cmpm9.cost_cmpntcls_id
-  AND    cmpm9.cost_cmpntcls_code  = '09YB2'
+  AND    cmpd9.cost_cmpntcls_id    = 11
+--  AND    cmpd9.cost_cmpntcls_id    = cmpm9.cost_cmpntcls_id
+--  AND    cmpm9.cost_cmpntcls_code  = '09YB2'
   AND    cldd.calendar_code        = cmpd10.calendar_code
   AND    cldd.period_code          = cmpd10.period_code
   AND    cmpd10.whse_code          = cmpd1.whse_code
   AND    cmpd10.item_id            = cmpd1.item_id
-  AND    cmpd10.cost_cmpntcls_id   = cmpm10.cost_cmpntcls_id
-  AND    cmpm10.cost_cmpntcls_code = '10YB3';
+  AND    cmpd10.cost_cmpntcls_id   = 12;
+--  AND    cmpd10.cost_cmpntcls_id   = cmpm10.cost_cmpntcls_id
+--  AND    cmpm10.cost_cmpntcls_code = '10YB3';
 --
 COMMENT ON COLUMN xxcmn_stnd_unit_price_v.period                IS '年度' ;
 COMMENT ON COLUMN xxcmn_stnd_unit_price_v.start_date_active     IS '適用開始日' ;
