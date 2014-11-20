@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.5
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-04-08    1.5   Kazuo.Satomura   T1_0372,0403対応
  *  2009-04-28    1.6   Tomoko.Mori      T1_0758対応
  *  2009-05-01    1.7   Tomoko.Mori      T1_0897対応
+ *  2009-05-14    1.8   Kazuo.Satomura   T1_0413対応,SQLをコーディング規約通りに修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -274,95 +275,102 @@ AS
   -- INV 工場返品倉替先コード取得用カーソル
   CURSOR mfg_fctory_cd_cur
   IS
-    SELECT
-      flvv.lookup_code                 lookup_code                --作成者
-    FROM
-      fnd_lookup_values_vl flvv
-    WHERE
-      flvv.lookup_type = cv_xxcoi_mfg_fctory_cd
-    AND
-      TRUNC(gd_process_date) BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
-                                 AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
-    AND
-      flvv.enabled_flag = cv_yes
+    SELECT flvv.lookup_code lookup_code --作成者
+    FROM   fnd_lookup_values_vl flvv
+    WHERE  flvv.lookup_type = cv_xxcoi_mfg_fctory_cd
+    AND    TRUNC(gd_process_date) BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+    AND    TRUNC(NVL(flvv.end_date_active, gd_process_date))
+    AND    flvv.enabled_flag = cv_yes
     ;
   -- 物件関連情報取得用カーソル
   CURSOR get_xxcso_ib_info_h_cur
   IS
-    SELECT
-      cii.external_reference        object_code                -- 外部参照（物件コード）
-     ,cii.attribute1                new_model                  -- 新_機種(DFF1)
-     ,cii.attribute2                new_serial_number          -- 新_機番(DFF2)
-     ,cii.owner_party_account_id    owner_party_account_id     -- 所有者アカウントID
-     ,DECODE(cii.instance_status_id, gn_instance_status_id, cv_yes, cv_no)
-                                    new_active_flag            -- 新_論理削除フラグ
-     /* 2009.04.01 K.Satomura T1_0149対応 START */
-     --,DECODE(cii.instance_status_id, gn_instance_status_id, cv_yes, cv_no)
-     --                               effective_flag             -- 物件有効フラグ
-     ,DECODE(cii.instance_status_id, gn_instance_status_id, cv_no, cv_yes)
-                                    effective_flag             -- 物件有効フラグ
-     /* 2009.04.01 K.Satomura T1_0149対応 END */
-     ,xxcso_util_common_pkg.get_lookup_attribute
-        (
-          cv_csi_inst_type_code
-         ,cii.instance_type_code
-         ,1
-         ,gd_process_date
-        )                           lease_class                -- リース種別
-     ,cii.quantity                  new_quantity               -- 新_数量
-     ,xiih.history_creation_date    history_creation_date      -- 履歴作成日
-     ,xiih.interface_flag           interface_flag             -- 連携済フラグ
-     ,xiih.po_number                old_po_number              -- 旧_発注番号
-     ,xiih.manufacturer_name        old_manufacturer_name      -- 旧_メーカー名
-     ,xiih.age_type                 old_age_type               -- 旧_年式
-     ,xiih.un_number                old_model                  -- 旧_機種
-     ,xiih.install_number           old_serial_number          -- 旧_機番
-     ,xiih.quantity                 old_quantity               -- 旧_数量
-     ,xiih.base_code                old_department_code        -- 旧_拠点コード
-     ,xiih.owner_company_type       old_owner_company          -- 旧_本社／工場区分
-     ,xiih.install_name             old_installation_place     -- 旧_設置先名
-     ,xiih.install_address          old_installation_address   -- 旧_設置先住所
-     ,xiih.logical_delete_flag      old_active_flag            -- 旧_論理削除フラグ
-     ,xiih.account_number           old_customer_code          -- 旧_顧客コード
-     /* 2009.04.07 D.Abe T1_0339対応 START */
-     ,cii.attribute5                newold_flag                -- 新古台フラグ
-     /* 2009.04.07 D.Abe T1_0339対応 END */
-    FROM
-      csi_item_instances cii     -- インストールベースマスタ
-     ,xxcso_ib_info_h xiih       -- 物件関連情報変更履歴テーブル
-     ,csi_instance_statuses cis  -- インスタンスステータスマスタ
+    SELECT cii.external_reference        object_code                -- 外部参照（物件コード）
+          ,cii.attribute1                new_model                  -- 新_機種(DFF1)
+          ,cii.attribute2                new_serial_number          -- 新_機番(DFF2)
+          ,cii.owner_party_account_id    owner_party_account_id     -- 所有者アカウントID
+          ,DECODE(cii.instance_status_id
+                 ,gn_instance_status_id, cv_yes
+                 ,cv_no)                 new_active_flag            -- 新_論理削除フラグ
+          /* 2009.04.01 K.Satomura T1_0149対応 START */
+          --,DECODE(cii.instance_status_id, gn_instance_status_id, cv_yes, cv_no)
+          --                               effective_flag             -- 物件有効フラグ
+          ,DECODE(cii.instance_status_id
+                 ,gn_instance_status_id, cv_no
+                 ,cv_yes)                effective_flag             -- 物件有効フラグ
+          /* 2009.04.01 K.Satomura T1_0149対応 END */
+          ,xxcso_util_common_pkg.get_lookup_attribute(
+             cv_csi_inst_type_code
+            ,cii.instance_type_code
+            ,1
+            ,gd_process_date
+           )                             lease_class                -- リース種別
+          ,cii.quantity                  new_quantity               -- 新_数量
+          ,xiih.history_creation_date    history_creation_date      -- 履歴作成日
+          ,xiih.interface_flag           interface_flag             -- 連携済フラグ
+          ,xiih.po_number                old_po_number              -- 旧_発注番号
+          ,xiih.manufacturer_name        old_manufacturer_name      -- 旧_メーカー名
+          ,xiih.age_type                 old_age_type               -- 旧_年式
+          ,xiih.un_number                old_model                  -- 旧_機種
+          ,xiih.install_number           old_serial_number          -- 旧_機番
+          ,xiih.quantity                 old_quantity               -- 旧_数量
+          ,xiih.base_code                old_department_code        -- 旧_拠点コード
+          ,xiih.owner_company_type       old_owner_company          -- 旧_本社／工場区分
+          ,xiih.install_name             old_installation_place     -- 旧_設置先名
+          ,xiih.install_address          old_installation_address   -- 旧_設置先住所
+          ,xiih.logical_delete_flag      old_active_flag            -- 旧_論理削除フラグ
+          ,xiih.account_number           old_customer_code          -- 旧_顧客コード
+          /* 2009.04.07 D.Abe T1_0339対応 START */
+          ,cii.attribute5                 newold_flag                -- 新古台フラグ
+          /* 2009.04.07 D.Abe T1_0339対応 END */
+    FROM   csi_item_instances cii    -- インストールベースマスタ
+          ,xxcso_ib_info_h xiih      -- 物件関連情報変更履歴テーブル
+          ,csi_instance_statuses cis -- インスタンスステータスマスタ
     WHERE
       (
-         gv_prm_process_div = cv_prm_normal  -- パラメータ：処理区分
-       AND
-         xiih.install_code = cii.external_reference  -- 物件コード
-       AND
-         xxcso_ib_common_pkg.get_ib_ext_attribs( cii.instance_id
-                                                ,cv_lease_kbn
-                                               ) = cv_jisya_lease  -- 自社リース
-       AND
-         cii.instance_status_id = cis.instance_status_id  -- インスタンスステータスID
-       AND
-         cis.attribute2 = cv_no  -- 廃棄済フラグ
-       AND (
-              xiih.history_creation_date < gd_process_date  -- 履歴作成日
-            OR
-              xiih.interface_flag = cv_no  -- 連携済フラグ
-           )
+        /* 2009.05.14 K.Satomura T1_0413対応 START */
+          (
+               gv_prm_process_date IS NULL
+            OR (
+                     gv_prm_process_date IS NOT NULL
+                 AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+               )
+          )
+        AND
+        /* 2009.05.14 K.Satomura T1_0413対応 END */
+            gv_prm_process_div = cv_prm_normal          -- パラメータ：処理区分
+        AND xiih.install_code  = cii.external_reference -- 物件コード
+        AND xxcso_ib_common_pkg.get_ib_ext_attribs(
+               cii.instance_id
+              ,cv_lease_kbn
+            ) = cv_jisya_lease -- 自社リース
+        AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
+        AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
+        AND (
+                 xiih.history_creation_date < gd_process_date  -- 履歴作成日
+              OR xiih.interface_flag        = cv_no            -- 連携済フラグ
+            )
       )
     OR
       (
-         gv_prm_process_div = cv_prm_div  -- パラメータ：処理区分
-       AND
-         xiih.install_code = cii.external_reference  -- 物件コード
-       AND
-         xxcso_ib_common_pkg.get_ib_ext_attribs( cii.instance_id
-                                                ,cv_lease_kbn
-                                               ) = cv_jisya_lease  -- 自社リース
-       AND
-         cii.instance_status_id = cis.instance_status_id  -- インスタンスステータスID
-       AND
-         cis.attribute2 = cv_no  -- 廃棄済フラグ
+      /* 2009.05.14 K.Satomura T1_0413対応 START */
+        (
+             gv_prm_process_date IS NULL
+          OR (
+                   gv_prm_process_date IS NOT NULL
+               AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+             )
+        )
+        AND
+      /* 2009.05.14 K.Satomura T1_0413対応 END */
+            gv_prm_process_div = cv_prm_div             -- パラメータ：処理区分
+        AND xiih.install_code  = cii.external_reference -- 物件コード
+        AND xxcso_ib_common_pkg.get_ib_ext_attribs(
+               cii.instance_id
+              ,cv_lease_kbn
+            ) = cv_jisya_lease -- 自社リース
+        AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
+        AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
       )
     ;
   -- ===============================
@@ -469,7 +477,8 @@ AS
     IF (
             (gv_prm_process_div IS NOT NULL)
         AND (gv_prm_process_date IS NOT NULL)
-       ) THEN
+       )
+    THEN
       -- パラメータ処理区分、パラメータ処理実行日がNULLではない場合
       --
       -- INパラメータ：処理区分出力
@@ -665,32 +674,21 @@ AS
     -- 
     BEGIN
       --
-      SELECT
-        cis.instance_status_id instance_status_id
-      INTO
-        gn_instance_status_id
-      FROM
-        csi_instance_statuses cis
-      WHERE
-        cis.NAME IN
-         (
-          SELECT
-            flvv.description
-          FROM
-            fnd_lookup_values_vl flvv
-          WHERE
-            TRUNC(gd_process_date) BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
-                                       AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
-          AND
-            flvv.enabled_flag = cv_yes
-          AND
-            flvv.lookup_code = cv_delete_code
-          AND
-            flvv.lookup_type = cv_xxcso1_instance_status
-         )
-      AND
-        TRUNC(gd_process_date) BETWEEN TRUNC(NVL(cis.start_date_active, gd_process_date))
-                                   AND TRUNC(NVL(cis.end_date_active, gd_process_date))
+      SELECT cis.instance_status_id instance_status_id
+      INTO   gn_instance_status_id
+      FROM   csi_instance_statuses cis
+      WHERE  cis.NAME IN
+        (
+          SELECT flvv.description
+          FROM   fnd_lookup_values_vl flvv
+          WHERE  TRUNC(gd_process_date) BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+          AND    TRUNC(NVL(flvv.end_date_active, gd_process_date))
+          AND    flvv.enabled_flag = cv_yes
+          AND    flvv.lookup_code  = cv_delete_code
+          AND    flvv.lookup_type  = cv_xxcso1_instance_status
+        )
+      AND TRUNC(gd_process_date) BETWEEN TRUNC(NVL(cis.start_date_active, gd_process_date))
+      AND TRUNC(NVL(cis.end_date_active, gd_process_date))
       ;
     -- *** DEBUG_LOG ***
     -- 取得したインスタンスステータスIDをログ出力
@@ -951,23 +949,15 @@ AS
     -- ========================================
     BEGIN
     --
-      SELECT
-        xiwd.po_number
-      INTO
-        gn_po_number
-      FROM
-        xxcso_in_work_data xiwd
-      WHERE
-        xiwd.install_code1 = g_get_xxcso_ib_info_h_rec.object_code  -- 物件コード
-      AND
-        xiwd.job_kbn IN (cv_job_kbn_set, cv_job_kbn_change)  -- 作業区分
-      AND
-        xiwd.completion_kbn = cv_comp_kbn_ok  -- 完了区分
-      AND
-        xiwd.install1_processed_flag = cv_yes  -- 物件1処理済フラグ
+      SELECT xiwd.po_number
+      INTO   gn_po_number
+      FROM   xxcso_in_work_data xiwd
+      WHERE  xiwd.install_code1           = g_get_xxcso_ib_info_h_rec.object_code -- 物件コード
+      AND    xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)  -- 作業区分
+      AND    xiwd.completion_kbn          = cv_comp_kbn_ok                        -- 完了区分
+      AND    xiwd.install1_processed_flag = cv_yes                                -- 物件1処理済フラグ
       /* 2009.04.08 K.Satomura T1_0372対応 START */
-      GROUP BY
-        xiwd.po_number
+      GROUP BY xiwd.po_number
       /* 2009.04.08 K.Satomura T1_0372対応 END */
       ;
     EXCEPTION
@@ -1077,22 +1067,17 @@ AS
     -- ========================================
     BEGIN
     --
-      SELECT
-        xxcso_util_common_pkg.get_lookup_meaning(
-          cv_xxcso_csi_maker_code
-         ,punv.attribute2
-         ,gd_process_date
-         )                                              manufacturer_name  -- 新_メーカー名
-       ,punv.attribute3                                 age_type           -- 新_年式
-      INTO
-        gv_manufacturer_name
-       ,gv_age_type
-      FROM
-        po_un_numbers_vl punv  -- 国連番号マスタビュー
-      WHERE
-        punv.un_number = g_get_xxcso_ib_info_h_rec.new_model  -- 国連番号
-      AND
-        TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)  -- 作業区分
+      SELECT xxcso_util_common_pkg.get_lookup_meaning(
+                cv_xxcso_csi_maker_code
+               ,punv.attribute2
+               ,gd_process_date
+              ) manufacturer_name     -- 新_メーカー名
+            ,punv.attribute3 age_type -- 新_年式
+      INTO   gv_manufacturer_name
+            ,gv_age_type
+      FROM   po_un_numbers_vl punv -- 国連番号マスタビュー
+      WHERE  punv.un_number = g_get_xxcso_ib_info_h_rec.new_model -- 国連番号
+      AND    TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date) -- 作業区分
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1209,37 +1194,29 @@ AS
     -- ========================================
     BEGIN
     --
-      SELECT
-        xcasv.sale_base_code             new_department_code        -- 新_拠点コード
-       ,xcasv.established_site_name      new_installation_place     -- 新_設置先名
-       ,xcasv.state    ||
-        xcasv.city     ||
-        xcasv.ADDRESS1 ||
-        xcasv.ADDRESS2                   new_installation_address   -- 新_設置先住所
-       ,xcasv.account_number             new_customer_code          -- 新_顧客コード
-      /* 2009.04.28 T.Mori T1_0758対応 START */
-       ,xcasv.customer_class_code        new_customer_class_code    -- 新_顧客区分コード
-      /* 2009.04.28 T.Mori T1_0758対応 END */
-      INTO
-        gv_department_code                                          -- 新_拠点コード
-       ,gv_installation_place                                       -- 新_設置先名
-       ,gv_installation_address                                     -- 新_設置先住所
-       ,gv_customer_code                                            -- 新_顧客コード
-      /* 2009.04.28 T.Mori T1_0758対応 START */
-       ,lv_customer_class_code                                      -- 新_顧客区分コード
-      /* 2009.04.28 T.Mori T1_0758対応 END */
-      FROM
-        xxcso_cust_acct_sites_v xcasv  -- 顧客マスタサイトビュー
-      WHERE
-        xcasv.cust_account_id = g_get_xxcso_ib_info_h_rec.owner_party_account_id  -- アカウントID
-      AND
-        xcasv.account_status = cv_cut_enb_status  -- アカウントステータス
-      AND
-        xcasv.acct_site_status = cv_cut_enb_status  -- 顧客所在地ステータス
-      AND
-        xcasv.party_status = cv_cut_enb_status  -- パーティステータス
-      AND
-        xcasv.party_site_status = cv_cut_enb_status  -- パーティサイトステータス
+      SELECT xcasv.sale_base_code        new_department_code      -- 新_拠点コード
+            ,xcasv.established_site_name new_installation_place   -- 新_設置先名
+            ,xcasv.state    ||
+             xcasv.city     ||
+             xcasv.ADDRESS1 ||
+             xcasv.ADDRESS2              new_installation_address -- 新_設置先住所
+            ,xcasv.account_number        new_customer_code        -- 新_顧客コード
+           /* 2009.04.28 T.Mori T1_0758対応 START */
+            ,xcasv.customer_class_code   new_customer_class_code  -- 新_顧客区分コード
+           /* 2009.04.28 T.Mori T1_0758対応 END */
+      INTO   gv_department_code      -- 新_拠点コード
+            ,gv_installation_place   -- 新_設置先名
+            ,gv_installation_address -- 新_設置先住所
+            ,gv_customer_code        -- 新_顧客コード
+            /* 2009.04.28 T.Mori T1_0758対応 START */
+            ,lv_customer_class_code  -- 新_顧客区分コード
+            /* 2009.04.28 T.Mori T1_0758対応 END */
+      FROM   xxcso_cust_acct_sites_v xcasv  -- 顧客マスタサイトビュー
+      WHERE  xcasv.cust_account_id   = g_get_xxcso_ib_info_h_rec.owner_party_account_id -- アカウントID
+      AND    xcasv.account_status    = cv_cut_enb_status                                -- アカウントステータス
+      AND    xcasv.acct_site_status  = cv_cut_enb_status                                -- 顧客所在地ステータス
+      AND    xcasv.party_status      = cv_cut_enb_status                                -- パーティステータス
+      AND    xcasv.party_site_status = cv_cut_enb_status                                -- パーティサイトステータス
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1302,41 +1279,25 @@ AS
     --
     BEGIN
     --
-      SELECT
-        ffvv.flex_value        new_owner_company        -- 新_本社／工場区分
-      INTO
-        gv_owner_company                                -- 新_本社／工場区分
-      FROM
-        fnd_flex_values_vl ffvv  -- 値セット値ビュー
-       ,fnd_flex_value_sets ffvs  -- 値セット
-      WHERE
-        ffvv.flex_value_set_id = ffvs.flex_value_set_id  -- 値セットID
-      AND
-        ffvs.flex_value_set_name = cv_xxcff_owner_company  -- 値セット名
-      AND
-        ffvv.enabled_flag = cv_yes  -- 使用可能フラグ
-      AND
-        TRUNC(gd_process_date) BETWEEN TRUNC(NVL(ffvv.start_date_active, gd_process_date))
-                                   AND TRUNC(NVL(ffvv.end_date_active, gd_process_date))
-          -- 有効期間
-      AND
-        ffvv.flex_value_meaning = 
-         (
-          SELECT
-            flvv.meaning meaning  -- 内容（本社／工場）
-          FROM
-            fnd_lookup_values_vl flvv  -- クイックコード
-          WHERE
-            flvv.lookup_type = cv_xxcso1_owner_company  -- タイプ
-          AND
-            TRUNC(gd_process_date) BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
-                                       AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
-              -- 有効期間
-          AND
-            flvv.lookup_code = lv_owner_company_flg  -- 本社／工場フラグ
-          AND
-            flvv.enabled_flag = cv_yes  -- 使用可能フラグ
-         )
+      SELECT ffvv.flex_value new_owner_company -- 新_本社／工場区分
+      INTO   gv_owner_company -- 新_本社／工場区分
+      FROM   fnd_flex_values_vl ffvv  -- 値セット値ビュー
+            ,fnd_flex_value_sets ffvs -- 値セット
+      WHERE  ffvv.flex_value_set_id   = ffvs.flex_value_set_id  -- 値セットID
+      AND    ffvs.flex_value_set_name = cv_xxcff_owner_company  -- 値セット名
+      AND    ffvv.enabled_flag        = cv_yes  -- 使用可能フラグ
+      AND    TRUNC(gd_process_date) BETWEEN TRUNC(NVL(ffvv.start_date_active, gd_process_date))
+      AND    TRUNC(NVL(ffvv.end_date_active, gd_process_date)) -- 有効期間
+      AND    ffvv.flex_value_meaning = 
+        (
+          SELECT flvv.meaning meaning  -- 内容（本社／工場）
+          FROM   fnd_lookup_values_vl flvv  -- クイックコード
+          WHERE  flvv.lookup_type = cv_xxcso1_owner_company  -- タイプ
+          AND    TRUNC(gd_process_date) BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+          AND    TRUNC(NVL(flvv.end_date_active, gd_process_date)) -- 有効期間
+          AND    flvv.lookup_code = lv_owner_company_flg  -- 本社／工場フラグ
+          AND    flvv.enabled_flag = cv_yes  -- 使用可能フラグ
+        )
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1623,14 +1584,10 @@ AS
     -- ========================================
     BEGIN
     --
-      SELECT
-        COUNT(xvoi.object_code)
-      INTO
-        ln_data_cnt
-      FROM
-        xxcff_vd_object_if xvoi  -- 自販機SH物件インタフェース
-      WHERE
-        xvoi.object_code = g_get_xxcso_ib_info_h_rec.object_code  -- 物件コード
+      SELECT COUNT(xvoi.object_code)
+      INTO   ln_data_cnt
+      FROM   xxcff_vd_object_if xvoi -- 自販機SH物件インタフェース
+      WHERE  xvoi.object_code = g_get_xxcso_ib_info_h_rec.object_code -- 物件コード
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -1742,14 +1699,10 @@ AS
     -- ========================================
     BEGIN
     --
-      SELECT
-        xiih.install_code  -- 物件コード
-      INTO
-        lv_install_code
-      FROM
-        xxcso_ib_info_h xiih  -- 物件関連情報変更履歴テーブル
-      WHERE
-        xiih.install_code = g_get_xxcso_ib_info_h_rec.object_code  -- 物件コード
+      SELECT xiih.install_code -- 物件コード
+      INTO   lv_install_code
+      FROM   xxcso_ib_info_h xiih -- 物件関連情報変更履歴テーブル
+      WHERE  xiih.install_code = g_get_xxcso_ib_info_h_rec.object_code -- 物件コード
       FOR UPDATE NOWAIT
       ;
     EXCEPTION
@@ -1866,62 +1819,62 @@ AS
     BEGIN
     --
       INSERT INTO xxcff_vd_object_if(
-        object_code                                 -- 物件コード
-       ,generation_date                             -- 発生日
-       ,lease_class                                 -- リース種別
-       ,po_number                                   -- 発注番号
-       ,manufacturer_name                           -- メーカー名
-       ,age_type                                    -- 年式
-       ,model                                       -- 機種
-       ,serial_number                               -- 機番
-       ,quantity                                    -- 数量
-       ,department_code                             -- 管理部門コード
-       ,owner_company                               -- 本社工場区分
-       ,installation_place                          -- 現設置先
-       ,installation_address                        -- 現設置場所
-       ,active_flag                                 -- 物件有効フラグ
-       ,import_status                               -- 取込ステータス
-       ,customer_code                               -- 顧客コード
-       ,group_id                                    -- グループID
-       ,created_by                                  -- 作成者
-       ,creation_date                               -- 作成日
-       ,last_updated_by                             -- 最終更新者
-       ,last_update_date                            -- 最終更新日
-       ,last_update_login                           -- 最終更新ログイン
-       ,request_id                                  -- 要求ID
-       ,program_application_id                      -- コンカレント・プログラム・アプリケーションID
-       ,program_id                                  -- コンカレント・プログラムID
-       ,program_update_date                         -- プログラム更新日
+         object_code                                 -- 物件コード
+        ,generation_date                             -- 発生日
+        ,lease_class                                 -- リース種別
+        ,po_number                                   -- 発注番号
+        ,manufacturer_name                           -- メーカー名
+        ,age_type                                    -- 年式
+        ,model                                       -- 機種
+        ,serial_number                               -- 機番
+        ,quantity                                    -- 数量
+        ,department_code                             -- 管理部門コード
+        ,owner_company                               -- 本社工場区分
+        ,installation_place                          -- 現設置先
+        ,installation_address                        -- 現設置場所
+        ,active_flag                                 -- 物件有効フラグ
+        ,import_status                               -- 取込ステータス
+        ,customer_code                               -- 顧客コード
+        ,group_id                                    -- グループID
+        ,created_by                                  -- 作成者
+        ,creation_date                               -- 作成日
+        ,last_updated_by                             -- 最終更新者
+        ,last_update_date                            -- 最終更新日
+        ,last_update_login                           -- 最終更新ログイン
+        ,request_id                                  -- 要求ID
+        ,program_application_id                      -- コンカレント・プログラム・アプリケーションID
+        ,program_id                                  -- コンカレント・プログラムID
+        ,program_update_date                         -- プログラム更新日
       ) VALUES(
-        g_get_xxcso_ib_info_h_rec.object_code       -- 物件コード
-       ,gd_process_date                             -- 発生日
-       ,g_get_xxcso_ib_info_h_rec.lease_class       -- リース種別
-       ,gn_po_number                                -- 発注番号
-       ,gv_manufacturer_name                        -- メーカー名
-       ,gv_age_type                                 -- 年式
-       ,g_get_xxcso_ib_info_h_rec.new_model         -- 機種
-       ,g_get_xxcso_ib_info_h_rec.new_serial_number -- 機番
-       ,g_get_xxcso_ib_info_h_rec.new_quantity      -- 数量
-       ,gv_department_code                          -- 管理部門コード
-       ,gv_owner_company                            -- 本社工場区分
-       ,gv_installation_place                       -- 現設置先
-       ,gv_installation_address                     -- 現設置場所
-       /* 2009.04.01 K.Satomura T1_0149対応 START */
-       --,g_get_xxcso_ib_info_h_rec.new_active_flag   -- 物件有効フラグ
-       ,g_get_xxcso_ib_info_h_rec.effective_flag    -- 物件有効フラグ
-       /* 2009.04.01 K.Satomura T1_0149対応 END */
-       ,cv_import_status                            -- 取込ステータス（固定値：'0'）
-       ,gv_customer_code                            -- 顧客コード
-       ,NULL                                        -- グループID
-       ,cn_created_by                               -- 作成者
-       ,cd_creation_date                            -- 作成日
-       ,cn_last_updated_by                          -- 最終更新者
-       ,cd_last_update_date                         -- 最終更新日
-       ,cn_last_update_login                        -- 最終更新ログイン
-       ,cn_request_id                               -- 要求ID
-       ,cn_program_application_id                   -- コンカレント・プログラム・アプリケーションID
-       ,cn_program_id                               -- コンカレント・プログラムID
-       ,cd_program_update_date                      -- プログラム更新日
+         g_get_xxcso_ib_info_h_rec.object_code       -- 物件コード
+        ,gd_process_date                             -- 発生日
+        ,g_get_xxcso_ib_info_h_rec.lease_class       -- リース種別
+        ,gn_po_number                                -- 発注番号
+        ,gv_manufacturer_name                        -- メーカー名
+        ,gv_age_type                                 -- 年式
+        ,g_get_xxcso_ib_info_h_rec.new_model         -- 機種
+        ,g_get_xxcso_ib_info_h_rec.new_serial_number -- 機番
+        ,g_get_xxcso_ib_info_h_rec.new_quantity      -- 数量
+        ,gv_department_code                          -- 管理部門コード
+        ,gv_owner_company                            -- 本社工場区分
+        ,gv_installation_place                       -- 現設置先
+        ,gv_installation_address                     -- 現設置場所
+        /* 2009.04.01 K.Satomura T1_0149対応 START */
+        --,g_get_xxcso_ib_info_h_rec.new_active_flag   -- 物件有効フラグ
+        ,g_get_xxcso_ib_info_h_rec.effective_flag    -- 物件有効フラグ
+        /* 2009.04.01 K.Satomura T1_0149対応 END */
+        ,cv_import_status                            -- 取込ステータス（固定値：'0'）
+        ,gv_customer_code                            -- 顧客コード
+        ,NULL                                        -- グループID
+        ,cn_created_by                               -- 作成者
+        ,cd_creation_date                            -- 作成日
+        ,cn_last_updated_by                          -- 最終更新者
+        ,cd_last_update_date                         -- 最終更新日
+        ,cn_last_update_login                        -- 最終更新ログイン
+        ,cn_request_id                               -- 要求ID
+        ,cn_program_application_id                   -- コンカレント・プログラム・アプリケーションID
+        ,cn_program_id                               -- コンカレント・プログラムID
+        ,cd_program_update_date                      -- プログラム更新日
       )
       ;
     EXCEPTION
@@ -2020,33 +1973,31 @@ AS
     -- ========================================
     BEGIN
     --
-      UPDATE
-        xxcso_ib_info_h
-      SET
-        history_creation_date   = gd_process_date                             -- 履歴作成日
-       ,interface_flag          = cv_yes                                      -- 連携済フラグ
-       ,po_number               = gn_po_number                                -- 発注番号
-       ,manufacturer_name       = gv_manufacturer_name                        -- メーカー名
-       ,age_type                = gv_age_type                                 -- 年式
-       ,un_number               = g_get_xxcso_ib_info_h_rec.new_model         -- 機種
-       ,install_number          = g_get_xxcso_ib_info_h_rec.new_serial_number -- 機番
-       ,quantity                = g_get_xxcso_ib_info_h_rec.new_quantity      -- 数量
-       ,base_code               = gv_department_code                          -- 拠点コード
-       ,owner_company_type      = gv_owner_company                            -- 本社／工場区分
-       ,install_name            = gv_installation_place                       -- 設置先名
-       ,install_address         = gv_installation_address                     -- 設置先住所
-       ,logical_delete_flag     = g_get_xxcso_ib_info_h_rec.new_active_flag   -- 論理削除フラグ
-       ,account_number          = gv_customer_code                            -- 顧客コード
-       /* 2009.04.03 K.Satomura T1_0269対応 START */
-       ,last_updated_by         = cn_last_updated_by                          -- 最終更新者
-       ,last_update_date        = cd_last_update_date                         -- 最終更新日
-       ,last_update_login       = cn_last_update_login                        -- 最終更新ログイン
-       ,request_id              = cn_request_id                               -- 要求ID
-       ,program_application_id  = cn_program_application_id                   -- コンカレント・プログラム・アプリケーションID
-       ,program_id              = cn_program_id                               -- コンカレント・プログラムID
-       ,program_update_date     = cd_program_update_date                      -- プログラム更新日
-       /* 2009.04.03 K.Satomura T1_0269対応 END */
-      WHERE install_code = g_get_xxcso_ib_info_h_rec.object_code
+      UPDATE xxcso_ib_info_h
+      SET    history_creation_date   = gd_process_date                             -- 履歴作成日
+            ,interface_flag          = cv_yes                                      -- 連携済フラグ
+            ,po_number               = gn_po_number                                -- 発注番号
+            ,manufacturer_name       = gv_manufacturer_name                        -- メーカー名
+            ,age_type                = gv_age_type                                 -- 年式
+            ,un_number               = g_get_xxcso_ib_info_h_rec.new_model         -- 機種
+            ,install_number          = g_get_xxcso_ib_info_h_rec.new_serial_number -- 機番
+            ,quantity                = g_get_xxcso_ib_info_h_rec.new_quantity      -- 数量
+            ,base_code               = gv_department_code                          -- 拠点コード
+            ,owner_company_type      = gv_owner_company                            -- 本社／工場区分
+            ,install_name            = gv_installation_place                       -- 設置先名
+            ,install_address         = gv_installation_address                     -- 設置先住所
+            ,logical_delete_flag     = g_get_xxcso_ib_info_h_rec.new_active_flag   -- 論理削除フラグ
+            ,account_number          = gv_customer_code                            -- 顧客コード
+            /* 2009.04.03 K.Satomura T1_0269対応 START */
+            ,last_updated_by         = cn_last_updated_by                          -- 最終更新者
+            ,last_update_date        = cd_last_update_date                         -- 最終更新日
+            ,last_update_login       = cn_last_update_login                        -- 最終更新ログイン
+            ,request_id              = cn_request_id                               -- 要求ID
+            ,program_application_id  = cn_program_application_id                   -- コンカレント・プログラム・アプリケーションID
+            ,program_id              = cn_program_id                               -- コンカレント・プログラムID
+            ,program_update_date     = cd_program_update_date                      -- プログラム更新日
+            /* 2009.04.03 K.Satomura T1_0269対応 END */
+      WHERE  install_code = g_get_xxcso_ib_info_h_rec.object_code
       ;
     EXCEPTION
       WHEN OTHERS THEN
@@ -2206,8 +2157,9 @@ AS
       -- ========================================
       /* 2009.04.07 D.Abe T1_0339対応 START */
       gn_po_number := NULL;
-      IF (g_get_xxcso_ib_info_h_rec.newold_flag = cv_no OR
-          g_get_xxcso_ib_info_h_rec.newold_flag IS NULL ) THEN
+      IF (g_get_xxcso_ib_info_h_rec.newold_flag = cv_no
+        OR g_get_xxcso_ib_info_h_rec.newold_flag IS NULL)
+      THEN
       /* 2009.04.07 D.Abe T1_0339対応 END */
         get_po_number(
            ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
