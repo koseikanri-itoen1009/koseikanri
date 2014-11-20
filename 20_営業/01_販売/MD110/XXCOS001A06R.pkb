@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A06R (body)
  * Description      : HHTエラーリスト
  * MD.050           : HHTエラーリスト MD050_COS_001_A06
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,7 +16,7 @@ AS
  *  get_data               処理対象データ特定(A-2)
  *  update_rpt_wrk_data    帳票ワークテーブル更新(A-3)
  *  execute_svf            SVF起動(A-4)
- *  delete_rpt_wrk_data    帳票ワークテーブル削除(A-5)
+ *  delete_rpt_wrk_data    帳票ワークテーブル(出力済)更新(A-5)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -29,6 +29,8 @@ AS
  *  2009/02/25    1.2   H.Ri             SVF共通関数パラメータ変更対応
  *  2009/05/26    1.3   M.Sano           [T1_0310]処理件数有無による終了ステータス変更
  *                                       ・処理件数0件：正常  処理件数1件以上⇒警告
+ *  2009/11/25    1.4   N.Maeda          [E_本稼動_00064] 帳票ワークテーブル削除プロシージャ
+ *                                                          ⇒帳票ワークテーブル(出力済)更新へ修正
  *
  *****************************************************************************************/
 --
@@ -127,6 +129,10 @@ AS
   cv_msg_vl_key_base_code   CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-10303';    --ログインユーザー所属拠点コード
   --日付フォーマット
   cv_yyyymmdd               CONSTANT  VARCHAR2(100) :=  'YYYYMMDD';            --YYYYMMDD型
+-- ****************** 2009/11/25 1.4 N.Maeda ADD START ****************** --
+  cv_tkn_y                  CONSTANT  VARCHAR2(1)   :=  'Y';                    --'Y'
+  cv_tkn_n                  CONSTANT  VARCHAR2(1)   :=  'N';                    --'N'
+-- ****************** 2009/11/25 1.4 N.Maeda ADD  END  ****************** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -282,6 +288,9 @@ AS
       FROM   xxcos_rep_hht_err_list hel,            --HHTエラーリスト帳票ワークテーブル
              xxcos_login_base_info_v lbiv           --ログインユーザ拠点ビュー
       WHERE  hel.base_code = lbiv.base_code         --拠点コード
+-- ****************** 2009/11/25 1.4 N.Maeda ADD START ****************** --
+      AND    NVL( hel.output_flag, cv_tkn_n ) = cv_tkn_n -- エラー帳票出力済フラグ = 'N'(未出力)
+-- ****************** 2009/11/25 1.4 N.Maeda ADD  END  ****************** --
       FOR UPDATE OF hel.record_id NOWAIT
       ;
     EXCEPTION
@@ -629,7 +638,7 @@ AS
 --
   /**********************************************************************************
    * Procedure Name   : delete_rpt_wrk_data
-   * Description      : 帳票ワークテーブル削除(A-5)
+   * Description      : 帳票ワークテーブル(出力済)更新(A-5)
    ***********************************************************************************/
   PROCEDURE delete_rpt_wrk_data(
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
@@ -693,9 +702,13 @@ AS
 --
     --処理対象データ削除
     BEGIN
-      DELETE FROM 
-        xxcos_rep_hht_err_list hel                    --HHTエラーリスト帳票ワークテーブル
-      WHERE hel.report_group_id = gt_rpt_group_id     --帳票用グループID
+-- ********* 2009/11/25 1.4 N.Maeda MOD START ********* --
+--      DELETE FROM 
+--        xxcos_rep_hht_err_list hel                    --HHTエラーリスト帳票ワークテーブル
+      UPDATE xxcos_rep_hht_err_list hel
+      SET    hel.output_flag             = cv_tkn_y                  --エラー帳票出力済フラグ
+-- ********* 2009/11/25 1.4 N.Maeda MOD  END  ********* --
+      WHERE hel.report_group_id          = gt_rpt_group_id           --帳票用グループID
       ;
       --正常件数取得
       gn_normal_cnt := SQL%ROWCOUNT;
@@ -740,7 +753,7 @@ AS
       );
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
-    --*** 処理対象データ削除例外ハンドラ ***
+    --*** 処理対象データ更新例外ハンドラ ***
     WHEN global_data_delete_expt THEN
       lv_tkn_vl_table_name    :=  xxccp_common_pkg.get_msg(
         iv_application        =>  cv_xxcos_short_name,
@@ -748,7 +761,10 @@ AS
       );
       ov_errmsg               :=  xxccp_common_pkg.get_msg(
         iv_application        =>  cv_xxcos_short_name,
-        iv_name               =>  cv_msg_delete_err,
+-- ********* 2009/11/25 1.4 N.Maeda MOD START ********* --
+--        iv_name               =>  cv_msg_delete_err,
+        iv_name               =>  cv_msg_update_err,
+-- ********* 2009/11/25 1.4 N.Maeda MOD  END  ********* --
         iv_token_name1        =>  cv_tkn_nm_table_name,
         iv_token_value1       =>  lv_tkn_vl_table_name,
         iv_token_name2        =>  cv_tkn_nm_key_data,
@@ -876,7 +892,7 @@ AS
     END IF;
 --
     -- ===============================
-    -- A-5  帳票ワークテーブル削除
+    -- A-5  帳票ワークテーブル(出力済)更新
     -- ===============================
     delete_rpt_wrk_data(
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #

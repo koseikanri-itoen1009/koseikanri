@@ -14,6 +14,7 @@
  *  2009/10/01    1.2   N.Maeda          [0001378]Žó’NoiHHTj NUMBER(10) Ë NUMBER
  *                                                Žó’NOiEBSj NUMBER(9)  Ë NUMBER
  *                                                ’ •[—pƒOƒ‹[ƒvID NUMBER(15,0) Ë NUMBER
+ *  2009/11/25    1.3   N.Maeda          [E_–{”Ô_00064]ƒGƒ‰[’ •[o—ÍÏƒtƒ‰ƒO‚Ì’Ç‰Á
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_HHT_ERR_LIST 
@@ -36,6 +37,7 @@ CREATE TABLE XXCOS.XXCOS_REP_HHT_ERR_LIST
     ITEM_CODE                     VARCHAR2(7),                       --•i–ÚƒR[ƒh
     ERROR_MESSAGE                 VARCHAR2(60),                      --ƒGƒ‰[“à—e
     REPORT_GROUP_ID               NUMBER,                            --’ •[—pƒOƒ‹[ƒvID
+    OUTPUT_FLAG                   VARCHAR2(1),                       --ƒGƒ‰[’ •[o—ÍÏƒtƒ‰ƒO
     CREATED_BY                    NUMBER(15,0)    NOT NULL,          --ì¬ŽÒ
     CREATION_DATE                 DATE            NOT NULL,          --ì¬“ú
     LAST_UPDATED_BY               NUMBER(15,0)    NOT NULL,          --ÅIXVŽÒ
@@ -67,6 +69,7 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.PERFORMANCE_BY_CODE         IS '
 COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.ITEM_CODE                   IS '•i–ÚƒR[ƒh';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.ERROR_MESSAGE               IS 'ƒGƒ‰[“à—e';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.REPORT_GROUP_ID             IS '’ •[—pƒOƒ‹[ƒvID';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.OUTPUT_FLAG                 IS 'ƒGƒ‰[’ •[o—ÍÏƒtƒ‰ƒO';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.CREATED_BY                  IS 'ì¬ŽÒ';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.CREATION_DATE               IS 'ì¬“ú';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_HHT_ERR_LIST.LAST_UPDATED_BY             IS 'ÅIXVŽÒ';
