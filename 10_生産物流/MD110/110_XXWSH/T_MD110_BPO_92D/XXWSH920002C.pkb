@@ -7,7 +7,7 @@ AS
  * Description      : 引当解除処理
  * MD.050/070       : 生産物流共通(出荷･移動仮引当)(T_MD050_BPO_920)
  *                    引当解除処理                 (T_MD070_BPO_92D)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/12/01    1.4   SCS Miyata        ロック対応
  *  2009/01/27    1.5   SCS Itou          本番障害#1028対応
  *  2009/05/01    1.6   SCS Itou          本番障害#1447対応
+ *  2009/12/10    1.7   SCS Itou          本稼動障害#383対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -485,25 +486,27 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
-    -- *** ローカル・カーソル ***
-    -- ロック用カーソル
-    CURSOR cur_get_lock
-    IS
-      SELECT xoha.order_header_id
-      FROM  xxwsh_order_headers_all       xoha    -- 受注ヘッダアドオン
-           ,xxwsh_order_lines_all         xola    -- 受注明細アドオン
-           ,xxinv_mov_lot_details         xmld    -- 移動ロット詳細（アドオン）
-      WHERE xoha.order_header_id           = xola.order_header_id  -- 受注ヘッダアドオンID
-      AND   xoha.latest_external_flag      = gv_yes                -- 最新フラグ「Ｙ」
-      AND   xoha.req_status                = gv_out                -- ステータス「締め済」
-      AND ( xoha.notif_status              = gv_n_notif            -- 通知ステータス「未通知」
-         OR xoha.notif_status              = gv_re_notif)          -- 通知ステータス「再通知要」
-      AND   xola.delete_flag              <> gv_yes                -- 削除フラグ「Ｙ」以外
-      AND   xola.automanual_reserve_class  = gv_auto               -- 自動手動引当区分「自動引当」
-      AND   xola.order_line_id             = xmld.mov_line_id      -- 明細ID
-      AND   xmld.document_type_code        = gv_ship_req           -- 文書タイプ「出荷依頼」
-      FOR UPDATE 
-      ;
+-- 2009/12/10 H.Itou Del Start 本稼動障害#383 ロックはメインSQLで取得するため不要
+--    -- *** ローカル・カーソル ***
+--    -- ロック用カーソル
+--    CURSOR cur_get_lock
+--    IS
+--      SELECT xoha.order_header_id
+--      FROM  xxwsh_order_headers_all       xoha    -- 受注ヘッダアドオン
+--           ,xxwsh_order_lines_all         xola    -- 受注明細アドオン
+--           ,xxinv_mov_lot_details         xmld    -- 移動ロット詳細（アドオン）
+--      WHERE xoha.order_header_id           = xola.order_header_id  -- 受注ヘッダアドオンID
+--      AND   xoha.latest_external_flag      = gv_yes                -- 最新フラグ「Ｙ」
+--      AND   xoha.req_status                = gv_out                -- ステータス「締め済」
+--      AND ( xoha.notif_status              = gv_n_notif            -- 通知ステータス「未通知」
+--         OR xoha.notif_status              = gv_re_notif)          -- 通知ステータス「再通知要」
+--      AND   xola.delete_flag              <> gv_yes                -- 削除フラグ「Ｙ」以外
+--      AND   xola.automanual_reserve_class  = gv_auto               -- 自動手動引当区分「自動引当」
+--      AND   xola.order_line_id             = xmld.mov_line_id      -- 明細ID
+--      AND   xmld.document_type_code        = gv_ship_req           -- 文書タイプ「出荷依頼」
+--      FOR UPDATE 
+--      ;
+-- 2009/12/10 H.Itou Del End
 --
   BEGIN
 --
@@ -513,10 +516,12 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- ロック用カーソルオープン
-    OPEN cur_get_lock;
-    -- ロック用カーソルクローズ
-    CLOSE cur_get_lock;
+-- 2009/12/10 H.Itou Del Start 本稼動障害#383 ロックはメインSQLで取得するため不要
+--    -- ロック用カーソルオープン
+--    OPEN cur_get_lock;
+--    -- ロック用カーソルクローズ
+--    CLOSE cur_get_lock;
+-- 2009/12/10 H.Itou Del End
 --
     ---------------------------------------------------------
     -- 動的SQL作成
@@ -538,7 +543,10 @@ AS
     gv_sql_where :=
       ' WHERE xoha.schedule_ship_date      >= :para_del_from            -- 入力Ｐ「出庫予定日From」
         AND   xoha.schedule_ship_date      <= :para_del_to              -- 入力Ｐ「出庫予定日To」
-        AND   xoha.deliver_from             = xilv.segment1             -- 保管倉庫コード
+-- 2009/12/10 H.Itou Mod Start 本稼動障害#383 IDで結合したほうがコストが下がるので、変更
+--        AND   xoha.deliver_from             = xilv.segment1             -- 保管倉庫コード
+        AND   xoha.deliver_from_id          = xilv.inventory_location_id  -- 保管倉庫ID
+-- 2009/12/10 H.Itou Mod End
         AND   ximv.item_no                  = xola.shipping_item_code   -- 出荷品目
         AND   ximv.lot_ctl                  = :para_lot                 -- ロット（ロット管理品）
         AND   xicv.item_class_code          = :para_product             -- 品目区分（製品）
@@ -639,6 +647,9 @@ AS
       gv_sql_sel := gv_sql_sel || gv_sql_in_para_6;  -- 入力Ｐ任意部分6結合
     END IF;
 -- 2009/05/01 H.Itou Add End
+-- 2009/12/10 H.Itou Add Start 本稼動障害#383 ロックはメインSQLで取得する。
+    gv_sql_sel := gv_sql_sel || ' FOR UPDATE OF xoha.order_header_id, xola.order_line_id, xmld.mov_line_id ';        -- ロック取得
+-- 2009/12/10 H.Itou Add End
     ---------------------------------
     -- 作成SQL文実行
     ---------------------------------
@@ -811,10 +822,12 @@ AS
 --
   EXCEPTION
     WHEN lock_error_expt THEN
-      -- カーソルオープン時、クローズへ
-      IF (cur_get_lock%ISOPEN) THEN
-        CLOSE cur_get_lock;
-      END IF;
+-- 2009/12/10 H.Itou Del Start 本稼動障害#383 ロックはメインSQLで取得するため不要
+--      -- カーソルオープン時、クローズへ
+--      IF (cur_get_lock%ISOPEN) THEN
+--        CLOSE cur_get_lock;
+--      END IF;
+-- 2009/12/10 H.Itou Del End
 --
       ov_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application   -- 'XXWSH'
                                                      ,gv_err_lock      -- ロックエラー
@@ -870,26 +883,28 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
-    -- *** ローカル・カーソル ***
-    -- ロック用カーソル
-    CURSOR cur_get_lock
-    IS
-      SELECT xmrih.mov_hdr_id
-      FROM xxinv_mov_req_instr_headers   xmrih   -- 移動依頼/指示ヘッダ（アドオン）
-          ,xxinv_mov_req_instr_lines     xmril   -- 移動依頼/指示明細（アドオン）
-          ,xxinv_mov_lot_details         xmld    -- 移動ロット詳細（アドオン）
-      WHERE xmrih.mov_type                 = gv_mov_y               -- 移動タイプ「積送あり」
-      AND   xmrih.mov_hdr_id               = xmril.mov_hdr_id       -- 移動ヘッダID
-      AND ( xmrih.status                   = gv_req                 -- ステータス「依頼済」
-         OR xmrih.status                   = gv_adjust)             -- ステータス「調整中」
-      AND ( xmrih.notif_status             = gv_n_notif             -- 通知ステータス「未通知」
-         OR xmrih.notif_status             = gv_re_notif)           -- 通知ステータス「再通知要」
-      AND   xmril.delete_flg              <> gv_yes                 -- 削除フラグ「Ｙ」以外
-      AND   xmril.automanual_reserve_class = gv_auto                -- 自動手動引当区分「自動引当」
-      AND   xmril.mov_line_id              = xmld.mov_line_id       -- 移動明細ID
-      AND   xmld.document_type_code        = gv_move_req            -- 文書タイプ「移動指示」
-      FOR UPDATE 
-      ;
+-- 2009/12/10 H.Itou Del Start 本稼動障害#383 ロックはメインSQLで取得するため不要
+--    -- *** ローカル・カーソル ***
+--    -- ロック用カーソル
+--    CURSOR cur_get_lock
+--    IS
+--      SELECT xmrih.mov_hdr_id
+--      FROM xxinv_mov_req_instr_headers   xmrih   -- 移動依頼/指示ヘッダ（アドオン）
+--          ,xxinv_mov_req_instr_lines     xmril   -- 移動依頼/指示明細（アドオン）
+--          ,xxinv_mov_lot_details         xmld    -- 移動ロット詳細（アドオン）
+--      WHERE xmrih.mov_type                 = gv_mov_y               -- 移動タイプ「積送あり」
+--      AND   xmrih.mov_hdr_id               = xmril.mov_hdr_id       -- 移動ヘッダID
+--      AND ( xmrih.status                   = gv_req                 -- ステータス「依頼済」
+--         OR xmrih.status                   = gv_adjust)             -- ステータス「調整中」
+--      AND ( xmrih.notif_status             = gv_n_notif             -- 通知ステータス「未通知」
+--         OR xmrih.notif_status             = gv_re_notif)           -- 通知ステータス「再通知要」
+--      AND   xmril.delete_flg              <> gv_yes                 -- 削除フラグ「Ｙ」以外
+--      AND   xmril.automanual_reserve_class = gv_auto                -- 自動手動引当区分「自動引当」
+--      AND   xmril.mov_line_id              = xmld.mov_line_id       -- 移動明細ID
+--      AND   xmld.document_type_code        = gv_move_req            -- 文書タイプ「移動指示」
+--      FOR UPDATE 
+--      ;
+-- 2009/12/10 H.Itou Del End
 --
   BEGIN
 --
@@ -899,10 +914,12 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- ロック用カーソルオープン
-    OPEN cur_get_lock;
-    -- ロック用カーソルクローズ
-    CLOSE cur_get_lock;
+-- 2009/12/10 H.Itou Del Start 本稼動障害#383 ロックはメインSQLで取得するため不要
+--    -- ロック用カーソルオープン
+--    OPEN cur_get_lock;
+--    -- ロック用カーソルクローズ
+--    CLOSE cur_get_lock;
+-- 2009/12/10 H.Itou Del End
 --
     ---------------------------------------------------------
     -- 動的SQL作成
@@ -923,7 +940,10 @@ AS
     gv_sql_where :=
       ' WHERE xmrih.schedule_ship_date      >= :para_del_from      -- 入力Ｐ「出庫予定日From」
         AND   xmrih.schedule_ship_date      <= :para_del_to        -- 入力Ｐ「出庫予定日To」
-        AND   xmrih.shipped_locat_code       = xilv.segment1       -- 保管倉庫コード
+-- 2009/12/10 H.Itou Mod Start 本稼動障害#383 IDで結合したほうがコストが下がるので、変更
+--        AND   xmrih.shipped_locat_code       = xilv.segment1       -- 保管倉庫コード
+        AND   xmrih.shipped_locat_id         = xilv.inventory_location_id  -- 保管倉庫ID
+-- 2009/12/10 H.Itou Mod End
         AND   xmrih.mov_type                 = :para_mov_y         -- 移動タイプ「積送あり」
         AND   ximv.item_no                   = xmril.item_code     -- 品目
         AND   ximv.lot_ctl                   = :para_lot           -- ロット（ロット管理品）
@@ -1019,6 +1039,9 @@ AS
       gv_sql_sel := gv_sql_sel || gv_sql_in_para_6;  -- 入力Ｐ任意部分6結合
     END IF;
 -- 2009/05/01 H.Itou Add End
+-- 2009/12/10 H.Itou Add Start 本稼動障害#383 ロックはメインSQLで取得する。
+    gv_sql_sel := gv_sql_sel || ' FOR UPDATE OF xmrih.mov_hdr_id, xmril.mov_line_id, xmld.mov_line_id ';        -- ロック取得
+-- 2009/12/10 H.Itou Add End
 --
     ---------------------------------
     -- 作成SQL文実行
@@ -1105,10 +1128,12 @@ AS
 --
   EXCEPTION
     WHEN lock_error_expt THEN
-      -- カーソルオープン時、クローズへ
-      IF (cur_get_lock%ISOPEN) THEN
-        CLOSE cur_get_lock;
-      END IF;
+-- 2009/12/10 H.Itou Del Start 本稼動障害#383 ロックはメインSQLで取得するため不要
+--      -- カーソルオープン時、クローズへ
+--      IF (cur_get_lock%ISOPEN) THEN
+--        CLOSE cur_get_lock;
+--      END IF;
+-- 2009/12/10 H.Itou Del End
 --
       ov_errmsg  := SUBSTRB(xxcmn_common_pkg.get_msg( gv_application   -- 'XXWSH'
                                                      ,gv_err_lock      -- ロックエラー
