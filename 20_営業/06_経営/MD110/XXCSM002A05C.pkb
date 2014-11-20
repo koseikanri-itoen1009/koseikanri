@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A05C(body)
  * Description      : 商品計画単品別按分処理
  * MD.050           : 商品計画単品別按分処理 MD050_CSM_002_A05
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -16,6 +16,7 @@ AS
  *  assign_kyoten_check         按分対象チェック(拠点チェック)(A-2)
  *  assign_deal_check           按分対象チェック(政策群チェック)(A-4)
  *  item_master_check           品目マスタチェック(A-5)
+ *  out_regist_item_check       登録外商品チェック(A-5)
  *  item_month_data_select      商品別対象月データ取得(A-5)
  *  cost_price_select           商品単位計算(営業原価、定価、発売日取得)(A-6)
  *  sales_before_last_year_cal  商品単位計算(商品別前々年度売上金額年間計取得)(A-6)
@@ -41,6 +42,7 @@ AS
  *  2009/05/19    1.5   T.Tsukino       ［障害T1_1069］T1_0792対応不良の対応
  *  2009/05/27    1.6   A.Sakawa         [障害T1_1173] T1_0069対応不良(0除算)対応
  *  2011/12/20    1.7   Y.Horikawa       [E_本稼動_08368、08369、08370] 営業原価の取得年度の変更
+ *  2012/03/01    1.8   S.Niki           [E_本稼動_09178] 登録外商品の数値計算を変更
  *
   *****************************************************************************************/
 --
@@ -100,10 +102,16 @@ AS
 -- ADD Start 2011/12/20 Ver.1.7
   cv_tkn_cd_org_cd          CONSTANT VARCHAR2(100) := 'ORG_CODE_TOK';            --在庫組織コード
 -- ADD End 2011/12/20 Ver.1.7
-
+-- ADD START 2012/03/01 V1.8 BY SCSK S.NIKI
+  -- 参照タイプ
+  cv_out_regist_item        CONSTANT VARCHAR2(30)  := 'XXCSM1_OUT_REGIST_ITEM';  --登録外商品コード
+-- ADD END 2012/03/01 V1.8 BY SCSK S.NIKI
   --
   cv_language_ja            CONSTANT VARCHAR2(2)   := USERENV('LANG');           --言語(日本語)
   cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                       --フラグY
+-- ADD START 2012/03/01 V1.8 BY SCSK S.NIKI
+  cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';                       --フラグN
+-- ADD END 2012/03/01 V1.8 BY SCSK S.NIKI
 --
 --################################  固定部 END   ##################################
 --
@@ -923,7 +931,98 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END item_master_check;
+-- ADD START 2012/03/01 V1.8 BY SCSK S.NIKI
+  /**********************************************************************************
+   * Procedure Name   : out_regist_item_check
+   * Description      : 登録外商品チェック(A-5)
+   ***********************************************************************************/
+  PROCEDURE out_regist_item_check(
+    it_item_no       IN  ic_item_mst_b.item_no%TYPE,               -- 品目コード
+    ov_item_check    OUT VARCHAR2,                                 -- 登録外商品フラグ
+    ov_errbuf        OUT NOCOPY VARCHAR2,                          -- エラー・メッセージ
+    ov_retcode       OUT NOCOPY VARCHAR2,                          -- リターン・コード
+    ov_errmsg        OUT NOCOPY VARCHAR2)                          -- ユーザー・エラー・メッセージ
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'out_regist_item_check'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    ln_count                       NUMBER;           -- 登録外商品チェック用カウンタ
+--
+    -- *** ローカル・カーソル ***
 
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    SELECT COUNT(1) cnt                            -- 件数
+    INTO   ln_count
+    FROM   fnd_lookup_values flv                   -- クイックコード値
+    WHERE  flv.lookup_type   = cv_out_regist_item  -- 参照タイプ：登録外商品コード
+    AND    flv.language      = cv_language_ja      -- 言語
+    AND    flv.enabled_flag  = cv_flg_y            -- 有効フラグ
+    AND    flv.lookup_code   = it_item_no          -- 商品コード
+    ;
+    -- 登録外商品チェック
+    IF (ln_count > 0) THEN
+      ov_item_check := cv_flg_y;
+    ELSE
+      ov_item_check := cv_flg_n;
+    END IF;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END out_regist_item_check;
+--
+-- ADD END 2012/03/01 V1.8 BY SCSK S.NIKI
   /**********************************************************************************
    * Procedure Name   : item_month_data_select
    * Description      : 商品別対象月データ取得(A-6)
@@ -2302,7 +2401,10 @@ AS
     lv_new_item_cost              VARCHAR2(240);                                  --営業原価
     lv_new_item_price             VARCHAR2(240);                                  --定価
 --//ADD END 2009/05/19 T1_1069 T.Tsukino
-
+-- ADD START 2012/03/01 V1.8 BY SCSK S.NIKI
+    lv_item_check                 VARCHAR2(1);                                    --登録外商品フラグ
+-- ADD END 2012/03/01 V1.8 BY SCSK S.NIKI
+--
     -- ===============================
     -- ローカル・カーソル
     -- ===============================
@@ -2609,7 +2711,23 @@ AS
               gn_error_cnt := gn_error_cnt + 1;
               RAISE deal_skip_expt;
             END IF;
-
+-- ADD START 2012/03/01 V1.8 BY SCSK S.NIKI
+            -- =====================================================
+            -- 登録外商品チェック(A-5)
+            -- =====================================================
+            out_regist_item_check(
+                                  lt_item_no         --商品コード
+                                 ,lv_item_check      --登録外商品フラグ
+                                 ,lv_errbuf          --エラー・メッセージ
+                                 ,lv_retcode         --リターン・コード
+                                 ,lv_errmsg);        --ユーザー・エラー・メッセージ
+--
+            -- 例外処理
+            IF (lv_retcode = cv_status_error) THEN
+              gn_error_cnt := gn_error_cnt +1;
+              RAISE global_process_expt;
+            END IF;
+-- ADD END 2012/03/01 V1.8 BY SCSK S.NIKI
             -- ===================================================
             -- 商品単位計算(営業原価、定価、発売日、単位取得)(A-6)
             -- ===================================================
@@ -2756,7 +2874,6 @@ AS
 
                   --売上金額
                   ln_plan_sales_budget        := ROUND((ln_sales_budget * ln_entity_result_rate),-3);
-
                   --数量
                   IF ln_unit_flg = 0 THEN
                     ln_plan_amount              := ROUND((ln_amount * ln_entity_result_rate),0);
@@ -2781,7 +2898,6 @@ AS
                   ELSE
                     ln_margin_rate              := ROUND(((ln_plan_amount_gross_margin / ln_plan_sales_budget) * 100),2);
                   END IF;
-
 --
                 ELSIF (ln_months > 3) and (ln_months <= 15) THEN
                   --②新商品単年度実績の計画データ作成
@@ -2940,11 +3056,26 @@ AS
                 lr_plan_rec.item_kbn               := '1';                         --商品区分(1：商品単品)
                 lr_plan_rec.item_no                := lt_item_no;                  --商品コード
                 lr_plan_rec.item_group_no          := lt_item_group_no;            --商品群コード
-                lr_plan_rec.amount                 := ln_plan_amount;              --数量
+-- MOD START 2012/03/01 V1.8 BY SCSK S.NIKI
+--                lr_plan_rec.amount                 := ln_plan_amount;              --数量
+--                lr_plan_rec.sales_budget           := ln_plan_sales_budget;        --売上金額
+--                lr_plan_rec.amount_gross_margin    := ln_plan_amount_gross_margin; --粗利益(新)
+--                lr_plan_rec.credit_rate            := ln_plan_credit_rate;         --掛率
+--                lr_plan_rec.margin_rate            := ln_margin_rate;              --粗利益率(新)
+--
                 lr_plan_rec.sales_budget           := ln_plan_sales_budget;        --売上金額
                 lr_plan_rec.amount_gross_margin    := ln_plan_amount_gross_margin; --粗利益(新)
-                lr_plan_rec.credit_rate            := ln_plan_credit_rate;         --掛率
-                lr_plan_rec.margin_rate            := ln_margin_rate;              --粗利益率(新)
+                --登録外商品の判定
+                IF ( lv_item_check = cv_flg_y ) THEN
+                  lr_plan_rec.amount               := 0;                           --数量
+                  lr_plan_rec.credit_rate          := 0;                           --掛率
+                  lr_plan_rec.margin_rate          := 0;                           --粗利益率(新)
+                ELSE
+                  lr_plan_rec.amount               := ln_plan_amount;              --数量
+                  lr_plan_rec.credit_rate          := ln_plan_credit_rate;         --掛率
+                  lr_plan_rec.margin_rate          := ln_margin_rate;              --粗利益率(新)
+                END IF;
+-- MOD END 2012/03/01 V1.8 BY SCSK S.NIKI
                 lr_plan_rec.created_by             := cn_created_by;               --作成者
                 lr_plan_rec.creation_date          := cd_creation_date;            --作成日
                 lr_plan_rec.last_updated_by        := cn_last_updated_by;          --最新更新者
