@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvUtility
 * 概要説明   : 移動共通関数
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-14 1.0  大橋 孝郎    新規作成
 * 2008-07-10 1.1  伊藤ひとみ   isMovHdrUpdForOwnConc,isMovLineUpdForOwnConc追加
 * 2008-10-21 1.2  伊藤ひとみ   updateMovLotDetailsロック取得を変更
+* 2008-12-05 1.3  伊藤ひとみ   本番障害#452対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.util;
@@ -31,7 +32,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 移動共通関数クラスです。
  * @author  ORACLE 大橋孝郎
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxinvUtility 
@@ -3258,12 +3259,18 @@ public class XxinvUtility
       cstmt.setInt(5, XxcmnUtility.intValue(lotId));     // ロットID
       
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(1, Types.INTEGER);
+// 2008-12-05 H.Itou Mod Start 本番障害#481 小数点を考慮
+//      cstmt.registerOutParameter(1, Types.INTEGER);
+      cstmt.registerOutParameter(1, Types.NUMERIC);
+// 2008-12-05 H.Itou Mod End
       
       // PL/SQL実行
       cstmt.execute();
 
-      return new Number(cstmt.getInt(1));  // 実績数量を返す。
+// 2008-12-05 H.Itou Mod Start 本番障害#481 小数点を考慮
+//      return new Number(cstmt.getInt(1));  // 実績数量を返す。
+      return new Number(cstmt.getObject(1));  // 実績数量を返す。
+// 2008-12-05 H.Itou Mod End
 
     // PL/SQL実行時例外の場合
     } catch(SQLException s)

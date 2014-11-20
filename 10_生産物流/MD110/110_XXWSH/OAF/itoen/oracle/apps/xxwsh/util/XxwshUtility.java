@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwshUtility
 * 概要説明   : 出荷・引当/配車共通関数
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2008-09-19 1.6  伊藤ひとみ   T_TE080_BPO_400指摘76対応
 * 2008-10-07 1.7  伊藤ひとみ   統合テスト指摘240対応
 * 2008-10-24 1.8  二瓶大輔     TE080_BPO_600 No22
+* 2008-12-05 1.9  伊藤ひとみ   本番障害#452対応
 *============================================================================
 */
 package itoen.oracle.apps.xxwsh.util;
@@ -36,7 +37,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出荷・引当/配車共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.8
+ * @version 1.9
  ***************************************************************************
  */
 public class XxwshUtility 
@@ -4184,12 +4185,17 @@ public class XxwshUtility
       cstmt.setInt(5,    XxcmnUtility.intValue(lotId));     // ロットID
       
       // パラメータ設定(OUTパラメータ)
-      cstmt.registerOutParameter(1, Types.INTEGER);
+// 2008-12-05 H.Itou Mod Start 本番障害#481 小数点を考慮
+//      cstmt.registerOutParameter(1, Types.INTEGER);
+      cstmt.registerOutParameter(1, Types.NUMERIC);
+// 2008-12-05 H.Itou Mod End
       
       // PL/SQL実行
       cstmt.execute();
-
-      return new Number(cstmt.getInt(1));  // 実績数量を返す。
+// 2008-12-05 H.Itou Mod Start 本番障害#481 小数点を考慮
+//      return new Number(cstmt.getInt(1));  // 実績数量を返す。
+      return new Number(cstmt.getObject(1));  // 実績数量を返す。
+// 2008-12-05 H.Itou Mod End
 
     // PL/SQL実行時例外の場合
     } catch(SQLException s)
