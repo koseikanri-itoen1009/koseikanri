@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/1/26     1.0   T.Tyou           V‹Kì¬
+ *  2009/5/12     1.1   S.Tomita         [T1_0964]ƒJƒ‰ƒ€ƒRƒƒ“ƒgŠÔˆá‚¢C³
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_order_salesrep_info_v (
@@ -83,11 +84,11 @@ COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.end_date_active       IS  '—LŒø
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.effective_start_date  IS  '—LŒøŠJn“ú';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.effective_end_date    IS  '—LŒøI—¹“ú';
 COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  ']‹ÆˆõƒR[ƒh';
-COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '”­—ß“ú';
-COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '‹’“_ƒR[ƒhiVj';
-COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '‹’“_ƒR[ƒhi‹Œj';
-COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '”„ã‹’“_';
-COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '‘OŒ”„ã‹’“_';
-COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.employee_number       IS  '”[•i‹’“_';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.hatsurei_date         IS  '”­—ß“ú';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.new_base_code         IS  '‹’“_ƒR[ƒhiVj';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.old_base_code         IS  '‹’“_ƒR[ƒhi‹Œj';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.sale_base_code        IS  '”„ã‹’“_';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.past_sale_base_code   IS  '‘OŒ”„ã‹’“_';
+COMMENT ON  COLUMN  xxcos_order_salesrep_info_v.delivery_base_code    IS  '”[•i‹’“_';
 --
 COMMENT ON  TABLE   xxcos_order_salesrep_info_v                       IS  '‰c‹Æ’S“–ƒrƒ…[(ƒNƒCƒbƒNó’—p)';

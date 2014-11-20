@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A01R(body)
  * Description      : 倉替伝票
  * MD.050           : 倉替伝票 MD050_COI_002_A01
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/12    1.0   K.Nakamura       新規作成
+ *  2009/05/13    1.1   H.Sasaki         [T1_0774]伝票番号の桁数を修正
  *
  *****************************************************************************************/
 --
@@ -93,21 +94,24 @@ AS
   -- 参照タイプ
   cv_voucher_inout_div           CONSTANT VARCHAR2(30)  := 'XXCOI1_VOUCHER_IN_OUT_DIV'; -- 倉替伝票入出庫区分
   -- メッセージ
-  cv_para_inout_type_msg         CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10163'; -- パラメータ 入出庫区分値メッセージ
-  cv_para_date_from_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10164'; -- パラメータ 日付（From）値メッセージ
-  cv_para_date_to_msg            CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10165'; -- パラメータ 日付（To）値メッセージ
-  cv_para_base_code_from_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10166'; -- パラメータ 出庫元拠点値メッセージ
-  cv_para_base_code_to_msg       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10167'; -- パラメータ 入庫先拠点値メッセージ
-  cv_org_code_get_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
-  cv_org_id_get_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00006'; -- 在庫組織ID取得エラーメッセージ
-  cv_inout_type_get_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10171'; -- 入出庫区分内容取得エラーメッセージ
-  cv_dept_code_get_err           CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10254'; -- 所属拠点コード取得エラーメッセージ
-  cv_date_over_err_msg           CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10047'; -- 日付入力エラー（未来日）メッセージ
-  cv_date_reverse_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10048'; -- 日付入力エラー（日付逆転）エラーメッセージ
-  cv_tran_type_name_get_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00022'; -- 取引タイプ名取得エラーメッセージ
-  cv_tran_type_id_get_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10300'; -- 取引タイプID取得エラーメッセージ
-  cv_api_err_msg                 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00010'; -- APIエラーメッセージ
-  cv_table_lock_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10049'; -- ロック取得エラーメッセージ(倉替伝票帳票ワークテーブル)
+  cv_para_inout_type_msg         CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10163';  -- パラメータ 入出庫区分値メッセージ
+  cv_para_date_from_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10164';  -- パラメータ 日付（From）値メッセージ
+  cv_para_date_to_msg            CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10165';  -- パラメータ 日付（To）値メッセージ
+  cv_para_base_code_from_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10166';  -- パラメータ 出庫元拠点値メッセージ
+  cv_para_base_code_to_msg       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10167';  -- パラメータ 入庫先拠点値メッセージ
+  cv_org_code_get_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005';  -- 在庫組織コード取得エラーメッセージ
+  cv_org_id_get_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00006';  -- 在庫組織ID取得エラーメッセージ
+  cv_inout_type_get_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10171';  -- 入出庫区分内容取得エラーメッセージ
+  cv_dept_code_get_err           CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10254';  -- 所属拠点コード取得エラーメッセージ
+  cv_date_over_err_msg           CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10047';  -- 日付入力エラー（未来日）メッセージ
+  cv_date_reverse_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10048';  -- 日付入力エラー（日付逆転）エラーメッセージ
+  cv_tran_type_name_get_err_msg  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00022';  -- 取引タイプ名取得エラーメッセージ
+  cv_tran_type_id_get_err_msg    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10300';  -- 取引タイプID取得エラーメッセージ
+  cv_api_err_msg                 CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00010';  -- APIエラーメッセージ
+  cv_table_lock_err_msg          CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10049';  -- ロック取得エラーメッセージ(倉替伝票帳票ワークテーブル)
+-- == 2009/05/13 V1.1 Added START ===============================================================
+  cv_msg_code_xxcoi_10381        CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10381';  -- 伝票№マスク取得エラーメッセージ
+-- == 2009/05/13 V1.1 Added END   ===============================================================
   -- トークン
   cv_tkn_para_inout_type         CONSTANT VARCHAR2(20)  := 'P_INOUT_TYPE';         -- パラメータ 入出庫区分
   cv_tkn_para_date_from          CONSTANT VARCHAR2(20)  := 'P_DATE_FROM';          -- パラメータ 日付（From）
@@ -178,6 +182,9 @@ AS
   -- PL/SQL表
   gt_kyoten_tab                  gt_kyoten_ttype;
   gt_mmt_info_tab                gt_mmt_info_ttype;
+-- == 2009/05/13 V1.1 Added START ===============================================================
+  gn_slip_number_mask            NUMBER;        -- 伝票№マスク(990000000000)
+-- == 2009/05/13 V1.1 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -207,6 +214,9 @@ AS
     -- *** ローカル定数 ***
     -- プロファイル 在庫組織コード
     cv_prf_org_code                CONSTANT VARCHAR2(30) := 'XXCOI1_ORGANIZATION_CODE';
+-- == 2009/05/13 V1.1 Added START ===============================================================
+    cv_prf_slip_number_mask        CONSTANT VARCHAR2(30) := 'XXCOI1_SLIP_NUMBER_MASK';
+-- == 2009/05/13 V1.1 Added END   ===============================================================
     -- 参照タイプ ユーザー定義取引タイプ名称
     cv_tran_type                   CONSTANT VARCHAR2(30) := 'XXCOI1_TRANSACTION_TYPE_NAME';
     -- 参照コード
@@ -589,6 +599,24 @@ AS
       , buff   => ''
     );
 --
+-- == 2009/05/13 V1.1 Added START ===============================================================
+    -- ===============================
+    -- 伝票№マスク取得
+    -- ===============================
+    gn_slip_number_mask  :=  TO_NUMBER(fnd_profile.value( cv_prf_slip_number_mask ));
+    -- 共通関数の戻り値がNULLの場合、またはパラメータ.在庫組織コードと相違する場合
+    IF (gn_slip_number_mask IS NULL) THEN
+      -- 伝票№マスク取得エラーメッセージ
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application_short_name
+                     , iv_name         => cv_msg_code_xxcoi_10381
+                     , iv_token_name1  => cv_tkn_pro
+                     , iv_token_value1 => cv_prf_slip_number_mask
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- == 2009/05/13 V1.1 Added END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -812,7 +840,11 @@ AS
       UNION
       SELECT 
              mmt.transaction_date                       AS transaction_date                 -- 伝票日付
-           , TO_CHAR( mmt.transaction_set_id )          AS transaction_set_id               -- 伝票No(工場倉替・工場返品)
+-- == 2009/05/13 V1.1 Modified START ===============================================================
+--           , TO_CHAR( mmt.transaction_set_id )          AS transaction_set_id               -- 伝票No(工場倉替・工場返品)
+           , TO_CHAR(gn_slip_number_mask + mmt.transaction_set_id)
+                                                        AS transaction_set_id               -- 伝票No(工場倉替・工場返品)
+-- == 2009/05/13 V1.1 Modified END   ===============================================================
            , ( SUM( mmt.transaction_quantity ) * (-1) ) AS transaction_quantity             -- 取引数量
            , hca.account_number                         AS kyoten_from_code                 -- 出庫元拠点コード
            , mmt.attribute2                             AS kyoten_to_code                   -- 入庫先拠点コード(工場倉替・工場返品)

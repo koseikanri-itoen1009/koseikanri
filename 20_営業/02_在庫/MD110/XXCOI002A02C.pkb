@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A02C(body)
  * Description      : 倉替／返品情報の抽出
  * MD.050           : 倉替／返品情報の抽出 MD050_COI_002_A02
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/30    1.0   K.Nakamura       新規作成
+ *  2009/05/13    1.1   H.Sasaki         [T1_0774]伝票番号の桁数を修正
  *
  *****************************************************************************************/
 --
@@ -95,14 +96,17 @@ AS
   cv_application_short_name    CONSTANT VARCHAR2(10)  := 'XXCOI';        -- アプリケーション短縮名
 --
   -- メッセージ
-  cv_no_para_msg               CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなしメッセージ
-  cv_org_code_get_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005'; -- 在庫組織コード取得エラーメッセージ
-  cv_org_id_get_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00006'; -- 在庫組織ID取得エラーメッセージ
-  cv_no_data_msg               CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008'; -- 対象データ無しメッセージ
-  cv_lookup_code_get_err_msg   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00022'; -- 取引タイプ名取得エラーメッセージ
-  cv_tran_type_get_err_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10256'; -- 取引タイプID取得エラーメッセージ
-  cv_no_base_code_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10050'; -- 入力拠点存在チェックエラーメッセージ
-  cv_table_lock_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10054'; -- ロック取得エラーメッセージ（資材取引テーブル）
+  cv_no_para_msg               CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';  -- コンカレント入力パラメータなしメッセージ
+  cv_org_code_get_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00005';  -- 在庫組織コード取得エラーメッセージ
+  cv_org_id_get_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00006';  -- 在庫組織ID取得エラーメッセージ
+  cv_no_data_msg               CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008';  -- 対象データ無しメッセージ
+  cv_lookup_code_get_err_msg   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00022';  -- 取引タイプ名取得エラーメッセージ
+  cv_tran_type_get_err_msg     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10256';  -- 取引タイプID取得エラーメッセージ
+  cv_no_base_code_err_msg      CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10050';  -- 入力拠点存在チェックエラーメッセージ
+  cv_table_lock_err_msg        CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10054';  -- ロック取得エラーメッセージ（資材取引テーブル）
+-- == 2009/05/13 V1.1 Added START ===============================================================
+  cv_msg_code_xxcoi_10381      CONSTANT VARCHAR2(30)  := 'APP-XXCOI1-10381';  -- 伝票№マスク取得エラーメッセージ
+-- == 2009/05/13 V1.1 Added END   ===============================================================
 --
   -- トークン
   cv_tkn_pro                   CONSTANT VARCHAR2(20)  := 'PRO_TOK';              -- プロファイル名
@@ -151,6 +155,9 @@ AS
   -- PL/SQL表
   gt_slip_num_tab                       gt_slip_num_ttype;
   gt_kuragae_henpin_tab                 gt_kuragae_henpin_ttype;
+-- == 2009/05/13 V1.1 Added START ===============================================================
+  gn_slip_number_mask                   NUMBER;        -- 伝票№マスク(990000000000)
+-- == 2009/05/13 V1.1 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -180,6 +187,9 @@ AS
     -- *** ローカル定数 ***
     -- プロファイル 在庫組織コード
     cv_prf_org_code                     CONSTANT VARCHAR2(30) := 'XXCOI1_ORGANIZATION_CODE';
+-- == 2009/05/13 V1.1 Added START ===============================================================
+    cv_prf_slip_number_mask             CONSTANT VARCHAR2(30) := 'XXCOI1_SLIP_NUMBER_MASK';
+-- == 2009/05/13 V1.1 Added END   ===============================================================
     -- 参照タイプ ユーザー定義取引タイプ名称
     cv_tran_type                        CONSTANT VARCHAR2(30) := 'XXCOI1_TRANSACTION_TYPE_NAME';
     -- 参照コード
@@ -393,6 +403,25 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- == 2009/05/13 V1.1 Added START ===============================================================
+    -- ===============================
+    -- 伝票№マスク取得
+    -- ===============================
+    gn_slip_number_mask  :=  TO_NUMBER(fnd_profile.value( cv_prf_slip_number_mask ));
+    -- 共通関数の戻り値がNULLの場合、またはパラメータ.在庫組織コードと相違する場合
+    IF (gn_slip_number_mask IS NULL) THEN
+      -- 伝票№マスク取得エラーメッセージ
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application_short_name
+                     , iv_name         => cv_msg_code_xxcoi_10381
+                     , iv_token_name1  => cv_tkn_pro
+                     , iv_token_value1 => cv_prf_slip_number_mask
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- == 2009/05/13 V1.1 Added END   ===============================================================
+--
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -454,7 +483,7 @@ AS
       SELECT DISTINCT mmt.transaction_set_id AS transaction_set_id        -- 取引セットID(伝票No)
       FROM   mtl_material_transactions       mmt                          -- 資材取引テーブル
       WHERE  mmt.transaction_type_id IN ( gt_tran_type_factory_change     -- 取引タイプID 工場倉替
-                                        , gt_tran_type_factory_change_b   -- 取引タイプID 工場倉替
+                                        , gt_tran_type_factory_change_b   -- 取引タイプID 工場倉替振戻
                                         , gt_tran_type_factory_return     -- 取引タイプID 工場返品
                                         , gt_tran_type_factory_return_b ) -- 取引タイプID 工場返品振戻
       AND    mmt.attribute4          IS NULL                              -- 工場倉替返品連携フラグ
@@ -556,7 +585,11 @@ AS
     CURSOR info_kuragae_henpin_cur
     IS
       SELECT 
-             mmt.transaction_set_id    AS mmt_transaction_set_id                        -- 取引セットID
+-- == 2009/05/13 V1.1 Modified START ===============================================================
+--             mmt.transaction_set_id    AS mmt_transaction_set_id                        -- 取引セットID
+             gn_slip_number_mask + mmt.transaction_set_id
+                                       AS mmt_transaction_set_id                        -- 取引セットID
+-- == 2009/05/13 V1.1 Modified END   ===============================================================
            , mmt.transaction_date      AS mmt_transaction_date                          -- 取引日
            , mmt.attribute2            AS mmt_attribute2                                -- 出荷倉庫コード
            , mmt.attribute3            AS mmt_attribute3                                -- 子コード
