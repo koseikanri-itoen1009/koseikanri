@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/06/30    1.4   Kazuo Kumamoto   システムテスト障害対応
  *                                       (1.4.1)ケース入り数が1件目しか出力されない不具合対応
  *                                       (1.4.2)「**項目計**」が「項目計」と出力される不具合対応
+ *  2008/07/01    1.5   Marushita        ST不具合339対応製造日をロットマスタから取得
  *
  *****************************************************************************************/
 --
@@ -640,6 +641,7 @@ AS
               ,xxpo_price_headers       xph
               ,xxpo_price_lines         xpl
               ,xxcmn_lookup_values_v    flv
+              ,ic_lots_mst              ilm
           WHERE flv.lookup_type               = gc_lookup_item_detail
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --          AND   xpl.expense_item_detail_type  = flv.lookup_code
@@ -648,7 +650,7 @@ AS
           AND   xpl.expense_item_type = p_type_id
           AND   xph.price_header_id   = xpl.price_header_id
           AND   DECODE( iimc.attribute20
-                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( pla.attribute9 )
+                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
                                            , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                       )               BETWEEN xph.start_date_active AND xph.end_date_active
           AND   xph.price_type        = gc_price_type_r
@@ -666,6 +668,8 @@ AS
           AND   xrart.item_id         = p_item_id
           AND   xrart.vendor_id       = p_vendor_id
           AND   xrart.department_code = NVL( p_dept_code, department_code )
+          AND   xrart.item_id         = ilm.item_id(+)
+          AND   xrart.lot_number      = ilm.lot_no(+)
         )
       GROUP BY detail_code
               ,detail_name
@@ -958,6 +962,7 @@ AS
               ,xxpo_price_headers       xph
               ,xxpo_price_lines         xpl
               ,xxcmn_lookup_values_v    flv
+              ,ic_lots_mst              ilm
           WHERE flv.lookup_type      = gc_lookup_item_type
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --          AND   xpl.expense_item_type = flv.lookup_code
@@ -965,7 +970,7 @@ AS
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
           AND   xph.price_header_id   = xpl.price_header_id
           AND   DECODE( iimc.attribute20
-                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( pla.attribute9 )
+                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
                                            , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                       )               BETWEEN xph.start_date_active AND xph.end_date_active
           AND   xph.price_type        = gc_price_type_r
@@ -983,6 +988,8 @@ AS
           AND   xrart.item_id         = p_item_id
           AND   xrart.vendor_id       = p_vendor_id
           AND   xrart.department_code = NVL( p_dept_code, department_code )
+          AND   xrart.item_id         = ilm.item_id(+)
+          AND   xrart.lot_number      = ilm.lot_no(+)
         )
       GROUP BY type_id
               ,type_code
@@ -1601,6 +1608,7 @@ AS
               ,xxpo_price_headers       xph
               ,xxpo_price_lines         xpl
               ,xxcmn_lookup_values_v    flv
+              ,ic_lots_mst              ilm
           WHERE flv.lookup_type              = gc_lookup_item_detail
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --          AND   xpl.expense_item_detail_type  = flv.lookup_code
@@ -1608,7 +1616,7 @@ AS
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
           AND   xph.price_header_id   = xpl.price_header_id
           AND   DECODE( iimc.attribute20
-                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( pla.attribute9 )
+                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
                                            , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                       )               BETWEEN xph.start_date_active AND xph.end_date_active
           AND   xph.price_type        = gc_price_type_r
@@ -1625,6 +1633,8 @@ AS
           AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
           AND   xrart.item_id         = p_item_id
           AND   xrart.department_code = NVL( p_dept_code, department_code )
+          AND   xrart.item_id         = ilm.item_id(+)
+          AND   xrart.lot_number      = ilm.lot_no(+)
         )
       GROUP BY attribute1
               ,meaning
@@ -1860,6 +1870,7 @@ AS
                 ,xxpo_price_headers     xph
                 ,xxpo_price_lines       xpl
                 ,xxcmn_lookup_values_v  flv
+                ,ic_lots_mst            ilm
             WHERE flv.lookup_type       = gc_lookup_item_type
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --            AND   xpl.expense_item_type = flv.lookup_code
@@ -1867,7 +1878,7 @@ AS
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
             AND   xph.price_header_id   = xpl.price_header_id
             AND   DECODE( iimc.attribute20
-                         ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( pla.attribute9 )
+                         ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
                                              , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                         )               BETWEEN xph.start_date_active AND xph.end_date_active
             AND   xph.price_type        = gc_price_type_r
@@ -1884,6 +1895,8 @@ AS
             AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
             AND   xrart.item_id         = lr_ref.item_id
             AND   xrart.department_code = NVL( iv_dept_code, department_code )
+            AND   xrart.item_id         = ilm.item_id(+)
+            AND   xrart.lot_number      = ilm.lot_no(+)
           )
         ;
       EXCEPTION
@@ -2389,6 +2402,7 @@ AS
               ,xxpo_price_headers       xph
               ,xxpo_price_lines         xpl
               ,xxcmn_lookup_values_v    flv
+              ,ic_lots_mst              ilm
           WHERE flv.lookup_type              = gc_lookup_item_detail
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --          AND   xpl.expense_item_detail_type  = flv.lookup_code
@@ -2396,7 +2410,7 @@ AS
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
           AND   xph.price_header_id          = xpl.price_header_id
           AND   DECODE( iimc.attribute20
-                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( pla.attribute9 )
+                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
                                            , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                       )               BETWEEN xph.start_date_active AND xph.end_date_active
           AND   xph.price_type        = gc_price_type_r
@@ -2419,6 +2433,8 @@ AS
           AND   xicv.crowd_code IN( NVL( gr_param.crowd_code_01, xicv.crowd_code )
                                    ,NVL( gr_param.crowd_code_02, xicv.crowd_code )
                                    ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
+          AND   xrart.item_id         = ilm.item_id(+)
+          AND   xrart.lot_number      = ilm.lot_no(+)
         )
       GROUP BY attribute1
               ,meaning
@@ -2654,6 +2670,7 @@ AS
                 ,xxpo_price_headers       xph
                 ,xxpo_price_lines         xpl
                 ,xxcmn_lookup_values_v    flv
+                ,ic_lots_mst              ilm
             WHERE flv.lookup_type       = gc_lookup_item_type
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --            AND   xpl.expense_item_type = flv.lookup_code
@@ -2661,7 +2678,7 @@ AS
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
             AND   xph.price_header_id   = xpl.price_header_id
             AND   DECODE( iimc.attribute20
-                         ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( pla.attribute9 )
+                         ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
                                              , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                         )               BETWEEN xph.start_date_active AND xph.end_date_active
             AND   xph.price_type        = gc_price_type_r
@@ -2684,6 +2701,8 @@ AS
             AND   xicv.crowd_code IN( NVL( gr_param.crowd_code_01, xicv.crowd_code )
                                      ,NVL( gr_param.crowd_code_02, xicv.crowd_code )
                                      ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
+            AND   xrart.item_id         = ilm.item_id(+)
+            AND   xrart.lot_number      = ilm.lot_no(+)
           )
         ;
       EXCEPTION
