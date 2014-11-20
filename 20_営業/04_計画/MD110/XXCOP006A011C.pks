@@ -1,0 +1,46 @@
+CREATE OR REPLACE PACKAGE XXCOP006A011C
+AS
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Package Name     : XXCOP006A011C(spec)
+ * Description      : 横持計画
+ * MD.050           : 横持計画 MD050_COP_006_A01
+ * Version          : 3.0
+ *
+ * Program List
+ * -------------------- ------------------------------------------------------------
+ *  Name                 Description
+ * -------------------- ------------------------------------------------------------
+ *  main                 コンカレント実行ファイル登録プロシージャ
+ *
+ * Change Record
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- -------------------------------------------------
+ *  2009/01/19    1.0   Y.Goto           新規作成
+ *  2009/04/07    1.1   Y.Goto           T1_0273,T1_0274,T1_0289,T1_0366,T1_0367対応
+ *  2009/04/14    1.2   Y.Goto           T1_0539,T1_0541対応
+ *  2009/04/28    1.3   Y.Goto           T1_0846,T1_0920対応
+ *  2009/06/12    1.4   Y.Goto           T1_1394対応
+ *  2009/07/13    2.0   Y.Goto           0000669対応(共通課題IE479)
+ *  2009/11/30    3.0   Y.Goto           I_E_479_019(横持計画パラレル化対応、アプリPT対応、プログラムIDの変更)
+ *
+ *****************************************************************************************/
+--
+  --コンカレント実行ファイル登録プロシージャ
+  PROCEDURE main(
+     errbuf                 OUT    VARCHAR2                 --   エラーメッセージ #固定#
+    ,retcode                OUT    VARCHAR2                 --   エラーコード     #固定#
+    ,iv_planning_date_from  IN     VARCHAR2                 -- 1.計画立案期間(FROM)
+    ,iv_planning_date_to    IN     VARCHAR2                 -- 2.計画立案期間(TO)
+    ,iv_plan_type           IN     VARCHAR2                 -- 3.出荷計画区分
+    ,iv_shipment_date_from  IN     VARCHAR2                 -- 4.出荷ペース計画期間(FROM)
+    ,iv_shipment_date_to    IN     VARCHAR2                 -- 5.出荷ペース計画期間(TO)
+    ,iv_forecast_date_from  IN     VARCHAR2                 -- 6.出荷予測期間(FROM)
+    ,iv_forecast_date_to    IN     VARCHAR2                 -- 7.出荷予測期間(TO)
+    ,iv_allocated_date      IN     VARCHAR2                 -- 8.出荷引当済日
+    ,iv_item_code           IN     VARCHAR2                 -- 9.品目コード
+  );
+END XXCOP006A011C;
+/

@@ -1,0 +1,24 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Index Name      : XXCOP_WK_YOKO_PLANNING_N02
+ * Description     : 横持計画物流ワークテーブル－索引2
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-12-01    1.0   SCS.MHOKKANJI    新規作成
+ *
+ ************************************************************************/
+CREATE INDEX xxcop.xxcop_wk_yoko_planning_n02
+ ON xxcop.xxcop_wk_yoko_planning
+  ( request_id
+   ,transaction_id
+   ,shipping_date
+   ,item_id
+   ,rcpt_loct_id
+   ,freshness_condition
+  ) TABLESPACE xxidx2
+/

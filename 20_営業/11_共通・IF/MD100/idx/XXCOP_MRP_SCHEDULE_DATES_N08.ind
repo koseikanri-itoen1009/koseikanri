@@ -1,0 +1,7 @@
+CREATE INDEX mrp.xxcop_mrp_schedule_dates_n08 ON mrp_schedule_dates
+( schedule_designator
+ ,organization_id
+ ,inventory_item_id
+ ,schedule_level
+) TABLESPACE apps_ts_tx_idx
+/

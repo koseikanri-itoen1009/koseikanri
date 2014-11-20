@@ -1,0 +1,2 @@
+CREATE INDEX gmp.xxcop_mr_shcl_hdr_n01 ON mr_shcl_hdr (calendar_no) TABLESPACE apps_ts_tx_idx
+/

@@ -1,0 +1,75 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2009. All rights reserved.
+ *
+ * View Name       : XXCOP_WK_YOKO_LOCATIONS
+ * Description     : 横持計画品目別代表倉庫ワークテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-10-05    1.0   SCS.Goto        新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_WK_YOKO_LOCATIONS (
+     transaction_id                 NUMBER        NOT NULL
+    ,planning_flag                  VARCHAR2(1)
+    ,frq_loct_id                    NUMBER        NOT NULL
+    ,frq_loct_code                  VARCHAR2(4)
+    ,loct_id                        NUMBER        NOT NULL
+    ,loct_code                      VARCHAR2(4)
+    ,item_id                        NUMBER(10)    NOT NULL
+    ,item_no                        VARCHAR2(7)
+    ,schedule_date                  DATE
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE
+  ,CONSTRAINT xxcop_wk_yoko_locations_u01 UNIQUE (transaction_id,item_id,loct_id,frq_loct_id)
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 50 INITRANS 8
+/
+COMMENT ON TABLE xxcop.xxcop_wk_yoko_locations IS '横持計画品目別代表倉庫ワークテーブル'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.transaction_id                   IS '横持計画作成ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.planning_flag                    IS '計画立案FLAG'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.frq_loct_id                      IS '代表倉庫ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.frq_loct_code                    IS '代表倉庫コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.loct_id                          IS '工場倉庫ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.loct_code                        IS '工場倉庫コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.item_id                          IS '品目ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.item_no                          IS '品目コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.schedule_date                    IS '計画日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.created_by                       IS '作成者'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.creation_date                    IS '作成日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.last_updated_by                  IS '最終更新者'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.last_update_date                 IS '最終更新日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.last_update_login                IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.request_id                       IS '要求ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.program_application_id           IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.program_id                       IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_locations.program_update_date              IS 'プログラム更新日'
+/

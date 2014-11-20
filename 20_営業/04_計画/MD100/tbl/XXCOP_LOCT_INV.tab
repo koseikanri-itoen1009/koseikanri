@@ -1,0 +1,205 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2009. All rights reserved.
+ *
+ * View Name       : XXCOP_LOCT_INV
+ * Description     : 横持計画手持在庫テーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-10-05    1.0   SCS.Goto        新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_LOCT_INV (
+     transaction_id                 NUMBER        NOT NULL
+    ,loct_id                        NUMBER        NOT NULL
+    ,loct_code                      VARCHAR2(4)
+    ,organization_id                NUMBER
+    ,organization_code              VARCHAR2(3)
+    ,item_id                        NUMBER(10)    NOT NULL
+    ,item_no                        VARCHAR2(7)
+    ,lot_id                         NUMBER
+    ,lot_no                         VARCHAR2(32)
+    ,manufacture_date               DATE
+    ,expiration_date                DATE
+    ,unique_sign                    VARCHAR2(6)
+    ,lot_status                     VARCHAR2(2)
+    ,loct_onhand                    NUMBER        NOT NULL
+    ,schedule_date                  DATE          NOT NULL
+    ,shipment_date                  DATE
+    ,voucher_no                     VARCHAR2(12)
+    ,transaction_type               VARCHAR2(2)
+    ,simulate_flag                  VARCHAR2(1)
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+ PCTFREE 10 PCTUSED 50 INITRANS 8
+PARTITION BY RANGE(transaction_id) (
+     PARTITION transaction_00 values less than (1)
+    ,PARTITION transaction_01 values less than (2)
+    ,PARTITION transaction_02 values less than (3)
+    ,PARTITION transaction_03 values less than (4)
+    ,PARTITION transaction_04 values less than (5)
+    ,PARTITION transaction_05 values less than (6)
+    ,PARTITION transaction_06 values less than (7)
+    ,PARTITION transaction_07 values less than (8)
+    ,PARTITION transaction_08 values less than (9)
+    ,PARTITION transaction_09 values less than (10)
+    ,PARTITION transaction_10 values less than (11)
+    ,PARTITION transaction_11 values less than (12)
+    ,PARTITION transaction_12 values less than (13)
+    ,PARTITION transaction_13 values less than (14)
+    ,PARTITION transaction_14 values less than (15)
+    ,PARTITION transaction_15 values less than (16)
+    ,PARTITION transaction_16 values less than (17)
+    ,PARTITION transaction_17 values less than (18)
+    ,PARTITION transaction_18 values less than (19)
+    ,PARTITION transaction_19 values less than (20)
+    ,PARTITION transaction_20 values less than (21)
+    ,PARTITION transaction_21 values less than (22)
+    ,PARTITION transaction_22 values less than (23)
+    ,PARTITION transaction_23 values less than (24)
+    ,PARTITION transaction_24 values less than (25)
+    ,PARTITION transaction_25 values less than (26)
+    ,PARTITION transaction_26 values less than (27)
+    ,PARTITION transaction_27 values less than (28)
+    ,PARTITION transaction_28 values less than (29)
+    ,PARTITION transaction_29 values less than (30)
+    ,PARTITION transaction_30 values less than (31)
+    ,PARTITION transaction_31 values less than (32)
+    ,PARTITION transaction_32 values less than (33)
+    ,PARTITION transaction_33 values less than (34)
+    ,PARTITION transaction_34 values less than (35)
+    ,PARTITION transaction_35 values less than (36)
+    ,PARTITION transaction_36 values less than (37)
+    ,PARTITION transaction_37 values less than (38)
+    ,PARTITION transaction_38 values less than (39)
+    ,PARTITION transaction_39 values less than (40)
+    ,PARTITION transaction_40 values less than (41)
+    ,PARTITION transaction_41 values less than (42)
+    ,PARTITION transaction_42 values less than (43)
+    ,PARTITION transaction_43 values less than (44)
+    ,PARTITION transaction_44 values less than (45)
+    ,PARTITION transaction_45 values less than (46)
+    ,PARTITION transaction_46 values less than (47)
+    ,PARTITION transaction_47 values less than (48)
+    ,PARTITION transaction_48 values less than (49)
+    ,PARTITION transaction_49 values less than (50)
+    ,PARTITION transaction_50 values less than (51)
+    ,PARTITION transaction_51 values less than (52)
+    ,PARTITION transaction_52 values less than (53)
+    ,PARTITION transaction_53 values less than (54)
+    ,PARTITION transaction_54 values less than (55)
+    ,PARTITION transaction_55 values less than (56)
+    ,PARTITION transaction_56 values less than (57)
+    ,PARTITION transaction_57 values less than (58)
+    ,PARTITION transaction_58 values less than (59)
+    ,PARTITION transaction_59 values less than (60)
+    ,PARTITION transaction_60 values less than (61)
+    ,PARTITION transaction_61 values less than (62)
+    ,PARTITION transaction_62 values less than (63)
+    ,PARTITION transaction_63 values less than (64)
+    ,PARTITION transaction_64 values less than (65)
+    ,PARTITION transaction_65 values less than (66)
+    ,PARTITION transaction_66 values less than (67)
+    ,PARTITION transaction_67 values less than (68)
+    ,PARTITION transaction_68 values less than (69)
+    ,PARTITION transaction_69 values less than (70)
+    ,PARTITION transaction_70 values less than (71)
+    ,PARTITION transaction_71 values less than (72)
+    ,PARTITION transaction_72 values less than (73)
+    ,PARTITION transaction_73 values less than (74)
+    ,PARTITION transaction_74 values less than (75)
+    ,PARTITION transaction_75 values less than (76)
+    ,PARTITION transaction_76 values less than (77)
+    ,PARTITION transaction_77 values less than (78)
+    ,PARTITION transaction_78 values less than (79)
+    ,PARTITION transaction_79 values less than (80)
+    ,PARTITION transaction_80 values less than (81)
+    ,PARTITION transaction_81 values less than (82)
+    ,PARTITION transaction_82 values less than (83)
+    ,PARTITION transaction_83 values less than (84)
+    ,PARTITION transaction_84 values less than (85)
+    ,PARTITION transaction_85 values less than (86)
+    ,PARTITION transaction_86 values less than (87)
+    ,PARTITION transaction_87 values less than (88)
+    ,PARTITION transaction_88 values less than (89)
+    ,PARTITION transaction_89 values less than (90)
+    ,PARTITION transaction_90 values less than (91)
+    ,PARTITION transaction_91 values less than (92)
+    ,PARTITION transaction_92 values less than (93)
+    ,PARTITION transaction_93 values less than (94)
+    ,PARTITION transaction_94 values less than (95)
+    ,PARTITION transaction_95 values less than (96)
+    ,PARTITION transaction_96 values less than (97)
+    ,PARTITION transaction_97 values less than (98)
+    ,PARTITION transaction_98 values less than (99)
+    ,PARTITION transaction_99 values less than (100)
+)
+/
+COMMENT ON TABLE xxcop.xxcop_loct_inv IS '横持計画手持在庫テーブル'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.transaction_id                            IS '横持計画作成ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.loct_id                                   IS '保管場所ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.loct_code                                 IS '保管場所コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.organization_id                           IS '組織ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.organization_code                         IS '組織コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.item_id                                   IS '品目ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.item_no                                   IS '品目コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.lot_id                                    IS 'ロットID'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.lot_no                                    IS 'ロットNO'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.manufacture_date                          IS '製造年月日'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.expiration_date                           IS '賞味期限'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.unique_sign                               IS '固有記号'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.lot_status                                IS 'ロットステータス'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.loct_onhand                               IS '計画数'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.schedule_date                             IS '計画日'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.shipment_date                             IS '予定日'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.voucher_no                                IS '伝票NO'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.transaction_type                          IS 'トランザクション種別'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.simulate_flag                             IS '擬似更新FLAG'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.created_by                                IS '作成者'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.creation_date                             IS '作成日'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.last_updated_by                           IS '最終更新者'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.last_update_date                          IS '最終更新日'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.last_update_login                         IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.request_id                                IS '要求ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.program_application_id                    IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.program_id                                IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcop.xxcop_loct_inv.program_update_date                       IS 'プログラム更新日'
+/

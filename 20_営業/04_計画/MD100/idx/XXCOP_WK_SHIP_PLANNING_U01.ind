@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX xxcop.xxcop_wk_ship_planning_u01 ON xxcop.xxcop_wk_ship_planning (transaction_id,plant_org_id,inventory_item_id,product_schedule_date,ship_org_id,receipt_org_id
+) TABLESPACE xxidx2;

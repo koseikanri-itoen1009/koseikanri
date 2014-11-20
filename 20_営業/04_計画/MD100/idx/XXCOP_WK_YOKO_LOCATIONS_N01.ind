@@ -1,0 +1,22 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
+ *
+ * Index Name      : XXCOP_WK_YOKO_LOCATIONS_N01
+ * Description     : 横持計画品目別代表倉庫ワークテーブル－索引1
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-12-01    1.0   SCS.MHOKKANJI    新規作成
+ *
+ ************************************************************************/
+CREATE INDEX xxcop.xxcop_wk_yoko_locations_n01
+ ON xxcop.xxcop_wk_yoko_locations
+  ( request_id
+   ,transaction_id
+   ,item_id
+   ,frq_loct_id
+  ) TABLESPACE xxidx2
+/

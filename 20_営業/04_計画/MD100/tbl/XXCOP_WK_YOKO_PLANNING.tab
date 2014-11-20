@@ -1,0 +1,196 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2009. All rights reserved.
+ *
+ * View Name       : XXCOP_WK_YOKO_PLANNING
+ * Description     : 横持計画物流ワークテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-10-05    1.0   SCS.Goto        新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_WK_YOKO_PLANNING (
+     transaction_id                 NUMBER        NOT NULL
+    ,planning_flag                  VARCHAR2(1)
+    ,shipping_date                  DATE
+    ,receipt_date                   DATE
+    ,item_id                        NUMBER(10)
+    ,inventory_item_id              NUMBER
+    ,item_no                        VARCHAR2(7)
+    ,item_name                      VARCHAR2(50)
+    ,num_of_case                    NUMBER
+    ,palette_max_cs_qty             NUMBER
+    ,palette_max_step_qty           NUMBER
+    ,ship_organization_id           NUMBER
+    ,ship_organization_code         VARCHAR2(3)
+    ,ship_organization_name         VARCHAR2(50)
+    ,ship_loct_id                   NUMBER
+    ,ship_loct_code                 VARCHAR2(4)
+    ,ship_loct_name                 VARCHAR2(50)
+    ,ship_calendar_code             VARCHAR2(16)
+    ,rcpt_organization_id           NUMBER
+    ,rcpt_organization_code         VARCHAR2(3)
+    ,rcpt_organization_name         VARCHAR2(50)
+    ,rcpt_loct_id                   NUMBER
+    ,rcpt_loct_code                 VARCHAR2(4)
+    ,rcpt_loct_name                 VARCHAR2(50)
+    ,rcpt_calendar_code             VARCHAR2(16)
+    ,delivery_lead_time             NUMBER
+    ,shipping_pace                  NUMBER
+    ,forecast_pace                  NUMBER
+    ,total_shipping_pace            NUMBER
+    ,total_forecast_pace            NUMBER
+    ,delivery_unit                  VARCHAR2(10)
+    ,assignment_set_name            VARCHAR2(50)
+    ,assignment_set_type            VARCHAR2(1)
+    ,assignment_type                NUMBER
+    ,sourcing_rule_type             NUMBER
+    ,sourcing_rule_name             VARCHAR2(50)
+    ,sourcing_rule_dummy_flag       VARCHAR2(1)
+    ,shipping_type                  VARCHAR2(1)
+    ,freshness_priority             NUMBER
+    ,freshness_condition            VARCHAR2(2)
+    ,freshness_class                VARCHAR2(1)
+    ,freshness_check_value          NUMBER
+    ,freshness_adjust_value         NUMBER
+    ,safety_stock_days              NUMBER
+    ,max_stock_days                 NUMBER
+    ,sy_manufacture_date            DATE
+    ,sy_effective_date              DATE
+    ,sy_disable_date                DATE
+    ,sy_maxmum_quantity             NUMBER
+    ,sy_stocked_quantity            NUMBER
+    ,created_by                     NUMBER(15)    NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15)    NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15)
+    ,request_id                     NUMBER(15)
+    ,program_application_id         NUMBER(15)
+    ,program_id                     NUMBER(15)
+    ,program_update_date            DATE)
+ PCTFREE 10 PCTUSED 50 INITRANS 8
+/
+COMMENT ON TABLE xxcop.xxcop_wk_yoko_planning IS '横持計画物流ワークテーブル'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.transaction_id                    IS '横持計画作成ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.planning_flag                     IS '計画立案フラグ'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.shipping_date                     IS '出荷日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.receipt_date                      IS '着日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.item_id                           IS '品目ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.inventory_item_id                 IS '在庫品目ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.item_no                           IS '品目コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.item_name                         IS '品目名称'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.num_of_case                       IS 'ケース入数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.palette_max_cs_qty                IS '配数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.palette_max_step_qty              IS '段数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.ship_organization_id              IS '移動元組織ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.ship_organization_code            IS '移動元組織コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.ship_organization_name            IS '移動元組織名称'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.ship_loct_id                      IS '移動元保管場所ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.ship_loct_code                    IS '移動元保管場所コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.ship_loct_name                    IS '移動元保管場所名称'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.ship_calendar_code                IS '移動元カレンダコード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.rcpt_organization_id              IS '移動先組織ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.rcpt_organization_code            IS '移動先組織コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.rcpt_organization_name            IS '移動先組織名称'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.rcpt_loct_id                      IS '移動先保管場所ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.rcpt_loct_code                    IS '移動先保管場所コード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.rcpt_loct_name                    IS '移動先保管場所名称'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.rcpt_calendar_code                IS '移動先カレンダコード'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.delivery_lead_time                IS '配送リードタイム'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.shipping_pace                     IS '出荷実績ペース'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.forecast_pace                     IS '出荷予測ペース'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.total_shipping_pace               IS '総出荷実績ペース'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.total_forecast_pace               IS '総出荷予測ペース'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.delivery_unit                     IS '配送単位'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.assignment_set_name               IS '割当セット名'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.assignment_set_type               IS '割当セット区分'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.assignment_type                   IS '割当先タイプ'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.sourcing_rule_type                IS 'ソースルールタイプ'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.sourcing_rule_name                IS 'ソースルール名'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.sourcing_rule_dummy_flag          IS '供給ルールダミーフラグ'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.shipping_type                     IS '出荷計画区分'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.freshness_priority                IS '優先順位'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.freshness_condition               IS '鮮度条件'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.freshness_class                   IS '鮮度条件分類'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.freshness_check_value             IS '鮮度条件チェック値'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.freshness_adjust_value            IS '鮮度条件調整値'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.safety_stock_days                 IS '安全在庫日数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.max_stock_days                    IS '最大在庫日数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.sy_manufacture_date               IS '特別横持開始製造年月日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.sy_effective_date                 IS '特別横持有効開始日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.sy_disable_date                   IS '特別横持有効終了日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.sy_maxmum_quantity                IS '特別横持設定数量'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.sy_stocked_quantity               IS '特別横持移動数'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.created_by                        IS '作成者'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.creation_date                     IS '作成日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.last_updated_by                   IS '最終更新者'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.last_update_date                  IS '最終更新日'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.last_update_login                 IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.request_id                        IS '要求ID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.program_application_id            IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.program_id                        IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcop.xxcop_wk_yoko_planning.program_update_date               IS 'プログラム更新日'
+/

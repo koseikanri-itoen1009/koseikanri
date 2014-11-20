@@ -1,0 +1,6 @@
+CREATE INDEX xxwsh.xxwsh_ol_sales_n02 ON xxwsh.xxwsh_order_lines_all
+( order_header_id
+ ,shipping_inventory_item_id
+ ,delete_flag
+) TABLESPACE xxidx
+/
