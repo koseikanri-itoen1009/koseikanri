@@ -7,7 +7,7 @@ AS
  * Description      : ‰^’ÀƒAƒhƒIƒ“ƒCƒ“ƒ^ƒtƒF[ƒXæˆ—
  * MD.050           : ‰^’ÀŒvZiƒgƒ‰ƒ“ƒUƒNƒVƒ‡ƒ“j       T_MD050_BPO_732
  * MD.070           : ‰^’ÀƒAƒhƒIƒ“ƒCƒ“ƒ^ƒtƒF[ƒXæˆ— T_MD070_BPO_73E
- * Version          : 1.3
+ * Version          : 1.4
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -33,6 +33,7 @@ AS
  *  2008/05/13    1.1  Oracle ’Å–¼ ºŒ\  “à•”•ÏX—v‹#85‘Î‰
  *  2008/05/26    1.2  Oracle –ì‘º ³K  Œ‹‡áŠQ 
  *  2008/07/10    1.3  Oracle –ì‘º ³K  STáŠQ #432 ‘Î‰
+ *  2008/07/25    1.4  Oracle –ì‘º ³K  STáŠQ #473 ‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1533,11 +1534,21 @@ AS
         ELSE
           IF (ir_deliv_if_rec.qty1 IS NOT NULL) THEN
             u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt) :=
-              ROUND(gr_deliv_company.pay_picking_amount * ir_deliv_if_rec.qty1);
+-- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ START #####
+--              ROUND(gr_deliv_company.pay_picking_amount * ir_deliv_if_rec.qty1);
+              CEIL(gr_deliv_company.pay_picking_amount * ir_deliv_if_rec.qty1);
+-- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ END   #####
           ELSE
+-- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ START #####
+/*****
             u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt) :=
               ROUND(gr_deliv_company.pay_picking_amount *
                 gt_deliv_head_tbl(gn_deliv_head_cnt).qty1);
+*****/
+            u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt) :=
+              CEIL(gr_deliv_company.pay_picking_amount *
+                gt_deliv_head_tbl(gn_deliv_head_cnt).qty1);
+-- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ END   #####
           END IF;
         END IF;
       -- x•¥¿‹‹æ•ª  u¿‹v‚Ìê‡
@@ -1579,18 +1590,34 @@ AS
         u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) := ir_deliv_if_rec.total_amount;
       ELSE
         -- Œ_–ñ‹àŠz { ¬ÚŠ„‘‹àŠz { ƒsƒbƒLƒ“ƒO—¿ { ”—¿‹à
+-- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ START #####
+/*****
         u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) :=
                       u_deliv_head_con_rate_tab(gn_upd_deliv_head_cnt) +
                       u_deliv_head_cns_srchrg_tab(gn_upd_deliv_head_cnt) +
                       u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt) +
                       u_deliv_head_many_rt_tab(gn_upd_deliv_head_cnt);
+*****/
+        u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt) :=
+                      NVL(u_deliv_head_con_rate_tab(gn_upd_deliv_head_cnt),0) +
+                      NVL(u_deliv_head_cns_srchrg_tab(gn_upd_deliv_head_cnt),0) +
+                      NVL(u_deliv_head_pic_chrg_tab(gn_upd_deliv_head_cnt),0) +
+                      NVL(u_deliv_head_many_rt_tab(gn_upd_deliv_head_cnt),0);
+-- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ END   #####
       END IF;
     END IF;
 --
     -- ·Šz
+-- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ START #####
+/*****
     u_deliv_head_balance_tab(gn_upd_deliv_head_cnt) :=
                 u_deliv_head_chrg_amt_tab(gn_upd_deliv_head_cnt) -
                   u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt);
+*****/
+    u_deliv_head_balance_tab(gn_upd_deliv_head_cnt) :=
+                NVL(u_deliv_head_chrg_amt_tab(gn_upd_deliv_head_cnt),0) -
+                  NVL(u_deliv_head_ttl_amt_tab(gn_upd_deliv_head_cnt),0);
+-- ##### 20080725 Ver.1.4 STáŠQ473‘Î‰ END   #####
 --
     -- ·ˆÙ‹æ•ª
     -- x•¥¿‹‹æ•ª = ux•¥v‚Ìê‡
