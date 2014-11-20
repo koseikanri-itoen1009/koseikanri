@@ -127,6 +127,10 @@ SELECT   iimb.item_no                      AS item_no                       -- •
         ,nic.new_item_div_name             AS new_item_div_name             -- V¤•i‹æ•ª–¼
         ,sen.sp_supplier_code_name         AS sp_supplier_code_name         -- ê–å“Xd“üæ–¼
          --
+-- 2009/05/12 áŠQT1_0906 add start by Yutaka.Kuboshima
+        ,xsib.case_conv_inc_num            AS case_conv_inc_num             -- ƒP[ƒXŠ·Z“ü”
+-- 2009/05/12 áŠQT1_0906 add end by Yutaka.Kuboshima
+
 FROM     ic_item_mst_b      iimb        -- OPM•i–Úƒ}ƒXƒ^
         ,xxcmn_item_mst_b   ximb        -- OPM•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
         ,xxcmm_system_items_b xsib      -- Disc•i–ÚƒAƒhƒIƒ“ƒ}ƒXƒ^
@@ -249,7 +253,10 @@ WHERE   iimb.item_id                 = ximb.item_id
 AND     ximb.start_date_active(+)   <= TRUNC(SYSDATE)
 AND     ximb.end_date_active(+)     >= TRUNC(SYSDATE)
 AND     iimb.item_no                 = disc.item_code(+)            -- ŠO•”Œ‹‡
-AND     iimb.item_no                 = xsib.item_code(+)
+-- 2009/05/12 áŠQT1_0317 modify start by Yutaka.Kuboshima
+--AND     iimb.item_no                 = xsib.item_code(+)
+AND     iimb.item_no                 = xsib.item_code
+-- 2009/05/12 áŠQT1_0317 modify end by Yutaka.Kuboshima
 AND     iimb.item_id                 = t.item_id(+)
 AND     ximb.parent_item_id          = ximbp.item_id(+)          -- xxcmn_item_mst_b(q)  xxcmn_item_mst_b(e)
 AND     ximbp.start_date_active(+)  <= TRUNC(SYSDATE)
@@ -271,8 +278,10 @@ AND     xsib.nets_uom_code           = nets.nets_uom_code(+)
 AND     ximb.obsolete_class          = obs.obsolete_class(+)
 AND     xsib.new_item_div            = nic.new_item_div(+)
 AND     xsib.sp_supplier_code        = sen.sp_supplier_code(+)
-AND     LENGTHB(iimb.item_no) = 7
-AND     iimb.item_no BETWEEN '0000001' AND '3999999'
+-- 2009/05/12 áŠQT1_0317 delete start by Yutaka.Kuboshima
+--AND     LENGTHB(iimb.item_no) = 7
+--AND     iimb.item_no BETWEEN '0000001' AND '3999999'
+-- 2009/05/12 áŠQT1_0317 delete end by Yutaka.Kuboshima
 /
 COMMENT ON TABLE APPS.XXCMM_ITEM_SCREEN_V IS '•i–Ú“o˜^‰æ–Êƒrƒ…['
 /
@@ -489,4 +498,7 @@ COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.OBSOLETE_CLASS_NAME IS '”p~‹æ•ª–¼'
 COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.NEW_ITEM_DIV_NAME IS 'V¤•i‹æ•ª–¼'
 /
 COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.SP_SUPPLIER_CODE_NAME IS 'ê–å“Xd“üæ–¼'
+/
+-- 2009/05/12 áŠQT1_0906 add start by Yutaka.Kuboshima
+COMMENT ON COLUMN APPS.XXCMM_ITEM_SCREEN_V.CASE_CONV_INC_NUM IS 'ƒP[ƒXŠ·Z“ü”'
 /
