@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCSO016A04C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCSO016A04C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -41,6 +41,7 @@ AS
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-21    1.4   Kazuo.Satomura   システムテスト障害対応(T1_1036)
  *  2009-06-05    1.5   Kazuo.Satomura   システムテスト障害対応(T1_0478再修正)
+ *  2009-07-21    1.6   Kazuo.Satomura   統合テスト障害対応(0000070)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1682,7 +1683,12 @@ AS
       AND    jtb.owner_id                = jrr.resource_id
       AND    jrr.category                = cv_category
       AND    jrr.source_id               = ppf.person_id
-     /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
+      /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
+      /* 2009.07.21 K.Satomura 0000070対応 START */
+      AND    TRUNC(jtb.actual_end_date) <= ld_process_date
+      AND    jtb.task_status_id          = lv_tsk_stts_cls
+      AND    jtb.deleted_flag            = cv_no
+      /* 2009.07.21 K.Satomura 0000070対応 END */
       -- クローズ以外の過去日付のタスク
       -- 指定した日付よりも過去に作成/更新されたレコードで当日が訪問日時の訪問実績データ（顧客）
       UNION ALL
@@ -1793,6 +1799,11 @@ AS
       AND    jrr.source_id               = ppf.person_id
       AND    ala.lead_id                 = jtb.source_object_id
       /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
+      /* 2009.07.21 K.Satomura 0000070対応 START */
+      AND    TRUNC(jtb.actual_end_date) <= ld_process_date
+      AND    jtb.task_status_id          = lv_tsk_stts_cls
+      AND    jtb.deleted_flag            = cv_no
+      /* 2009.07.21 K.Satomura 0000070対応 END */
       UNION ALL
       -- クローズ以外の過去日付の商談タスク
       -- 指定した日付よりも過去に作成/更新されたレコードで当日が訪問日時の訪問実績データ（商談）

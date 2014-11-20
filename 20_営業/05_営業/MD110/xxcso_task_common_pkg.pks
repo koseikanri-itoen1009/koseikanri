@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_TASK_COMMON_PKG(SPEC)
  * Description      : 共通関数(XXCSOタスク）
  * MD.050/070       :
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -23,7 +23,7 @@ AS
  *  2008/12/05    1.0   K.Cho            新規作成
  *  2008/12/16    1.0   T.maruyama       訪問タスク削除関数
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
- *
+ *  2009-07-16    1.2   Kazuo.Satomura   0000070対応
  *****************************************************************************************/
 --
   -- 訪問タスク登録関数
@@ -33,6 +33,9 @@ AS
     iv_party_name            IN  VARCHAR2,               -- 顧客のパーティ名称
     id_visit_date            IN  DATE,                   -- 実績終了日（訪問日時）
     iv_description           IN  VARCHAR2 DEFAULT NULL,  -- 詳細内容
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    it_task_status_id        IN  jtf_task_statuses_b.task_status_id%TYPE DEFAULT NULL,-- タスクステータスＩＤ
+    /* 2009.07.16 K.Satomura 0000070対応 END */
     iv_attribute1            IN  VARCHAR2 DEFAULT NULL,  -- DFF1
     iv_attribute2            IN  VARCHAR2 DEFAULT NULL,  -- DFF2
     iv_attribute3            IN  VARCHAR2 DEFAULT NULL,  -- DFF3
@@ -62,6 +65,9 @@ AS
     id_visit_date            IN  DATE,                   -- 実績終了日（訪問日時）
     iv_description           IN  VARCHAR2 DEFAULT NULL,  -- 詳細内容
     in_obj_ver_num           IN  NUMBER,                 -- オブジェクトバージョン番号
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    it_task_status_id        IN  jtf_task_statuses_b.task_status_id%TYPE DEFAULT NULL,-- タスクステータスＩＤ
+    /* 2009.07.16 K.Satomura 0000070対応 END */
     iv_attribute1            IN  VARCHAR2 DEFAULT NULL,  -- DFF1
     iv_attribute2            IN  VARCHAR2 DEFAULT NULL,  -- DFF2
     iv_attribute3            IN  VARCHAR2 DEFAULT NULL,  -- DFF3

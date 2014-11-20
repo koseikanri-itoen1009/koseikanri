@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_006_A02_訪問実績データ格納
  *                    
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-14    1.4   Kazuo.Satomura   T1_0931対応
  *  2009-05-28    1.5   Kazuo.Satomura   T1_0137対応
+ *  2009-07-16    1.6   Kazuo.Satomura   0000070対応
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -136,6 +137,9 @@ AS
   cv_tkn_number_18       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00275';  -- パラメータフォーマットパターン
   cv_tkn_number_19       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00276';  -- ファイルアップロード名称
   cv_tkn_number_20       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00152';  -- CSVファイル名称
+  /* 2009.07.16 K.Satomura 0000070対応 START */
+  cv_tkn_number_21       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00578';  -- タスク存在エラー
+  /* 2009.07.16 K.Satomura 0000070対応 END */
 --
   -- トークンコード
   cv_tkn_err_msg         CONSTANT VARCHAR2(20) := 'ERR_MSG';
@@ -512,7 +516,7 @@ AS
     -- *** ローカル変数 ***
     lt_file_name         xxccp_mrp_file_ul_interface.file_name%TYPE;          -- ファイル名
     lt_file_content_type xxccp_mrp_file_ul_interface.file_content_type%TYPE;  -- ファイル区分
-    lt_file_data      xxccp_mrp_file_ul_interface.file_data%TYPE;             -- ファイルデータ
+    lt_file_data         xxccp_mrp_file_ul_interface.file_data%TYPE;             -- ファイルデータ
     lt_file_format       xxccp_mrp_file_ul_interface.file_format%TYPE;        -- ファイルフォーマット
     -- メッセージ出力用
     lv_msg               VARCHAR2(5000);
@@ -1360,35 +1364,51 @@ AS
       -- 抽出件数が0件の場合
       WHEN NO_DATA_FOUND THEN
 --
+        /* 2009.07.16 K.Satomura 0000070対応 START */
         -- ダミー顧客コードから取得したパーティID、パーティ名称と顧客ステータスをセット
-        g_visit_data_rec.party_id := gt_party_id;
-        g_visit_data_rec.party_name := gt_party_name;
-        g_visit_data_rec.customer_status := gt_customer_status;
+        --g_visit_data_rec.party_id := gt_party_id;
+        --g_visit_data_rec.party_name := gt_party_name;
+        --g_visit_data_rec.customer_status := gt_customer_status;
 --
-        lv_msg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name                  -- アプリケーション短縮名
-                       ,iv_name         => cv_tkn_number_15             -- メッセージコード
-                       ,iv_token_name1  => cv_tkn_tbl                   -- トークンコード1
-                       ,iv_token_value1 => cv_account_table_vl_nm       -- トークン値1
-                       ,iv_token_name2  => cv_tkn_item                  -- トークンコード2
-                       ,iv_token_value2 => cv_account_number_nm         -- トークン値2
-                       ,iv_token_name3  => cv_tkn_base_val              -- トークンコード3
-                       ,iv_token_value3 => iv_base_value                -- トークン値3
-                     );
-        lv_errbuf := lv_msg;
+        --lv_msg := xxccp_common_pkg.get_msg(
+        --                iv_application  => cv_app_name                  -- アプリケーション短縮名
+        --               ,iv_name         => cv_tkn_number_15             -- メッセージコード
+        --               ,iv_token_name1  => cv_tkn_tbl                   -- トークンコード1
+        --               ,iv_token_value1 => cv_account_table_vl_nm       -- トークン値1
+        --               ,iv_token_name2  => cv_tkn_item                  -- トークンコード2
+        --               ,iv_token_value2 => cv_account_number_nm         -- トークン値2
+        --               ,iv_token_name3  => cv_tkn_base_val              -- トークンコード3
+        --               ,iv_token_value3 => iv_base_value                -- トークン値3
+        --             );
+        --lv_errbuf := lv_msg;
 --
         -- メッセージを出力
-        fnd_file.put_line(
-           which  => FND_FILE.OUTPUT
-          ,buff   => lv_msg
-        );
+        --fnd_file.put_line(
+        --   which  => FND_FILE.OUTPUT
+        --  ,buff   => lv_msg
+        --);
 --
         -- ログ出力
-        fnd_file.put_line(
-           which  => FND_FILE.LOG
-          ,buff   => lv_errbuf 
-        );
+        --fnd_file.put_line(
+        --   which  => FND_FILE.LOG
+        --  ,buff   => lv_errbuf 
+        --);
 --
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name            -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_09       -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_item            -- トークンコード1
+                       ,iv_token_value1 => cv_account_number_nm   -- トークン値1
+                       ,iv_token_name2  => cv_tkn_tbl             -- トークンコード2
+                       ,iv_token_value2 => cv_account_table_vl_nm -- トークン値2
+                       ,iv_token_name3  => cv_tkn_base_val        -- トークンコード3
+                       ,iv_token_value3 => iv_base_value          -- トークン値3
+                     );
+        --
+        lv_errbuf := lv_errmsg;
+        RAISE global_skip_error_expt;
+        --
+        /* 2009.07.16 K.Satomura 0000070対応 END */
       -- 抽出に失敗した場合の後処理
       WHEN OTHERS THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -1476,6 +1496,12 @@ AS
     cv_code_employee     CONSTANT VARCHAR2(100) := 'RS_EMPLOYEE';
     cv_code_party        CONSTANT VARCHAR2(100) := 'PARTY';
     cv_deleted_flag_n    CONSTANT VARCHAR2(100) := 'N';
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    cv_task_close        CONSTANT VARCHAR2(100) := 'XXCSO1_TASK_STATUS_CLOSED_ID';
+    cv_visit_date_fmt1   CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI';
+    cv_visit_date_fmt2   CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI:SS';
+    cd_sysdate           CONSTANT DATE          := TO_DATE(TO_CHAR(SYSDATE, cv_visit_date_fmt1), cv_visit_date_fmt2);
+    /* 2009.07.16 K.Satomura 0000070対応 END */
     -- *** ローカル・カーソル ***
     CURSOR l_task_cur
     IS
@@ -1493,6 +1519,22 @@ AS
     -- *** ローカル・レコード *** 
     l_task_rec l_task_cur%ROWTYPE;
 --
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    CURSOR l_task_cur2
+    IS
+      SELECT task.task_id task_id                   -- タスクID
+            ,task.object_version_number obj_ver_num -- オブジェクトバージョン番号
+      FROM   jtf_tasks_b task
+      WHERE  task.owner_id                = g_visit_data_rec.resource_id
+      AND    task.owner_type_code         = cv_code_employee
+      AND    task.source_object_id        = g_visit_data_rec.party_id
+      AND    task.source_object_type_code = cv_code_party
+      AND    task.actual_end_date         = g_visit_data_rec.visit_date
+      AND    task.deleted_flag            = cv_deleted_flag_n
+      AND    task.task_status_id          = TO_NUMBER(fnd_profile.value(cv_task_close))
+      ORDER BY task.last_update_date DESC
+      FOR UPDATE NOWAIT;
+    /* 2009.07.16 K.Satomura 0000070対応 END */
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1507,16 +1549,54 @@ AS
       -- 抽出件数
       on_task_count := 0;
       -- カーソルオープン
-      OPEN l_task_cur;
+      /* 2009.07.16 K.Satomura 0000070対応 START */
+      IF (g_visit_data_rec.visit_date > cd_sysdate) THEN
+        -- 訪問日時が未来日付の場合
+      /* 2009.07.16 K.Satomura 0000070対応 END */
+        OPEN l_task_cur;
+      /* 2009.07.16 K.Satomura 0000070対応 START */
+      ELSE
+        -- 訪問日時が現在日時を含む過去日付の場合
+        OPEN l_task_cur2;
+        --
+      END IF;
+      /* 2009.07.16 K.Satomura 0000070対応 END */
 --
       <<task_id_loop>>
       LOOP
-        FETCH l_task_cur INTO l_task_rec;
+        /* 2009.07.16 K.Satomura 0000070対応 START */
+        IF (g_visit_data_rec.visit_date > cd_sysdate) THEN
+        /* 2009.07.16 K.Satomura 0000070対応 END */
+          FETCH l_task_cur INTO l_task_rec;
+        /* 2009.07.16 K.Satomura 0000070対応 START */
+        ELSE
+          FETCH l_task_cur2 INTO l_task_rec;
+          --
+        END IF;
+        /* 2009.07.16 K.Satomura 0000070対応 END */
 --
-        EXIT WHEN l_task_cur%NOTFOUND OR l_task_cur%ROWCOUNT = 0;
+        /* 2009.07.16 K.Satomura 0000070対応 START */
+        IF (g_visit_data_rec.visit_date > cd_sysdate) THEN
+        /* 2009.07.16 K.Satomura 0000070対応 END */
+          EXIT WHEN l_task_cur%NOTFOUND OR l_task_cur%ROWCOUNT = 0;
+        /* 2009.07.16 K.Satomura 0000070対応 START */
+        ELSE
+          EXIT WHEN l_task_cur2%NOTFOUND OR l_task_cur2%ROWCOUNT = 0;
+          --
+        END IF;
+        /* 2009.07.16 K.Satomura 0000070対応 END */
 --
         -- 抽出件数
-        on_task_count := l_task_cur%ROWCOUNT;
+        /* 2009.07.16 K.Satomura 0000070対応 START */
+        IF (g_visit_data_rec.visit_date > cd_sysdate) THEN
+        /* 2009.07.16 K.Satomura 0000070対応 END */
+          on_task_count := l_task_cur%ROWCOUNT;
+        /* 2009.07.16 K.Satomura 0000070対応 START */
+        ELSE
+          on_task_count := l_task_cur2%ROWCOUNT;
+          --
+        END IF;
+        /* 2009.07.16 K.Satomura 0000070対応 END */
         -- タスクID
         on_task_id    := l_task_rec.task_id;
         -- オブジェクトバージョン番号
@@ -1526,7 +1606,16 @@ AS
       END LOOP task_id_loop;
 --
       -- カーソル・クローズ
-      CLOSE l_task_cur;
+      /* 2009.07.16 K.Satomura 0000070対応 START */
+      IF (g_visit_data_rec.visit_date > cd_sysdate) THEN
+      /* 2009.07.16 K.Satomura 0000070対応 END */
+        CLOSE l_task_cur;
+      /* 2009.07.16 K.Satomura 0000070対応 START */
+      ELSE
+        CLOSE l_task_cur2;
+        --
+      END IF;
+      /* 2009.07.16 K.Satomura 0000070対応 END */
 --
     EXCEPTION
       -- ロック失敗した場合の例外
@@ -1535,6 +1624,11 @@ AS
         IF (l_task_cur%ISOPEN) THEN
           CLOSE l_task_cur;
         END IF;
+        /* 2009.07.16 K.Satomura 0000070対応 START */
+        IF (l_task_cur2%ISOPEN) THEN
+          CLOSE l_task_cur2;
+        END IF;
+        /* 2009.07.16 K.Satomura 0000070対応 END */
 --
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                        -- アプリケーション短縮名
@@ -1552,6 +1646,11 @@ AS
         IF (l_task_cur%ISOPEN) THEN
           CLOSE l_task_cur;
         END IF;
+        /* 2009.07.16 K.Satomura 0000070対応 START */
+        IF (l_task_cur2%ISOPEN) THEN
+          CLOSE l_task_cur2;
+        END IF;
+        /* 2009.07.16 K.Satomura 0000070対応 END */
 --
         lv_errmsg := xxccp_common_pkg.get_msg(
                         iv_application  => cv_app_name                  -- アプリケーション短縮名
@@ -1569,6 +1668,23 @@ AS
         RAISE global_skip_error_expt;
     END;
 --
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    IF ((g_visit_data_rec.visit_date <= cd_sysdate)
+      AND on_task_count > 0)
+    THEN
+      -- 訪問日時が現在を含む過去日付でタスクが存在した場合はスキップ。
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_21 -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_base_val  -- トークンコード1
+                     ,iv_token_value1 => iv_base_value    -- トークン値1
+                   );
+      --
+      lv_errbuf := lv_errmsg;
+      RAISE global_skip_error_expt;
+      --
+    END IF;
+    /* 2009.07.16 K.Satomura 0000070対応 END */
   EXCEPTION
     -- *** スキップ例外ハンドラ ***
     WHEN global_skip_error_expt THEN
@@ -1617,8 +1733,16 @@ AS
     -- *** ローカル定数 ***
     cv_insert_process    CONSTANT VARCHAR2(100) := '登録';
     cv_task_table_nm     CONSTANT VARCHAR2(100) := 'タスクテーブル';
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    ct_task_status_open  CONSTANT VARCHAR2(100) := 'XXCSO1_TASK_STATUS_OPEN_ID'; 
+    cv_visit_date_fmt1   CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI';
+    cv_visit_date_fmt2   CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI:SS';
+    /* 2009.07.16 K.Satomura 0000070対応 END */
     -- *** ローカル変数 ***
     ln_task_id         NUMBER;            -- タスクID
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    lt_task_status_id  jtf_task_statuses_b.task_status_id%TYPE; -- タスクステータスＩＤ
+    /* 2009.07.16 K.Satomura 0000070対応 END */
 --
   BEGIN
 --
@@ -1631,12 +1755,26 @@ AS
     -- =======================
     -- 訪問実績データ登録 
     -- =======================
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    IF (g_visit_data_rec.visit_date > TO_DATE(TO_CHAR(SYSDATE, cv_visit_date_fmt1), cv_visit_date_fmt2)) THEN
+      -- 訪問日時が未来の場合は、タスクステータスはオープンで登録する。
+      lt_task_status_id := TO_NUMBER(fnd_profile.value(ct_task_status_open));
+      --
+    ELSE
+      lt_task_status_id := NULL;
+      --
+    END IF;
+    --
+    /* 2009.07.16 K.Satomura 0000070対応 END */
     xxcso_task_common_pkg.create_task(
        g_visit_data_rec.resource_id        -- リソースID
       ,g_visit_data_rec.party_id           -- パーティID
       ,g_visit_data_rec.party_name         -- パーティ名称
       ,g_visit_data_rec.visit_date         -- 訪問日時
       ,g_visit_data_rec.description        -- 詳細内容
+      /* 2009.07.16 K.Satomura 0000070対応 START */
+      ,lt_task_status_id                   -- タスクステータスＩＤ
+      /* 2009.07.16 K.Satomura 0000070対応 END */
       /* 2009.05.14 K.Satomura T1_0931対応 START */
       --,g_visit_data_rec.dff1_cd            -- 拡販活動
       --,g_visit_data_rec.dff2_cd            -- 販促フォロー
@@ -1736,6 +1874,16 @@ AS
     -- *** ローカル定数 ***
     cv_update_process    CONSTANT VARCHAR2(100) := '更新';
     cv_task_table_nm     CONSTANT VARCHAR2(100) := 'タスクテーブル';
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    ct_task_status_open  CONSTANT VARCHAR2(100) := 'XXCSO1_TASK_STATUS_OPEN_ID'; 
+    cv_visit_date_fmt1   CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI';
+    cv_visit_date_fmt2   CONSTANT VARCHAR2(100) := 'YYYY/MM/DD HH24:MI:SS';
+    /* 2009.07.16 K.Satomura 0000070対応 END */
+    --
+    -- *** ローカル変数 ***
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    lt_task_status_id jtf_task_statuses_b.task_status_id%TYPE; -- タスクステータスＩＤ
+    /* 2009.07.16 K.Satomura 0000070対応 END */
 --
   BEGIN
 --
@@ -1745,6 +1893,17 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    IF (g_visit_data_rec.visit_date > TO_DATE(TO_CHAR(SYSDATE, cv_visit_date_fmt1), cv_visit_date_fmt2)) THEN
+      -- 訪問日時が未来の場合は、タスクステータスはオープンで登録する。
+      lt_task_status_id := TO_NUMBER(fnd_profile.value(ct_task_status_open));
+      --
+    ELSE
+      lt_task_status_id := NULL;
+      --
+    END IF;
+    --
+    /* 2009.07.16 K.Satomura 0000070対応 END */
     -- =======================
     -- 訪問実績データ更新 
     -- =======================
@@ -1756,6 +1915,9 @@ AS
       ,g_visit_data_rec.visit_date        -- 訪問日時
       ,g_visit_data_rec.description       -- 詳細内容
       ,in_obj_ver_num
+      /* 2009.07.16 K.Satomura 0000070対応 START */
+      ,lt_task_status_id                   -- タスクステータスＩＤ
+      /* 2009.07.16 K.Satomura 0000070対応 END */
       /* 2009.05.14 K.Satomura T1_0931対応 START */
       --,g_visit_data_rec.dff1_cd            -- 拡販活動
       --,g_visit_data_rec.dff2_cd            -- 販促フォロー

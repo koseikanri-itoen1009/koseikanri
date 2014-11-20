@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_TASK_COMMON_PKG(BODY)
  * Description      : 共通関数(XXCSOタスク）
  * MD.050/070       :
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *                                       判定値を'S'から'fnd_api.g_ret_sts_success'へ変更
  *  2009/05/01    1.1   Tomoko.Mori      T1_0897対応
  *  2009/05/22    1.2   K.Satomura       T1_1080対応
+ *  2009/07/16    1.3   K.Satomura       0000070対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -51,6 +52,9 @@ AS
     iv_party_name            IN  VARCHAR2,               -- 顧客のパーティ名称
     id_visit_date            IN  DATE,                   -- 実績終了日（訪問日時）
     iv_description           IN  VARCHAR2 DEFAULT NULL,  -- 詳細内容
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    it_task_status_id        IN  jtf_task_statuses_b.task_status_id%TYPE DEFAULT NULL,-- タスクステータスＩＤ
+    /* 2009.07.16 K.Satomura 0000070対応 END */
     iv_attribute1            IN  VARCHAR2 DEFAULT NULL,  -- DFF1
     iv_attribute2            IN  VARCHAR2 DEFAULT NULL,  -- DFF2
     iv_attribute3            IN  VARCHAR2 DEFAULT NULL,  -- DFF3
@@ -178,23 +182,32 @@ AS
     END;
 --
     -- *** タスクステータスID ***
-    FND_PROFILE.GET(
-                  cv_prfnm_task_status_closed_id
-                 ,lv_task_status_id
-    ); 
-    -- 取得失敗した場合
-    IF (lv_task_status_id IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name                    -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_01               -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_prof_nm                 -- トークンコード1
-                     ,iv_token_value1 => cv_prfnm_task_status_closed_id -- トークン値1
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE g_process_expt;
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    IF (it_task_status_id IS NULL) THEN
+    /* 2009.07.16 K.Satomura 0000070対応 END */
+      FND_PROFILE.GET(
+                    cv_prfnm_task_status_closed_id
+                   ,lv_task_status_id
+      ); 
+      -- 取得失敗した場合
+      IF (lv_task_status_id IS NULL) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_01               -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_prof_nm                 -- トークンコード1
+                       ,iv_token_value1 => cv_prfnm_task_status_closed_id -- トークン値1
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE g_process_expt;
+      ELSE
+        ln_task_status_id := TO_NUMBER(lv_task_status_id);
+      END IF;
+    /* 2009.07.16 K.Satomura 0000070対応 START */
     ELSE
-      ln_task_status_id := TO_NUMBER(lv_task_status_id);
+      ln_task_status_id := it_task_status_id;
+      --
     END IF;
+    /* 2009.07.16 K.Satomura 0000070対応 END */
 --
     ------------------
     ---- API 起動 ----
@@ -288,6 +301,9 @@ AS
     id_visit_date            IN  DATE,                   -- 実績終了日（訪問日時）
     iv_description           IN  VARCHAR2 DEFAULT NULL,  -- 詳細内容
     in_obj_ver_num           IN  NUMBER,                 -- オブジェクトバージョン番号
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    it_task_status_id        IN  jtf_task_statuses_b.task_status_id%TYPE DEFAULT NULL,-- タスクステータスＩＤ
+    /* 2009.07.16 K.Satomura 0000070対応 END */
     iv_attribute1            IN  VARCHAR2 DEFAULT NULL,  -- DFF1
     iv_attribute2            IN  VARCHAR2 DEFAULT NULL,  -- DFF2
     iv_attribute3            IN  VARCHAR2 DEFAULT NULL,  -- DFF3
@@ -415,23 +431,32 @@ AS
     END;
 --
     -- *** タスクステータスID ***
-    FND_PROFILE.GET(
-                  cv_prfnm_task_status_closed_id
-                 ,lv_task_status_id
-    ); 
-    -- 取得失敗した場合
-    IF (lv_task_status_id IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name                    -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_01               -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_prof_nm                 -- トークンコード1
-                     ,iv_token_value1 => cv_prfnm_task_status_closed_id -- トークン値1
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE g_process_expt;
+    /* 2009.07.16 K.Satomura 0000070対応 START */
+    IF (it_task_status_id IS NULL) THEN
+    /* 2009.07.16 K.Satomura 0000070対応 END */
+      FND_PROFILE.GET(
+                    cv_prfnm_task_status_closed_id
+                   ,lv_task_status_id
+      ); 
+      -- 取得失敗した場合
+      IF (lv_task_status_id IS NULL) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_01               -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_prof_nm                 -- トークンコード1
+                       ,iv_token_value1 => cv_prfnm_task_status_closed_id -- トークン値1
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE g_process_expt;
+      ELSE
+        ln_task_status_id := TO_NUMBER(lv_task_status_id);
+      END IF;
+    /* 2009.07.16 K.Satomura 0000070対応 START */
     ELSE
-      ln_task_status_id := TO_NUMBER(lv_task_status_id);
+      ln_task_status_id := it_task_status_id;
+      --
     END IF;
+    /* 2009.07.16 K.Satomura 0000070対応 END */
 --
     ln_obj_ver_num := in_obj_ver_num;
 --
