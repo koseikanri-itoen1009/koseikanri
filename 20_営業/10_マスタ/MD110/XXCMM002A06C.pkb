@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A06C(body)
  * Description      : 社員マスタIF出力(HHT)
  * MD.050           : 社員マスタIF出力(HHT) MD050_CMM_002_A06
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/09    1.0   SCS 福間 貴子    初回作成
+ *  2009/04/24    1.1   Yutaka.Kuboshima 障害T1_0799の対応
  *
  *****************************************************************************************/
 --
@@ -142,20 +143,32 @@ AS
                        MAX(ss.date_start) as date_start
               FROM     per_periods_of_service ss
               GROUP BY ss.person_id) ss,
-             jtf_rs_defresources_vl r
+-- 2009/04/24 Ver1.1 modify start by Yutaka.Kuboshima
+--             jtf_rs_defresources_vl r
+             jtf_rs_resource_extns r,
+             jtf_rs_salesreps jrs
+-- 2009/04/24 Ver1.1 modify end by Yutaka.Kuboshima
     WHERE    r.category = cv_category
     AND      r.last_update_date >= gd_select_start_datetime
     AND      r.last_update_date <= gd_select_end_datetime
     AND      r.source_id = ss.person_id
     AND      ss.person_id = s.person_id
     AND      ss.date_start = s.date_start
+-- 2009/04/24 Ver1.1 add start by Yutaka.Kuboshima
+    AND      jrs.resource_id = r.resource_id(+)
+    AND      jrs.org_id      = FND_GLOBAL.ORG_ID
+-- 2009/04/24 Ver1.1 add start by Yutaka.Kuboshima
     UNION
     SELECT   SUBSTRB(r.source_number,1,5) AS source_number,
              SUBSTRB(r.source_name,1,20) AS source_name,
              TO_CHAR(s.actual_termination_date,'YYYYMMDD') AS actual_termination_date,
              TO_CHAR(r.last_update_date,'YYYY/MM/DD HH24:MI:SS') AS last_update_date,
              r.resource_id AS resource_id
-    FROM     jtf_rs_defresources_vl r,
+-- 2009/04/24 Ver1.1 modify start by Yutaka.Kuboshima
+--    FROM     jtf_rs_defresources_vl r,
+    FROM     jtf_rs_resource_extns r,
+             jtf_rs_salesreps jrs,
+-- 2009/04/24 Ver1.1 modify end by Yutaka.Kuboshima
              per_periods_of_service s,
              (SELECT   ss.person_id AS person_id,
                        MAX(ss.date_start) as date_start
@@ -166,6 +179,10 @@ AS
     AND      s.actual_termination_date >= gd_select_end_date
     AND      s.actual_termination_date < gd_select_next_date
     AND      r.source_id = s.person_id
+-- 2009/04/24 Ver1.1 add start by Yutaka.Kuboshima
+    AND      jrs.resource_id = r.resource_id(+)
+    AND      jrs.org_id      = FND_GLOBAL.ORG_ID
+-- 2009/04/24 Ver1.1 add start by Yutaka.Kuboshima
   ;
   TYPE g_rs_data_ttype IS TABLE OF get_rs_data_cur%ROWTYPE INDEX BY PLS_INTEGER;
   gt_rs_data            g_rs_data_ttype;
@@ -629,10 +646,17 @@ AS
                  jtf_rs_groups_vl g
         WHERE    m.resource_id = gt_rs_data(ln_loop_cnt).resource_id
         AND      m.DELETE_FLAG = 'N'
-        AND      m.group_id = g.group_id;
+        AND      m.group_id = g.group_id
+-- 2009/04/24 Ver1.1 add start by Yutaka.Kuboshima
+        AND      ROWNUM = 1;
+-- 2009/04/24 Ver1.1 add end by Yutaka.Kuboshima
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           gv_attribute1 := NULL;
+-- 2009/04/24 Ver1.1 add start by Yutaka.Kuboshima
+        WHEN TOO_MANY_ROWS THEN
+          gv_attribute1 := NULL;
+-- 2009/04/24 Ver1.1 add end by Yutaka.Kuboshima
         WHEN OTHERS THEN
           RAISE global_api_others_expt;
       END;
