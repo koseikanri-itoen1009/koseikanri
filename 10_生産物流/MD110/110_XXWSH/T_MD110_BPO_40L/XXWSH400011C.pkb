@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼締め起動処理
  * MD.050           : T_MD050_BPO_401_出荷依頼
  * MD.070           : 出荷依頼締め処理 T_MD070_BPO_40H
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -19,6 +19,7 @@ AS
  *  Date         Ver.  Editor          Description
  * ------------- ----- --------------- --------------------------------------------------
  *  2009/01/16   1.0   T.Ohashi        新規作成
+ *  2009/02/23   1.1   M.Nomura        本番#1176対応（追加修正）
  *
  *****************************************************************************************/
 --
@@ -138,29 +139,65 @@ AS
 -- ##### 20090116 Ver.1.2 本番#900対応 END   #####
 --
     -- *** ローカル・カーソル session解除対象取得***
+-- ##### 20090223 Ver.1.1 本番#1176対応（追加修正） START #####
     -- gv$sesson、gv$lockを参照するように修正
+--    CURSOR lock_cur
+--      IS
+--        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
+--              ,decode(b.lmode 
+--                     ,1,'null' , 2,'row share', 3,'row exclusive' 
+--                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
+--        FROM gv$session a
+--           , gv$lock    b
+--        WHERE a.sid = b.sid
+--        AND a.module <> 'XXWSH400007C'
+--        AND (b.id1, b.id2) in (SELECT d.id1
+--                                     ,d.id2
+--                               FROM gv$lock d 
+--                               WHERE d.id1     =b.id1 
+--                               AND   d.id2     =b.id2 
+--                               AND   d.request > 0) 
+--        AND   b.id1 IN (SELECT bb.id1
+--                      FROM   gv$session aa
+--                            , gv$lock bb
+--                      WHERE  aa.lockwait = bb.kaddr 
+--                      AND    aa.module   = 'XXWSH400007C')
+--        AND b.lmode = 6;
+--
+    -- RAC構成対応SQL
     CURSOR lock_cur
       IS
-        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
-              ,decode(b.lmode 
-                     ,1,'null' , 2,'row share', 3,'row exclusive' 
-                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
-        FROM gv$session a
-           , gv$lock    b
-        WHERE a.sid = b.sid
-        AND a.module <> 'XXWSH400007C'
-        AND (b.id1, b.id2) in (SELECT d.id1
-                                     ,d.id2
-                               FROM gv$lock d 
-                               WHERE d.id1     =b.id1 
-                               AND   d.id2     =b.id2 
-                               AND   d.request > 0) 
-        AND   b.id1 IN (SELECT bb.id1
-                      FROM   gv$session aa
-                            , gv$lock bb
-                      WHERE  aa.lockwait = bb.kaddr 
-                      AND    aa.module   = 'XXWSH400007C')
-        AND b.lmode = 6;
+        SELECT lok.id1            id1
+             , lok_sess.inst_id   inst_id
+             , lok_sess.sid       sid
+             , lok_sess.serial#   serial#
+             , lok.type           type
+             , lok_sess.module    module
+             , lok_sess.action    action
+             , lok.lmode          lmode
+             , lok.request        request
+             , lok.ctime          ctime
+        FROM   gv$lock    lok
+             , gv$session lok_sess
+             , gv$lock    req
+             , gv$session req_sess
+        WHERE lok.inst_id = lok_sess.inst_id
+          AND lok.sid     = lok_sess.sid
+          AND lok.lmode   = 6
+          AND (lok.id1, lok.id2) IN (SELECT lok_not.id1, lok_not.id2
+                                     FROM   gv$lock   lok_not
+                                     WHERE  lok_not.id1 =lok.id1 
+                                     AND    lok_not.id2 =lok.id2 
+                                     AND    lok_not.request > 0) 
+          AND req.inst_id = req_sess.inst_id
+          AND req.sid     = req_sess.sid
+          AND (   req.inst_id <> lok.inst_id
+               OR req.sid     <> lok.sid)
+          AND req.id1 = lok.id1
+          AND req.id2 = lok.id2
+          AND req_sess.module = 'XXWSH400007C';
+--
+-- ##### 20090223 Ver.1.1 本番#1176対応（追加修正） END   #####
 --
 --
     -- *** ローカル・レコード ***
@@ -174,8 +211,10 @@ AS
 --###########################  固定部 END   ############################
 --
   LOOP
+-- ##### 20090223 Ver.1.1 本番#1176対応（追加修正） START #####
     -- コンカレントが完了するまで処理を継続する
-    EXIT WHEN (lv_phase = 'Y');
+--    EXIT WHEN (lv_phase = 'Y');
+-- ##### 20090223 Ver.1.1 本番#1176対応（追加修正） END   #####
     --子コンカレント完了を取得
     BEGIN
       SELECT DECODE(fcr.phase_code,'C','Y','I','Y','N')
@@ -188,19 +227,40 @@ AS
         NULL;
     END;
 --
+-- ##### 20090223 Ver.1.1 本番#1176対応（追加修正） START #####
+    -- コンカレントが完了するまで処理を継続する
+    EXIT WHEN (lv_phase = 'Y');
+-- ##### 20090223 Ver.1.1 本番#1176対応（追加修正） END   #####
+--
     --ロック解除の開始
     FOR lock_rec IN lock_cur LOOP
 --
       -- 削除対象セッションログ出力
-      FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || 
-                                      ' 出荷依頼締め処理： 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
+-- ##### 20090223 Ver.1.1 本番#1176対応（追加修正） START #####
+-- ログ内容変更
+--      FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || 
+--                                      ' 出荷依頼締め処理： 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
+--                                      ' 切断対象セッション：' ||
+--                                      ' inst_id[' || TO_CHAR(lock_rec.inst_id) || '] ' ||
+--                                      ' sid['     || TO_CHAR(lock_rec.sid)     || '] ' ||
+--                                      ' serial['  || TO_CHAR(lock_rec.serial#) || '] ' ||
+--                                      ' action['  || lock_rec.action           || '] ' ||
+--                                      ' module['  || lock_rec.module           || '] '
+--                                      );
+--
+      FND_FILE.PUT_LINE(FND_FILE.LOG, '【セッション切断】' || ' 要求ID[' || TO_CHAR(in_reqid) || '] ' ||
                                       ' 切断対象セッション：' ||
                                       ' inst_id[' || TO_CHAR(lock_rec.inst_id) || '] ' ||
                                       ' sid['     || TO_CHAR(lock_rec.sid)     || '] ' ||
-                                      ' serial['  || TO_CHAR(lock_rec.serial#) || '] ' ||
+                                      ' serial#[' || TO_CHAR(lock_rec.serial#) || '] ' ||
                                       ' action['  || lock_rec.action           || '] ' ||
-                                      ' module['  || lock_rec.module           || '] '
+                                      ' module['  || lock_rec.module           || '] ' ||
+                                      ' lmode['   || TO_CHAR(lock_rec.lmode)   || '] ' ||
+                                      ' request[' || TO_CHAR(lock_rec.request) || '] ' ||
+                                      ' ctime['   || TO_CHAR(lock_rec.ctime)   || '] '
                                       );
+--
+-- ##### 20090223 Ver.1.1 本番#1176対応（追加修正） END   #####
 --
       -- =====================================
       -- セッション切断コンカレントを起動する
