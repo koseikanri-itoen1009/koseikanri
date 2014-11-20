@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -61,6 +61,7 @@ AS
  *                                                              変動電気代未入力マーク出力、ソート順変更
  *  2013/05/24    1.19  SCSK S.Niki      [障害E_本稼動_10411再] 支払ステータスソート順変更
  *  2013/05/28    1.20  SCSK S.Niki      [障害E_本稼動_10411再] エラーフラグ更新条件変更
+ *  2013/06/11    1.21  SCSK S.Niki      [障害E_本稼動_10819]   エラー有りデータのソート順変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -203,6 +204,9 @@ AS
 -- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
   cv_set_name_rp             CONSTANT VARCHAR2(19)  := 'XXCOK1_RESV_PAYMENT';
 -- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD START
+  cv_set_name_et             CONSTANT VARCHAR2(15)  := 'XXCOK1_ERR_TYPE';
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD END
   -- SVF起動パラメータ
   cv_file_id                 CONSTANT VARCHAR2(12)  := 'XXCOK014A04R';       -- 帳票ID
   cv_output_mode             CONSTANT VARCHAR2(1)   := '1';                  -- 出力区分(PDF出力)
@@ -1083,6 +1087,9 @@ AS
     , unpaid_elec_mark                -- 変動電気代未払マーク
     , err_flag                        -- エラーフラグ
 -- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD START
+    , err_type_sort                   -- エラー種別並び順
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD END
     , cust_code                       -- 顧客コード
     , cust_name                       -- 顧客名
     , bm_this_month                   -- 当月BM
@@ -1150,6 +1157,9 @@ AS
     , NULL                                                   -- 変動電気代未払マーク
     , NULL                                                   -- エラーフラグ
 -- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD START
+    , NULL                                                   -- エラー種別並び順
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD END
     , g_bm_balance_ttype(in_index).CUST_CODE                 -- 顧客コード
     , g_bm_balance_ttype(in_index).CUST_NAME                 -- 顧客名
     , g_bm_balance_ttype(in_index).BM_THIS_MONTH             -- 当月BM
@@ -1239,6 +1249,51 @@ AS
       GROUP BY xrbb.payment_code
       ;
 -- Ver.1.19 [障害E_本稼動_10411再] SCSK S.Niki ADD END
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD START
+    -- エラー有りデータ
+    CURSOR l_err_cur
+    IS
+      -- 変動電気代未払データ
+      SELECT  DISTINCT
+              xrbb1.payment_code             AS  payment_code       -- 支払先コード
+            , xrbb1.unpaid_elec_mark         AS  err_type           -- エラー種別
+            , TO_NUMBER( ffv.attribute1 )    AS  err_type_sort      -- エラー種別並び順
+      FROM    xxcok_rep_bm_balance  xrbb1
+            , fnd_flex_values       ffv
+            , fnd_flex_values_tl    ffvt
+            , fnd_flex_value_sets   ffvs
+      WHERE   xrbb1.request_id         = cn_request_id
+      AND     xrbb1.unpaid_elec_mark   IS NOT NULL
+      AND     xrbb1.unpaid_elec_mark   = ffvt.description
+      AND     ffv.flex_value_id        = ffvt.flex_value_id
+      AND     ffvt.language            = cv_ja
+      AND     ffvs.flex_value_set_id   = ffv.flex_value_set_id
+      AND     ffvs.flex_value_set_name = cv_set_name_et
+      UNION ALL
+      -- 変動電気未払以外かつ販手条件エラーデータ
+      SELECT  DISTINCT
+              xrbb2.payment_code             AS  payment_code       -- 支払先コード
+            , xrbb2.warnning_mark            AS  err_type           -- エラー種別
+            , TO_NUMBER( ffv.attribute1 )    AS  err_type_sort      -- エラー種別並び順
+      FROM    xxcok_rep_bm_balance  xrbb2
+            , fnd_flex_values       ffv
+            , fnd_flex_values_tl    ffvt
+            , fnd_flex_value_sets   ffvs
+      WHERE   xrbb2.request_id         = cn_request_id
+      AND     xrbb2.warnning_mark      IS NOT NULL
+      AND     xrbb2.warnning_mark      = ffvt.description
+      AND     ffv.flex_value_id        = ffvt.flex_value_id
+      AND     ffvt.language            = cv_ja
+      AND     ffvs.flex_value_set_id   = ffv.flex_value_set_id
+      AND     ffvs.flex_value_set_name = cv_set_name_et
+      AND NOT EXISTS ( SELECT 'X'
+                       FROM   xxcok_rep_bm_balance  xrbb3
+                       WHERE  xrbb3.request_id       = cn_request_id
+                       AND    xrbb3.payment_code     = xrbb2.payment_code
+                       AND    xrbb3.unpaid_elec_mark IS NOT NULL
+                     )
+      ;
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD END
 --
   BEGIN
     -- ===============================================
@@ -1314,7 +1369,7 @@ AS
     END LOOP;
     --
     -- ===============================================
-    -- 2. エラーフラグ更新(支払先単位)
+    -- 2-1. エラーフラグ更新(支払先単位)
     -- ===============================================
     -- 販手条件エラーまたは変動電気代未払の場合、支払先単位にエラーフラグ更新
     BEGIN
@@ -1343,6 +1398,35 @@ AS
                       );
         RAISE global_process_expt;
     END;
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD START
+    --
+    -- ===============================================
+    -- 2-2. エラー種別並び順更新
+    -- ===============================================
+    -- エラー有りデータをループ
+    FOR l_err_rec IN l_err_cur LOOP
+      BEGIN
+        -- エラー種別並び順を更新する
+        UPDATE  xxcok_rep_bm_balance  xrbb
+        SET     xrbb.err_type_sort  = l_err_rec.err_type_sort
+        WHERE   xrbb.request_id     = cn_request_id
+        AND     xrbb.payment_code   = l_err_rec.payment_code           -- 対象の支払先コード
+        ;
+      --
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- 帳票ワークテーブル更新エラー
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcok_appl_short_name
+                        , iv_name         => cv_msg_code_10535
+                        , iv_token_name1  => cv_token_errmsg
+                        , iv_token_value1 => SQLERRM
+                        );
+          RAISE global_process_expt;
+      END;
+      --
+    END LOOP;
+-- Ver.1.21 [障害E_本稼動_10819] SCSK S.Niki ADD END
     --
     -- ===============================================
     -- 3-1. 支払ステータス並び順更新
