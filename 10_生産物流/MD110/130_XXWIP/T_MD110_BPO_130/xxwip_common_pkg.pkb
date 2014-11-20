@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.14
+ * Version                : 1.15
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -59,6 +59,7 @@ AS
  *  2008/09/10   1.12  Oracle 二瓶 大輔   結合テスト指摘対応No30
  *  2008/10/09   1.13  Oracle 二瓶 大輔   統合障害#169対応(手持在庫数量算出API(投入実績用))
  *  2008/11/14   1.14  Oracle 二瓶 大輔   統合障害#649対応(委託加工費更新関数)
+ *  2008/11/17   1.15  Oracle 二瓶 大輔   統合障害#678対応(処理日付更新関数)
  *****************************************************************************************/
 --
 --###############################  固定グローバル定数宣言部 START   ###############################
@@ -4424,6 +4425,9 @@ AS
 -- 2008/09/03 D.Nihei ADD START 生産バッチのデータのみを取得する
       AND    itp.doc_type    = 'PROD'
 -- 2008/09/03 D.Nihei ADD END
+-- 2008/11/17 D.Nihei ADD START 原料と副産物のみにする
+      AND    itp.line_type   IN (gn_material, gn_co_prod)
+-- 2008/11/17 D.Nihei ADD END
       AND    itp.delete_mark = gn_delete_mark_off
       AND    itp.doc_id      = in_batch_id
       ;
