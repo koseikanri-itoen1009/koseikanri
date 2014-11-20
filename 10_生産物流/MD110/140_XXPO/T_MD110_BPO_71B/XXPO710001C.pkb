@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（仕入）
  * MD.050/070       : 生産物流（仕入）Issue1.0  (T_MD050_BPO_710)
  *                    荒茶製造表                (T_MD070_BPO_71B)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/02/18    1.5   Akiyoshi Shiina    T_S_448対応
  *  2009/03/11    1.6   Akiyoshi Shiina    本番#1265対応
  *  2009/03/30    1.7   Akiyoshi Shiina    本番#1346対応
+ *  2009/09/17    1.8   Tsuyoki Yoshimoto  本番#1632対応
  *
  *****************************************************************************************/
 --
@@ -572,6 +573,10 @@ AS
       -- 従業員区分1,2のみ抽出
       AND   papf.attribute3 IN ('1', '2')
 -- 2009/03/30 v1.22 ADD END
+-- 2009/09/17 v1.8 T.Yoshimoto Add Start 本番#1632
+      AND   TRUNC(papf.effective_start_date) <= TRUNC(SYSDATE)
+      AND   TRUNC(papf.effective_end_date) >= TRUNC(SYSDATE)
+-- 2009/09/17 v1.8 T.Yoshimoto Add End 本番#1632
       AND   xnpt.creation_date
               BETWEEN FND_DATE.CANONICAL_TO_DATE( in_input_date_from ) -- パラメータの入力期間で
               AND     NVL( FND_DATE.CANONICAL_TO_DATE( in_input_date_to ), gc_max_date ) -- 有効なデータ

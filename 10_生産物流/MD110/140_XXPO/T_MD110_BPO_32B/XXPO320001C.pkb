@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2009/01/13    1.15  Oracle 吉元 強樹 受入明細番号採番不備対応
  *  2009/01/15    1.16  Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応(訂正処理不備)
  *  2009/03/30    1.17  Oracle 飯田 甫   本番障害No1346対応
+ *  2009/09/17    1.18  Oracle 吉元 強樹 本番障害No1632対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4939,6 +4940,10 @@ AS
       AND    fu.employee_id = papf.person_id
       AND    papf.attribute3 IN ('1', '2')
 -- 2009/03/30 H.Iida Mod End
+-- 2009/09/17 v1.18 T.Yoshimoto Add Start 本番#1632
+      AND    TRUNC(papf.effective_start_date) <= TRUNC(SYSDATE)
+      AND    TRUNC(papf.effective_end_date) >= TRUNC(SYSDATE)
+-- 2009/09/17 v1.18 T.Yoshimoto Add End 本番#1632
       AND    ROWNUM = 1;
 --
     EXCEPTION
