@@ -109,7 +109,9 @@ AS
   gv_flg_on                CONSTANT VARCHAR2(1) := '1';
   gv_status_on             CONSTANT VARCHAR2(1) := 'A';
   gv_enabled_flag_on       CONSTANT VARCHAR2(1) := 'Y';
+  gv_external_flag_on      CONSTANT VARCHAR2(1) := 'Y';
   gv_ship_method           CONSTANT VARCHAR2(30) := 'XXCMN_SHIP_METHOD';
+  gv_transaction_type_name CONSTANT VARCHAR2(30) := '仕入有償';
   gv_company_name          CONSTANT VARCHAR2(10) := 'ITOEN';
 --
   -- トークン
@@ -260,16 +262,16 @@ AS
     info_o               VARCHAR2(2),  -- 情報Ｏ
     info_p               VARCHAR2(2),  -- 情報Ｐ
     info_q               VARCHAR2(2),  -- 情報Ｑ
-    amt_a                VARCHAR2(9),  -- お金Ａ
-    amt_b                VARCHAR2(4),  -- お金Ｂ
-    amt_c                VARCHAR2(9),  -- お金Ｃ
-    amt_d                VARCHAR2(2),  -- お金Ｄ
-    amt_e                VARCHAR2(11), -- お金Ｅ
-    amt_f                VARCHAR2(13), -- お金Ｆ
-    amt_g                VARCHAR2(2),  -- お金Ｇ
-    amt_h                VARCHAR2(11), -- お金Ｈ
-    amt_i                VARCHAR2(13), -- お金Ｉ
-    amt_j                VARCHAR2(13), -- お金Ｊ
+    amt_a                VARCHAR2(20), -- お金Ａ
+    amt_b                VARCHAR2(20), -- お金Ｂ
+    amt_c                VARCHAR2(20), -- お金Ｃ
+    amt_d                VARCHAR2(20), -- お金Ｄ
+    amt_e                VARCHAR2(20), -- お金Ｅ
+    amt_f                VARCHAR2(20), -- お金Ｆ
+    amt_g                VARCHAR2(20), -- お金Ｇ
+    amt_h                VARCHAR2(20), -- お金Ｈ
+    amt_i                VARCHAR2(20), -- お金Ｉ
+    amt_j                VARCHAR2(20), -- お金Ｊ
 --
     description          VARCHAR2(60), -- 摘要(明細)
     update_date_h        DATE,         -- 更新日時(ヘッダ)
@@ -1337,6 +1339,8 @@ AS
       AND    pha.attribute3        = xvv2.vendor_id(+)
       AND    pha.attribute7        = xpsv.party_site_number(+)
 -- ステータス
+      -- 2008/07/30 Mod ↓
+/*
       AND    NVL(pha.attribute1,gv_status_null) IN (
                  gv_xxpo_status_02                    -- 発注作成済:20
                 ,gv_xxpo_status_03                    -- 受入あり:25
@@ -1344,6 +1348,9 @@ AS
                 ,gv_xxpo_status_05                    -- 金額確定済:35
                 ,gv_xxpo_status_06                    -- 取消:99
              )
+*/
+      AND    NVL(pha.attribute1,gv_status_null) >= gv_xxpo_status_02  -- 発注作成済:20以降
+      -- 2008/07/30 Mod ↑
 -- 依頼No
       AND    ((gv_req_no_from IS NULL) OR (pha.segment1 >= gv_req_no_from))
       AND    ((gv_req_no_to IS NULL)   OR (pha.segment1 <= gv_req_no_to))
@@ -1456,7 +1463,12 @@ AS
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                OR      pha.attribute5 IN (
+-- 2008/07/30 Mod ↓
+/*
                           SELECT xilv.frequent_whse           -- 代表倉庫
+*/
+                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+-- 2008/07/30 Mod ↑
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
@@ -1724,7 +1736,7 @@ AS
             ,gv_data_class_oha as data_class                   -- データ種別
             ,xoha.delivery_no as ship_no                       -- 配送No.
             ,xoha.request_no                                   -- 依頼No.
-            ,DECODE(xotv.transaction_type_name,'仕入有償',
+            ,DECODE(xotv.transaction_type_name,gv_transaction_type_name,
                     xoha.po_no,
                     NULL) as relation_no                       -- 関連No.
             ,xoha.prev_delivery_no as base_ship_no             -- 元配送No.
@@ -1769,15 +1781,15 @@ AS
             ,xoha.new_modify_flg as div_h                      -- 区分Ｈ
             ,xoha.designated_production_date as info_a         -- 情報Ａ(製造日)
             ,xoha.designated_item_code as info_b               -- 情報Ｂ(製造品目コード)
-            ,ximv1.item_name as info_c                         -- 情報Ｃ(製造品目名)
-            ,ximv1.item_short_name as info_d                   -- 情報Ｄ(製造品目略名)
+            ,ximv2.item_name as info_c                         -- 情報Ｃ(製造品目名)
+            ,ximv2.item_short_name as info_d                   -- 情報Ｄ(製造品目略名)
             ,xoha.designated_branch_no as info_e               -- 情報Ｅ(製造番号)
             ,xoha.shipping_instructions as head_description    -- 摘要(ヘッダ)
             ,xola.line_description                             -- 摘要(明細)
             ,NULL as line_num                                  -- 明細No.
             ,xola.shipping_item_code as item_no                -- 品目コード
-            ,ximv2.item_name                                   -- 品目名
-            ,ximv2.item_short_name as item_s_name              -- 品目略名
+            ,ximv1.item_name                                   -- 品目名
+            ,ximv1.item_short_name as item_s_name              -- 品目略名
             ,xola.futai_code                                   -- 付帯
             ,xmldv.lot_no                                      -- ロットNo
             ,xmldv.lot_date                                    -- 製造日
@@ -1890,26 +1902,32 @@ AS
       WHERE xoha.order_header_id            = xola.order_header_id
       AND   xoha.order_type_id              = xotv.transaction_type_id
       AND   xotv.shipping_shikyu_class      = gv_shipping_shikyu_class
-      AND   xotv.ship_sikyu_rcv_pay_ctg     IN (gv_rcv_pay_ctg_05             -- 有償返品
-                                               ,gv_rcv_pay_ctg_06)            -- 仕入返品
+      AND   xotv.ship_sikyu_rcv_pay_ctg     IN (gv_rcv_pay_ctg_05             -- 有償返品:'05'
+                                               ,gv_rcv_pay_ctg_06)            -- 仕入返品:'06'
       AND   xola.order_line_id              = xmldv.mov_line_id(+)
       AND   xola.shipping_inventory_item_id = ximv1.inventory_item_id
-      AND   xoha.designated_item_id         = ximv2.inventory_item_id
-      AND   xlvv.lookup_code                = NVL(xoha.result_shipping_method_code,
+      AND   xoha.designated_item_id         = ximv2.inventory_item_id(+)
+      AND   xlvv.lookup_code(+)             = NVL(xoha.result_shipping_method_code,
                                                   xoha.shipping_method_code)
-      AND   xlvv.lookup_type                = gv_ship_method
+      AND   xlvv.lookup_type(+)             = gv_ship_method
       AND   xoha.deliver_from               = xilv.segment1
       AND   xoha.vendor_site_id             = xvsv.vendor_site_id
-      AND   xcv.party_number                = NVL(xoha.result_freight_carrier_code,
+      AND   xcv.party_number(+)             = NVL(xoha.result_freight_carrier_code,
                                                   xoha.freight_carrier_code)
       AND   xoha.vendor_id                  = xvv.vendor_id
       AND   xicv.item_id                    = ximv1.item_id
+      AND   xoha.latest_external_flag       = gv_external_flag_on             -- 最新フラグ:'Y'
 -- ステータス
+      -- 2008/07/30 Mod ↓
+/*
       AND    NVL(xoha.req_status,gv_status_null) IN (
               gv_xxwsh_status_05            -- 入力完了:06
              ,gv_xxwsh_status_06            -- 受領済:07
              ,gv_xxwsh_status_07            -- 取消:99
              )
+*/
+      AND    NVL(xoha.req_status,gv_status_null) >= gv_xxwsh_status_05     -- 入力完了:06以降
+      -- 2008/07/30 Mod ↑
 -- 配送No
       AND   ((gv_ship_no_from IS NULL) OR (xoha.delivery_no >= gv_ship_no_from))
       AND   ((gv_ship_no_to IS NULL)   OR (xoha.delivery_no <= gv_ship_no_to))
@@ -1949,17 +1967,19 @@ AS
       AND   TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date)) BETWEEN xotv.start_date_active
       AND   NVL(xotv.end_date_active,FND_DATE.STRING_TO_DATE(gv_max_date,'YYYY/MM/DD'))
 -- クイックコード情報VIEW2
-      AND   (xlvv.start_date_active <= TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date))
-       OR     xlvv.start_date_active IS NULL)
-      AND   (xlvv.end_date_active >= TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date))
-       OR     xlvv.end_date_active IS NULL)
-      AND    xlvv.enabled_flag = gv_enabled_flag_on
+      AND   (xlvv.lookup_code IS NULL
+       OR   ((xlvv.start_date_active <= TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date))
+       OR      xlvv.start_date_active IS NULL)
+      AND    (xlvv.end_date_active >= TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date))
+       OR      xlvv.end_date_active IS NULL)
+      AND     xlvv.enabled_flag = gv_enabled_flag_on))
 -- OPM品目情報VIEW(1)
       AND    TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date)) BETWEEN ximv1.start_date_active
       AND    ximv1.end_date_active
 -- OPM品目情報VIEW(2)
-      AND    TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date)) BETWEEN ximv2.start_date_active
-      AND    ximv2.end_date_active
+      AND    (ximv2.inventory_item_id IS NULL
+       OR    (TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date)) BETWEEN ximv2.start_date_active
+      AND     ximv2.end_date_active))
 -- 仕入先情報VIEW2
       AND    xvv.inactive_date IS NULL
       AND    TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date)) BETWEEN xvv.start_date_active
@@ -1974,8 +1994,9 @@ AS
       AND    TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date)) BETWEEN xvsv.start_date_active
       AND    xvsv.end_date_active
 -- 運送業者情報VIEW2
-      AND    TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date)) BETWEEN xcv.start_date_active
-      AND    xcv.end_date_active
+      AND    (xcv.party_number IS NULL
+      OR      (TRUNC(NVL(xoha.shipped_date,xoha.schedule_ship_date)) BETWEEN xcv.start_date_active
+      AND      xcv.end_date_active))
 -- セキュリティ区分
       AND    (
 -- 伊藤園ユーザータイプ
@@ -2028,7 +2049,12 @@ AS
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                OR      xoha.deliver_from IN (
+-- 2008/07/30 Mod ↓
+/*
                           SELECT xilv.frequent_whse           -- 代表倉庫
+*/
+                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+-- 2008/07/30 Mod ↑
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
@@ -2411,16 +2437,18 @@ AS
       WHERE  xmrh.mov_hdr_id           = xmrl.mov_hdr_id
       AND    xmrl.item_id              = ximv.item_id
       AND    ximv.item_id              = xicv.item_id
-      AND    xcv.party_number          = NVL(xmrh.actual_freight_carrier_code,
+      AND    xcv.party_number(+)       = NVL(xmrh.actual_freight_carrier_code,
                                              xmrh.freight_carrier_code)
       AND    xmrh.shipped_locat_code   = xilv1.segment1
       AND    xmrh.ship_to_locat_code   = xilv2.segment1
       AND    xilv2.location_id         = xlv.location_id
       AND    xmrl.mov_line_id          = xmldv.mov_line_id(+)
-      AND    xlvv.lookup_code          = NVL(xmrh.actual_shipping_method_code,
+      AND    xlvv.lookup_code(+)       = NVL(xmrh.actual_shipping_method_code,
                                              xmrh.shipping_method_code)
-      AND    xlvv.lookup_type          = gv_ship_method
+      AND    xlvv.lookup_type(+)       = gv_ship_method
 -- ステータス
+      -- 2008/07/30 Mod ↓
+/*
       AND    NVL(xmrh.status,gv_status_null) IN (
               gv_xxinv_status_02                       -- 依頼済:02
              ,gv_xxinv_status_03                       -- 調整中:03
@@ -2429,6 +2457,9 @@ AS
              ,gv_xxinv_status_06                       -- 入出庫報告有:06
              ,gv_xxinv_status_07                       -- 取消:99
       )
+*/
+      AND    NVL(xmrh.status,gv_status_null) >= gv_xxinv_status_02         -- 依頼済:02以降
+      -- 2008/07/30 Mod ↑
 -- 配送No
       AND   ((gv_ship_no_from IS NULL) OR (xmrh.delivery_no >= gv_ship_no_from))
       AND   ((gv_ship_no_to IS NULL)   OR (xmrh.delivery_no <= gv_ship_no_to))
@@ -2464,17 +2495,19 @@ AS
 -- 品目区分
       AND   ((gv_item_class IS NULL) OR (xicv.item_class_code         = gv_item_class))
 -- クイックコード情報VIEW2
-      AND   (xlvv.start_date_active <= TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date))
+      AND   (xlvv.lookup_code IS NULL
+       OR    ((xlvv.start_date_active <= TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date))
        OR    xlvv.start_date_active IS NULL)
-      AND   (xlvv.end_date_active   >= TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date))
-       OR    xlvv.end_date_active IS NULL)
-      AND    xlvv.enabled_flag = gv_enabled_flag_on
+      AND    (xlvv.end_date_active   >= TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date))
+       OR     xlvv.end_date_active IS NULL)
+      AND    xlvv.enabled_flag = gv_enabled_flag_on))
 -- OPM品目情報VIEW2
       AND    TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date)) 
       BETWEEN ximv.start_date_active AND ximv.end_date_active
 -- 運送業者情報VIEW2
-      AND    TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date))
-      BETWEEN xcv.start_date_active AND xcv.end_date_active
+      AND    (xcv.party_number IS NULL
+       OR    (TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date))
+      BETWEEN xcv.start_date_active AND xcv.end_date_active))
 -- OPM保管場所情報VIEW2
       AND    xilv1.date_from <= TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date))
       AND    (xilv1.date_to  >= TRUNC(NVL(xmrh.actual_ship_date,xmrh.schedule_ship_date))
@@ -2554,7 +2587,12 @@ AS
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                OR      xmrh.shipped_locat_code IN (
+-- 2008/07/30 Mod ↓
+/*
                           SELECT xilv.frequent_whse           -- 代表倉庫
+*/
+                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+-- 2008/07/30 Mod ↑
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
@@ -2584,7 +2622,12 @@ AS
                           AND    fu.user_id                 = gn_user_id            -- ユーザーID
                           )
                OR      xmrh.ship_to_locat_code IN (
+-- 2008/07/30 Mod ↓
+/*
                           SELECT xilv.frequent_whse           -- 代表倉庫
+*/
+                          SELECT xilv.frequent_whse_code      -- 主管倉庫
+-- 2008/07/30 Mod ↑
                           FROM   fnd_user               fu          -- ユーザーマスタ
                                 ,per_all_people_f       papf        -- 従業員マスタ
                                 ,xxcmn_item_locations_v xilv        -- OPM保管場所情報VIEW
@@ -2839,9 +2882,9 @@ AS
                ir_mst_rec.vendor_site_code  || cv_sep_com ||                    -- 配送先コード
                replace_sep(ir_mst_rec.vendor_site_name  ) || cv_sep_com ||      -- 配送先名
                replace_sep(ir_mst_rec.vendor_site_s_name) || cv_sep_com ||      -- 配送先略名
-               ir_mst_rec.zip               || cv_sep_com ||                    -- 郵便番号
+               replace_sep(ir_mst_rec.zip               ) || cv_sep_com ||      -- 郵便番号
                replace_sep(ir_mst_rec.address           ) || cv_sep_com ||      -- 住所
-               ir_mst_rec.phone             || cv_sep_com ||                    -- 電話番号
+               replace_sep(ir_mst_rec.phone             ) || cv_sep_com ||      -- 電話番号
                ir_mst_rec.carrier_code      || cv_sep_com ||                    -- 運送業者コード
                replace_sep(ir_mst_rec.carrier_name      ) || cv_sep_com ||      -- 運送業者名
                replace_sep(ir_mst_rec.carrier_s_name    ) || cv_sep_com ||      -- 運送業者略名
