@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF_COMMON3_PKG(body)
  * Description      : リース物件関連共通関数
  * MD.050           : なし
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -28,7 +28,10 @@ AS
  *  2009-02-10   1.1    SCS 廣瀬真佐人   [障害CFF_023] create_ob_bat、条件分岐において、NULL値を考慮するように修正。
  *  2009-02-23   1.2    SCS 廣瀬真佐人   [障害CFF_048] create_ob_bat、移動時にWHO値をセット。
  *                                       [障害CFF_051] create_contract_ass、中途解約日を業務日付に修正。
- *  2009-05-14   1.3    SCS 松中　俊樹   [障害T1_0749] create_ob_bat、物件有効フラグ変更時に処理を起動するように修正
+ *  2009-05-14   1.3    SCS 松中 俊樹    [障害T1_0749] create_ob_bat、物件有効フラグ変更時に処理を起動するように修正
+ *  2009-12-02   1.4    SCS 渡辺 学      [障害E_T4_00098]
+ *                                           修正：create_ob_bat
+ *                                           自販機リース物件の修正履歴作成時、更新前リース物件の情報を引継ぐように修正。
  *
  *****************************************************************************************/
 --
@@ -1558,6 +1561,13 @@ AS
           io_object_data_rec.m_installation_address  := NULL;     -- 移動元現設置場所
           io_object_data_rec.m_installation_place    := NULL;     -- 移動元現設置先
           io_object_data_rec.m_registration_number   := NULL;     -- 移動元登録番号
+--
+          -- E_T4_00098 2009/12/02 ADD START
+          io_object_data_rec.lease_type              := object_data_rec.lease_type;     -- リース区分
+          io_object_data_rec.re_lease_times          := object_data_rec.re_lease_times; -- 再リース回数
+          io_object_data_rec.re_lease_flag           := object_data_rec.re_lease_flag;  -- 再リース要否フラグ
+          -- E_T4_00098 2009/12/02 ADD END
+--
           -- ***************************************************
           -- リース物件情報作成
           -- ***************************************************
