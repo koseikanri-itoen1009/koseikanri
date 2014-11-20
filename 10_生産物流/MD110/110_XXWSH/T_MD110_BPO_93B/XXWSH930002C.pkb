@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.45
+ * Version          : 1.46
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -144,6 +144,7 @@ AS
  *                                                         顧客情報は配送先の上位パーティ（顧客）より取得する。
  *  2009/02/20    1.44 Oracle 佐久間尚豊 本番障害対応#1199 配送No/移動No-EOSデータ種別単位のエラーは明細単位（一部はヘッダ単位）で出力する。
  *  2009/03/13    1.45 Oracle 北寒寺正夫 本番障害対応#1068 重量容積小口個数更新関数でのエラーメッセージに92Eのメッセージを使用していたため修正
+ *  2009/03/27    1.46 SCS    伊藤ひとみ 本番障害対応#1342 ロットマスタの固有記号がNULLの場合の考慮ができていないため修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5532,7 +5533,10 @@ AS
                   OR
                   ((gr_interface_info_rec(i).use_by_date IS NOT NULL)
                   AND (ilm.attribute3 = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'))))
-          AND    ilm.attribute2 = NVL(gr_interface_info_rec(i).original_character,ilm.attribute2) -- 固有記号   
+-- 2009/03/27 本番障害#1342 ADD START ロットマスタの固有記号がNULLの場合の考慮を追加
+--          AND    ilm.attribute2 = NVL(gr_interface_info_rec(i).original_character,ilm.attribute2) -- 固有記号   
+          AND    NVL(ilm.attribute2, '*') = NVL(gr_interface_info_rec(i).original_character,NVL(ilm.attribute2, '*')) -- 固有記号   
+-- 2009/03/27 本番障害#1342 ADD END
           AND    ilm.lot_no     = NVL(gr_interface_info_rec(i).lot_no,ilm.lot_no)                 -- ロットNo
           AND    ximv.inactive_ind      <> gn_view_disable             -- 無効フラグ
           AND    ximv.obsolete_class    <> gv_view_disable             -- 廃止区分
@@ -5703,7 +5707,10 @@ AS
                     OR
                     ((gr_interface_info_rec(i).use_by_date IS NOT NULL)
                     AND (ilm.attribute3 = TO_CHAR(gr_interface_info_rec(i).use_by_date,'YYYY/MM/DD'))))
-            AND    ilm.attribute2 = NVL(gr_interface_info_rec(i).original_character,ilm.attribute2) -- 固有記号
+-- 2009/03/27 本番障害#1342 ADD START ロットマスタの固有記号がNULLの場合の考慮を追加
+--            AND    ilm.attribute2 = NVL(gr_interface_info_rec(i).original_character,ilm.attribute2) -- 固有記号
+            AND    NVL(ilm.attribute2, '*') = NVL(gr_interface_info_rec(i).original_character, NVL(ilm.attribute2, '*')) -- 固有記号
+-- 2009/03/27 本番障害#1342 ADD END
             AND    ilm.lot_no     = NVL(gr_interface_info_rec(i).lot_no,ilm.lot_no)                 -- ロットNo
             AND    ximv.inactive_ind      <> gn_view_disable             -- 無効フラグ
             AND    ximv.obsolete_class    <> gv_view_disable             -- 廃止区分
