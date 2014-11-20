@@ -6,7 +6,7 @@ AS
  *
  * Package Name     : XXCCP008A01C(body)
  * Description      : リース契約データCSV出力
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/10/30    1.0   SCSK 古山        新規作成
+ *  2013/07/05    1.1   SCSK 中村        E_本稼動_10871対応 消費税増税対応
  *
  *****************************************************************************************/
 --
@@ -167,7 +168,11 @@ AS
         ,xch.third_payment_date                             AS  third_payment_date          -- ヘッダ.3回目以降支払日
         ,xch.start_period_name                              AS  start_period_name           -- ヘッダ.費用計上開始会計期間
         ,xch.lease_payment_flag                             AS  lease_payment_flag          -- ヘッダ.リース支払計画完了フラグ
-        ,xch.tax_code                                       AS  tax_code                    -- ヘッダ.税金コード
+-- 2013/07/05 Ver.1.1 K.Nakamura MOD Start
+--        ,xch.tax_code                                       AS  tax_code                    -- ヘッダ.税金コード
+        ,DECODE(xcl.tax_code, NULL, xch.tax_code,
+                                    xcl.tax_code)           AS  tax_code                    -- 明細.税金コード、NULLの場合はヘッダ.税金コード
+-- 2013/07/05 Ver.1.1 K.Nakamura MOD End
         ,xch.created_by                                     AS  h_created_by                -- ヘッダ.作成者
         ,TO_CHAR( xch.creation_date, cv_date_ymdhms )       AS  h_creation_date             -- ヘッダ.作成日
         ,xch.last_updated_by                                AS  h_last_updated_by           -- ヘッダ.最終更新者
@@ -303,7 +308,11 @@ AS
         ,xch.third_payment_date                             AS  third_payment_date          -- ヘッダ.3回目以降支払日
         ,xch.start_period_name                              AS  start_period_name           -- ヘッダ.費用計上開始会計期間
         ,xch.lease_payment_flag                             AS  lease_payment_flag          -- ヘッダ.リース支払計画完了フラグ
-        ,xch.tax_code                                       AS  tax_code                    -- ヘッダ.税金コード
+-- 2013/07/05 Ver.1.1 K.Nakamura MOD Start
+--        ,xch.tax_code                                       AS  tax_code                    -- ヘッダ.税金コード
+        ,DECODE(xcl.tax_code, NULL, xch.tax_code,
+                                    xcl.tax_code)           AS  tax_code                    -- 明細.税金コード、NULLの場合はヘッダ.税金コード
+-- 2013/07/05 Ver.1.1 K.Nakamura MOD End
         ,xch.created_by                                     AS  h_created_by                -- ヘッダ.作成者
         ,TO_CHAR( xch.creation_date, cv_date_ymdhms )       AS  h_creation_date             -- ヘッダ.作成日
         ,xch.last_updated_by                                AS  h_last_updated_by           -- ヘッダ.最終更新者
