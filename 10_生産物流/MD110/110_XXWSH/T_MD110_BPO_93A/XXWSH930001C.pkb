@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -112,6 +112,7 @@ AS
  *  2008/11/27    1.27 Oracle 福田 直樹  本番障害#179対応(実績訂正時に実績計上済区分に'Y'ではなく'N'をセットする)
  *  2008/11/27    1.27 Oracle 福田 直樹  本番障害対応(最大配送区分算出関数・最大パレット枚数算出関数はエラーにせずROLLBACKもしない)
  *  2008/11/28    1.28 Oracle 福田 直樹  本番障害対応(重量容積小口個数更新関数はエラーにせずROLLBACKもしない)
+ *  2008/11/29    1.29 Oracle 上原 正好  本番障害対応#196(for update 文をnowaitからskip lockedに変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3672,7 +3673,10 @@ AS
       AND    xshi.data_type = iv_process_object_info      --データタイプ
       AND    xshi.creation_date < (TRUNC(gd_sysdate) - (gn_purge_period -1))
       ORDER BY xshi.header_id,xsli.line_id
-      FOR UPDATE OF xshi.header_id NOWAIT
+-- mod start 2008/11/29 ver1.29 uehara
+--      FOR UPDATE OF xshi.header_id NOWAIT
+      FOR UPDATE OF xshi.header_id SKIP LOCKED
+-- mod end 2008/11/29 ver1.29 uehara
       ;
 --
     -- *** ローカル・レコード ***
@@ -3887,7 +3891,10 @@ AS
     AND     xshi_a.eos_data_type = xshi_b.eos_data_type
     AND     xshi_a.program_update_date <> xshi_b.max_program_update_date
     ORDER BY xshi_a.header_id
-    FOR UPDATE OF xshi_a.header_id NOWAIT
+-- mod start 2008/11/29 ver1.29 uehara
+--    FOR UPDATE OF xshi_a.header_id NOWAIT
+    FOR UPDATE OF xshi_a.header_id SKIP LOCKED
+-- mod end 2008/11/29 ver1.29 uehara
     ;
 --
     --IFヘッダは存在するが、IF明細が存在しない場合、警告をセットしログ出力します。
@@ -4204,7 +4211,10 @@ AS
       wk_sql := wk_sql || '          ,header_id ';          -- IF_L.ヘッダID
       wk_sql := wk_sql || '          ,orderd_item_code ';   -- IF_L.受注品目
       wk_sql := wk_sql || '          ,lot_no ';             -- IF_L.ロットNo
-      wk_sql := wk_sql || '  FOR UPDATE OF xsli.line_id,xshi.header_id NOWAIT ';
+-- mod start 2008/11/29 ver1.29 uehara
+--      wk_sql := wk_sql || '  FOR UPDATE OF xsli.line_id,xshi.header_id NOWAIT ';
+      wk_sql := wk_sql || '  FOR UPDATE OF xsli.line_id,xshi.header_id SKIP LOCKED ';
+-- mod end 2008/11/29 ver1.29 uehara
 --
       EXECUTE IMMEDIATE wk_sql BULK COLLECT INTO gr_interface_info_rec ;
 --
