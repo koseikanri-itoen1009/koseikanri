@@ -17,6 +17,7 @@ CREATE TABLE xxwsh.xxwsh_order_headers_all
   cust_po_number                VARCHAR2(20),
   price_list_id                 NUMBER,
   request_no                    VARCHAR2(12)    NOT NULL,
+  base_request_no               VARCHAR2(12),
   req_status                    VARCHAR2(2)     NOT NULL,
   delivery_no                   VARCHAR2(12),
   prev_delivery_no              VARCHAR2(12),
@@ -118,6 +119,7 @@ CREATE TABLE xxwsh.xxwsh_order_headers_all
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.cust_po_number               IS '顧客発注';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.price_list_id                IS '価格表';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.request_no                   IS '依頼No';
+   COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.base_request_no              IS '元依頼No';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.req_status                   IS 'ステータス';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.delivery_no                  IS '配送No';
    COMMENT ON COLUMN xxwsh.xxwsh_order_headers_all.prev_delivery_no             IS '前回配送No';
