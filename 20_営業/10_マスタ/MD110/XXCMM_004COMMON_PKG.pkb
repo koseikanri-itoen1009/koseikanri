@@ -33,6 +33,7 @@ AS
  *  2009/02/13          K.Ito            proc_conc_request:例外処理追加(コンカレント待機、処理)
  *  2009/02/27    1.1   R.Takigawa       Disc品目カテゴリ割当削除処理にパラメータチェックの追加
  *  2009/04/10    1.2   H.Yoshikawa      障害T1_0215 対応(chk_single_byte を削除)
+ *  2009/05/27    1.3   H.Yoshikawa      障害T1_1188 対応  OPM品目登録処理に ic_lots_mst の登録を追加
  *
  *****************************************************************************************/
 --
@@ -127,6 +128,15 @@ AS
   cv_dev_phase_complete       CONSTANT VARCHAR2(30)  := 'COMPLETE';          -- '完了'
   -- コンカレントdevステータス
   cv_dev_status_normal        CONSTANT VARCHAR2(30)  := 'NORMAL';            -- '正常'
+--
+-- Ver1.3 Add  2009/05/27 ic_lots_mst時の定数を追加
+  cn_def_trans_cnt            CONSTANT ic_lots_mst.trans_cnt%TYPE := -99;
+  cn_ic_lots_mst_zero         CONSTANT NUMBER(1)                  := 0;
+  cn_def_strength             CONSTANT ic_lots_mst.strength%TYPE  := 100;
+  cv_def_lot_no               CONSTANT ic_lots_mst.lot_no%TYPE    := 'DEFAULTLOT';
+  cd_def_start_date           CONSTANT DATE                       := TO_DATE( '1970/01/01', 'RRRR/MM/DD' );
+  cd_def_end_date             CONSTANT DATE                       := TO_DATE( '2099/12/31', 'RRRR/MM/DD'  );
+-- End1.3
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -1652,6 +1662,53 @@ AS
     x_last_updated_by          => i_opm_item_rec.last_updated_by,
     x_last_update_login        => i_opm_item_rec.last_update_login);
     --
+-- Ver1.3 Add  2009/05/27 ic_lots_mstへの登録処理を追加
+    INSERT INTO ic_lots_mst(
+      item_id
+     ,lot_id
+     ,lot_no
+     ,expaction_date
+     ,lot_created
+     ,expire_date
+     ,retest_date
+     ,strength
+     ,inactive_ind
+     ,origination_type
+     ,creation_date
+     ,last_update_date
+     ,created_by
+     ,last_updated_by
+     ,trans_cnt
+     ,delete_mark
+     ,last_update_login
+     ,program_application_id
+     ,program_id
+     ,program_update_date
+     ,request_id
+    ) VALUES (
+      i_opm_item_rec.item_id
+     ,cn_ic_lots_mst_zero
+     ,cv_def_lot_no
+     ,cd_def_end_date
+     ,cd_def_start_date
+     ,cd_def_end_date
+     ,cd_def_start_date
+     ,cn_def_strength
+     ,cn_ic_lots_mst_zero
+     ,cn_ic_lots_mst_zero
+     ,i_opm_item_rec.creation_date
+     ,i_opm_item_rec.last_update_date
+     ,i_opm_item_rec.created_by
+     ,i_opm_item_rec.last_updated_by
+     ,cn_def_trans_cnt
+     ,cn_ic_lots_mst_zero
+     ,i_opm_item_rec.last_update_login
+     ,DECODE( fnd_global.conc_request_id, -1, NULL, fnd_global.prog_appl_id )
+     ,DECODE( fnd_global.conc_request_id, -1, NULL, fnd_global.conc_program_id )
+     ,DECODE( fnd_global.conc_request_id, -1, NULL, i_opm_item_rec.last_update_date )
+     ,DECODE( fnd_global.conc_request_id, -1, NULL, fnd_global.conc_request_id )
+    );
+-- End1.3
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
