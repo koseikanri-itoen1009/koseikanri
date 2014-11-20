@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.17
+ * Version                : 1.18
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -80,6 +80,8 @@ AS
  *  2008/12/15   1.15  oracle 伊藤     本番障害#645対応 D4,S4 予定日でなく実績日で取得する。
  *  2008/12/18   1.16  oracle 伊藤     本番障害#648対応 I5,I6 訂正前数量 - 実績数量を返す。
  *  2008/12/24   1.17  oracle 山本     本番障害#836対応 S3    生産入庫予定抽出条件追加
+ *  2009/03/31   1.18  野村            本番障害#1346対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -696,6 +698,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+--
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(CASE
     SELECT  /*+ leading(oha otta ola mld) */
@@ -730,6 +733,9 @@ AS
     AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           IN (cv_ship_pro_type, cv_warehouse_type)
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
 --
     --==============================================================
@@ -845,6 +851,9 @@ AS
     AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
 --
     --==============================================================
@@ -1252,6 +1261,9 @@ AS
     AND     pha.attribute1        IN (cv_po_status_order_fin, cv_po_status_accept)
     AND     pha.attribute5         = iv_whse_code
     AND     pha.attribute4        <= TO_CHAR(id_eff_date, 'YYYY/MM/DD') -- 納入日
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     pha.org_id             = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
 --
     --==============================================================
@@ -1580,6 +1592,9 @@ AS
     AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -1685,6 +1700,9 @@ AS
     AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -1806,6 +1824,9 @@ AS
     AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -1911,6 +1932,9 @@ AS
     AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -2312,6 +2336,9 @@ AS
     AND     mld.lot_id             = in_lot_id
     AND     mld.document_type_code = cv_doc_type
     AND     mld.record_type_code   = cv_rec_type
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     pha.org_id             = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
 --
     --==============================================================
@@ -2879,6 +2906,9 @@ AS
     AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           IN (cv_ship_pro_type, cv_warehouse_type)
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
 -- 2008/12/18 H.Itou Mod End
     --==============================================================
@@ -3007,6 +3037,9 @@ AS
     AND     mld.record_type_code      = cv_rec_type
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
 -- 2008/12/18 H.Itou Mod End
     --==============================================================
@@ -3386,6 +3419,9 @@ AS
     AND     pha.attribute1        IN (cv_po_status_order_fin, cv_po_status_accept)
     AND     pha.attribute5         = iv_whse_code
     AND     pha.attribute4        <= TO_CHAR(id_eff_date, 'YYYY/MM/DD') -- 納入日
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     pha.org_id             = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -3564,6 +3600,9 @@ AS
     AND     ola.delete_flag           = cv_flag_off
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -3656,6 +3695,9 @@ AS
     AND     ola.delete_flag           = cv_flag_off
     AND     otta.attribute1           = cv_ship_pro_type
     AND     otta.transaction_type_id  = oha.order_type_id
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 START *--------*
+    AND     otta.org_id               = FND_PROFILE.VALUE('ORG_ID')
+-- *--------* 2009/03/31 Ver.1.18 本番障害#1346対応 END   *--------*
     ;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述

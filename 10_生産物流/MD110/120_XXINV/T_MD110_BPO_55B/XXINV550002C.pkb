@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.36
+ * Version          : 1.37
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2009/02/04    1.34 Yasuhisa Yamamoto 本番障害#1120対応
  *  2009/02/05    1.35 Yasuhisa Yamamoto 本番障害#1120対応(追加対応)
  *  2009/02/13    1.36 Yasuhisa Yamamoto 本番障害#1189対応
+ *  2009/03/30    1.37  Akiyoshi Shiina  本番障害#1346対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1417,6 +1418,9 @@ AS
 --        AND pha.attribute4 BETWEEN civ_ymd_from AND civ_ymd_to                    --納入日
         AND xrart.txns_date BETWEEN TO_DATE(civ_ymd_from,gv_fmt_ymd) AND TO_DATE(civ_ymd_to,gv_fmt_ymd)      --実績日
 -- 2008/12/29 v1.31 N.Yoshida mod end
+-- 2009/03/30 v1.37 ADD START
+        AND pha.org_id = FND_PROFILE.VALUE('ORG_ID')
+-- 2009/03/30 v1.37 ADD END
         --発注明細抽出条件
         AND pha.po_header_id = pla.po_header_id                                   --発注ヘッダID
         AND pla.attribute13 = gv_po_flg_qty                                       --数量確定フラグ
