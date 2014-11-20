@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/11/11    1.11  A.Shiina         移行不具合修正
  *  2008/11/19    1.12  N.Yoshida        I_S_684対応、移行データ検証不具合対応
  *  2008/11/29    1.13  N.Yoshida        本番#210対応
+ *  2008/12/03    1.14  H.Itou           本番#384対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5401,10 +5402,13 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
-            ,DECODE(xrpm.dealings_div_name
-                   ,gv_haiki,trn.trans_qty
-                   ,gv_mihon,trn.trans_qty
-                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/12/03 H.Itou Mod Start 本番障害#384
+--            ,DECODE(xrpm.dealings_div_name
+--                   ,gv_haiki,trn.trans_qty
+--                   ,gv_mihon,trn.trans_qty
+--                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/03 H.Itou Mod End
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,NULL                           lot_desc
@@ -5506,10 +5510,13 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
-            ,DECODE(xrpm.dealings_div_name
-                   ,gv_haiki,trn.trans_qty
-                   ,gv_mihon,trn.trans_qty
-                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/12/03 H.Itou Mod Start 本番障害#384
+--            ,DECODE(xrpm.dealings_div_name
+--                   ,gv_haiki,trn.trans_qty
+--                   ,gv_mihon,trn.trans_qty
+--                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/03 H.Itou Mod End
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,NULL                           lot_desc
@@ -10489,10 +10496,13 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
-            ,DECODE(xrpm.dealings_div_name
-                   ,gv_haiki,trn.trans_qty
-                   ,gv_mihon,trn.trans_qty
-                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/12/03 H.Itou Mod Start 本番障害#384
+--            ,DECODE(xrpm.dealings_div_name
+--                   ,gv_haiki,trn.trans_qty
+--                   ,gv_mihon,trn.trans_qty
+--                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/03 H.Itou Mod End
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,NULL                           lot_desc
@@ -10595,10 +10605,13 @@ AS
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
             ,xlc.unit_ploce             actual_unit_price
-            ,DECODE(xrpm.dealings_div_name
-                   ,gv_haiki,trn.trans_qty
-                   ,gv_mihon,trn.trans_qty
-                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- 2008/12/03 H.Itou Mod Start 本番障害#384
+--            ,DECODE(xrpm.dealings_div_name
+--                   ,gv_haiki,trn.trans_qty
+--                   ,gv_mihon,trn.trans_qty
+--                   ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/03 H.Itou Mod End
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,NULL                           lot_desc
