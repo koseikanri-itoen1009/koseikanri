@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY APPS.XXCMM004A06C
+CREATE OR REPLACE PACKAGE BODY XXCMM004A06C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -24,8 +24,9 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/11    1.0   N.Nishimura      main新規作成
- *  2009/1/16     1.1   R.Takigawa       CSV形式データ出力エラーを削除
+ *  2009/01/16    1.1   R.Takigawa       CSV形式データ出力エラーを削除
  *                                       品目共通固定値定義
+ *  2009/04/08    1.2   H.Yoshikawa      障害No.T1_0184 対応
  *
  *****************************************************************************************/
 --
@@ -447,10 +448,14 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver1.2  2009/04/08  Add H.Yoshikawa  障害No.T1_0184 対応
+    -- 品目ステータス：仮登録
+    cn_itm_status_pre_reg    CONSTANT NUMBER := xxcmm_004common_pkg.cn_itm_status_pre_reg;
+-- End
 --
     -- *** ローカル変数 ***
-    l_cost_rec       g_cost_rtype;  -- 標準原価取得用レコード型変数
-    ln_c             NUMBER;        -- カウンタ
+    l_cost_rec               g_cost_rtype;  -- 標準原価取得用レコード型変数
+    ln_c                     NUMBER;        -- カウンタ
 --
     -- ===============================
     -- ローカル・カーソル
@@ -466,7 +471,9 @@ AS
                 se.seisakugun,
                 xoiv.opt_cost_new      discrete_cost
       FROM      xxcmm_opmmtl_items_v   xoiv,
-                financials_system_parameters fsp,
+-- Ver1.2  2009/04/08  Del H.Yoshikawa  障害No.T1_0184 対応
+--                financials_system_parameters fsp,
+-- End
                (SELECT      gic_se.item_id       AS item_id
                            ,mcv_se.segment1      AS seisakugun
                            ,mcv_se.description   AS seisakugun_name
@@ -478,7 +485,10 @@ AS
                 AND         gic_se.category_id        = mcv_se.category_id
                 ) se
       WHERE     xoiv.item_id            = xoiv.parent_item_id
-      AND       xoiv.organization_id    = fsp.inventory_organization_id
+-- Ver1.2  2009/04/08  Mod H.Yoshikawa  障害No.T1_0184 対応
+--      AND       xoiv.organization_id    = fsp.inventory_organization_id
+      AND       xoiv.item_status       >= cn_itm_status_pre_reg
+-- End
       AND       xoiv.item_id            = se.item_id(+)
       AND       xoiv.item_no BETWEEN cv_item_code_from AND cv_item_code_to
       AND       xoiv.start_date_active  <= TRUNC( SYSDATE )
@@ -516,6 +526,7 @@ AS
       g_item_mst_tab(ln_c).v_item_name       := cv_space_2 || lr_item_csv_rec.item_name;
       g_item_mst_tab(ln_c).v_item_short_name := cv_space_2 || lr_item_csv_rec.item_short_name;
       g_item_mst_tab(ln_c).v_seisakugun      := lr_item_csv_rec.seisakugun;
+      --
       -- ===============================
       -- 営業原価取得(A-2.2)
       -- ===============================
