@@ -4,9 +4,8 @@
 -- * Control file  : XXCOS010A031.ctl
 -- * Description   : 納品確定データ取込 SQL*Loader処理
 -- * MD.050        : MD050_COS_010_A03_納品確定データ取込_Issue2.0.doc
--- *                 MD050_COS_010_A031_納品確定データ取込(SQL-LOADER)_補足資料Issue2.0.xls
 -- * MD.070        : なし
--- * Version       : 1.4
+-- * Version       : 1.5
 -- *
 -- * Target Table  : XXCOS_EDI_DELIVERY_WORK
 -- *
@@ -19,6 +18,7 @@
 -- *  2009/02/19    1.2     M.Yamaki         [COS_105]オリコン（バラ）個口数の設定不具合対応
 -- *  2009/06/11    1.3     M.Sano           [T1_1353]前スペース削除対応
 -- *  2009/12/01    1.4     M.Sano           [E_本稼動_00255]2桁以上の少数点不正対応
+-- *  2011/07/21    1.5     K.Kiriu          [E_本稼動_07906]流通BMS対応
 -- *
 -- ***************************************************************************************
 LOAD DATA
@@ -400,6 +400,10 @@ APPEND INTO TABLE XXCOS_EDI_DELIVERY_WORK
     TOTAL_LINE_QTY                 POSITION(4141:4145) INTEGER EXTERNAL(5)  NULLIF TOTAL_LINE_QTY = "00000",                                                                                                                                                   -- トータル行数
     TOTAL_INVOICE_QTY              POSITION(4146:4150) INTEGER EXTERNAL(5)  NULLIF TOTAL_INVOICE_QTY = "00000",                                                                                                                                                -- トータル伝票枚数
     CHAIN_PECULIAR_AREA_FOOTER     POSITION(4151:4350) CHAR(200)            NULLIF CHAIN_PECULIAR_AREA_FOOTER = BLANKS,                                                                                                                                        -- チェーン店固有エリア（フッター）
+-- 2011/07/21 K.Kiriu Ver.1.5 Add start
+    BMS_HEADER_DATA                POSITION(4500:6499) CHAR(2000)           NULLIF BMS_HEADER_DATA = BLANKS,                                                                                                                                                   -- 流通ＢＭＳヘッダデータ
+    BMS_LINE_DATA                  POSITION(6500:7999) CHAR(1500)           NULLIF BMS_LINE_DATA   = BLANKS,                                                                                                                                                   -- 流通ＢＭＳ明細データ
+-- 2011/07/21 K.Kiriu Ver.1.5 Add end
     IF_FILE_NAME                                       CONSTANT "???????????",
     ERR_STATUS                                         CONSTANT "0",                                                                                                                                                                                           -- ステータス
     CREATED_BY                                         CONSTANT "-1",                                                                                                                                                                                          -- 作成者

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -86,6 +86,7 @@ AS
  *  2010/05/10    1.22  K.Oomata         [E_本稼動_02626] EDIエラー情報テーブルのパージタイミング不具合対応
  *  2010/07/29    1.23  K.Kiriu          [E_本稼動_04113] 顧客品目マスタの取得条件不具合対応
  *  2011/02/04    1.24  T.Ishiwata       [E_本稼動_06475] 最上位担当営業員設定時、EDIワークに残さない対応
+ *  2011/07/21    1.25  K.Kiriu          [E_本稼動_07906] 流通BMS対応
  *
  *****************************************************************************************/
 --
@@ -712,8 +713,15 @@ AS
 -- 2010/01/29 Ver1.17 K.Hosoi Mod Start
 --            edi.err_status                   err_status                         -- ステータス
             edi.err_status                   err_status,                        -- ステータス
-            edi.creation_date                creation_date                      -- 作成日
+/* 2011/07/21 Ver1.25 Mod Start */
+--            edi.creation_date                creation_date                      -- 作成日
+            edi.creation_date                creation_date,                     -- 作成日
+/* 2011/07/21 Ver1.25 Mod End   */
 -- 2010/01/29 Ver1.17 K.Hosoi Mod End
+/* 2011/07/21 Ver1.25 Add Start */
+            edi.bms_header_data              bms_header_data,                   -- 流通ＢＭＳヘッダデータ
+            edi.bms_line_data                bms_line_data                      -- 流通ＢＭＳ明細データ
+/* 2011/07/21 Ver1.25 Add End   */
     FROM    xxcos_edi_delivery_work          edi
 -- 2010/01/29 Ver1.17 K.Hosoi Mod Start
 --    WHERE   edi.if_file_name                 = iv_file_name                     -- インタフェースファイル名
@@ -1132,7 +1140,14 @@ AS
 -- 2010/04/20 Ver.1.20 Y.Goto add Start
       edi_unit_price                         xxcos_edi_lines.edi_unit_price%TYPE,                        -- ＥＤＩ原単価（発注）
 -- 2010/04/20 Ver.1.20 Y.Goto add End
-      check_status                           xxcos_edi_delivery_work.err_status%TYPE                     -- チェックステータス
+/* 2011/07/21 Ver1.25 Mod Start */
+--      check_status                           xxcos_edi_delivery_work.err_status%TYPE                     -- チェックステータス
+      check_status                           xxcos_edi_delivery_work.err_status%TYPE,                    -- チェックステータス
+/* 2011/07/21 Ver1.25 Mod End   */
+/* 2011/07/21 Ver1.25 Add Start */
+      bms_header_data                        xxcos_edi_delivery_work.bms_header_data%TYPE,               -- 流通ＢＭＳヘッダデータ
+      bms_line_data                          xxcos_edi_delivery_work.bms_line_data%TYPE                  -- 流通ＢＭＳ明細データ
+/* 2011/07/21 Ver1.25 Add End   */
     );
 --
   -- EDI納品返品情報ワークテーブル テーブルタイプ定義
@@ -1688,6 +1703,10 @@ AS
   TYPE g_edi_received_date_ttype             IS TABLE OF xxcos_edi_headers.edi_received_date%TYPE
     INDEX BY PLS_INTEGER;     -- EDI受信日
 -- 2010/01/29 Ver1.17 K.Hosoi Add End
+/* 2011/07/21 Ver1.25 Add Start */
+  TYPE g_bms_header_data_ttype               IS TABLE OF xxcos_edi_headers.bms_header_data%TYPE
+    INDEX BY PLS_INTEGER;     -- 流通ＢＭＳヘッダデータ
+/* 2011/07/21 Ver1.25 Add End   */
 --
   -- EDI明細情報テーブル テーブルタイプ定義
   TYPE g_edi_lines_ttype                     IS TABLE OF xxcos_edi_lines%ROWTYPE
@@ -1888,6 +1907,10 @@ AS
   TYPE g_taking_unit_price_ttype        IS TABLE OF xxcos_edi_lines.taking_unit_price%TYPE
     INDEX BY PLS_INTEGER;     -- 取込時原単価（発注）
 --****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
+/* 2011/07/21 Ver1.25 Add Start */
+  TYPE g_bms_line_data_ttype                 IS TABLE OF xxcos_edi_lines.bms_line_data%TYPE
+    INDEX BY PLS_INTEGER;     -- 流通ＢＭＳ明細データ
+/* 2011/07/21 Ver1.25 Add End   */
 --
   -- EDIエラー情報テーブル テーブルタイプ定義
   TYPE g_edi_errors_ttype                    IS TABLE OF xxcos_edi_errors%ROWTYPE
@@ -2205,6 +2228,9 @@ AS
 -- 2009/12/28 M.Sano Ver.1.14 add Start
   gt_upd_tsukagatazaiko_div                  g_tsukagatazaiko_div_ttype;         -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
+/* 2011/07/21 Ver1.25 Add Start */
+  gt_upd_bms_header_data                     g_bms_header_data_ttype;           -- 流通ＢＭＳヘッダデータ
+/* 2011/07/21 Ver1.25 Add End   */
 --
   --  EDI明細情報インサート用変数
   gt_edi_lines                               g_edi_lines_ttype;                 -- EDI明細情報テーブル
@@ -2308,6 +2334,9 @@ AS
 --****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
   gt_upd_taking_unit_price                   g_taking_unit_price_ttype;         -- 取込時原単価（発注）
 --****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
+/* 2011/07/21 Ver1.25 Add Start */
+  gt_upd_bms_line_data                       g_bms_line_data_ttype;             -- 流通ＢＭＳ明細データ
+/* 2011/07/21 Ver1.25 Add End   */
 --
   -- EDIエラー情報用変数
   gt_edi_errors                              g_edi_errors_ttype;                -- EDIエラー情報テーブル
@@ -5025,6 +5054,10 @@ AS
 -- 2010/04/20 Ver.1.20 Y.Goto add Start
     gt_edi_work(ln_idx).edi_unit_price                 := it_edi_work.order_unit_price;                  -- ＥＤＩ原単価（発注）
 -- 2010/04/20 Ver.1.20 Y.Goto add End
+/* 2011/07/21 Ver1.25 Add Start */
+    gt_edi_work(ln_idx).bms_header_data                := it_edi_work.bms_header_data;                   -- 流通ＢＭＳヘッダデータ
+    gt_edi_work(ln_idx).bms_line_data                  := it_edi_work.bms_line_data;                     -- 流通ＢＭＳ明細データ
+/* 2011/07/21 Ver1.25 Add End   */
 --
   EXCEPTION
 --
@@ -5581,6 +5614,9 @@ AS
     gt_edi_headers(ln_idx).program_application_id           := cn_program_application_id;                     -- コンカレント・プログラム・アプリケーションID
     gt_edi_headers(ln_idx).program_id                       := cn_program_id;                                 -- コンカレント・プログラムID
     gt_edi_headers(ln_idx).program_update_date              := cd_program_update_date;                        -- プログラム更新日
+/* 2011/07/21 Ver1.25 Add Start */
+    gt_edi_headers(ln_idx).bms_header_data                  := it_edi_work.bms_header_data;                   -- 流通ＢＭＳヘッダデータ
+/* 2011/07/21 Ver1.25 Add End   */
 --
   EXCEPTION
 --
@@ -5922,6 +5958,9 @@ AS
 -- 2009/12/28 M.Sano Ver.1.14 add Start
     gt_upd_tsukagatazaiko_div(ln_idx)                  := it_edi_work.tsukagatazaiko_div;                -- 通過在庫型区分
 -- 2009/12/28 M.Sano Ver.1.14 add End
+/* 2011/07/21 Ver1.25 Add Start */
+    gt_upd_bms_header_data(ln_idx)                     := it_edi_work.bms_header_data;                   -- 流通ＢＭＳヘッダデータ
+/* 2011/07/21 Ver1.25 Add End   */
 --
   EXCEPTION
 --
@@ -6209,6 +6248,9 @@ AS
     gt_edi_lines(ln_idx).program_application_id        := cn_program_application_id;                     -- コンカレント・プログラム・アプリケーションID
     gt_edi_lines(ln_idx).program_id                    := cn_program_id;                                 -- コンカレント・プログラムID
     gt_edi_lines(ln_idx).program_update_date           := cd_program_update_date;                        -- プログラム更新日
+/* 2011/07/21 Ver1.25 Add Start */
+    gt_edi_lines(ln_idx).bms_line_data                 := it_edi_work.bms_line_data;                     -- 流通ＢＭＳ明細データ
+/* 2011/07/21 Ver1.25 Add Start */
 --
   EXCEPTION
 --
@@ -6384,6 +6426,9 @@ AS
 --****************************** 2009/05/08 1.4 T.Kitajima ADD START ******************************--
     gt_upd_taking_unit_price(ln_idx)                   := it_edi_work.order_unit_price;                  -- 取込時原単価（発注）
 --****************************** 2009/05/08 1.4 T.Kitajima ADD  END  ******************************--
+/* 2011/07/21 Ver1.25 Add Start */
+    gt_upd_bms_line_data(ln_idx)                       := it_edi_work.bms_line_data;                     -- 流通ＢＭＳ明細データ
+/* 2011/07/21 Ver1.25 Add End   */
 --
   EXCEPTION
 --
@@ -6981,7 +7026,13 @@ AS
               request_id                          = cn_request_id,                             -- 要求ID
               program_application_id              = cn_program_application_id,                 -- コンカレント・プログラム・アプリケーションID
               program_id                          = cn_program_id,                             -- コンカレント・プログラムID
-              program_update_date                 = cd_program_update_date                     -- プログラム更新日
+/* 2011/07/21 Ver1.25 Mod Start */
+--              program_update_date                 = cd_program_update_date                     -- プログラム更新日
+              program_update_date                 = cd_program_update_date,                    -- プログラム更新日
+/* 2011/07/21 Ver1.25 Mod End   */
+/* 2011/07/21 Ver1.25 Add Start */
+              bms_header_data                     = gt_upd_bms_header_data(ln_idx)             -- 流通ＢＭＳヘッダデータ
+/* 2011/07/21 Ver1.25 Add End   */
       WHERE   edi_header_info_id                  = gt_upd_edi_header_info_id(ln_idx);
 --
   EXCEPTION
@@ -7255,7 +7306,13 @@ AS
               request_id                     = cn_request_id,                              -- 要求ID
               program_application_id         = cn_program_application_id,                  -- コンカレント・プログラム・アプリケーションID
               program_id                     = cn_program_id,                              -- コンカレント・プログラムID
-              program_update_date            = cd_program_update_date                      -- プログラム更新日
+/* 2011/07/21 Ver1.25 Mod Start */
+--              program_update_date            = cd_program_update_date                      -- プログラム更新日
+              program_update_date            = cd_program_update_date,                     -- プログラム更新日
+/* 2011/07/21 Ver1.25 Mod End   */
+/* 2011/07/21 Ver1.25 Add Start */
+              bms_line_data                  = gt_upd_bms_line_data(ln_idx)                -- 流通ＢＭＳ明細データ
+/* 2011/07/21 Ver1.25 Add End   */
       WHERE   edi_line_info_id               = gt_upd_edi_line_info_id(ln_idx)             -- EDI明細情報ID
       AND     edi_header_info_id             = gt_upd_edi_line_header_info_id(ln_idx);     -- EDIヘッダ情報ID
 --
