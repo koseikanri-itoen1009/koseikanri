@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF002A01C(body)
  * Description      : 自販機・SH物件情報連携
  * MD.050           : MD050_CFF_002_A01_自販機・SH物件情報連携
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008-12-18    1.0   SCS 増子 秀幸    新規作成
  *  2009-02-09    1.1   SCS 増子 秀幸    [障害CFF_005] ログ出力先不具合対応
+ *  2011-04-05    1.2   SCS 廣瀬 真佐人  E_本稼動_06767対応
  *
  *****************************************************************************************/
 --
@@ -908,7 +909,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_err_cnt   NUMBER;   -- 妥当性チェック時のエラー件数カウント用
-    ln_skip_cnt  NUMBER;   -- リース物件情報登録／更新スキップ件数カウント用
+-- ************ 2011-04-05 1.2 M.Hirose DEL START ************ --
+--    ln_skip_cnt  NUMBER;   -- リース物件情報登録／更新スキップ件数カウント用
+-- ************ 2011-04-05 1.2 M.Hirose DEL END   ************ --
     lb_skip_flg  BOOLEAN;  -- リース物件情報登録／更新スキップフラグ
 --
     -- ===============================
@@ -928,11 +931,15 @@ AS
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
-    gn_warn_cnt   := 0;
+-- ************ 2011-04-05 1.2 M.Hirose DEL START ************ --
+--    gn_warn_cnt   := 0;
+-- ************ 2011-04-05 1.2 M.Hirose DEL END   ************ --
 --
     -- ローカル変数の初期化
     ln_err_cnt    := 0;
-    ln_skip_cnt   := 0;
+-- ************ 2011-04-05 1.2 M.Hirose DEL START ************ --
+--    ln_skip_cnt   := 0;
+-- ************ 2011-04-05 1.2 M.Hirose DEL END   ************ --
     lb_skip_flg   := FALSE;
 --
     --*********************************************
@@ -983,17 +990,22 @@ AS
       ELSIF (lv_retcode = cv_status_warn) THEN
         ln_err_cnt := ln_err_cnt + 1;
         ov_retcode := cv_status_warn;
-      END IF;
-    END LOOP validate_rec_loop;
+-- ************ 2011-04-05 1.2 M.Hirose MOD START ************ --
+--      END IF;
+--    END LOOP validate_rec_loop;
+      ELSE
+-- ************ 2011-04-05 1.2 M.Hirose MOD END   ************ --
 --
     -- =====================================================
     --  リース物件情報登録／更新 (A-6)
     -- =====================================================
-    -- エラー件数判定 (A-4)
-    -- 妥当性チェックでエラーデータが存在した場合は、以下の処理を行わない
-    IF (ln_err_cnt = 0) THEN
-      <<ins_upd_lease_obj_loop>>
-      FOR i IN 1..g_vd_ogject_tab.COUNT LOOP
+-- ************ 2011-04-05 1.2 M.Hirose DEL START ************ --
+--    -- エラー件数判定 (A-4)
+--    -- 妥当性チェックでエラーデータが存在した場合は、以下の処理を行わない
+--    IF (ln_err_cnt = 0) THEN
+--      <<ins_upd_lease_obj_loop>>
+--      FOR i IN 1..g_vd_ogject_tab.COUNT LOOP
+-- ************ 2011-04-05 1.2 M.Hirose DEL END   ************ --
         ins_upd_lease_object(
           i,                 -- チェック対象レコード番号
           lb_skip_flg,       -- 登録／更新スキップフラグ
@@ -1006,10 +1018,17 @@ AS
           ov_retcode  := cv_status_warn;
         END IF;
         IF (lb_skip_flg) THEN
-          ln_skip_cnt := ln_skip_cnt + 1;
+-- ************ 2011-04-05 1.2 M.Hirose MOD START ************ --
+--          ln_skip_cnt := ln_skip_cnt + 1;
+          ln_err_cnt := ln_err_cnt + 1;
+-- ************ 2011-04-05 1.2 M.Hirose MOD END   ************ --
         END IF;
-      END LOOP validate_rec_loop;
-    END IF;
+-- ************ 2011-04-05 1.2 M.Hirose MOD START ************ --
+--      END LOOP validate_rec_loop;
+--    END IF;
+      END IF;
+    END LOOP validate_rec_loop;
+-- ************ 2011-04-05 1.2 M.Hirose MOD END   ************ --
 --
     -- =====================================================
     --  自販機・SH物件情報IF削除処理 (A-7)
@@ -1022,12 +1041,16 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- 正常終了の場合のグローバル変数の設定
-    IF (ln_err_cnt = 0) THEN
-      gn_error_cnt  := 0;
-      gn_warn_cnt   := ln_skip_cnt;
-      gn_normal_cnt := gn_target_cnt - gn_warn_cnt;
-    END IF;
+-- ************ 2011-04-05 1.2 M.Hirose MOD START ************ --
+--    -- 正常終了の場合のグローバル変数の設定
+--    IF (ln_err_cnt = 0) THEN
+--      gn_error_cnt  := 0;
+--      gn_warn_cnt   := ln_skip_cnt;
+--      gn_normal_cnt := gn_target_cnt - gn_warn_cnt;
+--    END IF;
+    gn_error_cnt  := ln_err_cnt;                    -- エラー件数
+    gn_normal_cnt := gn_target_cnt - gn_error_cnt;  -- 成功件数：対象件数 - エラー件数
+-- ************ 2011-04-05 1.2 M.Hirose MOD END   ************ --
 --
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
@@ -1168,18 +1191,20 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => gv_out_msg
     );
-    --
-    --スキップ件数出力
-    gv_out_msg := xxccp_common_pkg.get_msg(
-                     iv_application  => cv_appl_short_name
-                    ,iv_name         => cv_skip_rec_msg
-                    ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
-                   );
-    FND_FILE.PUT_LINE(
-       which  => FND_FILE.OUTPUT
-      ,buff   => gv_out_msg
-    );
+-- ************ 2011-04-05 1.2 M.Hirose DEL START ************ --
+--    --
+--    --スキップ件数出力
+--    gv_out_msg := xxccp_common_pkg.get_msg(
+--                     iv_application  => cv_appl_short_name
+--                    ,iv_name         => cv_skip_rec_msg
+--                    ,iv_token_name1  => cv_cnt_token
+--                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+--                   );
+--    FND_FILE.PUT_LINE(
+--       which  => FND_FILE.OUTPUT
+--      ,buff   => gv_out_msg
+--    );
+-- ************ 2011-04-05 1.2 M.Hirose DEL END   ************ --
     --
     --終了メッセージ
     IF (lv_retcode = cv_status_normal) THEN
