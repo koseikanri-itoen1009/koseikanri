@@ -7,7 +7,7 @@ AS
  * Description      : トレーサビリティ
  * MD.050           : トレーサビリティ T_MD050_BPO_560
  * MD.070           : トレーサビリティ(56A) T_MD070_BPO_56A
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/08    1.0   ORACLE 岩佐智治  main新規作成
  *  2008/05/27    1.1   Masayuki Ikeda   不具合修正
+ *  2008/07/02    1.2   ORACLE 丸下博宣  循環参照防止にバッチIDを追加
  *
  *****************************************************************************************/
 --
@@ -946,6 +947,7 @@ AS
   PROCEDURE get_lots_data(
     iv_item_id          IN     VARCHAR2,                -- 品目ID
     iv_lot_id           IN     VARCHAR2,                -- ロットID
+    iv_batch_id         IN     VARCHAR2,                -- バッチID
     iv_out_control      IN     VARCHAR2,                -- 出力制御
     in_level_num        IN     NUMBER,                  -- 階層
     ot_itp_tbl          OUT    NOCOPY mst_itp_tbl,      -- 生産情報
@@ -1309,6 +1311,11 @@ AS
                     || 'AND   pp.item_id     = :para_item_id '
                     || 'AND   pp.lot_id      = :para_lot_id ';
 --
+    IF ( iv_batch_id IS NOT NULL ) THEN
+      lv_sql_where_01 := lv_sql_where_01 
+                    || 'AND   pp.batch_id    > ' || iv_batch_id || ' ';
+    END IF;
+--
     -- WHERE句(定義)定義
     lv_sql_where_02 := 'WHERE pp.batch_id    = cp.batch_id(+) '
                     || 'AND   pp.lot_id     <> cp.lot_id(+) '
@@ -1317,6 +1324,11 @@ AS
                     || 'AND   cp.item_id     IS NOT NULL '
                     || 'AND   pp.item_id     = :para_item_id '
                     || 'AND   pp.lot_id      = :para_lot_id ';
+--
+    IF ( iv_batch_id IS NOT NULL ) THEN
+      lv_sql_where_02 := lv_sql_where_02 
+                    || 'AND   pp.batch_id    < ' || iv_batch_id || ' ';
+    END IF;
 --
     -- 出力制御(1：ロットトレース)
     IF ( iv_out_control = cv_out_trace ) THEN
@@ -1749,17 +1761,17 @@ AS
         (
           gt_division(itp_cnt)
          ,gt_level_num(itp_cnt)
-         ,TO_NUMBER(gt_item_code(itp_cnt))
+         ,gt_item_code(itp_cnt)
          ,gt_item_name(itp_cnt)
-         ,TO_NUMBER(gt_lot_num(itp_cnt))
-         ,TO_NUMBER(gt_trace_item_code(itp_cnt))
+         ,gt_lot_num(itp_cnt)
+         ,gt_trace_item_code(itp_cnt)
          ,gt_trace_item_name(itp_cnt)
-         ,TO_NUMBER(gt_trace_lot_num(itp_cnt))
+         ,gt_trace_lot_num(itp_cnt)
          ,gt_batch_num(itp_cnt)
-         ,TO_DATE(gt_batch_date(itp_cnt),'YYYY/MM/DD')
+         ,FND_DATE.STRING_TO_DATE(gt_batch_date(itp_cnt),'YYYY/MM/DD')
          ,gt_whse_code(itp_cnt)
          ,gt_line_num(itp_cnt)
-         ,TO_DATE(gt_turn_date(itp_cnt),'YYYY/MM/DD')
+         ,FND_DATE.STRING_TO_DATE(gt_turn_date(itp_cnt),'YYYY/MM/DD')
          ,gt_turn_batch_num(itp_cnt)
          ,gt_receipt_date(itp_cnt)
          ,gt_receipt_num(itp_cnt)
@@ -1767,11 +1779,11 @@ AS
          ,gt_supp_name(itp_cnt)
          ,gt_supp_code(itp_cnt)
          ,gt_trader_name(itp_cnt)
-         ,TO_DATE(gt_lot_date(itp_cnt),'YYYY/MM/DD')
+         ,FND_DATE.STRING_TO_DATE(gt_lot_date(itp_cnt),'YYYY/MM/DD')
          ,gt_lot_sign(itp_cnt)
-         ,TO_DATE(gt_best_bfr_date(itp_cnt),'YYYY/MM/DD')
-         ,TO_DATE(gt_dlv_date_first(itp_cnt),'YYYY/MM/DD')
-         ,TO_DATE(gt_dlv_date_last(itp_cnt),'YYYY/MM/DD')
+         ,FND_DATE.STRING_TO_DATE(gt_best_bfr_date(itp_cnt),'YYYY/MM/DD')
+         ,FND_DATE.STRING_TO_DATE(gt_dlv_date_first(itp_cnt),'YYYY/MM/DD')
+         ,FND_DATE.STRING_TO_DATE(gt_dlv_date_last(itp_cnt),'YYYY/MM/DD')
          ,gt_stock_ins_amount(itp_cnt)
          ,gt_tea_period_dev(itp_cnt)
          ,gt_product_year(itp_cnt)
@@ -1873,12 +1885,12 @@ AS
       lv_dspbuf := '';
       lv_dspbuf := gt_division(report_cnt)                                || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_level_num(report_cnt)                  || gv_msg_pnt;
-      lv_dspbuf := lv_dspbuf || TO_NUMBER(gt_item_code(report_cnt))       || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gt_item_code(report_cnt)                  || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_item_name(report_cnt)                  || gv_msg_pnt;
-      lv_dspbuf := lv_dspbuf || TO_NUMBER(gt_lot_num(report_cnt))         || gv_msg_pnt;
-      lv_dspbuf := lv_dspbuf || TO_NUMBER(gt_trace_item_code(report_cnt)) || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gt_lot_num(report_cnt)                    || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gt_trace_item_code(report_cnt)            || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_trace_item_name(report_cnt)            || gv_msg_pnt;
-      lv_dspbuf := lv_dspbuf || TO_NUMBER(gt_trace_lot_num(report_cnt))   || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || gt_trace_lot_num(report_cnt)              || gv_msg_pnt;
 --
       -- 生産系情報
       lv_dspbuf := lv_dspbuf || gt_batch_num(report_cnt)  || gv_msg_pnt;
@@ -1889,7 +1901,7 @@ AS
       -- 受入系情報
       lv_dspbuf := lv_dspbuf || gt_turn_date(report_cnt)      || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_turn_batch_num(report_cnt) || gv_msg_pnt;
-      lv_dspbuf := lv_dspbuf || gt_receipt_date(report_cnt)   || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || TO_CHAR(gt_receipt_date(report_cnt),'YYYY/MM/DD')   || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_receipt_num(report_cnt)    || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_order_num(report_cnt)      || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_supp_name(report_cnt)      || gv_msg_pnt;
@@ -1900,8 +1912,8 @@ AS
       lv_dspbuf := lv_dspbuf || gt_lot_date(report_cnt)         || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_lot_sign(report_cnt)         || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_best_bfr_date(report_cnt)    || gv_msg_pnt;
-      lv_dspbuf := lv_dspbuf || gt_dlv_date_first(report_cnt)   || gv_msg_pnt;
-      lv_dspbuf := lv_dspbuf || gt_dlv_date_last(report_cnt)    || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || TO_CHAR(FND_DATE.STRING_TO_DATE(gt_dlv_date_first(report_cnt),'YYYY/MM/DD'),'YYYY/MM/DD')   || gv_msg_pnt;
+      lv_dspbuf := lv_dspbuf || TO_CHAR(FND_DATE.STRING_TO_DATE(gt_dlv_date_last(report_cnt),'YYYY/MM/DD'),'YYYY/MM/DD')    || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_stock_ins_amount(report_cnt) || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_tea_period_dev(report_cnt)   || gv_msg_pnt;
       lv_dspbuf := lv_dspbuf || gt_product_year(report_cnt)     || gv_msg_pnt;
@@ -2006,6 +2018,10 @@ AS
     lv_lot_id_03            VARCHAR2(30);                                       -- ロットID(第三階層)
     lv_lot_id_04            VARCHAR2(30);                                       -- ロットID(第四階層)
     lv_lot_id_05            VARCHAR2(30);                                       -- ロットID(第五階層)
+    lv_batch_id_02          VARCHAR2(30);                                       -- バッチID(第二階層)
+    lv_batch_id_03          VARCHAR2(30);                                       -- バッチID(第三階層)
+    lv_batch_id_04          VARCHAR2(30);                                       -- バッチID(第四階層)
+    lv_batch_id_05          VARCHAR2(30);                                       -- バッチID(第五階層)
     lv_level_num_01         NUMBER                  := 1;                       -- 階層(第一階層)
     lv_level_num_02         NUMBER                  := 2;                       -- 階層(第二階層)
     lv_level_num_03         NUMBER                  := 3;                       -- 階層(第三階層)
@@ -2073,6 +2089,7 @@ AS
     get_lots_data(
       lv_item_id_01,      -- 品目ID
       lv_lot_id_01,       -- ロットID
+      NULL,               -- バッチID
       lv_out_control,     -- 出力制御
       lv_level_num_01,    -- 階層
       gt_itp01_tbl,       -- 生産情報(第一階層)
@@ -2115,8 +2132,9 @@ AS
         -- 第一階層の子品目を親品目へ置換え
         IF ((gt_itp01_tbl.COUNT > 0) AND (gt_itp01_tbl.COUNT >= ln_cnt_01)) THEN
           IF (gt_itp01_tbl(ln_cnt_01).c_item_no IS NOT NULL) THEN
-            lv_item_id_02 := gt_itp01_tbl(ln_cnt_01).c_item_id;
-            lv_lot_id_02  := gt_itp01_tbl(ln_cnt_01).c_lot_id;
+            lv_item_id_02  := gt_itp01_tbl(ln_cnt_01).c_item_id;
+            lv_lot_id_02   := gt_itp01_tbl(ln_cnt_01).c_lot_id;
+            lv_batch_id_02 := gt_itp01_tbl(ln_cnt_01).p_batch_id;
 --
             -- ================================
             -- A-5.第二階層ロット系統データ抽出
@@ -2124,6 +2142,7 @@ AS
             get_lots_data(
               lv_item_id_02,      -- 品目ID
               lv_lot_id_02,       -- ロットID
+              lv_batch_id_02,     -- バッチID
               lv_out_control,     -- 出力制御
               lv_level_num_02,    -- 階層
               gt_itp02_tbl,       -- 生産情報(第二階層)
@@ -2163,8 +2182,9 @@ AS
               -- 第二階層の子品目を親品目へ置換え
               IF ((gt_itp02_tbl.COUNT > 0) AND (gt_itp02_tbl.COUNT >= ln_cnt_02)) THEN
                 IF (gt_itp02_tbl(ln_cnt_02).c_item_no IS NOT NULL) THEN
-                  lv_item_id_03 := gt_itp02_tbl(ln_cnt_02).c_item_id;
-                  lv_lot_id_03  := gt_itp02_tbl(ln_cnt_02).c_lot_id;
+                  lv_item_id_03  := gt_itp02_tbl(ln_cnt_02).c_item_id;
+                  lv_lot_id_03   := gt_itp02_tbl(ln_cnt_02).c_lot_id;
+                  lv_batch_id_03 := gt_itp02_tbl(ln_cnt_02).p_batch_id;
 --
                   -- ================================
                   -- A-7.第三階層ロット系統データ抽出
@@ -2172,6 +2192,7 @@ AS
                   get_lots_data(
                     lv_item_id_03,      -- 品目ID
                     lv_lot_id_03,       -- ロットID
+                    lv_batch_id_03,     -- バッチID
                     lv_out_control,     -- 出力制御
                     lv_level_num_03,    -- 階層
                     gt_itp03_tbl,       -- 生産情報(第三階層)
@@ -2211,8 +2232,9 @@ AS
                     -- 第三階層の子品目を親品目へ置換え
                     IF ((gt_itp03_tbl.COUNT > 0) AND (gt_itp03_tbl.COUNT >= ln_cnt_03)) THEN
                       IF (gt_itp03_tbl(ln_cnt_03).c_item_no IS NOT NULL) THEN
-                        lv_item_id_04 := gt_itp03_tbl(ln_cnt_03).c_item_id;
-                        lv_lot_id_04  := gt_itp03_tbl(ln_cnt_03).c_lot_id;
+                        lv_item_id_04  := gt_itp03_tbl(ln_cnt_03).c_item_id;
+                        lv_lot_id_04   := gt_itp03_tbl(ln_cnt_03).c_lot_id;
+                        lv_batch_id_04 := gt_itp03_tbl(ln_cnt_03).p_batch_id;
 --
                         -- ================================
                         -- A-9.第四階層ロット系統データ抽出
@@ -2220,6 +2242,7 @@ AS
                         get_lots_data(
                           lv_item_id_04,      -- 品目ID
                           lv_lot_id_04,       -- ロットID
+                          lv_batch_id_04,     -- バッチID
                           lv_out_control,     -- 出力制御
                           lv_level_num_04,    -- 階層
                           gt_itp04_tbl,       -- 生産情報(第四階層)
@@ -2259,8 +2282,9 @@ AS
                           -- 第四階層の子品目を親品目へ置換え
                           IF ((gt_itp04_tbl.COUNT > 0) AND (gt_itp04_tbl.COUNT >= ln_cnt_04)) THEN
                             IF (gt_itp04_tbl(ln_cnt_04).c_item_no IS NOT NULL) THEN
-                              lv_item_id_05 := gt_itp04_tbl(ln_cnt_04).c_item_id;
-                              lv_lot_id_05  := gt_itp04_tbl(ln_cnt_04).c_lot_id;
+                              lv_item_id_05  := gt_itp04_tbl(ln_cnt_04).c_item_id;
+                              lv_lot_id_05   := gt_itp04_tbl(ln_cnt_04).c_lot_id;
+                              lv_batch_id_05 := gt_itp04_tbl(ln_cnt_04).p_batch_id;
 --
                               -- =================================
                               -- A-11.第五階層ロット系統データ抽出
@@ -2268,6 +2292,7 @@ AS
                               get_lots_data(
                                 lv_item_id_05,      -- 品目ID
                                 lv_lot_id_05,       -- ロットID
+                                lv_batch_id_05,     -- バッチID
                                 lv_out_control,     -- 出力制御
                                 lv_level_num_05,    -- 階層
                                 gt_itp05_tbl,       -- 生産情報(第五階層)

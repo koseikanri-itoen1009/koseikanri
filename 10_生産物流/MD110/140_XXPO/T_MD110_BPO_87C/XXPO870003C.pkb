@@ -7,7 +7,7 @@ AS
  * Description      : 発注単価洗替処理
  * MD.050           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD050_BPO_870
  * MD.070           : 仕入単価／標準原価マスタ登録 Issue1.0  T_MD070_BPO_870
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -49,6 +49,8 @@ AS
  *  2008/07/01    1.6   Y.Ishikawa       発注ヘッダの配送先コードより仕入先コードを導出し
  *                                       発注単価マスタの支給先に対して、同仕入先コードを
  *                                       条件にして抽出する。
+ *  2008/07/02    1.7   Y.Ishikawa       口銭区分及び配賦金区分が率以外の時
+ *                                       発注納入明細の粉引後単価が更新されない。
  *
  *****************************************************************************************/
 --
@@ -1255,31 +1257,27 @@ AS
     -- ===============================
     -- 発注納入明細の更新
     -- ===============================
-    -- 預り口銭金額、賦課金額、粉引後金額のいずれかの計算が行われた場合のみ更新
-    IF (gn_depo_flg = 1) OR (gn_cane_flg = 1) THEN
 --
-      UPDATE po_line_locations_all plla                                       -- 発注納入明細
-      SET    plla.attribute2             = in_cohi_unit_price                 -- 粉引後単価
-            ,plla.attribute5             = CASE
-                                             WHEN gn_depo_flg = 0 THEN plla.attribute5
-                                             ELSE TO_CHAR(in_depo_commission) -- 預り口銭金額
-                                           END
-            ,plla.attribute8             = CASE
-                                             WHEN gn_cane_flg = 0 THEN  plla.attribute8
-                                             ELSE TO_CHAR(in_cane)            -- 賦課金額
-                                           END
-            ,plla.attribute9             = in_cohi_rest                       -- 粉引後金額
-            ,plla.last_updated_by        = gn_user_id                         -- 最終更新者
-            ,plla.last_update_date       = gd_sysdate                         -- 最終更新日
-            ,plla.last_update_login      = gn_login_id                        -- 最終更新ログイン
-            ,plla.request_id             = gn_request_id                      -- 要求ID
-            ,plla.program_application_id = gn_appl_id                         -- ｱﾌﾟﾘｹｰｼｮﾝID
-            ,plla.program_id             = gn_program_id                      -- プログラムID
-            ,plla.program_update_date    = gd_sysdate                         -- プログラム更新日
-      WHERE plla.line_location_id        = ir_po_data.line_location_id        -- 発注納入明細ID
-      ;
---
-    END IF;
+    UPDATE po_line_locations_all plla                                       -- 発注納入明細
+    SET    plla.attribute2             = in_cohi_unit_price                 -- 粉引後単価
+          ,plla.attribute5             = CASE
+                                           WHEN gn_depo_flg = 0 THEN plla.attribute5
+                                           ELSE TO_CHAR(in_depo_commission) -- 預り口銭金額
+                                         END
+          ,plla.attribute8             = CASE
+                                           WHEN gn_cane_flg = 0 THEN  plla.attribute8
+                                           ELSE TO_CHAR(in_cane)            -- 賦課金額
+                                         END
+          ,plla.attribute9             = in_cohi_rest                       -- 粉引後金額
+          ,plla.last_updated_by        = gn_user_id                         -- 最終更新者
+          ,plla.last_update_date       = gd_sysdate                         -- 最終更新日
+          ,plla.last_update_login      = gn_login_id                        -- 最終更新ログイン
+          ,plla.request_id             = gn_request_id                      -- 要求ID
+          ,plla.program_application_id = gn_appl_id                         -- ｱﾌﾟﾘｹｰｼｮﾝID
+          ,plla.program_id             = gn_program_id                      -- プログラムID
+          ,plla.program_update_date    = gd_sysdate                         -- プログラム更新日
+    WHERE plla.line_location_id        = ir_po_data.line_location_id        -- 発注納入明細ID
+    ;
 --
     -- 更新件数
     gn_normal_cnt := gn_normal_cnt + 1;
