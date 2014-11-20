@@ -7,7 +7,7 @@ AS
  * Description      : HHT発注情報IF
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT発注情報IF       T_MD070_BPO_31E
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/07/14    1.3   Oracle 椎名 昭圭 仕様不備障害#I_S_001.4,#I_S_192.1.2,#T_S_435対応
  *  2008/09/01    1.4   Oracle 山根 一浩 T_TE080_BPO_310 指摘9対応
  *  2008/09/17    1.5   Oracle 大橋 孝郎 指摘204対応
+ *  2009/01/26    1.6   Oracle 椎名 昭圭 本番#1046対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -144,6 +145,12 @@ AS
     attribute11         po_lines_all.attribute11%TYPE,              -- 発注数量
     attribute10         po_lines_all.attribute10%TYPE,              -- 発注単位
     attribute15         po_lines_all.attribute15%TYPE,              -- 明細摘要
+-- 2009/01/26 v1.6 ADD START
+    num_of_cases        xxcmn_item_mst_v.num_of_cases%TYPE,         -- ケース入数
+    conv_unit           xxcmn_item_mst_v.conv_unit%TYPE,            -- 入出庫換算単位
+    prod_class_code     xxcmn_item_categories5_v.prod_class_code%TYPE, -- 商品区分
+    item_class_code     xxcmn_item_categories5_v.item_class_code%TYPE, -- 品目区分
+-- 2009/01/26 v1.6 ADD END
 --
     exec_flg            NUMBER                                      -- 処理フラグ
   );
@@ -770,12 +777,21 @@ AS
             ,xvv.segment1                                  -- 仕入先番号
             ,xvv.vendor_short_name                         -- 略称(取引先名)
             ,xilv.description                              -- 摘要(納入先名)
+-- 2009/01/26 v1.6 ADD START
+            ,xiv.num_of_cases                              -- ケース入数
+            ,xiv.conv_unit                                 -- 入出庫換算単位
+            ,xicv.prod_class_code                          -- 商品区分
+            ,xicv.item_class_code                          -- 品目区分
+-- 2009/01/26 v1.6 ADD END
       FROM   po_headers_all pha                  -- 発注ヘッダ
             ,po_lines_all pla                    -- 発注明細
             ,xxcmn_item_mst_v xiv                -- OPM品目情報VIEW
             ,ic_lots_mst ilm                     -- OPMロットマスタ
             ,xxcmn_vendors_v xvv                 -- 仕入先情報VIEW
             ,xxcmn_item_locations_v xilv         -- OPM保管場所情報VIEW
+-- 2009/01/26 ADD START
+            ,xxcmn_item_categories5_v xicv
+-- 2009/01/26 ADD END
       WHERE  pha.po_header_id = pla.po_header_id
       AND    pla.item_id      = xiv.inventory_item_id
       AND    pla.attribute1   = ilm.lot_no
@@ -801,6 +817,9 @@ AS
       AND    pha.attribute4   <= iv_to_date
       AND    pha.attribute1   >= gv_status_po_zumi                   -- 発注作成済:20
       AND    pha.attribute1   < gv_status_money_zumi                 -- 金額確定済:35
+-- 2009/01/26 v1.6 ADD START
+      AND    xiv.item_id      = xicv.item_id
+-- 2009/01/26 v1.6 ADD END
       AND   NOT EXISTS (
         SELECT plav.po_header_id
         FROM   po_lines_all plav                 -- 発注明細
@@ -864,6 +883,12 @@ AS
       mst_rec.segment1          := lr_mst_data_rec.segment1;
       mst_rec.vendor_short_name := lr_mst_data_rec.vendor_short_name;
       mst_rec.description       := lr_mst_data_rec.description;
+-- 2009/01/26 v1.6 ADD START
+      mst_rec.num_of_cases      := lr_mst_data_rec.num_of_cases;
+      mst_rec.conv_unit         := lr_mst_data_rec.conv_unit;
+      mst_rec.prod_class_code   := lr_mst_data_rec.prod_class_code;
+      mst_rec.item_class_code   := lr_mst_data_rec.item_class_code;
+-- 2009/01/26 v1.6 ADD END
 --
       gt_master_tbl(ln_cnt)     := mst_rec;
 --
@@ -941,6 +966,11 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
+-- 2009/01/26 v1.6 ADD START
+    cv_leaf         CONSTANT VARCHAR2(1)  := '1';
+    cv_prod         CONSTANT VARCHAR2(1)  := '5';
+    cv_case         CONSTANT VARCHAR2(2)  := 'CS';
+-- 2009/01/26 v1.6 ADD END
 --
     -- *** ローカル変数 ***
     mst_rec         masters_rec;
@@ -951,6 +981,10 @@ AS
     ln_file_size    NUMBER;
     ln_block_size   NUMBER;
 --
+-- 2009/01/26 v1.6 ADD START
+    lv_qty          VARCHAR2(150);
+    lv_unit         VARCHAR2(240);
+-- 2009/01/26 v1.6 ADD END
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -997,6 +1031,24 @@ AS
         FOR i IN 0..gt_master_tbl.COUNT-1 LOOP
           mst_rec := gt_master_tbl(i);
 --
+-- 2009/01/26 v1.6 ADD START
+         -- 入出庫換算単位が'CS'、かつ
+         -- リーフ製品の場合、かつ
+         -- ケース入り数が1以上の場合
+         IF (
+              (mst_rec.conv_unit = cv_case)
+                AND(mst_rec.prod_class_code = cv_leaf)
+                  AND (mst_rec.item_class_code = cv_prod)
+                    AND (mst_rec.num_of_cases > 0)
+            ) THEN
+           lv_qty  := mst_rec.attribute11 / mst_rec.num_of_cases;
+           lv_unit := mst_rec.conv_unit;
+         ELSE
+           lv_qty  := mst_rec.attribute11;
+           lv_unit := mst_rec.attribute10;
+         END IF;
+--
+-- 2009/01/26 v1.6 ADD END
           -- データ作成
           lv_data := mst_rec.po_header_number  || cv_sep_com ||        -- 発注番号
 -- 2008/07/14 1.3 UPDATE Start
@@ -1027,8 +1079,12 @@ AS
                      mst_rec.attribute3        || cv_sep_com ||        -- 賞味期限
 -- 2008/07/14 1.3 ADD End
                      mst_rec.attribute2        || cv_sep_com ||        -- 固有記号
-                     mst_rec.attribute11       || cv_sep_com ||        -- 発注数量
-                     mst_rec.attribute10       || cv_sep_com ||        -- 発注単位
+-- 2009/01/26 v1.6 UPDATE START
+--                     mst_rec.attribute11       || cv_sep_com ||        -- 発注数量
+--                     mst_rec.attribute10       || cv_sep_com ||        -- 発注単位
+                     lv_qty                    || cv_sep_com ||        -- 発注数量
+                     lv_unit                   || cv_sep_com ||        -- 発注単位
+-- 2009/01/26 v1.6 UPDATE END
 -- 2008/07/14 1.3 UPDATE Start
 --                     mst_rec.attribute15;                              -- 明細摘要
                      REPLACE(mst_rec.attribute15, cv_sep_com);         -- 明細摘要

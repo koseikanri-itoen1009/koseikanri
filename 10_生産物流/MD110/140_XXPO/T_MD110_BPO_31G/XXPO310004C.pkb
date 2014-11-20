@@ -2,12 +2,12 @@ CREATE OR REPLACE PACKAGE BODY xxpo310004c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
- *
+ *quantity
  * Package Name     : xxpo310004c(body)
  * Description      : HHT受入実績計上
  * MD.050           : 受入実績            T_MD050_BPO_310
  * MD.070           : HHT受入実績計上     T_MD070_BPO_31G
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2008/09/25    1.7   Oracle 山根 一浩 指摘23対応
  *  2008/12/30    1.8   Oracle 吉元 強樹 標準-ｱﾄﾞｵﾝ受入差異対応
  *  2008/12/30    1.9   Oracle 吉元 強樹 在庫調整APIパラメータ不備対応
+ *  2009/01/23    1.10  Oracle 椎名 昭圭 本番#1047対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -164,6 +165,9 @@ AS
   gv_add_status_qty_zmi  CONSTANT VARCHAR2(5)  := '35';              -- 金額確定済
   gv_add_status_end      CONSTANT VARCHAR2(5)  := '99';              -- 取消済み     2008/09/25 Add
   gv_po_type_rev         CONSTANT VARCHAR2(1)  := '3';               -- 相手先在庫
+-- 2009/01/23 v1.10 ADD START
+  gv_prod_class_leaf     CONSTANT VARCHAR2(1)  := '1';               -- リーフ
+-- 2009/01/23 v1.10 ADD END
   gv_prod_class_code     CONSTANT VARCHAR2(1)  := '2';               -- ドリンク
 -- 2008/12/30 v1.8 T.Yoshimoto Add Start
   gv_item_class_code     CONSTANT VARCHAR2(1)  := '5';               -- 製品
@@ -1489,12 +1493,27 @@ AS
         END IF;
 2008/08/06 Mod ↑ */
 --
+-- 2009/01/23 v1.10 UPDATE START
+/*
         -- ドリンク製品(入出庫換算単位あり) の場合
         IF ((mst_rec.prod_class_code = gv_prod_class_code)
 -- 2008/12/30 v1.8 T.Yoshimoto Add Start
          AND (mst_rec.item_class_code = gv_item_class_code)
 -- 2008/12/30 v1.8 T.Yoshimoto Add End
          AND (mst_rec.conv_unit IS NOT NULL)) THEN
+*/
+        -- ドリンク製品(入出庫換算単位あり)または、
+        -- リーフ製品(入出庫換算単位あり)の場合
+        IF (
+             (
+               (mst_rec.prod_class_code = gv_prod_class_code)
+               OR
+               (mst_rec.prod_class_code = gv_prod_class_leaf)
+             )
+               AND (mst_rec.item_class_code = gv_item_class_code)
+                 AND (mst_rec.conv_unit IS NOT NULL)
+           ) THEN
+-- 2009/01/23 v1.10 UPDATE END
           ln_qty := ln_qty * mst_rec.num_of_cases;
           gt_conversion_factor(ln_cnt) := mst_rec.num_of_cases;
         END IF;
@@ -2547,12 +2566,27 @@ AS
 --
     ln_qty := ir_mst_rec.rcv_quantity;
 --
+-- 2009/01/23 v1.10 UPDATE START
+/*
     -- ドリンク製品(入出庫換算単位あり) の場合
     IF ((ir_mst_rec.prod_class_code = gv_prod_class_code)
 -- 2008/12/30 v1.8 T.Yoshimoto Add Start
      AND (ir_mst_rec.item_class_code = gv_item_class_code)
 -- 2008/12/30 v1.8 T.Yoshimoto Add End
      AND (ir_mst_rec.conv_unit IS NOT NULL)) THEN
+*/
+    -- ドリンク製品(入出庫換算単位あり)または、
+    -- リーフ製品(入出庫換算単位あり)の場合
+    IF (
+         (
+           (ir_mst_rec.prod_class_code = gv_prod_class_code)
+           OR
+           (ir_mst_rec.prod_class_code = gv_prod_class_leaf)
+         )
+           AND (ir_mst_rec.item_class_code = gv_item_class_code)
+             AND (ir_mst_rec.conv_unit IS NOT NULL)
+       ) THEN
+-- 2009/01/23 v1.10 UPDATE END
       ln_qty := ln_qty * ir_mst_rec.num_of_cases;
     END IF;
 --
