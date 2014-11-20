@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/08/05    1.7   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
  *                                                       「xxcmn_rcv_pay_mst_porc_rma03_v」
  *  2008/08/28    1.8   A.Shiina         取引数量は取得時に受払区分を掛ける。
+ *  2008/10/22    1.9   N.Yoshida        T_S_524対応(PT対応)
  *
  *****************************************************************************************/
 --
@@ -293,14 +294,22 @@ AS
       -- 標準原価マスタより標準単価を取得します。=
       -- =========================================
       BEGIN
-        SELECT  price_v.stnd_unit_price  as price
+-- 2008/10/22 v1.09 UPDATE START
+        /*SELECT  price_v.stnd_unit_price  as price
           INTO  ln_unit_price
           FROM  xxcmn_stnd_unit_price_v price_v
          WHERE  price_v.item_id    = gt_main_data(in_pos).item_id
             AND  ((price_v.start_date_active IS NULL )
              OR   (price_v.start_date_active    <= gt_main_data(in_pos).trans_date))
             AND  ((price_v.end_date_active   IS NULL )
-             OR   ( price_v.end_date_active     >= gt_main_data(in_pos).trans_date));
+             OR   ( price_v.end_date_active     >= gt_main_data(in_pos).trans_date));*/
+        SELECT  price_v.stnd_unit_price  as price
+        INTO    ln_unit_price
+        FROM    xxcmn_stnd_unit_price_v price_v
+        WHERE   price_v.item_id    = gt_main_data(in_pos).item_id
+        AND     price_v.start_date_active <= gt_main_data(in_pos).trans_date
+        AND     price_v.end_date_active   >= gt_main_data(in_pos).trans_date;
+-- 2008/10/22 v1.09 UPDATE START
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           ln_unit_price := cn_zero;
@@ -380,11 +389,24 @@ AS
     -- 商品区分名取得
     -- =====================================================
     BEGIN
-      SELECT  cat.description
+-- 2008/10/22 v1.09 UPDATE START
+      /*SELECT  cat.description
         INTO  gv_item_div_name
         FROM  xxcmn_categories2_v cat
        WHERE  cat.category_set_name = gv_item_div
-         AND  cat.segment1          = ir_param.item_division;
+         AND  cat.segment1          = ir_param.item_division;*/
+      SELECT mct.description
+      INTO   gv_item_div_name
+      FROM   mtl_category_sets_b mcsb
+            ,mtl_categories_b mcb
+            ,mtl_categories_tl mct
+      WHERE  mcsb.structure_id    = mcb.structure_id
+      AND    mcsb.category_set_id = TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'))
+      AND    mcb.segment1         = ir_param.item_division
+      AND    mcb.category_id      = mct.category_id
+      AND    mct.language         = 'JA'
+      ;
+-- 2008/10/22 v1.09 UPDATE END
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         NULL;
@@ -394,11 +416,24 @@ AS
     -- 品目区分名取得
     -- =====================================================
     BEGIN
-      SELECT  cat.description
+-- 2008/10/22 v1.09 UPDATE START
+      /*SELECT  cat.description
         INTO  gv_art_div_name
         FROM  xxcmn_categories2_v cat
        WHERE  cat.category_set_name = gv_art_div
-         AND  cat.segment1          = ir_param.art_division;
+         AND  cat.segment1          = ir_param.art_division;*/
+      SELECT mct.description
+      INTO   gv_art_div_name
+      FROM   mtl_category_sets_b mcsb
+            ,mtl_categories_b mcb
+            ,mtl_categories_tl mct
+      WHERE  mcsb.structure_id    = mcb.structure_id
+      AND    mcsb.category_set_id = TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'))
+      AND    mcb.segment1         = ir_param.art_division
+      AND    mcb.category_id      = mct.category_id
+      AND    mct.language         = 'JA'
+      ;
+-- 2008/10/22 v1.09 UPDATE END
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         NULL;
@@ -513,7 +548,12 @@ AS
     cv_prod           CONSTANT VARCHAR2(4)  := 'PROD';
     cv_omso           CONSTANT VARCHAR2(4)  := 'OMSO';
     cv_porc           CONSTANT VARCHAR2(4)  := 'PORC';
-    -- 事由コード
+    -- 事由コード    
+-- 2008/10/22 v1.09 ADD START
+    cv_reason_122     CONSTANT VARCHAR2(4)  := 'X122';
+    cv_reason_943     CONSTANT VARCHAR2(4)  := 'X943';
+    cv_reason_950     CONSTANT VARCHAR2(4)  := 'X950';
+-- 2008/10/22 v1.09 ADD END
     cv_reason_123     CONSTANT VARCHAR2(4)  := 'X123';
     cv_reason_911     CONSTANT VARCHAR2(4)  := 'X911';
     cv_reason_912     CONSTANT VARCHAR2(4)  := 'X912';
@@ -529,8 +569,16 @@ AS
     lc_f_time         CONSTANT VARCHAR2(10) := ' 00:00:00';
     lc_e_time         CONSTANT VARCHAR2(10) := ' 23:59:59';
 --
+-- 2008/10/22 v1.09 ADD START
+    cn_prod_class_id          CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS'));
+    cn_item_class_id          CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS'));
+    cn_crowd_code_id          CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE'));
+    cn_acnt_crowd_code_id     CONSTANT NUMBER := TO_NUMBER(FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE'));
+-- 2008/10/22 v1.09 ADD END
+--
     -- *** ローカル・変数 ***
-    -- XFER
+-- 2008/10/22 v1.09 DELETE START
+    /*-- XFER
     lv_select_xfer       VARCHAR2(32000);
     lv_from_xfer         VARCHAR2(32000);
     lv_where_xfer        VARCHAR2(32000);
@@ -584,13 +632,8398 @@ AS
     -- 共通WHERE itc
     lv_where_itc         VARCHAR2(32000);
     -- ORDER BY
-    lv_order             VARCHAR2(32000);
+    lv_order             VARCHAR2(32000);*/
+-- 2008/10/22 v1.09 DELETE END
 --
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・カーソル ***
     TYPE ref_cursor IS REF CURSOR ;
     lc_ref ref_cursor ;
+--
+-- 2008/10/22 v1.09 ADD START
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 倉庫・品目別
+    -- 検索条件.群種別            ⇒ 群別
+    -- 検索条件.倉庫コード        ⇒ 入力なし
+    -- 検索条件.群コード          ⇒ 入力あり
+    -- 検索条件.経理群コード      ⇒ 入力なし/入力あり
+    --===============================================================
+    CURSOR get_data_cur01 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      ORDER BY whse_code ASC,crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 倉庫・品目別
+    -- 検索条件.群種別            ⇒ 群別
+    -- 検索条件.倉庫コード        ⇒ 入力なし
+    -- 検索条件.群コード          ⇒ 入力なし
+    -- 検索条件.経理群コード      ⇒ 入力なし/入力あり
+    --===============================================================
+    CURSOR get_data_cur02 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      ORDER BY whse_code ASC,crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 倉庫・品目別
+    -- 検索条件.群種別            ⇒ 群別
+    -- 検索条件.倉庫コード        ⇒ 入力あり
+    -- 検索条件.群コード          ⇒ 入力あり
+    -- 検索条件.経理群コード      ⇒ 入力なし/入力あり
+    --===============================================================
+    CURSOR get_data_cur03 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      ORDER BY whse_code ASC,crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 倉庫・品目別
+    -- 検索条件.群種別            ⇒ 群別
+    -- 検索条件.倉庫コード        ⇒ 入力あり
+    -- 検索条件.群コード          ⇒ 入力なし
+    -- 検索条件.経理群コード      ⇒ 入力なし/入力あり
+    --===============================================================
+    CURSOR get_data_cur04 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      ORDER BY whse_code ASC,crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 倉庫・品目別
+    -- 検索条件.群種別            ⇒ 経理群別
+    -- 検索条件.倉庫コード        ⇒ 入力なし
+    -- 検索条件.群コード          ⇒ 入力なし/入力あり
+    -- 検索条件.経理群コード      ⇒ 入力あり
+    --===============================================================
+    CURSOR get_data_cur05 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      ORDER BY whse_code ASC,crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 倉庫・品目別
+    -- 検索条件.群種別            ⇒ 経理群別
+    -- 検索条件.倉庫コード        ⇒ 入力あり
+    -- 検索条件.群コード          ⇒ 入力なし/入力あり
+    -- 検索条件.経理群コード      ⇒ 入力あり
+    --===============================================================
+    CURSOR get_data_cur06 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      ORDER BY whse_code ASC,crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 品目別
+    -- 検索条件.群種別            ⇒ 群別
+    -- 検索条件.倉庫コード        ⇒ 入力なし
+    -- 検索条件.群コード          ⇒ 入力あり
+    -- 検索条件.経理群コード      ⇒ 入力なし/入力あり
+    --===============================================================
+    CURSOR get_data_cur07 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.crowd_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      ORDER BY crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 品目別
+    -- 検索条件.群種別            ⇒ 群別
+    -- 検索条件.倉庫コード        ⇒ 入力なし
+    -- 検索条件.群コード          ⇒ 入力なし
+    -- 検索条件.経理群コード      ⇒ 入力なし/入力あり
+    --===============================================================
+    CURSOR get_data_cur08 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      ORDER BY crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 品目別
+    -- 検索条件.群種別            ⇒ 経理群別
+    -- 検索条件.倉庫コード        ⇒ 入力なし
+    -- 検索条件.群コード          ⇒ 入力なし/入力あり
+    -- 検索条件.経理群コード      ⇒ 入力あり
+    --===============================================================
+    CURSOR get_data_cur09 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    mcb3.segment1           = ir_param.account_code
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      ORDER BY crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 倉庫・品目別
+    -- 検索条件.群種別            ⇒ 経理群別
+    -- 検索条件.倉庫コード        ⇒ 入力なし
+    -- 検索条件.群コード          ⇒ 入力なし/入力あり
+    -- 検索条件.経理群コード      ⇒ 入力なし
+    --===============================================================
+    CURSOR get_data_cur10 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      ORDER BY whse_code ASC,crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 倉庫・品目別
+    -- 検索条件.群種別            ⇒ 経理群別
+    -- 検索条件.倉庫コード        ⇒ 入力あり
+    -- 検索条件.群コード          ⇒ 入力なし/入力あり
+    -- 検索条件.経理群コード      ⇒ 入力なし
+    --===============================================================
+    CURSOR get_data_cur11 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             iwm.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                      iwm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.whse_code           = ir_param.warehouse_code
+      ORDER BY whse_code ASC,crowd_code ASC,item_code ASC
+      ;
+--
+    --===============================================================
+    -- 検索条件.帳票種別          ⇒ 品目別
+    -- 検索条件.群種別            ⇒ 経理群別
+    -- 検索条件.倉庫コード        ⇒ 入力なし
+    -- 検索条件.群コード          ⇒ 入力なし/入力あり
+    -- 検索条件.経理群コード      ⇒ 入力なし
+    --===============================================================
+    CURSOR get_data_cur12 IS --XFER
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分移動積送あり
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) use_nl ( itp gic2 mcb2 gic1 mcb1 ixm xmril xrpm ) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_xfer_mst                ixm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itp.doc_type            = cv_xfer
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ixm.transfer_id         = itp.doc_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itp.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.reason_code        = itp.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分移動積送なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading ( itc gic2 mcb2 gic1 mcb1 xrpm ) use_nl ( itc gic2 mcb2 gic1 mcb1 xrpm ) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmril
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_trni
+      AND    itc.reason_code         = cv_reason_122
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(他)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type          = cv_adji
+      AND    itc.reason_code       IN (cv_reason_911
+                                      ,cv_reason_912
+                                      ,cv_reason_921
+                                      ,cv_reason_922
+                                      ,cv_reason_941
+                                      ,cv_reason_931
+                                      ,cv_reason_932)
+      AND    itc.trans_date     >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date     <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(浜岡)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxpo_namaha_prod_txns      xnpt
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_988
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xnpt.entry_number       = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(移動)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,xxinv_mov_req_instr_lines  xmrl
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code         = cv_reason_123
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    xmrl.mov_line_id        = TO_NUMBER(ijm.attribute1)
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_min
+                                         WHEN itc.trans_qty <  cn_zero
+                                         THEN cv_one
+                                         ELSE xrpm.rcv_pay_div
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分在庫調整(その他払出)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itc.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itc.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_cmp                itc
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itc.doc_type            = cv_adji
+      AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
+      AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itc.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    iaj.journal_id          = ijm.journal_id
+      AND    ilm.item_id             = itc.item_id
+      AND    ilm.lot_id              = itc.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itc.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itc.trans_date)
+      AND    gic1.item_id            = itc.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itc.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itc.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itc.doc_type
+      AND    xrpm.reason_code        = itc.reason_code
+      AND    xrpm.rcv_pay_div        = CASE
+                                         WHEN itc.trans_qty >= cn_zero
+                                         THEN cv_one
+                                         ELSE cv_min
+                                       END
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm) use_nl (itp gic2 mcb2 gic1 mcb1 gmd gbh grb xrpm)*/
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                itp
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,gmi_item_categories        gic3
+            ,mtl_categories_b           mcb3
+            ,gme_material_details       gmd
+            ,gme_batch_header           gbh
+            ,gmd_routings_b             grb
+            ,xxcmn_rcv_pay_mst          xrpm
+      WHERE  itp.doc_type            = cv_prod
+      AND    itp.completed_ind       = cn_one
+      AND    itp.reverse_id          IS NULL
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = itp.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = itp.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    mcb2.segment1           IN ('1','4')
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    gmd.batch_id            = itp.doc_id
+      AND    gmd.line_no             = itp.doc_line
+      AND    gmd.line_type           = itp.line_type
+      AND    gbh.batch_id            = gmd.batch_id
+      AND    grb.routing_id          = gbh.routing_id
+      AND    xrpm.routing_class      = grb.routing_class
+      AND    xrpm.line_type          = gmd.line_type
+      AND    (((gmd.attribute5 IS NULL) AND (xrpm.hit_in_div IS NULL))
+             OR (xrpm.hit_in_div = gmd.attribute5))
+      AND    itp.doc_type            = xrpm.doc_type
+      AND    itp.line_type           = xrpm.line_type
+      AND    xrpm.break_col_03       IS NOT NULL
+      AND    xrpm.dealings_div       = cv_dealing_309
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd2
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd2.batch_id   = gmd.batch_id
+                      AND    gmd2.line_no    = gmd.line_no
+                      AND    gmd2.line_type  = -1
+                      AND    gic.item_id     = gmd2.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_origin))
+      AND    (EXISTS (SELECT 1
+                      FROM   gme_material_details gmd3
+                            ,gmi_item_categories  gic
+                            ,mtl_categories_b     mcb
+                      WHERE  gmd3.batch_id   = gmd.batch_id
+                      AND    gmd3.line_no    = gmd.line_no
+                      AND    gmd3.line_type  = 1
+                      AND    gic.item_id     = gmd3.item_id
+                      AND    gic.category_set_id = cn_item_class_id
+                      AND    gic.category_id = mcb.category_id
+                      AND    mcb.segment1    = xrpm.item_div_ahead))
+      UNION ALL
+    -- ----------------------------------------------------
+    -- OMSO8 :経理受払区分受注関連 (見本,廃却)
+    -- ----------------------------------------------------
+      SELECT /*+ leading (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp wdd xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,wsh_delivery_details             wdd
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+      WHERE  itp.doc_type            = cv_omso
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    wdd.delivery_detail_id  = itp.line_detail_id
+      AND    ooha.header_id          = wdd.source_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = wdd.source_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      UNION ALL
+      -- ----------------------------------------------------
+      -- PORC8 :経理受払区分購買関連 (見本,廃却)
+      -- ----------------------------------------------------
+      SELECT /*+ leading (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) use_nl (itp rsl xola iimb2 gic1 mcb1 gic2 mcb2 ooha otta xoha xrpm) */
+             NULL                       whse_code
+            ,NULL                       whse_name
+            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,itp.trans_date             trans_date
+            ,xrpm.dealings_div_name     div_name
+            ,xrpm.rcv_pay_div           pay_div
+            ,iimb.item_id               item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,xrpm.break_col_03          column_no
+            ,iimb.attribute15           cost_div
+            ,iimb.lot_ctl               lot_ctl
+            ,mcb3.segment1              crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3) crowd_small
+            ,SUBSTR(mcb3.segment1, 1, 2) crowd_medium
+            ,SUBSTR(mcb3.segment1, 1, 1) crowd_large
+            ,xlc.unit_ploce             act_unit_price
+      FROM   ic_tran_pnd                      itp
+            ,rcv_shipment_lines               rsl
+            ,oe_order_headers_all             ooha
+            ,oe_transaction_types_all         otta
+            ,xxwsh_order_headers_all          xoha
+            ,xxwsh_order_lines_all            xola
+            ,ic_item_mst_b                    iimb
+            ,xxcmn_item_mst_b                 ximb
+            ,ic_lots_mst                      ilm
+            ,xxcmn_lot_cost                   xlc
+            ,ic_item_mst_b                    iimb2
+            ,gmi_item_categories              gic1
+            ,mtl_categories_b                 mcb1
+            ,gmi_item_categories              gic2
+            ,mtl_categories_b                 mcb2
+            ,gmi_item_categories              gic3
+            ,mtl_categories_b                 mcb3
+            ,xxcmn_rcv_pay_mst                xrpm
+      WHERE  itp.doc_type            = cv_porc
+      AND    itp.completed_ind       = cn_one
+      AND    itp.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
+      AND    itp.trans_date         <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+      AND    rsl.shipment_header_id  = itp.doc_id
+      AND    rsl.line_num            = itp.doc_line
+      AND    ooha.header_id          = rsl.oe_order_header_id
+      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    xoha.header_id          = ooha.header_id
+      AND    xola.line_id            = rsl.oe_order_line_id
+      AND    iimb2.item_no           = xola.request_item_code
+      AND    ilm.item_id             = itp.item_id
+      AND    ilm.lot_id              = itp.lot_id
+      AND    iimb.item_id            = itp.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(itp.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(itp.trans_date)
+      AND    gic1.item_id            = iimb2.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.item_division
+      AND    gic2.item_id            = iimb2.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.art_division
+      AND    gic3.item_id            = itp.item_id
+      AND    gic3.category_set_id    = cn_acnt_crowd_code_id
+      AND    gic3.category_id        = mcb3.category_id
+      AND    xrpm.doc_type           = itp.doc_type
+      AND    xrpm.source_document_code = 'RMA'
+      AND    xrpm.dealings_div       IN ('504','509')
+      AND    xrpm.stock_adjustment_div = otta.attribute4
+      AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
+      AND    xrpm.break_col_03       IS NOT NULL
+      ORDER BY crowd_code ASC,item_code ASC
+      ;
+-- 2008/10/22 v1.09 ADD END
 --
   BEGIN
 --
@@ -621,7 +9054,139 @@ AS
     gd_exec_end   := LAST_DAY(gd_exec_start);
     gv_exec_end   := TO_CHAR(gd_exec_end, gc_char_d_format) || lc_e_time;
 --
-    -- ===============================================================================
+-- 2008/10/22 v1.09 ADD START
+    -- 帳票種別＝「1：倉庫・品目別」が指定されている場合
+    IF (ir_param.report_type = cv_one) THEN
+--
+      -- 倉庫コードが指定されていない場合
+      IF (ir_param.warehouse_code IS NULL) THEN
+--
+        -- 群種別＝「3：郡別」が指定されている場合
+        IF (ir_param.crowd_type = cv_three) THEN
+          -- 群コードが入力されている場合
+          IF (ir_param.crowd_code  IS NOT NULL) THEN
+--
+            OPEN  get_data_cur01;
+            FETCH get_data_cur01 BULK COLLECT INTO ot_data_rec;
+            CLOSE get_data_cur01;
+--
+          -- 群コードが入力されていない場合
+          ELSE
+--
+            OPEN  get_data_cur02;
+            FETCH get_data_cur02 BULK COLLECT INTO ot_data_rec;
+            CLOSE get_data_cur02;
+--
+          END IF;
+--
+        -- 群種別＝「4：経理郡別」が指定されている場合
+        ELSIF (ir_param.crowd_type = cv_four) THEN
+          -- 経理群コードが入力されている場合
+          IF (ir_param.account_code  IS NOT NULL) THEN
+--
+            OPEN  get_data_cur05;
+            FETCH get_data_cur05 BULK COLLECT INTO ot_data_rec;
+            CLOSE get_data_cur05;
+--
+          -- 経理群コードが入力されていない場合
+          ELSE
+--
+            OPEN  get_data_cur10;
+            FETCH get_data_cur10 BULK COLLECT INTO ot_data_rec;
+            CLOSE get_data_cur10;
+--
+          END IF;
+--
+        END IF;
+--
+      -- 倉庫コードが指定されている場合
+      ELSE
+--
+        -- 群種別＝「3：郡別」が指定されている場合
+        IF (ir_param.crowd_type = cv_three) THEN
+          -- 群コードが入力されている場合
+          IF (ir_param.crowd_code  IS NOT NULL) THEN
+--
+            OPEN  get_data_cur03;
+            FETCH get_data_cur03 BULK COLLECT INTO ot_data_rec;
+            CLOSE get_data_cur03;
+--
+          -- 群コードが入力されていない場合
+          ELSE
+--
+            OPEN  get_data_cur04;
+            FETCH get_data_cur04 BULK COLLECT INTO ot_data_rec;
+            CLOSE get_data_cur04;
+--
+          END IF;
+--
+        -- 群種別＝「4：経理郡別」が指定されている場合
+        ELSIF (ir_param.crowd_type = cv_four) THEN
+          -- 経理群コードが入力されている場合
+          IF (ir_param.account_code  IS NOT NULL) THEN
+--
+            OPEN  get_data_cur06;
+            FETCH get_data_cur06 BULK COLLECT INTO ot_data_rec;
+            CLOSE get_data_cur06;
+--
+          -- 経理群コードが入力されていない場合
+          ELSE
+--
+            OPEN  get_data_cur11;
+            FETCH get_data_cur11 BULK COLLECT INTO ot_data_rec;
+            CLOSE get_data_cur11;
+          END IF;
+--
+        END IF;
+--
+      END IF;
+--
+    -- 帳票種別＝「2：品目別」が指定されている場合
+    ELSIF (ir_param.report_type = cv_two) THEN
+--
+      -- 群種別＝「3：郡別」が指定されている場合
+      IF (ir_param.crowd_type = cv_three) THEN
+        -- 群コードが入力されている場合
+        IF (ir_param.crowd_code  IS NOT NULL) THEN
+--
+          OPEN  get_data_cur07;
+          FETCH get_data_cur07 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_data_cur07;
+--
+        -- 群コードが入力されていない場合
+        ELSE
+--
+          OPEN  get_data_cur08;
+          FETCH get_data_cur08 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_data_cur08;
+--
+        END IF;
+--
+      -- 群種別＝「4：経理郡別」が指定されている場合
+      ELSIF (ir_param.crowd_type = cv_four) THEN
+        -- 経理群コードが入力されている場合
+        IF (ir_param.account_code  IS NOT NULL) THEN
+--
+          OPEN  get_data_cur09;
+          FETCH get_data_cur09 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_data_cur09;
+--
+        -- 経理群コードが入力されていない場合
+        ELSE
+--
+          OPEN  get_data_cur12;
+          FETCH get_data_cur12 BULK COLLECT INTO ot_data_rec;
+          CLOSE get_data_cur12;
+--
+        END IF;
+--
+      END IF;
+--
+    END IF;
+-- 2008/10/22 v1.09 ADD END
+--
+-- 2008/10/22 v1.09 DELETE START
+    /*-- ===============================================================================
     -- 共通 SELECT
     -- ===============================================================================
     lv_select := ' xleiv.item_id           AS  item_id, '    -- 品目ID
@@ -1402,7 +9967,8 @@ AS
     -- バルクフェッチ
     FETCH lc_ref BULK COLLECT INTO ot_data_rec ;
     -- カーソルクローズ
-    CLOSE lc_ref ;
+    CLOSE lc_ref ;*/
+-- 2008/10/22 v1.09 DELETE START
 --
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
@@ -1745,6 +10311,9 @@ AS
            + qty(gc_sample_num)   + qty(gc_admin_num)    + qty(gc_acnt_num)
            + qty(gc_dis_kind_num) + qty(gc_dis_whse_num) + qty(gc_dis_etc_num)
            + qty(gc_inv_he_num)) <> cn_zero ) THEN
+-- 2008/10/22 v1.09 ADD START
+        prc_set_xml('T', 'g_line');
+-- 2008/10/22 v1.09 ADD START
         prc_set_xml('D', 'item_code',    gt_main_data(in_pos).item_code);
 --
         -- =========================================
@@ -1954,6 +10523,9 @@ AS
                                           + amt(gc_dis_etc_num)
                                           + amt(gc_inv_he_num));
         END IF;
+-- 2008/10/22 v1.09 ADD START
+        prc_set_xml('T', '/g_line');
+-- 2008/10/22 v1.09 ADD START
       END IF;
 --
     END prc_xml_body_add;
@@ -2098,7 +10670,9 @@ AS
                 AND (NVL( gt_main_data(ln_i).whse_code, lc_break_null ) = lv_whse_code)
                 AND (NVL( gt_main_data(ln_i).crowd_code, lc_break_null ) = lv_crowd_dtl)      LOOP
                 lv_item_code  :=  NVL(gt_main_data(ln_i).item_code, lc_break_null);
-                prc_set_xml('T', 'g_line');
+-- 2008/10/22 v1.09 DELETE START
+                --prc_set_xml('T', 'g_line');
+-- 2008/10/22 v1.09 DELETE START
                 -- 品目明細クリア
                 prc_item_init(
                   ov_errbuf     => lv_errbuf,
@@ -2108,15 +10682,23 @@ AS
                 IF ( lv_retcode = gv_status_error ) THEN
                   RAISE global_api_expt;
                 END IF;
+-- 2008/10/22 v1.09 DELETE START
                 -- 原価取得
-                ln_price := fnc_item_unit_pric_get (
-                              in_pos   =>   ln_i
-                            );
+                --ln_price := fnc_item_unit_pric_get (
+                --              in_pos   =>   ln_i
+                --            );
+-- 2008/10/22 v1.09 DELETE START
                 --==========================================================品目開始
                 <<item_loop>>
                 WHILE (( ln_i  <= gt_main_data.COUNT )
                   AND  ( NVL( gt_main_data(ln_i).whse_code, lc_break_null ) = lv_whse_code )
                   AND  ( NVL( gt_main_data(ln_i).item_code, lc_break_null ) = lv_item_code ))  LOOP
+-- 2008/10/22 v1.09 DELETE START
+                  -- 原価取得
+                  ln_price := fnc_item_unit_pric_get (
+                                in_pos   =>   ln_i
+                              );
+-- 2008/10/22 v1.09 DELETE START
                   -- 品目明細加算処理
                   prc_item_sum (
                     in_pos         => ln_i,
@@ -2139,7 +10721,9 @@ AS
                 IF ( lv_retcode = gv_status_error ) THEN
                   RAISE global_api_expt;
                 END IF;
-                prc_set_xml('T', '/g_line');
+-- 2008/10/22 v1.09 DELETE START
+                --prc_set_xml('T', '/g_line');
+-- 2008/10/22 v1.09 DELETE START
               END LOOP  grp_loop;--=====================================群コード終了
               prc_set_xml('T', '/lg_line');
               prc_set_xml('T', '/g_crowd_detail');
