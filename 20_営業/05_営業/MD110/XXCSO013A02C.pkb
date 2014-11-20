@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,7 +45,8 @@ AS
  *  2009-05-26    1.10  Daisuke.Abe      T1_1042対応
  *  2009-05-28    1.11  Daisuke.Abe      T1_1042(再)対応
  *  2009-05-28    1.12  Daisuke.Abe      T1_1042(再２)対応
- *  2009-07-02    1.12  Kazuo.Satomura   統合テスト障害対応(0000229,0000334)
+ *  2009-07-02    1.13  Kazuo.Satomura   統合テスト障害対応(0000229,0000334)
+ *  2009-07-17    1.14  Hiroshi.Ogawa    0000781対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -159,6 +160,9 @@ AS
   cv_tkn_msg_value_set    CONSTANT VARCHAR2(200) := '値セット';
   cv_tkn_msg_owner_comp   CONSTANT VARCHAR2(200) := '本社／工場区分';
   cv_tkn_msg_vd_object_if CONSTANT VARCHAR2(200) := '自販機SH物件インタフェース';
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+  cv_tkn_msg_target       CONSTANT VARCHAR2(200) := '抽出対象物件';
+/* 2009.07.17 H.Ogawa 0000781対応 END */
   cv_tkn_msg_ib_info      CONSTANT VARCHAR2(200) := '物件関連情報';
   cv_tkn_msg_ib_info_h    CONSTANT VARCHAR2(200) := '物件関連情報変更履歴';
   cv_tkn_msg_select       CONSTANT VARCHAR2(200) := '抽出';
@@ -182,6 +186,11 @@ AS
   cv_debug_msg1_13        CONSTANT VARCHAR2(200) := '<< INV 工場返品倉替先コード取得処理 >>';
   cv_debug_msg1_14        CONSTANT VARCHAR2(200) := '工場返品倉替先コード = ';
   cv_debug_msg1_15        CONSTANT VARCHAR2(200) := 'INV 工場返品倉替先コード取得用カーソル';
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+  cv_debug_msg1_16        CONSTANT VARCHAR2(200) := '<< IB属性レベル取得処理 >>';
+  cv_debug_msg1_17        CONSTANT VARCHAR2(200) := 'gv_attribute_level = ';
+  cv_debug_msgsub_0       CONSTANT VARCHAR2(200) := '抽出対象物件取得用カーソル';
+/* 2009.07.17 H.Ogawa 0000781対応 END */
   cv_debug_msgsub_1       CONSTANT VARCHAR2(200) := '物件関連情報取得用カーソル';
   cv_debug_msg_rollback   CONSTANT VARCHAR2(200) := '<< ロールバックしました >>' ;
   cv_debug_msg_copn       CONSTANT VARCHAR2(200) := '<< カーソルをオープンしました >>';
@@ -237,7 +246,10 @@ AS
   -- プロファイル･オプション値
   cv_prf_cust_cd_dammy      CONSTANT VARCHAR2(200) := 'XXCSO1_AFF_CUST_CODE'; -- 顧客コード（定義なし）
   /* 2009.04.28 T.Mori T1_0758対応 END */
-  
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+  cv_attribute_level        CONSTANT VARCHAR2(200) := 'XXCSO1_IB_ATTRIBUTE_LEVEL';
+/* 2009.07.17 H.Ogawa 0000781対応 END */
+--
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -273,7 +285,10 @@ AS
   -- AFF顧客コード（定義なし）
   gv_customer_code_dammy  xxcso_cust_acct_sites_v.account_number%TYPE;
   /* 2009.04.28 T.Mori T1_0758対応 END */
-  
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+  gv_attribute_level      fnd_profile_option_values.profile_option_value%TYPE;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
+--
   -- ===============================
   -- ユーザー定義カーソル型
   -- ===============================
@@ -288,11 +303,19 @@ AS
     AND    flvv.enabled_flag = cv_yes
     ;
   -- 物件関連情報取得用カーソル
-  CURSOR get_xxcso_ib_info_h_cur
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+--CURSOR get_xxcso_ib_info_h_cur
+  CURSOR get_xxcso_ib_info_h_cur(
+    in_instance_id       NUMBER
+  )
+/* 2009.07.17 H.Ogawa 0000781対応 END */
   IS
     /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
     --SELECT cii.external_reference        object_code                -- 外部参照（物件コード）
-    SELECT /*+ first_rows leading(cis) use_nl(cii) */
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+--  SELECT /*+ first_rows leading(cis) use_nl(cii) */
+    SELECT /*+ use_nl(cii xiih hca hp xca hcas hps hl) */
+/* 2009.07.17 H.Ogawa 0000781対応 END */
            cii.external_reference        object_code                -- 外部参照（物件コード）
     /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
           ,cii.attribute1                new_model                  -- 新_機種(DFF1)
@@ -333,95 +356,710 @@ AS
           ,cii.attribute5                newold_flag                -- 新古台フラグ
           /* 2009.04.07 D.Abe T1_0339対応 END */
           /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+--        ,xca.sale_base_code            new_department_code      -- 新_拠点コード
+--        ,xca.established_site_name     new_installation_place   -- 新_設置先名
+--        ,xca.state    ||
+--         xca.city     ||
+--         xca.address1 ||
+--         xca.address2                  new_installation_address -- 新_設置先住所
+--        ,xca.account_number            new_customer_code        -- 新_顧客コード
+--        ,xca.customer_class_code       new_customer_class_code  -- 新_顧客区分コード
           ,xca.sale_base_code            new_department_code      -- 新_拠点コード
           ,xca.established_site_name     new_installation_place   -- 新_設置先名
-          ,xca.state    ||
-           xca.city     ||
-           xca.address1 ||
-           xca.address2                  new_installation_address -- 新_設置先住所
-          ,xca.account_number            new_customer_code        -- 新_顧客コード
-          ,xca.customer_class_code       new_customer_class_code  -- 新_顧客区分コード
+          ,hl.state    ||
+           hl.city     ||
+           hl.address1 ||
+           hl.address2                   new_installation_address -- 新_設置先住所
+          ,hca.account_number            new_customer_code        -- 新_顧客コード
+          ,hca.customer_class_code       new_customer_class_code  -- 新_顧客区分コード
+/* 2009.07.17 H.Ogawa 0000781対応 END */
           /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
     FROM   csi_item_instances cii    -- インストールベースマスタ
           ,xxcso_ib_info_h xiih      -- 物件関連情報変更履歴テーブル
-          ,csi_instance_statuses cis -- インスタンスステータスマスタ
-          /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
-          ,xxcso_cust_acct_sites_v xca -- 顧客マスタサイトビュー
-          /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+--        ,csi_instance_statuses cis -- インスタンスステータスマスタ
+--        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+--        ,xxcso_cust_acct_sites_v xca -- 顧客マスタサイトビュー
+--        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
+          ,hz_cust_accounts     hca
+          ,hz_parties           hp
+          ,xxcmm_cust_accounts  xca
+          ,hz_cust_acct_sites   hcas
+          ,hz_party_sites       hps
+          ,hz_locations         hl
+/* 2009.07.17 H.Ogawa 0000781対応 END */
     WHERE
-      (
-          /* 2009.05.26 D.Abe T1_1042対応 START */
-          ( (
-               /* 2009.05.28 D.Abe T1_1042(再)対応 START */
-               gv_prm_process_date IS NULL
-               AND  (xiih.history_creation_date < gd_process_date  -- 履歴作成日
-               OR    xiih.interface_flag  =  cv_no             -- 連携済フラグ
-                    )
-               --     gv_prm_process_date IS NULL
-               --AND  xiih.interface_flag  = cv_no         -- 連携済フラグ
-              /* 2009.05.28 D.Abe T1_1042(再)対応 END */
-            )
-            OR (
-                     gv_prm_process_date IS NOT NULL
-                 AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
-                 AND  xiih.interface_flag  = cv_yes      -- 連携済フラグ
-               )
-          )
-        AND
-        --/* 2009.05.14 K.Satomura T1_0413対応 START */
-        --  (
-        --       gv_prm_process_date IS NULL
-        --    OR (
-        --             gv_prm_process_date IS NOT NULL
-        --         AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
-        --       )
-        --  )
-        --AND
-        --/* 2009.05.14 K.Satomura T1_0413対応 END */
-        /* 2009.05.26 D.Abe T1_1042対応 END */
-            gv_prm_process_div = cv_prm_normal          -- パラメータ：処理区分
-        AND xiih.install_code  = cii.external_reference -- 物件コード
-        AND xxcso_ib_common_pkg.get_ib_ext_attribs(
-               cii.instance_id
-              ,cv_lease_kbn
-            ) = cv_jisya_lease -- 自社リース
-        AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
-        AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
-        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
-        AND xca.cust_account_id    = cii.owner_party_account_id -- アカウントID
-        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
-        /* 2009.05.26 D.Abe T1_1042対応 START */
-        --AND (
-        --         xiih.history_creation_date < gd_process_date  -- 履歴作成日
-        --      OR xiih.interface_flag        = cv_no            -- 連携済フラグ
-        --    )
-        /* 2009.05.26 D.Abe T1_1042対応 END */
-      )
-    OR
-      (
-      /* 2009.05.14 K.Satomura T1_0413対応 START */
-        (
-             gv_prm_process_date IS NULL
-          OR (
-                   gv_prm_process_date IS NOT NULL
-               AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
-             )
-        )
-        AND
-      /* 2009.05.14 K.Satomura T1_0413対応 END */
-            gv_prm_process_div = cv_prm_div             -- パラメータ：処理区分
-        AND xiih.install_code  = cii.external_reference -- 物件コード
-        AND xxcso_ib_common_pkg.get_ib_ext_attribs(
-               cii.instance_id
-              ,cv_lease_kbn
-            ) = cv_jisya_lease -- 自社リース
-        AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
-        AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
-        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
-        AND xca.cust_account_id    = cii.owner_party_account_id -- アカウントID
-        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
-      )
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+           cii.instance_id           = in_instance_id
+      AND  xiih.install_code         = cii.external_reference
+      AND  hca.cust_account_id       = cii.owner_party_account_id
+      AND  hp.party_id               = hca.party_id
+      AND  xca.customer_id           = hca.cust_account_id
+      AND  hcas.cust_account_id      = hca.cust_account_id
+      AND  hps.party_id              = hp.party_id
+      AND  hps.party_site_id         = hcas.party_site_id
+      AND  hl.location_id            = hps.location_id
+--    (
+--        /* 2009.05.26 D.Abe T1_1042対応 START */
+--        ( (
+--             /* 2009.05.28 D.Abe T1_1042(再)対応 START */
+--             gv_prm_process_date IS NULL
+--             AND  (xiih.history_creation_date < gd_process_date  -- 履歴作成日
+--             OR    xiih.interface_flag  =  cv_no             -- 連携済フラグ
+--                  )
+--             --     gv_prm_process_date IS NULL
+--             --AND  xiih.interface_flag  = cv_no         -- 連携済フラグ
+--            /* 2009.05.28 D.Abe T1_1042(再)対応 END */
+--          )
+--          OR (
+--                   gv_prm_process_date IS NOT NULL
+--               AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+--               AND  xiih.interface_flag  = cv_yes      -- 連携済フラグ
+--             )
+--        )
+--      AND
+--      --/* 2009.05.14 K.Satomura T1_0413対応 START */
+--      --  (
+--      --       gv_prm_process_date IS NULL
+--      --    OR (
+--      --             gv_prm_process_date IS NOT NULL
+--      --         AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+--      --       )
+--      --  )
+--      --AND
+--      --/* 2009.05.14 K.Satomura T1_0413対応 END */
+--      /* 2009.05.26 D.Abe T1_1042対応 END */
+--          gv_prm_process_div = cv_prm_normal          -- パラメータ：処理区分
+--      AND xiih.install_code  = cii.external_reference -- 物件コード
+--      AND xxcso_ib_common_pkg.get_ib_ext_attribs(
+--             cii.instance_id
+--            ,cv_lease_kbn
+--          ) = cv_jisya_lease -- 自社リース
+--      AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
+--      AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
+--      /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+--      AND xca.cust_account_id    = cii.owner_party_account_id -- アカウントID
+--      /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
+--      /* 2009.05.26 D.Abe T1_1042対応 START */
+--      --AND (
+--      --         xiih.history_creation_date < gd_process_date  -- 履歴作成日
+--      --      OR xiih.interface_flag        = cv_no            -- 連携済フラグ
+--      --    )
+--      /* 2009.05.26 D.Abe T1_1042対応 END */
+--    )
+--  OR
+--    (
+--    /* 2009.05.14 K.Satomura T1_0413対応 START */
+--      (
+--           gv_prm_process_date IS NULL
+--        OR (
+--                 gv_prm_process_date IS NOT NULL
+--             AND TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+--           )
+--      )
+--      AND
+--    /* 2009.05.14 K.Satomura T1_0413対応 END */
+--          gv_prm_process_div = cv_prm_div             -- パラメータ：処理区分
+--      AND xiih.install_code  = cii.external_reference -- 物件コード
+--      AND xxcso_ib_common_pkg.get_ib_ext_attribs(
+--             cii.instance_id
+--            ,cv_lease_kbn
+--          ) = cv_jisya_lease -- 自社リース
+--      AND cii.instance_status_id = cis.instance_status_id -- インスタンスステータスID
+--      AND cis.attribute2         = cv_no                  -- 廃棄済フラグ
+--      /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+--      AND xca.cust_account_id    = cii.owner_party_account_id -- アカウントID
+--      /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
+--    )
+/* 2009.07.17 H.Ogawa 0000781対応 END */
     ;
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+  CURSOR get_target_cur
+  IS
+    SELECT  /*+ LEADING(xiih) INDEX(XXCSO_IB_INFO_H_N02) USE_NL(cii cis) */
+            cii.instance_id
+    FROM    xxcso_ib_info_h        xiih
+           ,csi_item_instances     cii
+           ,csi_instance_statuses  cis
+    WHERE   gv_prm_process_div  = cv_prm_normal
+      AND   gv_prm_process_date IS NULL
+      AND   xiih.interface_flag    = cv_no
+      AND   cii.external_reference = xiih.install_code
+      AND   cis.instance_status_id = cii.instance_status_id
+      AND   cis.attribute2         = cv_no
+      AND   EXISTS (
+              SELECT  1
+              FROM    csi_i_extended_attribs  ciea
+                     ,csi_iea_values          civ
+              WHERE   ciea.attribute_level    = gv_attribute_level
+                AND   ciea.attribute_code     = cv_lease_kbn
+                AND   civ.instance_id         = cii.instance_id
+                AND   ciea.attribute_id       = civ.attribute_id
+                AND   NVL(ciea.active_start_date,gd_process_date) <= gd_process_date
+                AND   NVL(ciea.active_end_date,gd_process_date)   >= gd_process_date
+                AND   civ.attribute_value     = cv_jisya_lease
+                AND   ROWNUM                  = 1
+            )
+    UNION ALL
+    SELECT  cii.instance_id
+    FROM    csi_item_instances   cii
+    WHERE   gv_prm_process_div   = cv_prm_normal
+      AND   gv_prm_process_date  IS NULL
+      AND   EXISTS (
+              SELECT  1
+              FROM    csi_i_extended_attribs  ciea
+                     ,csi_iea_values          civ
+              WHERE   ciea.attribute_level    = gv_attribute_level
+                AND   ciea.attribute_code     = cv_lease_kbn
+                AND   civ.instance_id         = cii.instance_id
+                AND   ciea.attribute_id       = civ.attribute_id
+                AND   NVL(ciea.active_start_date,gd_process_date) <= gd_process_date
+                AND   NVL(ciea.active_end_date,gd_process_date)   >= gd_process_date
+                AND   civ.attribute_value     = cv_jisya_lease
+                AND   ROWNUM                  = 1
+            )
+      AND   EXISTS (
+              SELECT  /*+ USE_NL(xiih hca hp xca hcas hps hl) */
+                      1
+              FROM    xxcso_ib_info_h       xiih
+                     ,hz_cust_accounts      hca
+                     ,hz_parties            hp
+                     ,xxcmm_cust_accounts   xca
+                     ,hz_cust_acct_sites    hcas
+                     ,hz_party_sites        hps
+                     ,hz_locations          hl
+              WHERE   NVL(cii.attribute5,cv_no)          = cv_no                               -- 新古台以外
+                AND   xiih.install_code                  = cii.external_reference
+                AND   xiih.history_creation_date         < gd_process_date
+                AND   xiih.interface_flag                = cv_yes
+                AND   hca.cust_account_id                = cii.owner_party_account_id
+                AND   hp.party_id                        = hca.party_id
+                AND   xca.customer_id                    = hca.cust_account_id
+                AND   hcas.cust_account_id               = hca.cust_account_id
+                AND   hps.party_id                       = hp.party_id
+                AND   hps.party_site_id                  = hcas.party_site_id
+                AND   hl.location_id                     = hps.location_id
+                AND   (
+                           (
+                            (
+                             (hca.customer_class_code <> cv_cust_class_10)
+                             AND
+                             (gv_customer_code_dammy <> NVL(xiih.account_number,' '))
+                            )
+                            OR
+                            (
+                             (
+                              (hca.customer_class_code = cv_cust_class_10)
+                              AND
+                              (NVL(hca.account_number,' ') <> NVL(xiih.account_number,' '))
+                             )
+                            )
+                           )                                                                   -- 顧客コードチェック
+                       OR  NVL(xca.sale_base_code,' ')        <> NVL(xiih.base_code,' ')       -- 売上拠点チェック
+                       OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       OR  NVL(hl.state || hl.city || hl.address1 || hl.address2,' ')          -- 住所チェック
+                                                              <> NVL(xiih.install_address,' ')
+                       OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
+                       OR  NVL(xiih.install_number,' ')       <> NVL(cii.attribute2,' ')       -- 機番チェック
+                       OR  NVL(xiih.quantity,0)               <> NVL(cii.quantity,0)           -- 数量チェック
+                       OR  NVL(xiih.po_number,' ')            <>                               -- 発注番号チェック
+                             (
+                              SELECT  NVL(TO_CHAR(MAX(xiwd.po_number)),' ')
+                              FROM    xxcso_in_work_data  xiwd
+                              WHERE   xiwd.install_code1           = cii.external_reference
+                                AND   xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)
+                                AND   xiwd.completion_kbn          = cv_comp_kbn_ok
+                                AND   xiwd.install1_processed_flag = cv_yes
+                             )
+                       OR  NVL(xiih.manufacturer_name,' ')    <>                               -- メーカー名チェック
+                             (
+                              SELECT  NVL(
+                                        xxcso_util_common_pkg.get_lookup_meaning(
+                                          cv_xxcso_csi_maker_code
+                                         ,punv.attribute2
+                                         ,gd_process_date
+                                        )
+                                       ,' '
+                                      )
+                              FROM    po_un_numbers_vl   punv
+                              WHERE   punv.un_number               = cii.attribute1
+                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                             )
+                       OR  NVL(xiih.age_type,' ')             <>                               -- 年式チェック
+                             (
+                              SELECT  NVL(punv.attribute3,' ')
+                              FROM    po_un_numbers_vl   punv
+                              WHERE   punv.un_number               = cii.attribute1
+                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                             )
+                       OR  NVL(xiih.logical_delete_flag,' ')  <>                               -- 論理削除チェック
+                             DECODE(cii.instance_status_id
+                               ,gn_instance_status_id, cv_yes
+                               ,cv_no
+                             )
+                       OR  NVL(xiih.owner_company_type,' ')   <>                               -- 本社工場区分チェック
+                             (
+                              SELECT  ffvv.flex_value
+                              FROM    fnd_flex_value_sets  ffvs
+                                     ,fnd_flex_values_vl   ffvv
+                              WHERE   ffvs.flex_value_set_name = cv_xxcff_owner_company
+                                AND   ffvv.flex_value_set_id   = ffvs.flex_value_set_id
+                                AND   ffvv.enabled_flag        = cv_yes
+                                AND   TRUNC(gd_process_date)
+                                        BETWEEN TRUNC(NVL(ffvv.start_date_active, gd_process_date))
+                                            AND TRUNC(NVL(ffvv.end_date_active, gd_process_date))
+                                AND   ffvv.flex_value_meaning  =
+                                        (
+                                         SELECT  flvv.meaning
+                                         FROM    fnd_lookup_values_vl  flvv
+                                         WHERE   flvv.lookup_type   = cv_xxcso1_owner_company
+                                           AND   TRUNC(gd_process_date)
+                                                   BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+                                                       AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
+                                           AND   flvv.enabled_flag  = cv_yes
+                                           AND   flvv.lookup_code   =
+                                                   (
+                                                    SELECT  DECODE(COUNT('x')
+                                                              ,0, cv_owner_company_honsya
+                                                              ,cv_owner_company_fact
+                                                            )
+                                                    FROM    xxcmm_cust_accounts   xca
+                                                           ,fnd_lookup_values_vl  flvv
+                                                    WHERE   xca.customer_id   = cii.owner_party_account_id
+                                                      AND   flvv.lookup_type  = cv_xxcoi_mfg_fctory_cd
+                                                      AND   flvv.lookup_code  = xca.sale_base_code
+                                                      AND   flvv.enabled_flag = cv_yes
+                                                      AND   TRUNC(gd_process_date)
+                                                              BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+                                                                  AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
+                                                   )
+                                        )
+                             )
+                      )
+                AND   ROWNUM                             = 1
+              UNION ALL
+              SELECT  /*+ USE_NL(xiih hca hp xca hcas hps hl) */
+                      1
+              FROM    xxcso_ib_info_h       xiih
+                     ,hz_cust_accounts      hca
+                     ,hz_parties            hp
+                     ,xxcmm_cust_accounts   xca
+                     ,hz_cust_acct_sites    hcas
+                     ,hz_party_sites        hps
+                     ,hz_locations          hl
+              WHERE   NVL(cii.attribute5,cv_no)          = cv_no                               -- 新古台以外
+                AND   xiih.install_code                  = cii.external_reference
+                AND   xiih.history_creation_date         < gd_process_date
+                AND   xiih.interface_flag                = cv_yes
+                AND   hca.cust_account_id                = cii.owner_party_account_id
+                AND   hp.party_id                        = hca.party_id
+                AND   xca.customer_id                    = hca.cust_account_id
+                AND   hcas.cust_account_id               = hca.cust_account_id
+                AND   hps.party_id                       = hp.party_id
+                AND   hps.party_site_id                  = hcas.party_site_id
+                AND   hl.location_id                     = hps.location_id
+                AND   (
+                           (
+                            (
+                             (hca.customer_class_code <> cv_cust_class_10)
+                             AND
+                             (gv_customer_code_dammy <> NVL(xiih.account_number,' '))
+                            )
+                            OR
+                            (
+                             (
+                              (hca.customer_class_code = cv_cust_class_10)
+                              AND
+                              (NVL(hca.account_number,' ') <> NVL(xiih.account_number,' '))
+                             )
+                            )
+                           )                                                                   -- 顧客コードチェック
+                       OR  NVL(xca.sale_base_code,' ')        <> NVL(xiih.base_code,' ')       -- 売上拠点チェック
+                       OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       OR  NVL(hl.state || hl.city || hl.address1 || hl.address2,' ')          -- 住所チェック
+                                                              <> NVL(xiih.install_address,' ')
+                       OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
+                       OR  NVL(xiih.install_number,' ')       <> NVL(cii.attribute2,' ')       -- 機番チェック
+                       OR  NVL(xiih.quantity,0)               <> NVL(cii.quantity,0)           -- 数量チェック
+                       OR  NVL(xiih.manufacturer_name,' ')    <>                               -- メーカー名チェック
+                             (
+                              SELECT  NVL(
+                                        xxcso_util_common_pkg.get_lookup_meaning(
+                                          cv_xxcso_csi_maker_code
+                                         ,punv.attribute2
+                                         ,gd_process_date
+                                        )
+                                       ,' '
+                                      )
+                              FROM    po_un_numbers_vl   punv
+                              WHERE   punv.un_number               = cii.attribute1
+                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                             )
+                       OR  NVL(xiih.age_type,' ')             <>                               -- 年式チェック
+                             (
+                              SELECT  NVL(punv.attribute3,' ')
+                              FROM    po_un_numbers_vl   punv
+                              WHERE   punv.un_number               = cii.attribute1
+                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                             )
+                       OR  NVL(xiih.logical_delete_flag,' ')  <>                               -- 論理削除チェック
+                             DECODE(cii.instance_status_id
+                               ,gn_instance_status_id, cv_yes
+                               ,cv_no
+                             )
+                       OR  NVL(xiih.owner_company_type,' ')   <>                               -- 本社工場区分チェック
+                             (
+                              SELECT  ffvv.flex_value
+                              FROM    fnd_flex_value_sets  ffvs
+                                     ,fnd_flex_values_vl   ffvv
+                              WHERE   ffvs.flex_value_set_name = cv_xxcff_owner_company
+                                AND   ffvv.flex_value_set_id   = ffvs.flex_value_set_id
+                                AND   ffvv.enabled_flag        = cv_yes
+                                AND   TRUNC(gd_process_date)
+                                        BETWEEN TRUNC(NVL(ffvv.start_date_active, gd_process_date))
+                                            AND TRUNC(NVL(ffvv.end_date_active, gd_process_date))
+                                AND   ffvv.flex_value_meaning  =
+                                        (
+                                         SELECT  flvv.meaning
+                                         FROM    fnd_lookup_values_vl  flvv
+                                         WHERE   flvv.lookup_type   = cv_xxcso1_owner_company
+                                           AND   TRUNC(gd_process_date)
+                                                   BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+                                                       AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
+                                           AND   flvv.enabled_flag  = cv_yes
+                                           AND   flvv.lookup_code   =
+                                                   (
+                                                    SELECT  DECODE(COUNT('x')
+                                                              ,0, cv_owner_company_honsya
+                                                              ,cv_owner_company_fact
+                                                            )
+                                                    FROM    xxcmm_cust_accounts   xca
+                                                           ,fnd_lookup_values_vl  flvv
+                                                    WHERE   xca.customer_id   = cii.owner_party_account_id
+                                                      AND   flvv.lookup_type  = cv_xxcoi_mfg_fctory_cd
+                                                      AND   flvv.lookup_code  = xca.sale_base_code
+                                                      AND   flvv.enabled_flag = cv_yes
+                                                      AND   TRUNC(gd_process_date)
+                                                              BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+                                                                  AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
+                                                   )
+                                        )
+                             )
+                      )
+                AND   ROWNUM                             = 1
+            )
+      AND   EXISTS (
+              SELECT  1
+              FROM    csi_instance_statuses  cis
+              WHERE   cis.instance_status_id   = cii.instance_status_id
+                AND   cis.attribute2           = cv_no
+                AND   ROWNUM                   = 1
+            )
+    UNION ALL
+    SELECT  /*+ LEADING(xiih) USE_NL(cii cis) */
+            cii.instance_id
+    FROM    xxcso_ib_info_h        xiih
+           ,csi_item_instances     cii
+           ,csi_instance_statuses  cis
+    WHERE   gv_prm_process_div                = cv_prm_normal
+      AND   gv_prm_process_date               IS NOT NULL
+      AND   TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+      AND   xiih.interface_flag               = cv_yes
+      AND   cii.external_reference            = xiih.install_code
+      AND   cis.instance_status_id            = cii.instance_status_id
+      AND   cis.attribute2                    = cv_no
+      AND   EXISTS (
+              SELECT  1
+              FROM    csi_i_extended_attribs  ciea
+                     ,csi_iea_values          civ
+              WHERE   ciea.attribute_level    = gv_attribute_level
+                AND   ciea.attribute_code     = cv_lease_kbn
+                AND   civ.instance_id         = cii.instance_id
+                AND   ciea.attribute_id       = civ.attribute_id
+                AND   NVL(ciea.active_start_date,gd_process_date) <= gd_process_date
+                AND   NVL(ciea.active_end_date,gd_process_date)   >= gd_process_date
+                AND   civ.attribute_value     = cv_jisya_lease
+                AND   ROWNUM                  = 1
+            )
+    UNION ALL
+    SELECT  cii.instance_id
+    FROM    csi_item_instances   cii
+    WHERE   gv_prm_process_div   = cv_prm_div
+      AND   gv_prm_process_date  IS NULL
+      AND   EXISTS (
+              SELECT  1
+              FROM    csi_i_extended_attribs  ciea
+                     ,csi_iea_values          civ
+              WHERE   ciea.attribute_level    = gv_attribute_level
+                AND   ciea.attribute_code     = cv_lease_kbn
+                AND   civ.instance_id         = cii.instance_id
+                AND   ciea.attribute_id       = civ.attribute_id
+                AND   NVL(ciea.active_start_date,gd_process_date) <= gd_process_date
+                AND   NVL(ciea.active_end_date,gd_process_date)   >= gd_process_date
+                AND   civ.attribute_value     = cv_jisya_lease
+                AND   ROWNUM                  = 1
+            )
+      AND   EXISTS (
+              SELECT  /*+ USE_NL(xiih hca hp xca hcas hps hl) */
+                      1
+              FROM    xxcso_ib_info_h       xiih
+                     ,hz_cust_accounts      hca
+                     ,hz_parties            hp
+                     ,xxcmm_cust_accounts   xca
+                     ,hz_cust_acct_sites    hcas
+                     ,hz_party_sites        hps
+                     ,hz_locations          hl
+              WHERE   NVL(cii.attribute5,cv_no)          = cv_no                               -- 新古台以外
+                AND   xiih.install_code                  = cii.external_reference
+                AND   hca.cust_account_id                = cii.owner_party_account_id
+                AND   hp.party_id                        = hca.party_id
+                AND   xca.customer_id                    = hca.cust_account_id
+                AND   hcas.cust_account_id               = hca.cust_account_id
+                AND   hps.party_id                       = hp.party_id
+                AND   hps.party_site_id                  = hcas.party_site_id
+                AND   hl.location_id                     = hps.location_id
+                AND   (
+                           (
+                            (
+                             (hca.customer_class_code <> cv_cust_class_10)
+                             AND
+                             (gv_customer_code_dammy <> NVL(xiih.account_number,' '))
+                            )
+                            OR
+                            (
+                             (
+                              (hca.customer_class_code = cv_cust_class_10)
+                              AND
+                              (NVL(hca.account_number,' ') <> NVL(xiih.account_number,' '))
+                             )
+                            )
+                           )                                                                   -- 顧客コードチェック
+                       OR  NVL(xca.sale_base_code,' ')        <> NVL(xiih.base_code,' ')       -- 売上拠点チェック
+                       OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       OR  NVL(hl.state || hl.city || hl.address1 || hl.address2,' ')          -- 住所チェック
+                                                              <> NVL(xiih.install_address,' ')
+                       OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
+                       OR  NVL(xiih.install_number,' ')       <> NVL(cii.attribute2,' ')       -- 機番チェック
+                       OR  NVL(xiih.quantity,0)               <> NVL(cii.quantity,0)           -- 数量チェック
+                       OR  NVL(xiih.po_number,' ')            <>                               -- 発注番号チェック
+                             (
+                              SELECT  NVL(TO_CHAR(MAX(xiwd.po_number)),' ')
+                              FROM    xxcso_in_work_data  xiwd
+                              WHERE   xiwd.install_code1           = cii.external_reference
+                                AND   xiwd.job_kbn                 IN (cv_job_kbn_set, cv_job_kbn_change)
+                                AND   xiwd.completion_kbn          = cv_comp_kbn_ok
+                                AND   xiwd.install1_processed_flag = cv_yes
+                             )
+                       OR  NVL(xiih.manufacturer_name,' ')    <>                               -- メーカー名チェック
+                             (
+                              SELECT  NVL(
+                                        xxcso_util_common_pkg.get_lookup_meaning(
+                                          cv_xxcso_csi_maker_code
+                                         ,punv.attribute2
+                                         ,gd_process_date
+                                        )
+                                       ,' '
+                                      )
+                              FROM    po_un_numbers_vl   punv
+                              WHERE   punv.un_number               = cii.attribute1
+                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                             )
+                       OR  NVL(xiih.age_type,' ')             <>                               -- 年式チェック
+                             (
+                              SELECT  NVL(punv.attribute3,' ')
+                              FROM    po_un_numbers_vl   punv
+                              WHERE   punv.un_number               = cii.attribute1
+                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                             )
+                       OR  NVL(xiih.logical_delete_flag,' ')  <>                               -- 論理削除チェック
+                             DECODE(cii.instance_status_id
+                               ,gn_instance_status_id, cv_yes
+                               ,cv_no
+                             )
+                       OR  NVL(xiih.owner_company_type,' ')   <>                               -- 本社工場区分チェック
+                             (
+                              SELECT  ffvv.flex_value
+                              FROM    fnd_flex_value_sets  ffvs
+                                     ,fnd_flex_values_vl   ffvv
+                              WHERE   ffvs.flex_value_set_name = cv_xxcff_owner_company
+                                AND   ffvv.flex_value_set_id   = ffvs.flex_value_set_id
+                                AND   ffvv.enabled_flag        = cv_yes
+                                AND   TRUNC(gd_process_date)
+                                        BETWEEN TRUNC(NVL(ffvv.start_date_active, gd_process_date))
+                                            AND TRUNC(NVL(ffvv.end_date_active, gd_process_date))
+                                AND   ffvv.flex_value_meaning  =
+                                        (
+                                         SELECT  flvv.meaning
+                                         FROM    fnd_lookup_values_vl  flvv
+                                         WHERE   flvv.lookup_type   = cv_xxcso1_owner_company
+                                           AND   TRUNC(gd_process_date)
+                                                   BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+                                                       AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
+                                           AND   flvv.enabled_flag  = cv_yes
+                                           AND   flvv.lookup_code   =
+                                                   (
+                                                    SELECT  DECODE(COUNT('x')
+                                                              ,0, cv_owner_company_honsya
+                                                              ,cv_owner_company_fact
+                                                            )
+                                                    FROM    xxcmm_cust_accounts   xca
+                                                           ,fnd_lookup_values_vl  flvv
+                                                    WHERE   xca.customer_id   = cii.owner_party_account_id
+                                                      AND   flvv.lookup_type  = cv_xxcoi_mfg_fctory_cd
+                                                      AND   flvv.lookup_code  = xca.sale_base_code
+                                                      AND   flvv.enabled_flag = cv_yes
+                                                      AND   TRUNC(gd_process_date)
+                                                              BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+                                                                  AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
+                                                   )
+                                        )
+                             )
+                      )
+                AND   ROWNUM                             = 1
+              UNION ALL
+              SELECT  /*+ USE_NL(xiih hca hp xca hcas hps hl) */
+                      1
+              FROM    xxcso_ib_info_h       xiih
+                     ,hz_cust_accounts      hca
+                     ,hz_parties            hp
+                     ,xxcmm_cust_accounts   xca
+                     ,hz_cust_acct_sites    hcas
+                     ,hz_party_sites        hps
+                     ,hz_locations          hl
+              WHERE   NVL(cii.attribute5,cv_no)          = cv_no                               -- 新古台以外
+                AND   xiih.install_code                  = cii.external_reference
+                AND   hca.cust_account_id                = cii.owner_party_account_id
+                AND   hp.party_id                        = hca.party_id
+                AND   xca.customer_id                    = hca.cust_account_id
+                AND   hcas.cust_account_id               = hca.cust_account_id
+                AND   hps.party_id                       = hp.party_id
+                AND   hps.party_site_id                  = hcas.party_site_id
+                AND   hl.location_id                     = hps.location_id
+                AND   (
+                           (
+                            (
+                             (hca.customer_class_code <> cv_cust_class_10)
+                             AND
+                             (gv_customer_code_dammy <> NVL(xiih.account_number,' '))
+                            )
+                            OR
+                            (
+                             (
+                              (hca.customer_class_code = cv_cust_class_10)
+                              AND
+                              (NVL(hca.account_number,' ') <> NVL(xiih.account_number,' '))
+                             )
+                            )
+                           )                                                                   -- 顧客コードチェック
+                       OR  NVL(xca.sale_base_code,' ')        <> NVL(xiih.base_code,' ')       -- 売上拠点チェック
+                       OR  NVL(xca.established_site_name,' ') <> NVL(xiih.install_name,' ')    -- 設置先名チェック
+                       OR  NVL(hl.state || hl.city || hl.address1 || hl.address2,' ')          -- 住所チェック
+                                                              <> NVL(xiih.install_address,' ')
+                       OR  NVL(xiih.un_number,' ')            <> NVL(cii.attribute1,' ')       -- 機種チェック
+                       OR  NVL(xiih.install_number,' ')       <> NVL(cii.attribute2,' ')       -- 機番チェック
+                       OR  NVL(xiih.quantity,0)               <> NVL(cii.quantity,0)           -- 数量チェック
+                       OR  NVL(xiih.manufacturer_name,' ')    <>                               -- メーカー名チェック
+                             (
+                              SELECT  NVL(
+                                        xxcso_util_common_pkg.get_lookup_meaning(
+                                          cv_xxcso_csi_maker_code
+                                         ,punv.attribute2
+                                         ,gd_process_date
+                                        )
+                                       ,' '
+                                      )
+                              FROM    po_un_numbers_vl   punv
+                              WHERE   punv.un_number               = cii.attribute1
+                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                             )
+                       OR  NVL(xiih.age_type,' ')             <>                               -- 年式チェック
+                             (
+                              SELECT  NVL(punv.attribute3,' ')
+                              FROM    po_un_numbers_vl   punv
+                              WHERE   punv.un_number               = cii.attribute1
+                                AND   TRUNC(NVL(punv.inactive_date, gd_process_date + 1)) > TRUNC(gd_process_date)
+                             )
+                       OR  NVL(xiih.logical_delete_flag,' ')  <>                               -- 論理削除チェック
+                             DECODE(cii.instance_status_id
+                               ,gn_instance_status_id, cv_yes
+                               ,cv_no
+                             )
+                       OR  NVL(xiih.owner_company_type,' ')   <>                               -- 本社工場区分チェック
+                             (
+                              SELECT  ffvv.flex_value
+                              FROM    fnd_flex_value_sets  ffvs
+                                     ,fnd_flex_values_vl   ffvv
+                              WHERE   ffvs.flex_value_set_name = cv_xxcff_owner_company
+                                AND   ffvv.flex_value_set_id   = ffvs.flex_value_set_id
+                                AND   ffvv.enabled_flag        = cv_yes
+                                AND   TRUNC(gd_process_date)
+                                        BETWEEN TRUNC(NVL(ffvv.start_date_active, gd_process_date))
+                                            AND TRUNC(NVL(ffvv.end_date_active, gd_process_date))
+                                AND   ffvv.flex_value_meaning  =
+                                        (
+                                         SELECT  flvv.meaning
+                                         FROM    fnd_lookup_values_vl  flvv
+                                         WHERE   flvv.lookup_type   = cv_xxcso1_owner_company
+                                           AND   TRUNC(gd_process_date)
+                                                   BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+                                                       AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
+                                           AND   flvv.enabled_flag  = cv_yes
+                                           AND   flvv.lookup_code   =
+                                                   (
+                                                    SELECT  DECODE(COUNT('x')
+                                                              ,0, cv_owner_company_honsya
+                                                              ,cv_owner_company_fact
+                                                            )
+                                                    FROM    xxcmm_cust_accounts   xca
+                                                           ,fnd_lookup_values_vl  flvv
+                                                    WHERE   xca.customer_id   = cii.owner_party_account_id
+                                                      AND   flvv.lookup_type  = cv_xxcoi_mfg_fctory_cd
+                                                      AND   flvv.lookup_code  = xca.sale_base_code
+                                                      AND   flvv.enabled_flag = cv_yes
+                                                      AND   TRUNC(gd_process_date)
+                                                              BETWEEN TRUNC(NVL(flvv.start_date_active, gd_process_date))
+                                                                  AND TRUNC(NVL(flvv.end_date_active, gd_process_date))
+                                                   )
+                                        )
+                             )
+                      )
+                AND   ROWNUM                             = 1
+            )
+      AND   EXISTS (
+              SELECT  1
+              FROM    csi_instance_statuses  cis
+              WHERE   cis.instance_status_id   = cii.instance_status_id
+                AND   cis.attribute2           = cv_no
+                AND   ROWNUM                   = 1
+            )
+    UNION ALL
+    SELECT  /*+ LEADING(xiih) USE_NL(cii cis) */
+            cii.instance_id
+    FROM    xxcso_ib_info_h        xiih
+           ,csi_item_instances     cii
+           ,csi_instance_statuses  cis
+    WHERE   gv_prm_process_div                = cv_prm_div
+      AND   gv_prm_process_date               IS NOT NULL
+      AND   TRUNC(xiih.history_creation_date) = TRUNC(TO_DATE(gv_prm_process_date, 'YYYY/MM/DD'))
+      AND   cii.external_reference            = xiih.install_code
+      AND   cis.instance_status_id            = cii.instance_status_id
+      AND   cis.attribute2                    = cv_no
+      AND   EXISTS (
+              SELECT  1
+              FROM    csi_i_extended_attribs  ciea
+                     ,csi_iea_values          civ
+              WHERE   ciea.attribute_level    = gv_attribute_level
+                AND   ciea.attribute_code     = cv_lease_kbn
+                AND   civ.instance_id         = cii.instance_id
+                AND   ciea.attribute_id       = civ.attribute_id
+                AND   NVL(ciea.active_start_date,gd_process_date) <= gd_process_date
+                AND   NVL(ciea.active_end_date,gd_process_date)   >= gd_process_date
+                AND   civ.attribute_value     = cv_jisya_lease
+                AND   ROWNUM                  = 1
+            )
+  ;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
   -- ===============================
   -- ユーザー定義グローバルレコード定義
   -- ===============================
@@ -437,6 +1075,9 @@ AS
   g_mfg_fctory_cd      g_mfg_fctory_cd_rtype;
   -- 物件関連情報取得用レコード変数
   g_get_xxcso_ib_info_h_rec get_xxcso_ib_info_h_cur%ROWTYPE;
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+  g_get_target_rec          get_target_cur%ROWTYPE;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
   -- ===============================
   -- ユーザー定義グローバル例外
   -- ===============================
@@ -507,7 +1148,7 @@ AS
                  ''
     );
     -- ===========================
-    -- システム日付取得処理 
+    -- システム日付取得処理
     -- ===========================
     gd_sys_date := SYSDATE;
     -- *** DEBUG_LOG ***
@@ -520,7 +1161,7 @@ AS
     );
     --
     -- ===========================
-    -- パラメータチェック 
+    -- パラメータチェック
     -- ===========================
     -- INパラメータの出力処理
     IF (
@@ -601,9 +1242,9 @@ AS
     END IF;
     --
     -- ===========================
-    -- 業務処理日付取得 
+    -- 業務処理日付取得
     -- ===========================
-    -- 
+    --
     gd_business_date := xxccp_common_pkg2.get_process_date;
     -- *** DEBUG_LOG ***
     -- 取得した業務処理日付をログ出力
@@ -626,9 +1267,9 @@ AS
     END IF;
     --
     -- ===========================
-    -- 処理日特定 
+    -- 処理日特定
     -- ===========================
-    -- 
+    --
     IF (gv_prm_process_date IS NOT NULL) THEN
       -- パラメータ処理実行日が入力されている場合
       --
@@ -650,9 +1291,9 @@ AS
     );
     --
     -- ===========================
-    -- プロファイル・オプション値取得 
+    -- プロファイル・オプション値取得
     -- ===========================
-    -- 
+    --
     -- 伊藤園顧客名取得
     gv_itoen_cust_name := FND_PROFILE.VALUE(cv_prof_itoen_cust_name);
     --
@@ -691,7 +1332,7 @@ AS
       RAISE global_api_expt;
     END IF;
     /* 2009.04.28 T.Mori T1_0758対応 END */
-    -- 
+    --
     -- 営業単位取得
     gn_org_id := FND_PROFILE.VALUE(cv_prof_org_id);
     --
@@ -717,10 +1358,36 @@ AS
       RAISE global_api_expt;
     END IF;
     --
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+    -- IB属性レベル取得
+    gv_attribute_level := FND_PROFILE.VALUE(cv_attribute_level);
+    --
+    -- *** DEBUG_LOG ***
+    -- 取得した処理日をログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg1_16 || CHR(10) ||
+                 cv_debug_msg1_17 || gv_attribute_level ||
+                  CHR(10) ||
+                 ''
+    );
+    --
+    IF (gv_attribute_level = NULL) THEN
+      --IB属性レベル取得に失敗した場合（戻り値NULL）
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name                  --アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_08             --メッセージコード
+                    ,iv_token_name1  => cv_tkn_prof_name
+                    ,iv_token_value1 => cv_attribute_level
+                   );
+      lv_errbuf := lv_errmsg || SQLERRM;
+      RAISE global_api_expt;
+    END IF;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
     -- ===========================
-    -- インスタンスステータスID取得 
+    -- インスタンスステータスID取得
     -- ===========================
-    -- 
+    --
     BEGIN
       --
       SELECT cis.instance_status_id instance_status_id
@@ -778,9 +1445,9 @@ AS
     END;
     --
     -- ===========================
-    -- INV 工場返品倉替先コード取得 
+    -- INV 工場返品倉替先コード取得
     -- ===========================
-    -- 
+    --
     BEGIN
       --
       -- カーソルオープン
@@ -994,7 +1661,7 @@ AS
 --
 --
     -- ========================================
-    -- 発注番号抽出 
+    -- 発注番号抽出
     -- ========================================
     BEGIN
     --
@@ -1137,7 +1804,7 @@ AS
 --
 --
     -- ========================================
-    -- 機種情報抽出 
+    -- 機種情報抽出
     -- ========================================
     BEGIN
     --
@@ -1265,7 +1932,7 @@ AS
 --
     /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
     ---- ========================================
-    ---- 顧客関連情報抽出 
+    ---- 顧客関連情報抽出
     ---- ========================================
     --BEGIN
     ----
@@ -1336,7 +2003,7 @@ AS
     /* 2009.04.28 T.Mori T1_0758対応 END */
 --
     -- ========================================
-    -- 本社／工場区分の抽出 
+    -- 本社／工場区分の抽出
     -- ========================================
     --
     -- 工場返品倉替先コード存在チェック
@@ -1365,7 +2032,7 @@ AS
       AND    ffvv.enabled_flag        = cv_yes  -- 使用可能フラグ
       AND    TRUNC(gd_process_date) BETWEEN TRUNC(NVL(ffvv.start_date_active, gd_process_date))
       AND    TRUNC(NVL(ffvv.end_date_active, gd_process_date)) -- 有効期間
-      AND    ffvv.flex_value_meaning = 
+      AND    ffvv.flex_value_meaning =
         (
           SELECT flvv.meaning meaning  -- 内容（本社／工場）
           FROM   fnd_lookup_values_vl flvv  -- クイックコード
@@ -1480,7 +2147,7 @@ AS
 --
 --
     -- ========================================
-    -- 物件関連情報変更チェック処理 
+    -- 物件関連情報変更チェック処理
     -- ========================================
     --
     -- 変更チェックフラグにデフォルト値（Y）を設定
@@ -1489,52 +2156,52 @@ AS
     IF (
         /* 2009.04.08 K.Satomura T1_0403対応 START*/
         --    (
-        --       g_get_xxcso_ib_info_h_rec.old_po_number                                
+        --       g_get_xxcso_ib_info_h_rec.old_po_number
         --     = gn_po_number                                                       -- 発注番号
         --    )
         --AND (
-        --       g_get_xxcso_ib_info_h_rec.old_manufacturer_name                        
+        --       g_get_xxcso_ib_info_h_rec.old_manufacturer_name
         --     = gv_manufacturer_name                                               -- メーカー名
         --    )
         --AND (
-        --       g_get_xxcso_ib_info_h_rec.old_age_type                                 
+        --       g_get_xxcso_ib_info_h_rec.old_age_type
         --     = gv_age_type                                                        -- 年式
         --    )
         --AND (
-        --       g_get_xxcso_ib_info_h_rec.old_model                                    
-        --     = g_get_xxcso_ib_info_h_rec.new_model                                -- 機種 
+        --       g_get_xxcso_ib_info_h_rec.old_model
+        --     = g_get_xxcso_ib_info_h_rec.new_model                                -- 機種
         --    )
         --AND (
-        --       NVL(g_get_xxcso_ib_info_h_rec.old_serial_number       , cv_null)       
-        --     = NVL(g_get_xxcso_ib_info_h_rec.new_serial_number       , cv_null)   -- 機番 
+        --       NVL(g_get_xxcso_ib_info_h_rec.old_serial_number       , cv_null)
+        --     = NVL(g_get_xxcso_ib_info_h_rec.new_serial_number       , cv_null)   -- 機番
         --    )
         --AND (
-        --       g_get_xxcso_ib_info_h_rec.old_quantity                                 
-        --     = g_get_xxcso_ib_info_h_rec.new_quantity                             -- 数量 
+        --       g_get_xxcso_ib_info_h_rec.old_quantity
+        --     = g_get_xxcso_ib_info_h_rec.new_quantity                             -- 数量
         --    )
         --AND (
-        --       NVL(g_get_xxcso_ib_info_h_rec.old_department_code     , cv_null)       
-        --     = NVL(gv_department_code                                , cv_null)   -- 拠点コード 
+        --       NVL(g_get_xxcso_ib_info_h_rec.old_department_code     , cv_null)
+        --     = NVL(gv_department_code                                , cv_null)   -- 拠点コード
         --    )
         --AND (
-        --       g_get_xxcso_ib_info_h_rec.old_owner_company                            
+        --       g_get_xxcso_ib_info_h_rec.old_owner_company
         --     = gv_owner_company                                                   -- 本社／工場区分
         --    )
         --AND (
-        --       NVL(g_get_xxcso_ib_info_h_rec.old_installation_place  , cv_null)       
-        --     = NVL(gv_installation_place                             , cv_null)   -- 設置先名 
+        --       NVL(g_get_xxcso_ib_info_h_rec.old_installation_place  , cv_null)
+        --     = NVL(gv_installation_place                             , cv_null)   -- 設置先名
         --    )
         --AND (
-        --       g_get_xxcso_ib_info_h_rec.old_installation_address                     
-        --     = gv_installation_address                                            -- 設置先住所 
+        --       g_get_xxcso_ib_info_h_rec.old_installation_address
+        --     = gv_installation_address                                            -- 設置先住所
         --    )
         --AND (
-        --       g_get_xxcso_ib_info_h_rec.old_active_flag                              
+        --       g_get_xxcso_ib_info_h_rec.old_active_flag
         --     = g_get_xxcso_ib_info_h_rec.new_active_flag                          -- 論理削除フラグ
         --    )
         --AND (
-        --       g_get_xxcso_ib_info_h_rec.old_customer_code                            
-        --     = gv_customer_code                                                   -- 顧客コード 
+        --       g_get_xxcso_ib_info_h_rec.old_customer_code
+        --     = gv_customer_code                                                   -- 顧客コード
         --    )
             (
                NVL(g_get_xxcso_ib_info_h_rec.old_po_number, cn_zero)
@@ -1562,7 +2229,7 @@ AS
             )
         AND (
                NVL(g_get_xxcso_ib_info_h_rec.old_department_code, cv_null)
-             = NVL(gv_department_code, cv_null) -- 拠点コード 
+             = NVL(gv_department_code, cv_null) -- 拠点コード
             )
         AND (
                NVL(g_get_xxcso_ib_info_h_rec.old_owner_company, cv_null)
@@ -1570,7 +2237,7 @@ AS
             )
         AND (
                NVL(g_get_xxcso_ib_info_h_rec.old_installation_place, cv_null)
-             = NVL(gv_installation_place, cv_null) -- 設置先名 
+             = NVL(gv_installation_place, cv_null) -- 設置先名
             )
         AND (
                NVL(g_get_xxcso_ib_info_h_rec.old_installation_address, cv_null)
@@ -1582,7 +2249,7 @@ AS
             )
         AND (
                NVL(g_get_xxcso_ib_info_h_rec.old_customer_code, cv_null)
-             = NVL(gv_customer_code, cv_null)-- 顧客コード 
+             = NVL(gv_customer_code, cv_null)-- 顧客コード
             )
         /* 2009.04.08 K.Satomura T1_0403対応 END*/
        ) THEN
@@ -1657,7 +2324,7 @@ AS
 --
 --
     -- ========================================
-    -- 自販機SH物件インタフェース存在判定 
+    -- 自販機SH物件インタフェース存在判定
     -- ========================================
     BEGIN
     --
@@ -1772,7 +2439,7 @@ AS
 --
 --
     -- ========================================
-    -- 物件関連変更履歴テーブルロック処理 
+    -- 物件関連変更履歴テーブルロック処理
     -- ========================================
     BEGIN
     --
@@ -1891,7 +2558,7 @@ AS
 --
 --
     -- ========================================
-    -- 自販機SH物件インタフェース登録処理 
+    -- 自販機SH物件インタフェース登録処理
     -- ========================================
     BEGIN
     --
@@ -2046,7 +2713,7 @@ AS
 --
 --
     -- ========================================
-    -- 物件関連情報変更履歴テーブル更新処理 
+    -- 物件関連情報変更履歴テーブル更新処理
     -- ========================================
     BEGIN
     --
@@ -2175,7 +2842,7 @@ AS
     gn_warn_cnt   := 0;  -- スキップ件数
 --
     -- ========================================
-    -- A-1.初期処理 
+    -- A-1.初期処理
     -- ========================================
     init(
        ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
@@ -2188,27 +2855,24 @@ AS
     END IF;
 --
 --
+/* 2009.07.17 H.Ogawa 0000781対応 START */
     -- ========================================
-    -- A-2.物件関連情報抽出 
+    -- A-2-0.抽出対象物件取得
     -- ========================================
-    OPEN get_xxcso_ib_info_h_cur;
+    OPEN get_target_cur;
     -- *** DEBUG_LOG ***
     -- カーソルオープンしたことをログ出力
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => cv_debug_msg_copn   || CHR(10)   ||
-                 cv_debug_msgsub_1   || CHR(10)   ||
+                 cv_debug_msgsub_0   || CHR(10)   ||
                  ''
     );
     --
-    <<loop_get_xxcso_ib_info>>
+    <<loop_get_target>>
     LOOP
-      /* 2009.04.07 K.Satomura T1_0378対応 START */
-      lv_change_flg := NULL;
-      lv_retcode    := cv_status_normal;
-      /* 2009.04.07 K.Satomura T1_0378対応 END */
       BEGIN
-        FETCH get_xxcso_ib_info_h_cur INTO g_get_xxcso_ib_info_h_rec;
+        FETCH get_target_cur INTO g_get_target_rec;
       EXCEPTION
         WHEN OTHERS THEN
           -- SQLエラーが発生した場合
@@ -2216,72 +2880,91 @@ AS
                          iv_application  => cv_app_name                  --アプリケーション短縮名
                         ,iv_name         => cv_tkn_number_19             --メッセージコード
                         ,iv_token_name1  => cv_tkn_table
-                        ,iv_token_value1 => cv_tkn_msg_ib_info
+                        ,iv_token_value1 => cv_tkn_msg_target
                         ,iv_token_name2  => cv_tkn_err_msg
                         ,iv_token_value2 => SQLERRM
                        );
           lv_errbuf := lv_errmsg || SQLERRM;
           RAISE g_sql_err_expt;
       END;
-      EXIT WHEN get_xxcso_ib_info_h_cur%NOTFOUND
-              OR get_xxcso_ib_info_h_cur%ROWCOUNT = 0;
-      --
+      EXIT WHEN get_target_cur%NOTFOUND
+              OR get_target_cur%ROWCOUNT = 0;
+--
       -- 対象件数の取得
-      gn_target_cnt := get_xxcso_ib_info_h_cur%ROWCOUNT;
---
-      /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
-      -- 顧客関連情報を退避
-      gv_department_code      := g_get_xxcso_ib_info_h_rec.new_department_code;
-      gv_installation_place   := g_get_xxcso_ib_info_h_rec.new_installation_place;
-      gv_installation_address := g_get_xxcso_ib_info_h_rec.new_installation_address;
-      gv_customer_code        := g_get_xxcso_ib_info_h_rec.new_customer_code;
-      /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
+      gn_target_cnt := get_target_cur%ROWCOUNT;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
       -- ========================================
-      -- A-3.発注番号抽出 
+      -- A-2-1.物件関連情報抽出
       -- ========================================
-      /* 2009.04.07 D.Abe T1_0339対応 START */
-      gn_po_number := NULL;
-      IF (g_get_xxcso_ib_info_h_rec.newold_flag = cv_no
-        OR g_get_xxcso_ib_info_h_rec.newold_flag IS NULL)
-      THEN
-      /* 2009.04.07 D.Abe T1_0339対応 END */
-        get_po_number(
-           ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-          ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-          ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-        );
-      /* 2009.04.07 D.Abe T1_0339対応 START */
-      ELSE
-        lv_retcode := cv_status_normal;
-      END IF;
-      /* 2009.04.07 D.Abe T1_0339対応 END */
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+--    OPEN get_xxcso_ib_info_h_cur;
+      OPEN get_xxcso_ib_info_h_cur(g_get_target_rec.instance_id);
+/* 2009.07.17 H.Ogawa 0000781対応 END */
+      -- *** DEBUG_LOG ***
+      -- カーソルオープンしたことをログ出力
+      fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   => cv_debug_msg_copn   || CHR(10)   ||
+                   cv_debug_msgsub_1   || CHR(10)   ||
+                   ''
+      );
+      --
+      <<loop_get_xxcso_ib_info>>
+      LOOP
+        /* 2009.04.07 K.Satomura T1_0378対応 START */
+        lv_change_flg := NULL;
+        lv_retcode    := cv_status_normal;
+        /* 2009.04.07 K.Satomura T1_0378対応 END */
+        BEGIN
+          FETCH get_xxcso_ib_info_h_cur INTO g_get_xxcso_ib_info_h_rec;
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- SQLエラーが発生した場合
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_app_name                  --アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_19             --メッセージコード
+                          ,iv_token_name1  => cv_tkn_table
+                          ,iv_token_value1 => cv_tkn_msg_ib_info
+                          ,iv_token_name2  => cv_tkn_err_msg
+                          ,iv_token_value2 => SQLERRM
+                         );
+            lv_errbuf := lv_errmsg || SQLERRM;
+            RAISE g_sql_err_expt;
+        END;
+        EXIT WHEN get_xxcso_ib_info_h_cur%NOTFOUND
+                OR get_xxcso_ib_info_h_cur%ROWCOUNT = 0;
+        --
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+        -- 対象件数の取得
+        --gn_target_cnt := get_xxcso_ib_info_h_cur%ROWCOUNT;
+/* 2009.07.17 H.Ogawa 0000781対応 START */
 --
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_process_expt;
-      ELSIF (lv_retcode = cv_status_warn) THEN
-        -- スキップ件数
-        gn_warn_cnt   := gn_warn_cnt + 1;
-        -- 固定ステータス設定（警告）
-        ov_retcode := cv_status_warn;
-        --警告出力
-        fnd_file.put_line(
-           which  => FND_FILE.OUTPUT
-          ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
-        );
-        fnd_file.put_line(
-           which  => FND_FILE.LOG
-          ,buff   => lv_errmsg                  --警告メッセージ
-        );
-      ELSE
---
+        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) START */
+        -- 顧客関連情報を退避
+        gv_department_code      := g_get_xxcso_ib_info_h_rec.new_department_code;
+        gv_installation_place   := g_get_xxcso_ib_info_h_rec.new_installation_place;
+        gv_installation_address := g_get_xxcso_ib_info_h_rec.new_installation_address;
+        gv_customer_code        := g_get_xxcso_ib_info_h_rec.new_customer_code;
+        /* 2009.07.02 K.Satomura 統合テスト障害対応(0000229) END */
         -- ========================================
-        -- A-4.機種情報抽出 
+        -- A-3.発注番号抽出
         -- ========================================
-        get_type_info(
-           ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-          ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-          ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-        );
+        /* 2009.04.07 D.Abe T1_0339対応 START */
+        gn_po_number := NULL;
+        IF (g_get_xxcso_ib_info_h_rec.newold_flag = cv_no
+          OR g_get_xxcso_ib_info_h_rec.newold_flag IS NULL)
+        THEN
+        /* 2009.04.07 D.Abe T1_0339対応 END */
+          get_po_number(
+             ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+            ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+            ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+          );
+        /* 2009.04.07 D.Abe T1_0339対応 START */
+        ELSE
+          lv_retcode := cv_status_normal;
+        END IF;
+        /* 2009.04.07 D.Abe T1_0339対応 END */
 --
         IF (lv_retcode = cv_status_error) THEN
           RAISE global_process_expt;
@@ -2302,9 +2985,9 @@ AS
         ELSE
 --
           -- ========================================
-          -- A-5.顧客関連情報抽出 
+          -- A-4.機種情報抽出
           -- ========================================
-          get_acct_info(
+          get_type_info(
              ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
             ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
             ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -2328,205 +3011,98 @@ AS
             );
           ELSE
 --
-            /* 2009.05.26 D.Abe T1_1042対応 START */
-            /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
-            -- 処理区分が1で処理日付が入力済み
-            IF (gv_prm_process_div = cv_prm_normal )
-                AND  (gv_prm_process_date IS NOT NULL) THEN
-              lv_change_flg := cv_yes;
+            -- ========================================
+            -- A-5.顧客関連情報抽出
+            -- ========================================
+            get_acct_info(
+               ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+              ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+              ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
+--
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE global_process_expt;
+            ELSIF (lv_retcode = cv_status_warn) THEN
+              -- スキップ件数
+              gn_warn_cnt   := gn_warn_cnt + 1;
+              -- 固定ステータス設定（警告）
+              ov_retcode := cv_status_warn;
+              --警告出力
+              fnd_file.put_line(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
+              );
+              fnd_file.put_line(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg                  --警告メッセージ
+              );
             ELSE
-            ---- 処理区分が２のみ対象とする
-            --IF (gv_prm_process_div = cv_prm_div) THEN
-            /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
-            /* 2009.05.26 D.Abe T1_1042対応 END */
-              -- ========================================
-              -- A-6.物件関連情報変更チェック処理 
-              -- ========================================
-              /* 2009.04.01 K.Satomura T1_0148対応 START */
-              /* 2009.04.07 K.Satomura T1_0378対応 START */
-              --IF (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes) THEN
-              IF (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes) THEN
-              /* 2009.04.07 K.Satomura T1_0378対応 END */
-                -- 連携済フラグがYの場合
-              /* 2009.04.01 K.Satomura T1_0148対応 END */
-                ib_info_change_chk(
-                   ov_change_flg => lv_change_flg    -- 変更チェックフラグ
-                  ,ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-                );
-              /* 2009.04.01 K.Satomura T1_0148対応 START */
-              END IF;
-              /* 2009.04.01 K.Satomura T1_0148対応 END */
-              --
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              END IF;
-              --
-            /* 2009.05.26 D.Abe T1_1042対応 START */
-            /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
-            --ELSIF ((gv_prm_process_div = cv_prm_normal)
-            --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes)) THEN
-            --  -- 処理区分が１で連携済み
-            --  lv_change_flg := cv_yes;
-            --ELSE
-            --  -- 処理区分が１で未連携
-            --  NULL;
-            /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
-            END IF;
-            /* 2009.05.26 D.Abe T1_1042対応 END */
-            /* 2009.04.07 K.Satomura T1_0378対応 START */
-            IF (lv_change_flg IS NOT NULL) THEN
-            /* 2009.04.07 K.Satomura T1_0378対応 END */
-              IF (lv_change_flg = cv_no) THEN
-                -- スキップ件数
-                gn_warn_cnt   := gn_warn_cnt + 1;
-              ELSE
-                -- 項目が変更されている場合
 --
-                -- ========================================
-                -- A-7.自販機SH物件インタフェース存在チェック 
-                -- ========================================
-                xxcff_vd_object_if_chk(
-                   ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-                );
---
-                IF (lv_retcode = cv_status_error) THEN
-                  RAISE global_process_expt;
-                ELSIF (lv_retcode = cv_status_warn) THEN
-                  -- スキップ件数
-                  gn_warn_cnt   := gn_warn_cnt + 1;
-                  -- 固定ステータス設定（警告）
-                  ov_retcode := cv_status_warn;
-                  --警告出力
-                  fnd_file.put_line(
-                     which  => FND_FILE.OUTPUT
-                    ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
-                  );
-                  fnd_file.put_line(
-                     which  => FND_FILE.LOG
-                    ,buff   => lv_errmsg                  --警告メッセージ
-                  );
-              /* 2009.04.01 K.Satomura T1_0148対応 START */
-                --ELSE
-                END IF;
-              END IF;
-              /* 2009.04.01 K.Satomura T1_0148対応 END */
-                -- 自販機SH物件インタフェースに登録対象物件が存在しない場合
-            /* 2009.04.07 K.Satomura T1_0378対応 START */
-            END IF;
-            /* 2009.04.07 K.Satomura T1_0378対応 END */
---
-            /* 2009.04.01 K.Satomura T1_0148対応 START */
-            IF (((NVL(lv_change_flg, cv_yes) <> cv_no)
-              OR (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes))
-              AND (lv_retcode = cv_status_normal))
-            THEN
-            /* 2009.04.01 K.Satomura T1_0148対応 END */
               /* 2009.05.26 D.Abe T1_1042対応 START */
               /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
               -- 処理区分が1で処理日付が入力済み
               IF (gv_prm_process_div = cv_prm_normal )
                   AND  (gv_prm_process_date IS NOT NULL) THEN
-                NULL;
+                lv_change_flg := cv_yes;
               ELSE
-              ---- 処理区分が１でかつ未連携、または処理区分が２の場合
-              --IF (((gv_prm_process_div = cv_prm_normal)
-              --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
-              --    OR
-              --    (gv_prm_process_div = cv_prm_div)
-              --   )
-              --THEN
+              ---- 処理区分が２のみ対象とする
+              --IF (gv_prm_process_div = cv_prm_div) THEN
               /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
               /* 2009.05.26 D.Abe T1_1042対応 END */
                 -- ========================================
-                -- A-8.物件関連変更履歴テーブルロック 
+                -- A-6.物件関連情報変更チェック処理
                 -- ========================================
-                xxcso_ib_info_h_lock(
-                   ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-                );
-  --
+                /* 2009.04.01 K.Satomura T1_0148対応 START */
+                /* 2009.04.07 K.Satomura T1_0378対応 START */
+                --IF (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes) THEN
+                IF (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes) THEN
+                /* 2009.04.07 K.Satomura T1_0378対応 END */
+                  -- 連携済フラグがYの場合
+                /* 2009.04.01 K.Satomura T1_0148対応 END */
+                  ib_info_change_chk(
+                     ov_change_flg => lv_change_flg    -- 変更チェックフラグ
+                    ,ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                    ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                    ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+                  );
+                /* 2009.04.01 K.Satomura T1_0148対応 START */
+                END IF;
+                /* 2009.04.01 K.Satomura T1_0148対応 END */
+                --
                 IF (lv_retcode = cv_status_error) THEN
                   RAISE global_process_expt;
                 END IF;
-  --
-/* 2009.05.26 D.Abe T1_1042対応 START */
-              END IF;
-/* 2009.05.26 D.Abe T1_1042対応 END */
-              -- ========================================
-              -- A-9.セーブポイント発行処理 
-              -- ========================================
-              --
-              SAVEPOINT ib_info;
-  --
-              -- ========================================
-              -- A-10.自販機SH物件インタフェース登録処理 
-              -- ========================================
-              insert_xxcff_vd_object_if(
-                 ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-              );
---
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
---
-              ELSIF (lv_retcode = cv_status_warn) THEN
-                -- スキップ件数
-                gn_warn_cnt   := gn_warn_cnt + 1;
-                -- 固定ステータス設定（警告）
-                ov_retcode := cv_status_warn;
-                --警告出力
-                fnd_file.put_line(
-                   which  => FND_FILE.OUTPUT
-                  ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
-                );
-                fnd_file.put_line(
-                   which  => FND_FILE.LOG
-                  ,buff   => lv_errmsg                  --警告メッセージ
-                );
-                ROLLBACK TO SAVEPOINT ib_info;
                 --
-                -- *** DEBUG_LOG ***
-                -- ロールバック処理をログ出力
-                fnd_file.put_line(
-                   which  => FND_FILE.LOG
-                  ,buff   => cv_debug_msg_rollback  || CHR(10) ||
-                             cv_tkn_msg_vd_object_if || cv_tkn_msg_insert ||
-                              CHR(10) ||
-                             ''
-                );
-              ELSE
---
-                /* 2009.05.26 D.Abe T1_1042対応 START */
-                /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
-                -- 処理区分が1で処理日付が入力済み
-                IF (gv_prm_process_div = cv_prm_normal )
-                    AND  (gv_prm_process_date IS NOT NULL) THEN
-                  gn_normal_cnt := gn_normal_cnt + 1;  
+              /* 2009.05.26 D.Abe T1_1042対応 START */
+              /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
+              --ELSIF ((gv_prm_process_div = cv_prm_normal)
+              --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes)) THEN
+              --  -- 処理区分が１で連携済み
+              --  lv_change_flg := cv_yes;
+              --ELSE
+              --  -- 処理区分が１で未連携
+              --  NULL;
+              /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
+              END IF;
+              /* 2009.05.26 D.Abe T1_1042対応 END */
+              /* 2009.04.07 K.Satomura T1_0378対応 START */
+              IF (lv_change_flg IS NOT NULL) THEN
+              /* 2009.04.07 K.Satomura T1_0378対応 END */
+                IF (lv_change_flg = cv_no) THEN
+                  -- スキップ件数
+                  gn_warn_cnt   := gn_warn_cnt + 1;
                 ELSE
-                ---- 処理区分が１でかつ未連携、または処理区分が２
-                --IF (((gv_prm_process_div = cv_prm_normal)
-                --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
-                --    OR
-                --    (gv_prm_process_div = cv_prm_div)
-                --   )
-                --THEN
-                /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
-                /* 2009.05.26 D.Abe T1_1042対応 END */
+                  -- 項目が変更されている場合
+--
                   -- ========================================
-                  -- A-11.物件関連情報変更履歴テーブル更新処理 
+                  -- A-7.自販機SH物件インタフェース存在チェック
                   -- ========================================
-                  update_xxcso_ib_info_h(
+                  xxcff_vd_object_if_chk(
                      ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
                     ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
                     ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
                   );
-   --
+--
                   IF (lv_retcode = cv_status_error) THEN
                     RAISE global_process_expt;
                   ELSIF (lv_retcode = cv_status_warn) THEN
@@ -2543,53 +3119,201 @@ AS
                        which  => FND_FILE.LOG
                       ,buff   => lv_errmsg                  --警告メッセージ
                     );
-                    ROLLBACK TO SAVEPOINT ib_info;
-                    --
-                    -- *** DEBUG_LOG ***
-                    -- ロールバック処理をログ出力
-                    fnd_file.put_line(
-                       which  => FND_FILE.LOG
-                      ,buff   => cv_debug_msg_rollback  || CHR(10) ||
-                                 cv_tkn_msg_ib_info_h || cv_tkn_msg_update ||
-                                  CHR(10) ||
-                                 ''
-                    );
-                    --
-                  ELSE
-                    -- 正常件数取得
-                    gn_normal_cnt := gn_normal_cnt + 1;  
+                /* 2009.04.01 K.Satomura T1_0148対応 START */
+                  --ELSE
                   END IF;
-                  /* 2009.04.01 K.Satomura T1_0148対応 START */
-                  --END IF;
-                  /* 2009.04.01 K.Satomura T1_0148対応 END */
+                END IF;
+                /* 2009.04.01 K.Satomura T1_0148対応 END */
+                  -- 自販機SH物件インタフェースに登録対象物件が存在しない場合
+              /* 2009.04.07 K.Satomura T1_0378対応 START */
+              END IF;
+              /* 2009.04.07 K.Satomura T1_0378対応 END */
+--
+              /* 2009.04.01 K.Satomura T1_0148対応 START */
+              IF (((NVL(lv_change_flg, cv_yes) <> cv_no)
+                OR (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes))
+                AND (lv_retcode = cv_status_normal))
+              THEN
+              /* 2009.04.01 K.Satomura T1_0148対応 END */
                 /* 2009.05.26 D.Abe T1_1042対応 START */
                 /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
-                --ELSE
-                --  -- 正常件数取得
-                --  gn_normal_cnt := gn_normal_cnt + 1;  
+                -- 処理区分が1で処理日付が入力済み
+                IF (gv_prm_process_div = cv_prm_normal )
+                    AND  (gv_prm_process_date IS NOT NULL) THEN
+                  NULL;
+                ELSE
+                ---- 処理区分が１でかつ未連携、または処理区分が２の場合
+                --IF (((gv_prm_process_div = cv_prm_normal)
+                --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
+                --    OR
+                --    (gv_prm_process_div = cv_prm_div)
+                --   )
+                --THEN
                 /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
-                END IF;
                 /* 2009.05.26 D.Abe T1_1042対応 END */
+                  -- ========================================
+                  -- A-8.物件関連変更履歴テーブルロック
+                  -- ========================================
+                  xxcso_ib_info_h_lock(
+                     ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                    ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                    ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+                  );
+--
+                  IF (lv_retcode = cv_status_error) THEN
+                    RAISE global_process_expt;
+                  END IF;
+--
+/* 2009.05.26 D.Abe T1_1042対応 START */
+                END IF;
+/* 2009.05.26 D.Abe T1_1042対応 END */
+                -- ========================================
+                -- A-9.セーブポイント発行処理
+                -- ========================================
+                --
+                SAVEPOINT ib_info;
+--
+                -- ========================================
+                -- A-10.自販機SH物件インタフェース登録処理
+                -- ========================================
+                insert_xxcff_vd_object_if(
+                   ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+                );
+--
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+--
+                ELSIF (lv_retcode = cv_status_warn) THEN
+                  -- スキップ件数
+                  gn_warn_cnt   := gn_warn_cnt + 1;
+                  -- 固定ステータス設定（警告）
+                  ov_retcode := cv_status_warn;
+                  --警告出力
+                  fnd_file.put_line(
+                     which  => FND_FILE.OUTPUT
+                    ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
+                  );
+                  fnd_file.put_line(
+                     which  => FND_FILE.LOG
+                    ,buff   => lv_errmsg                  --警告メッセージ
+                  );
+                  ROLLBACK TO SAVEPOINT ib_info;
+                  --
+                  -- *** DEBUG_LOG ***
+                  -- ロールバック処理をログ出力
+                  fnd_file.put_line(
+                     which  => FND_FILE.LOG
+                    ,buff   => cv_debug_msg_rollback  || CHR(10) ||
+                               cv_tkn_msg_vd_object_if || cv_tkn_msg_insert ||
+                                CHR(10) ||
+                               ''
+                  );
+                ELSE
+--
+                  /* 2009.05.26 D.Abe T1_1042対応 START */
+                  /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
+                  -- 処理区分が1で処理日付が入力済み
+                  IF (gv_prm_process_div = cv_prm_normal )
+                      AND  (gv_prm_process_date IS NOT NULL) THEN
+                    gn_normal_cnt := gn_normal_cnt + 1;
+                  ELSE
+                  ---- 処理区分が１でかつ未連携、または処理区分が２
+                  --IF (((gv_prm_process_div = cv_prm_normal)
+                  --     AND (g_get_xxcso_ib_info_h_rec.interface_flag = cv_no))
+                  --    OR
+                  --    (gv_prm_process_div = cv_prm_div)
+                  --   )
+                  --THEN
+                  /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
+                  /* 2009.05.26 D.Abe T1_1042対応 END */
+                    -- ========================================
+                    -- A-11.物件関連情報変更履歴テーブル更新処理
+                    -- ========================================
+                    update_xxcso_ib_info_h(
+                       ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                      ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                      ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
+                    );
+--
+                    IF (lv_retcode = cv_status_error) THEN
+                      RAISE global_process_expt;
+                    ELSIF (lv_retcode = cv_status_warn) THEN
+                      -- スキップ件数
+                      gn_warn_cnt   := gn_warn_cnt + 1;
+                      -- 固定ステータス設定（警告）
+                      ov_retcode := cv_status_warn;
+                      --警告出力
+                      fnd_file.put_line(
+                         which  => FND_FILE.OUTPUT
+                        ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
+                      );
+                      fnd_file.put_line(
+                         which  => FND_FILE.LOG
+                        ,buff   => lv_errmsg                  --警告メッセージ
+                      );
+                      ROLLBACK TO SAVEPOINT ib_info;
+                      --
+                      -- *** DEBUG_LOG ***
+                      -- ロールバック処理をログ出力
+                      fnd_file.put_line(
+                         which  => FND_FILE.LOG
+                        ,buff   => cv_debug_msg_rollback  || CHR(10) ||
+                                   cv_tkn_msg_ib_info_h || cv_tkn_msg_update ||
+                                    CHR(10) ||
+                                   ''
+                      );
+                      --
+                    ELSE
+                      -- 正常件数取得
+                      gn_normal_cnt := gn_normal_cnt + 1;
+                    END IF;
+                    /* 2009.04.01 K.Satomura T1_0148対応 START */
+                    --END IF;
+                    /* 2009.04.01 K.Satomura T1_0148対応 END */
+                  /* 2009.05.26 D.Abe T1_1042対応 START */
+                  /* 2009.05.28 D.Abe T1_1042(再２)対応 START */
+                  --ELSE
+                  --  -- 正常件数取得
+                  --  gn_normal_cnt := gn_normal_cnt + 1;
+                  /* 2009.05.28 D.Abe T1_1042(再２)対応 END */
+                  END IF;
+                  /* 2009.05.26 D.Abe T1_1042対応 END */
+                END IF;
               END IF;
             END IF;
           END IF;
         END IF;
-      END IF;
 --
 --
-    END LOOP loop_get_xxcso_ib_info;
-    --
+      END LOOP loop_get_xxcso_ib_info;
+--
+      -- カーソルクローズ
+      CLOSE get_xxcso_ib_info_h_cur;
+      -- *** DEBUG_LOG ***
+      -- カーソルクローズしたことをログ出力
+      fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   => cv_debug_msg_ccls1   || CHR(10)   ||
+                   cv_debug_msgsub_1   || CHR(10)   ||
+                   ''
+      );
+--
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+    END LOOP loop_get_target;
     -- カーソルクローズ
-    CLOSE get_xxcso_ib_info_h_cur;
+    CLOSE get_target_cur;
     -- *** DEBUG_LOG ***
     -- カーソルクローズしたことをログ出力
     fnd_file.put_line(
        which  => FND_FILE.LOG
       ,buff   => cv_debug_msg_ccls1   || CHR(10)   ||
-                 cv_debug_msgsub_1   || CHR(10)   ||
+                 cv_debug_msgsub_0   || CHR(10)   ||
                  ''
     );
 --
+/* 2009.07.17 H.Ogawa 0000781対応 END */
 --
   EXCEPTION
 --
@@ -2613,6 +3337,21 @@ AS
         );
       END IF;
 --
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+      IF (get_target_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_target_cur;
+        -- *** DEBUG_LOG ***
+        -- カーソルクローズしたことをログ出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_debug_msg_ccls2   || CHR(10)   ||
+                     cv_debug_msg_err1_2  || CHR(10)   ||
+                     cv_debug_msgsub_0   || CHR(10)   ||
+                     ''
+        );
+      END IF;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 処理部共通例外ハンドラ ***
@@ -2635,6 +3374,21 @@ AS
         );
       END IF;
 --
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+      IF (get_target_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_target_cur;
+        -- *** DEBUG_LOG ***
+        -- カーソルクローズしたことをログ出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_debug_msg_ccls2   || CHR(10)   ||
+                     cv_debug_msg_err0_1  || CHR(10)   ||
+                     cv_debug_msgsub_0   || CHR(10)   ||
+                     ''
+        );
+      END IF;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM||lv_errbuf;
@@ -2654,6 +3408,21 @@ AS
         );
       END IF;
 --
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+      IF (get_target_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_target_cur;
+        -- *** DEBUG_LOG ***
+        -- カーソルクローズしたことをログ出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_debug_msg_ccls2   || CHR(10)   ||
+                     cv_debug_msg_err0_2  || CHR(10)   ||
+                     cv_debug_msgsub_0   || CHR(10)   ||
+                     ''
+        );
+      END IF;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -2672,6 +3441,21 @@ AS
                      ''
         );
       END IF;
+/* 2009.07.17 H.Ogawa 0000781対応 START */
+      IF (get_target_cur%ISOPEN) THEN
+        -- カーソルクローズ
+        CLOSE get_target_cur;
+        -- *** DEBUG_LOG ***
+        -- カーソルクローズしたことをログ出力
+        fnd_file.put_line(
+           which  => FND_FILE.LOG
+          ,buff   => cv_debug_msg_ccls2   || CHR(10)   ||
+                     cv_debug_msg_err0_3  || CHR(10)   ||
+                     cv_debug_msgsub_0   || CHR(10)   ||
+                     ''
+        );
+      END IF;
+/* 2009.07.17 H.Ogawa 0000781対応 END */
 --
 --#####################################  固定部 END   ##########################################
 --
@@ -2763,7 +3547,7 @@ AS
     END IF;
 --
     -- =======================
-    -- A-15.終了処理 
+    -- A-15.終了処理
     -- =======================
     --空行の出力
     fnd_file.put_line(
