@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫実績のアップロード
  * MD.050           : ファイルアップロード   T_MD050_BPO_990
  * MD.070           : 入出庫実績のアップロード T_MD070_BPO_99E
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/05/07    1.2   Oracle 河野       内部変更要求No82対応
  *  2008/05/28    1.3   Oracle 山根 一浩  変更要求No87対応
  *  2008/07/08    1.4   Oracle 山根 一浩  I_S_192対応
+ *  2009/06/29    1.5   SCS    伊藤       本番障害#1550
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -95,6 +96,9 @@ AS
   gv_c_msg_99e_003   CONSTANT VARCHAR2(15)  := 'APP-XXINV-10008'; -- 対象データなし
   gv_c_msg_99e_004   CONSTANT VARCHAR2(15)  := 'APP-XXINV-10026'; -- ヘッダ明細区分エラー
   gv_c_msg_99e_005   CONSTANT VARCHAR2(15)  := 'APP-XXINV-10024'; -- フォーマットチェックエラーメッセージ
+-- 2009/06/29 H.Itou Add Start 本番障害#1550
+  gv_c_msg_99e_006   CONSTANT VARCHAR2(15)  := 'APP-XXINV-10190'; -- ヘッダなしエラー
+-- 2009/06/29 H.Itou Add End
 --
   gv_c_msg_99e_101   CONSTANT VARCHAR2(15)  := 'APP-XXINV-00001'; -- ファイル名
   gv_c_msg_99e_103   CONSTANT VARCHAR2(15)  := 'APP-XXINV-00003'; -- アップロード日時
@@ -105,6 +109,9 @@ AS
   gv_c_tkn_table               CONSTANT VARCHAR2(15)   := 'TABLE';
   gv_c_tkn_item                CONSTANT VARCHAR2(15)   := 'ITEM';
   gv_c_tkn_value               CONSTANT VARCHAR2(15)   := 'VALUE';
+-- 2009/06/29 H.Itou Add Start 本番障害#1550
+  gv_c_tkn_request_no          CONSTANT VARCHAR2(15)   := 'REQUEST_NO';
+-- 2009/06/29 H.Itou Add End
   -- プロファイル
   gv_c_parge_term_004          CONSTANT VARCHAR2(20)   := 'XXINV_PURGE_TERM_004';
   gv_c_parge_term_name         CONSTANT VARCHAR2(36)   := 'パージ対象期間:入出庫実績';
@@ -793,6 +800,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2009/06/29 H.Itou Add Start 本番障害#1550
+    cv_cnst_err_msg_space   CONSTANT VARCHAR2(6)   := '      ';   -- スペース
+-- 2009/06/29 H.Itou Add End
 --
     lv_line_feed        VARCHAR2(1);                  -- 改行コード
 --
@@ -801,6 +811,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_log_data                                      VARCHAR2(32767);  -- LOGデータ部退避用
+-- 2009/06/29 H.Itou Add Start 本番障害#1550
+    lt_order_source_ref xxwsh_shipping_headers_if.order_source_ref%TYPE;    -- ヘッダの依頼No
+-- 2009/06/29 H.Itou Add End
 --
   BEGIN
 --
@@ -842,6 +855,10 @@ AS
         -- **************************************************
         -- ヘッダーの場合
         IF (fdata_tbl(ln_index).tranceration_number = gn_c_tranc_header) THEN
+-- 2009/06/29 H.Itou Add Start 本番障害#1550
+          -- ヘッダの依頼Noを取得
+          lt_order_source_ref := fdata_tbl(ln_index).order_source_ref;
+-- 2009/06/29 H.Itou Add End
           -- ==============================
           --  データ種別
           -- ==============================
@@ -1212,6 +1229,20 @@ AS
 --
         -- 明細の場合
         ELSIF (fdata_tbl(ln_index).tranceration_number = gn_c_tranc_details) THEN
+-- 2009/06/29 H.Itou Add Start 本番障害#1550
+          -- ヘッダと依頼Noが異なる場合はエラー
+          IF ((lt_order_source_ref IS NULL)
+          OR  (lt_order_source_ref <> fdata_tbl(ln_index).order_source_ref)) THEN
+            fdata_tbl(ln_index).err_message := fdata_tbl(ln_index).err_message
+                                                 || cv_cnst_err_msg_space
+                                                 || cv_cnst_err_msg_space
+                                                 || xxcmn_common_pkg.get_msg(gv_c_msg_kbn,
+                                                                             gv_c_msg_99e_006,
+                                                                             gv_c_tkn_request_no,
+                                                                             fdata_tbl(ln_index).order_source_ref)
+                                                 || lv_line_feed;
+          END IF;
+-- 2009/06/29 H.Itou Add End
           -- ==============================
           -- 品目コード
           -- ==============================
