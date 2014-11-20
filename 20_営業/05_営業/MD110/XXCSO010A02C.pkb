@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2009-04-27    1.5   Kazuo.Satomura   システムテスト障害(障害番号T1_0766)
  *  2009-04-28    1.6   Kazuo.Satomura   システムテスト障害(障害番号T1_0733)
  *  2009-05-01    1.7   Tomoko.Mori      T1_0897対応
+ *  2009-05-15    1.8   Kazuo.Satomura   システムテスト障害(障害番号T1_1010)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -2830,7 +2831,12 @@ AS
                                                   ,lt_vendor_number3) -- 紹介者BM支払仕入先コード２
       /* 2009.04.08 K.Satomura 障害番号T1_0287対応 END */
             /* 2009.04.28 K.Satomura 障害番号T1_0733対応 START */
-            ,xca.cnvs_date                = cd_process_date           -- 顧客獲得日
+            /* 2009.05.15 K.Satomura 障害番号T1_1010対応 START */
+            --,xca.cnvs_date                = cd_process_date           -- 顧客獲得日
+            ,xca.cnvs_date                = DECODE(it_mst_regist_info_rec.install_code
+                                                  ,NULL, xca.cnvs_date
+                                                  ,cd_process_date)   -- 顧客獲得日
+            /* 2009.05.15 K.Satomura 障害番号T1_1010対応 END */
             /* 2009.04.28 K.Satomura 障害番号T1_0733対応 END */
             ,xca.last_update_date         = cd_last_update_date       -- 最終更新日
             ,xca.last_updated_by          = cn_last_updated_by        -- 最終更新者
