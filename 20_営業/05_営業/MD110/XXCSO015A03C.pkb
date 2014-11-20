@@ -38,7 +38,7 @@ AS
  *  2009-03-16    1.1   abe              変更管理番号I_E_108の対応
  *  2009-03-25    1.2   N.Yabuki         【ST障害対応147】物件関連情報変更履歴テーブル登録不正
  *  2009-03-25    1.2   N.Yabuki         【ST障害対応150】引揚時の担当拠点が不正
- *
+ *  2009-04-13    1.3   K.Satomura       【T1_0418対応】インスタンスタイプコード不正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3026,7 +3026,10 @@ AS
     l_instance_rec.quantity                   := cn_num1;                      -- 数量
     l_instance_rec.unit_of_measure            := cv_unit_of_measure;           -- 単位
     l_instance_rec.instance_status_id         := ln_instance_status_id;        -- インスタンスステータスID
-    l_instance_rec.instance_type_code         := TO_CHAR(ln_machinery_kbn);    -- インスタンスタイプコード
+    /* 2009.04.13 K.Satomura T1_0418対応 START */
+    --l_instance_rec.instance_type_code         := TO_CHAR(ln_machinery_kbn);    -- インスタンスタイプコード
+    l_instance_rec.instance_type_code         := TO_CHAR(lv_hazard_class);    -- インスタンスタイプコード
+    /* 2009.04.13 K.Satomura T1_0418対応 START */
     l_instance_rec.location_type_code         := cv_location_type_code;        -- 現行事業所タイプ
     l_instance_rec.location_id                := ln_party_site_id;             -- 現行事業所ID
     l_instance_rec.install_date               := ld_install_date;              -- 導入日
@@ -3884,6 +3887,9 @@ AS
     cv_ex_last_year_month     CONSTANT VARCHAR2(100) := 'LAST_YEAR_MONTH';    
     cv_flg_no                 CONSTANT VARCHAR2(100) := 'N';                 -- フラグNO
     cv_flg_yes                CONSTANT VARCHAR2(100) := 'Y';                 -- フラグYES
+    /* 2009.04.13 K.Satomura T1_0418対応 START */
+    cv_po_un_numbers_info     CONSTANT VARCHAR2(100) := '国連番号マスタ(機種コードマスタ)情報';    -- 抽出内容
+    /* 2009.04.13 K.Satomura T1_0418対応 END */
 --
     -- *** ローカル変数 ***
     ld_date                    DATE;                    -- 業務処理日付格納用('yyyymmdd'形式)
@@ -3930,7 +3936,9 @@ AS
     /*20090325_yabuki_ST150 START*/
     lt_sale_base_code          xxcso_cust_acct_sites_v.sale_base_code%TYPE;    -- 売上拠点コード
     /*20090325_yabuki_ST150 END*/
-    
+    /* 2009.04.13 K.Satomura T1_0418対応 START */
+    lv_hazard_class            po_hazard_classes_tl.hazard_class%type; -- 機器区分（危険度区分）
+    /* 2009.04.13 K.Satomura T1_0418対応 END */
     -- API戻り値格納用
     lv_return_status           VARCHAR2(1);
     lv_msg_data                VARCHAR2(5000);
@@ -4762,6 +4770,77 @@ AS
         RAISE skip_process_expt;
     END;
 --
+    /* 2009.04.13 K.Satomura T1_0418対応 START*/
+    -- ================================
+    -- 国連番号マスタビュー抽出
+    -- ================================
+--
+    BEGIN
+      SELECT SUBSTRB(phcv.hazard_class,1,1) -- 機器区分（危険度区分）
+      INTO   lv_hazard_class
+      FROM   po_un_numbers_vl     punv               -- 国連番号マスタビュー
+            ,po_hazard_classes_vl phcv               -- 危険度区分マスタビュー
+      WHERE  punv.un_number        = lv_un_number
+        AND  punv.hazard_class_id  = phcv.hazard_class_id
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- データが存在しない場合
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_23              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                       ,iv_token_value1 => cv_po_un_numbers_info         -- トークン値1
+                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                       ,iv_token_value6 => lv_install_code1              -- トークン値6
+                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                       ,iv_token_value7 => lv_install_code2              -- トークン値7
+                       ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                       ,iv_token_value8 => lv_account_num1               -- トークン値8
+                       ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                       ,iv_token_value9 => lv_account_num2               -- トークン値9
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+        -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                   -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_24              -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm                -- トークンコード1
+                       ,iv_token_value1 => cv_po_un_numbers_info         -- トークン値1
+                       ,iv_token_name2  => cv_tkn_seq_no                 -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_seq_no)            -- トークン値2
+                       ,iv_token_name3  => cv_tkn_slip_num               -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_slip_num)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_slip_branch_num        -- トークンコード4
+                       ,iv_token_value4 => TO_CHAR(ln_slip_branch_num)   -- トークン値4
+                       ,iv_token_name5  => cv_tkn_line_num               -- トークンコード5
+                       ,iv_token_value5 => TO_CHAR(ln_line_num)          -- トークン値5
+                       ,iv_token_name6  => cv_tkn_bukken1                -- トークンコード6
+                       ,iv_token_value6 => lv_install_code1              -- トークン値6
+                       ,iv_token_name7  => cv_tkn_bukken2                -- トークンコード7
+                       ,iv_token_value7 => lv_install_code2              -- トークン値7
+                       ,iv_token_name8  => cv_tkn_account_num1           -- トークンコード8
+                       ,iv_token_value8 => lv_account_num1               -- トークン値8
+                       ,iv_token_name9  => cv_tkn_account_num2           -- トークンコード9
+                       ,iv_token_value9 => lv_account_num2               -- トークン値9
+                       ,iv_token_name10 => cv_tkn_errmsg                 -- トークンコード10
+                       ,iv_token_value10=> SQLERRM                       -- トークン値10
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+    END;
+    /* 2009.04.13 K.Satomura T1_0418対応 END*/
+--
     -- ================================
     -- 6.インスタンスレコード作成
     -- ================================
@@ -4775,7 +4854,10 @@ AS
     l_instance_rec.external_reference         := lv_install_code;              -- 外部参照
     l_instance_rec.inv_master_organization_id := gt_inv_mst_org_id;            -- 在庫マスター組織ID
     l_instance_rec.instance_status_id         := ln_instance_status_id;        -- インスタンスステータスID
-    l_instance_rec.instance_type_code         := TO_CHAR(ln_machinery_kbn);    -- インスタンスタイプコード
+    /* 2009.04.13 K.Satomura T1_0418対応 START*/
+    --l_instance_rec.instance_type_code         := TO_CHAR(ln_machinery_kbn);    -- インスタンスタイプコード
+    l_instance_rec.instance_type_code         := TO_CHAR(lv_hazard_class);    -- インスタンスタイプコード
+    /* 2009.04.13 K.Satomura T1_0418対応 END*/
     IF (ln_party_site_id IS NOT NULL) THEN
       l_instance_rec.location_type_code       := cv_location_type_code;        -- 現行事業所タイプ
       l_instance_rec.location_id              := ln_party_site_id;             -- 現行事業所ID
