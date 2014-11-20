@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -99,6 +99,11 @@ AS
  *                                          設置物件CDからIBの機種CDを取得して使用するよう変更。
  *                                        ・作業希望日チェックの際に、チェックしている日付を出力するようログ追加。
  *  2010-04-19    1.29  T.Maruyama       【E_本稼動_02251】作業希望日チェックで使用するカレンダをプロファイル管理する用変更。
+ *  2010-07-29    1.30  M.Watanabe       【E_本稼動_03239】
+ *                                        ・VD購買依頼時の3営業日ルールを新台設置／新台代替の場合にチェックするよう条件追加。
+ *                                          (入力チェック区分=07 作業関連情報入力チェック)
+ *                                        ・引揚の場合にチェックしているVD購買依頼時の3営業日ルールをコメントアウト。
+ *                                          (入力チェック区分=10 引揚関連情報入力チェック2)
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1548,51 +1553,64 @@ AS
             ov_retcode := cv_status_warn;
             --
           END IF;
-          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
-          -- 3.３営業日より後かどうかチェック
+--
+          /* 2010.07.29 M.Watanabe E_本稼動_03239 START */
+          -- 3営業日ルールは 新台設置/新台代替 のみ
           --
-          -- プロファイル値取得（XXCSO:営業日数）
-          FND_PROFILE.GET(
-                          cv_working_day
-                         ,lv_working_day
-                         );
-          -- 取得できなかった場合は「0」を設定
-          IF (lv_working_day IS NULL) THEN
-            lv_working_day := cv_zero;
+          IF ( i_requisition_rec.category_kbn IN (  cv_category_kbn_new_install
+                                                  , cv_category_kbn_new_replace ) ) THEN
+          /* 2010.07.29 M.Watanabe E_本稼動_03239 END */
+--
+            /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+            -- 3.３営業日より後かどうかチェック
+            --
+            -- プロファイル値取得（XXCSO:営業日数）
+            FND_PROFILE.GET(
+                            cv_working_day
+                           ,lv_working_day
+                           );
+            -- 取得できなかった場合は「0」を設定
+            IF (lv_working_day IS NULL) THEN
+              lv_working_day := cv_zero;
+            END IF;
+            --
+            -- 業務処理日＋３営業日を取得
+            /* 2010.04.19 T.Maruyama E_本稼動_02251 START */
+            --ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
+            ld_working_day := xxccp_common_pkg2.get_working_day(id_date          => id_process_date
+                                                               ,in_working_day   => TO_NUMBER(lv_working_day)
+                                                               ,iv_calendar_code => FND_PROFILE.VALUE(cv_prfl_hoped_chck_cal));
+            /* 2010.04.19 T.Maruyama E_本稼動_02251 END */
+            -- 作業希望日が、業務処理日＋３営業日以前の場合はエラー
+            IF (ld_wk_date <= ld_working_day) THEN
+              --
+              lv_errbuf2 := xxccp_common_pkg.get_msg(
+                                iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                              , iv_name         => cv_tkn_number_65         -- メッセージコード
+                              , iv_token_name1  => cv_tkn_date              -- トークンコード1
+                              , iv_token_value1 => lv_working_day           -- トークン値1
+                            );
+              /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 start */
+              lv_errbuf2 := lv_errbuf2 || '(' || to_char(ld_wk_date,'yyyy/mm/dd')|| '：' || to_char(ld_working_day,'yyyy/mm/dd') || ')';
+              /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 end */
+              --
+              lv_errbuf  := CASE
+                              WHEN (lv_errbuf IS NULL) THEN
+                                lv_errbuf2
+                              ELSE
+                                SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                            END;
+              --
+              ov_retcode := cv_status_warn;
+              --
+            END IF;
+            /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
+            --
+--
+          /* 2010.07.29 M.Watanabe E_本稼動_03239 START */
           END IF;
-          --
-          -- 業務処理日＋３営業日を取得
-          /* 2010.04.19 T.Maruyama E_本稼動_02251 START */
-          --ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
-          ld_working_day := xxccp_common_pkg2.get_working_day(id_date          => id_process_date
-                                                             ,in_working_day   => TO_NUMBER(lv_working_day)
-                                                             ,iv_calendar_code => FND_PROFILE.VALUE(cv_prfl_hoped_chck_cal));
-          /* 2010.04.19 T.Maruyama E_本稼動_02251 END */
-          -- 作業希望日が、業務処理日＋３営業日以前の場合はエラー
-          IF (ld_wk_date <= ld_working_day) THEN
-            --
-            lv_errbuf2 := xxccp_common_pkg.get_msg(
-                              iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                            , iv_name         => cv_tkn_number_65         -- メッセージコード
-                            , iv_token_name1  => cv_tkn_date              -- トークンコード1
-                            , iv_token_value1 => lv_working_day           -- トークン値1
-                          );
-            /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 start */
-            lv_errbuf2 := lv_errbuf2 || '(' || to_char(ld_wk_date,'yyyy/mm/dd')|| '：' || to_char(ld_working_day,'yyyy/mm/dd') || ')';
-            /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 end */
-            --
-            lv_errbuf  := CASE
-                            WHEN (lv_errbuf IS NULL) THEN
-                              lv_errbuf2
-                            ELSE
-                              SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
-                          END;
-            --
-            ov_retcode := cv_status_warn;
-            --
-          END IF;
-          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
-          --
+          /* 2010.07.29 M.Watanabe E_本稼動_03239 END */
+--
         EXCEPTION
           WHEN OTHERS THEN
             lv_errbuf2 := xxccp_common_pkg.get_msg(
@@ -1975,52 +1993,60 @@ AS
             ov_retcode := cv_status_warn;
             --
           END IF;
-          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
-          -- 3.３営業日より後かどうかチェック
+--
+          /* 2010.07.29 M.Watanabe E_本稼動_03239 START */
+          -- 引揚の場合、3営業日ルールのチェックは実施しない。
+          -- コメントアウト。
+--
+          -- /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 START */
+          -- -- 3.３営業日より後かどうかチェック
+          -- --
+          -- -- プロファイル値取得（XXCSO:営業日数）
+          -- FND_PROFILE.GET(
+          --                 cv_working_day
+          --                ,lv_working_day
+          --                );
+          -- -- 取得できなかった場合は「0」を設定
+          -- IF (lv_working_day IS NULL) THEN
+          --   lv_working_day := cv_zero;
+          -- END IF;
+          -- --
+          -- -- 業務処理日＋３営業日を取得
+          -- /* 2010.04.19 T.Maruyama E_本稼動_02251 START */
+          -- --ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
+          -- ld_working_day := xxccp_common_pkg2.get_working_day(id_date          => id_process_date
+          --                                                    ,in_working_day   => TO_NUMBER(lv_working_day)
+          --                                                    ,iv_calendar_code => FND_PROFILE.VALUE(cv_prfl_hoped_chck_cal));
+          -- /* 2010.04.19 T.Maruyama E_本稼動_02251 END */
+          -- -- 作業希望日が、業務処理日＋３営業日以前の場合はエラー
+          -- IF (ld_wk_date <= ld_working_day) THEN
+          --   --
+          --   lv_errbuf2 := xxccp_common_pkg.get_msg(
+          --                     iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+          --                   , iv_name         => cv_tkn_number_65         -- メッセージコード
+          --                   , iv_token_name1  => cv_tkn_date              -- トークンコード1
+          --                   , iv_token_value1 => lv_working_day           -- トークン値1
+          --                 );
+          --   /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 start */
+          --   lv_errbuf2 := lv_errbuf2 || '(' || to_char(ld_wk_date,'yyyy/mm/dd')|| '：' || to_char(ld_working_day,'yyyy/mm/dd') || ')';
+          --   /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 end */
+          --   --
+          --   --
+          --   lv_errbuf  := CASE
+          --                   WHEN (lv_errbuf IS NULL) THEN
+          --                     lv_errbuf2
+          --                   ELSE
+          --                     SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+          --                 END;
+          --   --
+          --   ov_retcode := cv_status_warn;
+          --   --
+          -- END IF;
+          -- /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
           --
-          -- プロファイル値取得（XXCSO:営業日数）
-          FND_PROFILE.GET(
-                          cv_working_day
-                         ,lv_working_day
-                         );
-          -- 取得できなかった場合は「0」を設定
-          IF (lv_working_day IS NULL) THEN
-            lv_working_day := cv_zero;
-          END IF;
-          --
-          -- 業務処理日＋３営業日を取得
-          /* 2010.04.19 T.Maruyama E_本稼動_02251 START */
-          --ld_working_day := xxccp_common_pkg2.get_working_day(id_process_date,TO_NUMBER(lv_working_day));
-          ld_working_day := xxccp_common_pkg2.get_working_day(id_date          => id_process_date
-                                                             ,in_working_day   => TO_NUMBER(lv_working_day)
-                                                             ,iv_calendar_code => FND_PROFILE.VALUE(cv_prfl_hoped_chck_cal));
-          /* 2010.04.19 T.Maruyama E_本稼動_02251 END */
-          -- 作業希望日が、業務処理日＋３営業日以前の場合はエラー
-          IF (ld_wk_date <= ld_working_day) THEN
-            --
-            lv_errbuf2 := xxccp_common_pkg.get_msg(
-                              iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                            , iv_name         => cv_tkn_number_65         -- メッセージコード
-                            , iv_token_name1  => cv_tkn_date              -- トークンコード1
-                            , iv_token_value1 => lv_working_day           -- トークン値1
-                          );
-            /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 start */
-            lv_errbuf2 := lv_errbuf2 || '(' || to_char(ld_wk_date,'yyyy/mm/dd')|| '：' || to_char(ld_working_day,'yyyy/mm/dd') || ')';
-            /* 2010.04.01 maruyama E_本稼動_02133 一時的に基準営業日を出力 end */
-            --
-            --
-            lv_errbuf  := CASE
-                            WHEN (lv_errbuf IS NULL) THEN
-                              lv_errbuf2
-                            ELSE
-                              SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
-                          END;
-            --
-            ov_retcode := cv_status_warn;
-            --
-          END IF;
-          /* 2010.03.08 K.Hosoi E_本稼動_01838,01839対応 END */
-          --
+--
+          /* 2010.07.29 M.Watanabe E_本稼動_03239 END */
+--
         EXCEPTION
           WHEN OTHERS THEN
             lv_errbuf2 := xxccp_common_pkg.get_msg(
