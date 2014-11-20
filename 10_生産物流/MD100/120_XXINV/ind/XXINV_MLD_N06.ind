@@ -1,1 +1,1 @@
-CREATE INDEX xxinv.xxinv_mld_n06 ON xxinv.xxinv_mov_lot_details(actual_confirm_class,document_type_code,record_type_code,mov_line_id,item_id) TABLESPACE xxidx ;
+CREATE INDEX xxinv.xxinv_mld_n06 ON xxinv.xxinv_mov_lot_details(actual_confirm_class,document_type_code,record_type_code,mov_line_id,item_id) TABLESPACE xxidx initrans 16 ;

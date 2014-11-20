@@ -11,8 +11,8 @@ CREATE TABLE xxinv.xxinv_mov_lot_details
   actual_date               DATE,
   actual_quantity           NUMBER,
   before_actual_quantity    NUMBER,
-  automanual_reserve_class  VARCHAR2(2),
   actual_confirm_class      VARCHAR2(1)     DEFAULT 'N', -- 2010/02/17 ADD E_ñ{â“ìÆ_01612
+  automanual_reserve_class  VARCHAR2(2),
   created_by                NUMBER(15,0)    NOT NULL,
   creation_date             DATE            NOT NULL,
   last_updated_by           NUMBER(15,0)    NOT NULL,
@@ -23,8 +23,10 @@ CREATE TABLE xxinv.xxinv_mov_lot_details
   program_id                NUMBER(15,0),
   program_update_date       DATE,
   CONSTRAINT xxinv_mov_lot_details_pk PRIMARY KEY ( mov_lot_dtl_id )
-  USING INDEX TABLESPACE xxidx
-);
+  USING INDEX TABLESPACE xxidx INITRANS 16 )
+  INITRANS 16 
+  STORAGE(INITIAL 1080033280 )
+  TABLESPACE XXDATA ;
 --
 COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.mov_lot_dtl_id           IS 'ÉçÉbÉgè⁄ç◊ID';
 COMMENT ON COLUMN xxinv.xxinv_mov_lot_details.mov_line_id              IS 'ñæç◊ID';
