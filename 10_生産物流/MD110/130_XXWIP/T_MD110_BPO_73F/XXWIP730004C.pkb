@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/07/15    1.4   Masayuki Nomura  ST障害対応#444（記号対応）
  *  2008/07/17    1.5   Satoshi Takemoto ST障害対応#456
  *  2008/07/24    1.6   Satoshi Takemoto ST障害対応#477
+ *  2008/07/25    1.7   Masayuki Nomura  ST障害対応#456
  *
  *****************************************************************************************/
 --
@@ -687,8 +688,20 @@ AS
 --      AND   (  gr_param.outside_contract IS NULL
 --            OR xd.outside_contract        = gr_param.outside_contract )   -- 契約外
       AND   xd.order_type             = NVL( gr_param.order_type      , xd.order_type )
-      AND   xd.weight_capacity_class  = NVL( gr_param.wc_class        , xd.weight_capacity_class)
-      AND   xd.outside_contract       = NVL( gr_param.outside_contract, xd.outside_contract )
+-- ##### 20080725 1.7 ST障害対応#456 START #####
+--      AND   xd.weight_capacity_class  = NVL( gr_param.wc_class        , xd.weight_capacity_class)
+--      AND   xd.outside_contract       = NVL( gr_param.outside_contract, xd.outside_contract )
+      AND   (
+              ((gr_param.wc_class IS NOT NULL) AND (gr_param.wc_class = xd.weight_capacity_class))
+              OR
+              (gr_param.wc_class IS NULL)
+            )
+      AND   (
+              ((gr_param.outside_contract IS NOT NULL) AND (gr_param.outside_contract = xd.outside_contract))
+              OR
+              (gr_param.outside_contract IS NULL)
+            )
+-- ##### 20080725 1.7 ST障害対応#456 END   #####
 -- E 2008/05/23 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
 -- S 2008/07/17 1.5 MOD BY S.Takemoto---------------------------------------------------------- S --
 --      AND   xd.return_flag            = gr_param.return_flag              -- 確定後変更

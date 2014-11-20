@@ -7,7 +7,7 @@ AS
  * Description      : 請求運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    請求運賃チェックリスト        (T_MD070_BPO_73G)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/07/15    1.4   Masayuki Nomura  ST障害対応#444（記号対応）
  *  2008/07/17    1.5   Satoshi Takemoto ST障害対応#456
  *  2008/07/24    1.6   Satoshi Takemoto ST障害対応#477
+ *  2008/07/25    1.7   Masayuki Nomura  ST障害対応#456
  *
  *****************************************************************************************/
 --
@@ -680,8 +681,20 @@ AS
 --            OR xd1.outside_contract        = gr_param.outside_contract )  -- 契約外
       AND   xd1.goods_classe            = NVL( gr_param.prod_div        , xd1.goods_classe )
       AND   xd1.order_type              = NVL( gr_param.order_type      , xd1.order_type )
-      AND   xd1.weight_capacity_class   = NVL( gr_param.wc_class        , xd1.weight_capacity_class  )
-      AND   xd1.outside_contract        = NVL( gr_param.outside_contract, xd1.outside_contract  )
+-- ##### 20080725 1.7 ST障害対応#456 START #####
+--      AND   xd1.weight_capacity_class   = NVL( gr_param.wc_class        , xd1.weight_capacity_class  )
+--      AND   xd1.outside_contract        = NVL( gr_param.outside_contract, xd1.outside_contract  )
+      AND (
+            ((gr_param.wc_class IS NOT NULL) AND (gr_param.wc_class = xd1.weight_capacity_class))
+            OR
+            ( gr_param.wc_class IS NULL)
+          )
+      AND (
+            ((gr_param.outside_contract IS NOT NULL) AND (gr_param.outside_contract = xd1.outside_contract))
+            OR
+            ( gr_param.outside_contract IS NULL)
+          )
+-- ##### 20080725 1.7 ST障害対応#456 END   #####
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
       ORDER BY xcat.segment1
               ,xcar.party_number
