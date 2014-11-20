@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcsm_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_CSM_共通関数
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009-04-09    1.1  M.Ohtsuki      ［障害T1_0416］業務日付とシステム日付比較の不具合
  *  2009-05-07    1.2  M.Ohtsuki      ［障害T1_0858］拠点コードリスト取得条件不備
  *  2009-07-01    1.3  M.Ohtsuki      ［SCS障害管理番号0000253］対応
+ *  2009-08-18    1.4  T.Tsukino      ［SCS障害管理番号0001045］対応 
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -727,12 +728,17 @@ AS
       AND    flv.enabled_flag = 'Y'
       AND    NVL(flv.start_date_active,xxccp_common_pkg2.get_process_date)  <= xxccp_common_pkg2.get_process_date
       AND    NVL(flv.end_date_active,xxccp_common_pkg2.get_process_date)    >= xxccp_common_pkg2.get_process_date
-      AND    flv.lookup_code  = DECODE(flv.attribute1 , 'L1' ,xlllv.cd_level1
-                                                     , 'L2' ,xlllv.cd_level2
-                                                     , 'L3' ,xlllv.cd_level3
-                                                     , 'L4' ,xlllv.cd_level4
-                                                     , 'L5' ,xlllv.cd_level5
-                                                            ,xlllv.cd_level6)
+--//+DEL START   2009/08/18 0001045 T.Tsukino
+--      AND    flv.lookup_code  = DECODE(flv.attribute1 , 'L1' ,xlllv.cd_level1
+--                                                     , 'L2' ,xlllv.cd_level2
+--                                                     , 'L3' ,xlllv.cd_level3
+--                                                     , 'L4' ,xlllv.cd_level4
+--                                                     , 'L5' ,xlllv.cd_level5
+--                                                            ,xlllv.cd_level6)
+--//+DEL END   2009/08/18 0001045 T.Tsukino
+--//+ADD START 2009/08/18 0001045 T.Tsukino
+      AND   flv.lookup_code = iv_kyoten_cd2
+--//+ADD END   2009/08/18 0001045 T.Tsukino
       AND   iv_kyoten_cd2 = DECODE(xlllv.location_level , 'L6' ,xlllv.cd_level6
                                                         , 'L5' ,xlllv.cd_level5
                                                         , 'L4' ,xlllv.cd_level4
