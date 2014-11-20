@@ -1,1 +1,1 @@
-CREATE INDEX xxinv.xxinv_sii_n04 ON xxinv.xxinv_stc_inventory_interface( lot_no,item_code ) TABLESPACE xxidx;
+CREATE INDEX xxinv.xxinv_sii_n04 ON xxinv.xxinv_stc_inventory_interface( lot_no,item_code,invent_whse_code,report_post_code ) TABLESPACE xxidx;
