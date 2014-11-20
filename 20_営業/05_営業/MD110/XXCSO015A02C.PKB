@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.14
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2009-07-09    1.12  D.Abe            SCS障害対応(0000465対応)
  *  2009-08-05    1.13  K.Satomura       SCS障害対応(0000778対応)
  *  2009-08-10    1.14  K.Satomura       SCS障害対応(0000662対応)
+ *  2009-09-04    1.15  D.Abe            SCS障害対応(0001281対応)
+ *  2009-09-15    1.16  D.Abe            SCS障害対応(0001358対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -416,10 +418,12 @@ AS
                     cv_csv_nm
                    ,lv_csv_nm
                    ); -- CSVファイル名
-    FND_PROFILE.GET(
-                    cv_wdrw_base_code
-                   ,lv_wdrw_base_code
-                   ); -- 引揚拠点コード
+    /* 2009.09.15 D.Abe 0001358対応 START */
+    --FND_PROFILE.GET(
+    --                cv_wdrw_base_code
+    --               ,lv_wdrw_base_code
+    --               ); -- 引揚拠点コード
+    /* 2009.09.15 D.Abe 0001358対応 END   */
     -- *** DEBUG_LOG ***
     -- 取得したプロファイル値をログ出力
     fnd_file.put_line(
@@ -427,7 +431,9 @@ AS
       ,buff   => cv_debug_msg5  || CHR(10)           ||
                  cv_debug_msg6  || lv_csv_dir        || CHR(10) ||
                  cv_debug_msg7  || lv_csv_nm         || CHR(10) ||
-                 cv_debug_msg8  || lv_wdrw_base_code || CHR(10) ||
+                 /* 2009.09.15 D.Abe 0001358対応 START */
+                 --cv_debug_msg8  || lv_wdrw_base_code || CHR(10) ||
+                 /* 2009.09.15 D.Abe 0001358対応 END   */
                  ''
     );
 --
@@ -453,8 +459,10 @@ AS
     ELSIF (lv_csv_nm IS NULL) THEN
       lv_tkn_value := cv_csv_nm;
     -- 引揚拠点コード
-    ELSIF (lv_wdrw_base_code IS NULL) THEN
-      lv_tkn_value := cv_wdrw_base_code;
+    /* 2009.09.15 D.Abe 0001358対応 START */
+    --ELSIF (lv_wdrw_base_code IS NULL) THEN
+    --  lv_tkn_value := cv_wdrw_base_code;
+    /* 2009.09.15 D.Abe 0001358対応 END   */
     END IF;
     -- エラーメッセージ取得
     IF (lv_tkn_value) IS NOT NULL THEN
@@ -471,7 +479,9 @@ AS
     -- 取得したプロファイル値をOUTパラメータに設定
     ov_csv_dir          :=  lv_csv_dir;          -- CSVファイル出力先
     ov_csv_nm           :=  lv_csv_nm;           -- CSVファイル名
-    ov_wdrw_base_code   :=  lv_wdrw_base_code;   -- 引揚拠点コード
+    /* 2009.09.15 D.Abe 0001358対応 START */
+    --ov_wdrw_base_code   :=  lv_wdrw_base_code;   -- 引揚拠点コード
+    /* 2009.09.15 D.Abe 0001358対応 END   */
 --
   EXCEPTION
 --
@@ -1208,6 +1218,14 @@ AS
                   ,xxcso_employees_v   xev
             WHERE  xca.customer_code        = lv_new_customer_code1
             AND    xca.cnvs_business_person = xev.employee_number
+            /* 2009.09.04 D.Abe 0001281対応 START */
+            AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date)) 
+            AND    TRUNC(NVL(xev.end_date, ld_date))
+            AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date)) 
+            AND    TRUNC(NVL(xev.employee_end_date, ld_date))
+            AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
+            AND    TRUNC(NVL(xev.assign_end_date, ld_date))
+            /* 2009.09.04 D.Abe 0001281対応 END */
             ;
             --
           EXCEPTION
@@ -1439,6 +1457,14 @@ AS
             AND    cii.owner_party_account_id = cas.cust_account_id
             AND    cas.account_number         = cac.customer_code
             AND    cac.cnvs_business_person   = xev.employee_number
+            /* 2009.09.04 D.Abe 0001281対応 START */
+            AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date)) 
+            AND    TRUNC(NVL(xev.end_date, ld_date))
+            AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date)) 
+            AND    TRUNC(NVL(xev.employee_end_date, ld_date))
+            AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
+            AND    TRUNC(NVL(xev.assign_end_date, ld_date))
+            /* 2009.09.04 D.Abe 0001281対応 END */
             ;
             --
           EXCEPTION
@@ -1928,6 +1954,14 @@ AS
               AND    cii.owner_party_account_id = cas.cust_account_id
               AND    cas.account_number         = cac.customer_code
               AND    cac.cnvs_business_person   = emp.employee_number
+              /* 2009.09.04 D.Abe 0001281対応 START */
+              AND    ld_date BETWEEN TRUNC(NVL(emp.start_date, ld_date)) 
+              AND    TRUNC(NVL(emp.end_date, ld_date))
+              AND    ld_date BETWEEN TRUNC(NVL(emp.employee_start_date, ld_date)) 
+              AND    TRUNC(NVL(emp.employee_end_date, ld_date))
+              AND    ld_date BETWEEN TRUNC(NVL(emp.assign_start_date, ld_date))
+              AND    TRUNC(NVL(emp.assign_end_date, ld_date))
+              /* 2009.09.04 D.Abe 0001281対応 END */
               ;
               --
               -- ==================
