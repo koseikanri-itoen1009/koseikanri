@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  * Package Name     : XXCSM002A03C(spec)
  * Description      : 商品計画参考資料出力
  * MD.050           : 商品計画参考資料出力 MD050_CSM_002_A03
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- --------------------------------------------------------
@@ -36,6 +36,7 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
  *  2009/02/16    1.1   SCS K.Yamada     [障害CT024]分母0の不具合の対応
  *  2009/02/18    1.2   SCS K.Sai        [障害CT027]粗利益額の小数点2桁表示不具合＆ヘッダ日付表示対応
  *  2009/05/25    1.3   SCS M.Ohtsuki    [障害T1_1020]
+ *  2009/06/10    1.4   SCS M.Ohtsuki    [障害T1_1399]
  *
  ******************************************************************************/
 --
@@ -115,7 +116,11 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
   gn_index                  NUMBER := 0;                                        -- 登録順
   gv_kyotenCD               VARCHAR2(32);                                       -- 拠点コード
   gv_taisyoYm               NUMBER(4,0);                                        -- 対象年度
-  gv_kakuteiym              VARCHAR2(6);                                        -- 確定年月
+--//+UPD START 2009/06/10 T1_1399 M.Ohtsuki
+--  gv_kakuteiym              VARCHAR2(6);                                        -- 確定年月
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+  gv_kakuteiym              NUMBER(6);                                          -- 確定年月
+--//+UPD END   2009/06/10 T1_1399 M.Ohtsuki
   gv_planYm                 NUMBER(4,0);                                        -- 計画年度
   gv_kyotennm               VARCHAR2(200);                                      -- 拠点名称
   
@@ -271,7 +276,11 @@ CREATE OR REPLACE PACKAGE BODY XXCSM002A03C AS
 -- 確定年月
 
     SELECT
-        TO_CHAR(ADD_MONTHS(gd_process_date,-1),'MM')
+--//+UPD START 2009/06/10 T1_1399 M.Ohtsuki
+--        TO_CHAR(ADD_MONTHS(gd_process_date,-1),'MM')
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+        TO_NUMBER(TO_CHAR(ADD_MONTHS(gd_process_date,-1),'MM'))
+--//+UPD END   2009/06/10 T1_1399 M.Ohtsuki
     INTO
         gv_kakuteiym
     FROM
