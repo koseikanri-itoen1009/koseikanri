@@ -18,6 +18,8 @@ REM  USAGE
 REM
 REM  AUTHOR
 REM    Sanjay Rastogi - 06/05/96
+REM    Yuta Suzuki    - 10/09/08 modify
+REM    Yuta Suzuki    - 11/11/08 bug fix
 REM
 REM *hf************************************************************************
 
@@ -334,11 +336,21 @@ Cursor Cur_missing_def_cat_in_opm (V_opm_item_id NUMBER, V_odm_item_id NUMBER) I
 --
 BEGIN
 --yutsuzuk modify
-  IF (NVL(:old.program_update_date,SYSDATE-1) = NVL(:new.program_update_date,SYSDATE-1)) THEN
+--20081111 modify
+--  IF (NVL(:old.program_update_date,SYSDATE-1) = NVL(:new.program_update_date,SYSDATE-1)) THEN
+  IF ((INSERTING)
+      AND (:new.program_update_date IS NULL)
+      AND (:new.program_application_id IS NULL)
+      AND (:new.program_id IS NULL)
+      AND (:new.request_id IS NULL))
+  OR ((UPDATING)
+      AND (NVL(:old.program_update_date,SYSDATE-1) = NVL(:new.program_update_date,SYSDATE-1)))
+  THEN
+--20081111 modify
 --
     GMI_DEBUG_UTIL.Println('Insert/Update from Forms');
 --
-    IF  UPDATING
+    IF  (UPDATING)
     AND (:old.last_update_date  = :new.last_update_date)
     AND (:old.last_updated_by   = :new.last_updated_by)
     AND (:old.last_update_login = :new.last_update_login)
