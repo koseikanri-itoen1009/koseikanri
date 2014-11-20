@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY APPS.XXCSO016A04C
+CREATE OR REPLACE PACKAGE BODY XXCSO016A04C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           :  MD050_CSO_016_A04_情報系-EBSインターフェース：
  *                     (OUT)訪問実績データ
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-04-22    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0478,T1_0740)
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-21    1.4   Kazuo.Satomura   システムテスト障害対応(T1_1036)
+ *  2009-06-05    1.5   Kazuo.Satomura   システムテスト障害対応(T1_0478再修正)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1626,6 +1627,7 @@ AS
       --  AND  jrre.category               = cv_category
       --  AND  jrre.source_id              = ppf.person_id
       -- クローズされているタスク
+      -- 指定した日付で作成/更新があった訪問実績/訪問予定データ（顧客）
       SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
             ,jtb.task_id                           task_id                 -- 訪問回数
             ,jtb.attribute1                        attribute1              -- 訪問区分コード1
@@ -1639,7 +1641,20 @@ AS
             ,jtb.attribute9                        attribute9              -- 訪問区分コード9
             ,jtb.attribute10                       attribute10             -- 訪問区分コード10
             ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
-            ,jtb.deleted_flag                      deleted_flag            -- 削除フラグ
+            /* 2009.06.05 K.Satomura T1_0478再修正対応 START */
+            --,jtb.deleted_flag                      deleted_flag            -- 削除フラグ
+            ,(CASE
+                WHEN (TRUNC(jtb.actual_end_date) > ld_process_date) THEN
+                  cv_yes
+                WHEN (jtb.task_status_id <> lv_tsk_stts_cls) THEN
+                  cv_yes
+                WHEN (jtb.deleted_flag = cv_yes) THEN
+                  cv_yes
+                ELSE
+                  cv_no
+              END
+             )                                     deleted_flag            -- 削除フラグ
+            /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
             ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
             ,jtb.source_object_id                  source_object_id        -- パーティID
             ,jtb.attribute11                       attribute11             -- 有効訪問区分
@@ -1649,16 +1664,27 @@ AS
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
+      /* 2009.06.05 K.Satomura T1_0478再修正対応 START */
+      --WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      --AND    jtb.source_object_type_code = cv_src_obj_tp_cd
+      --AND    jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      --AND    jtb.owner_type_code         = cv_owner_tp_cd
+      --AND    jtb.owner_id                = jrr.resource_id
+      --AND    jrr.category                = cv_category
+      --AND    jrr.source_id               = ppf.person_id
+      --AND    jtb.actual_end_date         IS NOT NULL
+      --AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
       WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
       AND    jtb.source_object_type_code = cv_src_obj_tp_cd
-      AND    jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.actual_end_date         IS NOT NULL
       AND    jtb.owner_type_code         = cv_owner_tp_cd
       AND    jtb.owner_id                = jrr.resource_id
       AND    jrr.category                = cv_category
       AND    jrr.source_id               = ppf.person_id
-      AND    jtb.actual_end_date         IS NOT NULL
-      AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
+     /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       -- クローズ以外の過去日付のタスク
+      -- 指定した日付よりも過去に作成/更新されたレコードで当日が訪問日時の訪問実績データ（顧客）
       UNION ALL
       SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
             ,jtb.task_id                           task_id                 -- 訪問回数
@@ -1673,7 +1699,10 @@ AS
             ,jtb.attribute9                        attribute9              -- 訪問区分コード9
             ,jtb.attribute10                       attribute10             -- 訪問区分コード10
             ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
-            ,cv_yes                                deleted_flag            -- 削除フラグ
+            /* 2009.06.05 K.Satomura T1_0478再修正対応 START */
+            --,cv_yes                                deleted_flag            -- 削除フラグ
+            ,cv_no                                 deleted_flag            -- 削除フラグ
+            /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
             ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
             ,jtb.source_object_id                  source_object_id        -- パーティID
             ,jtb.attribute11                       attribute11             -- 有効訪問区分
@@ -1683,17 +1712,29 @@ AS
       FROM   jtf_tasks_b           jtb -- タスクテーブル
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
-      WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
-      AND    jtb.source_object_type_code =  cv_src_obj_tp_cd
-      AND    jtb.task_status_id          <> TO_NUMBER(lv_tsk_stts_cls)
-      AND    jtb.owner_type_code         =  cv_owner_tp_cd
-      AND    jtb.owner_id                =  jrr.resource_id
-      AND    jrr.category                =  cv_category
-      AND    jrr.source_id               =  ppf.person_id
-      AND    jtb.task_type_id            =  fnd_profile.value(cv_task_type_visit)
-      AND    TRUNC(jtb.actual_end_date)  <= TRUNC(ld_process_date)
+      /* 2009.06.05 K.Satomura T1_0478再修正対応 START */
+      --WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      --AND    jtb.source_object_type_code =  cv_src_obj_tp_cd
+      --AND    jtb.task_status_id          <> TO_NUMBER(lv_tsk_stts_cls)
+      --AND    jtb.owner_type_code         =  cv_owner_tp_cd
+      --AND    jtb.owner_id                =  jrr.resource_id
+      --AND    jrr.category                =  cv_category
+      --AND    jrr.source_id               =  ppf.person_id
+      --AND    jtb.task_type_id            =  fnd_profile.value(cv_task_type_visit)
+      --AND    TRUNC(jtb.actual_end_date)  <= TRUNC(ld_process_date)
+      WHERE  TRUNC(jtb.last_update_date)  < ld_from_value
+      AND    jtb.task_type_id             = fnd_profile.value(cv_task_type_visit)
+      AND    jtb.task_status_id           = TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.source_object_type_code  = cv_src_obj_tp_cd
+      AND    TRUNC(jtb.actual_end_date)   = ld_process_date
+      AND    jtb.owner_type_code          = cv_owner_tp_cd
+      AND    jtb.owner_id                 = jrr.resource_id
+      AND    jrr.category                 = cv_category
+      AND    jrr.source_id                = ppf.person_id
+      /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       UNION ALL
       -- クローズされている商談タスク
+      -- 指定した日付で作成/更新があった訪問実績/訪問予定データ（商談）
       SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
             ,jtb.task_id                           task_id                 -- 訪問回数
             ,jtb.attribute1                        attribute1              -- 訪問区分コード1
@@ -1707,7 +1748,20 @@ AS
             ,jtb.attribute9                        attribute9              -- 訪問区分コード9
             ,jtb.attribute10                       attribute10             -- 訪問区分コード10
             ,TO_CHAR(jtb.actual_end_date,'hh24mi') actual_end_hour         -- 訪問時間
-            ,jtb.deleted_flag                      deleted_flag            -- 削除フラグ
+            /* 2009.06.05 K.Satomura T1_0478再修正対応 START */
+            --,jtb.deleted_flag                      deleted_flag            -- 削除フラグ
+            ,(CASE
+                WHEN (TRUNC(jtb.actual_end_date) > ld_process_date) THEN
+                  cv_yes
+                WHEN (jtb.task_status_id <> TO_NUMBER(lv_tsk_stts_cls)) THEN
+                  cv_yes
+                WHEN (jtb.deleted_flag = cv_yes) THEN
+                  cv_yes
+                ELSE
+                  cv_no
+              END
+             )                                     deleted_flag            -- 削除フラグ
+            /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
             ,jtb.source_object_type_code           source_object_type_code -- ソースタイプ
             ,ala.customer_id                       source_object_id        -- パーティID
             ,jtb.attribute11                       attribute11             -- 有効訪問区分
@@ -1718,18 +1772,30 @@ AS
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
             ,as_leads_all          ala -- 商談テーブル
+      /* 2009.06.05 K.Satomura T1_0478再修正対応 START */
+      --WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      --AND    jtb.source_object_type_code = cv_src_obj_tp_cd_opp
+      --AND    jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      --AND    jtb.owner_type_code         = cv_owner_tp_cd
+      --AND    jtb.owner_id                = jrr.resource_id
+      --AND    jrr.category                = cv_category
+      --AND    jrr.source_id               = ppf.person_id
+      --AND    jtb.actual_end_date         IS NOT NULL
+      --AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
+      --AND    ala.lead_id                 = jtb.source_object_id
       WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
       AND    jtb.source_object_type_code = cv_src_obj_tp_cd_opp
-      AND    jtb.task_status_id          = TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.actual_end_date         IS NOT NULL
       AND    jtb.owner_type_code         = cv_owner_tp_cd
       AND    jtb.owner_id                = jrr.resource_id
       AND    jrr.category                = cv_category
       AND    jrr.source_id               = ppf.person_id
-      AND    jtb.actual_end_date         IS NOT NULL
-      AND    jtb.task_type_id            = fnd_profile.value(cv_task_type_visit)
       AND    ala.lead_id                 = jtb.source_object_id
+      /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       UNION ALL
       -- クローズ以外の過去日付の商談タスク
+      -- 指定した日付よりも過去に作成/更新されたレコードで当日が訪問日時の訪問実績データ（商談）
       SELECT jtb.actual_end_date                   actual_end_date         -- 訪問日
             ,jtb.task_id                           task_id                 -- 訪問回数
             ,jtb.attribute1                        attribute1              -- 訪問区分コード1
@@ -1754,16 +1820,28 @@ AS
             ,per_people_f          ppf -- 従業員マスタ
             ,jtf_rs_resource_extns jrr -- リソースマスタ
             ,as_leads_all          ala -- 商談テーブル
-      WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
-      AND    jtb.source_object_type_code =  cv_src_obj_tp_cd_opp
-      AND    jtb.task_status_id          <> TO_NUMBER(lv_tsk_stts_cls)
+      /* 2009.06.05 K.Satomura T1_0478再修正対応 START */
+      --WHERE  (TRUNC(jtb.last_update_date) BETWEEN ld_from_value AND ld_to_value)
+      --AND    jtb.source_object_type_code =  cv_src_obj_tp_cd_opp
+      --AND    jtb.task_status_id          <> TO_NUMBER(lv_tsk_stts_cls)
+      --AND    jtb.owner_type_code         =  cv_owner_tp_cd
+      --AND    jtb.owner_id                =  jrr.resource_id
+      --AND    jrr.category                =  cv_category
+      --AND    jrr.source_id               =  ppf.person_id
+      --AND    TRUNC(jtb.actual_end_date)  <= TRUNC(ld_process_date)
+      --AND    jtb.task_type_id            =  fnd_profile.value(cv_task_type_visit)
+      --AND    ala.lead_id                 =  jtb.source_object_id
+      WHERE  TRUNC(jtb.last_update_date)  < ld_from_value
+      AND    jtb.task_type_id             = fnd_profile.value(cv_task_type_visit)
+      AND    jtb.task_status_id           = TO_NUMBER(lv_tsk_stts_cls)
+      AND    jtb.source_object_type_code  = cv_src_obj_tp_cd_opp
+      AND    TRUNC(jtb.actual_end_date)   = ld_process_date
       AND    jtb.owner_type_code         =  cv_owner_tp_cd
       AND    jtb.owner_id                =  jrr.resource_id
       AND    jrr.category                =  cv_category
       AND    jrr.source_id               =  ppf.person_id
-      AND    TRUNC(jtb.actual_end_date)  <= TRUNC(ld_process_date)
-      AND    jtb.task_type_id            =  fnd_profile.value(cv_task_type_visit)
       AND    ala.lead_id                 =  jtb.source_object_id
+      /* 2009.06.05 K.Satomura T1_0478再修正対応 END */
       /* 2009.04.22 K.Satomura T1_0478対応 END */
       ;
     -- 前回訪問日抽出カーソル
