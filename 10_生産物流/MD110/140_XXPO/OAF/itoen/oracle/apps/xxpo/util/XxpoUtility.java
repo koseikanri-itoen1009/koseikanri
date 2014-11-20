@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.25
+* バージョン : 1.26
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -33,6 +33,7 @@
 * 2009-02-06 1.23 伊藤ひとみ   本番障害#1147対応
 * 2009-02-18 1.24 伊藤ひとみ   本番障害#1096対応
 * 2009-02-27 1.25 伊藤ひとみ   本番障害#32対応
+* 2009-05-13 1.26 吉元強樹     本番障害#1282対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -4706,6 +4707,8 @@ public class XxpoUtility
   
     //PL/SQLの作成を行います
     StringBuffer sb = new StringBuffer(1000);
+// 2009-05-13 v1.26 T.Yoshimoto Mod Start 本番#1282
+/*
     sb.append("BEGIN "                                                    );
     sb.append("  UPDATE xxwsh_order_headers_all xoha "); // 受注ヘッダアドオン
     sb.append("  SET    xoha.amount_fix_class  = :1  "); // 有償金額確定区分
@@ -4717,7 +4720,43 @@ public class XxpoUtility
     sb.append("        ,xoha.last_update_login = FND_GLOBAL.LOGIN_ID ");  // 最終更新ログイン
     sb.append("  WHERE  xoha.order_header_id   = :2;  ");                 // 発注ヘッダアドオンID
     sb.append("END; ");
-    
+*/
+    sb.append("DECLARE "                                                  );
+    sb.append("  ln_count   NUMBER; "                                     ); 
+    sb.append("BEGIN "                                                    );
+
+    sb.append("  SELECT COUNT(header_id) "                                );
+    sb.append("  INTO ln_count "                                          );
+    sb.append("  FROM xxwsh_order_headers_all "                           );
+    sb.append("  WHERE order_header_id = :1 "                             );  // 受注ヘッダアドオンID
+    sb.append("  ; "                                                      );
+
+    sb.append("  IF ( ln_count = 0) THEN "                                );
+    sb.append("    UPDATE xxwsh_order_headers_all xoha "                  );  // 受注ヘッダアドオン
+    sb.append("    SET    xoha.amount_fix_class  = :2  "                  );  // 有償金額確定区分
+    sb.append("          ,xoha.performance_management_dept = xxcmn_common_pkg.get_user_dept_code(FND_GLOBAL.USER_ID, NULL) " );
+    sb.append("          ,xoha.last_updated_by   = FND_GLOBAL.USER_ID  "  );  // 最終更新者
+    sb.append("          ,xoha.last_update_date  = SYSDATE             "  );  // 最終更新日
+    sb.append("          ,xoha.last_update_login = FND_GLOBAL.LOGIN_ID "  );  // 最終更新ログイン
+    sb.append("    WHERE  xoha.order_header_id   = :3;  "                 );  // 受注ヘッダアドオンID
+    sb.append("  ELSE "                                                   );
+    sb.append("    UPDATE xxwsh_order_headers_all xoha "                  );  // 受注ヘッダアドオン
+    sb.append("    SET    xoha.amount_fix_class  = :4  "                  );  // 有償金額確定区分
+    sb.append("          ,xoha.performance_management_dept = xxcmn_common_pkg.get_user_dept_code(FND_GLOBAL.USER_ID, NULL) " );
+    sb.append("          ,xoha.last_updated_by   = FND_GLOBAL.USER_ID  "  );  // 最終更新者
+    sb.append("          ,xoha.last_update_date  = SYSDATE             "  );  // 最終更新日
+    sb.append("          ,xoha.last_update_login = FND_GLOBAL.LOGIN_ID "  );  // 最終更新ログイン
+    sb.append("    WHERE  xoha.order_header_id   = :5;  "                 );  // 受注ヘッダアドオンID
+
+    sb.append("    UPDATE oe_order_headers_all o "                        );  // EBS標準.受注ヘッダ
+    sb.append("    SET    o.attribute11  = xxcmn_common_pkg.get_user_dept_code(FND_GLOBAL.USER_ID, NULL) " );
+    sb.append("    WHERE  o.header_id    = (SELECT header_id "             );
+    sb.append("                             FROM xxwsh_order_headers_all " );
+    sb.append("                             WHERE order_header_id = :6); " );  // 受注ヘッダアドオンID
+    sb.append("  END IF; "                                                 );
+    sb.append("END; "                                                      );
+// 2009-05-13 v1.26 T.Yoshimoto Mod End 本番#1282
+
     //PL/SQLの設定を行います
     CallableStatement cstmt = trans.createCallableStatement(
                                 sb.toString(),
@@ -4725,8 +4764,18 @@ public class XxpoUtility
     try
     {
       // パラメータ設定(INパラメータ)
+// 2009-05-13 v1.26 T.Yoshimoto Mod Start 本番#1282
+/*
       cstmt.setString(1, fixClass);                           // 有償金額確定区分
       cstmt.setInt(2,  XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+*/
+      cstmt.setInt(1,  XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+      cstmt.setString(2, fixClass);                           // 有償金額確定区分
+      cstmt.setInt(3,  XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+      cstmt.setString(4, fixClass);                           // 有償金額確定区分
+      cstmt.setInt(5,  XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+      cstmt.setInt(6,  XxcmnUtility.intValue(orderHeaderId)); // 受注ヘッダアドオンID
+// 2009-05-13 v1.26 T.Yoshimoto Mod End 本番#1282
       //PL/SQL実行
       cstmt.execute();
     // PL/SQL実行時例外の場合
