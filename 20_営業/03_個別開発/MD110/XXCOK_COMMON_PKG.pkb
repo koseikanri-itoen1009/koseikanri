@@ -2407,9 +2407,6 @@ AS
   , in_user_id   IN NUMBER -- ユーザーID
   )
   RETURN VARCHAR2          -- 所属拠点コード
-    lv_base_code    VARCHAR2(4) := NULL;  -- 拠点コード
-    ln_user_id      NUMBER;
-    ld_target_date  DATE;
   IS
     -- =======================================================
     -- ローカル定数
@@ -2425,7 +2422,8 @@ AS
     -- =======================================================
     lt_base_code    per_all_assignments_f.ass_attribute5%TYPE DEFAULT NULL; -- 所属拠点コード
     ld_process_date DATE                                      DEFAULT NULL; -- 業務日付
-    lt_user_id      fnd_user.user_id%TYPE                     DEFAULT NULL; -- ユーザーID
+    ln_user_id      NUMBER;
+    ld_target_date  DATE;
 --
   BEGIN
     IF ( id_proc_date IS NULL ) THEN
