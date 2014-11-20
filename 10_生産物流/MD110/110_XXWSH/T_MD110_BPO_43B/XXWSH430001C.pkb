@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/01/06    1.8   Yuko Kawano      本番問合せ#908対応
  *  2009/01/13    1.9   Hitomi Itou      本番問合せ#981対応
  *  2009/01/15    1.10  Masayoshi Uehara 本番問合せ#1019対応
+ *  2009/01/22    1.11  ORACLE山本恭久   本番問合せ#1037対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -264,6 +265,9 @@ AS
      lo_lot_no                   xxinv_mov_lot_details.lot_no%TYPE,               -- ロットNo
      lo_actual_date              xxinv_mov_lot_details.actual_date%TYPE,          -- 実績日
      lo_actual_quantity          xxinv_mov_lot_details.actual_quantity%TYPE,      -- 実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add start
+     lo_before_actual_quantity   xxinv_mov_lot_details.before_actual_quantity%TYPE,   -- 訂正前実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add end
      lo_automanual_reserve_class xxinv_mov_lot_details.automanual_reserve_class%TYPE, -- 自動手動引当区分
      lo_created_by               xxinv_mov_lot_details.created_by%TYPE,           -- 作成者
      lo_creation_date            xxinv_mov_lot_details.creation_date%TYPE,        -- 作成日
@@ -541,6 +545,11 @@ AS
   -- 実績数量
   TYPE xml_actual_quantity
     IS TABLE OF xxinv_mov_lot_details.actual_quantity%TYPE INDEX BY BINARY_INTEGER;
+-- 2009/01/22 Y.Yamamoto #1037 add start
+-- 訂正前実績数量
+  TYPE xml_bfr_actual_quantity
+    IS TABLE OF xxinv_mov_lot_details.before_actual_quantity%TYPE INDEX BY BINARY_INTEGER;
+-- 2009/01/22 Y.Yamamoto #1037 add end
   -- 自動手動引当区分
   TYPE xml_automanual_rsv_class
     IS TABLE OF xxinv_mov_lot_details.automanual_reserve_class%TYPE INDEX BY BINARY_INTEGER;
@@ -583,6 +592,9 @@ AS
   gt_xml_lot_no                    xml_lot_no;                    -- ロットNo
   gt_xml_actual_date               xml_actual_date;               -- 実績日
   gt_xml_actual_quantity           xml_actual_quantity;           -- 実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add start
+  gt_xml_bfr_actual_quantity       xml_bfr_actual_quantity;       -- 訂正前実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add end
   gt_xml_automanual_rsv_class      xml_automanual_rsv_class;      -- 自動手動引当区分
   gt_xml_created_by                xml_created_by;                -- 作成者
   gt_xml_creation_date             xml_creation_date;             -- 作成日
@@ -1701,6 +1713,9 @@ AS
             xml.lot_no                   AS xml_lot_no,                   -- ロットNo
             xml.actual_date              AS xml_actual_date,              -- 実績日
             xml.actual_quantity          AS xml_actual_quantity,          -- 実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add start
+            xml.before_actual_quantity   AS xml_bfr_actual_quantity,      -- 訂正前実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add end
             xml.automanual_reserve_class AS xml_automanual_rsv_class,     -- 自動手動引当区分
             xml.created_by               AS xml_created_by,               -- 作成者
             xml.creation_date            AS xml_creation_date,            -- 作成日
@@ -2144,6 +2159,10 @@ AS
     gt_xml_actual_date(gn_idx_lot)          := gt_order_all_tbl(in_idx).lo_actual_date;
     -- 実績数量
     gt_xml_actual_quantity(gn_idx_lot)      := gt_order_all_tbl(in_idx).lo_actual_quantity;
+-- 2009/01/22 Y.Yamamoto #1037 add start
+    -- 訂正前実績数量
+    gt_xml_bfr_actual_quantity(gn_idx_lot)  := gt_order_all_tbl(in_idx).lo_before_actual_quantity;
+-- 2009/01/22 Y.Yamamoto #1037 add end
     -- 自動手動引当区分
     gt_xml_automanual_rsv_class(gn_idx_lot) := gt_order_all_tbl(in_idx).lo_automanual_reserve_class;
 --
@@ -2704,6 +2723,10 @@ AS
       gt_xml_actual_date(gn_idx_lot)          := gt_order_all_tbl(in_idx).lo_actual_date;
       -- 実績数量
       gt_xml_actual_quantity(gn_idx_lot)      := gt_order_all_tbl(in_idx).lo_actual_quantity;
+-- 2009/01/22 Y.Yamamoto #1037 add start
+    -- 訂正前実績数量
+      gt_xml_bfr_actual_quantity(gn_idx_lot)  := gt_order_all_tbl(in_idx).ln_shipped_quantity;
+-- 2009/01/22 Y.Yamamoto #1037 add end
       -- 自動手動引当区分
       gt_xml_automanual_rsv_class(gn_idx_lot) := gt_order_all_tbl(in_idx).lo_automanual_reserve_class;
 --
@@ -3425,6 +3448,9 @@ AS
         ,lot_no                                         -- ロットNo
         ,actual_date                                    -- 実績日
         ,actual_quantity                                -- 実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add start
+        ,before_actual_quantity                         -- 訂正前実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add end
         ,automanual_reserve_class                       -- 自動手動引当区分
         ,created_by                                     -- 作成者
         ,creation_date                                  -- 作成日
@@ -3447,6 +3473,9 @@ AS
         ,gt_xml_lot_no(i)                               -- ロットNo
         ,gt_xml_actual_date(i)                          -- 実績日
         ,gt_xml_actual_quantity(i)                      -- 実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add start
+        ,gt_xml_bfr_actual_quantity(i)                  -- 訂正前実績数量
+-- 2009/01/22 Y.Yamamoto #1037 add end
         ,gt_xml_automanual_rsv_class(i)                 -- 自動手動引当区分
         ,gt_xml_created_by(i)                           -- 作成者
         ,gt_xml_creation_date(i)                        -- 作成日
