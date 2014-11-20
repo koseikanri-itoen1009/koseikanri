@@ -94,6 +94,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/05/26    1.5  Oracle 熊本 和郎 結合テスト障害対応(エラー件数、スキップ件数の算出方法変更)
  *  2008/05/26    1.6  Oracle 熊本 和郎 規約違反(varchar使用)対応
  *  2008/05/29    1.7  Oracle 熊本 和郎 結合テスト障害対応(販売計画のMD050.機能フローとロジックの不一致修正)
+ *  2008/06/04    1.8  Oracle 熊本 和郎 システムテスト障害対応(販売計画の削除対象抽出条件からROWNUM=1削除)
  *
  *****************************************************************************************/
 --
@@ -7895,6 +7896,35 @@ PACKAGE BODY XXINV100001C AS
     lb_retcode                  BOOLEAN;
 --
     -- *** ローカル・カーソル ***
+--add start 1.8
+    CURSOR cur_del_if IS
+      SELECT  mfd.transaction_id,          -- 取引ID
+              mfd.forecast_designator,     -- Forecast名
+              mfd.organization_id,         -- 在庫組織ID
+              mfd.inventory_item_id,       -- 品目ID
+              mfd.forecast_date,           -- 開始日付
+              mfd.rate_end_date            -- 終了日付
+      FROM    mrp_forecast_dates  mfd,   -- Forecast日付
+              mrp_forecast_items  mfi    -- Forecast品目
+      WHERE   mfd.forecast_designator        = gv_3f_forecast_designator   -- Forecast名
+        AND   mfd.organization_id            = gn_3f_organization_id       -- 在庫組織
+        AND   mfd.forecast_designator        = mfi.forecast_designator
+        AND   mfd.organization_id            = mfi.organization_id
+        AND   mfd.inventory_item_id          = mfi.inventory_item_id
+      ;
+--
+    TYPE lr_del_if IS RECORD(
+      transaction_id       mrp_forecast_dates.transaction_id%TYPE
+     ,forecast_designator  mrp_forecast_dates.forecast_designator%TYPE
+     ,organization_id      mrp_forecast_dates.organization_id%TYPE
+     ,inventory_item_id    mrp_forecast_dates.inventory_item_id%TYPE
+     ,forecast_date        mrp_forecast_dates.forecast_date%TYPE
+     ,rate_end_date        mrp_forecast_dates.rate_end_date%TYPE
+    );
+--
+    TYPE lt_del_if_tbl IS TABLE OF lr_del_if INDEX BY BINARY_INTEGER;
+    lt_del_if lt_del_if_tbl;
+--add end 1.8
 --
     -- *** ローカル・レコード ***
     t_forecast_interface_tab_del    MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
@@ -7915,6 +7945,8 @@ PACKAGE BODY XXINV100001C AS
     -- 対象データ有り無しフラグの初期データセット（あり）
     ov_data_flg := gn_cons_data_found;
 --
+--mod start 1.8
+/*
     -- あらいがえ対象データの抽出
     SELECT  mfd.transaction_id,          -- 取引ID
             mfd.forecast_designator,     -- Forecast名
@@ -7936,6 +7968,7 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       AND   mfd.organization_id            = mfi.organization_id
       AND   mfd.inventory_item_id          = mfi.inventory_item_id
       AND   ROWNUM                         = 1;
+
 --
       -- 登録済みデータの削除のためのデータセット
       t_forecast_interface_tab_del(1).transaction_id        := gv_4h_txns_id;            -- 取引ID
@@ -7949,6 +7982,25 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
       t_forecast_interface_tab_del(1).process_status        := 2;
       t_forecast_interface_tab_del(1).confidence_percentage := 100;
 --
+*/
+    OPEN cur_del_if;
+    FETCH cur_del_if BULK COLLECT INTO lt_del_if;
+    CLOSE cur_del_if;
+--
+    FOR i IN 1..lt_del_if.COUNT LOOP
+      -- 登録済みデータの削除のためのデータセット
+      t_forecast_interface_tab_del(i).transaction_id        := lt_del_if(i).transaction_id;    -- 取引ID
+      t_forecast_interface_tab_del(i).forecast_designator   := gv_3f_forecast_designator;      -- Forecast名
+      t_forecast_interface_tab_del(i).organization_id       := gn_3f_organization_id;          -- 組織ID
+      t_forecast_interface_tab_del(i).inventory_item_id     := lt_del_if(i).inventory_item_id; -- 品目ID
+      t_forecast_interface_tab_del(i).quantity              := 0;                              -- 数量
+      t_forecast_interface_tab_del(i).forecast_date         := lt_del_if(i).forecast_date;     -- 開始日付
+      t_forecast_interface_tab_del(i).forecast_end_date     := lt_del_if(i).rate_end_date;     -- 終了日付
+      t_forecast_interface_tab_del(i).bucket_type           := 1;
+      t_forecast_interface_tab_del(i).process_status        := 2;
+      t_forecast_interface_tab_del(i).confidence_percentage := 100;
+    END LOOP;
+--mod end 1.8
       -- 登録済みデータの削除
       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
                                             t_forecast_interface_tab_del);
