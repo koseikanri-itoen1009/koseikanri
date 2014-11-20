@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,7 +40,7 @@ AS
  *                                       カテゴリ情報VIEW変更
  *  2008/08/07    1.5  Oracle 大橋孝郎   結合出荷テスト(出荷追加_30)修正
  *  2008/09/04    1.6  Oracle 野村正幸   統合#45 対応
- *
+ *  2008/09/10    1.7  Oracle 福田直樹   統合#45の再修正(配送L/Tに関する条件をLT2に入れ忘れ)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1726,6 +1726,20 @@ AS
           -- 適用日
           AND   gr_param.lt2_ship_date_from BETWEEN xdl2v.lt_start_date_active
                                       AND NVL( xdl2v.lt_end_date_active, gr_param.lt2_ship_date_from )
+          -- 2008/09/10 統合#45の再修正(配送L/Tに関する条件をLT2に入れ忘れ) Add Start -----------------
+          ---------------------------------------------------------------------------------------------
+          -- 配送L/Tアドオン（配送先で登録されていないこと）
+          ---------------------------------------------------------------------------------------------
+          AND NOT EXISTS (  SELECT  'X'
+                            FROM    xxcmn_delivery_lt2_v  e_xdl2v       -- 配送L/Tアドオン
+                            WHERE   e_xdl2v.code_class1                 = gv_whse_code
+                            AND     e_xdl2v.entering_despatching_code1  = xoha.deliver_from
+                            AND     e_xdl2v.code_class2                 = gv_deliver_to
+                            AND     e_xdl2v.entering_despatching_code2  = xoha.deliver_to
+                            AND     gr_param.lt2_ship_date_from BETWEEN e_xdl2v.lt_start_date_active 
+                                            AND NVL( e_xdl2v.lt_end_date_active, gr_param.lt2_ship_date_from )
+                         )
+          -- 2008/09/10 統合#45の再修正(配送L/Tに関する条件をLT2に入れ忘れ) Add End -------------------
         ) lt1_date,
         xxwsh_order_headers_all xoha_lock
       WHERE lt1_date.order_header_id = xoha_lock.order_header_id
