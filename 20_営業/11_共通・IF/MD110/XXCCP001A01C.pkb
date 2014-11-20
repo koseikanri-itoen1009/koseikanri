@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP001A01C(spec)
  * Description      : 業務日付照会更新
  * MD.050           : MD050_CCP_001_A01_業務日付更新照会
- * Version          : 1.01
+ * Version          : 1.02
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/10    1.00  渡辺直樹         新規作成
  *  2009/05/01    1.01  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
+ *  2009/06/01    1.02  Masayuki.Sano    障害番号T1_1276対応(コンカレント･ログ出力対応)
  *
  *****************************************************************************************/
 --
@@ -136,6 +137,12 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
+-- 2009/06/01 Ver1.02 Add Start
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => ''
+    );
+-- 2009/06/01 Ver1.02 Add End
     lv_profile1 := FND_PROFILE.VALUE(cv_profile_name1);
     IF (lv_profile1 IS NULL) THEN
       RAISE get_profile_error;
@@ -144,6 +151,12 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => lv_profile1||cv_msg_part||iv_handle_area
     );
+-- 2009/06/01 Ver1.02 Add Start
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => lv_profile1||cv_msg_part||iv_handle_area
+    );
+-- 2009/06/01 Ver1.02 Add End
     lv_profile2 := FND_PROFILE.VALUE(cv_profile_name2);
     IF (lv_profile2 IS NULL) THEN
       RAISE get_profile_error;
@@ -152,11 +165,23 @@ AS
        which  => FND_FILE.OUTPUT
       ,buff   => lv_profile2||cv_msg_part||iv_process_date
     );
+-- 2009/06/01 Ver1.02 Add Start
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => lv_profile2||cv_msg_part||iv_process_date
+    );
+-- 2009/06/01 Ver1.02 Add End
     --空行挿入
     FND_FILE.PUT_LINE(
        which  => FND_FILE.OUTPUT
       ,buff   => ''
     );
+-- 2009/06/01 Ver1.02 Add Start
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.LOG
+      ,buff   => ''
+    );
+-- 2009/06/01 Ver1.02 Add End
     IF (iv_handle_area NOT IN ('1','2'))
       OR (iv_handle_area IS NULL) THEN
         lv_profile := lv_profile1;
