@@ -245,7 +245,10 @@ COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.edi_chain_code IS 'チェーン店コード
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.latitude IS '緯度'
 /
-COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.longitude IS '経度'
+-- 2011/05/18 障害E_本稼動_07429 modify start by Shigeto.Niki
+--COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.longitude IS '経度'
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.longitude IS 'ピークカット開始時刻'
+-- 2011/05/18 障害E_本稼動_07429 modify end by Shigeto.Niki
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.management_base_code IS '管理元拠点コード'
 /
