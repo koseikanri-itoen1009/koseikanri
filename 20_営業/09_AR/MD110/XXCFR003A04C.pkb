@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 2.1
+ * Version          : 2.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/11/16    1.9   SCS 廣瀬 真佐人   AR共通課題IE678対応
  *  2009/12/13    2.0   SCS 松尾 泰生    [障害本稼動_00350] 消費税区分を判断した請求金額の対応
  *  2009/12/24    2.1   SCS 廣瀬 真佐人  [障害本稼動_00606] 期間中の顧客階層変更対応
+ *  2011/10/19    2.2   SCSK 白川 篤史   [障害本稼動_07906] EDIの流通BMS対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -175,6 +176,9 @@ AS
 -- Modify 2009.05.26 Ver1.4 Start
   cv_comp_code            CONSTANT VARCHAR2(35) := 'XXCFR1_INVOICE_VENDER_CODE';     -- XXCFR:EDI請求書取引先コード
 -- Modify 2009.05.26 Ver1.4 End
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD START
+  cv_utl_max_linesize     CONSTANT VARCHAR2(35) := 'XXCFR1_UTL_MAX_LINESIZE';        -- XXCFR:UTL_MAX行サイズ
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD END
 --
   -- 参照タイプ
   cv_invoice_grp_code     CONSTANT VARCHAR2(30) := 'XXCMM_INVOICE_GRP_CODE'; -- 売掛コード１（請求書）
@@ -233,6 +237,9 @@ AS
 -- Modify 2009.05.26 Ver1.4 Start  
   gv_comp_code                VARCHAR2(30);       -- XXCFR:EDI請求書取引先コード
 -- Modify 2009.05.26 Ver1.4 End
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD START
+  gv_utl_max_linesize         VARCHAR2(100);      -- XXCFR:UTL_MAX行サイズ
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD END
 --
   gv_edi_output_dept_name     VARCHAR2(100) := NULL;     -- EDI出力拠点名
   gv_edi_data_code            VARCHAR2(10)  := NULL;     -- データ種コード
@@ -291,8 +298,12 @@ AS
     -- ===============================
     lv_format    VARCHAR2(2)   := NULL ; -- 空白補完文字
     ln_data_num  NUMBER        := NULL ; -- 数値格納変数
-    lv_in_str    VARCHAR2(500) := NULL ; 
-    lv_ret_str   VARCHAR2(500) := NULL ; -- 戻り値
+-- 2011/10/19 A.Shirakawa Ver2.2 MOD START
+--    lv_in_str    VARCHAR2(500) := NULL ; 
+--    lv_ret_str   VARCHAR2(500) := NULL ; -- 戻り値
+    lv_in_str    VARCHAR2(2000) := NULL ; 
+    lv_ret_str   VARCHAR2(2000) := NULL ; -- 戻り値
+-- 2011/10/19 A.Shirakawa Ver2.2 MOD END
 --
   BEGIN
 --
@@ -681,6 +692,23 @@ AS
     END IF;
 --
 -- Modify 2009.05.26 Ver1.4 End
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD START
+    -- プロファイルからXXCFR:UTL_MAX行サイズ取得
+    gv_utl_max_linesize := FND_PROFILE.VALUE(cv_utl_max_linesize);
+    -- 取得エラー時
+    IF (gv_utl_max_linesize IS NULL) THEN
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_msg_kbn_cfr    -- 'XXCFR'
+                                                    ,cv_msg_003a04_001 -- プロファイル取得エラー
+                                                    ,cv_tkn_prof       -- トークン'PROF_NAME'
+                                                    ,xxcfr_common_pkg.get_user_profile_name(cv_utl_max_linesize))
+                                                       -- XXCFR:UTL_MAX行サイズ
+                          ,1
+                          ,5000);
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+--
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD END
     -- プロファイルからXXCFR:EDIファイル格納パス取得
     gv_edi_data_filepath := FND_PROFILE.VALUE(cv_edi_data_filepath);
     -- 取得エラー時
@@ -1059,6 +1087,9 @@ AS
            ,xil.delivery_chain_code                   delivery_chain_code    -- 納品先チェーンコード
            ,xil.ship_cust_code                        ship_cust_code         -- 納品先顧客コード
 -- Modify 2009.11.02 Ver1.8 End
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD START
+           ,xil.bms_header_data                       bms_header_data        -- 流通ＢＭＳヘッダデータ
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD END
       FROM xxcfr_invoice_headers          xih    -- 請求ヘッダ
           ,xxcfr_invoice_lines            xil    -- 請求明細
       WHERE xih.invoice_id = xil.invoice_id      -- 一括請求書ID
@@ -1631,6 +1662,10 @@ AS
         lt_set_edi_data_tbl1(ln_data_cnt).ship_cust_code           
           := lt_get_edi_data_tbl1(i).ship_cust_code         ; -- 納品先顧客コード
 -- Modify 2009.11.02 Ver1.8 End
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD START
+        lt_set_edi_data_tbl1(ln_data_cnt).bms_header_data
+          := lt_get_edi_data_tbl1(i).bms_header_data        ; -- 流通ＢＭＳヘッダデータ
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD END
 --
         -- 変数加算
         ln_data_cnt := ln_data_cnt + 1; -- 集計結果格納先レコードカウンタ
@@ -1667,6 +1702,9 @@ AS
                         ( gv_edi_data_filepath
                          ,gv_edi_data_filename
                          ,cv_open_mode_w
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD START
+                         ,gv_utl_max_linesize  -- UTL_MAX行サイズ
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD END
                         ) ;
 --
       -- ヘッダレコードの書き込み
@@ -2475,6 +2513,22 @@ AS
             ov_retcode := cv_status_warn;
           END IF;
 -- Modify 2009.11.02 Ver1.8 End
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD START
+          -- 流通ＢＭＳヘッダデータ
+          set_edi_char(68                                               -- 項目順
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).bms_header_data  -- 変換対象文字列
+                      ,ln_loop_cnt                                      -- レコード通番
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).slip_num       -- 伝票番号
+                      ,lt_set_edi_data_tbl1(ln_loop_cnt).note_line_id   -- 伝票行No
+                      ,lv_output_str                                    -- 戻り値
+                      ,lv_overflow_msg
+                      ,lv_retcode
+                      ,lv_errmsg);
+           lt_set_edi_data_tbl1(ln_loop_cnt).bms_header_data := lv_output_str;
+          IF lv_retcode = cv_status_warn THEN
+            ov_retcode := cv_status_warn;
+          END IF;
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD END
 --
           -- 出力文字列作成
           lv_edi_text := pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).file_rec_type
@@ -2695,6 +2749,11 @@ AS
                                      ,gt_edi_item_tab(67).edi_length)                                                      -- 予備エリア
 -- Modify 2009.11.02 Ver1.8 End
 -- Modify 2009.10.15 Ver1.7 End
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD START
+                      || pad_edi_char(lt_set_edi_data_tbl1(ln_loop_cnt).bms_header_data
+                                     ,gt_edi_item_tab(68).data_type
+                                     ,gt_edi_item_tab(68).edi_length)                                                      -- 流通ＢＭＳヘッダデータ
+-- 2011/10/19 A.Shirakawa Ver2.2 ADD END
                       ;
 --
           -- ====================================================
