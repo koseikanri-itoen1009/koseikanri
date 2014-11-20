@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2010/05/11    1.15  M.Sano           [E_本稼動_02628] A-4.の異常終了を警告スキップに変更
  *  2010/05/18    1.16  M.Sano           [E_本稼動_02766] PT対応
  *                                                        成績者の所属拠点チェックエラーに納品予定日追加
+ *  2010/08/02    1.17  S.Miyakoshi      [E_本稼動_01676] 非営業日の販売実績のINV連携対応（非営業日はEDI受注以外を販売実績作成）
  *
  *****************************************************************************************/
 --
@@ -252,6 +253,10 @@ AS
 -- 2010/05/18 Ver1.16 M.Sano Add Start
   cv_tkn_dlv_date         CONSTANT  VARCHAR2(100)  :=  'DLV_DATE';          -- 納品日
 -- 2010/05/18 Ver1.16 M.Sano Add End
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+  cv_tkn_order_source     CONSTANT  VARCHAR2(100)  :=  'ORDER_SOURCE_NAME'; -- 受注ソース
+  cv_tkn_para_mode        CONSTANT  VARCHAR2(100)  :=  'PARA_MODE';         -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
 --
   --メッセージ用文字列
   cv_str_profile_nm                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00047';  -- MO:営業単位
@@ -285,6 +290,11 @@ AS
   cv_oe_close_table                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11532';  -- 受注クローズ対象情報
 /* 2009/09/14 Ver1.10 Mod End   */
   cv_tax_class                     CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11534';  -- 消費税区分
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+  cv_order_source_err              CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11538';  -- 受注ソース取得エラー
+  cv_para_mode_err                 CONSTANT VARCHAR2(100) := 'APP-XXCOS1-11539';  -- パラメータ起動モードエラーメッセージ
+  cv_edi_order_source              CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00157';  -- XXCOS:EDI受注ソース
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
 --
   --プロファイル名称
   --MO:営業単位
@@ -292,6 +302,11 @@ AS
 --
   --XXCOS:MAX日付
   ct_prof_max_date              CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_MAX_DATE';
+--
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+  --XXCOS:EDI受注ソース
+  ct_prof_edi_order_source      CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_EDI_ORDER_SOURCE';
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
 --
   -- GL会計帳簿ID
   cv_prf_bks_id      CONSTANT VARCHAR2(50)  := 'GL_SET_OF_BKS_ID';
@@ -402,6 +417,10 @@ AS
 -- ********** 2010/03/08 N.Maeda 1.14 ADD START ********** --
   cv_trunc_mm                   CONSTANT VARCHAR2(2)  := 'MM';    --日付切捨用
 -- ********** 2010/03/08 N.Maeda 1.14 ADD START ********** --
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+  cv_all_order                  CONSTANT VARCHAR2(1)  := '0';     -- 全受注
+  cv_edi_order                  CONSTANT VARCHAR2(1)  := '1';     -- EDI受注以外
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -437,6 +456,10 @@ AS
   -- 言語コード
   gt_lang                 fnd_lookup_values.language%TYPE := USERENV('LANG');
 -- 2009/07/02 Ver.1.9 M.Sano Add End
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+  -- 受注ソースID
+  gt_order_source_id      oe_order_sources.order_source_id%TYPE;
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
 --
   -- ===============================
   -- ユーザー定義グローバルRECORD型宣言
@@ -652,6 +675,9 @@ AS
 --
   PROCEDURE init(
     iv_target_date  IN      VARCHAR2,     -- 処理日付
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+    iv_mode         IN      VARCHAR2,     -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
     ov_errbuf       OUT     VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode      OUT     VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg       OUT     VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -724,6 +750,22 @@ AS
 --
     END IF;
 --
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+    --起動モードをチェック
+    IF ( iv_mode = cv_all_order ) OR ( iv_mode = cv_edi_order ) THEN
+      NULL;
+    ELSE
+      --パラメータ起動モードエラーメッセージを出力
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application   =>  cv_xxcos_appl_short_nm,
+                     iv_name          =>  cv_para_mode_err,
+                     iv_token_name1   =>  cv_tkn_para_mode,
+                     iv_token_value1  =>  iv_mode
+                    );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
 /* 2009/07/24 Ver1.9 Add Start */
     --受注データ取得の為の日時の設定
     gd_process_date_time := TO_DATE( TO_CHAR(gd_process_date, ct_target_date_format)
@@ -737,7 +779,12 @@ AS
                        iv_application   =>  cv_xxcos_appl_short_nm,
                        iv_name          =>  cv_msg_parameter_note,
                        iv_token_name1   =>  cv_tkn_para_date,
-                       iv_token_value1  =>  TO_CHAR(gd_process_date, ct_target_date_format)  -- 処理日付
+-- ************ 2010/08/02 1.17 S.Miyakoshi MOD START ************ --
+--                       iv_token_value1  =>  TO_CHAR(gd_process_date, ct_target_date_format)  -- 処理日付
+                       iv_token_value1  =>  TO_CHAR(gd_process_date, ct_target_date_format),  -- 処理日付
+                       iv_token_name2   =>  cv_tkn_para_mode,
+                       iv_token_value2  =>  iv_mode                                           -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi MOD  END  ************ --
                      );
 --
     FND_FILE.PUT_LINE(
@@ -839,6 +886,9 @@ AS
     lv_gl_id        VARCHAR2(5000);
     lv_profile_name VARCHAR2(5000);
     lv_table_name   VARCHAR2(100);    --  テーブル名
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+    lv_order_source_name VARCHAR2(5000);  -- EDI受注ソース名
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
 --
     -- *** ローカル・カーソル ***
 --
@@ -899,6 +949,46 @@ AS
       RAISE global_get_profile_expt;
     END IF;
     gn_gl_id := TO_NUMBER(lv_gl_id);
+--
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+    --==================================
+    -- XXCOS:EDI受注ソース
+    --==================================
+    lv_order_source_name := FND_PROFILE.VALUE( ct_prof_edi_order_source );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_order_source_name IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_profile_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_appl_short_nm,
+                           iv_name        => cv_edi_order_source
+                         );
+--
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    --==================================
+    -- 受注ソースID取得
+    --==================================
+    BEGIN
+      SELECT oos.order_source_id  order_source_id   -- 受注ソースID
+      INTO   gt_order_source_id
+      FROM   oe_order_sources     oos               -- 受注ソース
+      WHERE  oos.name = lv_order_source_name
+      ;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application   =>  cv_xxcos_appl_short_nm,
+                       iv_name          =>  cv_order_source_err,
+                       iv_token_name1   =>  cv_tkn_order_source,
+                       iv_token_value1  =>  lv_order_source_name
+                      );
+        lv_errbuf := lv_errmsg;
+        RAISE global_api_expt;
+    END;
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
 --
     --==================================
     -- 売上区分取得
@@ -1137,6 +1227,9 @@ AS
    * Description      : 受注データ取得(A-3)
    ***********************************************************************************/
   PROCEDURE get_order_data(
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+    iv_mode           IN  VARCHAR2,             -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
     ov_errbuf         OUT VARCHAR2,             -- エラー・メッセージ           --# 固定 #
     ov_retcode        OUT VARCHAR2,             -- リターン・コード             --# 固定 #
     ov_errmsg         OUT VARCHAR2)             -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1343,6 +1436,10 @@ AS
 --      AND oola.flow_status_code NOT IN (ct_ln_status_closed, ct_ln_status_cancelled)
       AND ooha.order_category_code IN ( ct_order_cate_order           -- 受注ヘッダ.受注カテゴリコード
                                       , ct_order_cate_mixed )         --     ＝受注(ORDER) or 混合(MIXED)
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+      --((起動モード=0) OR (起動モード=1 AND 受注ヘッダ.受注ソースID != EDI受注))
+      AND (( iv_mode = cv_all_order ) OR ( iv_mode = cv_edi_order AND ooha.order_source_id != gt_order_source_id ))
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
       AND oola.flow_status_code     = ct_hdr_status_booked            -- 受注明細.ステータス＝記帳済(BOOKED)
       AND oola.org_id = gn_org_id                                     -- 組織ID
 -- 2010/05/18 Ver1.16 Mod End
@@ -3755,6 +3852,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_target_date  IN      VARCHAR2,     -- 処理日付
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+    iv_mode         IN      VARCHAR2,     -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
     ov_errbuf       OUT     VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode      OUT     VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg       OUT     VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3820,6 +3920,9 @@ AS
     -- ===============================
     init(
       iv_target_date          =>  iv_target_date,             -- 処理日付
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+      iv_mode                 =>  iv_mode,                    -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
       ov_errbuf               =>  lv_errbuf,                  -- エラー・メッセージ
       ov_retcode              =>  lv_retcode,                 -- リターン・コード
       ov_errmsg               =>  lv_errmsg                   -- ユーザー・エラー・メッセージ
@@ -3844,6 +3947,9 @@ AS
     -- A-3.受注データ取得
     -- ===============================
     get_order_data(
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+      iv_mode                 =>  iv_mode,                    -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
       ov_errbuf               =>  lv_errbuf,                  -- エラー・メッセージ
       ov_retcode              =>  lv_retcode,                 -- リターン・コード
       ov_errmsg               =>  lv_errmsg                   -- ユーザー・エラー・メッセージ
@@ -4115,7 +4221,11 @@ AS
   PROCEDURE main(
     errbuf          OUT     VARCHAR2,   -- エラー・メッセージ  --# 固定 #
     retcode         OUT     VARCHAR2,   -- リターン・コード    --# 固定 #
-    iv_target_date  IN      VARCHAR2    -- 処理日付
+-- ************ 2010/08/02 1.17 S.Miyakoshi MOD START ************ --
+--    iv_target_date  IN      VARCHAR2    -- 処理日付
+    iv_target_date  IN      VARCHAR2,   -- 処理日付
+    iv_mode         IN      VARCHAR2    -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi MOD  END  ************ --
   )
 --
 --
@@ -4168,6 +4278,9 @@ AS
     -- ===============================================
     submain(
       iv_target_date  -- 処理日付
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD START ************ --
+      ,iv_mode     -- 起動モード
+-- ************ 2010/08/02 1.17 S.Miyakoshi ADD  END  ************ --
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
