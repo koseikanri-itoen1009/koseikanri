@@ -11,6 +11,7 @@
 * 2009-04-02 1.2  SCS阿部大輔  [T1_0092]担当営業員の顧客対応
 * 2009-04-02 1.3  SCS阿部大輔  [T1_0125]担当営業員の行追加対応
 * 2009-05-07 1.4  SCS柳平直人  [T1_0603]登録前検証処理方法修正
+* 2009-08-19 1.5  SCS阿部大輔  [0001123]追加ボタン初期設定対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.server;
@@ -253,6 +254,18 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
         );
     }
 
+    /* 20090819_abe_0001123 START*/
+    XxcsoRtnRsrcBulkUpdateInitVOImpl initVo
+      = getXxcsoRtnRsrcBulkUpdateInitVO1();
+    if ( initVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoRtnRsrcBulkUpdateInitVO1"
+        );
+    }
+    /* 20090819_abe_0001123 END*/
+
     int rowCount = registVo.getRowCount();
 
     XxcsoUtils.debug(txn, "検索件数上限： " + maxSize);
@@ -275,6 +288,14 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       = (XxcsoRtnRsrcFullVORowImpl)registVo.createRow();
 
     registRow.setAccountNumberReadOnly(Boolean.FALSE);
+
+    /* 20090819_abe_0001123 START*/
+    XxcsoRtnRsrcBulkUpdateInitVORowImpl initRow
+      = (XxcsoRtnRsrcBulkUpdateInitVORowImpl)initVo.first();
+    // 検索条件から新担当、新ルートNoを設定
+    registRow.setNextResource(initRow.getEmployeeNumber());
+    registRow.setNextRouteNo(initRow.getRouteNo());
+    /* 20090819_abe_0001123 END*/
     
     registVo.first();
     registVo.insertRow(registRow);
@@ -402,11 +423,11 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
 
     while ( registRow != null )
     {
+
       registRow.setTrgtResourceStartDate(trgtResourceStartDate);
       registRow.setTrgtRouteNoStartDate(trgtRouteNoStartDate);
       registRow.setNextResourceStartDate(nextResourceStartDate);
       registRow.setNextRouteNoStartDate(nextRouteNoStartDate);
-
       registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
     }
 
@@ -414,7 +435,6 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
     // 登録・更新処理
     //////////////////////////////////////
     commit();
-
 
     /* 20090402_abe_T1_0125 START*/
     registRow
@@ -425,14 +445,18 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
         if ( (( registRow.getNextResource() == null)
           || registRow.getNextResource().equals(""))
           || ((registRow.getNextRouteNo() == null)
-          || registRow.getNextRouteNo().equals("")))
+          || registRow.getNextRouteNo().equals(""))
+        /* 20090819_abe_0001123 START*/
+          || ((registRow.getAccountNumber() == null)
+          || registRow.getAccountNumber().equals(""))
+        /* 20090819_abe_0001123 END*/
+          )
         {
           registRow.remove();
         }
       registRow = (XxcsoRtnRsrcFullVORowImpl)registVo.next();
     }
     /* 20090402_abe_T1_0125 END*/
-    //次行に移行
 
     OAException msg
       = XxcsoMessage.createConfirmMessage(
@@ -830,11 +854,16 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
 
       /* 20090402_abe_T1_0125 START*/
       //追加ボタンで未入力の場合は行を削除
-      if ( (( registRow.getNextResource() == null)
+      if ( ((( registRow.getNextResource() == null)
         || registRow.getNextResource().equals(""))
         && ((registRow.getNextRouteNo() == null)
         || registRow.getNextRouteNo().equals(""))
         && (registRow.getAccountNumberReadOnly().equals(Boolean.FALSE) ))
+        /* 20090819_abe_0001123 START*/
+        || ((registRow.getAccountNumber() == null)
+          || registRow.getAccountNumber().equals(""))
+        /* 20090819_abe_0001123 END*/
+        )
       {
         registRow.remove();
       }
