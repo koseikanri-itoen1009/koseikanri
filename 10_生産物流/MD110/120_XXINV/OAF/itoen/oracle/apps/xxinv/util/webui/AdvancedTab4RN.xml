@@ -19,7 +19,7 @@
             </oa:link>
          </ui:contents>
       </oa:column>
-      <oa:column id="Column32">
+      <oa:column id="Column32" columnDataFormat="numberFormat">
          <ui:columnHeader>
             <oa:sortableHeader id="CollectPalletQtyHdr" prompt="パレット回収枚数"/>
          </ui:columnHeader>
@@ -27,7 +27,7 @@
             <oa:messageStyledText id="CollectPalletQty" styleClass="LegendText" viewAttr="CollectedPalletQty"/>
          </ui:contents>
       </oa:column>
-      <oa:column id="Column33">
+      <oa:column id="Column33" columnDataFormat="numberFormat">
          <ui:columnHeader>
             <oa:sortableHeader id="OutPalletQtyHdr" prompt="パレット枚数(出)"/>
          </ui:columnHeader>
@@ -35,7 +35,7 @@
             <oa:messageStyledText id="OutPalletQty" styleClass="LegendText" viewAttr="OutPalletQty"/>
          </ui:contents>
       </oa:column>
-      <oa:column id="Column34">
+      <oa:column id="Column34" columnDataFormat="numberFormat">
          <ui:columnHeader>
             <oa:sortableHeader id="LegendTextHdr" prompt="パレット枚数(入)"/>
          </ui:columnHeader>

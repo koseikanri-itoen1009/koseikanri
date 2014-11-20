@@ -1,0 +1,1 @@
+CREATE INDEX xxwsh.xxwsh_tico_n01 ON xxwsh.xxwsh_tightening_control( order_type_id,deliver_from,prod_class,sales_branch_category,lead_time_day,schedule_ship_date,tighten_release_class,base_record_class ) TABLESPACE xxidx;

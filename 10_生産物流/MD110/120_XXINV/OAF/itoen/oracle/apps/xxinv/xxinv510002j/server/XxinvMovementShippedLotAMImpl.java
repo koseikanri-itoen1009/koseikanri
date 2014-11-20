@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxinvMovementShippedLotAMImpl
 * 概要説明   : 出庫・入庫ロット明細画面アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-04-11 1.0  伊藤ひとみ     新規作成
 * 2008-07-10 1.1  伊藤ひとみ     内部変更 自身のコンカレントコールで変更した場合、排他エラーとしない。
+* 2008-07-14 1.2  山本  恭久     内部変更 重量容積小口個数関数のコールタイミングの変更
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510002j.server;
@@ -1357,21 +1358,23 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
     // ******************************** //
     insertResultLot();
 
+// 2008-07-14 Y.Yamamoto Del START
     // *********************************** // 
     // *  重量容積小口個数更新関数実行   * //
     // *********************************** //
-    Number ret = XxinvUtility.doUpdateLineItems(getOADBTransaction(), XxcmnConstants.BIZ_TYPE_MOV, movNum);
+//    Number ret = XxinvUtility.doUpdateLineItems(getOADBTransaction(), XxcmnConstants.BIZ_TYPE_MOV, movNum);
 
     // 重量容積小口更新関数の戻り値が1：エラーの場合
-    if (XxinvConstants.RETURN_NOT_EXE.equals(ret))
-    {
+//    if (XxinvConstants.RETURN_NOT_EXE.equals(ret))
+//    {
       // ロールバック
-      XxinvUtility.rollBack(getOADBTransaction());
+//      XxinvUtility.rollBack(getOADBTransaction());
       // 重量容積小口個数更新関数エラーメッセージ出力
-      throw new OAException(
-          XxcmnConstants.APPL_XXINV, 
-          XxinvConstants.XXINV10127);
-    }
+//      throw new OAException(
+//          XxcmnConstants.APPL_XXINV, 
+//          XxinvConstants.XXINV10127);
+//    }
+// 2008-07-14 Y.yamamoto Del END
    
     // ********************** // 
     // *  実績数量合計取得  * //
@@ -1421,11 +1424,30 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
         XxinvUtility.updateCorrectActualFlg(getOADBTransaction(), movHeaderId);
       }
     }
-    
+
+// 2008-07-14 Y.Yamamoto Add START
+    // *********************************** // 
+    // *  重量容積小口個数更新関数実行   * //
+    // *********************************** //
+    Number ret = XxinvUtility.doUpdateLineItems(getOADBTransaction(), XxcmnConstants.BIZ_TYPE_MOV, movNum);
+
+    // 重量容積小口更新関数の戻り値が1：エラーの場合
+    if (XxinvConstants.RETURN_NOT_EXE.equals(ret))
+    {
+      // ロールバック
+      XxinvUtility.rollBack(getOADBTransaction());
+      // 重量容積小口個数更新関数エラーメッセージ出力
+      throw new OAException(
+          XxcmnConstants.APPL_XXINV, 
+          XxinvConstants.XXINV10127);
+    }
+// 2008-07-14 Y.yamamoto Add END
+
     // ***************** //
     // *  コミット     * //
     // ***************** //
     XxinvUtility.commit(getOADBTransaction());
+
 
     // 移動明細の出庫実績数量・入庫実績数量が共にすべて登録済の場合
     if (shippedResultFlag && shipToResultFlag)
@@ -1708,7 +1730,7 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
             XxcmnConstants.APPL_XXCMN, 
             XxcmnConstants.XXCMN10147);
       }
-// 2008-06-27 H.Itou Mod END
+// 2008-07-10 H.Itou Mod END
     }
 
     // ******************************** //
@@ -1732,7 +1754,7 @@ public class XxinvMovementShippedLotAMImpl extends XxcmnOAApplicationModuleImpl
             XxcmnConstants.APPL_XXCMN, 
             XxcmnConstants.XXCMN10147);
       }
-// 2008-06-27 H.Itou Mod END
+// 2008-07-10 H.Itou Mod END
     }
   }
 

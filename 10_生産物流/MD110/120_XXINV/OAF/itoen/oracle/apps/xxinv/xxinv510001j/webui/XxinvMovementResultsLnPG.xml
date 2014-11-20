@@ -48,7 +48,7 @@
                         <oa:messageStyledText id="ItemName" styleClass="LegendText" viewAttr="ItemShortName"/>
                      </ui:contents>
                   </oa:column>
-                  <oa:column id="Column3">
+                  <oa:column id="Column3" columnDataFormat="numberFormat">
                      <ui:columnHeader>
                         <oa:sortableHeader id="Col03Hdr" prompt="指示総数"/>
                      </ui:columnHeader>
@@ -64,7 +64,7 @@
                         <oa:messageStyledText id="ConvUnit" viewAttr="ConvUnit" styleClass="LegendText"/>
                      </ui:contents>
                   </oa:column>
-                  <oa:column id="Column5">
+                  <oa:column id="Column5" columnDataFormat="numberFormat">
                      <ui:columnHeader>
                         <oa:sortableHeader id="Col05Hdr" prompt="出庫実績数量"/>
                      </ui:columnHeader>
@@ -72,7 +72,7 @@
                         <oa:messageStyledText id="ShippedSum" viewAttr="ShippedSum" styleClass="LegendText"/>
                      </ui:contents>
                   </oa:column>
-                  <oa:column id="Column6">
+                  <oa:column id="Column6" columnDataFormat="numberFormat">
                      <ui:columnHeader>
                         <oa:sortableHeader id="Col06Hdr" prompt="入庫実績数量"/>
                      </ui:columnHeader>

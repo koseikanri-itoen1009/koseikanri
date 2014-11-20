@@ -412,4 +412,8 @@ AND   ximril.mov_hdr_id = :5
       AliasName="VIEW_ATTR"
       SQLType="BIT" >
    </ViewAttribute>
+   <AttrArray Name="KeyAttributes">
+      <Item Value="MovHdrId" />
+      <Item Value="MovLineId" />
+   </AttrArray>
 </ViewObject>
