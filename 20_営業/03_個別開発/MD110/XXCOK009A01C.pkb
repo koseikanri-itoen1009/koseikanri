@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  * 2009/12/21     1.5   SCS K.NAKAMURA   [障害E_本稼動_00562]担当営業員取得の判定条件修正
  * 2010/01/28     1.6   SCS Y.KUBOSHIMA  [障害E_本稼動_01297]売上金額,営業原価がマイナスの場合、仕訳金額の符号反転するよう変更
  * 2010/02/18     1.7   SCS K.YAMAGUCHI  [障害E_本稼動_01600]非在庫品目の場合、原価の振替を行わないよう変更
+ * 2011/02/02     1.8   SCS S.OCHIAI     [障害E_本稼動_05918]共通関数(会計カレンダ取得、会計期間チェック)の
+ *                                                           対象アプリケーションを「AR」から「GL」変更
  *
  *****************************************************************************************/
   --===============================
@@ -131,7 +133,10 @@ AS
   cv_cust_code_token          CONSTANT VARCHAR2(10) := 'CUST_CODE';                         -- トークン名
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
   --アプリケーション短縮名
-  cv_appli_ar_name            CONSTANT VARCHAR2(10) := 'AR';                                -- アプリケーション短縮名
+-- 2011/02/02 Ver.1.8 [障害E_本稼動_05918] SCS S.OCHIAI REPAIR START
+--  cv_appli_ar_name            CONSTANT VARCHAR2(10) := 'AR';                                -- アプリケーション短縮名
+  cv_appli_gl_name            CONSTANT VARCHAR2(10) := 'SQLGL';                             -- アプリケーション短縮名
+-- 2011/02/02 Ver.1.8 [障害E_本稼動_05918] SCS S.OCHIAI REPAIR END                                -- アプリケーション短縮名
   cv_appli_xxcok_name         CONSTANT VARCHAR2(10) := 'XXCOK';                             -- アプリケーション短縮名
   cv_appli_xxccp_name         CONSTANT VARCHAR2(10) := 'XXCCP';                             -- アプリケーション短縮名
   --===============================
@@ -1455,7 +1460,10 @@ AS
     , ov_retcode                => lv_retcode                   -- エラーバッファ
     , ov_errmsg                 => lv_errmsg                    -- エラーメッセージ
     , in_set_of_books_id        => gn_set_of_bks_id             -- A-1で取得した会計帳簿ID
-    , iv_application_short_name => cv_appli_ar_name             -- 'AR'
+-- 2011/02/02 Ver.1.8 [障害E_本稼動_05918] SCS S.OCHIAI REPAIR START
+--    , iv_application_short_name => cv_appli_ar_name             -- 'AR'
+    , iv_application_short_name => cv_appli_gl_name             -- 'GL'
+-- 2011/02/02 Ver.1.8 [障害E_本稼動_05918] SCS S.OCHIAI REPAIR END
     , id_object_date            => gd_selling_date              -- 上記で取得した売上計上日
     , iv_adjustment_period_flag => cv_adjustment_period_flag    -- 'N'
     , on_period_year            => ln_period_year               -- 会計年度
@@ -1484,7 +1492,10 @@ AS
     lb_closing_status := xxcok_common_pkg.check_acctg_period_f(
                            gn_set_of_bks_id                     -- A-1で取得した会計帳簿ID
                          , gd_selling_date                      -- 上記で取得した売上計上日
-                         , cv_appli_ar_name                     -- アプリケーション短縮名
+-- 2011/02/02 Ver.1.8 [障害E_本稼動_05918] SCS S.OCHIAI REPAIR START
+--                         , cv_appli_ar_name                     -- アプリケーション短縮名
+                         , cv_appli_gl_name                     -- アプリケーション短縮名
+-- 2011/02/02 Ver.1.8 [障害E_本稼動_05918] SCS S.OCHIAI REPAIR END
                          );
     IF( lb_closing_status = FALSE ) THEN
       RAISE acctg_calendar_close_expt;
