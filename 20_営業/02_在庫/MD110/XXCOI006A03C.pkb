@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2009/03/30    1.6   H.Sasaki         [T1_0195]棚卸情報登録時の拠点コード変換条件変更
  *  2009/04/27    1.7   H.Sasaki         [T1_0553]年月日の設定値変更
  *  2009/05/11    1.8   T.Nakamura       [T1_0839]拠点間移動オーダーを受払データ作成対象に追加
+ *  2009/05/14    1.9   H.Sasaki         [T1_0840][T1_0842]倉替数量の集計条件変更
  *
  *****************************************************************************************/
 --
@@ -1532,13 +1533,59 @@ AS
             gt_quantity(10)  :=  gt_quantity(10) + ir_daily_trans.transaction_qty;
           END IF;
         WHEN  cv_trans_type_060  THEN
-          IF (ir_daily_trans.transaction_qty >= 0) THEN
-            -- 11.倉替入庫
-            gt_quantity(11)  :=  gt_quantity(11) + ir_daily_trans.transaction_qty;
-          ELSIF (ir_daily_trans.transaction_qty < 0) THEN
+-- == 2009/05/14 V1.9 Modified START ===============================================================
+--          IF (ir_daily_trans.transaction_qty >= 0) THEN
+--            -- 11.倉替入庫
+--            gt_quantity(11)  :=  gt_quantity(11) + ir_daily_trans.transaction_qty;
+--          ELSIF (ir_daily_trans.transaction_qty < 0) THEN
+--            -- 12.倉替出庫
+--            gt_quantity(12)  :=  gt_quantity(12) + ir_daily_trans.transaction_qty;
+--          END IF;
+--
+          IF (    (ir_daily_trans.transaction_qty    < 0)
+              AND (ir_daily_trans.inventory_type     = cv_subinv_2)
+              AND (ir_daily_trans.subinventory_type  IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+             )
+          THEN
+            -- 05.倉庫へ返庫
+            gt_quantity(5)   :=  gt_quantity(5) + ir_daily_trans.transaction_qty;
+          ELSIF (    (ir_daily_trans.transaction_qty    < 0)
+                 AND (ir_daily_trans.inventory_type     IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                 AND (ir_daily_trans.subinventory_type  = cv_subinv_2)
+                )
+          THEN
+            -- 06.営業車へ出庫
+            gt_quantity(6)   :=  gt_quantity(6) + ir_daily_trans.transaction_qty;
+          ELSIF (    (ir_daily_trans.transaction_qty    < 0)
+                 AND (ir_daily_trans.inventory_type     IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                 AND (ir_daily_trans.subinventory_type  IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                )
+          THEN
             -- 12.倉替出庫
             gt_quantity(12)  :=  gt_quantity(12) + ir_daily_trans.transaction_qty;
+          ELSIF (    (ir_daily_trans.transaction_qty    > 0)
+                 AND (ir_daily_trans.inventory_type     = cv_subinv_2)
+                 AND (ir_daily_trans.subinventory_type  IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                )
+          THEN
+            -- 08.倉庫より入庫
+            gt_quantity(8)   :=  gt_quantity(8) + ir_daily_trans.transaction_qty;
+          ELSIF (    (ir_daily_trans.transaction_qty    > 0)
+                 AND (ir_daily_trans.inventory_type     IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                 AND (ir_daily_trans.subinventory_type  = cv_subinv_2)
+                )
+          THEN
+            -- 09.営業車より入庫
+            gt_quantity(9)   :=  gt_quantity(9) + ir_daily_trans.transaction_qty;
+          ELSIF (    (ir_daily_trans.transaction_qty    > 0)
+                 AND (ir_daily_trans.inventory_type     IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                 AND (ir_daily_trans.subinventory_type  IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                )
+          THEN
+            -- 11.倉替入庫
+            gt_quantity(11)  :=  gt_quantity(11) + ir_daily_trans.transaction_qty;
           END IF;
+-- == 2009/05/14 V1.9 Modified END   ===============================================================
         WHEN  cv_trans_type_070  THEN   -- 13.商品振替（旧商品）
           gt_quantity(13)  :=  gt_quantity(13) + ir_daily_trans.transaction_qty;
         WHEN  cv_trans_type_080  THEN   -- 14.商品振替（新商品）

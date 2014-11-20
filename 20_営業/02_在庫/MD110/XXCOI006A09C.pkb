@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A09C(body)
  * Description      : 資材取引情報を元に月次在庫受払表（日次）を作成します
  * MD.050           : 日次在庫受払表作成<MD050_COI_006_A09>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/11/05    1.0   Sai.u            新規作成
  *  2009/04/06    1.1   H.Sasaki         [T1_0197]月次在庫受払表（累計）の作成
  *  2009/05/08    1.2   T.Nakamura       [T1_0839]拠点間移動オーダーを受払データ作成対象に追加
+ *  2009/05/14    1.3   H.Sasaki         [T1_0840][T1_0842]倉替数量の集計条件変更
  *
  *****************************************************************************************/
 --
@@ -1678,13 +1679,60 @@ AS
             --
           END IF;
         WHEN  cv_trans_type_060  THEN
-          IF (material_transaction_rec.transaction_qty >= 0) THEN
-            -- 11.倉替入庫
-            gt_quantity(11)  :=  gt_quantity(11) + material_transaction_rec.transaction_qty;
-          ELSIF (material_transaction_rec.transaction_qty < 0) THEN
+-- == 2009/05/14 V1.3 Modified START ===============================================================
+--          IF (material_transaction_rec.transaction_qty >= 0) THEN
+--            -- 11.倉替入庫
+--            gt_quantity(11)  :=  gt_quantity(11) + material_transaction_rec.transaction_qty;
+--          ELSIF (material_transaction_rec.transaction_qty < 0) THEN
+--            -- 12.倉替出庫
+--            gt_quantity(12)  :=  gt_quantity(12) + material_transaction_rec.transaction_qty;
+--          END IF;
+--
+          IF (    (material_transaction_rec.transaction_qty    < 0)
+              AND (material_transaction_rec.inventory_type     = cv_subinv_2)
+              AND (material_transaction_rec.subinventory_type  IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+             )
+          THEN
+            -- 05.倉庫へ返庫
+            gt_quantity(5)   :=  gt_quantity(5) + material_transaction_rec.transaction_qty;
+          ELSIF (    (material_transaction_rec.transaction_qty    < 0)
+                 AND (material_transaction_rec.inventory_type     IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                 AND (material_transaction_rec.subinventory_type  = cv_subinv_2)
+                )
+          THEN
+            -- 06.営業車へ出庫
+            gt_quantity(6)   :=  gt_quantity(6) + material_transaction_rec.transaction_qty;
+          ELSIF (    (material_transaction_rec.transaction_qty    < 0)
+                 AND (material_transaction_rec.inventory_type     IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                 AND (material_transaction_rec.subinventory_type  IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                )
+          THEN
             -- 12.倉替出庫
             gt_quantity(12)  :=  gt_quantity(12) + material_transaction_rec.transaction_qty;
+          ELSIF (    (material_transaction_rec.transaction_qty    > 0)
+                 AND (material_transaction_rec.inventory_type     = cv_subinv_2)
+                 AND (material_transaction_rec.subinventory_type  IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                )
+          THEN
+            -- 08.倉庫より入庫
+            gt_quantity(8)   :=  gt_quantity(8) + material_transaction_rec.transaction_qty;
+          ELSIF (    (material_transaction_rec.transaction_qty    > 0)
+                 AND (material_transaction_rec.inventory_type     IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                 AND (material_transaction_rec.subinventory_type  = cv_subinv_2)
+                )
+          THEN
+            -- 09.営業車より入庫
+            gt_quantity(9)   :=  gt_quantity(9) + material_transaction_rec.transaction_qty;
+          ELSIF (    (material_transaction_rec.transaction_qty    > 0)
+                 AND (material_transaction_rec.inventory_type     IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                 AND (material_transaction_rec.subinventory_type  IN(cv_subinv_1, cv_subinv_3, cv_subinv_4))
+                )
+          THEN
+            -- 11.倉替入庫
+            gt_quantity(11)  :=  gt_quantity(11) + material_transaction_rec.transaction_qty;
+            --
           END IF;
+-- == 2009/05/14 V1.3 Modified END   ===============================================================
         WHEN  cv_trans_type_070  THEN   -- 13.商品振替（旧商品）
           gt_quantity(13)  :=  gt_quantity(13) + material_transaction_rec.transaction_qty;
         WHEN  cv_trans_type_080  THEN   -- 14.商品振替（新商品）
