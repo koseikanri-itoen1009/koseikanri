@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.41
+ * Version                : 1.42
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  cancel_careers_schedule   F    NUM   配車解除関数
  *  update_mixed_no           F    VAR   混載元No更新関数(出荷依頼画面専用)
  *  convert_mixed_ship_method F    VAR   混載配送区分変換関数                -- 2008/10/15 H.Itou Add 統合テスト指摘298
+ *  chk_sourcing_rules        F    VAR   物流構成存在チェック関数
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -93,6 +94,7 @@ AS
  *  2009/01/14   1.39  SCS    山本恭久  [引当解除関数]本番#991対応
  *  2009/01/21   1.40  SCS    伊藤ひとみ[締めステータスチェック関数]本番#1053対応
  *  2009/01/27   1.41  SCS    北寒寺正夫[締めステータスチェック関数]本番#1089対応
+ *  2009/02/10   1.42  SCS    伊藤ひとみ[配車解除関数]本番#863対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5425,6 +5427,13 @@ AS
     cv_cancel_flag_on      CONSTANT VARCHAR2(1)   := '1';                -- 配車解除フラグ：ON
     cv_cancel_flag_off     CONSTANT VARCHAR2(1)   := '0';                -- 配車解除フラグ：OFF
 -- 2008/10/23 v1.28 D.Nihei Add End
+-- 2009/02/10 H.Itou Add Start 本番障害#863対応
+    cv_cancel_flag_judge CONSTANT VARCHAR2(2) := '2';                    -- 配車解除フラグ：重量オーバーの場合のみ配車解除
+    cv_over_flag_on      CONSTANT VARCHAR2(2) := '1';                    -- 積載オーバーフラグ ON
+    cv_over_flag_off     CONSTANT VARCHAR2(2) := '0';                    -- 積載オーバーフラグ OFF
+    cv_weight            CONSTANT VARCHAR2(30)   :=  '1';                -- 重量容積区分：重量
+    cv_capacity          CONSTANT VARCHAR2(30)   :=  '2';                -- 重量容積区分：容積
+-- 2009/02/10 H.Itou Add End
 -- 2008/09/03 H.Itou Add Start PT 1-2_8対応
     cv_delivery_mixed_flag_deli CONSTANT VARCHAR2(1) := '1'; -- 配送No/混載元No識別フラグ「配送No」
     cv_delivery_mixed_flag_mix  CONSTANT VARCHAR2(1) := '2'; -- 配送No/混載元No識別フラグ「混載元No」
@@ -5599,6 +5608,24 @@ AS
     lv_mixed_ship_method            VARCHAR2(100);                                  -- 混載配送区分
     ln_sum_weight                   NUMBER;                                         -- 合計重量
     ln_sum_capacity                 NUMBER;                                         -- 合計容積
+-- 2009/02/10 H.Itou Add Start 本番障害#863対応
+    ln_deli_sum_w                   NUMBER := 0;                                    -- 積載重量合計(配車用)
+    ln_deli_sum_c                   NUMBER := 0;                                    -- 積載容積合計(配車用)
+    ln_deli_sum_pallet_w            NUMBER := 0;                                    -- 合計パレット重量(配車用)
+    ln_deli_load_efficiency_w       NUMBER := 0;                                    -- 重量積載効率(配車用)
+    ln_deli_load_efficiency_c       NUMBER := 0;                                    -- 容積積載効率(配車用)
+    lv_over_flag                    VARCHAR2(1) := cv_over_flag_off;                -- 積載オーバーフラグ
+    -- 積載効率(配車用)算出に使用
+    lv_entering_despatching_code1   xxwsh_order_headers_all.deliver_from%TYPE;          -- 入出庫場所コード１
+    lv_code_class2                  VARCHAR2(2);                                        -- コード区分２
+    lv_entering_despatching_code2   xxwsh_order_headers_all.deliver_to%TYPE;            -- 入出庫場所コード２
+    lv_prod_class                   xxwsh_order_headers_all.prod_class%TYPE;            -- 商品区分
+    ld_standard_date                DATE;                                               -- 基準日(適用日基準日)
+    lv_weight_capacity_class        xxwsh_order_headers_all.weight_capacity_class%TYPE; -- 重量容積区分
+    lv_ship_method                  xxwsh_carriers_schedule.delivery_type%TYPE;         -- 配送区分
+    lv_default_line_number          xxwsh_carriers_schedule.default_line_number%TYPE;   -- 明細基準No
+    ln_mixed_ratio                  NUMBER := 0;                                        -- 混載率
+-- 2009/02/10 H.Itou Add End
 -- Ver1.20 M.Hokkanji END
 -- 2008/09/03 H.Itou Add Start PT 1-2_8対応
     lv_delivery_mixed_flag          VARCHAR2(1); -- 配送No/混載元No識別フラグ
@@ -5966,7 +5993,10 @@ END;
           -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
           -- 且つ配車解除フラグがONの場合、処理をおこなう
           IF ( ( lt_chk_ship_tbl(i).freight_charge_class = gv_freight_charge_yes )
-           AND ( iv_calcel_flag                          = cv_cancel_flag_on     ) ) THEN
+-- 2009/02/10 H.Itou Add Start 本番障害#863対応 配車解除フラグが2の場合も解除用に数値を取得する。
+--           AND ( iv_calcel_flag                          = cv_cancel_flag_on     ) ) THEN
+           AND ( iv_calcel_flag IN ( cv_cancel_flag_on, cv_cancel_flag_judge ) ) ) THEN
+-- 2009/02/10 H.Itou Add End
 -- 2008/10/23 v1.28 D.Nihei Mod End
             lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
             -- 最大配送区分取得
@@ -6311,7 +6341,10 @@ END;
           -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
           -- 且つ配車解除フラグがONの場合、処理をおこなう
           IF ( ( lt_chk_move_tbl(i).freight_charge_class = gv_freight_charge_yes )
-           AND ( iv_calcel_flag                          = cv_cancel_flag_on     ) ) THEN
+-- 2009/02/10 H.Itou Add Start 本番障害#863対応 配車解除フラグが2の場合も解除用に数値を取得する。
+--           AND ( iv_calcel_flag                          = cv_cancel_flag_on     ) ) THEN
+           AND ( iv_calcel_flag IN ( cv_cancel_flag_on, cv_cancel_flag_judge ) ) ) THEN
+-- 2009/02/10 H.Itou Add End
 -- 2008/10/23 v1.28 D.Nihei Mod End
             lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
             -- 最大配送区分取得
@@ -6645,7 +6678,10 @@ END;
           -- 運賃区分が1の場合のみ取得した配送区分、基本重量、基本容積、積載率(重量)、積載率(容積)を更新
           -- 且つ配車解除フラグがONの場合、処理をおこなう
           IF ( ( lt_chk_supply_tbl(i).freight_charge_class = gv_freight_charge_yes )
-           AND ( iv_calcel_flag                            = cv_cancel_flag_on     ) ) THEN
+-- 2009/02/10 H.Itou Add Start 本番障害#863対応 配車解除フラグが2の場合も解除用に数値を取得する。
+--           AND ( iv_calcel_flag                          = cv_cancel_flag_on     ) ) THEN
+           AND ( iv_calcel_flag IN ( cv_cancel_flag_on, cv_cancel_flag_judge ) ) ) THEN
+-- 2009/02/10 H.Itou Add End
 -- 2008/10/23 v1.28 D.Nihei Mod End
             lv_err_chek := '0'; -- エラーチェックフラグを初期値に戻す
             -- 最大配送区分取得
@@ -6777,13 +6813,367 @@ END;
 --
     END IF;
 --
+-- 2009/02/10 H.Itou Add Start 本番障害#863対応
+    -- **************************************************
+    -- *** XX.配車解除判定処理
+    -- **************************************************
+    -- 配車あり、配車解除フラグ：2 積載オーバーの場合のみ配車解除の場合
+    -- 配車解除するかどうか判定し、配車解除しない場合は配車配送計画と混載率を更新する。
+    IF ( ( lv_delivery_no IS NOT NULL )
+    AND  ( iv_calcel_flag = cv_cancel_flag_judge ) ) THEN
+      -- ============================
+      -- 配車の重量・容積合計取得
+      -- ============================
+      SELECT  SUM(xomh.sum_weight)
+             ,SUM(xomh.sum_capacity)
+             ,SUM(xomh.sum_pallet_weight)
+      INTO    ln_deli_sum_w
+             ,ln_deli_sum_c
+             ,ln_deli_sum_pallet_w
+      FROM   (-- 受注データ
+              SELECT  xoha.sum_weight                 sum_weight
+                     ,xoha.sum_capacity               sum_capacity
+                     ,NVL(xoha.sum_pallet_weight, 0)  sum_pallet_weight
+              FROM    xxwsh_order_headers_all         xoha
+              WHERE   xoha.delivery_no                            =  lv_delivery_no
+              AND     NVL(xoha.latest_external_flag, cv_flag_no)  =  cv_flag_yes
+              -- 移動データ
+              UNION ALL
+              SELECT  mrih.sum_weight                 sum_weight
+                     ,mrih.sum_capacity               sum_capacity
+                     ,NVL(mrih.sum_pallet_weight, 0)  sum_pallet_weight
+              FROM    xxinv_mov_req_instr_headers     mrih
+              WHERE   mrih.delivery_no            =  lv_delivery_no) xomh
+      ;
+--
+      -- ============================
+      -- 配車配送計画情報取得
+      -- ============================
+      SELECT xcs.delivery_type          ship_method
+            ,xcs.default_line_number    default_line_number
+            ,xsm2.small_amount_class    small_amount_class
+      INTO   lv_ship_method                                   -- 配送区分
+            ,lv_default_line_number                           -- 基準明細No
+            ,lv_small_sum_class                               -- 小口区分
+      FROM   xxwsh_carriers_schedule xcs                      -- 配車配送計画（アドオン）
+            ,xxwsh_ship_method2_v    xsm2                     -- 出荷方法
+      WHERE  xcs.delivery_type       = xsm2.ship_method_code
+      AND    xsm2.start_date_active <= xcs.schedule_ship_date
+      AND    xcs.schedule_ship_date <= NVL(xsm2.end_date_active, xcs.schedule_ship_date)
+      AND    xcs.delivery_no         = lv_delivery_no
+      FOR UPDATE OF xcs.transaction_id NOWAIT
+      ;
+--
+      -- ============================
+      -- 配車配送計画の基準明細情報取得
+      -- ============================
+      BEGIN
+        -- 受注ヘッダを検索
+        SELECT  xoha.deliver_from                    entering_despatching_code1
+               ,CASE
+                  -- 出荷支給区分が出荷の場合、コード区分「出荷」
+                  WHEN ( xott.shipping_shikyu_class = cv_ship_req ) THEN
+                    cv_code_kbn_ship
+--
+                  -- 出荷支給区分が支給の場合、コード区分「支給」
+                  WHEN ( xott.shipping_shikyu_class = cv_supply_req ) THEN
+                    cv_code_kbn_supply
+                END                                  code_class2
+               ,CASE
+                  -- 出荷支給区分が出荷の場合、出荷先
+                  WHEN ( xott.shipping_shikyu_class = cv_ship_req ) THEN
+                    xoha.deliver_to
+--
+                  -- 出荷支給区分が支給の場合、取引先
+                  WHEN ( xott.shipping_shikyu_class = cv_supply_req ) THEN
+                    xoha.vendor_site_code
+                END                                  entering_despatching_code2
+               ,xoha.schedule_ship_date              standard_date
+               ,xoha.prod_class                      prod_class
+               ,xoha.weight_capacity_class           weight_capacity_class
+        INTO    lv_entering_despatching_code1        -- 入出庫場所コード１
+               ,lv_code_class2                       -- コード区分２
+               ,lv_entering_despatching_code2        -- 入出庫場所コード２
+               ,ld_standard_date                     -- 基準日
+               ,lv_prod_class                        -- 商品区分
+               ,lv_weight_capacity_class             -- 重量容積区分
+        FROM    xxwsh_order_headers_all       xoha   -- 受注ヘッダアドオン
+               ,xxwsh_oe_transaction_types_v  xott   -- 受注タイプ情報VIEW
+        WHERE   xoha.request_no                             =  lv_default_line_number
+        AND     xoha.order_type_id                          =  xott.transaction_type_id
+        AND     NVL(xoha.latest_external_flag, cv_flag_no)  =  cv_flag_yes
+        ;
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 受注データを検索できない場合は、移動データを検索する。
+          SELECT  mrih.shipped_locat_code              entering_despatching_code1
+                 ,cv_code_kbn_mov                      code_class2
+                 ,mrih.ship_to_locat_code              entering_despatching_code2
+                 ,mrih.schedule_ship_date              standard_date
+                 ,mrih.item_class                      prod_class                  -- 商品区分
+                 ,mrih.weight_capacity_class           weight_capacity_class
+          INTO    lv_entering_despatching_code1        -- 入出庫場所コード１
+                 ,lv_code_class2                       -- コード区分２
+                 ,lv_entering_despatching_code2        -- 入出庫場所コード２
+                 ,ld_standard_date                     -- 基準日
+                 ,lv_prod_class                        -- 商品区分
+                 ,lv_weight_capacity_class             -- 重量容積区分
+          FROM    xxinv_mov_req_instr_headers   mrih   -- 移動依頼/指示ヘッダ(アドオン)
+          WHERE   mrih.mov_num =  lv_default_line_number
+          ;
+      END;
+--
+      -- 積載重量合計(配車用)算出
+      -- 小口の場合、積載重量にパレット重量を加算しない
+      IF ( lv_small_sum_class = cv_include ) THEN
+        ln_deli_sum_w := ln_deli_sum_w;
+--
+      -- 小口でない場合、積載重量合計にパレット重量を加算
+      ELSE
+        ln_deli_sum_w := ln_deli_sum_w + ln_deli_sum_pallet_w;
+      END IF;
+--
+      -- ============================
+      -- 積載オーバーかどうか判定
+      -- ============================
+      lv_over_flag := cv_over_flag_off; -- 積載オーバーフラグOFF
+--
+      -- 積載重量合計(配車用)がNULLでない場合
+      IF ( ln_deli_sum_w IS NOT NULL ) THEN
+        -- 重量積載効率(配車用)を取得
+        xxwsh_common910_pkg.calc_load_efficiency(
+          in_sum_weight                 =>  ln_deli_sum_w,                            -- 1.合計重量
+          in_sum_capacity               =>  NULL,                                     -- 2.合計容積
+          iv_code_class1                =>  cv_code_kbn_mov,                          -- 3.コード区分１
+          iv_entering_despatching_code1 =>  lv_entering_despatching_code1,            -- 4.入出庫場所コード１
+          iv_code_class2                =>  lv_code_class2,                           -- 5.コード区分２
+          iv_entering_despatching_code2 =>  lv_entering_despatching_code2,            -- 6.入出庫場所コード２
+          iv_ship_method                =>  lv_ship_method,                           -- 7.出荷方法
+          iv_prod_class                 =>  lv_prod_class,                            -- 8.商品区分
+          iv_auto_process_type          =>  NULL,                                     -- 9.自動配車対象区分
+          id_standard_date              =>  ld_standard_date,                         -- 10.基準日(適用日基準日)
+          ov_retcode                    =>  lv_retcode,                               -- 11.リターンコード
+          ov_errmsg_code                =>  lv_errmsg_code,                           -- 12.エラーメッセージコード
+          ov_errmsg                     =>  lv_errmsg,                                -- 13.エラーメッセージ
+          ov_loading_over_class         =>  lv_loading_over_class,                    -- 14.積載オーバー区分
+          ov_ship_methods               =>  lv_ship_methods,                          -- 15.出荷方法
+          on_load_efficiency_weight     =>  ln_load_efficiency_weight,                -- 16.重量積載効率
+          on_load_efficiency_capacity   =>  ln_load_efficiency_capacity,              -- 17.容積積載効率
+          ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+        -- リターンコードが'1'(異常)の場合はエラーをセット
+        IF ( lv_retcode = gn_status_error ) THEN
+          -- エラー
+          ov_errmsg := '配車解除判定処理:積載効率 エラー:' || lv_errmsg ;
+          RETURN cv_career_cancel_err;
+        END IF;
+--
+        -- 重量容積区分が重量で、積載オーバーの場合
+        IF ( ( lv_weight_capacity_class =  cv_weight )
+        AND  ( lv_loading_over_class = cv_over_flag_on ) ) THEN
+          -- 積載オーバーなので、配車解除する。
+          lv_over_flag := cv_over_flag_on;
+--
+        -- 積載オーバーでない場合
+        ELSE
+          ln_deli_load_efficiency_w := ln_load_efficiency_weight; -- 重量積載効率(配車用)
+        END IF;
+      END IF;
+--
+      -- 積載容積合計(配車用)がNULLでない場合
+      IF ( ln_deli_sum_c IS NOT NULL ) THEN
+        -- 容積積載効率(配車用)を取得
+        xxwsh_common910_pkg.calc_load_efficiency(
+          in_sum_weight                 =>  NULL,                                     -- 1.合計重量
+          in_sum_capacity               =>  ln_deli_sum_c,                            -- 2.合計容積
+          iv_code_class1                =>  cv_code_kbn_mov,                          -- 3.コード区分１
+          iv_entering_despatching_code1 =>  lv_entering_despatching_code1,            -- 4.入出庫場所コード１
+          iv_code_class2                =>  lv_code_class2,                           -- 5.コード区分２
+          iv_entering_despatching_code2 =>  lv_entering_despatching_code2,            -- 6.入出庫場所コード２
+          iv_ship_method                =>  lv_ship_method,                           -- 7.出荷方法
+          iv_prod_class                 =>  lv_prod_class,                            -- 8.商品区分
+          iv_auto_process_type          =>  NULL,                                     -- 9.自動配車対象区分
+          id_standard_date              =>  ld_standard_date,                         -- 10.基準日(適用日基準日)
+          ov_retcode                    =>  lv_retcode,                               -- 11.リターンコード
+          ov_errmsg_code                =>  lv_errmsg_code,                           -- 12.エラーメッセージコード
+          ov_errmsg                     =>  lv_errmsg,                                -- 13.エラーメッセージ
+          ov_loading_over_class         =>  lv_loading_over_class,                    -- 14.積載オーバー区分
+          ov_ship_methods               =>  lv_ship_methods,                          -- 15.出荷方法
+          on_load_efficiency_weight     =>  ln_load_efficiency_weight,                -- 16.重量積載効率
+          on_load_efficiency_capacity   =>  ln_load_efficiency_capacity,              -- 17.容積積載効率
+          ov_mixed_ship_method          =>  lv_mixed_ship_method);                    -- 18.混載配送区分
+--
+        -- リターンコードが'1'(異常)の場合はエラーをセット
+        IF ( lv_retcode = gn_status_error ) THEN
+          -- エラー
+          ov_errmsg := '配車解除判定処理:積載効率 エラー:' || lv_errmsg ;
+          RETURN cv_career_cancel_err;
+        END IF;
+--
+        -- 重量容積区分が容積で、積載オーバーの場合
+        IF ( ( lv_weight_capacity_class =  cv_capacity )
+        AND  ( lv_loading_over_class = cv_over_flag_on ) ) THEN
+          -- 積載オーバーなので、配車解除する。
+          lv_over_flag := cv_over_flag_on;
+--
+        -- 積載オーバーでない場合
+        ELSE
+          ln_deli_load_efficiency_c := ln_load_efficiency_capacity; -- 容積積載効率(配車用))
+        END IF;
+      END IF;
+--
+      -- 積載オーバーでない場合
+      IF ( lv_over_flag = cv_over_flag_off ) THEN
+        -- ============================
+        -- 配車配送計画更新
+        -- ============================
+        UPDATE  xxwsh_carriers_schedule       xcs         -- 配車配送計画（アドオン）
+        SET     xcs.sum_loading_weight          =  ln_deli_sum_w,               -- 積載重量合計
+                xcs.sum_loading_capacity        =  ln_deli_sum_c,               -- 積載容積合計
+                xcs.loading_efficiency_weight   =  ln_deli_load_efficiency_w,   -- 重量積載効率
+                xcs.loading_efficiency_capacity =  ln_deli_load_efficiency_c,   -- 容積積載効率
+                xcs.last_updated_by             =  ln_user_id,
+                xcs.last_update_date            =  ld_sysdate,
+                xcs.last_update_login           =  ln_login_id,
+                xcs.request_id                  =  ln_conc_request_id,
+                xcs.program_application_id      =  ln_prog_appl_id,
+                xcs.program_id                  =  ln_conc_program_id,
+                xcs.program_update_date         =  ld_sysdate
+        WHERE   xcs.delivery_no                 =  lv_delivery_no
+        ;
+--
+        -- ============================
+        -- 混載率更新
+        -- ============================
+        -- 出荷の場合
+        <<lt_chk_ship_tbl_loop>>
+        FOR i IN 1 .. lt_chk_ship_tbl.COUNT LOOP
+          -- 受注ヘッダアドオンIDが前のレコードと同じでない場合
+          IF ( ( i = lt_chk_ship_tbl.FIRST ) 
+          OR   ( lt_chk_ship_tbl(i).order_header_id <> lt_chk_ship_tbl(i - 1).order_header_id ) ) THEN
+            -- 混載率算出のための重量算出
+            -- 小口の場合
+            IF ( lv_small_sum_class = cv_include ) THEN
+              ln_sum_weight := lt_chk_ship_tbl(i).sum_weight;
+--
+            -- 小口でない場合、積載重量合計にパレット重量を加算
+            ELSE
+              ln_sum_weight := lt_chk_ship_tbl(i).sum_weight + NVL(lt_chk_ship_tbl(i).sum_pallet_weight, 0);
+            END IF;
+--
+            -- 混載率算出
+            -- 重量の場合
+            IF ( lv_weight_capacity_class =  cv_weight ) THEN
+              ln_mixed_ratio := ROUND( ln_sum_weight / ln_deli_sum_w * 100, 2 );
+--
+            -- 容積の場合
+            ELSIF ( lv_weight_capacity_class =  cv_capacity ) THEN
+              ln_mixed_ratio := ROUND( lt_chk_ship_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+            END IF;
+--
+            -- 受注ヘッダアドオン更新処理
+            UPDATE xxwsh_order_headers_all            xoha                  -- 受注ヘッダアドオン
+            SET    xoha.mixed_ratio                   =  ln_mixed_ratio,    -- 混載率
+                   xoha.last_updated_by               =  ln_user_id,
+                   xoha.last_update_date              =  ld_sysdate,
+                   xoha.last_update_login             =  ln_login_id,
+                   xoha.request_id                    =  ln_conc_request_id,
+                   xoha.program_application_id        =  ln_prog_appl_id,
+                   xoha.program_id                    =  ln_conc_program_id,
+                   xoha.program_update_date           =  ld_sysdate
+            WHERE  xoha.order_header_id               =  lt_chk_ship_tbl(i).order_header_id
+            ;
+          END IF;
+        END LOOP lt_chk_ship_tbl_loop;
+--
+        -- 支給の場合
+        <<lt_chk_supply_tbl_loop>>
+        FOR i IN 1 .. lt_chk_supply_tbl.COUNT LOOP
+          -- 受注ヘッダアドオンIDが前のレコードと同じでない場合
+          IF ( ( i = lt_chk_supply_tbl.FIRST ) 
+          OR   ( lt_chk_supply_tbl(i).order_header_id <> lt_chk_supply_tbl(i - 1).order_header_id ) ) THEN
+            -- 混載率算出
+            -- 重量の場合
+            IF ( lv_weight_capacity_class =  cv_weight ) THEN
+              ln_mixed_ratio := ROUND( lt_chk_supply_tbl(i).sum_weight / ln_deli_sum_w * 100, 2 );
+--
+            -- 容積の場合
+            ELSIF ( lv_weight_capacity_class =  cv_capacity ) THEN
+              ln_mixed_ratio := ROUND( lt_chk_supply_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+            END IF;
+--
+            -- 受注ヘッダアドオン更新処理
+            UPDATE xxwsh_order_headers_all            xoha                  -- 受注ヘッダアドオン
+            SET    xoha.mixed_ratio                   =  ln_mixed_ratio,    -- 混載率
+                   xoha.last_updated_by               =  ln_user_id,
+                   xoha.last_update_date              =  ld_sysdate,
+                   xoha.last_update_login             =  ln_login_id,
+                   xoha.request_id                    =  ln_conc_request_id,
+                   xoha.program_application_id        =  ln_prog_appl_id,
+                   xoha.program_id                    =  ln_conc_program_id,
+                   xoha.program_update_date           =  ld_sysdate
+            WHERE  xoha.order_header_id               =  lt_chk_supply_tbl(i).order_header_id
+            ;
+          END IF;
+        END LOOP lt_chk_supply_tbl_loop;
+--
+        -- 移動の場合
+        <<lt_chk_move_tbl_loop>>
+        FOR i IN 1 .. lt_chk_move_tbl.COUNT LOOP
+          -- 移動ヘッダIDが前のレコードと同じでない場合
+          IF ( ( i = lt_chk_move_tbl.FIRST ) 
+          OR   ( lt_chk_move_tbl(i).mov_hdr_id <> lt_chk_move_tbl(i - 1).mov_hdr_id ) ) THEN
+            -- 混載率算出のための重量算出
+            -- 小口の場合
+            IF ( lv_small_sum_class = cv_include ) THEN
+              ln_sum_weight := lt_chk_move_tbl(i).sum_weight;
+--
+            -- 小口でない場合、積載重量合計にパレット重量を加算
+            ELSE
+              ln_sum_weight := lt_chk_move_tbl(i).sum_weight + NVL(lt_chk_move_tbl(i).sum_pallet_weight, 0);
+            END IF;
+--
+            -- 重量の場合
+            IF ( lv_weight_capacity_class =  cv_weight ) THEN
+              ln_mixed_ratio := ROUND( ln_sum_weight / ln_deli_sum_w * 100, 2 );
+--
+            -- 容積の場合
+            ELSIF ( lv_weight_capacity_class =  cv_capacity ) THEN
+              ln_mixed_ratio := ROUND( lt_chk_move_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+            END IF;
+--
+            -- 移動依頼/指示ヘッダ(アドオン)更新処理
+            UPDATE xxinv_mov_req_instr_headers        mrih                  -- 移動依頼/指示ヘッダ(アドオン)
+            SET    mrih.mixed_ratio                   =  ln_mixed_ratio,    -- 混載率
+                   mrih.last_updated_by               =  ln_user_id,
+                   mrih.last_update_date              =  ld_sysdate,
+                   mrih.last_update_login             =  ln_login_id,
+                   mrih.request_id                    =  ln_conc_request_id,
+                   mrih.program_application_id        =  ln_prog_appl_id,
+                   mrih.program_id                    =  ln_conc_program_id,
+                   mrih.program_update_date           =  ld_sysdate
+            WHERE  mrih.mov_hdr_id                    =  lt_chk_move_tbl(i).mov_hdr_id
+            ;
+          END IF;
+        END LOOP lt_chk_move_tbl_loop;
+      END IF;
+    END IF;
+--
+-- 2009/02/10 H.Itou Add End
     -- **************************************************
     -- *** 5.配車解除処理
     -- **************************************************
 -- 2008/10/23 v1.28 D.Nihei Mod Start TE080_BPO_600 No22
 --    IF (lv_delivery_no IS NOT NULL) THEN
     IF ( ( lv_delivery_no IS NOT NULL         )
-     AND ( iv_calcel_flag = cv_cancel_flag_on ) ) THEN
+-- 2009/02/10 H.Itou Mod Start 本番障害#863対応
+     -- 配車解除フラグがONか、配車解除フラグ：2 で配車解除判定処理で配車解除と判定された場合、配車解除処理
+--     AND ( iv_calcel_flag = cv_cancel_flag_on ) ) THEN
+     AND ( ( ( iv_calcel_flag = cv_cancel_flag_on )
+          OR ( ( iv_calcel_flag = cv_cancel_flag_judge )
+            AND ( lv_over_flag   = cv_over_flag_on ) ) ) ) ) THEN
+-- 2009/02/10 H.Itou Mod End
 -- 2008/10/23 v1.28 D.Nihei Mod End
 --
       -- 配車解除不可のデータが存在する場合はエラー

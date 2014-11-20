@@ -7,7 +7,7 @@ AS
  * Description      : 引当解除処理ロック対応
  * MD.050           : 
  * MD.070           : 
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -21,6 +21,8 @@ AS
  *  2008/12/01   1.0   T.MIYATA         初回作成
  *  2009/01/19   1.1   M.Nomura         本番#1038対応
  *  2009/01/27   1.2   H.Itou           本番#1028対応
+ *  2009/02/18   1.3   M.Nomura         本番#1176対応
+ *
  *****************************************************************************************/
 --
 
@@ -147,29 +149,56 @@ AS
 --                              and aa.module = 'XXWSH920002C')
 --               and b.lmode = 6;
 --
+-- ##### 20090217 Ver.1.3 本番#1176対応 START #####
     -- gv$sesson、gv$lockを参照するように修正
+--    CURSOR lock_cur
+--      IS
+--        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
+--              ,decode(b.lmode 
+--                     ,1,'null' , 2,'row share', 3,'row exclusive' 
+--                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
+--        FROM gv$session a
+--           , gv$lock    b
+--        WHERE a.sid = b.sid
+--        AND a.module <> 'XXWSH920002C'
+--        AND (b.id1, b.id2) in (SELECT d.id1
+--                                     ,d.id2
+--                               FROM gv$lock d 
+--                               WHERE d.id1     =b.id1 
+--                               AND   d.id2     =b.id2 
+--                               AND   d.request > 0) 
+--        AND   b.id1 IN (SELECT bb.id1
+--                      FROM   gv$session aa
+--                            , gv$lock bb
+--                      WHERE  aa.lockwait = bb.kaddr 
+--                      AND    aa.module   = 'XXWSH920002C')
+--        AND b.lmode = 6;
+    -- RAC構成対応SQL
     CURSOR lock_cur
       IS
-        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
-              ,decode(b.lmode 
-                     ,1,'null' , 2,'row share', 3,'row exclusive' 
-                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
-        FROM gv$session a
-           , gv$lock    b
-        WHERE a.sid = b.sid
-        AND a.module <> 'XXWSH920002C'
-        AND (b.id1, b.id2) in (SELECT d.id1
-                                     ,d.id2
-                               FROM gv$lock d 
-                               WHERE d.id1     =b.id1 
-                               AND   d.id2     =b.id2 
-                               AND   d.request > 0) 
-        AND   b.id1 IN (SELECT bb.id1
-                      FROM   gv$session aa
-                            , gv$lock bb
-                      WHERE  aa.lockwait = bb.kaddr 
-                      AND    aa.module   = 'XXWSH920002C')
-        AND b.lmode = 6;
+        SELECT lok.id1            id1
+             , lok_sess.inst_id   inst_id
+             , lok_sess.sid       sid
+             , lok_sess.serial#   serial#
+             , lok.type           type
+             , lok_sess.module    module
+             , lok_sess.action    action
+        FROM   gv$lock    lok
+             , gv$session lok_sess
+             , gv$lock    req
+             , gv$session req_sess
+        WHERE lok.inst_id = lok_sess.inst_id
+          AND lok.sid     = lok_sess.sid
+          AND lok.lmode   = 6
+          AND req.inst_id = req_sess.inst_id
+          AND req.sid     = req_sess.sid
+          AND (   req.inst_id <> lok.inst_id
+               OR req.sid     <> lok.sid)
+          AND req.id1 = lok.id1
+          AND req.id2 = lok.id2
+          AND req_sess.module = 'XXWSH920002C'; 
+--
+-- ##### 20090217 Ver.1.3 本番#1176対応 END   #####
 --
 -- ##### 20090119 Ver.1.1 本番#1038対応 END   #####
 --

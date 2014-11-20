@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *  2009/01/28   1.6   SCS 伊藤          本番障害#1028対応（パラメータに指示部署追加）
  *  2009/01/28   1.7   SCS 二瓶          本番障害#949対応（トレース取得用処理追加）
  *  2009/02/03   1.8   SCS 二瓶          本番障害#949対応（トレース取得用処理削除）
+ *  2009/02/18   1.9   SCS 野村          本番障害#1176対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1005,29 +1007,56 @@ AS
 --                         AND aa.module = 'XXWSH920008C')
 --            AND b.lmode = 6;
 --
+-- ##### 20090218 Ver.1.9 本番#1176対応 START #####
     -- gv$sesson、gv$lockを参照するように修正
+--    CURSOR lock_cur
+--      IS
+--        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
+--              ,decode(b.lmode 
+--                     ,1,'null' , 2,'row share', 3,'row exclusive' 
+--                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
+--        FROM gv$session a
+--           , gv$lock    b
+--        WHERE a.sid = b.sid
+--        AND a.module <> 'XXWSH920008C'
+--        AND (b.id1, b.id2) in (SELECT d.id1
+--                                     ,d.id2
+--                               FROM gv$lock d 
+--                               WHERE d.id1     =b.id1 
+--                               AND   d.id2     =b.id2 
+--                               AND   d.request > 0) 
+--        AND   b.id1 IN (SELECT bb.id1
+--                      FROM   gv$session aa
+--                            , gv$lock bb
+--                      WHERE  aa.lockwait = bb.kaddr 
+--                      AND    aa.module   = 'XXWSH920008C')
+--        AND b.lmode = 6;
+    -- RAC構成対応SQL
     CURSOR lock_cur
       IS
-        SELECT b.id1, a.sid, a.serial#, b.type , a.inst_id , a.module , a.action
-              ,decode(b.lmode 
-                     ,1,'null' , 2,'row share', 3,'row exclusive' 
-                     ,4,'share', 5,'share row exclusive', 6,'exclusive') LMODE
-        FROM gv$session a
-           , gv$lock    b
-        WHERE a.sid = b.sid
-        AND a.module <> 'XXWSH920008C'
-        AND (b.id1, b.id2) in (SELECT d.id1
-                                     ,d.id2
-                               FROM gv$lock d 
-                               WHERE d.id1     =b.id1 
-                               AND   d.id2     =b.id2 
-                               AND   d.request > 0) 
-        AND   b.id1 IN (SELECT bb.id1
-                      FROM   gv$session aa
-                            , gv$lock bb
-                      WHERE  aa.lockwait = bb.kaddr 
-                      AND    aa.module   = 'XXWSH920008C')
-        AND b.lmode = 6;
+        SELECT lok.id1            id1
+             , lok_sess.inst_id   inst_id
+             , lok_sess.sid       sid
+             , lok_sess.serial#   serial#
+             , lok.type           type
+             , lok_sess.module    module
+             , lok_sess.action    action
+        FROM   gv$lock    lok
+             , gv$session lok_sess
+             , gv$lock    req
+             , gv$session req_sess
+        WHERE lok.inst_id = lok_sess.inst_id
+          AND lok.sid     = lok_sess.sid
+          AND lok.lmode   = 6
+          AND req.inst_id = req_sess.inst_id
+          AND req.sid     = req_sess.sid
+          AND (   req.inst_id <> lok.inst_id
+               OR req.sid     <> lok.sid)
+          AND req.id1 = lok.id1
+          AND req.id2 = lok.id2
+          AND req_sess.module = 'XXWSH920008C'; 
+--
+-- ##### 20090218 Ver.1.9 本番#1176対応 END   #####
 -- ##### 20090119 Ver.1.04 本番#1038対応 END   #####
 --
   BEGIN
