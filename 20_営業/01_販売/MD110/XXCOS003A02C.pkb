@@ -6,9 +6,9 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
- * Program List     
+ * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/02/24   1.2    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/05/28   1.3    S.Kayahara       [障害T1_1176] 単価の導出に端数処理追加
  *  2009/06/09   1.4    N.Maeda          [障害T1_1401] 端数処理取得テーブル修正
+ *  2009/07/17   1.5    K.Shirasuna      [障害PT_00016]「単価マスタIF出力」処理の性能改善
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -103,7 +104,7 @@ AS
   cv_msg_insert_err       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00010';    --データ登録エラーメッセージ
   cv_msg_update_err       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00011';    --データ更新エラーメッセージ
   cv_msg_select_err       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00013';    --データ抽出エラーメッセージ
-  cv_tkn_tm_w_tbl         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10852';    -- 単価マスタワークテーブル  
+  cv_tkn_tm_w_tbl         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10852';    -- 単価マスタワークテーブル
   cv_tkn_exp_l_tbl        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10701';    -- 販売実績明細テーブル
   cv_tkn_cust_code        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10853';    -- 顧客コード
   cv_tkn_item_code        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10854';    -- 品名コード
@@ -114,14 +115,20 @@ AS
   cv_tkn_fnd_lookup_v     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00066';    -- クイックコードテーブル
   cv_tkn_lookup_type      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00075';    -- クイックコード.参照タイプ
   cv_tkn_meaning          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00089';    -- クイックコード.内容
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+  cv_tkn_customer_err     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10705';    -- 顧客階層ビュー取得エラー
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
   cv_lookup_type_gyotai   CONSTANT VARCHAR2(30) := 'XXCOS1_GYOTAI_SHO_MST_003_A02'; --参照タイプ　業態小分類
   cv_lookup_type_no_inv   CONSTANT VARCHAR2(30) := 'XXCOS1_NO_INV_ITEM_CODE'; --参照タイプ　非在庫品目
   cv_lookup_type_sals_cls CONSTANT VARCHAR2(30) := 'XXCOS1_SALE_CLASS';   -- 参照タイプ　売上区分
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--  
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
   cv_amount_up            CONSTANT VARCHAR2(5)  := 'UP';                  -- 消費税_端数(切上)
   cv_amount_down          CONSTANT VARCHAR(5)   := 'DOWN';                -- 消費税_端数(切捨て)
   cv_amount_nearest       CONSTANT VARCHAR(10)  := 'NEAREST';             -- 消費税_端数(四捨五入)
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--  
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+  cv_msg_comma            CONSTANT VARCHAR2(20) := ', ';                  -- カンマ
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -157,6 +164,9 @@ AS
   gn_tran_count               NUMBER DEFAULT 0;
   gn_unit_price               NUMBER;
   gn_skip_cnt                 NUMBER DEFAULT 0;                    -- 単価マスタ更新対象外件数
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+  gv_language                 fnd_lookup_values.language%TYPE;
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
 --
 --カーソル
   CURSOR main_cur
@@ -172,53 +182,65 @@ AS
            ,xsel.creation_date                creation_date                     --作成日
            ,xsel.sales_exp_line_id            sales_exp_line_id                 --販売実績明細ID
            ,xsel.sales_class                  sales_class                       --売上区分
---****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
-----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
---           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
-----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
-           ,xchv.bill_tax_round_rule          tax_round_rule
---****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+----****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+------****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+----           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
+------****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--           ,xchv.bill_tax_round_rule          tax_round_rule
+----****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
     FROM    xxcos_sales_exp_headers xseh
            ,xxcos_sales_exp_lines   xsel
---****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
-----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
---           ,hz_cust_accounts                  hca                 
-----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
-           ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
---****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+----****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+------****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+----           ,hz_cust_accounts                  hca
+------****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--           ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
+----****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
     WHERE   (xseh.cancel_correct_class IS NULL
-           OR 
+           OR
              xseh.order_no_hht         IS NULL )
---****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
-----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
---    AND     hca.account_number           = xseh.ship_to_customer_code
-----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
-    AND     xchv.ship_account_number   = xseh.ship_to_customer_code
---****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+----****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+------****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+----    AND     hca.account_number           = xseh.ship_to_customer_code
+------****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--    AND     xchv.ship_account_number   = xseh.ship_to_customer_code
+----****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
     AND     xseh.dlv_invoice_class = cv_invoice_class_dliv
     AND     xseh.sales_exp_header_id =  xsel.sales_exp_header_id
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
     AND     xsel.unit_price_mst_flag = cv_flag_off
     AND     NOT EXISTS
-            (SELECT NULL 
+            (SELECT NULL
              FROM   fnd_lookup_values flvl
              WHERE  flvl.lookup_type         = cv_lookup_type_gyotai
              AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
-             AND    flvl.language            = USERENV('LANG')
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+--             AND    flvl.language            = USERENV('LANG')
+             AND    flvl.language            = gv_language
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
              AND    TRUNC(SYSDATE)           BETWEEN flvl.start_date_active
                                               AND NVL(flvl.end_date_active, TRUNC(SYSDATE))
              AND     flvl.enabled_flag        = cv_flag_on
-             AND xseh.cust_gyotai_sho = meaning ) 
+             AND xseh.cust_gyotai_sho = meaning )
     AND     NOT EXISTS
-            (SELECT NULL 
+            (SELECT NULL
              FROM   fnd_lookup_values flvl
              WHERE  flvl.lookup_type         = cv_lookup_type_no_inv
              AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
-             AND    flvl.language            = USERENV('LANG')
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+--             AND    flvl.language            = USERENV('LANG')
+             AND    flvl.language            = gv_language
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
              AND    TRUNC(SYSDATE)           BETWEEN flvl.start_date_active
                                               AND NVL(flvl.end_date_active, TRUNC(SYSDATE))
              AND     flvl.enabled_flag        = cv_flag_on
-             AND xsel.item_code = lookup_code ) 
+             AND xsel.item_code = lookup_code )
     UNION
     SELECT  xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
            ,xseh.ship_to_customer_code        ship_to_customer_code             --顧客【納品先】
@@ -231,20 +253,24 @@ AS
            ,xsel.creation_date                creation_date                     --作成日
            ,xsel.sales_exp_line_id            sales_exp_line_id                 --販売実績明細ID
            ,xsel.sales_class                  sales_class                       --売上区分
---****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
-----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
---           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
-----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
-           ,xchv.bill_tax_round_rule          tax_round_rule
---****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+----****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+------****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+----           ,hca.tax_rounding_rule             tax_round_rule                 --税金-端数処理
+------****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--           ,xchv.bill_tax_round_rule          tax_round_rule
+----****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
     FROM    xxcos_sales_exp_headers xseh
            ,xxcos_sales_exp_lines   xsel
---****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
-----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
---           ,hz_cust_accounts                  hca                 
-----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
-           ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
---****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+----****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+------****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+----           ,hz_cust_accounts                  hca
+------****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--           ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
+----****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
            ,(SELECT  MAX(xseh.digestion_ln_number) digestion_ln_number
                     ,inl2.order_no_hht
              FROM   xxcos_sales_exp_headers xseh
@@ -260,7 +286,10 @@ AS
                                         WHERE  flvl.lookup_type       = cv_lookup_type_gyotai
                                         AND    flvl.security_group_id = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type
                                                                                                 ,flvl.view_application_id)
-                                        AND     flvl.language             = USERENV('LANG')
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+--                                        AND     flvl.language             = USERENV('LANG')
+                                        AND     flvl.language             = gv_language
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
                                         AND     TRUNC(SYSDATE)            BETWEEN flvl.start_date_active
                                                                           AND NVL(flvl.end_date_active, TRUNC(SYSDATE))
                                         AND     flvl.enabled_flag         = cv_flag_on
@@ -271,30 +300,43 @@ AS
              GROUP BY inl2.order_no_hht
             ) inl1
     WHERE   inl1.order_no_hht        = xseh.order_no_hht
---****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
-----****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
---    AND     hca.account_number           = xseh.ship_to_customer_code
-----****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
-    AND     xchv.ship_account_number   = xseh.ship_to_customer_code
---****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+----****************************** 2009/06/09 1.4  N.Maeda MOD START ******************************--
+------****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
+----    AND     hca.account_number           = xseh.ship_to_customer_code
+------****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--    AND     xchv.ship_account_number   = xseh.ship_to_customer_code
+----****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
     AND     inl1.digestion_ln_number = xseh.digestion_ln_number
     AND     xseh.sales_exp_header_id = xsel.sales_exp_header_id
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
-    AND     NOT EXISTS(SELECT NULL 
+    AND     NOT EXISTS(SELECT NULL
                        FROM   fnd_lookup_values flvl
                        WHERE  flvl.lookup_type         = cv_lookup_type_no_inv
                        AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
-                       AND    flvl.language            = USERENV('LANG')
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+--                       AND    flvl.language            = USERENV('LANG')
+                       AND    flvl.language            = gv_language
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
                        AND    TRUNC(SYSDATE)           BETWEEN flvl.start_date_active
                                                         AND NVL(flvl.end_date_active, TRUNC(SYSDATE))
                        AND     flvl.enabled_flag        = cv_flag_on
-                       AND xsel.item_code = lookup_code ) 
+                       AND xsel.item_code = lookup_code )
     ORDER BY sales_exp_header_id
     ;
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
     main_rec main_cur%ROWTYPE;
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+  TYPE gt_ship_account IS TABLE OF xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE
+                          INDEX BY xxcos_cust_hierarchy_v.ship_account_number%TYPE; -- 税金-端数処理保持テーブル型
+  -- ===============================
+  -- ユーザー定義グローバル表
+  -- ===============================
+  gt_ship_account_tbl gt_ship_account;                                              -- 税金-端数処理保持テーブル
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -405,6 +447,12 @@ AS
     gv_msg_tkn_meaning          := xxccp_common_pkg.get_msg(iv_application  => cv_application
                                                            ,iv_name         => cv_tkn_meaning
                                                            );
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+    --==============================================================
+    -- 使用言語を取得
+    --==============================================================
+    gv_language                 := USERENV('LANG');
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
     --==============================================================
     -- 売上区分を参照タイプより取得
     --==============================================================
@@ -417,12 +465,15 @@ AS
       WHERE  flvl.lookup_type         = cv_lookup_type_sals_cls
       AND    flvl.meaning             = gv_msg_tkn_sales_cls_nml
       AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
-      AND    flvl.language            = USERENV('LANG')
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+--      AND    flvl.language            = USERENV('LANG')
+      AND    flvl.language            = gv_language
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
       AND    TRUNC(SYSDATE)           BETWEEN flvl.start_date_active
                                       AND NVL(flvl.end_date_active,TRUNC(SYSDATE))
       AND    flvl.enabled_flag        = cv_flag_on
       ;
-      
+
      --特売
       lv_msg_tkn_sales_cls := gv_msg_tkn_sales_cls_sls; --メッセージ用変数に格納
       SELECT flvl.lookup_code lookup_code
@@ -431,7 +482,10 @@ AS
       WHERE  flvl.lookup_type         = cv_lookup_type_sals_cls
       AND    flvl.meaning             = gv_msg_tkn_sales_cls_sls
       AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
-      AND    flvl.language            = USERENV('LANG')
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+--      AND    flvl.language            = USERENV('LANG')
+      AND    flvl.language            = gv_language
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
       AND    TRUNC(SYSDATE)           BETWEEN flvl.start_date_active
                                       AND NVL(flvl.end_date_active,TRUNC(SYSDATE))
       AND    flvl.enabled_flag        = cv_flag_on
@@ -445,7 +499,7 @@ AS
                                         ,iv_item_name1  => gv_msg_tkn_lookup_type         --項目名称1
                                         ,iv_data_value1 => cv_lookup_type_sals_cls        --データの値1
                                         ,iv_item_name2  => gv_msg_tkn_meaning             --項目名称2
-                                        ,iv_data_value2 => lv_msg_tkn_sales_cls           --データの値2                                            
+                                        ,iv_data_value2 => lv_msg_tkn_sales_cls           --データの値2
                                         );
         ov_errmsg := xxccp_common_pkg.get_msg(cv_application
                                             , cv_msg_select_err
@@ -518,14 +572,14 @@ AS
       --A-4．単価マスタワークテーブル登録
       -- ===============================
         BEGIN
-          CASE 
+          CASE
             WHEN main_rec.sales_class   = gv_sales_cls_nml THEN
               INSERT INTO xxcos_unit_price_mst_work(
                  customer_number          --顧客コード
                 ,item_code                --品名コード
-                ,nml_prev_unit_price      --通常　前回　単価　
-                ,nml_prev_dlv_date        --通常　前回　納品年月日　
-                ,nml_prev_qty             --通常　前回　数量　
+                ,nml_prev_unit_price      --通常　前回　単価
+                ,nml_prev_dlv_date        --通常　前回　納品年月日
+                ,nml_prev_qty             --通常　前回　数量
                 ,nml_prev_clt_date        --通常　前回　作成日
                 ,file_output_flag         --ファイル出力済フラグ
                 --WHOカラム
@@ -541,9 +595,9 @@ AS
               )VALUES(
                  main_rec.ship_to_customer_code        --顧客コード
                 ,main_rec.item_code                    --品名コード
-                ,gn_unit_price                         --通常　前回　単価　
-                ,main_rec.delivery_date                --通常　前回　納品年月日　
-                ,main_rec.standard_qty                 --通常　前回　数量　
+                ,gn_unit_price                         --通常　前回　単価
+                ,main_rec.delivery_date                --通常　前回　納品年月日
+                ,main_rec.standard_qty                 --通常　前回　数量
                 ,main_rec.creation_date                --通常　前回　作成日
                 ,cv_flag_off                           --ファイル出力済フラグ
                 ,cn_created_by
@@ -560,9 +614,9 @@ AS
               INSERT INTO xxcos_unit_price_mst_work(
                  customer_number          --顧客コード
                 ,item_code                --品名コード
-                ,sls_prev_unit_price      --特売　前回　単価　
-                ,sls_prev_dlv_date        --特売　前回　納品年月日　
-                ,sls_prev_qty             --特売　前回　数量　
+                ,sls_prev_unit_price      --特売　前回　単価
+                ,sls_prev_dlv_date        --特売　前回　納品年月日
+                ,sls_prev_qty             --特売　前回　数量
                 ,sls_prev_clt_date        --特売　前回　作成日
                 ,file_output_flag         --ファイル出力済フラグ
                 --WHOカラム
@@ -578,9 +632,9 @@ AS
               )VALUES(
                  main_rec.ship_to_customer_code        --顧客コード
                 ,main_rec.item_code                    --品名コード
-                ,gn_unit_price                         --特売　前回　単価　
-                ,main_rec.delivery_date                --特売　前回　納品年月日　
-                ,main_rec.standard_qty                 --特売　前回　数量　
+                ,gn_unit_price                         --特売　前回　単価
+                ,main_rec.delivery_date                --特売　前回　納品年月日
+                ,main_rec.standard_qty                 --特売　前回　数量
                 ,main_rec.creation_date                --特売　前回　作成日
                 ,cv_flag_off                           --ファイル出力済フラグ
                 ,cn_created_by
@@ -604,7 +658,7 @@ AS
                                             ,iv_item_name1  => gv_msg_tkn_cust_code           --項目名称1
                                             ,iv_data_value1 => main_rec.ship_to_customer_code --データの値1
                                             ,iv_item_name2  => gv_msg_tkn_item_code           --項目名称2
-                                            ,iv_data_value2 => main_rec.item_code             --データの値2                                            
+                                            ,iv_data_value2 => main_rec.item_code             --データの値2
                                             );
             lv_errmsg := xxccp_common_pkg.get_msg(cv_application
                                                 , cv_msg_insert_err
@@ -638,7 +692,7 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END proc_insert_upm_work;
-  
+
   /**********************************************************************************
    * Procedure Name   : proc_update_upm_work
    * Description      : A-3．単価マスタワークテーブル更新
@@ -686,267 +740,267 @@ AS
       -- ===============================
       --A-3．単価マスタワークテーブル更新
       -- ===============================
- --①売上区分が通常かつ、販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」　
+ --①売上区分が通常かつ、販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」
  --よりも新しいレコードが発生した場合
-    IF    (main_rec.sales_class   = gv_sales_cls_nml 
+    IF    (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date > gd_nml_prev_dlv_date)
-    THEN 
+    THEN
       ln_update_pattern := 1;
-      
- --②売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」　
+
+ --②売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」
  --よりも古い、かつ単価マスタワークテーブルの「通常　前々回　納品年月日」よりも新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date < gd_nml_prev_dlv_date
     AND    main_rec.delivery_date >  gd_nml_bef_prev_dlv_date)
-    THEN 
+    THEN
       ln_update_pattern := 2;
-      
- --③売上区分が特売かつ、販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」　
+
+ --③売上区分が特売かつ、販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」
  --よりも新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_sls 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date > gd_sls_prev_dlv_date)
-    THEN 
+    THEN
       ln_update_pattern := 3;
-      
- --④売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」　
+
+ --④売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」
  --よりも古い、かつ単価マスタワークテーブルの「特売　前々回　納品年月日」よりも新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_sls 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date < gd_sls_prev_dlv_date
     AND    main_rec.delivery_date > gd_sls_bef_prev_dlv_date)
-    THEN 
+    THEN
       ln_update_pattern := 4;
-      
+
  --⑤売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に「通常　前回　納品年月日」　と同じ、
  --かつ単価マスタワークテーブルの「通常　前々回　納品年月日」よりも新しい、
  --かつ単価マスタワークテーブルの「通常　前回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date = gd_nml_prev_dlv_date
     AND    main_rec.delivery_date > gd_nml_bef_prev_dlv_date
     AND    main_rec.creation_date > gd_nml_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 1;
-      
+
  --⑥売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「通常　前々回　納品年月日」よりも新しい、
  --かつ単価マスタワークテーブルの「通常　前回　作成日」より販売実績の作成日のほうが古いレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date = gd_nml_prev_dlv_date
     AND    main_rec.delivery_date > gd_nml_bef_prev_dlv_date
     AND    main_rec.creation_date < gd_nml_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 2;
-      
+
  --⑦売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「通常　前々回　納品年月日」　と同じ、
  --かつ単価マスタワークテーブルの「通常　前回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date = gd_nml_prev_dlv_date
     AND    main_rec.delivery_date = gd_nml_bef_prev_dlv_date
     AND    main_rec.creation_date > gd_nml_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 1;
-      
+
  --⑧売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「通常　前々回　納品年月日」　と同じ、
  --かつ単価マスタワークテーブルの「通常　前回　作成日」より販売実績の作成日のほうが古い、
  --かつ単価マスタワークテーブルの「通常　前々回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date = gd_nml_prev_dlv_date
     AND    main_rec.delivery_date = gd_nml_bef_prev_dlv_date
     AND    main_rec.creation_date < gd_nml_prev_clt_date
     AND    main_rec.creation_date > gd_nml_bef_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 2;
-      
+
  --⑨売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「通常　前々回　納品年月日」　と同じ、
  --かつ単価マスタワークテーブルの「通常　前回　作成日」より販売実績の作成日のほうが古い、
  --かつ単価マスタワークテーブルの「通常　前々回　作成日」より販売実績の作成日のほうが古いレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date = gd_nml_prev_dlv_date
     AND    main_rec.delivery_date = gd_nml_bef_prev_dlv_date
     AND    main_rec.creation_date < gd_nml_prev_clt_date
     AND    main_rec.creation_date < gd_nml_bef_prev_clt_date)
-    THEN 
+    THEN
       NULL;
-      
+
  --⑩売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「特売　前々回　納品年月日」よりも新しい、
  --かつ単価マスタワークテーブルの「特売　前回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_sls 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date = gd_sls_prev_dlv_date
     AND    main_rec.delivery_date > gd_sls_bef_prev_dlv_date
     AND    main_rec.creation_date > gd_sls_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 3;
-      
+
  --⑪売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「特売　前々回　納品年月日」よりも新しい、
  --かつ単価マスタワークテーブルの「特売　前回　作成日」より販売実績の作成日のほうが古いレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_sls 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date = gd_sls_prev_dlv_date
     AND    main_rec.delivery_date > gd_sls_bef_prev_dlv_date
     AND    main_rec.creation_date < gd_sls_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 4;
-      
+
  --⑫売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「特売　前々回　納品年月日」　と同じ、
  --かつ単価マスタワークテーブルの「特売　前回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_sls 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date = gd_sls_prev_dlv_date
     AND    main_rec.delivery_date = gd_sls_bef_prev_dlv_date
     AND    main_rec.creation_date > gd_sls_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 3;
-      
+
  --⑬売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「特売　前々回　納品年月日」　と同じ、
  --かつ単価マスタワークテーブルの「特売　前回　作成日」より販売実績の作成日のほうが古い、
  --かつ単価マスタワークテーブルの「特売　前々回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_sls 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date = gd_sls_prev_dlv_date
     AND    main_rec.delivery_date = gd_sls_bef_prev_dlv_date
     AND    main_rec.creation_date < gd_sls_prev_clt_date
     AND    main_rec.creation_date > gd_sls_bef_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 4;
-      
+
  --⑭売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」と同じ、
  --かつ単価マスタワークテーブルの「特売　前々回　納品年月日」　と同じ、
  --かつ単価マスタワークテーブルの「特売　前回　作成日」より販売実績の作成日のほうが古い、
  --かつ単価マスタワークテーブルの「特売　前々回　作成日」より販売実績の作成日のほうが古いレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_sls 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date = gd_sls_prev_dlv_date
     AND    main_rec.delivery_date = gd_sls_bef_prev_dlv_date
     AND    main_rec.creation_date < gd_sls_prev_clt_date
     AND    main_rec.creation_date < gd_sls_bef_prev_clt_date)
-    THEN 
+    THEN
       NULL;
 
  --⑮売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」
  --よりも古いレコードが発生し、かつ単価マスタワークテーブルの「通常　前々回　納品年月日」が未設定の場合
-    ELSIF (main_rec.sales_class     =  gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class     =  gv_sales_cls_nml
     AND    main_rec.delivery_date   <  gd_nml_prev_dlv_date
     AND    gd_nml_bef_prev_dlv_date IS NULL)
-    THEN 
+    THEN
       ln_update_pattern := 2;
 
- --⑯売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」　
+ --⑯売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」
  -- よりも古い、かつ単価マスタワークテーブルの「通常　前々回　納品年月日」と同じ、
  -- かつ単価マスタワークテーブルの「通常　前々回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date < gd_nml_prev_dlv_date
     AND    main_rec.delivery_date = gd_nml_bef_prev_dlv_date
     AND    main_rec.creation_date > gd_nml_bef_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 2;
-      
- --⑰売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」　
+
+ --⑰売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」
  -- よりも古い、かつ単価マスタワークテーブルの「通常　前々回　納品年月日」と同じ、
  -- かつ単価マスタワークテーブルの「通常　前々回　作成日」より販売実績の作成日のほうが古いレコードが発生した場合
-    ELSIF (main_rec.sales_class   = gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class   = gv_sales_cls_nml
     AND    main_rec.delivery_date < gd_nml_prev_dlv_date
     AND    main_rec.delivery_date = gd_nml_bef_prev_dlv_date
     AND    main_rec.creation_date < gd_nml_bef_prev_clt_date)
-    THEN 
+    THEN
       NULL;
-      
- --⑱売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」　
+
+ --⑱売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」
  -- よりも古いレコードが発生し、かつ単価マスタワークテーブルの「特売　前々回　納品年月日」が未設定の場合
     ELSIF (main_rec.sales_class     =  gv_sales_cls_sls
     AND    main_rec.delivery_date   <  gd_sls_prev_dlv_date
     AND    gd_sls_bef_prev_dlv_date IS NULL)
-    THEN 
+    THEN
       ln_update_pattern := 4;
-      
- --⑲売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」　
+
+ --⑲売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」
  -- よりも古い、かつ単価マスタワークテーブルの「特売　前々回　納品年月日」と同じ、
  -- かつ単価マスタワークテーブルの「特売　前々回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
     ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date < gd_sls_prev_dlv_date
     AND    main_rec.delivery_date = gd_sls_bef_prev_dlv_date
     AND    main_rec.creation_date > gd_sls_bef_prev_clt_date)
-    THEN 
+    THEN
       ln_update_pattern := 4;
-      
- --⑳売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」　
+
+ --⑳売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」
  -- よりも古い、かつ単価マスタワークテーブルの「特売　前々回　納品年月日」と同じ、
  -- かつ単価マスタワークテーブルの「特売　前々回　作成日」より販売実績の作成日のほうが古いレコードが発生した場合
     ELSIF (main_rec.sales_class   = gv_sales_cls_sls
     AND    main_rec.delivery_date < gd_sls_prev_dlv_date
     AND    main_rec.delivery_date = gd_sls_bef_prev_dlv_date
     AND    main_rec.creation_date < gd_sls_bef_prev_clt_date)
-    THEN 
+    THEN
       NULL;
-      
- --21.売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」　
+
+ --21.売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」
  -- と同じレコードが発生し、かつ単価マスタワークテーブルの「通常　前々回　納品年月日」が未設定、
  -- かつ単価マスタワークテーブルの「通常　前回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
-    ELSIF (main_rec.sales_class     =  gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class     =  gv_sales_cls_nml
     AND    main_rec.delivery_date   =  gd_nml_prev_dlv_date
     AND    main_rec.creation_date   >  gd_nml_prev_clt_date
     AND    gd_nml_bef_prev_dlv_date IS NULL)
-    THEN 
+    THEN
       ln_update_pattern := 1;
-      
- --22.売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」　
+
+ --22.売上区分が通常かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「通常　前回　納品年月日」
  -- と同じレコードが発生し、かつ単価マスタワークテーブルの「通常　前々回　納品年月日」が未設定、
  -- かつ単価マスタワークテーブルの「通常　前回　作成日」より販売実績の作成日のほうが古いレコードが発生した場合
-    ELSIF (main_rec.sales_class     =  gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class     =  gv_sales_cls_nml
     AND    main_rec.delivery_date   =  gd_nml_prev_dlv_date
     AND    main_rec.creation_date   <  gd_nml_prev_clt_date
     AND    gd_nml_bef_prev_dlv_date IS NULL)
-    THEN 
+    THEN
       ln_update_pattern := 2;
-      
- --23.売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」　
+
+ --23.売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」
  -- と同じレコードが発生し、かつ単価マスタワークテーブルの「特売　前々回　納品年月日」が未設定、
  --かつ単価マスタワークテーブルの「特売　前回　作成日」より販売実績の作成日のほうが新しいレコードが発生した場合
     ELSIF (main_rec.sales_class     =  gv_sales_cls_sls
     AND    main_rec.delivery_date   =  gd_sls_prev_dlv_date
     AND    main_rec.creation_date   >  gd_sls_prev_clt_date
     AND    gd_sls_bef_prev_dlv_date IS NULL)
-    THEN 
+    THEN
       ln_update_pattern := 3;
-            
- --24.売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」　
+
+ --24.売上区分が特売かつ、　販売実績ヘッダテーブル.納品日に単価マスタワークテーブルの「特売　前回　納品年月日」
  -- と同じレコードが発生し、かつ単価マスタワークテーブルの「特売　前々回　納品年月日」が未設定、
  --かつ単価マスタワークテーブルの「特売　前回　作成日」より販売実績の作成日のほうが古いレコードが発生した場合
     ELSIF (main_rec.sales_class     =  gv_sales_cls_sls
     AND    main_rec.delivery_date   =  gd_sls_prev_dlv_date
     AND    main_rec.creation_date   <  gd_sls_prev_clt_date
     AND    gd_sls_bef_prev_dlv_date IS NULL)
-    THEN 
+    THEN
       ln_update_pattern := 4;
-      
+
  --25.売上区分が通常かつ、単価マスタワークテーブルの「通常　前回　納品年月日」　が未設定の場合
-    ELSIF (main_rec.sales_class =  gv_sales_cls_nml 
+    ELSIF (main_rec.sales_class =  gv_sales_cls_nml
     AND    gd_nml_prev_dlv_date IS NULL)
-    THEN 
+    THEN
       ln_update_pattern := 1;
-      
+
  --26.売上区分が特売かつ、単価マスタワークテーブルの「特売　前回　納品年月日」　が未設定の場合
     ELSIF (main_rec.sales_class =  gv_sales_cls_sls
     AND    gd_sls_prev_dlv_date IS NULL)
-    THEN 
+    THEN
       ln_update_pattern := 3;
-            
+
   --上記以外
     ELSE
       NULL;
     END IF;
     BEGIN
     --パターン１
-      CASE 
+      CASE
         WHEN ln_update_pattern = 1 THEN
           UPDATE xxcos_unit_price_mst_work
-          SET    nml_prev_unit_price        = gn_unit_price                         --通常　前回　単価　
-                ,nml_prev_dlv_date          = main_rec.delivery_date                --通常　前回　納品年月日　
-                ,nml_prev_qty               = main_rec.standard_qty                 --通常　前回　数量　
+          SET    nml_prev_unit_price        = gn_unit_price                         --通常　前回　単価
+                ,nml_prev_dlv_date          = main_rec.delivery_date                --通常　前回　納品年月日
+                ,nml_prev_qty               = main_rec.standard_qty                 --通常　前回　数量
                 ,nml_prev_clt_date          = main_rec.creation_date                --通常　前回　作成日
-                ,nml_bef_prev_dlv_date      = nml_prev_dlv_date                     --通常　前々回　納品年月日　
-                ,nml_bef_prev_qty           = nml_prev_qty                          --通常　前々回　数量　
+                ,nml_bef_prev_dlv_date      = nml_prev_dlv_date                     --通常　前々回　納品年月日
+                ,nml_bef_prev_qty           = nml_prev_qty                          --通常　前々回　数量
                 ,nml_bef_prev_clt_date      = nml_prev_clt_date                     --通常　前々回　作成日
                 ,file_output_flag           = cv_flag_off                           --ファイル出力済フラグ
                 ,last_updated_by            = cn_last_updated_by                    --最終更新者
@@ -956,13 +1010,13 @@ AS
                 ,program_application_id     = cn_program_application_id             --コンカレント・プログラム・アプリケーションID
                 ,program_id                 = cn_program_id                         --コンカレント・プログラムID
                 ,program_update_date        = cd_program_update_date                --プログラム更新日
-          WHERE  customer_number            = gv_customer_number                    
-          AND    item_code                  = gv_item_code                          
+          WHERE  customer_number            = gv_customer_number
+          AND    item_code                  = gv_item_code
           ;
         WHEN ln_update_pattern = 2 THEN
           UPDATE xxcos_unit_price_mst_work
-          SET    nml_bef_prev_dlv_date      = main_rec.delivery_date                --通常　前々回　納品年月日　
-                ,nml_bef_prev_qty           = main_rec.standard_qty                 --通常　前々回　数量　
+          SET    nml_bef_prev_dlv_date      = main_rec.delivery_date                --通常　前々回　納品年月日
+                ,nml_bef_prev_qty           = main_rec.standard_qty                 --通常　前々回　数量
                 ,nml_bef_prev_clt_date      = main_rec.creation_date                --通常　前々回　作成日
                 ,file_output_flag           = cv_flag_off                           --ファイル出力済フラグ
                 ,last_updated_by            = cn_last_updated_by                    --最終更新者
@@ -972,17 +1026,17 @@ AS
                 ,program_application_id     = cn_program_application_id             --コンカレント・プログラム・アプリケーションID
                 ,program_id                 = cn_program_id                         --コンカレント・プログラムID
                 ,program_update_date        = cd_program_update_date                --プログラム更新日
-          WHERE  customer_number            = gv_customer_number                    
-          AND    item_code                  = gv_item_code                          
+          WHERE  customer_number            = gv_customer_number
+          AND    item_code                  = gv_item_code
           ;
         WHEN ln_update_pattern = 3 THEN
           UPDATE xxcos_unit_price_mst_work
-          SET    sls_prev_unit_price        = gn_unit_price                         --特売　前回　単価　
-                ,sls_prev_dlv_date          = main_rec.delivery_date                --特売　前回　納品年月日　
-                ,sls_prev_qty               = main_rec.standard_qty                 --特売　前回　数量　
+          SET    sls_prev_unit_price        = gn_unit_price                         --特売　前回　単価
+                ,sls_prev_dlv_date          = main_rec.delivery_date                --特売　前回　納品年月日
+                ,sls_prev_qty               = main_rec.standard_qty                 --特売　前回　数量
                 ,sls_prev_clt_date          = main_rec.creation_date                --特売　前回　作成日
-                ,sls_bef_prev_dlv_date      = sls_prev_dlv_date                     --特売　前々回　納品年月日　
-                ,sls_bef_prev_qty           = sls_prev_qty                          --特売　前々回　数量　
+                ,sls_bef_prev_dlv_date      = sls_prev_dlv_date                     --特売　前々回　納品年月日
+                ,sls_bef_prev_qty           = sls_prev_qty                          --特売　前々回　数量
                 ,sls_bef_prev_clt_date      = sls_prev_clt_date                     --特売　前々回　作成日
                 ,file_output_flag           = cv_flag_off                           --ファイル出力済フラグ
                 ,last_updated_by            = cn_last_updated_by                    --最終更新者
@@ -992,13 +1046,13 @@ AS
                 ,program_application_id     = cn_program_application_id             --コンカレント・プログラム・アプリケーションID
                 ,program_id                 = cn_program_id                         --コンカレント・プログラムID
                 ,program_update_date        = cd_program_update_date                --プログラム更新日
-          WHERE  customer_number            = gv_customer_number                    
-          AND    item_code                  = gv_item_code                          
+          WHERE  customer_number            = gv_customer_number
+          AND    item_code                  = gv_item_code
           ;
         WHEN ln_update_pattern = 4 THEN
           UPDATE xxcos_unit_price_mst_work
-          SET    sls_bef_prev_dlv_date      = main_rec.delivery_date                --特売　前々回　納品年月日　
-                ,sls_bef_prev_qty           = main_rec.standard_qty                 --特売　前々回　数量　
+          SET    sls_bef_prev_dlv_date      = main_rec.delivery_date                --特売　前々回　納品年月日
+                ,sls_bef_prev_qty           = main_rec.standard_qty                 --特売　前々回　数量
                 ,sls_bef_prev_clt_date      = main_rec.creation_date                --特売　前々回　作成日
                 ,file_output_flag           = cv_flag_off                           --ファイル出力済フラグ
                 ,last_updated_by            = cn_last_updated_by                    --最終更新者
@@ -1008,8 +1062,8 @@ AS
                 ,program_application_id     = cn_program_application_id             --コンカレント・プログラム・アプリケーションID
                 ,program_id                 = cn_program_id                         --コンカレント・プログラムID
                 ,program_update_date        = cd_program_update_date                --プログラム更新日
-          WHERE  customer_number            = gv_customer_number                    
-          AND    item_code                  = gv_item_code                          
+          WHERE  customer_number            = gv_customer_number
+          AND    item_code                  = gv_item_code
           ;
         ELSE
           gn_skip_cnt := gn_skip_cnt + 1;
@@ -1017,7 +1071,7 @@ AS
     EXCEPTION
       WHEN OTHERS THEN
         ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
-        
+
         xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                -- エラー・メッセージ
                                         ,ov_retcode     => lv_retcode               -- リターン・コード
                                         ,ov_errmsg      => lv_errmsg                --ユーザー・エラー・メッセージ
@@ -1025,7 +1079,7 @@ AS
                                         ,iv_item_name1  => gv_msg_tkn_cust_code     --項目名称1
                                         ,iv_data_value1 => gv_customer_number       --データの値1
                                         ,iv_item_name2  => gv_msg_tkn_item_code     --項目名称2
-                                        ,iv_data_value2 => main_rec.item_code       --データの値2                                            
+                                        ,iv_data_value2 => main_rec.item_code       --データの値2
                                         );
         lv_errmsg := xxccp_common_pkg.get_msg(cv_application
                                             , cv_msg_update_err
@@ -1086,15 +1140,21 @@ AS
     -- ユーザー宣言部
     -- ===============================
     upm_work_exp      EXCEPTION;
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+    get_tax_rule_exp  EXCEPTION;
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
     lv_message_code          VARCHAR2(20);
     ln_update_pattrun        NUMBER;
     lv_sales_exp_line_id     xxcos_sales_exp_lines.sales_exp_line_id%TYPE; --処理用ダミー変数
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************-- 
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
     ln_unit_price            NUMBER;
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************-- 
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+    lv_tax_round_rule        xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE; --税金-端数処理ルール
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
 --
   BEGIN
 --
@@ -1110,7 +1170,7 @@ AS
     -- ***************************************
 --
     <<main_loop>>
-    LOOP 
+    LOOP
       FETCH main_cur INTO main_rec;
       EXIT WHEN main_cur%NOTFOUND;
       BEGIN
@@ -1121,7 +1181,7 @@ AS
         gn_warn_tran_count     := gn_warn_tran_count + gn_new_warn_count;
         --1ループ内エラー初期化
         gn_new_warn_count := 0;
-        
+
         IF (main_rec.sales_exp_header_id <> gv_bf_sales_exp_header_id) THEN
           IF (gn_warn_tran_count > 0) THEN
             ROLLBACK;
@@ -1136,37 +1196,66 @@ AS
 
         --ブレイク判定キー入れ替え
         gv_bf_sales_exp_header_id := main_rec.sales_exp_header_id;
-        
+
 
         --件数カウンタ
         gn_target_cnt := gn_target_cnt + 1;
         gn_tran_count := gn_tran_count + 1;
 
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+        -- ===============================
+        -- 税金-端数処理情報の取得
+        -- ===============================
+        IF (gt_ship_account_tbl.EXISTS(main_rec.ship_to_customer_code)) THEN
+          lv_tax_round_rule := gt_ship_account_tbl(main_rec.ship_to_customer_code);
+        ELSE
+          BEGIN
+            SELECT xchv.bill_tax_round_rule
+            INTO   lv_tax_round_rule
+            FROM   xxcos_cust_hierarchy_v xchv -- 顧客階層ビュー
+            WHERE  xchv.ship_account_number = main_rec.ship_to_customer_code;
+          EXCEPTION
+            WHEN OTHERS THEN
+              RAISE get_tax_rule_exp;
+          END;
+          --
+          IF lv_tax_round_rule IS NULL THEN
+            RAISE get_tax_rule_exp;
+          ELSE
+            gt_ship_account_tbl(main_rec.ship_to_customer_code) := lv_tax_round_rule;
+          END IF;
+        END IF;
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
         -- ===============================
         --単価の導出
         -- ===============================
---****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************-- 
+--****************************** 2009/05/27 1.3  S.Kayahara MOD START ******************************--
         --変数の代入
         ln_unit_price := main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100));
---****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************-- 
+--****************************** 2009/05/27 1.3  S.Kayahara MOD END ******************************--
         IF main_rec.standard_unit_price_excluded = main_rec.standard_unit_price THEN
---****************************** 2009/05/28 1.3  S.Kayahara MOD START ******************************-- 
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
+--****************************** 2009/05/28 1.3  S.Kayahara MOD START ******************************--
    --       gn_unit_price := trunc(main_rec.standard_unit_price_excluded * (1 + (main_rec.tax_rate / 100)),0);
           -- 切上げ
-          IF main_rec.tax_round_rule    = cv_amount_up THEN
+--          IF main_rec.tax_round_rule    = cv_amount_up THEN
+          IF lv_tax_round_rule    = cv_amount_up THEN
             -- 小数点が存在する場合
             IF (ln_unit_price - TRUNC(ln_unit_price) <> 0 ) THEN
               gn_unit_price := TRUNC(ln_unit_price,2) + 0.01;
             ELSE gn_unit_price := ln_unit_price;
             END IF;
           -- 切捨て
-          ELSIF main_rec.tax_round_rule = cv_amount_down THEN
+--          ELSIF main_rec.tax_round_rule = cv_amount_down THEN
+          ELSIF lv_tax_round_rule = cv_amount_down THEN
             gn_unit_price := TRUNC(ln_unit_price,2);
           -- 四捨五入
-          ELSIF main_rec.tax_round_rule = cv_amount_nearest THEN
+--          ELSIF main_rec.tax_round_rule = cv_amount_nearest THEN
+          ELSIF lv_tax_round_rule = cv_amount_nearest THEN
             gn_unit_price := ROUND(ln_unit_price,2);
           END IF;
 --****************************** 2009/05/28 1.3  S.Kayahara MOD END ******************************--
+--****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
         ELSE
           gn_unit_price := main_rec.standard_unit_price;
         END IF;
@@ -1201,7 +1290,7 @@ AS
           AND     xupm.item_code       = main_rec.item_code
           FOR UPDATE NOWAIT
           ;
-          
+
         -- ===============================
         --A-3．単価マスタワークテーブル更新
         -- ===============================
@@ -1256,7 +1345,7 @@ AS
                                                 );
             RAISE;
         END;
-        
+
         -- ===============================
         --A-6． 販売実績明細テーブルステータス更新
         -- ===============================
@@ -1276,7 +1365,6 @@ AS
           WHEN OTHERS THEN
             ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
 
-                             
             xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                  -- エラー・メッセージ
                                             ,ov_retcode     => lv_retcode                 -- リターン・コード
                                             ,ov_errmsg      => lv_errmsg                  --ユーザー・エラー・メッセージ
@@ -1313,12 +1401,33 @@ AS
                             which  => FND_FILE.LOG
                            ,buff   => lv_errbuf --エラーメッセージ
                            );
-                           
+
           ov_errmsg  := lv_errmsg;
           ov_errbuf  := lv_errbuf;
           ov_retcode := cv_status_warn;
           gn_new_warn_count := gn_new_warn_count + 1;
-          
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
+        WHEN get_tax_rule_exp THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                                , cv_tkn_customer_err
+                                                , cv_tkn_key_data
+                                                , gv_msg_tkn_cust_code || cv_msg_part ||
+                                                  main_rec.ship_to_customer_code || cv_msg_comma ||
+                                                  gv_msg_tkn_exp_line_id || cv_msg_part ||
+                                                  main_rec.sales_exp_line_id
+                                                );
+          FND_FILE.PUT_LINE(
+                            which  => FND_FILE.OUTPUT
+                           ,buff   => lv_errmsg --エラーメッセージ
+                           );
+          FND_FILE.PUT_LINE(
+                            which  => FND_FILE.LOG
+                           ,buff   => lv_errmsg --エラーメッセージ
+                           );
+
+          ov_retcode := cv_status_warn;
+          gn_new_warn_count := gn_new_warn_count + 1;
+--****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
         WHEN OTHERS THEN
           lv_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
           IF (SQLCODE = cn_lock_error_code) THEN
@@ -1330,7 +1439,7 @@ AS
           ELSE
             ov_errmsg  := NULL;
           END IF;
-          
+
           FND_FILE.PUT_LINE(
                             which  => FND_FILE.LOG
                            ,buff   => lv_errbuf --エラーメッセージ
@@ -1342,12 +1451,12 @@ AS
           ov_retcode := cv_status_warn;
           gn_new_warn_count := gn_new_warn_count + 1;
       END;
-      
+
     END LOOP main_loop;
-    
+
     --エラーカウント
     gn_warn_tran_count     := gn_warn_tran_count + gn_new_warn_count;
-    
+
     IF (gn_warn_tran_count > 0) THEN
       ROLLBACK;
       gn_warn_cnt := gn_warn_cnt + gn_tran_count;
@@ -1530,7 +1639,7 @@ AS
     -- 固定出力
     -- コンカレントヘッダメッセージ出力関数の呼び出し
     xxccp_common_pkg.put_log_header(
-       iv_which   => cv_log_header_out    
+       iv_which   => cv_log_header_out
       ,ov_retcode => lv_retcode
       ,ov_errbuf  => lv_errbuf
       ,ov_errmsg  => lv_errmsg
@@ -1560,7 +1669,7 @@ AS
         ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
       );
     END IF;
-    
+
 --
     -- ===============================================
     -- A-7．終了処理
