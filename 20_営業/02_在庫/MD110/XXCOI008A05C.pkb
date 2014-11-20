@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A05C(body)
  * Description      : 情報系システムへの連携の為、EBSのVDコラムマスタ(アドオン)をCSVファイルに出力
  * MD.050           : VDコラムマスタ情報系連携 <MD050_COI_008_A05>
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/07/13    1.2   H.Sasaki         [0000494]VDコラムマスタ情報取得のPT対応
  *  2009/08/14    1.3   N.Abe            [0000891]VDコラムマスタ情報取得の修正
  *  2009/09/11    1.4   H.Sasaki         [0001352]PT対応（ヒント句leadingを追加）
+ *  2009/09/17    1.5   N.Abe            [0001411]VDコラムマスタ物件なし対応
  *
  *****************************************************************************************/
 --
@@ -483,9 +484,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- == 2009/09/17 V1.5 Deleted START ===============================================================
 -- == 2009/08/14 V1.3 Added START ===============================================================
-   cv_zero_10   CONSTANT VARCHAR2(10) := '0000000000';
+--   cv_zero_10   CONSTANT VARCHAR2(10) := '0000000000';
 -- == 2009/08/14 V1.3 Added END   ===============================================================
+-- == 2009/09/17 V1.5 Deleted END   ===============================================================
 --
     -- *** ローカル変数 ***
 -- == 2009/08/14 V1.3 Added START ===============================================================
@@ -510,10 +513,13 @@ AS
             , xmvc.hot_cold                       -- HOT/COLD区分
             , hca.account_number                  -- 顧客コード
             , msib.segment1                       -- 品目コード
+-- == 2009/09/17 V1.5 Modified START ===============================================================
 -- == 2009/08/14 V1.3 Modified START ===============================================================
 --            , cii.external_reference              -- 物件コード
-            , NVL(cii.external_reference, cv_zero_10) external_reference  -- 物件コード
+--            , NVL(cii.external_reference, cv_zero_10) external_reference  -- 物件コード
+            , cii.external_reference              -- 物件コード
 -- == 2009/08/14 V1.3 Modified END   ===============================================================
+-- == 2009/09/17 V1.5 Modified END   ===============================================================
       FROM    xxcoi_mst_vd_column  xmvc        -- VDコラムマスタ
             , hz_cust_accounts     hca         -- 顧客マスタ
             , mtl_system_items_b   msib        -- 品目マスタ
@@ -531,12 +537,15 @@ AS
       AND    hca.cust_account_id      =   xmvc.customer_id            -- 顧客ID
       AND    msib.inventory_item_id   =   xmvc.item_id                -- 品目ID
       AND    msib.organization_id     =   xmvc.organization_id        -- 組織ID
+-- == 2009/09/17 V1.5 Modified START ===============================================================
 -- == 2009/08/14 V1.3 Modified START ===============================================================
 --      AND    hca.cust_account_id      =   cii.owner_party_account_id; -- 所有者アカウントID
-      AND    hca.cust_account_id      =   cii.owner_party_account_id(+) -- 所有者アカウントID
+--      AND    hca.cust_account_id      =   cii.owner_party_account_id(+) -- 所有者アカウントID
+      AND    hca.cust_account_id      =   cii.owner_party_account_id    -- 所有者アカウントID
       ORDER BY hca.account_number
               ,xmvc.column_no;
 -- == 2009/08/14 V1.3 Modified END   ===============================================================
+-- == 2009/09/17 V1.5 Modified END   ===============================================================
       --
       -- vd_columnレコード型
       vd_column_rec  vd_column_cur%ROWTYPE;
