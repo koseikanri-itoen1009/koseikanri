@@ -151,7 +151,7 @@ FROM   XXCSO_CONTRACT_MANAGEMENTS XxcsoContractManagementsEO
       ,xxcso_sp_decision_custs    xsdc
       ,xxcso_sp_decision_headers  xsdh
 WHERE XxcsoContractManagementsEO.CONTRACT_MANAGEMENT_ID = :1
-AND   xev.employee_number             = XxcsoContractManagementsEO.EMPLOYEE_NUMBER
+AND   xev.employee_number(+)          = XxcsoContractManagementsEO.EMPLOYEE_NUMBER
 AND   xlv.dept_code(+)                = XxcsoContractManagementsEO.PUBLISH_DEPT_CODE
 AND   xsdh.sp_decision_header_id      = XxcsoContractManagementsEO.SP_DECISION_HEADER_ID
 AND   xsdc.sp_decision_header_id      = xsdh.sp_decision_header_id

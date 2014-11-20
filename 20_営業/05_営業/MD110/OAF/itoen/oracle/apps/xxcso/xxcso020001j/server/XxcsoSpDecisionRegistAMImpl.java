@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2009-04-27 1.4  SCS柳平直人   [ST障害T1_0294]売価別条件確定事項反映修正
 * 2009-08-04 1.5  SCS小川浩     [SCS障害0000908]コピー時の回送先再設定対応
 * 2009-08-24 1.6  SCS阿部大輔   [SCS障害0001104]申請区分チェック対応
+* 2009-10-14 1.7  SCS阿部大輔   [共通課題IE554,IE573]住所対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -3495,19 +3496,20 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
              ,true
             )
           );
-
-          if ( isSameVendorExist(bm1CustomerId, bm1VendorName) )
-          {
-            OAException error
-              = XxcsoMessage.createErrorMessage(
-                  XxcsoConstants.APP_XXCSO1_00301
-                 ,XxcsoConstants.TOKEN_REGION
-                 ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
-                 ,XxcsoConstants.TOKEN_VENDOR
-                 ,bm1VendorName
-                );
-            errorList.add(error);
-          }
+          // 2009-10-14 [IE554,IE573] Add Start
+          //if ( isSameVendorExist(bm1CustomerId, bm1VendorName) )
+          //{
+          //  OAException error
+          //    = XxcsoMessage.createErrorMessage(
+          //        XxcsoConstants.APP_XXCSO1_00301
+          //       ,XxcsoConstants.TOKEN_REGION
+          //       ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM1_REGION
+          //       ,XxcsoConstants.TOKEN_VENDOR
+          //       ,bm1VendorName
+          //      );
+          //  errorList.add(error);
+          //}
+          // 2009-10-14 [IE554,IE573] Add End
         }
         else
         {
@@ -3561,26 +3563,26 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
              ,true
             )
           );
-
-          if ( isSameVendorExist(bm2CustomerId, bm2VendorName) )
-          {
-            String regionName = XxcsoSpDecisionConstants.TOKEN_VALUE_BM2_REGION;
-            if ( contributeFlag )
-            {
-              regionName
-                = XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRIBUTE_REGION;
-            }
-
-            OAException error
-              = XxcsoMessage.createErrorMessage(
-                  XxcsoConstants.APP_XXCSO1_00301
-                 ,XxcsoConstants.TOKEN_REGION
-                 ,regionName
-                 ,XxcsoConstants.TOKEN_VENDOR
-                 ,bm2VendorName
-                );
-            errorList.add(error);
-          }
+          // 2009-10-14 [IE554,IE573] Add Start
+          //if ( isSameVendorExist(bm2CustomerId, bm2VendorName) )
+          //{
+          //  String regionName = XxcsoSpDecisionConstants.TOKEN_VALUE_BM2_REGION;
+          //  if ( contributeFlag )
+          //  {
+          //    regionName
+          //      = XxcsoSpDecisionConstants.TOKEN_VALUE_CONTRIBUTE_REGION;
+          //  }
+          //  OAException error
+          //    = XxcsoMessage.createErrorMessage(
+          //        XxcsoConstants.APP_XXCSO1_00301
+          //       ,XxcsoConstants.TOKEN_REGION
+          //       ,regionName
+          //       ,XxcsoConstants.TOKEN_VENDOR
+          //       ,bm2VendorName
+          //      );
+          //  errorList.add(error);
+          //}
+          // 2009-10-14 [IE554,IE573] Add End
         }
         else
         {
@@ -3642,19 +3644,20 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
              ,true
             )
           );
-
-          if ( isSameVendorExist(bm3CustomerId, bm3VendorName) )
-          {
-            OAException error
-              = XxcsoMessage.createErrorMessage(
-                  XxcsoConstants.APP_XXCSO1_00301
-                 ,XxcsoConstants.TOKEN_REGION
-                 ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
-                 ,XxcsoConstants.TOKEN_VENDOR
-                 ,bm3VendorName
-                );
-            errorList.add(error);
-          }
+          // 2009-10-14 [IE554,IE573] Add Start
+          //if ( isSameVendorExist(bm3CustomerId, bm3VendorName) )
+          //{
+          //  OAException error
+          //    = XxcsoMessage.createErrorMessage(
+          //        XxcsoConstants.APP_XXCSO1_00301
+          //       ,XxcsoConstants.TOKEN_REGION
+          //       ,XxcsoSpDecisionConstants.TOKEN_VALUE_BM3_REGION
+          //       ,XxcsoConstants.TOKEN_VENDOR
+          //       ,bm3VendorName
+          //      );
+          //  errorList.add(error);
+          //}
+          // 2009-10-14 [IE554,IE573] Add End
         }
         else
         {
@@ -3736,56 +3739,56 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
         );
       }
     }
-
-    /////////////////////////////////////
-    // 検証処理：BM1/BM2/BM3の送付先名の相互チェック
-    /////////////////////////////////////
-    boolean vendorNameDuplicateFlag = false;
-    if ( bm1VendorName != null && ! "".equals(bm1VendorName) )
-    {
-      if ( bm2VendorName != null && ! "".equals(bm2VendorName) )
-      {
-        if ( bm1VendorName.equals(bm2VendorName) )
-        {
-          vendorNameDuplicateFlag = true;
-        }
-      }
-      if ( bm3VendorName != null && ! "".equals(bm3VendorName) )
-      {
-        if ( bm1VendorName.equals(bm3VendorName) )
-        {
-          vendorNameDuplicateFlag = true;
-        }
-      }
-    }
-
-    if ( bm2VendorName != null && ! "".equals(bm2VendorName) )
-    {
-      if ( bm3VendorName != null && ! "".equals(bm3VendorName) )
-      {
-        if ( bm2VendorName.equals(bm3VendorName) )
-        {
-          vendorNameDuplicateFlag = true;
-        }
-      }
-    }
-
-    if ( vendorNameDuplicateFlag )
-    {
-      if ( contributeFlag )
-      {
-        errorList.add(
-          XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00527)
-        );
-      }
-      else
-      {
-        errorList.add(
-          XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00522)
-        );
-      }
-    }
-
+    // 2009-10-14 [IE554,IE573] Add Start
+    ///////////////////////////////////////
+    //// 検証処理：BM1/BM2/BM3の送付先名の相互チェック
+    ///////////////////////////////////////
+    //boolean vendorNameDuplicateFlag = false;
+    //if ( bm1VendorName != null && ! "".equals(bm1VendorName) )
+    //{
+    //  if ( bm2VendorName != null && ! "".equals(bm2VendorName) )
+    //  {
+    //    if ( bm1VendorName.equals(bm2VendorName) )
+    //    {
+    //      vendorNameDuplicateFlag = true;
+    //    }
+    //  }
+    //  if ( bm3VendorName != null && ! "".equals(bm3VendorName) )
+    //  {
+    //    if ( bm1VendorName.equals(bm3VendorName) )
+    //    {
+    //      vendorNameDuplicateFlag = true;
+    //    }
+    //  }
+    //}
+    //
+    //if ( bm2VendorName != null && ! "".equals(bm2VendorName) )
+    //{
+    //  if ( bm3VendorName != null && ! "".equals(bm3VendorName) )
+    //  {
+    //    if ( bm2VendorName.equals(bm3VendorName) )
+    //    {
+    //      vendorNameDuplicateFlag = true;
+    //    }
+    //  }
+    //}
+    //
+    //if ( vendorNameDuplicateFlag )
+    //{
+    //  if ( contributeFlag )
+    //  {
+    //    errorList.add(
+    //      XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00527)
+    //    );
+    //  }
+    //  else
+    //  {
+    //    errorList.add(
+    //      XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00522)
+    //    );
+    //  }
+    //}
+    // 2009-10-14 [IE554,IE573] Add End
     /////////////////////////////////////
     // 検証処理：契約書への記載事項
     /////////////////////////////////////

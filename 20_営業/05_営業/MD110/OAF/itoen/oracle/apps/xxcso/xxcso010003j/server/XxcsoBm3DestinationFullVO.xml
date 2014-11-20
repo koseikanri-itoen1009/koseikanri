@@ -21,7 +21,7 @@ SELECT XxcsoDestinationsEO.DELIVERY_ID                 AS delivery_id,
           ,xcm.cooperate_flag
           ,xcm.batch_proc_status
           ,XxcsoDestinationsEO.PAYMENT_NAME
-          ,pv.vendor_name
+          ,pvs.attribute1
          )
         ,1
         ,80

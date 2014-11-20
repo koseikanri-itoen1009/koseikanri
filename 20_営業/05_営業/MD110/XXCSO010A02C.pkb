@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2009-05-01    1.7   Tomoko.Mori      T1_0897対応
  *  2009-05-15    1.8   Kazuo.Satomura   システムテスト障害(障害番号T1_1010)
  *  2009-09-25    1.9   Daisuke.Abe      共通課題IE548
+ *  2009-10-15    1.10  Daisuke.Abe      0001537対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -286,6 +287,9 @@ AS
   cv_debug_msg77 CONSTANT VARCHAR2(200) := ' << 仕入先登録処理終了 >> ';
   cv_debug_msg78 CONSTANT VARCHAR2(200) := ' << 仕入先登録処理完了確認処理開始 >> ';
   cv_debug_msg79 CONSTANT VARCHAR2(200) := ' << 仕入先登録処理完了確認処理終了 >> ';
+  /* 2009.10.15 D.Abe 0001537対応 START */
+  cv_debug_msg80 CONSTANT VARCHAR2(200) := 'delivery_id             = ';
+  /* 2009.10.15 D.Abe 0001537対応 END */
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -324,6 +328,9 @@ AS
     ,address_1                    xxcso_destinations.address_1%TYPE                    -- 住所１
     ,address_2                    xxcso_destinations.address_2%TYPE                    -- 住所２
     ,address_lines_phonetic       xxcso_destinations.address_lines_phonetic%TYPE       -- 電話番号
+    /* 2009.10.15 D.Abe 0001537対応 START */
+    ,delivery_id                  xxcso_destinations.delivery_id%TYPE                  -- 送付先ID
+    /* 2009.10.15 D.Abe 0001537対応 END */
     -- 銀行口座情報
     ,bank_number             xxcso_bank_accounts.bank_number%TYPE             -- 銀行番号
     ,bank_name               xxcso_bank_accounts.bank_name%TYPE               -- 銀行名
@@ -588,6 +595,9 @@ AS
     cv_tkn_value_key_name      CONSTANT VARCHAR2(50) := '仕入先ＩＤ';
     cv_tkn_value_table         CONSTANT VARCHAR2(50) := 'ベンダー中間I/Fテーブル';
     cv_tkn_value_sequence      CONSTANT VARCHAR2(40) := '仕入先番号';
+    /* 2009.10.15 D.Abe 0001537対応 START */
+    cv_tkn_value_destination   CONSTANT VARCHAR2(50) := '送付先テーブル';
+    /* 2009.10.15 D.Abe 0001537対応 END */
     --
     -- *** ローカル変数 ***
     lt_customer_id             xxcso_sp_decision_custs.customer_id%TYPE;      -- 顧客ＩＤ
@@ -725,8 +735,12 @@ AS
       lv_phone_number := it_mst_regist_info_rec.address_lines_phonetic;
       /* 2009.09.25 D.Abe IE548対応 END   */
       --
-      IF lt_customer_id IS NOT NULL THEN
-        -- 取得した顧客ＩＤが入力されている場合
+      /* 2009.10.15 D.Abe 0001537対応 START */
+      --IF lt_customer_id IS NOT NULL THEN
+      --  -- 取得した顧客ＩＤが入力されている場合
+      -- 送付先の仕入先が登録されている場合
+      IF it_mst_regist_info_rec.supplier_id IS NOT NULL THEN
+      /* 2009.10.15 D.Abe 0001537対応 END */
         -- ================================
         -- 仕入先番号・仕入先サイトＩＤ取得
         -- ================================
@@ -900,7 +914,10 @@ AS
                  xxcso_xx03_vendors_if_s01.NEXTVAL                             -- 仕入先インターフェースＩＤ
                 ,cv_update_flag                                                -- 追加更新フラグ
                 ,it_mst_regist_info_rec.supplier_id                            -- 仕入先仕入先ＩＤ
-                ,SUBSTRB(it_mst_regist_info_rec.payment_name, 1, 80)           -- 仕入先仕入先名
+                /* 2009.10.15 D.Abe 0001537対応 START */
+                --,SUBSTRB(it_mst_regist_info_rec.payment_name, 1, 80)           -- 仕入先仕入先名
+                ,SUBSTRB(lt_vendor_number || it_mst_regist_info_rec.payment_name, 1, 80) -- 仕入先仕入先名
+                /* 2009.10.15 D.Abe 0001537対応 END */
                 ,SUBSTRB(lt_vendor_number, 1, 30)                              -- 仕入先仕入先番号
                 ,SUBSTRB(cv_vendor_type, 1, 30)                                -- 仕入先仕入先タイプ
                 ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先仕入先カナ名称
@@ -962,7 +979,6 @@ AS
                 RAISE global_api_expt;
                 --
             END;
-            --
           END IF;
           --
         END IF;
@@ -1062,7 +1078,10 @@ AS
       -- ===================================================
       -- ベンダー中間I/Fテーブル登録（登録・更新用）
       -- ===================================================
-      IF lt_customer_id IS NULL THEN
+      /* 2009.10.15 D.Abe 0001537対応 START */
+      --IF lt_customer_id IS NULL THEN
+      IF it_mst_regist_info_rec.supplier_id IS NULL THEN
+      /* 2009.10.15 D.Abe 0001537対応 END */
         -- 顧客ＩＤがNULLの場合、仕入先番号を採番
         BEGIN
           SELECT xxcso_po_vendors_s01.NEXTVAL vendor_number
@@ -1150,17 +1169,29 @@ AS
         )
         VALUES(
            xxcso_xx03_vendors_if_s01.NEXTVAL                             -- 仕入先インターフェースＩＤ
-          ,DECODE(lt_customer_id
+          /* 2009.10.15 D.Abe 0001537対応 START */
+          --,DECODE(lt_customer_id
+          ,DECODE(it_mst_regist_info_rec.supplier_id
+          /* 2009.10.15 D.Abe 0001537対応 END */
                  ,NULL, cv_create_flag
                  ,cv_update_flag)                                        -- 追加更新フラグ
-          ,DECODE(lt_customer_id
+          /* 2009.10.15 D.Abe 0001537対応 START */
+          --,DECODE(lt_customer_id
+          ,DECODE(it_mst_regist_info_rec.supplier_id
+          /* 2009.10.15 D.Abe 0001537対応 END */
                  ,NULL, NULL
                  ,it_mst_regist_info_rec.supplier_id)                    -- 仕入先仕入先ＩＤ
-          ,SUBSTRB(it_mst_regist_info_rec.payment_name, 1, 80)           -- 仕入先仕入先名
+          /* 2009.10.15 D.Abe 0001537対応 START */
+          --,SUBSTRB(it_mst_regist_info_rec.payment_name, 1, 80)           -- 仕入先仕入先名
+          ,SUBSTRB(lt_vendor_number || it_mst_regist_info_rec.payment_name, 1, 80) -- 仕入先仕入先名
+          /* 2009.10.15 D.Abe 0001537対応 END */
           ,SUBSTRB(lt_vendor_number, 1, 30)                              -- 仕入先仕入先番号
           ,SUBSTRB(cv_vendor_type, 1, 30)                                -- 仕入先仕入先タイプ
           ,SUBSTRB(it_mst_regist_info_rec.payment_name_alt, 1, 320)      -- 仕入先仕入先カナ名称
-          ,DECODE(lt_customer_id
+          /* 2009.10.15 D.Abe 0001537対応 START */
+          --,DECODE(lt_customer_id
+          ,DECODE(it_mst_regist_info_rec.supplier_id
+          /* 2009.10.15 D.Abe 0001537対応 END */
                  ,NULL, NULL
                  ,lt_vendor_site_id)                                     -- 仕入先サイト仕入先サイトＩＤ
           ,SUBSTRB(lt_vendor_number, 1, 320)                             -- 仕入先サイト仕入先サイト名
@@ -1172,9 +1203,12 @@ AS
           ,SUBSTRB(cv_country_code, 1, 25)                               -- 仕入先サイト国
           ,SUBSTRB(lv_area_code, 1, 10)                                  -- 仕入先サイト市外局番
           ,SUBSTRB(lv_phone_number, 1, 15)                               -- 仕入先サイト電話番号
-          ,SUBSTRB(it_mst_regist_info_rec.bank_name || cv_diagonal ||
-           it_mst_regist_info_rec.branch_name       || cv_diagonal ||
-           lt_bank_account_name, 1, 80)                                  -- 仕入先サイト口座名称
+          /* 2009.10.15 D.Abe 0001537対応 START */
+          --,SUBSTRB(it_mst_regist_info_rec.bank_name || cv_diagonal ||
+          -- it_mst_regist_info_rec.branch_name       || cv_diagonal ||
+          -- lt_bank_account_name, 1, 80)                                  -- 仕入先サイト口座名称
+          ,SUBSTRB(lt_bank_account_name, 1, 80)                        -- 仕入先サイト口座名称
+          /* 2009.10.15 D.Abe 0001537対応 END */
           ,SUBSTRB(lt_bank_account_num, 1, 30)                           -- 仕入先サイト口座番号
           ,SUBSTRB(lt_bank_number, 1, 25)                                -- 仕入先サイト銀行コード
           ,SUBSTRB(lt_bank_account_type, 1, 25)                          -- 仕入先サイト預金種別
@@ -1222,6 +1256,39 @@ AS
           --
       END;
       --
+      /* 2009.10.15 D.Abe 0001537対応 START */
+      --
+      -- ================================
+      -- 送付先仕入先番号更新
+      -- ================================
+      BEGIN
+        UPDATE xxcso_destinations xde -- 送付先テーブル
+        SET    xde.vendor_number          = lt_vendor_number          -- 仕入先番号
+              ,xde.last_updated_by        = cn_last_updated_by        -- 最終更新者
+              ,xde.last_update_date       = cd_last_update_date       -- 最終更新日
+              ,xde.last_update_login      = cn_last_update_login      -- 最終更新ログイン
+              ,xde.request_id             = cn_request_id             -- 要求ID
+              ,xde.program_application_id = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+              ,xde.program_id             = cn_program_id             -- コンカレント・プログラムID
+              ,xde.program_update_date    = cd_program_update_date    -- プログラム更新日
+        WHERE xde.delivery_id = it_mst_regist_info_rec.delivery_id    -- 送付先ＩＤ
+        ;
+        --
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errbuf := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_02         -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_action            -- トークンコード1
+                         ,iv_token_value1 => cv_tkn_value_destination -- トークン値1
+                         ,iv_token_name2  => cv_tkn_error_message     -- トークンコード2
+                         ,iv_token_value2 => SQLERRM                  -- トークン値2
+                      );
+          --
+          RAISE global_api_expt;
+          --
+      END;
+      /* 2009.10.15 D.Abe 0001537対応 END */
     END IF;
     --
   EXCEPTION
@@ -1593,7 +1660,10 @@ AS
       WHERE  xde.contract_management_id = it_contract_management_id  -- 自動販売機設置契約書ＩＤ
       /* 2009.04.02 K.Satomura 障害番号T1_0227対応 START */
       --AND    xvi.vndr_vendor_name       LIKE xde.payment_name || '%' -- 仕入先名
-      AND    xvi.vndr_vendor_name       = xde.payment_name           -- 仕入先名
+      /* 2009.10.15 D.Abe 0001537対応 START */
+      --AND    xvi.vndr_vendor_name       = xde.payment_name           -- 仕入先名
+      AND    xvi.vndr_segment1          = xde.vendor_number          -- 仕入先番号
+      /* 2009.10.15 D.Abe 0001537対応 END */
       /* 2009.04.02 K.Satomura 障害番号T1_0227対応 END */
       AND    xvi.status_flag            = cv_status_flag             -- ステータスフラグ
       AND    xvi.request_id             = in_request_id              -- 要求ＩＤ
@@ -1749,6 +1819,10 @@ AS
       SELECT xde.delivery_id  delivery_id  -- 送付先ＩＤ
             ,xde.payment_name payment_name -- 支払先名
             ,xde.delivery_div delivery_div -- 送付区分
+            /* 2009.10.15 D.Abe 0001537対応 START */
+            ,xde.vendor_number vendor_number -- 仕入先番号
+            ,xde.supplier_id   supplier_id -- 仕入先ID
+            /* 2009.10.15 D.Abe 0001537対応 END */
       FROM   xxcso_destinations xde -- 送付先テーブル
       WHERE  xde.contract_management_id = it_contract_management_id -- 自動販売機設置契約書ＩＤ
       ORDER BY xde.delivery_div ASC
@@ -1778,7 +1852,10 @@ AS
         FROM   po_vendors pve -- 仕入先マスタ
         /* 2009.04.02 K.Satomura 障害番号T1_0227対応 START */
         --WHERE  pve.vendor_name LIKE lt_destinations_rec.payment_name || '%'
-        WHERE  pve.vendor_name = lt_destinations_rec.payment_name
+        /* 2009.10.15 D.Abe 0001537対応 START */
+        --WHERE  pve.vendor_name = lt_destinations_rec.payment_name
+        WHERE  pve.segment1 = lt_destinations_rec.vendor_number
+        /* 2009.10.15 D.Abe 0001537対応 END */
         /* 2009.04.02 K.Satomura 障害番号T1_0227対応 END */
         ;
         --
@@ -1853,7 +1930,10 @@ AS
       );
       -- *** DEBUG_LOG END ***
       --
-      IF (lt_customer_id IS NULL) THEN
+      /* 2009.10.15 D.Abe 0001537対応 START */
+      --IF (lt_customer_id IS NULL) THEN
+      IF (lt_destinations_rec.supplier_id IS NULL) THEN
+      /* 2009.10.15 D.Abe 0001537対応 END */
         -- 顧客ＩＤがNULLの場合のみ顧客ＩＤ・仕入先ＩＤを更新する。
         BEGIN
           UPDATE xxcso_sp_decision_custs xsd -- ＳＰ専決顧客テーブル
@@ -3480,6 +3560,9 @@ AS
             ,xde.address_1                    address_1                    -- 住所１
             ,xde.address_2                    address_2                    -- 住所２
             ,xde.address_lines_phonetic       address_lines_phonetic       -- 電話番号
+            /* 2009.10.15 D.Abe 0001537対応 START */
+            ,xde.delivery_id                  delivery_id                  -- 送付先ＩＤ
+            /* 2009.10.15 D.Abe 0001537対応 END */
             ,xba.bank_number                  bank_number                  -- 銀行番号
             ,xba.bank_name                    bank_name                    -- 銀行名
             ,xba.branch_number                branch_number                -- 支店番号
@@ -3618,6 +3701,9 @@ AS
         lt_mst_regist_info_rec.address_1                    := lt_vendor_info_rec.address_1;
         lt_mst_regist_info_rec.address_2                    := lt_vendor_info_rec.address_2;
         lt_mst_regist_info_rec.address_lines_phonetic       := lt_vendor_info_rec.address_lines_phonetic;
+        /* 2009.10.15 D.Abe 0001537対応 START */
+        lt_mst_regist_info_rec.delivery_id                  := lt_vendor_info_rec.delivery_id;
+        /* 2009.10.15 D.Abe 0001537対応 END */
         lt_mst_regist_info_rec.bank_number                  := lt_vendor_info_rec.bank_number;
         lt_mst_regist_info_rec.bank_name                    := lt_vendor_info_rec.bank_name;
         lt_mst_regist_info_rec.branch_number                := lt_vendor_info_rec.branch_number;
@@ -3645,6 +3731,9 @@ AS
                      cv_debug_msg25 || lt_vendor_info_rec.address_1                    || CHR(10) ||
                      cv_debug_msg26 || lt_vendor_info_rec.address_2                    || CHR(10) ||
                      cv_debug_msg27 || lt_vendor_info_rec.address_lines_phonetic       || CHR(10) ||
+                     /* 2009.10.15 D.Abe 0001537対応 START */
+                     cv_debug_msg80 || lt_vendor_info_rec.delivery_id                  || CHR(10) ||
+                     /* 2009.10.15 D.Abe 0001537対応 END */
                      cv_debug_msg28 || lt_vendor_info_rec.bank_number                  || CHR(10) ||
                      cv_debug_msg29 || lt_vendor_info_rec.bank_name                    || CHR(10) ||
                      cv_debug_msg30 || lt_vendor_info_rec.branch_number                || CHR(10) ||
@@ -3653,6 +3742,7 @@ AS
                      cv_debug_msg33 || lt_vendor_info_rec.bank_account_number          || CHR(10) ||
                      cv_debug_msg34 || lt_vendor_info_rec.bank_account_name_kana       || CHR(10) ||
                      cv_debug_msg35 || lt_vendor_info_rec.bank_account_name_kanji      || CHR(10) ||
+
                      ''
         );
         -- *** DEBUG_LOG END ***

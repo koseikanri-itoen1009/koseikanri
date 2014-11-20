@@ -12,7 +12,7 @@
    <SQLQuery><![CDATA[
 SELECT  pv.segment1                          AS vendor_number
        ,pv.vendor_id                         AS vendor_id
-       ,SUBSTRB(pv.vendor_name, 1, 80)       AS vendor_name
+       ,SUBSTRB(pvs.attribute1, 1, 80)       AS vendor_name
        ,SUBSTRB(pv.vendor_name_alt, 1, 320)  AS vendor_name_alt
        ,pvs.zip                              AS zip
        ,SUBSTRB(pvs.state, 1, 25)            AS state

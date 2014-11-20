@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistValidateUtils
 * 概要説明   : 自販機設置契約情報登録検証ユーティリティクラス
-* バージョン : 1.0
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2009-04-09 1.3  SCS柳平直人  [ST障害T1_0327]月末締翌20日払チェック処理修正
 * 2009-04-27 1.4  SCS柳平直人  [ST障害T1_0708]入力項目チェック処理統一修正
 * 2009-06-08 1.5  SCS柳平直人  [ST障害T1_1307]半角カナチェックメッセージ修正
+* 2009-10-14 1.6  SCS阿部大輔  [共通課題IE554,IE573]住所対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.util;
@@ -757,88 +758,88 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
-
-    // ///////////////////////////////////
-    // 送付先住所（都道府県）
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES;
-
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm1DestVoRow.getPrefectures()
-           ,token1
-           ,0
-          );
-    }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm1DestVoRow.getPrefectures()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm1DestVoRow.getPrefectures() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add End
-
-    // ///////////////////////////////////
-    // 送付先住所（市・区）
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm1DestVoRow.getCityWard()
-           ,token1
-           ,0
-          );
-    }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm1DestVoRow.getCityWard()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm1DestVoRow.getCityWard() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add End
-
+// 2009-10-14 [IE554,IE573] Add Start
+//    // ///////////////////////////////////
+//    // 送付先住所（都道府県）
+//    // ///////////////////////////////////
+//    token1 = tokenMain
+//            + XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES;
+//
+//    // 確定ボタン時のみ必須入力チェック
+//    if ( fixedFrag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,bm1DestVoRow.getPrefectures()
+//           ,token1
+//           ,0
+//          );
+//    }
+//    // 禁則文字チェック
+//    errorList
+//      = utils.checkIllegalString(
+//          errorList
+//         ,bm1DestVoRow.getPrefectures()
+//         ,token1
+//         ,0
+//        );
+//// 2009-04-27 [ST障害T1_0708] Add Start
+//    // 全角文字チェック
+//    if ( ! isDoubleByte( txn, bm1DestVoRow.getPrefectures() ) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00565
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
+//          );
+//      errorList.add(error);
+//    }
+//// 2009-04-27 [ST障害T1_0708] Add End
+//
+//    // ///////////////////////////////////
+//    // 送付先住所（市・区）
+//    // ///////////////////////////////////
+//    token1 = tokenMain
+//            + XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD;
+//    // 確定ボタン時のみ必須入力チェック
+//    if ( fixedFrag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,bm1DestVoRow.getCityWard()
+//           ,token1
+//           ,0
+//          );
+//    }
+//    // 禁則文字チェック
+//    errorList
+//      = utils.checkIllegalString(
+//          errorList
+//         ,bm1DestVoRow.getCityWard()
+//         ,token1
+//         ,0
+//        );
+//// 2009-04-27 [ST障害T1_0708] Add Start
+//    // 全角文字チェック
+//    if ( ! isDoubleByte( txn, bm1DestVoRow.getCityWard() ) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00565
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM1_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
+//          );
+//      errorList.add(error);
+//    }
+//// 2009-04-27 [ST障害T1_0708] Add End
+// 2009-10-14 [IE554,IE573] Add End
     // ///////////////////////////////////
     // 送付先住所（住所１）
     // ///////////////////////////////////
@@ -1294,88 +1295,88 @@ public class XxcsoContractRegistValidateUtils
           );
       errorList.add(error);
     }
-
-    // ///////////////////////////////////
-    // 送付先住所（都道府県）
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES;
-
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm2DestVoRow.getPrefectures()
-           ,token1
-           ,0
-          );
-    }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm2DestVoRow.getPrefectures()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm2DestVoRow.getPrefectures() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add End
-
-    // ///////////////////////////////////
-    // 送付先住所（市・区）
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm2DestVoRow.getCityWard()
-           ,token1
-           ,0
-          );
-    }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm2DestVoRow.getCityWard()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm2DestVoRow.getCityWard() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add End
-
+// 2009-10-14 [IE554,IE573] Add Start
+//    // ///////////////////////////////////
+//    // 送付先住所（都道府県）
+//    // ///////////////////////////////////
+//    token1 = tokenMain
+//            + XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES;
+//
+//    // 確定ボタン時のみ必須入力チェック
+//    if ( fixedFrag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,bm2DestVoRow.getPrefectures()
+//           ,token1
+//           ,0
+//          );
+//    }
+//    // 禁則文字チェック
+//    errorList
+//      = utils.checkIllegalString(
+//          errorList
+//         ,bm2DestVoRow.getPrefectures()
+//         ,token1
+//         ,0
+//        );
+//// 2009-04-27 [ST障害T1_0708] Add Start
+//    // 全角文字チェック
+//    if ( ! isDoubleByte( txn, bm2DestVoRow.getPrefectures() ) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00565
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
+//          );
+//      errorList.add(error);
+//    }
+//// 2009-04-27 [ST障害T1_0708] Add End
+//
+//    // ///////////////////////////////////
+//    // 送付先住所（市・区）
+//    // ///////////////////////////////////
+//    token1 = tokenMain
+//            + XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD;
+//    // 確定ボタン時のみ必須入力チェック
+//    if ( fixedFrag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,bm2DestVoRow.getCityWard()
+//           ,token1
+//           ,0
+//          );
+//    }
+//    // 禁則文字チェック
+//    errorList
+//      = utils.checkIllegalString(
+//          errorList
+//         ,bm2DestVoRow.getCityWard()
+//         ,token1
+//         ,0
+//        );
+/// 2009-04-27 [ST障害T1_0708] Add Start
+//    // 全角文字チェック
+//    if ( ! isDoubleByte( txn, bm2DestVoRow.getCityWard() ) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00565
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM2_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
+//          );
+//      errorList.add(error);
+//    }
+//// 2009-04-27 [ST障害T1_0708] Add End
+// 2009-10-14 [IE554,IE573] Add End
     // ///////////////////////////////////
     // 送付先住所（住所１）
     // ///////////////////////////////////
@@ -1832,87 +1833,88 @@ public class XxcsoContractRegistValidateUtils
       errorList.add(error);
     }
 
-    // ///////////////////////////////////
-    // 送付先住所（都道府県）
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES;
-
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm3DestVoRow.getPrefectures()
-           ,token1
-           ,0
-          );
-    }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm3DestVoRow.getPrefectures()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm3DestVoRow.getPrefectures() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add End
-
-    // ///////////////////////////////////
-    // 送付先住所（市・区）
-    // ///////////////////////////////////
-    token1 = tokenMain
-            + XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD;
-    // 確定ボタン時のみ必須入力チェック
-    if ( fixedFrag )
-    {
-      errorList
-        = utils.requiredCheck(
-            errorList
-           ,bm3DestVoRow.getCityWard()
-           ,token1
-           ,0
-          );
-    }
-    // 禁則文字チェック
-    errorList
-      = utils.checkIllegalString(
-          errorList
-         ,bm3DestVoRow.getCityWard()
-         ,token1
-         ,0
-        );
-// 2009-04-27 [ST障害T1_0708] Add Start
-    // 全角文字チェック
-    if ( ! isDoubleByte( txn, bm3DestVoRow.getCityWard() ) )
-    {
-      OAException error
-        = XxcsoMessage.createErrorMessage(
-            XxcsoConstants.APP_XXCSO1_00565
-           ,XxcsoConstants.TOKEN_REGION
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
-           ,XxcsoConstants.TOKEN_COLUMN
-           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
-          );
-      errorList.add(error);
-    }
-// 2009-04-27 [ST障害T1_0708] Add End
-
+// 2009-10-14 [IE554,IE573] Add Start
+//    // ///////////////////////////////////
+//    // 送付先住所（都道府県）
+//    // ///////////////////////////////////
+//    token1 = tokenMain
+//            + XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES;
+//
+//    // 確定ボタン時のみ必須入力チェック
+//    if ( fixedFrag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,bm3DestVoRow.getPrefectures()
+//           ,token1
+//           ,0
+//          );
+//    }
+//    // 禁則文字チェック
+//    errorList
+//      = utils.checkIllegalString(
+//          errorList
+//         ,bm3DestVoRow.getPrefectures()
+//         ,token1
+//         ,0
+//        );
+//// 2009-04-27 [ST障害T1_0708] Add Start
+//    // 全角文字チェック
+//    if ( ! isDoubleByte( txn, bm3DestVoRow.getPrefectures() ) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00565
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_PREFECTURES
+//          );
+//      errorList.add(error);
+//    }
+//// 2009-04-27 [ST障害T1_0708] Add End
+//
+//    // ///////////////////////////////////
+//    // 送付先住所（市・区）
+//    // ///////////////////////////////////
+//    token1 = tokenMain
+//            + XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD;
+//    // 確定ボタン時のみ必須入力チェック
+//    if ( fixedFrag )
+//    {
+//      errorList
+//        = utils.requiredCheck(
+//            errorList
+//           ,bm3DestVoRow.getCityWard()
+//           ,token1
+//           ,0
+//          );
+//    }
+//    // 禁則文字チェック
+//    errorList
+//      = utils.checkIllegalString(
+//          errorList
+//         ,bm3DestVoRow.getCityWard()
+//         ,token1
+//         ,0
+//        );
+//// 2009-04-27 [ST障害T1_0708] Add Start
+//    // 全角文字チェック
+//    if ( ! isDoubleByte( txn, bm3DestVoRow.getCityWard() ) )
+//    {
+//      OAException error
+//        = XxcsoMessage.createErrorMessage(
+//            XxcsoConstants.APP_XXCSO1_00565
+//           ,XxcsoConstants.TOKEN_REGION
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_BM3_DEST
+//           ,XxcsoConstants.TOKEN_COLUMN
+//           ,XxcsoContractRegistConstants.TOKEN_VALUE_CITY_WARD
+//          );
+//      errorList.add(error);
+//    }
+//// 2009-04-27 [ST障害T1_0708] Add End
+// 2009-10-14 [IE554,IE573] Add End
     // ///////////////////////////////////
     // 送付先住所（住所１）
     // ///////////////////////////////////
@@ -2709,24 +2711,26 @@ public class XxcsoContractRegistValidateUtils
       return oaeMsg;
     }
 
-    // ***********************************
-    // 送付先名重複チェック
-    // ***********************************
-    retCheck
-      = isDuplicateBmDest(
-          pageRndrVoRow
-         ,bm1PaymentName
-         ,bm2PaymentName
-         ,bm3PaymentName
-         ,false
-        );
-
-    if (retCheck)
-    {
-      oaeMsg
-        = XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00522);
-      return oaeMsg;
-    }
+    // 2009-10-14 [IE554,IE573] Add Start
+    //// ***********************************
+    //// 送付先名重複チェック
+    //// ***********************************
+    //retCheck
+    //  = isDuplicateBmDest(
+    //      pageRndrVoRow
+    //     ,bm1PaymentName
+    //     ,bm2PaymentName
+    //     ,bm3PaymentName
+    //     ,false
+    //    );
+    //
+    //if (retCheck)
+    //{
+    //  oaeMsg
+    //    = XxcsoMessage.createErrorMessage(XxcsoConstants.APP_XXCSO1_00522);
+    //  return oaeMsg;
+    //}
+    // 2009-10-14 [IE554,IE573] Add End
 
     // ***********************************
     // 仕入先名重複チェック（）
@@ -3676,25 +3680,29 @@ public class XxcsoContractRegistValidateUtils
 
         if ( "1".equals(retCode) )
         {
+          // 2009-10-14 [IE554,IE573] Add Start
           // 仕入先マスタ重複エラー
-          returnMsg
-            = XxcsoMessage.createErrorMessage(
-                XxcsoConstants.APP_XXCSO1_00558
-               ,XxcsoConstants.TOKEN_ITEM
-               ,new String(sbTokenItem)
-              );
+          //returnMsg
+          //  = XxcsoMessage.createErrorMessage(
+          //      XxcsoConstants.APP_XXCSO1_00558
+          //     ,XxcsoConstants.TOKEN_ITEM
+          //     ,new String(sbTokenItem)
+          //    );
+          // 2009-10-14 [IE554,IE573] Add End
         }
         else
         {
+          // 2009-10-14 [IE554,IE573] Add Start
           // 送付先テーブル重複エラー
-          returnMsg
-            = XxcsoMessage.createErrorMessage(
-                XxcsoConstants.APP_XXCSO1_00559
-               ,XxcsoConstants.TOKEN_ITEM
-               ,new String(sbTokenItem)
-               ,XxcsoConstants.TOKEN_RECORD
-               ,new String(sbTokenRecord)
-              );
+          //returnMsg
+          //  = XxcsoMessage.createErrorMessage(
+          //      XxcsoConstants.APP_XXCSO1_00559
+          //     ,XxcsoConstants.TOKEN_ITEM
+          //     ,new String(sbTokenItem)
+          //     ,XxcsoConstants.TOKEN_RECORD
+          //     ,new String(sbTokenRecord)
+          //    );
+          // 2009-10-14 [IE554,IE573] Add End
         }
       }
     }

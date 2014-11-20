@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *                    
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009-04-27    1.2   Kazuo.Satomura   システムテスト障害対応(T1_0705,T1_0778)
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-09-14    1.4   Mio.Maruyama     0001355対応
+ *  2009-10-15    1.5   Daisuke.Abe      0001536,0001537対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -517,7 +518,10 @@ AS
               ,xcm.cancellation_offer_code cancellation_offer_code -- 契約解除申し出
               ,xsdh.other_content other_content                    -- 特約事項
               ,xd.payment_name sales_charge_details_delivery       -- 支払先名
-              ,(NVL2(xd.post_code, cv_post_mark || xd.post_code || ' ', '') || xd.prefectures || xd.city_ward
+              /* 2009.10.15 D.Abe 0001536,0001537対応 START */
+              --,(NVL2(xd.post_code, cv_post_mark || xd.post_code || ' ', '') || xd.prefectures || xd.city_ward
+              ,(NVL2(xd.post_code, cv_post_mark || xd.post_code || ' ', '')
+              /* 2009.10.15 D.Abe 0001536,0001537対応 END */
                              || xd.address_1 || xd.address_2) delivery_address  -- 送付先住所
               ,xcm.install_party_name install_name                 -- 設置先顧客名
               ,(NVL2(xcm.install_postal_code, cv_post_mark || xcm.install_postal_code || ' ', '')
@@ -674,8 +678,12 @@ AS
               ,xsdh.contract_year_date contract_period                 -- 契約期間
               ,xcm.cancellation_offer_code cancellation_offer_code     -- 契約解除申し出
               ,xsdh.other_content other_content                        -- 特約事項
-              ,pv.vendor_name sales_charge_details_delivery            -- 支払先名
-              ,NVL2(pvs.zip, cv_post_mark || pvs.zip || ' ', '') || pvs.state || pvs.city
+              /* 2009.10.15 D.Abe 0001536,0001537対応 START */
+              --,pv.vendor_name sales_charge_details_delivery            -- 支払先名
+              --,NVL2(pvs.zip, cv_post_mark || pvs.zip || ' ', '') || pvs.state || pvs.city
+              ,pvs.attribute1 sales_charge_details_delivery            -- 支払先名
+              ,NVL2(pvs.zip, cv_post_mark || pvs.zip || ' ', '')
+              /* 2009.10.15 D.Abe 0001536,0001537対応 END */
                           || pvs.address_line1 || pvs.address_line2 delivery_address -- 送付先住所
               ,xcasv.party_name install_name                           -- 設置先顧客名
               ,NVL2(xcasv.postal_code, cv_post_mark || xcasv.postal_code || ' ', '') || xcasv.state || xcasv.city

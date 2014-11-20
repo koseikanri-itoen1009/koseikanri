@@ -1,7 +1,7 @@
 /*============================================================================
 * ƒtƒ@ƒCƒ‹–¼ : XxcsoSpDecisionReflectUtils
 * ŠT—và–¾   : SPêŒˆ”½‰fƒ†[ƒeƒBƒŠƒeƒBƒNƒ‰ƒX
-* ƒo[ƒWƒ‡ƒ“ : 1.0
+* ƒo[ƒWƒ‡ƒ“ : 1.4
 *============================================================================
 * C³—š—ð
 * “ú•t       Ver. ’S“–ŽÒ       C³“à—e
@@ -10,6 +10,7 @@
 * 2009-03-23 1.1  SCS–ö•½’¼l   [STáŠQT1_0163]‰Û‘èNo.115Žæ‚èž‚Ý
 * 2009-05-19 1.2  SCS–ö•½’¼l   [STáŠQT1_1058]reflectAllŽžŒ_–ñæ”½‰fˆ—’Ç‰Á
 * 2009-05-28 1.3  SCS–ö•½’¼l   [STáŠQT1_1216]Ý’uæ”½‰fˆ—•s‹ï‡‘Î‰ž
+* 2009-10-14 1.4  SCSˆ¢•”‘å•ã   [‹¤’Ê‰Û‘èIE554,IE573]ZŠ‘Î‰ž
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -385,13 +386,52 @@ public class XxcsoSpDecisionReflectUtils
 
     if ( XxcsoSpDecisionConstants.SEND_SAME_INSTALL.equals(bm1SendType) )
     {
+      // 2009-10-14 [IE554,IE573] Add Start
+      String Address = "";
+      if (installRow.getState() != null)
+      {
+        Address = Address + installRow.getState();
+      }
+      if (installRow.getCity() != null)
+      {
+        Address = Address + installRow.getCity();
+      }
+      if (installRow.getAddress1() != null)
+      {
+        Address = Address + installRow.getAddress1();
+      }
+      if (installRow.getAddress2() != null)
+      {
+        Address = Address + installRow.getAddress2();
+      }
+      String Address1 = "";
+      String Address2 = "";
+      if (Address != null )
+      {
+        if (Address.length() > 17 )
+        {
+          Address1 = Address.substring(0,17);
+          Address2 = Address.substring(17);
+        }
+        else
+        {
+          Address1 = Address;
+        }
+      }
+      // 2009-10-14 [IE554,IE573] Add End
       bmFmtVo.initQuery(
         installRow.getPartyName()
        ,installRow.getPartyNameAlt()
-       ,installRow.getState()
-       ,installRow.getCity()
-       ,installRow.getAddress1()
-       ,installRow.getAddress2()
+       // 2009-10-14 [IE554,IE573] Add Start
+       //,installRow.getState()
+       //,installRow.getCity()
+       //,installRow.getAddress1()
+       //,installRow.getAddress2()
+       ,null
+       ,null
+       ,Address1
+       ,Address2
+       // 2009-10-14 [IE554,IE573] Add End
       );
 
       XxcsoSpDecisionBmFormatVORowImpl bmFmtRow
@@ -475,13 +515,52 @@ public class XxcsoSpDecisionReflectUtils
 
     if ( XxcsoSpDecisionConstants.SEND_SAME_CNTRCT.equals(bm1SendType) )
     {
+      // 2009-10-14 [IE554,IE573] Add Start
+      String Address = "";
+      if (cntrctRow.getState() != null)
+      {
+        Address = Address + cntrctRow.getState();
+      }
+      if (cntrctRow.getCity() != null)
+      {
+        Address = Address + cntrctRow.getCity();
+      }
+      if (cntrctRow.getAddress1()!= null)
+      {
+        Address = Address + cntrctRow.getAddress1();
+      }
+      if (cntrctRow.getAddress2()!= null)
+      {
+        Address = Address + cntrctRow.getAddress2();
+      }
+      String Address1 = "";
+      String Address2 = "";
+      if (Address != null )
+      {
+        if (Address.length() > 17 )
+        {
+          Address1 = Address.substring(0,17);
+          Address2 = Address.substring(17);
+        }
+        else
+        {
+          Address1 = Address;
+        }
+      }
+      // 2009-10-14 [IE554,IE573] Add End
       bmFmtVo.initQuery(
         cntrctRow.getPartyName()
        ,cntrctRow.getPartyNameAlt()
-       ,cntrctRow.getState()
-       ,cntrctRow.getCity()
-       ,cntrctRow.getAddress1()
-       ,cntrctRow.getAddress2()
+       // 2009-10-14 [IE554,IE573] Add Start
+       //,cntrctRow.getState()
+       //,cntrctRow.getCity()
+       //,cntrctRow.getAddress1()
+       //,cntrctRow.getAddress2()
+       ,null
+       ,null
+       ,Address1
+       ,Address2
+       // 2009-10-14 [IE554,IE573] Add End
       );
 
       XxcsoSpDecisionBmFormatVORowImpl bmFmtRow

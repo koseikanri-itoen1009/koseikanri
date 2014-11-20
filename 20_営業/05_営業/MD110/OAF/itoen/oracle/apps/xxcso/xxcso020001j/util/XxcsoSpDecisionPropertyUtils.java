@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2009-05-13 1.2  SCS柳平直人   [ST障害T1_0954]T1_0302修正漏れ反映
 * 2009-07-16 1.3  SCS阿部大輔   [SCS障害0000385]否決ボタン時の提出ボタン対応
 * 2009-08-04 1.4  SCS小川浩     [SCS障害0000820]転勤時の適用・提出ボタン対応
+* 2009-10-14 1.5  SCS阿部大輔   [共通課題IE554,IE573]住所対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -1789,10 +1790,16 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setBm1PostCdFViewRender(             Boolean.TRUE  );
     initRow.setBm1PostCdSRender(                 Boolean.TRUE  );
     initRow.setBm1PostCdSViewRender(             Boolean.TRUE  );
-    initRow.setBm1StateRender(                   Boolean.TRUE  );
-    initRow.setBm1StateViewRender(               Boolean.TRUE  );
-    initRow.setBm1CityRender(                    Boolean.TRUE  );
-    initRow.setBm1CityViewRender(                Boolean.TRUE  );
+    // 2009-10-14 [IE554,IE573] Add Start
+    //initRow.setBm1StateRender(                   Boolean.TRUE  );
+    //initRow.setBm1StateViewRender(               Boolean.TRUE  );
+    //initRow.setBm1CityRender(                    Boolean.TRUE  );
+    //initRow.setBm1CityViewRender(                Boolean.TRUE  );
+    initRow.setBm1StateRender(                   Boolean.FALSE  );
+    initRow.setBm1StateViewRender(               Boolean.FALSE  );
+    initRow.setBm1CityRender(                    Boolean.FALSE  );
+    initRow.setBm1CityViewRender(                Boolean.FALSE  );
+    // 2009-10-14 [IE554,IE573] Add End
     initRow.setBm1Address1Render(                Boolean.TRUE  );
     initRow.setBm1Address1ViewRender(            Boolean.TRUE  );
     initRow.setBm1Address2Render(                Boolean.TRUE  );
@@ -1815,10 +1822,16 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setBm2PostCdFViewRender(             Boolean.TRUE  );
     initRow.setBm2PostCdSRender(                 Boolean.TRUE  );
     initRow.setBm2PostCdSViewRender(             Boolean.TRUE  );
-    initRow.setBm2StateRender(                   Boolean.TRUE  );
-    initRow.setBm2StateViewRender(               Boolean.TRUE  );
-    initRow.setBm2CityRender(                    Boolean.TRUE  );
-    initRow.setBm2CityViewRender(                Boolean.TRUE  );
+    // 2009-10-14 [IE554,IE573] Add Start
+    //initRow.setBm2StateRender(                   Boolean.TRUE  );
+    //initRow.setBm2StateViewRender(               Boolean.TRUE  );
+    //initRow.setBm2CityRender(                    Boolean.TRUE  );
+    //initRow.setBm2CityViewRender(                Boolean.TRUE  );
+    initRow.setBm2StateRender(                   Boolean.FALSE  );
+    initRow.setBm2StateViewRender(               Boolean.FALSE  );
+    initRow.setBm2CityRender(                    Boolean.FALSE  );
+    initRow.setBm2CityViewRender(                Boolean.FALSE  );
+    // 2009-10-14 [IE554,IE573] Add End
     initRow.setBm2Address1Render(                Boolean.TRUE  );
     initRow.setBm2Address1ViewRender(            Boolean.TRUE  );
     initRow.setBm2Address2Render(                Boolean.TRUE  );
@@ -1846,10 +1859,16 @@ public class XxcsoSpDecisionPropertyUtils
     initRow.setBm3PostCdFViewRender(             Boolean.TRUE  );
     initRow.setBm3PostCdSRender(                 Boolean.TRUE  );
     initRow.setBm3PostCdSViewRender(             Boolean.TRUE  );
-    initRow.setBm3StateRender(                   Boolean.TRUE  );
-    initRow.setBm3StateViewRender(               Boolean.TRUE  );
-    initRow.setBm3CityRender(                    Boolean.TRUE  );
-    initRow.setBm3CityViewRender(                Boolean.TRUE  );
+    // 2009-10-14 [IE554,IE573] Add Start
+    //initRow.setBm3StateRender(                   Boolean.TRUE  );
+    //initRow.setBm3StateViewRender(               Boolean.TRUE  );
+    //initRow.setBm3CityRender(                    Boolean.TRUE  );
+    //initRow.setBm3CityViewRender(                Boolean.TRUE  );
+    initRow.setBm3StateRender(                   Boolean.FALSE  );
+    initRow.setBm3StateViewRender(               Boolean.FALSE  );
+    initRow.setBm3CityRender(                    Boolean.FALSE  );
+    initRow.setBm3CityViewRender(                Boolean.FALSE  );
+    // 2009-10-14 [IE554,IE573] Add End
     initRow.setBm3Address1Render(                Boolean.TRUE  );
     initRow.setBm3Address1ViewRender(            Boolean.TRUE  );
     initRow.setBm3Address2Render(                Boolean.TRUE  );

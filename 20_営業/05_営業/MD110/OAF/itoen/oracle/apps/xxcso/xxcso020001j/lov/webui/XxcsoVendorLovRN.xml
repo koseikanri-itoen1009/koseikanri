@@ -23,8 +23,8 @@ HISTORY
             <oa:formValue id="PostalCodeFirst" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="PostalCodeFirst"/>
             <oa:formValue id="PostalCodeSecond" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="PostalCodeSecond"/>
             <oa:messageStyledText id="Zip" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="Zip" maximumLength="20" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PostalCode"/>
-            <oa:messageStyledText id="State" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="State" maximumLength="150" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/State"/>
-            <oa:messageStyledText id="City" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="City" maximumLength="25" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/City"/>
+            <oa:formValue id="State" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="State" rendered="true"/>
+            <oa:formValue id="City" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="City" rendered="true"/>
             <oa:messageStyledText id="AddressLine1" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="AddressLine1" maximumLength="240" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/Address1"/>
             <oa:messageStyledText id="AddressLine2" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="AddressLine2" maximumLength="240" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/Address2"/>
             <oa:messageStyledText id="PhoneNumber" dataType="VARCHAR2" viewName="XxcsoVendorLovVO1" viewAttr="PhoneNumber" maximumLength="25" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PhoneNumber"/>

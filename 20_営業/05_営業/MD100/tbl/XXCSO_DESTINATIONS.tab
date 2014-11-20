@@ -3,7 +3,7 @@
  * TABLE Name      : xxcso_destinations
  * Description     : 送付先テーブル
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -12,6 +12,7 @@
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/03/02    1.1  H.Ogawa       STORAGE句を追加
  *  2009/03/04    1.1  S.Yoda        桁数変更（郵便番号、都道府県、市区）
+ *  2009/10/20    1.2  D.Abe         仕入先番号を追加
  ************************************************************************/
 CREATE TABLE xxcso.xxcso_destinations
 (
@@ -39,6 +40,7 @@ CREATE TABLE xxcso.xxcso_destinations
   program_application_id          NUMBER(15),
   program_id                      NUMBER(15),
   program_update_date             DATE,
+  vendor_number                   VARCHAR2(30),
   CONSTRAINT xxcso_destinations_pk PRIMARY KEY ( delivery_id )
   USING INDEX TABLESPACE xxidx2
 )
@@ -71,3 +73,4 @@ COMMENT ON COLUMN xxcso.xxcso_destinations.request_id                           
 COMMENT ON COLUMN xxcso.xxcso_destinations.program_application_id                 IS 'コンカレント・プログラム・アプリケーションID';
 COMMENT ON COLUMN xxcso.xxcso_destinations.program_id                             IS 'コンカレント・プログラムID';
 COMMENT ON COLUMN xxcso.xxcso_destinations.program_update_date                    IS 'プログラム更新日';
+COMMENT ON COLUMN xxcso.xxcso_destinations.vendor_number                          IS '仕入先番号';

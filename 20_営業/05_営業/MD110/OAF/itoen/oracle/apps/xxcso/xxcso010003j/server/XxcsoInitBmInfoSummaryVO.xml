@@ -60,7 +60,7 @@ SELECT  xxcso_010003j_pkg.decode_bm_info(
            ,'1'
            ,'0'
            ,xsdc.party_name
-           ,pv.vendor_name
+           ,pvs.attribute1
           )
          ,1
          ,80

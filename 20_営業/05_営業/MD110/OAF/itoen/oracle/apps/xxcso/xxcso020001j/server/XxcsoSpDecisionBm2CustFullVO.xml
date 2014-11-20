@@ -19,7 +19,7 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
            XxcsoSpDecisionCustsVEO.CUSTOMER_ID
           ,XxcsoSpDecisionCustsVEO.BM_PAYMENT_TYPE
           ,XxcsoSpDecisionCustsVEO.PARTY_NAME
-          ,pv.vendor_name
+          ,pvs.attribute1
          )
         ,1
         ,80
