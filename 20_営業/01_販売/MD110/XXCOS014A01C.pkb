@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A01C (body)
  * Description      : 納品書用データ作成
  * MD.050           : 納品書用データ作成 MD050_COS_014_A01
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,9 @@ AS
  *  2009/06/29    1.12  T.Kitajima       [T1_0975] 値引品目対応
  *  2009/07/02    1.12  N.Maeda          [T1_0975] 値引品目数量修正
  *  2009/07/13    1.13  K.Kiriu          [0000064] 受注ヘッダDFF項目漏れ対応
+ *  2009/08/12    1.14  K.Kiriu          [0000037] PT対応
+ *                                       [0000901] 顧客指定時の不具合対応
+ *                                       [0001043] 売上区分混在チェック無効化対応
  *
  *****************************************************************************************/
 --
@@ -155,7 +158,9 @@ AS
   ct_msg_input_parameters2        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12902';                    --パラメータ出力メッセージ2
   ct_msg_fopen_err                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00009';                    --ファイルオープンエラーメッセージ
   ct_msg_resource_busy_err        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00001';                    --ロックエラーメッセージ
-  ct_msg_sale_class_mixed         CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00034';                    --売上区分混在エラーメッセージ
+/* 2009/08/12 Ver1.14 Del Start */
+--  ct_msg_sale_class_mixed         CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00034';                    --売上区分混在エラーメッセージ
+/* 2009/08/12 Ver1.14 Del Start */
   ct_msg_sale_class_err           CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00111';                    --売上区分エラー
   ct_msg_header_type              CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00122';                    --メッセージ用文字列.通常受注
   ct_msg_line_type10              CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00121';                    --メッセージ用文字列.通常出荷
@@ -215,6 +220,9 @@ AS
 -- 2009/02/13 T.Nakamura Ver.1.2 add start
   cv_enabled_flag                 CONSTANT VARCHAR2(1)  := 'Y';                                   --使用可能フラグ
 -- 2009/02/13 T.Nakamura Ver.1.2 add end
+/* 2009/08/12 Ver1.14 Add Start */
+  ct_lang                         CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');    -- 言語
+/* 2009/08/12 Ver1.14 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1547,12 +1555,18 @@ AS
     lv_break_key_new                   VARCHAR2(100);                         --新ブレイクキー
     lt_cust_po_number     oe_order_headers_all.cust_po_number%TYPE;           --受注ヘッダ（顧客発注）
     lt_line_number        oe_order_lines_all.line_number%TYPE;                --受注明細　（明細番号）
-    lt_bargain_class                   VARCHAR2(100);
+/* 2009/08/12 Ver1.14 Del Start */
+--    lt_bargain_class                   VARCHAR2(100);
+/* 2009/08/12 Ver1.14 Del End   */
     lt_last_invoice_number             VARCHAR2(100);
     lt_outbound_flag                   VARCHAR2(100);
-    lt_last_bargain_class              VARCHAR2(100);
+/* 2009/08/12 Ver1.14 Del Start */
+--    lt_last_bargain_class              VARCHAR2(100);
+/* 2009/08/12 Ver1.14 Del End   */
     lb_error                           BOOLEAN;
-    lb_mix_error_order                 BOOLEAN;
+/* 2009/08/12 Ver1.14 Del Start */
+--    lb_mix_error_order                 BOOLEAN;
+/* 2009/08/12 Ver1.14 Del End   */
     lb_out_flag_error_order            BOOLEAN;
   --伝票集計エリア
     l_data_tab                 xxcos_common2_pkg.g_layout_ttype;              --出力データ情報
@@ -2239,7 +2253,9 @@ AS
       SELECT TO_CHAR(ivoh.header_id)                                            header_id                     --ヘッダID(更新キー)
             ,ivoh.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
             ,oola.line_number                                                   line_number                   --受注明細　（明細番号）
-            ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
+/* 2009/08/12 Ver1.14 Del Start */
+--            ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
+/* 2009/08/12 Ver1.14 Del End   */
             ,xlvv.attribute12                                                   outbound_flag                 --OUTBOUND可否
       ------------------------------------------------------ヘッダ情報--------------------------------------------------------------
             ,cv_number01                                                        medium_class                  --媒体区分
@@ -2549,7 +2565,16 @@ AS
                      opm.jan_code
                  END
                WHEN  i_chain_rec.chain_edi_item_code_div  = cv_edi_item_code_div01  THEN
-                 xciv.customer_item_number
+/* 2009/08/12 Ver1.14 Mod Start */
+--                 xciv.customer_item_number
+                 ( SELECT xciv.customer_item_number
+                   FROM   xxcos_customer_items_v xciv
+                   WHERE  xciv.customer_id       = i_cust_rec.cust_id
+                   AND    xciv.inventory_item_id = oola.inventory_item_id
+                   AND    xciv.order_uom         = oola.order_quantity_uom
+                   AND    rownum                 = 1
+                 )
+/* 2009/08/12 Ver1.14 Mod End   */
              END                                                                product_code2                 --商品コード２
             ,CASE
                WHEN i_prf_rec.case_uom_code               = oola.order_quantity_uom THEN
@@ -2562,7 +2587,13 @@ AS
             ,NULL                                                               case_product_code             --ケース商品コード
             ,NULL                                                               ball_product_code             --ボール商品コード
             ,NULL                                                               product_code_item_type        --商品コード品種
-            ,xhpcv.item_div_h_code                                              prod_class                    --商品区分
+/* 2009/08/12 Ver1.14 Mod Start */
+--            ,xhpcv.item_div_h_code                                              prod_class                    --商品区分
+            ,( SELECT xhpcv.item_div_h_code
+               FROM   xxcos_head_prod_class_v xhpcv
+               WHERE  xhpcv.inventory_item_id = oola.inventory_item_id
+             )                                                                  prod_class                    --商品区分
+/* 2009/08/12 Ver1.14 Mod End   */
             ,NVL( opm.item_name,i_msg_rec.item_notfound )                       product_name                  --商品名（漢字）
             ,NULL                                                               product_name1_alt             --商品名１（カナ）
             ,SUBSTRB( opm.item_name_alt,1,15 )                                  product_name2_alt             --商品名２（カナ）
@@ -2822,7 +2853,24 @@ AS
             ,NULL                                                               general_succeeded_item8       --汎用引継ぎ項目８
             ,NULL                                                               general_succeeded_item9       --汎用引継ぎ項目９
             ,NULL                                                               general_succeeded_item10      --汎用引継ぎ項目１０
-            ,TO_CHAR( avtab.tax_rate )                                          general_add_item1             --汎用付加項目１(税率)
+/* 2009/08/12 Ver1.14 Mod Start */
+--            ,TO_CHAR( avtab.tax_rate )                                          general_add_item1             --汎用付加項目１(税率)
+            ,( SELECT TO_CHAR( avtab.tax_rate)
+               FROM   ar_vat_tax_all_b       avtab
+                     ,xxcos_lookup_values_v  xlvv2
+               WHERE  xlvv2.lookup_type           = ct_tax_class
+               AND    xlvv2.attribute3            = ivoh.tax_div
+               AND    ivoh.request_date           BETWEEN NVL( xlvv2.start_date_active, ivoh.request_date )
+                                                  AND     NVL( xlvv2.end_date_active, ivoh.request_date )
+               AND    xlvv2.attribute2            = avtab.tax_code
+               AND    avtab.set_of_books_id       = i_prf_rec.set_of_books_id
+               AND    avtab.org_id                = i_prf_rec.org_id
+               AND    avtab.enabled_flag          = cv_enabled_flag
+               AND    i_other_rec.process_date    BETWEEN avtab.start_date
+                                                  AND     NVL( avtab.end_date, i_other_rec.process_date )
+               AND    rownum                      = 1
+             )                                                                  general_add_item1             --汎用付加項目１(税率)
+/* 2009/08/12 Ver1.14 Mod End   */
 --******************************************************* 2009/04/02    1.6   T.kitajima MOD START *******************************************************
 --            ,SUBSTRB( i_base_rec.phone_number,1,10 )                            general_add_item2             --汎用付加項目２
 --            ,SUBSTRB( i_base_rec.phone_number,11,20 )                           general_add_item3             --汎用付加項目３
@@ -2919,6 +2967,9 @@ AS
                    ,hz_cust_accounts                                            hca                           --* 顧客マスタ *--
                    ,xxcmm_cust_accounts                                         xca                           --* 顧客マスタアドオン *--
                    ,oe_order_sources                                            oos                           --* 受注ソース *--
+/* 2009/08/12 Ver1.14 Add Start */
+                   ,xxcos_chain_store_security_v                                xcss                          --チェーン店店舗セキュリティビュー
+/* 2009/08/12 Ver1.14 Add End   */
              WHERE  hca.cust_account_id             = ooha.sold_to_org_id                                     --顧客ID
              AND    hca.customer_class_code         IN ( cv_cust_class_chain_store                            --顧客区分:店舗
                                                         ,cv_cust_class_uesama )                               --顧客区分:上様
@@ -2928,6 +2979,10 @@ AS
              AND    xca.chain_store_code            = i_input_rec.ssm_store_code                              --チェーン店コード(EDI)
              AND    xca.store_code                  = NVL( i_input_rec.store_code, xca.store_code )           --チェーン店コード(EDI)
 --******************************************* 2009/04/13 1.7 T.Kitajima MOD  END  *************************************
+/* 2009/08/12 Ver1.14 Add Start */
+             AND    xcss.account_number             = hca.account_number
+             AND    xcss.user_id                    = i_input_rec.user_id
+/* 2009/08/12 Ver1.14 Add End   */
              --受注ソース抽出条件
              AND    oos.description                != i_msg_rec.order_source
              AND    oos.enabled_flag                = cv_enabled_flag
@@ -3014,7 +3069,10 @@ AS
                    ,ximb.end_date_active                                        end_date_active               --適用終了日
              FROM   ic_item_mst_b                                               iimb                          --* OPM品目マスタ *--
                    ,xxcmn_item_mst_b                                            ximb                          --* OPM品目マスタアドオン *--
-             WHERE  ximb.item_id(+)                 = iimb.item_id                                            --品目ID
+/* 2009/08/12 Ver1.14 Mod Start */
+--             WHERE  ximb.item_id(+)                 = iimb.item_id                                            --品目ID
+             WHERE  ximb.item_id                    = iimb.item_id                                            --品目ID
+/* 2009/08/12 Ver1.14 Mod End   */
            )                                                                    opm                           --* OPM品目マスタ *--
           ,( SELECT msib.inventory_item_id                                      inventory_item_id             --品目ID
                    ,xsib.case_jan_code                                          case_jan_code                 --ケースJANコード
@@ -3022,14 +3080,21 @@ AS
              FROM   mtl_system_items_b                                          msib                          --* DISC品目マスタ *--
                    ,xxcmm_system_items_b                                        xsib                          --* DISC品目マスタアドオン *--
              WHERE  msib.organization_id            = i_other_rec.organization_id                             --組織ID
-             AND    xsib.item_code(+)               = msib.segment1                                           --品名コード
+/* 2009/08/12 Ver1.14 Mod Start */
+--             AND    xsib.item_code(+)               = msib.segment1                                           --品名コード
+             AND    xsib.item_code                  = msib.segment1                                           --品名コード
+/* 2009/08/12 Ver1.14 Mod End   */
            )                                                                    disc                          --*  DISC品目マスタ *--
-          ,xxcos_head_prod_class_v                                              xhpcv                         --本社商品区分ビュー
-          ,xxcos_customer_items_v                                               xciv                          --顧客品目ビュー
+/* 2009/08/12 Ver1.14 Del Start */
+--          ,xxcos_head_prod_class_v                                              xhpcv                         --本社商品区分ビュー
+--          ,xxcos_customer_items_v                                               xciv                          --顧客品目ビュー
+/* 2009/08/12 Ver1.14 Del End   */
           ,xxcos_lookup_values_v                                                xlvv                          --売上区分マスタビュー
-          ,xxcos_lookup_values_v                                                xlvv2                         --税コードマスタビュー
-          ,ar_vat_tax_all_b                                                     avtab                         --税率マスタ
-          ,xxcos_chain_store_security_v                                         xcss                          --チェーン店店舗セキュリティビュー
+/* 2009/08/12 Ver1.14 Del Start */
+--          ,xxcos_lookup_values_v                                                xlvv2                         --税コードマスタビュー
+--          ,ar_vat_tax_all_b                                                     avtab                         --税率マスタ
+--          ,xxcos_chain_store_security_v                                         xcss                          --チェーン店店舗セキュリティビュー
+/* 2009/08/12 Ver1.14 Del End   */
 --******************************************************* 2009/04/02    1.6   T.kitajima ADD START *******************************************************
           ,(
             SELECT hca.account_number                                                  account_number               --顧客コード
@@ -3075,55 +3140,79 @@ AS
        --受注明細
        AND   oola.header_id                 = ivoh.header_id                                                  --受注ヘッダID
        --受注タイプ（ヘッダ）抽出条件
-       AND   ottt_h.language                = userenv( 'LANG' )                                               --言語
-       AND   ottt_h.source_lang             = userenv( 'LANG' )                                               --言語(ソース)
+/* 2009/08/12 Ver1.14 Mod Start */
+--       AND   ottt_h.language                = userenv( 'LANG' )                                               --言語
+--       AND   ottt_h.source_lang             = userenv( 'LANG' )                                               --言語(ソース)
+       AND   ottt_h.language                = ct_lang                                                         --言語
+       AND   ottt_h.source_lang             = ct_lang                                                         --言語(ソース)
+/* 2009/08/12 Ver1.14 Mod End   */
        AND   ottt_h.description             = i_msg_rec.header_type                                           --種類
        AND   ivoh.order_type_id             = ottt_h.transaction_type_id                                      --トランザクションID
        --受注タイプ（明細）抽出条件
-       AND   ottt_l.language                = userenv( 'LANG' )                                               --言語
-       AND   ottt_l.source_lang             = userenv( 'LANG' )                                               --言語(ソース)
+/* 2009/08/12 Ver1.14 Mod Start */
+--       AND   ottt_l.language                = userenv( 'LANG' )                                               --言語
+--       AND   ottt_l.source_lang             = userenv( 'LANG' )                                               --言語(ソース)
+       AND   ottt_l.language                = ct_lang                                                         --言語
+       AND   ottt_l.source_lang             = ct_lang                                                         --言語(ソース)
+/* 2009/08/12 Ver1.14 Mod End   */
        AND   ottt_l.description             IN ( i_msg_rec.line_type10,                                       --種類：10_通常出荷
                                                  i_msg_rec.line_type20,                                       --種類：20_協賛
                                                  i_msg_rec.line_type30 )                                      --種類：30_値引
        AND   oola.line_type_id              = ottt_l.transaction_type_id                                      --トランザクションID
        --パーティマスタ抽出条件
        AND   hp.party_id(+)                 = ivoh.party_id                                                   --パーティID
+/* 2009/08/12 Ver1.14 Mod Start */
+--       --OPM品目マスタ抽出条件
+--       AND   opm.item_no(+)                 = oola.ordered_item                                               --品名コード
+--       AND   oola.request_date                                                                                --要求日
+--         BETWEEN NVL( opm.start_date_active(+) ,oola.request_date )                                           --適用開始日
+--         AND     NVL( opm.end_date_active(+)   ,oola.request_date )                                           --適用終了日
+--       --DISC品目アドオン抽出条件
+--       AND   disc.inventory_item_id(+)      = oola.inventory_item_id                                          --品目ID
+--       --本社商品区分ビュー抽出条件
+--       AND   xhpcv.inventory_item_id(+)     = oola.inventory_item_id                                          --品目ID
+--       --顧客品目view
+--       AND   xciv.customer_id(+)            = i_cust_rec.cust_id                                              --顧客ID
+--       AND   xciv.inventory_item_id(+)      = oola.inventory_item_id                                          --品目ID
+--       AND   xciv.order_uom (+)             = oola.order_quantity_uom                                         --単位コード
+--       --売上区分マスタ
+--       AND   xlvv.lookup_type(+)            = ct_qc_sale_class                                                --売上区分マスタ
+--       AND   xlvv.lookup_code(+)            = oola.attribute5                                                 --売上区分
        --OPM品目マスタ抽出条件
-       AND   opm.item_no(+)                 = oola.ordered_item                                               --品名コード
+       AND   opm.item_no                    = oola.ordered_item                                               --品名コード
        AND   oola.request_date                                                                                --要求日
-         BETWEEN NVL( opm.start_date_active(+) ,oola.request_date )                                           --適用開始日
-         AND     NVL( opm.end_date_active(+)   ,oola.request_date )                                           --適用終了日
+         BETWEEN NVL( opm.start_date_active, oola.request_date )                                              --適用開始日
+         AND     NVL( opm.end_date_active, oola.request_date )                                                --適用終了日
        --DISC品目アドオン抽出条件
-       AND   disc.inventory_item_id(+)      = oola.inventory_item_id                                          --品目ID
-       --本社商品区分ビュー抽出条件
-       AND   xhpcv.inventory_item_id(+)     = oola.inventory_item_id                                          --品目ID
-       --顧客品目view
-       AND   xciv.customer_id(+)            = i_cust_rec.cust_id                                              --顧客ID
-       AND   xciv.inventory_item_id(+)      = oola.inventory_item_id                                          --品目ID
-       AND   xciv.order_uom (+)             = oola.order_quantity_uom                                         --単位コード
+       AND   disc.inventory_item_id         = oola.inventory_item_id                                          --品目ID
        --売上区分マスタ
-       AND   xlvv.lookup_type(+)            = ct_qc_sale_class                                                --売上区分マスタ
-       AND   xlvv.lookup_code(+)            = oola.attribute5                                                 --売上区分
+       AND   xlvv.lookup_type               = ct_qc_sale_class                                                --売上区分マスタ
+       AND   xlvv.lookup_code               = oola.attribute5                                                 --売上区分
+/* 2009/08/12 Ver1.14 Mod End   */
        --店舗セキュリティview抽出条件
 --******************************************* 2009/06/19 Ver.1.12 N.Maeda MOD START *****************************************
 --       AND   xcss.account_number(+)         = ivoh.account_number                                             --顧客コード
 --       AND   xcss.user_id(+)                = i_input_rec.user_id                                             --ユーザID
-       AND   xcss.account_number         = ivoh.account_number                                             --顧客コード
-       AND   xcss.user_id                = i_input_rec.user_id                                             --ユーザID
+/* 2009/08/12 Ver1.14 Del Start */
+--       AND   xcss.account_number         = ivoh.account_number                                             --顧客コード
+--       AND   xcss.user_id                = i_input_rec.user_id                                             --ユーザID
+/* 2009/08/12 Ver1.14 Del End   */
 --******************************************* 2009/06/19 Ver.1.12 N.Maeda MOD  END  *****************************************
-       --税コードマスタ
-       AND   xlvv2.lookup_type(+)           = ct_tax_class                                                    --税コードマスタ
-       AND   xlvv2.attribute3(+)            = ivoh.tax_div                                                    --税区分
-       AND   ivoh.request_date                                                                                --要求日
-         BETWEEN NVL( xlvv2.start_date_active(+) ,ivoh.request_date )                                         --適用開始日
-         AND     NVL( xlvv2.end_date_active(+)   ,ivoh.request_date )                                         --適用終了日
-       AND   avtab.tax_code(+)              = xlvv2.attribute2                                                --税コード
-       AND   avtab.set_of_books_id(+)       = i_prf_rec.set_of_books_id                                       --GL会計帳簿ID
-       AND   avtab.org_id                   = i_prf_rec.org_id                                                --MO:営業単位
-       AND   avtab.enabled_flag             = cv_enabled_flag                                                 --使用可能フラグ
-       AND   i_other_rec.process_date
-         BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
-         AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+/* 2009/08/12 Ver1.14 Del Start */
+--       --税コードマスタ
+--       AND   xlvv2.lookup_type(+)           = ct_tax_class                                                    --税コードマスタ
+--       AND   xlvv2.attribute3(+)            = ivoh.tax_div                                                    --税区分
+--       AND   ivoh.request_date                                                                                --要求日
+--         BETWEEN NVL( xlvv2.start_date_active(+) ,ivoh.request_date )                                         --適用開始日
+--         AND     NVL( xlvv2.end_date_active(+)   ,ivoh.request_date )                                         --適用終了日
+--       AND   avtab.tax_code(+)              = xlvv2.attribute2                                                --税コード
+--       AND   avtab.set_of_books_id(+)       = i_prf_rec.set_of_books_id                                       --GL会計帳簿ID
+--       AND   avtab.org_id                   = i_prf_rec.org_id                                                --MO:営業単位
+--       AND   avtab.enabled_flag             = cv_enabled_flag                                                 --使用可能フラグ
+--       AND   i_other_rec.process_date
+--         BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
+--         AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+/* 2009/08/12 Ver1.14 Del End   */
        AND   ivoh.org_id                    = i_prf_rec.org_id                                                --MO:営業単位
        AND   oola.org_id                    = ivoh.org_id                                                     --MO:営業単位
        AND   ooha_lock.org_id               = ivoh.org_id                                                     --MO:営業単位
@@ -3133,7 +3222,10 @@ AS
 /* 2009/04/27 Ver1.8 Add Start */
        --単位マスタ
        AND   oola.order_quantity_uom        = muom.uom_code                                                   --受注単位
-       AND   muom.language                  = USERENV( 'LANG' )                                               --言語(単位マスタ)
+/* 2009/08/12 Ver1.14 Mod Start */
+--       AND   muom.language                  = USERENV( 'LANG' )                                               --言語(単位マスタ)
+       AND   muom.language                  = ct_lang                                                         --言語(単位マスタ)
+/* 2009/08/12 Ver1.14 Mod End   */
 /* 2009/04/27 Ver1.8 Add End   */
 --******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************
        AND   oola.flow_status_code         != cv_cancel                                                       --ステータス
@@ -3308,7 +3400,9 @@ AS
         lt_header_id                                                                                          --ヘッダID
        ,lt_cust_po_number                                                                                     --受注ヘッダ（顧客発注）
        ,lt_line_number                                                                                        --受注明細　（明細番号）
-       ,lt_bargain_class                                                                                      --定番特売区分
+/* 2009/08/12 Ver1.14 Del Start */
+--       ,lt_bargain_class                                                                                      --定番特売区分
+/* 2009/08/12 Ver1.14 Del End   */
        ,lt_outbound_flag                                                                                      --OUTBOUND可否
             ------------------------------------------------ヘッダ情報------------------------------------------------
        ,l_data_tab('MEDIUM_CLASS')                                                                            --媒体区分
@@ -3668,30 +3762,35 @@ AS
       --売上区分混在チェック
       --==============================================================
       IF (lt_last_invoice_number = l_data_tab('INVOICE_NUMBER')) AND cur_data_record%ROWCOUNT > 1 THEN
-        --前回伝票番号＝今回伝票番号の場合
-        IF (lt_last_bargain_class != lt_bargain_class AND lb_mix_error_order = FALSE) THEN
-          --前回定番特売区分≠今回定番特売区分の場合
-          lb_error           := TRUE;
-          lb_mix_error_order := TRUE;
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                         cv_apl_name
-                        ,ct_msg_sale_class_mixed
-                        ,cv_tkn_order_no
-                        ,l_data_tab('INVOICE_NUMBER')
-                       );
-          FND_FILE.PUT_LINE(
-             which  => FND_FILE.OUTPUT
-            ,buff   => lv_errmsg
-          );
--- 2009/02/19 T.Nakamura Ver.1.3 add start
-          lv_errbuf_all := lv_errbuf_all || lv_errmsg;
--- 2009/02/19 T.Nakamura Ver.1.3 add end
-        END IF;
+/* 2009/08/12 Ver1.14 Mod Start */
+--        --前回伝票番号＝今回伝票番号の場合
+--        IF (lt_last_bargain_class != lt_bargain_class AND lb_mix_error_order = FALSE) THEN
+--          --前回定番特売区分≠今回定番特売区分の場合
+--          lb_error           := TRUE;
+--          lb_mix_error_order := TRUE;
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                         cv_apl_name
+--                        ,ct_msg_sale_class_mixed
+--                        ,cv_tkn_order_no
+--                        ,l_data_tab('INVOICE_NUMBER')
+--                       );
+--          FND_FILE.PUT_LINE(
+--             which  => FND_FILE.OUTPUT
+--            ,buff   => lv_errmsg
+--          );
+---- 2009/02/19 T.Nakamura Ver.1.3 add start
+--          lv_errbuf_all := lv_errbuf_all || lv_errmsg;
+---- 2009/02/19 T.Nakamura Ver.1.3 add end
+--        END IF;
+        NULL;
+/* 2009/08/12 Ver1.14 Mod End   */
       ELSE
         --前回伝票番号≠今回伝票番号の場合
         lt_last_invoice_number  := l_data_tab('INVOICE_NUMBER');
-        lt_last_bargain_class   := lt_bargain_class;
-        lb_mix_error_order      := FALSE;
+/* 2009/08/12 Ver1.4 Del Start */
+--        lt_last_bargain_class   := lt_bargain_class;
+--        lb_mix_error_order      := FALSE;
+/* 2009/08/12 Ver1.4 Del End   */
         lb_out_flag_error_order := FALSE;
       END IF;
 --
