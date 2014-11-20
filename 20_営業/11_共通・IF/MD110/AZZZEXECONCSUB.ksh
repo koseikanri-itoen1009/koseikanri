@@ -29,6 +29,9 @@
 ##  2009/04/15    1.2   Masayuki.Sano    障害番号[T1-0522]                      ##
 ##                                       ・要求IDの取得方法変更                 ##
 ##                                       ・要求IDの取得失敗時、異常処理を追加   ##
+##  2009/06/17    1.3   Shigeto.Niki     [PT単体性能フィードバック]             ##
+##                                         CONCSUB要求待ち時間変更              ##
+##                                           (デフォルト60秒→1秒)              ##
 ##                                                                              ##
 ##################################################################################
 
@@ -177,7 +180,12 @@ L_conc_args="APPS/APPS"
 L_conc_args="${L_conc_args} \"${L_resp_appl}\""
 L_conc_args="${L_conc_args} \"${L_resp_name}\""
 L_conc_args="${L_conc_args} \"${L_user_name}\""
-L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
+
+# 2009/06/17 Ver.1.3 Shigeto.Niki mod START
+#L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
+L_conc_args="${L_conc_args} WAIT=1 CONCURRENT"
+# 2009/06/17 Ver.1.3 Shigeto.Niki mod END
+
 L_conc_args="${L_conc_args} \"${L_conc_appl}\""
 L_conc_args="${L_conc_args} \"${L_conc_name}\""
 

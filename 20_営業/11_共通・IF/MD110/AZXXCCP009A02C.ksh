@@ -30,6 +30,9 @@
 ##                                         変更履歴のフォーマット変更           ##
 ##  2009/04/01    1.2   Masayuki.Sano    画面起動ジョブネットの多重制御対応     ##
 ##                                         外部シェル名変更対応                 ##
+##  2009/06/17    1.3   Shigeto.Niki     [PT単体性能フィードバック]             ##
+##                                         CONCSUB要求待ち時間変更              ##
+##                                           (デフォルト15秒→1秒)              ##
 ##################################################################################
 
 ################################################################################
@@ -133,10 +136,15 @@ L_conc_args="APPS/APPS"
 L_conc_args="${L_conc_args} \"${L_resp_appl}\""
 L_conc_args="${L_conc_args} \"${L_resp_name}\""
 L_conc_args="${L_conc_args} \"${L_user_name}\""
+
+# 2009/06/17 Ver.1.3 Shigeto.Niki mod START
 # 2009/03/04 Ver.1.1 Koji.Oomata mod START
 #L_conc_args="${L_conc_args} WAIT=Y CONCURRENT"
-L_conc_args="${L_conc_args} WAIT=15 CONCURRENT"
+#L_conc_args="${L_conc_args} WAIT=15 CONCURRENT"
+L_conc_args="${L_conc_args} WAIT=1 CONCURRENT"
 # 2009/03/04 Ver.1.1 Koji.Oomata mod END
+# 2009/06/17 Ver.1.3 Shigeto.Niki mod END
+
 L_conc_args="${L_conc_args} \"${L_conc_appl}\""
 L_conc_args="${L_conc_args} \"${L_conc_name}\""
 
