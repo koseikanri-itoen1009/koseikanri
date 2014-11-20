@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/05    1.0   SCS.Tsuboi       新規作成
  *  2009/04/02    1.1   H.Sasaki         [T1_0002]VD預け先の顧客コード出力
+ *  2009/05/15    1.2   H.Sasaki         [T1_0785]帳票出力のソート項目の設定値を変更
  *
  *****************************************************************************************/
 --
@@ -794,7 +795,10 @@ AS
        ,program_id
        ,program_update_date
      )VALUES(
-        gt_hht_info_tab( gn_hht_info_loop_cnt ).interface_id                        -- インターフェースID
+-- == 2009/05/15 V1.2 Modified START ===============================================================
+--        gt_hht_info_tab( gn_hht_info_loop_cnt ).interface_id
+        gt_hht_info_tab( gn_hht_info_loop_cnt ).transaction_id                      -- インターフェースID
+-- == 2009/05/15 V1.2 Modified END   ===============================================================
        ,SUBSTR(gr_param.target_date,1,10)                                           -- 対象期間
        ,gv_output_kbn_name                                                          -- 出力区分
        ,gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_base_code                   -- 拠点コード
@@ -923,7 +927,7 @@ AS
            ,CASE  WHEN  xhit.record_type = cv_record_type_30  THEN
                     NVL(xhit.inside_cust_code, xhit.invoice_no)
                   ELSE
-                    xhit.inside_code
+                    NVL(xhit.inside_code, xhit.invoice_no)
             END                             invoice_no                  -- 伝票№
 -- == 2009/04/02 V1.1 Modified END   ===============================================================
     FROM    xxcoi_hht_inv_transactions xhit                           -- HHT入出庫一時表

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/01/16    1.0   H.nakajima       main新規作成
  *  2009/02/18    1.1   K.Nakamura       [障害COI_011] 入出庫ジャーナル処理区分'0'の処理ステータス対応
  *  2009/04/21    1.2   H.Sasaki         [T1_0654]取込データの前後スペース削除
+ *  2009/05/15    1.3   H.Sasaki         [T1_0785]データ抽出順序の変更
  *
  *****************************************************************************************/
 --
@@ -435,14 +436,18 @@ AS
 -- == 2009/04/21 V1.2 Modified END   ===============================================================
       FROM   xxcoi_in_hht_inv_transactions xihit                        -- HHT入出庫情報IF
       WHERE  TRUNC( NVL(xihit.invoice_date , gd_process_date ) ) <= TRUNC( gd_process_date )
+-- == 2009/05/15 V1.3 Modified START ===============================================================
+--      ORDER BY
+--             xihit.base_code
+--            ,xihit.record_type
+--            ,xihit.invoice_type
+--            ,xihit.department_flag
+--            ,xihit.invoice_no
+--            ,xihit.column_no
+--            ,xihit.item_code
       ORDER BY
-             xihit.base_code
-            ,xihit.record_type
-            ,xihit.invoice_type
-            ,xihit.department_flag
-            ,xihit.invoice_no
-            ,xihit.column_no
-            ,xihit.item_code
+             xihit.interface_id
+-- == 2009/05/15 V1.3 Modified END   ===============================================================
       FOR UPDATE NOWAIT;
 --
     no_data_expt    EXCEPTION;                                          -- 対象データなし
