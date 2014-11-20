@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteSalesRegistAMImpl
 * 概要説明   : 販売先用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -22,6 +22,7 @@
 * 2009-08-31 1.11 SCS阿部大輔  【0001212】通常店納価格導出ボタンの見積区分を変更
 * 2009-12-21 1.12 SCS阿部大輔  【E_本稼動_00535】営業原価対応
 * 2011-05-17 1.13 SCS桐生和幸  【E_本稼動_02500】原価割れチェック方法の変更対応
+* 2011-11-14 1.14 SCSK桐生和幸 【E_本稼動_08312】問屋見積画面の改修①
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -2524,7 +2525,6 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 // 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
     double taxratecul = 0;
 // 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
-
     XxcsoUtils.debug(txn, "[START]");
 
     XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
@@ -2695,6 +2695,38 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
                ,index
               );
         }
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add Start
+        // 通常で、今回店納が入力されている場合エラー
+        else if ( (XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(lineRow.getQuoteDiv())) &&
+                  (lineRow.getThisTimeDelivPrice() != null)
+                )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00618,
+                XxcsoConstants.TOKEN_COLUMN,
+                XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME_DELIV_PRICE,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+        // 特売で、今回店納が未入力の場合エラー
+        else if ( (XxcsoQuoteConstants.QUOTE_DIV_BARGAIN.equals(lineRow.getQuoteDiv())) &&
+                  (lineRow.getThisTimeDelivPrice() == null)
+                )
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00619,
+                XxcsoConstants.TOKEN_COLUMN,
+                XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME_DELIV_PRICE,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add End
         else
         {
           // 入数のチェック
@@ -2795,9 +2827,19 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
                    )
 // 2011-05-17 Ver1.13 [E_本稼動_02500] Mod End
                 {
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add Start
+                  //トークン作成
+                  String tokenItem = XxcsoQuoteConstants.TOKEN_VALUE_USUALLY
+                                       + XxcsoQuoteConstants.TOKEN_VALUE_OR
+                                       + XxcsoQuoteConstants.TOKEN_VALUE_SPECIAL;
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add End
                   OAException error
                     = XxcsoMessage.createErrorMessage(
                         XxcsoConstants.APP_XXCSO1_00461,
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add Start
+                        XxcsoConstants.TOKEN_ITEM,
+                        tokenItem,
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add End
                         XxcsoConstants.TOKEN_COLUMN,
                         XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
                         XxcsoConstants.TOKEN_INDEX,
@@ -2817,8 +2859,13 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
           }
         }
 /* 20090723_abe_0000806 END*/
-        // 今回店納価格は、入力された場合のみ原価割れチェック
-        if(lineRow.getThisTimeDelivPrice() != null)
+        // 今回店納価格は、入力された場合のみ原価割れチェック(特売のみ)
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Mod Start
+//        if(lineRow.getThisTimeDelivPrice() != null)
+        if( (lineRow.getThisTimeDelivPrice() != null) &&
+            (XxcsoQuoteConstants.QUOTE_DIV_BARGAIN.equals(lineRow.getQuoteDiv()))
+          )
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Mod End
         {
           // 入数のチェック
           if ( lineRow.getCaseIncNum() != null &&
@@ -2914,9 +2961,17 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
                    )
 // 2011-05-17 Ver1.13 [E_本稼動_02500] Mod End
                   {
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add Start
+                    //トークン作成
+                    String tokenItem = XxcsoQuoteConstants.TOKEN_VALUE_SPECIAL;
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add End
                     OAException error
                       = XxcsoMessage.createErrorMessage(
                           XxcsoConstants.APP_XXCSO1_00461,
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add Start
+                          XxcsoConstants.TOKEN_ITEM,
+                          tokenItem,
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add End
                           XxcsoConstants.TOKEN_COLUMN,
                           XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME,
                           XxcsoConstants.TOKEN_INDEX,
@@ -2955,6 +3010,21 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
                ,index
               );
         }
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add Start
+        // 今回店納が未入力の場合エラー
+        else if (lineRow.getThisTimeDelivPrice() == null)
+        {
+          OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00619,
+                XxcsoConstants.TOKEN_COLUMN,
+                XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME_DELIV_PRICE,
+                XxcsoConstants.TOKEN_INDEX,
+                String.valueOf(index)
+              );
+          errorList.add(error);
+        }
+// 2011-11-14 Ver1.14 [E_本稼動_08312] Add End
       }
       /* 20090723_abe_0000806 END*/
     }

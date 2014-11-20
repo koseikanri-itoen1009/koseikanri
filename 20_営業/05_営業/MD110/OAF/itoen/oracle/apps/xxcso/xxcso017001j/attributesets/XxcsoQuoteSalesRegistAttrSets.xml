@@ -8,7 +8,9 @@
 販売先見積画面用の属性セットファイルです。
 
 修正履歴
-2008/12/21  小川浩        新規作成-->
+2008/12/21  小川浩        新規作成
+2011-11-14  SCSK桐生和幸 【E_本稼動_08312】問屋見積画面の改修①
+-->
 <package version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$">
    <attributeSet docName="PageLayoutRN" windowTitle="販売先用見積入力" title="販売先用見積入力"/>
    <attributeSet docName="CancelButton" prompt="取消"/>
@@ -27,7 +29,7 @@
    <attributeSet docName="PublishDate" prompt="発行日"/>
    <attributeSet docName="QuoteNumber" prompt="見積番号"/>
    <attributeSet docName="QuoteRevisionNumber" prompt="版"/>
-   <attributeSet docName="AccountNumber" prompt="顧客コード"/>
+   <attributeSet docName="AccountNumber" prompt="顧客（販売先）コード"/>
    <attributeSet docName="PartyName" prompt="顧客名"/>
    <attributeSet docName="EmployeeNumber" prompt="担当者コード"/>
    <attributeSet docName="EmployeeName" prompt="担当者名"/>

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteConstants
 * 概要説明   : 販売先用見積入力画面共通固定値クラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-03-24 1.1  SCS阿部大輔  【課題77対応】プロファイル値を追加
 * 2009-03-24 1.1  SCS阿部大輔  【T1_0138】ボタン制御を修正
 * 2009-07-23 1.2  SCS阿部大輔  【0000806】マージン額／マージン率の計算対象変更
+* 2011-11-14 1.3  SCSK桐生和幸 【E_本稼動_08312】問屋見積画面の改修①
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.util;
@@ -95,7 +96,10 @@ public class XxcsoQuoteConstants
   public static final String TOKEN_VALUE_INVALID              = "無効に";
   public static final String TOKEN_VALUE_FIXATION             = "確定";
   public static final String TOKEN_VALUE_OTHER_CONTENT        = "特記事項";
-  public static final String TOKEN_VALUE_ACCOUNT_NUMBER       = "顧客コード";
+// 2011-11-14 Ver1.3 [E_本稼動_08312] Mod Start
+//  public static final String TOKEN_VALUE_ACCOUNT_NUMBER       = "顧客コード";
+  public static final String TOKEN_VALUE_ACCOUNT_NUMBER       = "顧客（販売先）コード";
+// 2011-11-14 Ver1.3 [E_本稼動_08312] Mod End
   public static final String TOKEN_VALUE_PUBLISH_DATE         = "発行日";
   public static final String TOKEN_VALUE_DELIV_PRICE_TAX_TYPE = "店納価格税区分";
   public static final String TOKEN_VALUE_STORE_PRICE_TAX_TYPE = "小売価格税区分";
@@ -111,6 +115,10 @@ public class XxcsoQuoteConstants
   public static final String TOKEN_VALUE_QUOTE_END_DATE       = "期間（終了）";
   public static final String TOKEN_VALUE_LINE_ORDER           = "並び順";
   public static final String TOKEN_VALUE_USUALLY              = "通常";
+// 2011-11-14 Ver1.3 [E_本稼動_08312] Add Start
+  public static final String TOKEN_VALUE_SPECIAL              = "特売";
+  public static final String TOKEN_VALUE_OR                   = "又は";
+// 2011-11-14 Ver1.3 [E_本稼動_08312] Add Start
   public static final String TOKEN_VALUE_EXCULDING_USUALLY    = "通常以外";
   public static final String TOKEN_VALUE_ONE_YEAR             = "1年";
   public static final String TOKEN_VALUE_THREE_MONTHS         = "3ヶ月";

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistAMImpl
 * 概要説明   : 帳合問屋用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.11
+* バージョン : 1.12
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2009-12-21 1.9  SCS阿部大輔  【E_本稼動_00535】営業原価対応
 * 2011-04-18 1.10 SCS吉元強樹  【E_本稼動_01373】通常NET価格自動導出対応
 * 2011-05-17 1.11 SCS桐生和幸  【E_本稼動_02500】原価割れチェック方法の変更対応
+* 2011-11-14 1.12 SCSK桐生和幸 【E_本稼動_08312】問屋見積画面の改修①
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.server;
@@ -2634,7 +2635,31 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       period_Day = 0;
     }
     /* 20090324_abe_課題77 END*/
-
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add Start
+    //プロファイル(XXCSO:異常マージン率)の取得
+    String err_Margin_Rate_Str = txn.getProfile(XxcsoQuoteConstants.ERR_MARGIN_RATE);
+    double err_Margin_Rate = 0;
+    if ( err_Margin_Rate_Str == null || "".equals(err_Margin_Rate_Str.trim()) )
+    {
+      //取得できない(NULL)場合エラーを表示し終了
+      throw
+        XxcsoMessage.createProfileNotFoundError(
+          XxcsoQuoteConstants.ERR_MARGIN_RATE
+        );
+    }
+    try{
+      err_Margin_Rate = Double.parseDouble(err_Margin_Rate_Str);
+    }
+    catch ( NumberFormatException e )
+    {
+      //数値に変換できない場合エラーを表示し終了
+      throw
+        XxcsoMessage.createProfileOptionValueError(
+          XxcsoQuoteConstants.ERR_MARGIN_RATE
+         ,err_Margin_Rate_Str
+        );
+    }
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add End
 // 2011-05-17 Ver1.11 [E_本稼動_02500] Add Start
     //仮払税率の存在チェック
     double taxrate = -1;
@@ -2643,19 +2668,19 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       taxrate = taxRow.getApTaxRate().doubleValue();
     }
 // 2011-05-17 Ver1.11 [E_本稼動_02500] Add End
-
     int index = 0;
     while ( lineRow != null )
     {
       if( "Y".equals(lineRow.getSelectFlag()) )
       {
         index++;
-
-/* 20090616_abe_T1_1257 START*/
-        handleMarginCalculation(
-          lineRow.getQuoteLineId().toString()
-        );
-/* 20090616_abe_T1_1257 END*/
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Del Start
+///* 20090616_abe_T1_1257 START*/
+//        handleMarginCalculation(
+//          lineRow.getQuoteLineId().toString()
+//        );
+///* 20090616_abe_T1_1257 END*/
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Del End
         validateLine(
           errorList
          ,lineRow
@@ -2675,6 +2700,9 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 // 2011-05-17 Ver1.11 [E_本稼動_02500] Add Start
          ,taxrate
 // 2011-05-17 Ver1.11 [E_本稼動_02500] Add End
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add Start
+         ,err_Margin_Rate
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add End
         );
       }
       lineRow = (XxcsoQuoteLinesStoreFullVORowImpl)lineVo.next();
@@ -2927,11 +2955,13 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
   
   /*****************************************************************************
    * 見積明細項目のチェック処理（確定チェック）
-   * @param errorList     エラーリスト
-   * @param headerRow     見積ヘッダ行インスタンス
-   * @param lineRow       見積明細行インスタンス
-   * @param index         対象行
-   * @param period_Daye   プロファイル値←20090324_abe_課題77 ADD
+   * @param errorList        エラーリスト
+   * @param headerRow        見積ヘッダ行インスタンス
+   * @param lineRow          見積明細行インスタンス
+   * @param index            対象行
+   * @param period_Daye      プロファイル値←20090324_abe_課題77 ADD
+   * @param taxrate          税率
+   * @param err_Margin_Rate  異常マージン率
    *****************************************************************************
    */
   private List validateFixedLine(
@@ -2947,6 +2977,9 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 // 2011-05-17 Ver1.11 [E_本稼動_02500] Add Start
    ,double                            taxrate
 // 2011-05-17 Ver1.11 [E_本稼動_02500] Add End
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add Start
+   ,double                            err_Margin_Rate
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add End
   )
   {
     OADBTransaction txn = getOADBTransaction();
@@ -2963,6 +2996,13 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoQuoteStoreInitVORowImpl initRow
       = (XxcsoQuoteStoreInitVORowImpl)initVo.first();
+
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add Start
+    //マージン率の計算   
+    handleMarginCalculation(
+      lineRow.getQuoteLineId().toString()
+    );
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add End
 
     // 必須チェックを行います。
     XxcsoValidateUtils util = XxcsoValidateUtils.getInstance(txn);
@@ -3357,7 +3397,21 @@ public class XxcsoQuoteStoreRegistAMImpl extends OAApplicationModuleImpl
       }
     }
 /* 20090723_abe_0000806 END*/
-
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add Start
+    //異常マージン率以上の場合エラー
+    if ( err_Margin_Rate <= Double.parseDouble(lineRow.getMarginRate()) )
+    {
+      OAException error
+        = XxcsoMessage.createErrorMessage(
+            XxcsoConstants.APP_XXCSO1_00617
+           ,XxcsoConstants.TOKEN_MARGIN_RATE
+           ,String.valueOf(err_Margin_Rate)
+           ,XxcsoConstants.TOKEN_INDEX
+           ,String.valueOf(index)
+          );
+        errorList.add(error);       
+    }
+// 2011-11-14 Ver1.12 [E_本稼動_08312] Add End
     XxcsoUtils.debug(txn, "[END]");
 
     return errorList;

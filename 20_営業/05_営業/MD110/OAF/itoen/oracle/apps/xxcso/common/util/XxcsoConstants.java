@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoConstants
 * 概要説明   : 【アドオン：営業・営業領域】共通固定値クラス
-* バージョン : 1.16
+* バージョン : 1.17
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -26,6 +26,7 @@
 * 2011-04-04 1.14 SCS吉元強樹  [E_本稼動_02496]SP専決回送先承認者必須チェック対応
 * 2011-05-17 1.15 SCS桐生和幸  [E_本稼動_02500]原価割れチェック方法の変更対応
 * 2011-06-06 1.16 SCS桐生和幸  [E_本稼動_01963]新規仕入先作成チェック対応
+* 2011-11-14 1.17 SCSK桐生和幸 [E_本稼動_08312]問屋見積画面の改修①
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -227,6 +228,11 @@ public class XxcsoConstants
   public static final String APP_XXCSO1_00614    = "APP-XXCSO1-00614";
   public static final String APP_XXCSO1_00615    = "APP-XXCSO1-00615";
 // 2011-06-06 Ver1.16 [E_本稼動_01963] Add End
+// 2011-11-14 Ver1.17 [E_本稼動_08312] Add Start
+  public static final String APP_XXCSO1_00617    = "APP-XXCSO1-00617";
+  public static final String APP_XXCSO1_00618    = "APP-XXCSO1-00618";
+  public static final String APP_XXCSO1_00619    = "APP-XXCSO1-00619";
+// 2011-11-14 Ver1.17 [E_本稼動_08312] Add End
 
   /*****************************************************************************
    * トークン名
@@ -279,6 +285,9 @@ public class XxcsoConstants
 // 2011-06-06 Ver1.16 [E_本稼動_01963] Add Start
   public static final String TOKEN_BM_INFO       = "BM_INFO";
 // 2011-06-06 Ver1.16 [E_本稼動_01963] Add End
+// 2011-11-14 Ver1.17 [E_本稼動_08312] Add Start
+  public static final String TOKEN_MARGIN_RATE   = "MARGIN_RATE";
+// 2011-11-14 Ver1.17 [E_本稼動_08312] Add End
   /*****************************************************************************
    * トークン値
    *****************************************************************************
