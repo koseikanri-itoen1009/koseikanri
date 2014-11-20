@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/09/05    1.8  Oracle A.Shiina   PT 6-1_27 指摘41-2 対応
  *  2008/10/01    1.9  Oracle H.Itou     PT 6-1_27 指摘18 対応
  *  2008/10/16    1.10 Oracle H.Itou     T_S_625,統合テスト指摘369
+ *  2008/10/24    1.11 Oracle H.Itou     T_TE080_BPO_600指摘26
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5582,7 +5583,15 @@ debug_log(FND_FILE.LOG,'入出庫場所2:'|| iv_entering_despatching_code2);
         -- ルート判定
         BEGIN
 --
-          SELECT xdlv.consolidated_flag
+-- 2008/10/24 H.Itou Mod Start T_TE080_BPO_600指摘26
+--          SELECT xdlv.consolidated_flag
+          SELECT CASE 
+                   -- 商品区分がドリンクの場合、ドリンク混載可否フラグ
+                   WHEN (gv_prod_class = gv_prod_cls_drink) THEN xdlv.consolidated_flag
+                   -- 商品区分がリーフの場合、リーフ混載可否フラグ
+                   ELSE                                          xdlv.leaf_consolidated_flag
+                 END  consolidated_flag
+-- 2008/10/24 H.Itou Mod End
             INTO lt_consolid_flag
 -- 2008/10/01 H.Itou Mod Start PT 6-1_27 指摘18 出荷方法LTの外部結合のないxxcmn_delivery_lt3_vに変更。
 --            FROM xxcmn_delivery_lt2_v xdlv                                        -- 配送L/T情報VIEW2
@@ -5601,8 +5610,10 @@ debug_log(FND_FILE.LOG,'入出庫場所2:'|| iv_entering_despatching_code2);
 --             AND (xdlv.sm_end_date_active IS NULL
 --                  OR xdlv.sm_end_date_active >= gd_date_from)               -- 出荷方法適用終了日
 -- 2008.05.21 D.Sugahara 不具合No7対応<-
-             AND xdlv.consolidated_flag = cn_consolid_parmit                  -- 混載可否フラグ：可
-             AND ROWNUM = 1
+-- 2008/10/24 H.Itou Del Start T_TE080_BPO_600指摘26
+--             AND xdlv.consolidated_flag = cn_consolid_parmit                  -- 混載可否フラグ：可
+--             AND ROWNUM = 1
+-- 2008/10/24 H.Itou Del End
           ;
 --
         EXCEPTION
@@ -5613,9 +5624,19 @@ debug_log(FND_FILE.LOG,'入出庫場所2:'|| iv_entering_despatching_code2);
 debug_log(FND_FILE.LOG,'ルート判定:NO_DATA_FOUND');
         END;
 --
-        IF (lt_consolid_flag IS NOT NULL) THEN
+-- 2008/10/24 H.Itou Mod Start T_TE080_BPO_600指摘26
+--        IF (lt_consolid_flag IS NOT NULL) THEN
+        -- 混載可否フラグが「可」の場合、「可」を返す。
+        IF (lt_consolid_flag = cn_consolid_parmit) THEN
+-- 2008/10/24 H.Itou Mod End
           -- 拠点混載：許可
           ov_consolidate_flag := cn_consolid_parmit;
+--
+-- 2008/10/24 H.Itou Add Start T_TE080_BPO_600指摘26
+        -- 混載可否フラグが「可」でない場合、NULLを返す。
+        ELSE
+          ov_consolidate_flag := NULL;
+-- 2008/10/24 H.Itou Add End
         END IF;
 --
       ELSE
