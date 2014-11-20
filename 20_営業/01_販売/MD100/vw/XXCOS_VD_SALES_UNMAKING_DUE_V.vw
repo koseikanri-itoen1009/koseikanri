@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/20    1.0   K.Atsushiba      êVãKçÏê¨
+ *  2010/03/26    1.1   K.Atsushiba      [E_ñ{â“ìÆ_01805]ëŒâû
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOS_VD_SALES_UNMAKING_DUE_V
 AS
@@ -25,7 +26,10 @@ WHERE  xsdh.sales_result_creation_flag = 'N'
 AND    xsdh.uncalculate_class          = '0'
 AND    hca_c.cust_account_id  = xca_c.customer_id
 AND    hca_b.cust_account_id  = xca_b.customer_id
-AND    hca_b.account_number   = NVL( xca_c.past_sale_base_code,xca_c.sale_base_code )
+-- 2010/03/26 Ver.1.1 Mod Start
+AND    hca_b.account_number   IN  ( xca_c.past_sale_base_code,xca_c.sale_base_code )
+--AND    hca_b.account_number   = NVL( xca_c.past_sale_base_code,xca_c.sale_base_code )
+-- 2010/03/26 Ver.1.1 Mod End
 AND    hca_c.account_number   = xsdh.customer_number
 AND    EXISTS (SELECT  flv.meaning
                  FROM  fnd_lookup_values             flv

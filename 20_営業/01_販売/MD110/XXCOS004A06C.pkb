@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *                                       [E_本稼動_01396]未計算のデータが残っていた場合、次の
  *                                       締日であっても計算しないよう修正。
  *                                       [E_本稼動_01397]掛率に対する閾値チェック処理の追加。
+ *  2010/03/24    1.14  K.Atsushiba      [E_本稼動_01805]顧客移行対応
  *
  *****************************************************************************************/
 --
@@ -381,7 +382,10 @@ AS
 /* 2010/01/25 Ver1.11 Add Start */
   cv_delete_flag                CONSTANT VARCHAR2(1) := 'D';         -- 削除フラグ
 /* 2010/01/25 Ver1.11 Add End */
-
+--
+-- 2010/03/24 Ver.1.14 Add Start
+  cv_dya_fmt_month              CONSTANT VARCHAR2(2) := 'MM';        -- 月
+-- 2010/03/24 Ver.1.14 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2005,6 +2009,9 @@ AS
 --      AND xvch.customer_number              = NVL( it_customer_number , xvch.customer_number )
 -- ************** 2009/08/04 N.Maeda 1.10 MOD  END  ********************* --
 --******************************** 2009/05/01 1.8 N.Maeda MOD END   **************************************************
+-- 2010/03/24 Ver.1.14 Add Start
+      AND xvch.base_code                    = it_sales_base_code       -- 売上拠点コード
+-- 2010/03/24 Ver.1.14 Add End
       AND ( ( ( xvch.digestion_vd_rate_maked_date IS NULL)
         AND ( xvch.dlv_date <= it_digestion_due_date) )
         OR ( ( xvch.digestion_vd_rate_maked_date >= it_pre_digestion_due_date )
@@ -2598,6 +2605,9 @@ AS
       it_customer_number          IN    xxcos_vd_digestion_hdrs.customer_number%TYPE,
       id_digestion_due_date       IN    DATE,
       id_pre_digestion_due_date   IN    DATE
+-- 2010/03/24 Ver.1.14 Add Start
+      ,iv_sales_base_code         IN    xxcos_vd_digestion_hdrs.sales_base_code%TYPE
+-- 2010/03/24 Ver.1.14 Add End
     )
     IS
       SELECT
@@ -2607,6 +2617,9 @@ AS
         xxcos_vd_column_headers           xvch                             --VDコラム別取引ヘッダテーブル
       WHERE
         xvch.customer_number                    = it_customer_number
+-- 2010/03/24 Ver.1.14 Add Start
+      AND xvch.base_code                     = iv_sales_base_code
+-- 2010/03/24 Ver.1.14 Add End
       AND ( ( ( xvch.digestion_vd_rate_maked_date IS NULL )
         AND ( id_digestion_due_date             >= xvch.dlv_date ) )
         OR ( ( NVL( id_pre_digestion_due_date + cn_one_day, gd_min_date )
@@ -2636,6 +2649,9 @@ AS
                         it_customer_number        => g_xvch_tab(ln_idx).customer_number,
                         id_digestion_due_date     => g_xvch_tab(ln_idx).digestion_due_date,
                         id_pre_digestion_due_date => g_xvch_tab(ln_idx).pre_digestion_due_date
+-- 2010/03/24 Ver.1.14 Add Start
+                        ,iv_sales_base_code        => g_xvch_tab(ln_idx).sales_base_code
+-- 2010/03/24 Ver.1.14 Add End
                       )
       LOOP
         --
@@ -3946,8 +3962,14 @@ AS
             hca.account_number                    customer_number,              --顧客コード
             hca.party_id                          party_id,                     --パーティID
             ( xca.rate * 100 )                    master_rate,                  --マスタ掛率
-            NVL( xca.past_sale_base_code, xca.sale_base_code )
-                                                  sale_base_code,               --前月売上拠点コード
+-- 2010/03/24 Ver.1.14 Mod Start
+            CASE  TRUNC(id_digestion_due_date,cv_dya_fmt_month)
+              WHEN  TRUNC(gd_process_date,cv_dya_fmt_month) THEN  xca.sale_base_code
+              ELSE  xca.past_sale_base_code
+            END
+--            NVL( xca.past_sale_base_code, xca.sale_base_code )
+-- 2010/03/24 Ver.1.14 Mod End
+                                                  sale_base_code,               --売上拠点コード
             xca.business_low_type                 cust_gyotai_sho,              --業態小分類
             xca.delivery_base_code                delivery_base_code,           --納品拠点コード
             xca.stop_approval_date                stop_approval_date,           --中止決裁日
@@ -4082,8 +4104,14 @@ AS
             hca2.account_number                   customer_number,              --顧客コード
             hca2.party_id                         party_id,                     --パーティID
             ( xca2.rate * 100 )                   master_rate,                  --マスタ掛率
-            NVL( xca2.past_sale_base_code, xca2.sale_base_code )
-                                                  sale_base_code,               --前月売上拠点コード
+-- 2010/03/24 Ver.1.14 Mod Start
+            CASE  TRUNC(id_digestion_due_date,cv_dya_fmt_month)
+              WHEN  TRUNC(gd_process_date,cv_dya_fmt_month) THEN  xca.sale_base_code
+              ELSE  xca.past_sale_base_code
+            END
+--            NVL( xca2.past_sale_base_code, xca2.sale_base_code )
+-- 2010/03/24 Ver.1.14 Mod End
+                                                  sale_base_code,               --売上拠点コード
             xca2.business_low_type                cust_gyotai_sho,              --業態小分類
             xca2.delivery_base_code               delivery_base_code,           --納品拠点コード
             xca2.stop_approval_date               stop_approval_date,           --中止決裁日
@@ -4408,6 +4436,10 @@ AS
                                         := l_xvdh_rec.customer_number;
         g_tt_xvdh_tab(gn_tt_xvdh_idx).digestion_due_date
                                         := l_xvdh_rec.digestion_due_date;
+-- 2010/03/24 Ver.1.14 Add Start
+        g_tt_xvdh_tab(gn_tt_xvdh_idx).sales_base_code
+                                        := l_xvdh_rec.sales_base_code;
+-- 2010/03/24 Ver.1.14 Add End
         --
         -- ===================================================
         -- VDコラム別取引ヘッダデータセット
@@ -4419,6 +4451,10 @@ AS
                                         := l_xvdh_rec.digestion_due_date;
         g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
                                         := NVL( l_xvdh_rec.pre_digestion_due_date + cn_one_day, gd_min_date );
+-- 2010/03/24 Ver.1.14 Add Start
+        g_xvch_tab(gn_xvch_idx).sales_base_code
+                                        := l_xvdh_rec.sales_base_code;
+-- 2010/03/24 Ver.1.14 Add End
         --
         -- ===================================================
         -- A-4  ヘッダ単位初期化処理
@@ -4723,6 +4759,10 @@ AS
                                           := l_xvdh_rec2.customer_number;
           g_tt_xvdh_tab(gn_tt_xvdh_idx).digestion_due_date
                                           := l_xvdh_rec2.digestion_due_date;
+-- 2010/03/24 Ver.1.14 Add Start
+          g_tt_xvdh_tab(gn_tt_xvdh_idx).sales_base_code
+                                          := l_xvdh_rec2.sales_base_code;
+-- 2010/03/24 Ver.1.14 Add End
           --
           -- ===================================================
           -- VDコラム別取引ヘッダデータセット
@@ -4734,6 +4774,10 @@ AS
                                           := l_xvdh_rec2.digestion_due_date;
           g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
                                           := NVL( l_xvdh_rec2.pre_digestion_due_date + cn_one_day, gd_min_date );
+-- 2010/03/24 Ver.1.14 Add Start
+          g_xvch_tab(gn_xvch_idx).sales_base_code
+                                          := l_xvdh_rec2.sales_base_code;
+-- 2010/03/24 Ver.1.14 Add End
           --
           -- ===================================================
           -- A-4  ヘッダ単位初期化処理
@@ -5200,6 +5244,10 @@ AS
                                           := g_tt_xvdh_work_tab(ln_wk_idx).customer_number;
                 g_tt_xvdh_tab(ln_wk_idx).digestion_due_date
                                           := g_tt_xvdh_work_tab(ln_wk_idx).digestion_due_date;
+-- 2010/03/24 Ver.1.14 Add Start
+                g_tt_xvdh_tab(ln_wk_idx).sales_base_code
+                                          := g_tt_xvdh_work_tab(ln_wk_idx).sales_base_code;
+-- 2010/03/24 Ver.1.14 Add End
               --
               END LOOP tt_xvdh_loop2;
 -- 2010/02/15 Ver.1.13 K.Hosoi Add End
@@ -5218,6 +5266,10 @@ AS
                                                THEN ld_pre_digestion_due_date
                                                ELSE ld_pre_digestion_due_date + cn_one_day
                                              END;
+-- 2010/03/24 Ver.1.14 Add Start
+              g_xvch_tab(gn_xvch_idx).sales_base_code
+                                          := l_cust_rec.sales_base_code;
+-- 2010/03/24 Ver.1.14 Add End
               --
               -- ===================================================
               -- A-4  ヘッダ単位初期化処理

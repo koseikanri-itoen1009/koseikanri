@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.26
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *                                       [E_本稼動_01477]締日の休日対応
  *  2010/02/22   1.26  K.Atsushiba       [E_本稼動_01669]「締日」パラメター追加対応
  *  2010/02/25   1.27  N.Maeda           [E_本稼動_01477]締日の休日対応修正
+ *  2010/03/24   1.28  K.Atsushiba       [E_本稼動_01805]顧客移行対応
  *
  *****************************************************************************************/
 --
@@ -499,6 +500,9 @@ AS
       past_sale_base_code         xxcmm_cust_accounts.past_sale_base_code%TYPE,            --前月売上拠点コード
       duns_number_c               hz_parties.duns_number_c%TYPE,                           --当月顧客ステータス
       past_customer_status        xxcmm_cust_accounts.past_customer_status%TYPE            --前月顧客ステータス
+-- 2010/03/24 Ver.1.14 Add Start
+      ,sales_base_code            xxcos_vd_digestion_hdrs.sales_base_code%TYPE             --消化VD用消化計算ヘッダ.売上拠点
+-- 2010/03/24 Ver.1.14 Add End
   );
   -- 販売員ポイント計算共通関数格納用変数
   TYPE g_rec_for_comfunc_inpara IS RECORD
@@ -594,6 +598,10 @@ AS
                                                                       -- 消化計算締年月日
     it_pre_digestion_due_date IN      xxcos_vd_digestion_hdrs.pre_digestion_due_date%TYPE,
                                                                       -- 前回消化計算締年月日
+-- 2010/03/24 Ver.1.14 Add Start
+    it_sales_base_code        IN      xxcos_vd_digestion_hdrs.sales_base_code%TYPE,
+                                                                      -- 消化VD用消化計算ヘッダ.売上拠点
+-- 2010/03/24 Ver.1.14 Add End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -644,6 +652,9 @@ AS
         AND ( xvch.dlv_date <= it_digestion_due_date) )
         OR ( ( xvch.digestion_vd_rate_maked_date >= it_pre_digestion_due_date )
         AND ( xvch.digestion_vd_rate_maked_date <= it_digestion_due_date ) ) )
+-- 2010/03/24 Ver.1.14 Add Start
+      AND xvch.base_code                   = it_sales_base_code  -- 売上拠点
+-- 2010/03/24 Ver.1.14 Add End
       GROUP BY
         xvcl.item_code_self
       ;
@@ -1831,6 +1842,9 @@ AS
              xxca.past_sale_base_code           past_sale_base_code,              --前月売上拠点コード
              part.duns_number_c                 duns_number_c,                    --当月顧客ステータス
              xxca.past_customer_status          past_customer_status              --前月顧客ステータス
+-- 2010/03/24 Ver.1.14 Add Start
+             ,xsdh.sales_base_code               sales_base_code                   -- 消化VD用消化計算ヘッダ.売上拠点
+-- 2010/03/24 Ver.1.14 Add End
       FROM   xxcos_vd_digestion_hdrs   xsdh,    -- 消化ＶＤ用消化計算ヘッダテーブル
              xxcos_vd_digestion_lns    xsdl,    -- 消化ＶＤ用消化計算明細テーブル
              hz_cust_accounts          hnas,    -- 顧客マスタ
@@ -1915,7 +1929,10 @@ AS
                                       ( iv_base_code IS NOT NULL AND xcae.management_base_code = iv_base_code )
                                     ) --顧客顧客アドオン.管理元拠点コード = INパラ(拠点コード)
 /* 2009/08/10 Ver1.19 Mod End   */
-                             AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
+-- 2010/03/24 Ver.1.14 Mod Start
+                             AND    hcae.account_number IN ( xca.past_sale_base_code,xca.sale_base_code )
+--                             AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
+-- 2010/03/24 Ver.1.14 Mod End
                             ) --管理拠点に所属する拠点コード = 顧客アドオン.前月拠点or売上拠点
 /* 2009/08/10 Ver1.19 Mod Start */
 --              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード = INパラ(顧客コード)
@@ -2160,6 +2177,9 @@ AS
              xxca.past_sale_base_code           past_sale_base_code,              --前月売上拠点コード
              part.duns_number_c                 duns_number_c,                    --当月顧客ステータス
              xxca.past_customer_status          past_customer_status              --前月顧客ステータス
+-- 2010/03/24 Ver.1.14 Add Start
+             ,xsdh.sales_base_code               sales_base_code                  -- 消化VD用消化計算ヘッダ.売上拠点
+-- 2010/03/24 Ver.1.14 Add End
       FROM   xxcos_vd_digestion_hdrs   xsdh,    -- 消化ＶＤ用消化計算ヘッダテーブル
              xxcos_vd_digestion_lns    xsdl,    -- 消化ＶＤ用消化計算明細テーブル
              hz_cust_accounts          hnas,    -- 顧客マスタ
@@ -2244,7 +2264,10 @@ AS
                                       ( iv_base_code IS NOT NULL AND xcae.management_base_code = iv_base_code )
                                     ) --顧客顧客アドオン.管理元拠点コード = INパラ(拠点コード)
 /* 2009/08/10 Ver1.19 Mod End   */
-                             AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
+-- 2010/03/24 Ver.1.14 Mod Start
+                             AND    hcae.account_number IN ( xca.past_sale_base_code,xca.sale_base_code )
+--                             AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
+-- 2010/03/24 Ver.1.14 Mod End
                             ) --管理拠点に所属する拠点コード = 顧客アドオン.前月拠点or売上拠点
 /* 2009/08/10 Ver1.19 Mod Start */
 --              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード = INパラ(顧客コード)
@@ -2306,9 +2329,8 @@ AS
                                                        AND     NVL( flv.end_date_active, gd_business_date )
                              AND    flv.enabled_flag   = ct_enabled_flag_yes
                              AND    flv.language       = ct_lang
-                             AND    flv.meaning        = hca.customer_class_code
+                             AND    flv.meaning        = hca.customer_class_code)
 /* 2009/08/10 Ver1.19 Mod End   */
-                            ) --顧客マスタ.顧客区分 = 10(顧客)
               AND    (
                       xca.past_sale_base_code = NVL( iv_base_code,xca.past_sale_base_code )
                       OR
@@ -2384,6 +2406,9 @@ AS
 /* 2010/02/22 Ver1.26 Add Start */
       AND    xsdh.digestion_due_date         = gd_due_date
 /* 2010/02/22 Ver1.26 Add Start */
+-- 2010/03/24 Ver.1.14 Add Start
+      AND    xsdh.sales_base_code             = iv_base_code
+-- 2010/03/24 Ver.1.14 Add End
       AND   NOT EXISTS(
                         SELECT flv.lookup_code               not_inv_code
 /* 2009/08/10 Ver1.19 Mod Start */
@@ -3486,6 +3511,9 @@ AS
             it_digestion_due_date         => gt_tab_work_data(ln_i).digestion_due_date,    -- 消化計算締年月日
             it_pre_digestion_due_date     => NVL( gt_tab_work_data(ln_i).pre_digestion_due_date + 1, gd_min_date ),
                                                                                            -- 前回消化計算締年月日
+-- 2010/03/24 Ver.1.14 Add Start
+            it_sales_base_code            => gt_tab_work_data(ln_i).sales_base_code,       -- 消化VD用消化計算ヘッダ.売上拠点
+-- 2010/03/24 Ver.1.14 Add End
             ov_errbuf                     => lv_errbuf,                                    -- エラー・メッセージ
             ov_retcode                    => lv_retcode,                                   -- リターン・コード
             ov_errmsg                     => lv_errmsg                                     -- ユーザー・エラー・メッセージ
@@ -4117,7 +4145,10 @@ AS
        WHERE xvdh.uncalculate_class          = ct_un_calc_flag_1
        AND   xvdh.sales_result_creation_flag = ct_make_flag_no
        AND   (
-               ( gv_exec_div = cn_0 )
+-- 2010/03/24 Ver.1.14 Mod Start
+               ( gv_exec_div = cn_0 AND xvdh.sales_base_code = iv_base_code )
+--               ( gv_exec_div = cn_0 )
+-- 2010/03/24 Ver.1.14 Mod End
                OR
                ( gv_exec_div <> cn_0 AND xvdh.digestion_due_date <= gd_delay_date )
              )
@@ -4338,6 +4369,9 @@ AS
 --****************************** 2009/06/12 1.18 T.Kitajima ADD START ******************************--
 --           WHERE digestion_vd_rate_maked_date IS NOT NULL;
            WHERE digestion_vd_rate_maked_date IS NOT NULL
+-- 2010/03/24 Ver.1.14 Add Start
+             AND base_code = iv_base_code
+-- 2010/03/24 Ver.1.14 Add End
              AND (    forward_date IS NULL
                    OR forward_flag = ct_make_flag_no
                  );
