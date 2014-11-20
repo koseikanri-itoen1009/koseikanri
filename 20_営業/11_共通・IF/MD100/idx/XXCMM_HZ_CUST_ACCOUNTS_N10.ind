@@ -12,4 +12,4 @@
  *  2009/08/25    1.0  Y.Kuboshima   èââÒçÏê¨
  ************************************************************************/
 CREATE INDEX ar.xxcmm_hz_cust_accounts_n10 ON ar.hz_cust_accounts (last_update_date) TABLESPACE apps_ts_tx_idx;
-/
+

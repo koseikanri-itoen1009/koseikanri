@@ -1,2 +1,1 @@
 CREATE INDEX ar.xxcos_ra_rules_n02 ON ra_rules (rule_id,name) TABLESPACE apps_ts_tx_idx;
-/

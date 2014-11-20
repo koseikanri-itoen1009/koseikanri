@@ -1,2 +1,2 @@
 CREATE INDEX inv.xxcos_mtl_parameters_n04 ON mtl_parameters (organization_id,organization_code) TABLESPACE apps_ts_tx_idx;
-/
+

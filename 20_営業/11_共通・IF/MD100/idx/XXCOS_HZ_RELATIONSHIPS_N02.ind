@@ -1,2 +1,2 @@
 CREATE INDEX ar.xxcos_hz_relationships_n02 ON hz_relationships (party_id,relationship_id,object_id,subject_id) TABLESPACE apps_ts_tx_idx;
-/
+

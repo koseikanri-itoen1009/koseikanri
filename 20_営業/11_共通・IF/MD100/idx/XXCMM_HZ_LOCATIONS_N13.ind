@@ -12,4 +12,4 @@
  *  2009/08/25    1.0  Y.Kuboshima   èââÒçÏê¨
  ************************************************************************/
 CREATE INDEX ar.xxcmm_hz_locations_n13 ON ar.hz_locations (last_update_date) TABLESPACE apps_ts_tx_idx;
-/
+
