@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK023A02C(body)
  * Description      : 運送費実績算出
  * MD.050           : 運送費実績算出 MD050_COK_023_A02
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/01/13    1.0   I.Takahashi      新規作成
  *  2009/02/09    1.1   A.Yano           [障害COK_025] ロック取得不具合対応
  *  2009/02/23    1.2   T.Taniguchi      [障害COK_055] 日次制御、月次制御不具合対応
+ *  2009/04/23    1.3   A.Yano           [障害T1_0765] ソート順不具合対応
  *
  *****************************************************************************************/
 --
@@ -929,8 +930,11 @@ AS
       ORDER BY xoha.arrival_date             -- 着荷日
               ,xtfi.jurisdicyional_hub       -- 管轄拠点
               ,seq_0_v.parent_item_id        -- 親品目ID
-              ,xtfi.item_code                -- 品目コード
+--【2009/04/23 A.Yano Ver.1.3 START】------------------------------------------------------
+--              ,xtfi.item_code                -- 品目コード
               ,xsmv.small_amount_class       -- 小口区分
+              ,xtfi.item_code                -- 品目コード
+--【2009/04/23 A.Yano Ver.1.3 END  】------------------------------------------------------
     ;
 --
   BEGIN
@@ -1633,8 +1637,11 @@ AS
               ,xoha.arrival_date             -- 着荷日
               ,xtfi.jurisdicyional_hub       -- 管轄拠点
               ,seq_0_v.parent_item_id        -- 親品目ID
-              ,xtfi.item_code                -- 品目コード
+--【2009/04/23 A.Yano Ver.1.3 START】------------------------------------------------------
+--              ,xtfi.item_code                -- 品目コード
               ,xsmv.small_amount_class       -- 小口区分
+              ,xtfi.item_code                -- 品目コード
+--【2009/04/23 A.Yano Ver.1.3 END  】------------------------------------------------------
     ;
 --
   BEGIN
