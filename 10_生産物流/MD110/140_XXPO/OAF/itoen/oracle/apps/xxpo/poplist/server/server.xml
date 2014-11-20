@@ -79,4 +79,9 @@
       FullName="itoen.oracle.apps.xxpo.poplist.server.StatusCode2VO"
       ObjectType="ViewObject" >
    </Containee>
+   <Containee
+      Name="FixClassVO"
+      FullName="itoen.oracle.apps.xxpo.poplist.server.FixClassVO"
+      ObjectType="ViewObject" >
+   </Containee>
 </JboPackage>

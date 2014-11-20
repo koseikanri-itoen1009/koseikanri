@@ -1,0 +1,326 @@
+CREATE GLOBAL TEMPORARY TABLE xxcfr.xxcfr_csv_outs_temp
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_csv_outs_temp
+ * Description     : 支払通知情報テーブル
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 2.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/17    1.0  SCS 吉村憲司    初回作成
+ *  2009/03/03    2.0  SCS 吉村憲司    サイズ変更360Byte
+ ************************************************************************/
+( 
+  request_id  NUMBER(15)     NOT NULL  ,  -- 要求ID
+  seq         NUMBER(15)               ,  -- 出力順
+  col1        VARCHAR2(360)            ,  -- 列1
+  col2        VARCHAR2(360)            ,  -- 列2
+  col3        VARCHAR2(360)            ,  -- 列3
+  col4        VARCHAR2(360)            ,  -- 列4
+  col5        VARCHAR2(360)            ,  -- 列5
+  col6        VARCHAR2(360)            ,  -- 列6
+  col7        VARCHAR2(360)            ,  -- 列7
+  col8        VARCHAR2(360)            ,  -- 列8
+  col9        VARCHAR2(360)            ,  -- 列9
+  col10       VARCHAR2(360)            ,  -- 列10
+  col11       VARCHAR2(360)            ,  -- 列11
+  col12       VARCHAR2(360)            ,  -- 列12
+  col13       VARCHAR2(360)            ,  -- 列13
+  col14       VARCHAR2(360)            ,  -- 列14
+  col15       VARCHAR2(360)            ,  -- 列15
+  col16       VARCHAR2(360)            ,  -- 列16
+  col17       VARCHAR2(360)            ,  -- 列17
+  col18       VARCHAR2(360)            ,  -- 列18
+  col19       VARCHAR2(360)            ,  -- 列19
+  col20       VARCHAR2(360)            ,  -- 列20
+  col21       VARCHAR2(360)            ,  -- 列21
+  col22       VARCHAR2(360)            ,  -- 列22
+  col23       VARCHAR2(360)            ,  -- 列23
+  col24       VARCHAR2(360)            ,  -- 列24
+  col25       VARCHAR2(360)            ,  -- 列25
+  col26       VARCHAR2(360)            ,  -- 列26
+  col27       VARCHAR2(360)            ,  -- 列27
+  col28       VARCHAR2(360)            ,  -- 列28
+  col29       VARCHAR2(360)            ,  -- 列29
+  col30       VARCHAR2(360)            ,  -- 列30
+  col31       VARCHAR2(360)            ,  -- 列31
+  col32       VARCHAR2(360)            ,  -- 列32
+  col33       VARCHAR2(360)            ,  -- 列33
+  col34       VARCHAR2(360)            ,  -- 列34
+  col35       VARCHAR2(360)            ,  -- 列35
+  col36       VARCHAR2(360)            ,  -- 列36
+  col37       VARCHAR2(360)            ,  -- 列37
+  col38       VARCHAR2(360)            ,  -- 列38
+  col39       VARCHAR2(360)            ,  -- 列39
+  col40       VARCHAR2(360)            ,  -- 列40
+  col41       VARCHAR2(360)            ,  -- 列41
+  col42       VARCHAR2(360)            ,  -- 列42
+  col43       VARCHAR2(360)            ,  -- 列43
+  col44       VARCHAR2(360)            ,  -- 列44
+  col45       VARCHAR2(360)            ,  -- 列45
+  col46       VARCHAR2(360)            ,  -- 列46
+  col47       VARCHAR2(360)            ,  -- 列47
+  col48       VARCHAR2(360)            ,  -- 列48
+  col49       VARCHAR2(360)            ,  -- 列49
+  col50       VARCHAR2(360)            ,  -- 列50
+  col51       VARCHAR2(360)            ,  -- 列51
+  col52       VARCHAR2(360)            ,  -- 列52
+  col53       VARCHAR2(360)            ,  -- 列53
+  col54       VARCHAR2(360)            ,  -- 列54
+  col55       VARCHAR2(360)            ,  -- 列55
+  col56       VARCHAR2(360)            ,  -- 列56
+  col57       VARCHAR2(360)            ,  -- 列57
+  col58       VARCHAR2(360)            ,  -- 列58
+  col59       VARCHAR2(360)            ,  -- 列59
+  col60       VARCHAR2(360)            ,  -- 列60
+  col61       VARCHAR2(360)            ,  -- 列61
+  col62       VARCHAR2(360)            ,  -- 列62
+  col63       VARCHAR2(360)            ,  -- 列63
+  col64       VARCHAR2(360)            ,  -- 列64
+  col65       VARCHAR2(360)            ,  -- 列65
+  col66       VARCHAR2(360)            ,  -- 列66
+  col67       VARCHAR2(360)            ,  -- 列67
+  col68       VARCHAR2(360)            ,  -- 列68
+  col69       VARCHAR2(360)            ,  -- 列69
+  col70       VARCHAR2(360)            ,  -- 列70
+  col71       VARCHAR2(360)            ,  -- 列71
+  col72       VARCHAR2(360)            ,  -- 列72
+  col73       VARCHAR2(360)            ,  -- 列73
+  col74       VARCHAR2(360)            ,  -- 列74
+  col75       VARCHAR2(360)            ,  -- 列75
+  col76       VARCHAR2(360)            ,  -- 列76
+  col77       VARCHAR2(360)            ,  -- 列77
+  col78       VARCHAR2(360)            ,  -- 列78
+  col79       VARCHAR2(360)            ,  -- 列79
+  col80       VARCHAR2(360)            ,  -- 列80
+  col81       VARCHAR2(360)            ,  -- 列81
+  col82       VARCHAR2(360)            ,  -- 列82
+  col83       VARCHAR2(360)            ,  -- 列83
+  col84       VARCHAR2(360)            ,  -- 列84
+  col85       VARCHAR2(360)            ,  -- 列85
+  col86       VARCHAR2(360)            ,  -- 列86
+  col87       VARCHAR2(360)            ,  -- 列87
+  col88       VARCHAR2(360)            ,  -- 列88
+  col89       VARCHAR2(360)            ,  -- 列89
+  col90       VARCHAR2(360)            ,  -- 列90
+  col91       VARCHAR2(360)            ,  -- 列91
+  col92       VARCHAR2(360)            ,  -- 列92
+  col93       VARCHAR2(360)            ,  -- 列93
+  col94       VARCHAR2(360)            ,  -- 列94
+  col95       VARCHAR2(360)            ,  -- 列95
+  col96       VARCHAR2(360)            ,  -- 列96
+  col97       VARCHAR2(360)            ,  -- 列97
+  col98       VARCHAR2(360)            ,  -- 列98
+  col99       VARCHAR2(360)            ,  -- 列99
+  col100      VARCHAR2(360)            ,  -- 列100
+  col101      VARCHAR2(360)            ,  -- 列101
+  col102      VARCHAR2(360)            ,  -- 列102
+  col103      VARCHAR2(360)            ,  -- 列103
+  col104      VARCHAR2(360)            ,  -- 列104
+  col105      VARCHAR2(360)            ,  -- 列105
+  col106      VARCHAR2(360)            ,  -- 列106
+  col107      VARCHAR2(360)            ,  -- 列107
+  col108      VARCHAR2(360)            ,  -- 列108
+  col109      VARCHAR2(360)            ,  -- 列109
+  col110      VARCHAR2(360)            ,  -- 列110
+  col111      VARCHAR2(360)            ,  -- 列111
+  col112      VARCHAR2(360)            ,  -- 列112
+  col113      VARCHAR2(360)            ,  -- 列113
+  col114      VARCHAR2(360)            ,  -- 列114
+  col115      VARCHAR2(360)            ,  -- 列115
+  col116      VARCHAR2(360)            ,  -- 列116
+  col117      VARCHAR2(360)            ,  -- 列117
+  col118      VARCHAR2(360)            ,  -- 列118
+  col119      VARCHAR2(360)            ,  -- 列119
+  col120      VARCHAR2(360)            ,  -- 列120
+  col121      VARCHAR2(360)            ,  -- 列121
+  col122      VARCHAR2(360)            ,  -- 列122
+  col123      VARCHAR2(360)            ,  -- 列123
+  col124      VARCHAR2(360)            ,  -- 列124
+  col125      VARCHAR2(360)            ,  -- 列125
+  col126      VARCHAR2(360)            ,  -- 列126
+  col127      VARCHAR2(360)            ,  -- 列127
+  col128      VARCHAR2(360)            ,  -- 列128
+  col129      VARCHAR2(360)            ,  -- 列129
+  col130      VARCHAR2(360)            ,  -- 列130
+  col131      VARCHAR2(360)            ,  -- 列131
+  col132      VARCHAR2(360)            ,  -- 列132
+  col133      VARCHAR2(360)            ,  -- 列133
+  col134      VARCHAR2(360)            ,  -- 列134
+  col135      VARCHAR2(360)            ,  -- 列135
+  col136      VARCHAR2(360)            ,  -- 列136
+  col137      VARCHAR2(360)            ,  -- 列137
+  col138      VARCHAR2(360)            ,  -- 列138
+  col139      VARCHAR2(360)            ,  -- 列139
+  col140      VARCHAR2(360)            ,  -- 列140
+  col141      VARCHAR2(360)            ,  -- 列141
+  col142      VARCHAR2(360)            ,  -- 列142
+  col143      VARCHAR2(360)            ,  -- 列143
+  col144      VARCHAR2(360)            ,  -- 列144
+  col145      VARCHAR2(360)            ,  -- 列145
+  col146      VARCHAR2(360)            ,  -- 列146
+  col147      VARCHAR2(360)            ,  -- 列147
+  col148      VARCHAR2(360)            ,  -- 列148
+  col149      VARCHAR2(360)            ,  -- 列149
+  col150      VARCHAR2(360)               -- 列150
+)
+ON COMMIT PRESERVE ROWS ;
+
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.request_id IS '要求ID' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.seq        IS '出力順' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col1       IS '列1' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col2       IS '列2' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col3       IS '列3' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col4       IS '列4' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col5       IS '列5' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col6       IS '列6' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col7       IS '列7' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col8       IS '列8' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col9       IS '列9' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col10      IS '列10' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col11      IS '列11' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col12      IS '列12' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col13      IS '列13' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col14      IS '列14' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col15      IS '列15' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col16      IS '列16' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col17      IS '列17' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col18      IS '列18' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col19      IS '列19' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col20      IS '列20' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col21      IS '列21' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col22      IS '列22' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col23      IS '列23' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col24      IS '列24' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col25      IS '列25' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col26      IS '列26' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col27      IS '列27' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col28      IS '列28' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col29      IS '列29' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col30      IS '列30' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col31      IS '列31' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col32      IS '列32' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col33      IS '列33' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col34      IS '列34' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col35      IS '列35' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col36      IS '列36' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col37      IS '列37' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col38      IS '列38' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col39      IS '列39' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col40      IS '列40' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col41      IS '列41' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col42      IS '列42' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col43      IS '列43' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col44      IS '列44' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col45      IS '列45' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col46      IS '列46' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col47      IS '列47' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col48      IS '列48' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col49      IS '列49' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col50      IS '列50' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col51      IS '列51' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col52      IS '列52' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col53      IS '列53' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col54      IS '列54' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col55      IS '列55' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col56      IS '列56' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col57      IS '列57' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col58      IS '列58' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col59      IS '列59' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col60      IS '列60' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col61      IS '列61' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col62      IS '列62' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col63      IS '列63' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col64      IS '列64' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col65      IS '列65' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col66      IS '列66' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col67      IS '列67' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col68      IS '列68' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col69      IS '列69' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col70      IS '列70' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col71      IS '列71' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col72      IS '列72' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col73      IS '列73' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col74      IS '列74' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col75      IS '列75' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col76      IS '列76' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col77      IS '列77' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col78      IS '列78' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col79      IS '列79' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col80      IS '列80' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col81      IS '列81' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col82      IS '列82' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col83      IS '列83' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col84      IS '列84' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col85      IS '列85' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col86      IS '列86' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col87      IS '列87' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col88      IS '列88' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col89      IS '列89' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col90      IS '列90' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col91      IS '列91' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col92      IS '列92' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col93      IS '列93' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col94      IS '列94' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col95      IS '列95' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col96      IS '列96' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col97      IS '列97' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col98      IS '列98' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col99      IS '列99' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col100     IS '列100' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col101     IS '列101' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col102     IS '列102' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col103     IS '列103' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col104     IS '列104' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col105     IS '列105' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col106     IS '列106' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col107     IS '列107' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col108     IS '列108' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col109     IS '列109' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col110     IS '列110' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col111     IS '列111' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col112     IS '列112' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col113     IS '列113' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col114     IS '列114' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col115     IS '列115' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col116     IS '列116' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col117     IS '列117' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col118     IS '列118' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col119     IS '列119' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col120     IS '列120' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col121     IS '列121' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col122     IS '列122' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col123     IS '列123' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col124     IS '列124' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col125     IS '列125' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col126     IS '列126' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col127     IS '列127' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col128     IS '列128' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col129     IS '列129' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col130     IS '列130' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col131     IS '列131' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col132     IS '列132' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col133     IS '列133' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col134     IS '列134' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col135     IS '列135' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col136     IS '列136' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col137     IS '列137' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col138     IS '列138' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col139     IS '列139' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col140     IS '列140' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col141     IS '列141' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col142     IS '列142' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col143     IS '列143' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col144     IS '列144' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col145     IS '列145' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col146     IS '列146' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col147     IS '列147' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col148     IS '列148' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col149     IS '列149' ;
+COMMENT ON COLUMN xxcfr.xxcfr_csv_outs_temp.col150     IS '列150' ;
+
+COMMENT ON TABLE xxcfr.xxcfr_csv_outs_temp             IS 'CSV出力ワークテーブル' ;

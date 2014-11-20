@@ -1,0 +1,5 @@
+CREATE INDEX xxcfr.xxcfr_invoice_headers_uk01 ON xxcfr.xxcfr_invoice_headers(
+  org_id,
+  bill_cust_code,
+  cutoff_date
+) TABLESPACE xxidx2;

@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_invoice_headers_s1 FOR xxcfr.xxcfr_invoice_headers_s1;

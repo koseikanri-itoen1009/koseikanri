@@ -1,0 +1,57 @@
+CREATE TABLE xxcfr.xxcfr_sales_data_reletes
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_sales_data_reletes
+ * Description     : 売上実績連携済テーブル
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/17    1.0  SCS 中村 博    初回作成
+ ************************************************************************/
+( 
+  customer_trx_id             NUMBER      NOT NULL  ,     -- 取引ヘッダID
+  created_by                  NUMBER(15)  NOT NULL  ,     -- 作成者
+  creation_date               DATE        NOT NULL  ,     -- 作成日
+  last_updated_by             NUMBER(15)  NOT NULL  ,     -- 最終更新者
+  last_update_date            DATE        NOT NULL  ,     -- 最終更新日
+  last_update_login           NUMBER(15)            ,     -- 最終更新ログイン
+  request_id                  NUMBER(15)            ,     -- 要求ID
+  program_application_id      NUMBER(15)            ,     -- コンカレント・プログラム・アプリケーションID
+  program_id                  NUMBER(15)            ,     -- コンカレント・プログラムID
+  program_update_date         DATE                  ,     -- プログラム更新日
+  CONSTRAINT xxcfr_sales_data_reletes_pk PRIMARY KEY ( customer_trx_id )
+  USING INDEX TABLESPACE xxidx2
+)
+--  TABLESPACE xxdata2
+--  STORAGE (
+--    INITIAL     4K
+--    NEXT        2K
+--    MINEXTENTS  1
+--    MAXEXTENTS  UNLIMITED
+--    PCTINCREASE 0
+--    FREELISTS   1
+--    FREELIST GROUPS 1
+--  )
+--    INITRANS    1
+--    PCTFREE     10
+--    PCTUSED     40
+/
+--
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.customer_trx_id           IS '取引ヘッダID';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.created_by                IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.creation_date             IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.request_id                IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_sales_data_reletes.program_update_date       IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfr.xxcfr_sales_data_reletes IS '売上実績連携済テーブル';
+

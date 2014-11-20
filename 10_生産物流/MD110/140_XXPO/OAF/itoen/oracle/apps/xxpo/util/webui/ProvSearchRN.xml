@@ -240,6 +240,30 @@
                   <oa:messageTextInput id="ShBaseReqNo" shortDesc="元依頼No" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="BaseReqNo" maximumLength="12" columns="15"/>
                </ui:contents>
             </oa:cellFormat>
+            <oa:cellFormat id="SearchCell503" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ShFixClassPrompt" prompt="金額確定"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="SearchCell504">
+               <ui:contents>
+                  <oa:messageChoice id="ShFixClass" viewName="XxpoProvSearchVO1" viewAttr="FixClass" shortDesc="金額確定" styleClass="LegendText" pickListViewName="FixClassVO1" pickListDispAttr="FixClassName" pickListValAttr="FixClassCode"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="SearchRow052" rendered="false">
+         <ui:contents>
+            <oa:cellFormat id="SearchCell521" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ShFixClass2Prompt" prompt="金額確定"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="SearchCell522" columnSpan="1">
+               <ui:contents>
+                  <oa:messageChoice id="ShFixClass2" pickListViewName="FixClassVO1" pickListDispAttr="FixClassName" pickListValAttr="FixClassCode" viewName="XxpoProvSearchVO1" viewAttr="FixClass" shortDesc="金額確定" styleClass="LegendText"/>
+               </ui:contents>
+            </oa:cellFormat>
          </ui:contents>
       </oa:rowLayout>
       <oa:rowLayout id="SearchRow06">

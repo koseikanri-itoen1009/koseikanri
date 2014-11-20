@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.16
+* バージョン : 1.17
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -25,7 +25,8 @@
 * 2009-01-22 1.13 吉元強樹     本番障害#739,985対応(第2段階:ヘッダ・明細)
 * 2009-02-03 1.14 二瓶大輔     本番障害#739,985対応(修正漏れ対応)
 * 2009-02-13 1.15 伊藤ひとみ   本番障害#863,1184対応
-* 2009-03-06 1.16 飯田　甫     本番障害#1131対応
+* 2009-03-06 1.16 飯田  甫     本番障害#1131対応
+* 2009-03-13 1.17 飯田  甫     本番障害#1300対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -59,7 +60,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.16
+ * @version 1.17
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -195,6 +196,9 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     shParams.put("shipWhseCode", shRow.getAttribute("ShipWhseCode"));    // 出庫倉庫
     shParams.put("exeType",      shRow.getAttribute("ExeType"));         // 起動タイプ
     shParams.put("baseReqNo",    shRow.getAttribute("BaseReqNo"));       // 元依頼No
+// 2009-03-13 H.Iida ADD START 本番障害#1300
+    shParams.put("fixClass",     shRow.getAttribute("FixClass"));        // 金額確定
+// 2009-03-13 H.Iida ADD END
 
     // 支給指示結果VO取得
     XxpoProvReqtResultVOImpl vo = getXxpoProvReqtResultVO1();
@@ -5679,5 +5683,15 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
   public XxpoProvCopyLineVOImpl getXxpoProvCopyLineVO1()
   {
     return (XxpoProvCopyLineVOImpl)findViewObject("XxpoProvCopyLineVO1");
+  }
+
+
+  /**
+   * 
+   * Container's getter for FixClassVO1
+   */
+  public OAViewObjectImpl getFixClassVO1()
+  {
+    return (OAViewObjectImpl)findViewObject("FixClassVO1");
   }
 }

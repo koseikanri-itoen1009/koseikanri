@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_ar_trx_interface_s1 FOR xxcfr.xxcfr_ar_trx_interface_s1;

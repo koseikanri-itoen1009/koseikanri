@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_tax_gap_trx_list FOR xxcfr.xxcfr_tax_gap_trx_list;

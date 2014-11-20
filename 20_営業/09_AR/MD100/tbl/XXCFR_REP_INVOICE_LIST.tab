@@ -1,0 +1,85 @@
+CREATE TABLE xxcfr.xxcfr_rep_invoice_list
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_rep_invoice_list
+ * Description     : 請求金額一覧表帳票ワークテーブル
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : MD.050_LDM_CFR_001
+ * Version         : 1.0
+ * 	
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/10/31    1.0  SCS 大川 恵    初回作成
+ ************************************************************************/
+( 
+  report_id                    VARCHAR2(20)                   ,     -- 帳票ID
+  output_date                  VARCHAR2(20)                   ,     -- 出力日
+  cutoff_date                  DATE                           ,     -- 締日
+  payment_cust_code            VARCHAR2(30)                   ,     -- 売掛コード１(請求先)
+  bill_location_code           VARCHAR2(30)                   ,     -- 請求拠点コード
+  bill_location_name           VARCHAR2(360)                  ,     -- 請求拠点名
+  bill_area_code               VARCHAR2(30)                   ,     -- 請求拠点本部コード
+  bill_cust_code               VARCHAR2(30)                   ,     -- 請求先顧客コード
+  bill_cust_name               VARCHAR2(360)                  ,     -- 請求先顧客名
+  tax_type                     VARCHAR2(16)                   ,     -- 消費税区分
+  inv_amount_includ_tax        NUMBER                         ,     -- 請求額合計
+  tax_gap_amount               NUMBER                         ,     -- 税差額
+  ship_shop_code               VARCHAR2(30)                   ,     -- 店舗コード
+  sold_location_code           VARCHAR2(30)                   ,     -- 売上拠点コード
+  sold_location_name           VARCHAR2(360)                  ,     -- 売上拠点名
+  sold_area_code               VARCHAR2(30)                   ,     -- 売上拠点本部コード
+  ship_cust_code               VARCHAR2(30)                   ,     -- 納品先顧客コード
+  ship_cust_name               VARCHAR2(360)                  ,     -- 納品先顧客名
+  slip_num                     VARCHAR2(30)                   ,     -- 伝票No
+  delivery_date                DATE                           ,     -- 納品日
+  ship_amount                  NUMBER                         ,     -- 金額
+  tax_amount                   NUMBER                         ,     -- 税額
+  data_empty_message           VARCHAR2(100)                  ,     -- 0件メッセージ
+  created_by                   NUMBER(15)    NOT NULL         ,     -- 作成者
+  creation_date                DATE          NOT NULL         ,     -- 作成日
+  last_updated_by              NUMBER(15)    NOT NULL         ,     -- 最終更新者
+  last_update_date             DATE          NOT NULL         ,     -- 最終更新日
+  last_update_login            NUMBER(15)                     ,     -- 最終更新ログイン
+  request_id                   NUMBER(15)                     ,     -- 要求ID
+  program_application_id       NUMBER(15)                     ,     -- コンカレント・プログラム・アプリケーションID
+  program_id                   NUMBER(15)                     ,     -- コンカレント・プログラムID
+  program_update_date          DATE                                 -- プログラム更新日
+)
+/
+--
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.report_id                 IS '帳票ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.output_date               IS '出力日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.cutoff_date               IS '締日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.payment_cust_code         IS '売掛コード１(請求先)';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.bill_location_code        IS '請求拠点コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.bill_location_name        IS '請求拠点名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.bill_area_code            IS '請求拠点本部コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.bill_cust_code            IS '請求先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.bill_cust_name            IS '請求先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_type                  IS '消費税区分';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.inv_amount_includ_tax     IS '請求額合計';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_gap_amount            IS '税差額';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ship_shop_code            IS '店舗コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.sold_location_code        IS '売上拠点コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.sold_location_name        IS '売上拠点名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.sold_area_code            IS '売上拠点本部コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ship_cust_code            IS '納品先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ship_cust_name            IS '納品先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.slip_num                  IS '伝票No';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.delivery_date             IS '納品日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.ship_amount               IS '金額';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.tax_amount                IS '税額';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.data_empty_message        IS '0件メッセージ';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.created_by                IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.creation_date             IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.request_id                IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_invoice_list.program_update_date       IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfr.xxcfr_rep_invoice_list IS '請求金額一覧表帳票ワークテーブル';

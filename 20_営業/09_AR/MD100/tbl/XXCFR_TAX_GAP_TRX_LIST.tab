@@ -1,0 +1,61 @@
+CREATE TABLE xxcfr.xxcfr_tax_gap_trx_list
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_tax_gap_trx_list
+ * Description     : 税差額取引作成テーブル
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/18    1.0  SCS 松尾 泰生  初回作成
+ ************************************************************************/
+( 
+  invoice_id                NUMBER         NOT NULL  ,-- 一括請求書ID
+  tax_code_id               NUMBER         NOT NULL  ,-- 税金コードID
+  cutoff_date               DATE           NOT NULL  ,-- 締日
+  bill_cust_code            VARCHAR2(30)   NOT NULL  ,-- 請求先顧客コード
+  bill_cust_name            VARCHAR2(100)            ,-- 請求先顧客名
+  tax_code                  VARCHAR2(20)   NOT NULL  ,-- 税コード
+  segment3                  VARCHAR2(25)   NOT NULL  ,-- 勘定科目
+  segment4                  VARCHAR2(25)   NOT NULL  ,-- 補助科目
+  tax_gap_amount            NUMBER                   ,-- 税差額
+  note                      VARCHAR2(240)            ,-- 注釈
+  created_by                NUMBER         NOT NULL  ,-- 作成者
+  creation_date             DATE           NOT NULL  ,-- 作成日
+  last_updated_by           NUMBER         NOT NULL  ,-- 最終更新者
+  last_update_date          DATE           NOT NULL  ,-- 最終更新日
+  last_update_login         NUMBER                   ,-- 最終更新ログイン
+  request_id                NUMBER                   ,-- 要求ID
+  program_application_id    NUMBER                   ,-- コンカレント・プログラム・アプリケーションID
+  program_id                NUMBER                   ,-- コンカレント・プログラムID
+  program_update_date       DATE                     ,-- プログラム更新日
+  CONSTRAINT xxcfr_tax_gap_trx_list_pk PRIMARY KEY ( invoice_id, tax_code_id )
+  USING INDEX TABLESPACE xxidx2
+)
+/
+--
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.invoice_id              IS '一括請求書ID';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.tax_code_id             IS '税金コードID';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.cutoff_date             IS '締日';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.bill_cust_code          IS '請求先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.bill_cust_name          IS '請求先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.tax_code                IS '税コード';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.segment3                IS '勘定科目';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.segment4                IS '補助科目';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.tax_gap_amount          IS '税差額';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.note                    IS '注釈';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.created_by              IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_tax_gap_trx_list.program_update_date     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfr.xxcfr_tax_gap_trx_list IS '税差額取引作成テーブル';

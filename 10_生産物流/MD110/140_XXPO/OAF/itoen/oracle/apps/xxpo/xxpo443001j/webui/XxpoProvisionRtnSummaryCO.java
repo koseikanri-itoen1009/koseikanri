@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSummaryCO
 * 概要説明   : 支給返品要約:検索コントローラ
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-17 1.0  熊本 和郎    新規作成
 * 2008-06-06 1.0  二瓶 大輔    内部変更要求#137対応
 * 2008-12-09 1.1  二瓶 大輔    本番障害#535対応
+* 2009-03-13 1.2  飯田 甫      本番障害#1300対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.webui;
@@ -33,11 +34,14 @@ import oracle.apps.fnd.framework.webui.beans.message.OAMessageChoiceBean;
 import oracle.apps.fnd.framework.webui.beans.message.OAMessageDateFieldBean;
 import oracle.apps.fnd.framework.webui.beans.message.OAMessageLovInputBean;
 import oracle.apps.fnd.framework.webui.beans.message.OAMessageTextInputBean;
+// 2009-03-13 H.Iida ADD START 本番障害#1300
+import oracle.apps.fnd.framework.webui.beans.layout.OARowLayoutBean;
+// 2009-03-13 H.Iida ADD END
 
 /***************************************************************************
  * 支給返品要約:検索コントローラクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.1
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoProvisionRtnSummaryCO extends XxcmnOAControllerImpl
@@ -96,6 +100,11 @@ public class XxpoProvisionRtnSummaryCO extends XxcmnOAControllerImpl
 
       // 起動タイプ取得
       String exeType = pageContext.getParameter(XxpoConstants.URL_PARAM_EXE_TYPE);
+// 2009-03-13 H.Iida ADD START 本番障害#1300
+      // 検索条件： 金額確定を表示
+      OARowLayoutBean rowLayoutBean = (OARowLayoutBean)webBean.findChildRecursive("SearchRow052");
+      rowLayoutBean.setRendered(true);
+// 2009-03-13 H.Iida ADD END
       // 引数設定
       Serializable param[] = { exeType };
       // AMの取得

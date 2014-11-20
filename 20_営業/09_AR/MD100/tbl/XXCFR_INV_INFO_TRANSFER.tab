@@ -1,0 +1,47 @@
+CREATE TABLE xxcfr.xxcfr_inv_info_transfer
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_inv_info_transfer
+ * Description     : 請求情報引渡テーブル
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/12    1.0  SCS 松尾 泰生  初回作成
+ ************************************************************************/
+( 
+  target_request_id           NUMBER         NOT NULL  ,-- 処理対象要求ID
+  set_of_books_id             NUMBER                   ,-- 会計帳簿ID
+  org_id                      NUMBER                   ,-- 組織ID
+  created_by                  NUMBER         NOT NULL  ,-- 作成者
+  creation_date               DATE           NOT NULL  ,-- 作成日
+  last_updated_by             NUMBER         NOT NULL  ,-- 最終更新者
+  last_update_date            DATE           NOT NULL  ,-- 最終更新日
+  last_update_login           NUMBER                   ,-- 最終更新ログイン
+  request_id                  NUMBER                   ,-- 要求ID
+  program_application_id      NUMBER                   ,-- コンカレント・プログラム・アプリケーションID
+  program_id                  NUMBER                   ,-- コンカレント・プログラムID
+  program_update_date         DATE                     ,-- プログラム更新日
+  CONSTRAINT xxcfr_inv_info_transfer_pk PRIMARY KEY ( target_request_id )
+  USING INDEX TABLESPACE xxidx2
+)
+/
+--
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.target_request_id       IS '処理対象要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.set_of_books_id         IS '会計帳簿ID';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.org_id                  IS '組織ID';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.created_by              IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.creation_date           IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.last_updated_by         IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.last_update_date        IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.last_update_login       IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.request_id              IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.program_application_id  IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.program_id              IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_inv_info_transfer.program_update_date     IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfr.xxcfr_inv_info_transfer IS '請求情報引渡テーブル';

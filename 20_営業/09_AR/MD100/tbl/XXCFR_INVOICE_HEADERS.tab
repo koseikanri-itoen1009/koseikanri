@@ -1,0 +1,137 @@
+CREATE TABLE xxcfr.xxcfr_invoice_headers
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_invoice_headers
+ * Description     : 請求ヘッダ情報テーブル
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/10/28    1.0  SCS 大川 恵    初回作成
+ ************************************************************************/
+( 
+  invoice_id                 NUMBER         NOT NULL  ,-- 一括請求書ID
+  set_of_books_id            NUMBER                   ,-- 会計帳簿ID
+  cutoff_date                DATE                     ,-- 締日
+  term_name                  VARCHAR2(15)             ,-- 支払条件
+  term_id                    NUMBER                   ,-- 支払条件ID
+  due_months_forword         NUMBER                   ,-- サイト月数
+  month_remit                VARCHAR2(8)              ,-- 月限
+  payment_date               DATE                     ,-- 支払日
+  tax_type                   VARCHAR2(1)              ,-- 消費税区分
+  tax_gap_trx_id             NUMBER                   ,-- 税差額取引ID
+  tax_gap_amount             NUMBER                   ,-- 税差額
+  inv_amount_no_tax          NUMBER                   ,-- 税抜請求金額合計
+  tax_amount_sum             NUMBER                   ,-- 税額合計
+  inv_amount_includ_tax      NUMBER                   ,-- 税込請求金額合計
+  itoen_name                 VARCHAR2(100)            ,-- 取引先名
+  postal_code                VARCHAR2(50)             ,-- 送付先郵便番号
+  send_address1              VARCHAR2(120)            ,-- 送付先住所1
+  send_address2              VARCHAR2(240)            ,-- 送付先住所2
+  send_address3              VARCHAR2(240)            ,-- 送付先住所3
+  send_to_name               VARCHAR2(360)            ,-- 送付先名
+  inv_creation_date          DATE                     ,-- 作成日
+  object_month               VARCHAR2(6)              ,-- 対象年月
+  object_date_from           DATE                     ,-- 対象期間（自）
+  object_date_to             DATE                     ,-- 対象期間（至）
+  vender_code                VARCHAR2(30)             ,-- 仕入先コード
+  receipt_location_code      VARCHAR2(30)             ,-- 入金拠点コード
+  bill_location_code         VARCHAR2(30)             ,-- 請求拠点コード
+  bill_location_name         VARCHAR2(360)            ,-- 請求拠点名
+  agent_tel_num              VARCHAR2(50)             ,-- 担当電話番号
+  credit_cust_code           VARCHAR2(30)             ,-- 与信先顧客コード
+  credit_cust_name           VARCHAR2(360)            ,-- 与信先顧客名
+  receipt_cust_code          VARCHAR2(30)             ,-- 入金先顧客コード
+  receipt_cust_name          VARCHAR2(360)            ,-- 入金先顧客名
+  payment_cust_code          VARCHAR2(30)             ,-- 親請求先顧客コード
+  payment_cust_name          VARCHAR2(360)            ,-- 親請求先顧客名
+  bill_cust_code             VARCHAR2(30)             ,-- 請求先顧客コード
+  bill_cust_name             VARCHAR2(360)            ,-- 請求先顧客名
+  bill_cust_kana_name        VARCHAR2(320)            ,-- 請求先顧客カナ名
+  bill_cust_account_id       NUMBER                   ,-- 請求先顧客ID
+  bill_cust_acct_site_id     NUMBER                   ,-- 請求先顧客所在地ID
+  bill_shop_code             VARCHAR2(30)             ,-- 請求先店舗コード
+  bill_shop_name             VARCHAR2(360)            ,-- 請求先店名
+  credit_receiv_code2        VARCHAR2(30)             ,-- 売掛コード2（事業所）
+  credit_receiv_name2        VARCHAR2(360)            ,-- 売掛コード2（事業所）名称
+  credit_receiv_code3        VARCHAR2(30)             ,-- 売掛コード3（その他）
+  credit_receiv_name3        VARCHAR2(360)            ,-- 売掛コード3（その他）名称
+  invoice_output_form        VARCHAR2(15)             ,-- 請求書出力形式
+  org_id                     NUMBER                   ,-- 組織ID
+  created_by                 NUMBER(15)     NOT NULL  ,-- 作成者
+  creation_date              DATE           NOT NULL  ,-- 作成日
+  last_updated_by            NUMBER(15)     NOT NULL  ,-- 最終更新者
+  last_update_date           DATE           NOT NULL  ,-- 最終更新日
+  last_update_login          NUMBER(15)               ,-- 最終更新ログイン
+  request_id                 NUMBER(15)               ,-- 要求ID
+  program_application_id     NUMBER(15)               ,-- コンカレント・プログラム・アプリケーションID
+  program_id                 NUMBER(15)               ,-- コンカレント・プログラムID
+  program_update_date        DATE                     ,-- プログラム更新日
+  CONSTRAINT xxcfr_invoice_headers_pk PRIMARY KEY ( invoice_id )
+  USING INDEX TABLESPACE xxidx2
+)
+/
+--
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.invoice_id             IS '一括請求書ID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.set_of_books_id        IS '会計帳簿ID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.cutoff_date            IS '締日';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.term_name              IS '支払条件';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.term_id                IS '支払条件ID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.due_months_forword     IS 'サイト月数';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.month_remit            IS '月限';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.payment_date           IS '支払日';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.tax_type               IS '消費税区分';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.tax_gap_trx_id         IS '税差額取引ID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.tax_gap_amount         IS '税差額';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.inv_amount_no_tax      IS '税抜請求金額合計';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.tax_amount_sum         IS '税額合計';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.inv_amount_includ_tax  IS '税込請求金額合計';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.itoen_name             IS '取引先名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.postal_code            IS '送付先郵便番号';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.send_address1          IS '送付先住所1';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.send_address2          IS '送付先住所2';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.send_address3          IS '送付先住所3';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.send_to_name           IS '送付先名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.inv_creation_date      IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.object_month           IS '対象年月';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.object_date_from       IS '対象期間（自）';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.object_date_to         IS '対象期間（至）';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.vender_code            IS '仕入先コード';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.receipt_location_code  IS '入金拠点コード';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_location_code     IS '請求拠点コード';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_location_name     IS '請求拠点名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.agent_tel_num          IS '担当電話番号';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.credit_cust_code       IS '与信先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.credit_cust_name       IS '与信先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.receipt_cust_code      IS '入金先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.receipt_cust_name      IS '入金先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.payment_cust_code      IS '親請求先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.payment_cust_name      IS '親請求先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_cust_code         IS '請求先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_cust_name         IS '請求先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_cust_kana_name    IS '請求先顧客カナ名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_cust_account_id   IS '請求先顧客ID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_cust_acct_site_id IS '請求先顧客所在地ID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_shop_code         IS '請求先店舗コード';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.bill_shop_name         IS '請求先店名';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.credit_receiv_code2    IS '売掛コード2（事業所）';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.credit_receiv_name2    IS '売掛コード2（事業所）名称';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.credit_receiv_code3    IS '売掛コード3（その他）';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.credit_receiv_name3    IS '売掛コード3（その他）名称';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.invoice_output_form    IS '請求書出力形式';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.org_id                 IS '組織ID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.created_by             IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.creation_date          IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.request_id             IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_invoice_headers.program_update_date    IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfr.xxcfr_invoice_headers IS '請求ヘッダ情報テーブル';

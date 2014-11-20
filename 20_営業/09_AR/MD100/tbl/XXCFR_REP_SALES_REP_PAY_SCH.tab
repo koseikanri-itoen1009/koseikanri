@@ -1,0 +1,93 @@
+CREATE TABLE xxcfr.xxcfr_rep_sales_rep_pay_sch
+/*************************************************************************
+ * 
+ * Table Name      : xxcfr_rep_sales_rep_pay_sch
+ * Description     : 営業員別払日別入金予定表帳票ワークテーブル
+ * MD.050          : MD.050_LDM_CFR_001
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2008/11/18    1.0  SCS 中村 博    初回作成
+ ************************************************************************/
+( 
+  report_id                   VARCHAR2(20)          ,     -- 帳票ID
+  output_date                 VARCHAR2(20)          ,     -- 出力日
+  receipt_area_code           VARCHAR2(20)          ,     -- 入金拠点エリアコード
+  receipt_dept_code           VARCHAR2(4)           ,     -- 入金拠点コード
+  receipt_dept_name           VARCHAR2(150)         ,     -- 入金拠点名
+  receipt_sales_rep_code      VARCHAR2(5)           ,     -- 営業担当者コード
+  receipt_sales_rep_name      VARCHAR2(150)         ,     -- 営業担当者名
+  due_date                    DATE                  ,     -- 支払期日
+  receipt_customer_code       VARCHAR2(10)          ,     -- 入金先顧客コード
+  receipt_customer_name       VARCHAR2(150)         ,     -- 入金先顧客名
+  receipt_class_id            NUMBER                ,     -- 入金区分ID
+  receipt_class_name          VARCHAR2(30)          ,     -- 入金区分名
+  tax_class_code              VARCHAR2(30)          ,     -- 消費税区分
+  tax_class_name              VARCHAR2(150)         ,     -- 消費税区分名
+  amount_due_original         NUMBER                ,     -- 当初残高（税込）
+  amount_due_remaining        NUMBER                ,     -- 未回収残高（税込）
+  amount_due_remaining_ex_tax NUMBER                ,     -- 未回収残高（税抜）
+  tax_original                NUMBER                ,     -- 当初税金額
+  tax_remaining               NUMBER                ,     -- 未回収税金額
+  data_empty_message          VARCHAR2(150)         ,     -- 0件メッセージ
+  created_by                  NUMBER(15)  NOT NULL  ,     -- 作成者
+  creation_date               DATE        NOT NULL  ,     -- 作成日
+  last_updated_by             NUMBER(15)  NOT NULL  ,     -- 最終更新者
+  last_update_date            DATE        NOT NULL  ,     -- 最終更新日
+  last_update_login           NUMBER(15)            ,     -- 最終更新ログイン
+  request_id                  NUMBER(15)            ,     -- 要求ID
+  program_application_id      NUMBER(15)            ,     -- コンカレント・プログラム・アプリケーションID
+  program_id                  NUMBER(15)            ,     -- コンカレント・プログラムID
+  program_update_date         DATE                        -- プログラム更新日
+)
+--  TABLESPACE xxdata2
+--  STORAGE (
+--    INITIAL     4K
+--    NEXT        2K
+--    MINEXTENTS  1
+--    MAXEXTENTS  UNLIMITED
+--    PCTINCREASE 0
+--    FREELISTS   1
+--    FREELIST GROUPS 1
+--  )
+--    INITRANS    1
+--    PCTFREE     10
+--    PCTUSED     40
+/
+--
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.report_id                 IS '帳票ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.output_date               IS '出力日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_area_code         IS '入金拠点エリアコード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_dept_code         IS '入金拠点コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_dept_name         IS '入金拠点名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_sales_rep_code    IS '営業担当者コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_sales_rep_name    IS '営業担当者名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.due_date                  IS '支払期日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_customer_code     IS '入金先顧客コード';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_customer_name     IS '入金先顧客名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_class_id          IS '入金区分ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.receipt_class_name        IS '入金区分名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.tax_class_code            IS '消費税区分';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.tax_class_name            IS '消費税区分名';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.amount_due_original       IS '当初残高（税込）';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.amount_due_remaining      IS '未回収残高（税込）';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.amount_due_remaining_ex_tax IS '未回収残高（税抜）';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.tax_original              IS '当初税金額';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.tax_remaining             IS '未回収税金額';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.data_empty_message        IS '0件メッセージ';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.created_by                IS '作成者';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.creation_date             IS '作成日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.last_updated_by           IS '最終更新者';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.last_update_date          IS '最終更新日';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.last_update_login         IS '最終更新ログイン';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.request_id                IS '要求ID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.program_application_id    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.program_id                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxcfr.xxcfr_rep_sales_rep_pay_sch.program_update_date       IS 'プログラム更新日';
+--
+COMMENT ON TABLE  xxcfr.xxcfr_rep_sales_rep_pay_sch IS '営業員別払日別入金予定表帳票ワークテーブル';
+

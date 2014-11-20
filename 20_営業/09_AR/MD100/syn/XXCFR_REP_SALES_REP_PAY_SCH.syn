@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_rep_sales_rep_pay_sch FOR xxcfr.xxcfr_rep_sales_rep_pay_sch;

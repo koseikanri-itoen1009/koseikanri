@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvReqtResultVOImpl
 * 概要説明   : 支給指示要約結果ビューオブジェクト
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-05 1.0  二瓶大輔     新規作成
 * 2008-06-09 1.1  二瓶大輔     変更要求#42対応
 * 2009-02-16 1.2  二瓶大輔     本番障害#469対応
+* 2009-03-13 1.3  飯田  甫     本番障害#1300対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -25,7 +26,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 支給指示要約結果ビューオブジェクトクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl 
@@ -69,6 +70,9 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
     String shipWhseCode = (String)shParams.get("shipWhseCode"); // 出庫倉庫  
     String exeType      = (String)shParams.get("exeType");      // 起動タイプ  
     String baseReqNo    = (String)shParams.get("baseReqNo");    // 元依頼No
+// 2009-03-13 H.Iida ADD START 本番障害#1300
+    String fixClass    = (String)shParams.get("fixClass");      // 金額確定
+// 2009-03-13 H.Iida ADD END
     
     // 起動タイプ(必須)
     XxcmnUtility.andAppend(whereClause);
@@ -213,6 +217,17 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
       //検索値をセット
       parameters.add(baseReqNo);      
     }
+// 2009-03-13 H.Iida ADD START 本番障害#1300
+    // 金額指定が入力されていた場合
+    if (!XxcmnUtility.isBlankOrNull(fixClass))
+    {
+      XxcmnUtility.andAppend(whereClause);
+      // Where句生成
+      whereClause.append("fix_class = :" + bindCount++);
+      //検索値をセット
+      parameters.add(fixClass);      
+    }
+// 2009-03-13 H.Iida ADD END
 
     // 検索条件をVOにセット
     setWhereClause(whereClause.toString());

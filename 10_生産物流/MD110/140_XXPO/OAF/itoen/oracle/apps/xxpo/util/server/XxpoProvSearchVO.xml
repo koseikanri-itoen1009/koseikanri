@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
 
 <ViewObject
@@ -228,6 +228,15 @@
       Name="BaseReqNo"
       IsPersistent="false"
       Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FixClass"
+      IsPersistent="false"
+      Precision="1"
       Type="java.lang.String"
       ColumnType="VARCHAR2"
       AliasName="VIEW_ATTR"

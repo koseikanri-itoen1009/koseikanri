@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_csv_outs_temp_s1 FOR xxcfr.xxcfr_csv_outs_temp_s1;

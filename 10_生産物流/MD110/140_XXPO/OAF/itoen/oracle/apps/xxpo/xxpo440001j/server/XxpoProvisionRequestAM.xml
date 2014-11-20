@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='Windows-31J'?>
+<?xml version="1.0" encoding='windows-31j'?>
 <!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
 
 <AppModule
@@ -78,5 +78,9 @@
    <ViewUsage
       Name="XxpoProvCopyLineVO1"
       ViewObjectName="itoen.oracle.apps.xxpo.xxpo440001j.server.XxpoProvCopyLineVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="FixClassVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.poplist.server.FixClassVO" >
    </ViewUsage>
 </AppModule>

@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSumResultVOImpl
 * 概要説明   : 支給返品要約ビューオブジェクト
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-31 1.0  熊本 和郎    新規作成
+* 2009-03-13 1.1  飯田 甫      本番#1300対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.server;
@@ -21,7 +22,7 @@ import oracle.apps.fnd.framework.server.OAViewObjectImpl;
 /***************************************************************************
  * 支給返品作成合計ビューオブジェクトクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvisionRtnSumResultVOImpl extends OAViewObjectImpl 
@@ -64,6 +65,9 @@ public class XxpoProvisionRtnSumResultVOImpl extends OAViewObjectImpl
     String instDeptCode = (String)shParams.get("instDeptCode");  //指示部署
     String shipWhseCode = (String)shParams.get("shipWhseCode");  //出庫倉庫
     String exeType = (String)shParams.get("exeType"); //起動タイプ
+// 2009-03-13 H.Iida ADD START 本番障害#1300
+    String fixClass = (String)shParams.get("fixClass"); // 金額確定
+// 2009-03-13 H.Iida ADD END
 
     // 起動タイプ(必須)
     XxcmnUtility.andAppend(whereClause);
@@ -195,6 +199,17 @@ public class XxpoProvisionRtnSumResultVOImpl extends OAViewObjectImpl
       //検索値をセット
       parameters.add(shipWhseCode);      
     }
+// 2009-03-13 H.Iida ADD START 本番障害#1300
+    // 金額指定が入力されていた場合
+    if (!XxcmnUtility.isBlankOrNull(fixClass))
+    {
+      XxcmnUtility.andAppend(whereClause);
+      // Where句生成
+      whereClause.append("fix_class = :" + bindCount++);
+      //検索値をセット
+      parameters.add(fixClass);      
+    }
+// 2009-03-13 H.Iida ADD END
 
     // 検索条件をVOにセット
     setWhereClause(whereClause.toString());

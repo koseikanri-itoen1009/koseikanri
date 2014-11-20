@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding='windows-31j'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="FixClassVO"
+   OrderBy="FIX_CLASS_CODE desc"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="oracle.apps.fnd.framework.server.OAViewRowImpl"
+   ComponentClass="oracle.apps.fnd.framework.server.OAViewObjectImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT xlvv.lookup_code fix_class_code -- 有償金額確定区分
+      ,xlvv.meaning     fix_class_name -- 有償金額確定区分名称
+FROM   xxcmn_lookup_values_v xlvv -- クイックコード情報VIEW
+WHERE  xlvv.lookup_type = 'XXPO_AMOUNT_FIX_CLASS'
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="4" />
+   </DesignTime>
+   <ViewAttribute
+      Name="FixClassCode"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FIX_CLASS_CODE"
+      Expression="FIX_CLASS_CODE"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="FixClassName"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="FIX_CLASS_NAME"
+      Expression="FIX_CLASS_NAME"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+</ViewObject>

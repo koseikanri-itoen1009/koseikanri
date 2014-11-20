@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRtnSummaryAMImpl
 * 概要説明   : 支給返品要約:検索アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2008-08-20 1.2  二瓶 大輔    ST不具合#249対応
 * 2008-10-07 1.3  伊藤ひとみ   統合テスト指摘240対応
 * 2009-01-26 1.4  吉元 強樹    本番#739対応
+* 2009-03-13 1.5  飯田 甫      本番#1300対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo443001j.server;
@@ -44,7 +45,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 支給返品要約:検索画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 熊本 和郎
- * @version 1.3
+ * @version 1.5
  ***************************************************************************
  */
 public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -121,6 +122,9 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
       shParams.put("instDeptCode", shRow.getAttribute("InstDeptCode"));
       shParams.put("shipWhseCode", shRow.getAttribute("ShipWhseCode"));
       shParams.put("exeType", shRow.getAttribute("ExeType"));
+// 2009-03-13 H.Iida ADD START 本番障害#1300
+      shParams.put("fixClass", shRow.getAttribute("FixClass"));
+// 2009-03-13 H.Iida ADD END
       //支給返品結果VO取得
       XxpoProvisionRtnSumResultVOImpl vo = getXxpoProvisionRtnSumResultVO1();
 
@@ -2627,6 +2631,15 @@ public class XxpoProvisionRtnSummaryAMImpl extends XxcmnOAApplicationModuleImpl
   public XxpoProvisionRtnMakeLineVOImpl getXxpoProvisionRtnMakeLineVO1()
   {
     return (XxpoProvisionRtnMakeLineVOImpl)findViewObject("XxpoProvisionRtnMakeLineVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for FixClassVO1
+   */
+  public OAViewObjectImpl getFixClassVO1()
+  {
+    return (OAViewObjectImpl)findViewObject("FixClassVO1");
   }
 
 

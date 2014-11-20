@@ -1,0 +1,1 @@
+CREATE OR REPLACE SYNONYM apps.xxcfr_inv_target_cust_list FOR xxcfr.xxcfr_inv_target_cust_list;
