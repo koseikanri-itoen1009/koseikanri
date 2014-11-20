@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxwsh400004c
+create or replace PACKAGE BODY xxwsh400004c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -46,7 +46,8 @@ AS
  *  2008/10/10   1.8   Oracle 伊藤ひとみ 統合テスト指摘239対応
  *  2008/10/28   1.9   Oracle 伊藤ひとみ 統合テスト指摘141対応
  *  2008/11/14   1.10  SCS    伊藤ひとみ 統合テスト指摘650対応
- *  2008/12/07   1.11  SCS    菅原大輔   本番#386
+ *  2008/12/01   1.11  SCS    菅原大輔   本番指摘253対応（暫定） 
+ *  2008/12/07   1.12  SCS    菅原大輔   本番#386
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -121,7 +122,7 @@ AS
   gv_cnst_msg_220  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11220';  -- 正常処理件数出力
   gv_cnst_msg_221  CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11221';  -- 警告処理件数出力
 --
-  gv_msg_xxcmn10146 CONSTANT VARCHAR2(100)  := 'APP-XXCMN-10146';  
+  gv_msg_xxcmn10146 CONSTANT VARCHAR2(100)  := 'APP-XXCMN-10146';
 --                                            -- メッセージ：ロック取得エラー
   gv_cnst_token_api_name  CONSTANT VARCHAR2(15)  := 'API_NAME';
 --
@@ -887,7 +888,7 @@ AS
            xoha.request_no         =  :iv_request_no    -- 依頼No
 --2008/12/07 D.Sugahara Mod Start
          FOR UPDATE OF xoha.order_header_id  SKIP LOCKED '
---         FOR UPDATE OF xoha.order_header_id NOWAIT 
+--         FOR UPDATE OF xoha.order_header_id NOWAIT
 --2008/12/07 D.Sugahara Mod End
       ;
     -- 締め処理
@@ -993,7 +994,7 @@ AS
                 xcav.end_date_active            xcav_end_date_active,
                 xcasv.start_date_active         xcasv_start_date_active,
                 xcasv.end_date_active           xcasv_end_date_active
-           FROM 
+           FROM
                  xxcmn_delivery_lt2_v          lt    --配送L/Tアドオンマスタ（倉庫・拠点）
                 ,xxcmn_cust_accounts2_v        xcav
                 ,xxcmn_cust_acct_sites2_v      xcasv
@@ -1038,7 +1039,7 @@ AS
                                 -- 出荷依頼締め管理（アドオン）.商品区分
                                 -- ＝受注ヘッダアドオン.商品区分かつ
        AND   xtc.sales_branch           = DECODE(xtc.sales_branch
-                                              ,:gv_ALL,:gv_ALL 
+                                              ,:gv_ALL,:gv_ALL
                                               ,xoha.head_sales_branch)
                                 -- 出荷依頼締め管理（アドオン）.拠点
                                 -- ＝受注ヘッダアドオン.管轄拠点かつ
@@ -1253,7 +1254,7 @@ AS
     END IF;
 --
     -- 「締めステータスチェック区分」チェック
-    IF ((iv_tightening_status_chk_class <> cv_tightening_status_chk_cla_1) 
+    IF ((iv_tightening_status_chk_class <> cv_tightening_status_chk_cla_1)
     AND (iv_tightening_status_chk_class <> cv_tightening_status_chk_cla_2)) THEN
       -- 締めステータスチェック区分に1、2以外のチェックを行います
       lv_err_message := lv_err_message ||
@@ -1300,7 +1301,7 @@ AS
     END IF;
 --
     -- 「呼出元フラグ」チェック
-    IF ((iv_callfrom_flg <> cv_callfrom_flg_1) 
+    IF ((iv_callfrom_flg <> cv_callfrom_flg_1)
     AND (iv_callfrom_flg <> cv_callfrom_flg_2)) THEN
       -- 呼出元フラグのNULLチェックを行います
       lv_err_message := lv_err_message ||
@@ -1311,7 +1312,7 @@ AS
     END IF;
 --
     -- 「呼出元フラグ」「依頼No」妥当チェック
-    IF ((iv_callfrom_flg = cv_callfrom_flg_2) 
+    IF ((iv_callfrom_flg = cv_callfrom_flg_2)
     AND (iv_request_no IS NULL)) THEN
       -- 呼出元フラグが2:画面の時、依頼NoのNULLチェックを行います
       lv_err_message := lv_err_message ||
@@ -1327,7 +1328,7 @@ AS
       -- 締め処理区分に1:初回の場合かつ呼出元区分が1：コンカレントの場合チェックを行います
 --
       -- 「出庫形態ID」「商品区分」チェック
-      IF ((in_order_type_id IS NULL) 
+      IF ((in_order_type_id IS NULL)
       AND (iv_prod_class = cv_prod_class_1)) THEN
         -- 出庫形態IDが未入力の場合かつ
         -- パラメータ.商品区分がリーフの場合
@@ -1371,7 +1372,7 @@ AS
       END IF;
 --
       -- 「出庫形態ID」「商品区分」チェック
-      IF ((in_order_type_id IS NULL) 
+      IF ((in_order_type_id IS NULL)
       AND (iv_prod_class = cv_prod_class_1)) THEN
         -- 出庫形態IDが未入力の場合かつ
         -- パラメータ.商品区分がリーフの場合
@@ -1786,6 +1787,7 @@ AS
 -- 2008/11/14 H.Itou Mod End
         END IF;
 --
+/* 20081201 D.Sugahara Deleted※暫定 Start --リードタイムエラーを回避するため
         -- リードタイム算出
         xxwsh_common910_pkg.calc_lead_time(cv_deliver_from_4,     -- 4:倉庫
                                            lr_u_rec.deliver_from, -- E-2出荷元保管場所
@@ -1888,6 +1890,9 @@ AS
                                                 lr_u_rec.request_no);
           RAISE global_api_expt;
         END IF;
+*/
+
+--20081201 D.Sugahara Deleted※暫定 End --リードタイムエラーを回避するため
 --
       END IF;
 --

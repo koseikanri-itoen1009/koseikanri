@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/08/20    1.6   Takao Ohashi          変更#183,T_S_612対応
  *  2008/09/01    1.7   Hitomi Itou           PT 2-1_10対応
  *  2008/11/14    1.8   Tsuyoki Yoshimoto     内部変更#168対応
+ *  2008/12/09    1.9   Akiyoshi Shiina       本番#607対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -115,6 +116,9 @@ AS
   gv_date_format1               CONSTANT VARCHAR2(18) := 'YYYY/MM/DD HH24:MI';  -- 年月日時分
   gv_date_format2               CONSTANT VARCHAR2(18) := 'YYYY/MM/DD';          -- 年月日
 --
+-- 2008/12/09 v1.9 ADD START
+  gv_n                          CONSTANT VARCHAR2(1) := 'N';
+-- 2008/12/09 v1.9 ADD END
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1493,6 +1497,9 @@ AS
       || '  AND    ximv.start_date_active     <= :id_arrival_date                  '  -- 抽出条件 OPM品目情報VIEW2.適用開始日：「IN着日」
       || '  AND    ximv.end_date_active       >= :id_arrival_date                  '  -- 抽出条件 OPM品目情報VIEW2.適用終了日：「IN着日」
       || '  AND    xicv.prod_class_code        = ''' || gv_syori_kbn_drink || '''  '  -- 抽出条件 OPM品目カテゴリ割当情報VIEW5.商品区分：「2：ドリンク」
+-- 2008/12/09 v1.9 ADD START
+      || '  AND    NVL(xola.delete_flag, :gv_n) = :gv_n                             '  -- 抽出条件 受注明細アドオン.削除フラグ：「N」
+-- 2008/12/09 v1.9 ADD END
       ;
     cv_where_kyoten_cd    CONSTANT VARCHAR2(32000) := 
          '  AND    xsr.base_code               = ''' || iv_kyoten_cd || '''        '; -- 抽出条件 物流構成アドオンマスタ.拠点：「IN拠点」
@@ -1572,6 +1579,10 @@ AS
      ,id_bucket_date_to     -- INパラメータ.バケット日付(TO)
      ,id_arrival_date       -- INパラメータ.着日
      ,id_arrival_date       -- INパラメータ.着日
+-- 2008/12/09 ADD START
+     ,gv_n                  -- INパラメータ.'N'
+     ,gv_n                  -- INパラメータ.'N'
+-- 2008/12/09 ADD END
     ;
     -- バルクフェッチ
     FETCH cur_drink_confirm_data BULK COLLECT INTO lt_drink_confirm_data;
@@ -2691,6 +2702,9 @@ AS
            ------------------------------------------------------------------------
            -- 受注明細アドオン条件
            AND xoha.order_header_id                = xola.order_header_id
+-- 2008/12/09 v1.9 ADD START
+           AND NVL(xola.delete_flag, gv_n)         = gv_n
+-- 2008/12/09 v1.9 ADD END
            ------------------------------------------------------------------------
            -- OPM品目情報VIEW条件
            AND xola.request_item_code              = ximv.item_no
@@ -3011,6 +3025,9 @@ AS
       || '  AND    ximv.start_date_active     <= :id_arrival_date                   '  -- 抽出条件 OPM品目情報VIEW2.適用開始日：IN着日
       || '  AND    ximv.end_date_active       >= :id_arrival_date                   '  -- 抽出条件 OPM品目情報VIEW2.適用開始日：IN着日
       || '  AND    xicv.prod_class_code        = ''' || gv_syori_kbn_leaf || '''    '  -- 抽出条件 OPM品目カテゴリ割当情報VIEW5.商品区分：「1：リーフ」
+-- 2008/12/09 v1.9 ADD START
+      || '  AND    NVL(xola.delete_flag, :gv_n) = :gv_n                             '  -- 抽出条件 受注明細アドオン.削除フラグ：「N」
+-- 2008/12/09 v1.9 ADD END
       ;
     cv_where_kyoten_cd    CONSTANT VARCHAR2(32767) := 
          '  AND    xoha.head_sales_branch      = ''' || iv_kyoten_cd || '''         '; -- 抽出条件 受注ヘッダアドドン.管轄拠点：IN拠点
@@ -3088,6 +3105,10 @@ AS
      ,id_arrival_date       -- INパラメータ.着日
      ,id_arrival_date       -- INパラメータ.着日
      ,id_arrival_date       -- INパラメータ.着日
+-- 2008/12/09 ADD START
+     ,gv_n                  -- INパラメータ.'N'
+     ,gv_n                  -- INパラメータ.'N'
+-- 2008/12/09 ADD END
     ;
     -- バルクフェッチ
     FETCH cur_leaf_confirm_data BULK COLLECT INTO lt_leaf_confirm_data_tbl;
