@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A02C (body)
  * Description      : 商品別売上計算
  * MD.050           : 商品別売上計算 MD050_COS_004_A02
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/06/09    1.12  T.kitajima       [T1_1371]行ロック
  *  2009/06/10    1.12  T.kitajima       [T1_1412]納品伝票番号取得処理変更
  *  2009/06/11    1.13  T.kitajima       [T1_1415]納品伝票番号取得処理変更
+ *  2009/08/17    1.14  K.Kiriu          [0000430]PT対応
  *
  *****************************************************************************************/
 --
@@ -297,7 +298,9 @@ AS
 --******************************* 2009/06/10 1.12 T.Kitajima ADD START ******************************--
   cv_snq_i                  CONSTANT  VARCHAR2(1) :=  'I';
 --******************************* 2009/06/10 1.12 T.Kitajima ADD  END  ******************************--
-
+/* 2009/08/17 Ver1.14 Add Start */
+  ct_lang                   CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG'); -- 言語
+/* 2009/08/17 Ver1.14 Add End   */
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -549,19 +552,29 @@ AS
     --==============================================================
     SELECT COUNT(flv.meaning)
     INTO   ln_cnt
-    FROM   fnd_application               fa,
-           fnd_lookup_types              flt,
-           fnd_lookup_values             flv
-    WHERE  fa.application_id                               = flt.application_id
-    AND    flt.lookup_type                                 = flv.lookup_type
-    AND    fa.application_short_name                       = ct_xxcos_appl_short_name
-    AND    flv.lookup_type                                 = ct_qct_regular_type
-    AND    flv.lookup_code                                 = iv_exec_div
-    AND    flv.start_date_active                          <= gd_last_month_date
-    AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
-    AND    flv.enabled_flag                                = ct_enabled_flag_yes
-    AND    flv.language                                    = USERENV( 'LANG' )
-    AND    ROWNUM                                          = 1
+/* 2009/08/17 Ver1.14 Mod Start */
+--    FROM   fnd_application               fa,
+--           fnd_lookup_types              flt,
+--           fnd_lookup_values             flv
+--    WHERE  fa.application_id                               = flt.application_id
+--    AND    flt.lookup_type                                 = flv.lookup_type
+--    AND    fa.application_short_name                       = ct_xxcos_appl_short_name
+--    AND    flv.lookup_type                                 = ct_qct_regular_type
+--    AND    flv.lookup_code                                 = iv_exec_div
+--    AND    flv.start_date_active                          <= gd_last_month_date
+--    AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
+--    AND    flv.enabled_flag                                = ct_enabled_flag_yes
+--    AND    flv.language                                    = USERENV( 'LANG' )
+--    AND    ROWNUM                                          = 1
+    FROM   fnd_lookup_values  flv
+    WHERE  flv.lookup_type      = ct_qct_regular_type
+    AND    flv.lookup_code      = iv_exec_div
+    AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                AND     NVL( flv.end_date_active, gd_last_month_date )
+    AND    flv.enabled_flag     = ct_enabled_flag_yes
+    AND    flv.language         = ct_lang
+    AND    ROWNUM               = 1
+/* 2009/08/17 Ver1.14 Mod End   */
     ;
 --
     IF ( ln_cnt = 0 ) THEN
@@ -684,19 +697,29 @@ AS
     BEGIN
       SELECT flv.meaning
       INTO   gv_making_code
-      FROM   fnd_application               fa,
-             fnd_lookup_types              flt,
-             fnd_lookup_values             flv
-      WHERE  fa.application_id                               = flt.application_id
-      AND    flt.lookup_type                                 = flv.lookup_type
-      AND    fa.application_short_name                       = ct_xxcos_appl_short_name
-      AND    flv.lookup_type                                 = ct_qct_making_type
-      AND    flv.lookup_code                                 = ct_qcc_sales_code
-      AND    flv.start_date_active                          <= gd_last_month_date
-      AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
-      AND    flv.enabled_flag                                = ct_enabled_flag_yes
-      AND    flv.language                                    = USERENV( 'LANG' )
-      AND    ROWNUM                                          = 1
+/* 2009/08/17 Ver1.14 Mod Start */
+--      FROM   fnd_application               fa,
+--             fnd_lookup_types              flt,
+--             fnd_lookup_values             flv
+--      WHERE  fa.application_id                               = flt.application_id
+--      AND    flt.lookup_type                                 = flv.lookup_type
+--      AND    fa.application_short_name                       = ct_xxcos_appl_short_name
+--      AND    flv.lookup_type                                 = ct_qct_making_type
+--      AND    flv.lookup_code                                 = ct_qcc_sales_code
+--      AND    flv.start_date_active                          <= gd_last_month_date
+--      AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
+--      AND    flv.enabled_flag                                = ct_enabled_flag_yes
+--      AND    flv.language                                    = USERENV( 'LANG' )
+--      AND    ROWNUM                                          = 1
+      FROM   fnd_lookup_values  flv
+      WHERE  flv.lookup_type      = ct_qct_making_type
+      AND    flv.lookup_code      = ct_qcc_sales_code
+      AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                  AND     NVL( flv.end_date_active, gd_last_month_date )
+      AND    flv.enabled_flag     = ct_enabled_flag_yes
+      AND    flv.language         = ct_lang
+      AND    ROWNUM               = 1
+/* 2009/08/17 Ver1.14 Mod End   */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -708,19 +731,29 @@ AS
     BEGIN
       SELECT flv.meaning
       INTO   gv_sales_class_vd
-      FROM   fnd_application               fa,
-             fnd_lookup_types              flt,
-             fnd_lookup_values             flv
-      WHERE  fa.application_id                               = flt.application_id
-      AND    flt.lookup_type                                 = flv.lookup_type
-      AND    fa.application_short_name                       = ct_xxcos_appl_short_name
-      AND    flv.lookup_type                                 = ct_qct_sales_type
-      AND    flv.lookup_code                                 = ct_qcc_digestion_code
-      AND    flv.start_date_active                          <= gd_last_month_date
-      AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
-      AND    flv.enabled_flag                                = ct_enabled_flag_yes
-      AND    flv.language                                    = USERENV( 'LANG' )
-      AND    ROWNUM                                          = 1
+/* 2009/08/17 Ver1.14 Mod Start */
+--      FROM   fnd_application               fa,
+--             fnd_lookup_types              flt,
+--             fnd_lookup_values             flv
+--      WHERE  fa.application_id                               = flt.application_id
+--      AND    flt.lookup_type                                 = flv.lookup_type
+--      AND    fa.application_short_name                       = ct_xxcos_appl_short_name
+--      AND    flv.lookup_type                                 = ct_qct_sales_type
+--      AND    flv.lookup_code                                 = ct_qcc_digestion_code
+--      AND    flv.start_date_active                          <= gd_last_month_date
+--      AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
+--      AND    flv.enabled_flag                                = ct_enabled_flag_yes
+--      AND    flv.language                                    = USERENV( 'LANG' )
+--      AND    ROWNUM                                          = 1
+      FROM   fnd_lookup_values  flv
+      WHERE  flv.lookup_type      = ct_qct_sales_type
+      AND    flv.lookup_code      = ct_qcc_digestion_code
+      AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                  AND     NVL( flv.end_date_active, gd_last_month_date )
+      AND    flv.enabled_flag     = ct_enabled_flag_yes
+      AND    flv.language         = ct_lang
+      AND    ROWNUM               = 1
+/* 2009/08/17 Ver1.14 Mod End   */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -732,19 +765,29 @@ AS
     BEGIN
       SELECT flv.meaning
       INTO   gv_inv_status
-      FROM   fnd_application               fa,
-             fnd_lookup_types              flt,
-             fnd_lookup_values             flv
-      WHERE  fa.application_id                               = flt.application_id
-      AND    flt.lookup_type                                 = flv.lookup_type
-      AND    fa.application_short_name                       = ct_xxcos_appl_short_name
-      AND    flv.lookup_type                                 = ct_qct_inv_type
-      AND    flv.lookup_code                                 = ct_qcc_inv_digestion_code
-      AND    flv.start_date_active                          <= gd_last_month_date
-      AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
-      AND    flv.enabled_flag                                = ct_enabled_flag_yes
-      AND    flv.language                                    = USERENV( 'LANG' )
-      AND    ROWNUM                                          = 1
+/* 2009/08/17 Ver1.14 Mod Start */
+--      FROM   fnd_application               fa,
+--             fnd_lookup_types              flt,
+--             fnd_lookup_values             flv
+--      WHERE  fa.application_id                               = flt.application_id
+--      AND    flt.lookup_type                                 = flv.lookup_type
+--      AND    fa.application_short_name                       = ct_xxcos_appl_short_name
+--      AND    flv.lookup_type                                 = ct_qct_inv_type
+--      AND    flv.lookup_code                                 = ct_qcc_inv_digestion_code
+--      AND    flv.start_date_active                          <= gd_last_month_date
+--      AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
+--      AND    flv.enabled_flag                                = ct_enabled_flag_yes
+--      AND    flv.language                                    = USERENV( 'LANG' )
+--      AND    ROWNUM                                          = 1
+      FROM   fnd_lookup_values  flv
+      WHERE  flv.lookup_type      = ct_qct_inv_type
+      AND    flv.lookup_code      = ct_qcc_inv_digestion_code
+      AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                  AND     NVL( flv.end_date_active, gd_last_month_date )
+      AND    flv.enabled_flag     = ct_enabled_flag_yes
+      AND    flv.language         = ct_lang
+      AND    ROWNUM               = 1
+/* 2009/08/17 Ver1.14 Mod End   */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -929,7 +972,19 @@ AS
     -- *** ローカル・カーソル ***
     CURSOR get_data_cur
     IS
-      SELECT xsdh.shop_digestion_hdr_id         shop_digestion_hdr_id,            --店舗別用消化計算ヘッダID
+/* 2009/08/17 Ver1.14 Mod Start */
+--      SELECT xsdh.shop_digestion_hdr_id         shop_digestion_hdr_id,            --店舗別用消化計算ヘッダID
+        SELECT /*+
+                 LEADING(xsdh)
+                 INDEX(xsdh xxcos_shop_digestion_hdrs_n04 )
+                 INDEX(xxca xxcmm_cust_accounts_pk)
+                 USE_NL(xchv.cust_hier.cash_hcar_3)
+                 USE_NL(xchv.cust_hier.bill_hasa_3)
+                 USE_NL(xchv.cust_hier.bill_hasa_4)
+                 USE_NL(flv xxca)
+               */
+             xsdh.shop_digestion_hdr_id         shop_digestion_hdr_id,            --店舗別用消化計算ヘッダID
+/* 2009/08/17 Ver1.14 Mod End   */
              xsdh.digestion_due_date            digestion_due_date,               --消化計算締年月日
              xsdh.customer_number               customer_number,                  --顧客コード
              xsdh.sales_base_code               sales_base_code,                  --売上拠点コード
@@ -969,80 +1024,131 @@ AS
              xxcos_shop_digestion_lns  xsdl,    -- 店舗別用消化計算明細テーブル
              hz_cust_accounts          hnas,    -- 顧客マスタ
              xxcmm_cust_accounts       xxca,    -- 顧客アドオンマスタ
-             xxcfr_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+/* 2009/08/17 Ver1.14 Mod Start */
+--             xxcfr_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+             xxcos_cust_hierarchy_v    xchv,    -- 顧客階層VIEW
+/* 2009/08/17 Ver1.14 Mod End   */
              ar_vat_tax_all_b          avta,    -- AR税金マスタ
-             (SELECT flv.attribute3  tax_class,
-                     flv.attribute2  tax_code
-              FROM   fnd_application               fa,
-                     fnd_lookup_types              flt,
-                     fnd_lookup_values             flv
-              WHERE  fa.application_id                               = flt.application_id
-              AND    flt.lookup_type                                 = flv.lookup_type
-              AND    fa.application_short_name                       = ct_xxcos_appl_short_name
-              AND    flv.lookup_type                                 = ct_qct_tax_type
-              AND    flv.start_date_active                          <= gd_last_month_date
-              AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
-              AND    flv.enabled_flag                                = ct_enabled_flag_yes
-              AND    flv.language                                    = USERENV( 'LANG' )
-             ) tcm,
+/* 2009/08/17 Ver1.14 Mod Start */
+--             (SELECT flv.attribute3  tax_class,
+--                     flv.attribute2  tax_code
+--              FROM   fnd_application               fa,
+--                     fnd_lookup_types              flt,
+--                     fnd_lookup_values             flv
+--              WHERE  fa.application_id                               = flt.application_id
+--              AND    flt.lookup_type                                 = flv.lookup_type
+--              AND    fa.application_short_name                       = ct_xxcos_appl_short_name
+--              AND    flv.lookup_type                                 = ct_qct_tax_type
+--              AND    flv.start_date_active                          <= gd_last_month_date
+--              AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
+--              AND    flv.enabled_flag                                = ct_enabled_flag_yes
+--              AND    flv.language                                    = USERENV( 'LANG' )
+--             ) tcm,
+             fnd_lookup_values         flv,
+/* 2009/08/17 Ver1.14 Mod End   */
              (
               SELECT hca.account_number  account_number         --顧客コード
               FROM   hz_cust_accounts    hca,                   --顧客マスタ
                      xxcmm_cust_accounts xca                    --顧客アドオン
               WHERE  hca.cust_account_id     = xca.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
               AND    EXISTS (SELECT flv.meaning
-                             FROM   fnd_application               fa,
-                                    fnd_lookup_types              flt,
-                                    fnd_lookup_values             flv
-                             WHERE  fa.application_id                               =    flt.application_id
-                             AND    flt.lookup_type                                 =    flv.lookup_type
-                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                             AND    flv.lookup_type                                 =    ct_qct_cust_type
-                             AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
-                             AND    flv.start_date_active                          <=    gd_last_month_date
-                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                             AND    flv.language                                    =    USERENV( 'LANG' )
-                             AND    flv.meaning                                     =    hca.customer_class_code
+/* 2009/08/17 Ver1.14 Mod Start */
+--                             FROM   fnd_application               fa,
+--                                    fnd_lookup_types              flt,
+--                                    fnd_lookup_values             flv
+--                             WHERE  fa.application_id                               =    flt.application_id
+--                             AND    flt.lookup_type                                 =    flv.lookup_type
+--                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                             AND    flv.lookup_type                                 =    ct_qct_cust_type
+--                             AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
+--                             AND    flv.start_date_active                          <=    gd_last_month_date
+--                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                             AND    flv.language                                    =    USERENV( 'LANG' )
+--                             AND    flv.meaning                                     =    hca.customer_class_code
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_cust_type
+                             AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = hca.customer_class_code
+/* 2009/08/17 Ver1.14 Mod End   */
                             ) --顧客マスタ.顧客区分 = 10(顧客)
               AND    EXISTS (SELECT hcae.account_number --拠点コード
                                FROM   hz_cust_accounts    hcae,
-                                      xxcmm_cust_accounts xcae
+/* 2009/08/17 Ver1.14 Mod Start */
+--                                      xxcmm_cust_accounts xcae
+                                      xxcmm_cust_accounts xcae,
+                                      fnd_lookup_values   flv
+/* 2009/08/17 Ver1.14 Mod End   */
                                WHERE  hcae.cust_account_id = xcae.customer_id--顧客マスタ.顧客ID =顧客アドオン.顧客ID
-                               AND    EXISTS (SELECT flv.meaning
-                                              FROM   fnd_application               fa,
-                                                     fnd_lookup_types              flt,
-                                                     fnd_lookup_values             flv
-                                              WHERE  fa.application_id                               =    flt.application_id
-                                              AND    flt.lookup_type                                 =    flv.lookup_type
-                                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                                              AND    flv.lookup_type                                 =    ct_qct_cust_type
-                                              AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_1
-                                              AND    flv.start_date_active                          <=    gd_last_month_date
-                                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                                              AND    flv.language                                    =    USERENV( 'LANG' )
-                                              AND    flv.meaning                                     =    hcae.customer_class_code
-                                             ) --顧客マスタ.顧客区分 = 1(拠点)
-                               AND    xcae.management_base_code = NVL( iv_base_code,xcae.management_base_code )
-                                               --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+/* 2009/08/17 Ver1.14 Mod Start */
+--                               AND    EXISTS (SELECT flv.meaning
+--                                              FROM   fnd_application               fa,
+--                                                     fnd_lookup_types              flt,
+--                                                     fnd_lookup_values             flv
+--                                              WHERE  fa.application_id                               =    flt.application_id
+--                                              AND    flt.lookup_type                                 =    flv.lookup_type
+--                                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                                              AND    flv.lookup_type                                 =    ct_qct_cust_type
+--                                              AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_1
+--                                              AND    flv.start_date_active                          <=    gd_last_month_date
+--                                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                                              AND    flv.language                                    =    USERENV( 'LANG' )
+--                                              AND    flv.meaning                                     =    hcae.customer_class_code
+--                                             ) --顧客マスタ.顧客区分 = 1(拠点)
+--                               AND    xcae.management_base_code = NVL( iv_base_code,xcae.management_base_code )
+--                                               --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+                               AND    flv.lookup_type      = ct_qct_cust_type
+                               AND    flv.lookup_code      LIKE ct_qcc_cust_code_1
+                               AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                           AND     NVL( flv.end_date_active, gd_last_month_date )
+                               AND    flv.enabled_flag     = ct_enabled_flag_yes
+                               AND    flv.language         = ct_lang
+                               AND    flv.meaning          = hcae.customer_class_code
+                               AND    (
+                                        ( iv_base_code IS NULL )
+                                        OR
+                                        ( iv_base_code IS NOT NULL AND  xcae.management_base_code = iv_base_code )
+                                      ) --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+/* 2009/08/17 Ver1.14 Mod End   */
                                AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
                               ) --管理拠点に所属する拠点コード=顧客アドオン.前月拠点or売上拠点
-              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+/* 2009/08/17 Ver1.14 Mod Start */
+--              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+              AND    (
+                       ( iv_customer_number IS NULL )
+                       OR
+                       ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
+                     ) --顧客コード=INパラ(顧客コード)
+/* 2009/08/17 Ver1.14 Mod End   */
               AND    EXISTS (SELECT flv.meaning
-                             FROM   fnd_application               fa,
-                                    fnd_lookup_types              flt,
-                                    fnd_lookup_values             flv
-                             WHERE  fa.application_id                               =    flt.application_id
-                             AND    flt.lookup_type                                 =    flv.lookup_type
-                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                             AND    flv.lookup_type                                 =    ct_qct_gyo_type
-                             AND    flv.lookup_code                                 LIKE ct_qcc_it_code
-                             AND    flv.start_date_active                          <=    gd_last_month_date
-                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                             AND    flv.language                                    =    USERENV( 'LANG' )
-                             AND    flv.meaning = xca.business_low_type
+/* 2009/08/17 Ver1.14 Mod Start */
+--                             FROM   fnd_application               fa,
+--                                    fnd_lookup_types              flt,
+--                                    fnd_lookup_values             flv
+--                             WHERE  fa.application_id                               =    flt.application_id
+--                             AND    flt.lookup_type                                 =    flv.lookup_type
+--                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                             AND    flv.lookup_type                                 =    ct_qct_gyo_type
+--                             AND    flv.lookup_code                                 LIKE ct_qcc_it_code
+--                             AND    flv.start_date_active                          <=    gd_last_month_date
+--                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                             AND    flv.language                                    =    USERENV( 'LANG' )
+--                             AND    flv.meaning = xca.business_low_type
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_gyo_type
+                             AND    flv.lookup_code      LIKE ct_qcc_it_code
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = xca.business_low_type
+/* 2009/08/17 Ver1.14 Mod End   */
                             )  --業態小分類=インショップ,当社直営店
               UNION
               SELECT hca.account_number  account_number         --顧客コード
@@ -1050,40 +1156,67 @@ AS
                      xxcmm_cust_accounts xca                    --顧客アドオン
               WHERE  hca.cust_account_id     = xca.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
               AND    EXISTS (SELECT flv.meaning
-                             FROM   fnd_application               fa,
-                                    fnd_lookup_types              flt,
-                                    fnd_lookup_values             flv
-                             WHERE  fa.application_id                               =    flt.application_id
-                             AND    flt.lookup_type                                 =    flv.lookup_type
-                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                             AND    flv.lookup_type                                 =    ct_qct_cust_type
-                             AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
-                             AND    flv.start_date_active                          <=    gd_last_month_date
-                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                             AND    flv.language                                    =    USERENV( 'LANG' )
-                             AND    flv.meaning                                     =    hca.customer_class_code
+/* 2009/08/17 Ver1.14 Mod Start */
+--                             FROM   fnd_application               fa,
+--                                    fnd_lookup_types              flt,
+--                                    fnd_lookup_values             flv
+--                             WHERE  fa.application_id                               =    flt.application_id
+--                             AND    flt.lookup_type                                 =    flv.lookup_type
+--                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                             AND    flv.lookup_type                                 =    ct_qct_cust_type
+--                             AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
+--                             AND    flv.start_date_active                          <=    gd_last_month_date
+--                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                             AND    flv.language                                    =    USERENV( 'LANG' )
+--                             AND    flv.meaning                                     =    hca.customer_class_code
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_cust_type
+                             AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = hca.customer_class_code
+/* 2009/08/17 Ver1.14 Mod End   */
                             ) --顧客マスタ.顧客区分 = 10(顧客)
               AND    (
                       xca.past_sale_base_code = NVL( iv_base_code,xca.past_sale_base_code )
                       OR
                       xca.sale_base_code = NVL( iv_base_code,xca.sale_base_code )
                      )--顧客アドオン.前月拠点or売上拠点 = INパラ拠点コード
-              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+/* 2009/08/17 Ver1.14 Mod Start */
+--              AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+              AND    (
+                       ( iv_customer_number IS NULL )
+                       OR
+                       ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
+                     ) --顧客コード=INパラ(顧客コード)
+/* 2009/08/17 Ver1.14 Mod End   */
               AND    EXISTS (SELECT flv.meaning
-                             FROM   fnd_application               fa,
-                                    fnd_lookup_types              flt,
-                                    fnd_lookup_values             flv
-                             WHERE  fa.application_id                               =    flt.application_id
-                             AND    flt.lookup_type                                 =    flv.lookup_type
-                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                             AND    flv.lookup_type                                 =    ct_qct_gyo_type
-                             AND    flv.lookup_code                                 LIKE ct_qcc_it_code
-                             AND    flv.start_date_active                          <=    gd_last_month_date
-                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                             AND    flv.language                                    =    USERENV( 'LANG' )
-                             AND    flv.meaning = xca.business_low_type
+/* 2009/08/17 Ver1.14 Mod Start */
+--                             FROM   fnd_application               fa,
+--                                    fnd_lookup_types              flt,
+--                                    fnd_lookup_values             flv
+--                             WHERE  fa.application_id                               =    flt.application_id
+--                             AND    flt.lookup_type                                 =    flv.lookup_type
+--                             AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                             AND    flv.lookup_type                                 =    ct_qct_gyo_type
+--                             AND    flv.lookup_code                                 LIKE ct_qcc_it_code
+--                             AND    flv.start_date_active                          <=    gd_last_month_date
+--                             AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                             AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                             AND    flv.language                                    =    USERENV( 'LANG' )
+--                             AND    flv.meaning = xca.business_low_type
+                             FROM   fnd_lookup_values  flv
+                             WHERE  flv.lookup_type      = ct_qct_gyo_type
+                             AND    flv.lookup_code      LIKE ct_qcc_it_code
+                             AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                         AND     NVL( flv.end_date_active, gd_last_month_date )
+                             AND    flv.enabled_flag     = ct_enabled_flag_yes
+                             AND    flv.language         = ct_lang
+                             AND    flv.meaning          = xca.business_low_type
+/* 2009/08/17 Ver1.14 Mod End   */
                             )  --業態小分類=インショップ,当社直営店
              ) amt
       WHERE  amt.account_number = xsdh.customer_number                    --ヘッダ.顧客コード           = 取得した顧客コード
@@ -1092,8 +1225,17 @@ AS
       AND    xsdh.uncalculate_class                    = ct_un_calc_flag_0          --ヘッダ.未計算区分           = 0
       AND    xsdh.cust_account_id                      = hnas.cust_account_id       --ヘッダ.顧客ID               = 顧客マスタ.顧客ID
       AND    hnas.cust_account_id                      = xxca.customer_id           --顧客マスタ.顧客ID           = アドオン.顧客ID
-      AND    xxca.tax_div                              = tcm.tax_class              --顧客マスタ. 消費税区分      = 税コード特定マスタ.LOCKUPコード
-      AND    tcm.tax_code                              = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
+/* 2009/08/17 Ver1.14 Mod Start */
+--      AND    xxca.tax_div                              = tcm.tax_class              --顧客マスタ. 消費税区分      = 税コード特定マスタ.LOCKUPコード
+--      AND    tcm.tax_code                              = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
+      AND    flv.lookup_type                           = ct_qct_tax_type
+      AND    gd_last_month_date                        BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                       AND     NVL( flv.end_date_active, gd_last_month_date )
+      AND    flv.enabled_flag                          = ct_enabled_flag_yes
+      AND    flv.language                              = ct_lang
+      AND    flv.attribute3                            = xxca.tax_div               --税コード特定マスタ.DFF3     = 顧客マスタ. 消費税区分
+      AND    flv.attribute2                            = avta.tax_code              --税コード特定マスタ.DFF2     = AR税金マスタ.税コード
+/* 2009/08/17 Ver1.14 Mod End   */
       AND    avta.set_of_books_id                      = gn_gl_id                   --AR税金マスタ.セットブックス = GL会計帳簿ID
       AND    avta.enabled_flag                         = ct_tax_enabled_yes         --AR税金マスタ.有効           = 'Y'
       AND    avta.start_date                          <=    gd_last_month_date      --AR税金マスタ.有効日自      <= 消化計算締日
@@ -1103,18 +1245,27 @@ AS
       AND    xsdl.sales_quantity                      != cn_sales_zero
       AND   NOT EXISTS(
                         SELECT flv.lookup_code               not_inv_code
-                        FROM   fnd_application               fa,
-                               fnd_lookup_types              flt,
-                               fnd_lookup_values             flv
-                        WHERE  fa.application_id                               = flt.application_id
-                        AND    flt.lookup_type                                 = flv.lookup_type
-                        AND    fa.application_short_name                       = ct_xxcos_appl_short_name
-                        AND    flv.lookup_type                                 = ct_qct_not_inv_type
-                        AND    flv.start_date_active                          <= gd_last_month_date
-                        AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
-                        AND    flv.enabled_flag                                = ct_enabled_flag_yes
-                        AND    flv.language                                    = USERENV( 'LANG' )
-                        AND    flv.lookup_code                                 = xsdl.item_code
+/* 2009/08/17 Ver1.14 Mod Start */
+--                        FROM   fnd_application               fa,
+--                               fnd_lookup_types              flt,
+--                               fnd_lookup_values             flv
+--                        WHERE  fa.application_id                               = flt.application_id
+--                        AND    flt.lookup_type                                 = flv.lookup_type
+--                        AND    fa.application_short_name                       = ct_xxcos_appl_short_name
+--                        AND    flv.lookup_type                                 = ct_qct_not_inv_type
+--                        AND    flv.start_date_active                          <= gd_last_month_date
+--                        AND    NVL( flv.end_date_active, gd_last_month_date ) >= gd_last_month_date
+--                        AND    flv.enabled_flag                                = ct_enabled_flag_yes
+--                        AND    flv.language                                    = USERENV( 'LANG' )
+--                        AND    flv.lookup_code                                 = xsdl.item_code
+                        FROM   fnd_lookup_values             flv
+                        WHERE  flv.lookup_type      = ct_qct_not_inv_type
+                        AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                    AND     NVL( flv.end_date_active, gd_last_month_date )
+                        AND    flv.enabled_flag     = ct_enabled_flag_yes
+                        AND    flv.language         = ct_lang
+                        AND    flv.lookup_code      = xsdl.item_code
+/* 2009/08/17 Ver1.14 Mod End   */
                       )
       ORDER BY xsdh.shop_digestion_hdr_id,xsdl.shop_digestion_ln_id
 --****************************** 2009/05/07 1.10 T.Kitajima ADD  END  ******************************--
@@ -1967,117 +2118,210 @@ AS
     -- 2.販売実績作成分更新処理
     -- ===============================
     BEGIN
-      UPDATE xxcos_shop_digestion_hdrs
-         SET sales_result_creation_flag = ct_make_flag_yes,
-             sales_result_creation_date = gd_business_date,
-             last_updated_by            = cn_last_updated_by,
-             last_update_date           = cd_last_update_date,
-             last_update_login          = cn_last_update_login,
-             request_id                 = cn_request_id,
-             program_application_id     = cn_program_application_id,
-             program_id                 = cn_program_id,
-             program_update_date        = cd_program_update_date
-       WHERE uncalculate_class          = ct_un_calc_flag_1
-         AND sales_result_creation_flag = ct_make_flag_no
-         AND customer_number IN (
+/* 2009/08/17 Ver1.14 Mod Start */
+--      UPDATE xxcos_shop_digestion_hdrs
+--         SET sales_result_creation_flag = ct_make_flag_yes,
+--             sales_result_creation_date = gd_business_date,
+--             last_updated_by            = cn_last_updated_by,
+--             last_update_date           = cd_last_update_date,
+--             last_update_login          = cn_last_update_login,
+--             request_id                 = cn_request_id,
+--             program_application_id     = cn_program_application_id,
+--             program_id                 = cn_program_id,
+--             program_update_date        = cd_program_update_date
+--       WHERE uncalculate_class          = ct_un_calc_flag_1
+--         AND sales_result_creation_flag = ct_make_flag_no
+--         AND customer_number IN (
+      UPDATE xxcos_shop_digestion_hdrs xsdh
+         SET xsdh.sales_result_creation_flag = ct_make_flag_yes,
+             xsdh.sales_result_creation_date = gd_business_date,
+             xsdh.last_updated_by            = cn_last_updated_by,
+             xsdh.last_update_date           = cd_last_update_date,
+             xsdh.last_update_login          = cn_last_update_login,
+             xsdh.request_id                 = cn_request_id,
+             xsdh.program_application_id     = cn_program_application_id,
+             xsdh.program_id                 = cn_program_id,
+             xsdh.program_update_date        = cd_program_update_date
+       WHERE xsdh.uncalculate_class          = ct_un_calc_flag_1
+         AND xsdh.sales_result_creation_flag = ct_make_flag_no
+         AND EXISTS (
+/* 2009/08/17 Ver1.14 Mod End   */
                SELECT hca.account_number  account_number         --顧客コード
                FROM   hz_cust_accounts    hca,                   --顧客マスタ
                       xxcmm_cust_accounts xca                    --顧客アドオン
                WHERE  hca.cust_account_id     = xca.customer_id  --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+/* 2009/08/17 Ver1.14 Add Start */
+               AND    xca.customer_code       = xsdh.customer_number --顧客アドオン.顧客コード = 消化VD用消化計算ヘッダ.顧客コード
+/* 2009/08/17 Ver1.14 Add End   */
                AND    EXISTS (SELECT flv.meaning
-                              FROM   fnd_application               fa,
-                                     fnd_lookup_types              flt,
-                                     fnd_lookup_values             flv
-                              WHERE  fa.application_id                               =    flt.application_id
-                              AND    flt.lookup_type                                 =    flv.lookup_type
-                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                              AND    flv.lookup_type                                 =    ct_qct_cust_type
-                              AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
-                              AND    flv.start_date_active                          <=    gd_last_month_date
-                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                              AND    flv.language                                    =    USERENV( 'LANG' )
-                              AND    flv.meaning                                     =    hca.customer_class_code
+/* 2009/08/17 Ver1.14 Mod Start */
+--                              FROM   fnd_application               fa,
+--                                     fnd_lookup_types              flt,
+--                                     fnd_lookup_values             flv
+--                              WHERE  fa.application_id                               =    flt.application_id
+--                              AND    flt.lookup_type                                 =    flv.lookup_type
+--                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                              AND    flv.lookup_type                                 =    ct_qct_cust_type
+--                              AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
+--                              AND    flv.start_date_active                          <=    gd_last_month_date
+--                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                              AND    flv.language                                    =    USERENV( 'LANG' )
+--                              AND    flv.meaning                                     =    hca.customer_class_code
+                              FROM   fnd_lookup_values  flv
+                              WHERE  flv.lookup_type      = ct_qct_cust_type
+                              AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                              AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                          AND     NVL( flv.end_date_active, gd_last_month_date )
+                              AND    flv.enabled_flag     = ct_enabled_flag_yes
+                              AND    flv.language         = ct_lang
+                              AND    flv.meaning          = hca.customer_class_code
+/* 2009/08/17 Ver1.14 Mod End   */
                              ) --顧客マスタ.顧客区分 = 10(顧客)
                AND    EXISTS (SELECT hcae.account_number --拠点コード
                                 FROM   hz_cust_accounts    hcae,
-                                       xxcmm_cust_accounts xcae
+/* 2009/08/17 Ver1.14 Mod Start */
+--                                       xxcmm_cust_accounts xcae
+                                       xxcmm_cust_accounts xcae,
+                                       fnd_lookup_values   flv
+/* 2009/08/17 Ver1.14 Mod End   */
                                 WHERE  hcae.cust_account_id = xcae.customer_id--顧客マスタ.顧客ID =顧客アドオン.顧客ID
-                                AND    EXISTS (SELECT flv.meaning
-                                               FROM   fnd_application               fa,
-                                                      fnd_lookup_types              flt,
-                                                      fnd_lookup_values             flv
-                                               WHERE  fa.application_id                               =    flt.application_id
-                                               AND    flt.lookup_type                                 =    flv.lookup_type
-                                               AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                                               AND    flv.lookup_type                                 =    ct_qct_cust_type
-                                               AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_1
-                                               AND    flv.start_date_active                          <=    gd_last_month_date
-                                               AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                                               AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                                               AND    flv.language                                    =    USERENV( 'LANG' )
-                                               AND    flv.meaning                                     =    hcae.customer_class_code
-                                              ) --顧客マスタ.顧客区分 = 1(拠点)
-                                AND    xcae.management_base_code = NVL( iv_base_code,xcae.management_base_code )
-                                                --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+/* 2009/08/17 Ver1.14 Mod Start */
+--                                AND    EXISTS (SELECT flv.meaning
+--                                               FROM   fnd_application               fa,
+--                                                      fnd_lookup_types              flt,
+--                                                      fnd_lookup_values             flv
+--                                               WHERE  fa.application_id                               =    flt.application_id
+--                                               AND    flt.lookup_type                                 =    flv.lookup_type
+--                                               AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                                               AND    flv.lookup_type                                 =    ct_qct_cust_type
+--                                               AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_1
+--                                               AND    flv.start_date_active                          <=    gd_last_month_date
+--                                               AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                                               AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                                               AND    flv.language                                    =    USERENV( 'LANG' )
+--                                               AND    flv.meaning                                     =    hcae.customer_class_code
+--                                              ) --顧客マスタ.顧客区分 = 1(拠点)
+--                                AND    xcae.management_base_code = NVL( iv_base_code,xcae.management_base_code )
+--                                                --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+                                AND    flv.lookup_type      = ct_qct_cust_type
+                                AND    flv.lookup_code      LIKE ct_qcc_cust_code_1
+                                AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                            AND     NVL( flv.end_date_active, gd_last_month_date )
+                                AND    flv.enabled_flag     = ct_enabled_flag_yes
+                                AND    flv.language         = ct_lang
+                                AND    flv.meaning          = hcae.customer_class_code
+                                AND    (
+                                         ( iv_base_code IS NULL )
+                                         OR
+                                         ( iv_base_code IS NOT NULL AND xcae.management_base_code = iv_base_code )
+                                       ) --顧客顧客アドオン.管理元拠点コード = INパラ拠点コード
+/* 2009/08/17 Ver1.14 Mod End   */
                                 AND    hcae.account_number = NVL( xca.past_sale_base_code,xca.sale_base_code )
                                ) --管理拠点に所属する拠点コード=顧客アドオン.前月拠点or売上拠点
-               AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+/* 2009/08/17 Ver1.14 Mod Start */
+--               AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+               AND    (
+                        ( iv_customer_number IS NULL )
+                        OR
+                        ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
+                      ) --顧客コード=INパラ(顧客コード)
+/* 2009/08/17 Ver1.14 Mod End   */
                AND    EXISTS (SELECT flv.meaning
-                              FROM   fnd_application               fa,
-                                     fnd_lookup_types              flt,
-                                     fnd_lookup_values             flv
-                              WHERE  fa.application_id                               =    flt.application_id
-                              AND    flt.lookup_type                                 =    flv.lookup_type
-                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                              AND    flv.lookup_type                                 =    ct_qct_gyo_type
-                              AND    flv.lookup_code                                 LIKE ct_qcc_it_code
-                              AND    flv.start_date_active                          <=    gd_last_month_date
-                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                              AND    flv.language                                    =    USERENV( 'LANG' )
-                              AND    flv.meaning = xca.business_low_type
+/* 2009/08/17 Ver1.14 Mod Start */
+--                              FROM   fnd_application               fa,
+--                                     fnd_lookup_types              flt,
+--                                     fnd_lookup_values             flv
+--                              WHERE  fa.application_id                               =    flt.application_id
+--                              AND    flt.lookup_type                                 =    flv.lookup_type
+--                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                              AND    flv.lookup_type                                 =    ct_qct_gyo_type
+--                              AND    flv.lookup_code                                 LIKE ct_qcc_it_code
+--                              AND    flv.start_date_active                          <=    gd_last_month_date
+--                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                              AND    flv.language                                    =    USERENV( 'LANG' )
+--                              AND    flv.meaning = xca.business_low_type
+                              FROM   fnd_lookup_values  flv
+                              WHERE  flv.lookup_type      = ct_qct_gyo_type
+                              AND    flv.lookup_code      LIKE ct_qcc_it_code
+                              AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                          AND     NVL( flv.end_date_active, gd_last_month_date )
+                              AND    flv.enabled_flag     = ct_enabled_flag_yes
+                              AND    flv.language         = ct_lang
+                              AND    flv.meaning          = xca.business_low_type
+/* 2009/08/17 Ver1.14 Mod End   */
                              )  --業態小分類=インショップ,当社直営店
                UNION
                SELECT hca.account_number  account_number         --顧客コード
                FROM   hz_cust_accounts    hca,                   --顧客マスタ
                       xxcmm_cust_accounts xca                    --顧客アドオン
                WHERE  hca.cust_account_id     = xca.customer_id --顧客マスタ.顧客ID   = 顧客アドオン.顧客ID
+/* 2009/08/17 Ver1.14 Add Start */
+               AND    xca.customer_code       = xsdh.customer_number --顧客マスタ.顧客コード = 消化VD用消化計算ヘッダ.顧客コード
+/* 2009/08/17 Ver1.14 Add End   */
                AND    EXISTS (SELECT flv.meaning
-                              FROM   fnd_application               fa,
-                                     fnd_lookup_types              flt,
-                                     fnd_lookup_values             flv
-                              WHERE  fa.application_id                               =    flt.application_id
-                              AND    flt.lookup_type                                 =    flv.lookup_type
-                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                              AND    flv.lookup_type                                 =    ct_qct_cust_type
-                              AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
-                              AND    flv.start_date_active                          <=    gd_last_month_date
-                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                              AND    flv.language                                    =    USERENV( 'LANG' )
-                              AND    flv.meaning                                     =    hca.customer_class_code
+/* 2009/08/17 Ver1.14 Mod Start */
+--                              FROM   fnd_application               fa,
+--                                     fnd_lookup_types              flt,
+--                                     fnd_lookup_values             flv
+--                              WHERE  fa.application_id                               =    flt.application_id
+--                              AND    flt.lookup_type                                 =    flv.lookup_type
+--                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                              AND    flv.lookup_type                                 =    ct_qct_cust_type
+--                              AND    flv.lookup_code                                 LIKE ct_qcc_cust_code_2
+--                              AND    flv.start_date_active                          <=    gd_last_month_date
+--                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                              AND    flv.language                                    =    USERENV( 'LANG' )
+--                              AND    flv.meaning                                     =    hca.customer_class_code
+                              FROM   fnd_lookup_values  flv
+                              WHERE  flv.lookup_type      = ct_qct_cust_type
+                              AND    flv.lookup_code      LIKE ct_qcc_cust_code_2
+                              AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                          AND     NVL( flv.end_date_active, gd_last_month_date )
+                              AND    flv.enabled_flag     = ct_enabled_flag_yes
+                              AND    flv.language         = ct_lang
+                              AND    flv.meaning          = hca.customer_class_code
+/* 2009/08/17 Ver1.14 Mod End   */
                              ) --顧客マスタ.顧客区分 = 10(顧客)
                AND    (
                        xca.past_sale_base_code = NVL( iv_base_code,xca.past_sale_base_code )
                        OR
                        xca.sale_base_code = NVL( iv_base_code,xca.sale_base_code )
                       )--顧客アドオン.前月拠点or売上拠点 = INパラ拠点コード
-               AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+/* 2009/08/17 Ver1.14 Mod Start */
+--               AND    hca.account_number = NVL( iv_customer_number,hca.account_number ) --顧客コード=INパラ(顧客コード)
+               AND    (
+                        ( iv_customer_number IS NULL )
+                        OR
+                        ( iv_customer_number IS NOT NULL AND hca.account_number = iv_customer_number )
+                      ) --顧客コード=INパラ(顧客コード)
+/* 2009/08/17 Ver1.14 Mod End   */
                AND    EXISTS (SELECT flv.meaning
-                              FROM   fnd_application               fa,
-                                     fnd_lookup_types              flt,
-                                     fnd_lookup_values             flv
-                              WHERE  fa.application_id                               =    flt.application_id
-                              AND    flt.lookup_type                                 =    flv.lookup_type
-                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
-                              AND    flv.lookup_type                                 =    ct_qct_gyo_type
-                              AND    flv.lookup_code                                 LIKE ct_qcc_it_code
-                              AND    flv.start_date_active                          <=    gd_last_month_date
-                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
-                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
-                              AND    flv.language                                    =    USERENV( 'LANG' )
-                              AND    flv.meaning = xca.business_low_type
+/* 2009/08/17 Ver1.14 Mod Start */
+--                              FROM   fnd_application               fa,
+--                                     fnd_lookup_types              flt,
+--                                     fnd_lookup_values             flv
+--                              WHERE  fa.application_id                               =    flt.application_id
+--                              AND    flt.lookup_type                                 =    flv.lookup_type
+--                              AND    fa.application_short_name                       =    ct_xxcos_appl_short_name
+--                              AND    flv.lookup_type                                 =    ct_qct_gyo_type
+--                              AND    flv.lookup_code                                 LIKE ct_qcc_it_code
+--                              AND    flv.start_date_active                          <=    gd_last_month_date
+--                              AND    NVL( flv.end_date_active, gd_last_month_date ) >=    gd_last_month_date
+--                              AND    flv.enabled_flag                                =    ct_enabled_flag_yes
+--                              AND    flv.language                                    =    USERENV( 'LANG' )
+--                              AND    flv.meaning = xca.business_low_type
+                              FROM   fnd_lookup_values  flv
+                              WHERE  flv.lookup_type      = ct_qct_gyo_type
+                              AND    flv.lookup_code      LIKE ct_qcc_it_code
+                              AND    gd_last_month_date   BETWEEN NVL( flv.start_date_active, gd_last_month_date )
+                                                          AND     NVL( flv.end_date_active, gd_last_month_date )
+                              AND    flv.enabled_flag     = ct_enabled_flag_yes
+                              AND    flv.language         = ct_lang
+                              AND    flv.meaning          = xca.business_low_type
+/* 2009/08/17 Ver1.14 Mod End   */
                              )  --業態小分類=インショップ,当社直営店
              )
        ;

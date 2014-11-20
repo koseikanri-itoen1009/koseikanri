@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2009/07/02    1.5  T.Tominaga       [T1_1359]数量換算対応
  *  2009/07/08    1.5  N.Maeda          [T1_1356]レビュー指摘対応
  *  2009/07/15    1.5  N.Maeda          [T1_1357]レビュー指摘対応
+ *  2009/08/17    1.6  N.Maeda          [0000439]PT対応
+ *  2009/08/24    1.6  N.Maeda          [0000439]レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -147,6 +149,10 @@ AS
   cv_msg_tbale_tkn2     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12312';  -- 入庫予定テーブル
   cv_msg_tbale_tkn3     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12313';  -- 移動オーダーヘッダテーブル
   cv_msg_tbale_tkn4     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-12314';  -- 入庫予定ヘッダテーブル
+-- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
+  cv_msg_category_err             CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12954';     --カテゴリセットID取得エラーメッセージ
+  cv_msg_item_div_h               CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12955';     --本社商品区分
+-- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
   -- トークンコード
   cv_tkn_in_param       CONSTANT VARCHAR2(8)   := 'IN_PARAM';          -- パラメータ名称
   cv_tkn_prf            CONSTANT VARCHAR2(7)   := 'PROFILE';           -- プロファイル名称
@@ -166,6 +172,12 @@ AS
   cv_tkn_invoice_num    CONSTANT VARCHAR2(11)  := 'INVOICE_NUM';       -- 伝票番号
   cv_tkn_item_code      CONSTANT VARCHAR2(20)  := 'ITEM_CODE';         -- 品目コード
   cv_tkn_cust_item_code CONSTANT VARCHAR2(20)  := 'CUST_ITEM_CODE';    -- 顧客品目コード
+-- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
+  ct_item_div_h                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ITEM_DIV_H';
+-- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
+-- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
+  ct_user_lang                    CONSTANT mtl_category_sets_tl.language%TYPE := userenv('LANG'); --LANG
+-- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
   -- 日付
   cd_sysdate            CONSTANT DATE          := SYSDATE;                            -- システム日付
   cd_process_date       CONSTANT DATE          := xxccp_common_pkg2.get_process_date; -- 業務処理日
@@ -182,6 +194,9 @@ AS
   -- その他固定値
   cv_date_format        CONSTANT VARCHAR2(8)   := 'YYYYMMDD';          -- 日付フォーマット(日)
   cv_time_format        CONSTANT VARCHAR2(8)   := 'HH24MISS';          -- 日付フォーマット(時間)
+-- ********** 2009/08/17 N.Maeda 1.6 ADD START ************** --
+  cv_date_time_format   CONSTANT VARCHAR2(20)  := 'YYYYMMDDHH24MISS';  -- 日付フォーマット(日時)
+-- ********** 2009/08/17 N.Maeda 1.6 ADD  END  ************** --
   cv_0                  CONSTANT VARCHAR2(1)   := '0';                 -- 固定値:0(VARCHAR2)
   cn_0                  CONSTANT NUMBER        := 0;                   -- 固定値:0(NUMBER)
   cv_1                  CONSTANT VARCHAR2(1)   := '1';                 -- 固定値:1(VARCHAR2)
@@ -193,6 +208,9 @@ AS
 --****************************** 2009/07/02 1.5 T.Tominaga ADD START ******************************
   cv_x                  CONSTANT VARCHAR2(1)   := 'X';                 -- 単位（ダミー値）
 --****************************** 2009/07/02 1.5 T.Tominaga ADD END   ******************************
+-- ********** 2009/08/17 N.Maeda 1.6 ADD START ************** --
+  cv_time_data          CONSTANT VARCHAR2(8)   := '235959';
+-- ********** 2009/08/17 N.Maeda 1.6 ADD  END  ************** --
   -- データ編集共通関数用
   cv_medium_class             CONSTANT VARCHAR2(50)  := 'MEDIUM_CLASS';                  --媒体区分
   cv_data_type_code           CONSTANT VARCHAR2(50)  := 'DATA_TYPE_CODE';                --データ種コード
@@ -575,6 +593,9 @@ AS
 --********************  2009/07/08    1.5  N.Maeda ADD Start ********************
   gt_edi_f_number       xxcmm_cust_accounts.edi_forward_number%TYPE;   --EDI伝票追番
 --********************  2009/07/08    1.5  N.Maeda ADD  End  ********************
+-- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
+   gt_category_set_id   mtl_category_sets_tl.category_set_id%TYPE;     --カテゴリセットID
+-- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
   -- ===============================
   -- ユーザー定義グローバルRECORD型宣言
   -- ===============================
@@ -700,6 +721,9 @@ AS
     lv_err_msg     VARCHAR2(5000);  --プロファイルエラー出力用(取得エラーごとに出力する為)
     lv_l_meaning fnd_lookup_values_vl.meaning%TYPE;  --クイックコード条件取得用
     lv_dummy       VARCHAR2(1);     --レイアウト定義のCSVヘッダー用(ファイルタイプが固定長なので使用されない)
+-- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
+    lt_item_div_h                           fnd_profile_option_values.profile_option_value%TYPE;
+-- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
 --
     -- *** ローカル・カーソル ***
 --
@@ -822,6 +846,9 @@ AS
     gv_outbound_d  := FND_PROFILE.VALUE( cv_prf_outbound_d );           --アウトバウンド用ディレクトリパス
     gn_bks_id      := TO_NUMBER( FND_PROFILE.VALUE( cv_prf_bks_id ) );  --GL会計帳簿ID
     gn_org_id      := TO_NUMBER( FND_PROFILE.VALUE( cv_prf_org_id ) );  --営業単位
+-- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
+    lt_item_div_h  := FND_PROFILE.VALUE(ct_item_div_h);                 --XXCOS:本社商品区分
+-- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
     --EDI情報削除期間のチェック
     IF ( gv_edi_p_term IS NULL ) THEN
       --トークン取得
@@ -990,7 +1017,28 @@ AS
       );
       ln_err_chk := 1;  --エラー有り
     END IF;
-
+-- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
+    IF ( lt_item_div_h IS NULL ) THEN
+      --トークン取得
+      lv_tkn_name1 := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_application   --アプリケーション
+                       ,iv_name         => cv_msg_item_div_h
+                      );
+      --メッセージ取得
+      lv_err_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_application  --アプリケーション
+                    ,iv_name         => cv_msg_prf_err  --プロファイル取得エラー
+                    ,iv_token_name1  => cv_tkn_prf      --トークンコード１
+                    ,iv_token_value1 => lv_tkn_name1    --プロファイル名
+                   );
+      --メッセージに出力
+      FND_FILE.PUT_LINE(
+        which  => FND_FILE.OUTPUT
+       ,buff   => lv_err_msg
+      );
+      ln_err_chk := 1;  --エラー有り
+    END IF;
+-- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
     --プロファイル取得でエラーの場合
     IF ( ln_err_chk = 1 ) THEN
       RAISE global_api_others_expt;
@@ -1174,6 +1222,29 @@ AS
         lv_errbuf  := SQLERRM;
       RAISE global_data_check_expt;
     END;
+--
+-- ************ 2009/08/24 N.Maeda 1.6 ADD START ***************** --
+    IF ( lt_item_div_h IS NOT NULL ) THEN
+    -- =============================================================
+    -- カテゴリセットID取得
+    -- =============================================================
+      BEGIN
+        SELECT  mcst.category_set_id   category_set_id
+        INTO    gt_category_set_id
+        FROM    mtl_category_sets_tl   mcst
+        WHERE   mcst.category_set_name = lt_item_div_h
+        AND     mcst.language          = ct_user_lang;
+      EXCEPTION
+        WHEN OTHERS THEN
+          ov_errmsg  :=  xxccp_common_pkg.get_msg(
+                           iv_application  =>  cv_application,
+                           iv_name         =>  cv_msg_category_err
+                           );
+          lv_errbuf  := SQLERRM;
+          RAISE global_data_check_expt;
+      END;
+    END IF;
+-- ************ 2009/08/24 N.Maeda 1.6 ADD  END  ***************** --
 --
     --==============================================================
     -- ファイルオープン
@@ -1489,7 +1560,10 @@ AS
              ,xsib.bowl_inc_num                       bowl_inc_num                 --ボール入数
              ,iimb.attribute21                        jan_code                     --JANコード
              ,iimb.attribute22                        itf_code                     --ITFコード
-             ,xhpc.item_div_h_code                    item_div_code                --本社商品区分
+-- ************* 2009/08/24 1.6 N.Maeda MOD START ******************** --
+             ,mcb.segment1                            item_div_code                --本社商品区分
+--             ,xhpc.item_div_h_code                    item_div_code                --本社商品区分
+-- ************* 2009/08/24 1.6 N.Maeda MOD  END  ******************** --
 --********************  2009/03/10    1.2  T.Kitajima MOD Start ********************
 --             ,mci.customer_item_number                customer_item_number         --顧客品目
              ,mcis.customer_item_number               customer_item_number         --顧客品目
@@ -1532,13 +1606,27 @@ AS
                        ,SUM( xesl.case_qty )    case_qty_sum
                        ,SUM( xesl.indv_qty )    indv_qty_sum
                 FROM    xxcos_edi_stc_lines   xesl
+-- ********** 2009/08/17 N.Maeda 1.6 ADD START ************** --
+                        ,xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
+                WHERE   xesl.header_id         = xesh.header_id
+                AND    xesh.edi_send_flag        = cv_n              --EDI送信済フラグ(未送信)
+                AND    xesh.fix_flag             = cv_y              --確定済フラグ(確定済)
+                AND    xesh.edi_chain_code       = it_edi_c_code     --EDIチェーン店コード
+                AND    xesh.to_subinventory_code = it_to_s_code      --搬送先保管場所
+-- ********** 2009/08/17 N.Maeda 1.6 ADD  END  ************** --
                 GROUP BY
                         xesl.header_id
                        ,xesl.inventory_item_id
               )                        xesl   --入庫予定明細(品目サマリ)
 --********************  2009/03/10    1.2  T.Kitajima ADD Start ********************
              ,(
-                SELECT  mci.customer_id             customer_id
+                SELECT
+-- ************* 2009/08/24 1.6 N.Maeda ADD START ******************** --
+                       /*+
+                         INDEX ( MCIX MTL_CUSTOMER_ITEM_XREFS_U2 )
+                       */
+-- ************* 2009/08/24 1.6 N.Maeda ADD  END  ******************** --
+                        mci.customer_id             customer_id
                        ,customer_item_number        customer_item_number
                        ,mci.inactive_flag           inactive_flag
                        ,mcix.inactive_flag          inactive_ref_flag
@@ -1563,8 +1651,23 @@ AS
 --             ,mtl_customer_items       mci    --顧客品目
 --             ,mtl_parameters           mp     --在庫組織
 --********************  2009/03/10    1.2  T.Kitajima DEL  End  ********************
-             ,xxcos_head_prod_class_v  xhpc   --本社商品区分ビュー
-      WHERE  msib.inventory_item_id       = xhpc.inventory_item_id       --結合(D品目 = 本社商品区分)
+-- ************* 2009/08/24 1.6 N.Maeda MOD START ******************** --
+             ,mtl_item_categories      mic    --品目カテゴリマスタ
+             ,mtl_categories_b         mcb    --カテゴリマスタ
+--             ,xxcos_head_prod_class_v  xhpc   --本社商品区分ビュー
+-- ************* 2009/08/24 1.6 N.Maeda MOD  END  ******************** --
+-- ************* 2009/08/24 1.6 N.Maeda MOD START ******************** --
+--      WHERE  msib.inventory_item_id       = xhpc.inventory_item_id       --結合(D品目 = 本社商品区分)
+      WHERE  msib.inventory_item_id       = mic.inventory_item_id        --結合(D品目 = 品目カテゴリマスタ)(品目ID)
+      AND    msib.organization_id         = mic.organization_id          --結合(D品目 = 品目カテゴリマスタ)(在庫組織ID)
+      AND    mic.category_set_id          = gt_category_set_id           --カテゴリセットID = 初期処理で取得したカテゴリセットID
+      AND    mcb.category_id              = mic.category_id              --結合(カテゴリマスタ = 品目カテゴリマスタ)
+      AND    ( mcb.disable_date IS NULL OR mcb.disable_date > cd_process_date )
+      AND    mcb.enabled_flag                      = cv_y
+      AND    ( cd_process_date BETWEEN NVL(mcb.start_date_active, cd_process_date) AND NVL(mcb.end_date_active, cd_process_date) )
+      AND    msib.enabled_flag                     = cv_y
+      AND    ( cd_process_date BETWEEN NVL(msib.start_date_active, cd_process_date) AND NVL(msib.end_date_active, cd_process_date) )
+-- ************* 2009/08/24 1.6 N.Maeda MOD  END  ******************** --
 --********************  2009/03/10    1.2  T.Kitajima MOD Start ********************
 --      AND    mci.inactive_flag            = cv_n                         --有効フラグ(有効)
 --      AND    mci.customer_id              = gt_chain_cust_acct_id        --チェーン店の顧客品目
@@ -1635,7 +1738,10 @@ AS
              ,xsib.bowl_inc_num                       bowl_inc_num                 --ボール入数
              ,iimb.attribute21                        jan_code                     --JANコード
              ,iimb.attribute22                        itf_code                     --ITFコード
-             ,xhpc.item_div_h_code                    item_div_code                --本社商品区分
+-- ************* 2009/08/24 1.6 N.Maeda MOD START ******************** --
+             ,mcb.segment1                            item_div_code                --本社商品区分
+--             ,xhpc.item_div_h_code                    item_div_code                --本社商品区分
+-- ************* 2009/08/24 1.6 N.Maeda MOD  END  ******************** --
              ,iimb.attribute21                        customer_item_number         --顧客品目(JANコード)
              ,xesl.case_qty_sum                       case_qty                     --ケース数
              ,xesl.indv_qty_sum                       indv_qty                     --バラ数
@@ -1675,6 +1781,14 @@ AS
                        ,SUM( xesl.case_qty )    case_qty_sum
                        ,SUM( xesl.indv_qty )    indv_qty_sum
                 FROM    xxcos_edi_stc_lines   xesl
+-- ********** 2009/08/17 N.Maeda 1.6 ADD START ************** --
+                        ,xxcos_edi_stc_headers   xesh    --入庫予定ヘッダ
+                WHERE   xesl.header_id         = xesh.header_id
+                AND    xesh.edi_send_flag        = cv_n              --EDI送信済フラグ(未送信)
+                AND    xesh.fix_flag             = cv_y              --確定済フラグ(確定済)
+                AND    xesh.edi_chain_code       = it_edi_c_code     --EDIチェーン店コード
+                AND    xesh.to_subinventory_code = it_to_s_code      --搬送先保管場所
+-- ********** 2009/08/17 N.Maeda 1.6 ADD  END  ************** --
                 GROUP BY
                         xesl.header_id
                        ,xesl.inventory_item_id
@@ -1683,8 +1797,23 @@ AS
              ,xxcmm_system_items_b     xsib   --Disc品目アドオン
              ,ic_item_mst_b            iimb   --OPM品目
              ,xxcmn_item_mst_b         ximb   --OPM品目アドオン
-             ,xxcos_head_prod_class_v  xhpc   --本社商品区分ビュー
-      WHERE  msib.inventory_item_id       = xhpc.inventory_item_id       --結合(D品目 = 本社商品区分)
+-- ************* 2009/08/24 1.6 N.Maeda MOD START ******************** --
+             ,mtl_item_categories      mic    --品目カテゴリマスタ
+             ,mtl_categories_b         mcb    --カテゴリマスタ
+--             ,xxcos_head_prod_class_v  xhpc   --本社商品区分ビュー
+-- ************* 2009/08/24 1.6 N.Maeda MOD  END  ******************** --
+-- ************* 2009/08/24 1.6 N.Maeda MOD START ******************** --
+--      WHERE  msib.inventory_item_id       = xhpc.inventory_item_id       --結合(D品目 = 本社商品区分)
+      WHERE  msib.inventory_item_id       = mic.inventory_item_id        --結合(D品目 = 品目カテゴリマスタ)(品目ID)
+      AND    msib.organization_id         = mic.organization_id          --結合(D品目 = 品目カテゴリマスタ)(在庫組織ID)
+      AND    mic.category_set_id          = gt_category_set_id           --カテゴリセットID = 初期処理で取得したカテゴリセットID
+      AND    mcb.category_id              = mic.category_id              --結合(カテゴリマスタ = 品目カテゴリマスタ)
+      AND    ( mcb.disable_date IS NULL OR mcb.disable_date > cd_process_date )
+      AND    mcb.enabled_flag                      = cv_y
+      AND    ( cd_process_date BETWEEN NVL(mcb.start_date_active, cd_process_date) AND NVL(mcb.end_date_active, cd_process_date) )
+      AND    msib.enabled_flag                     = cv_y
+      AND    ( cd_process_date BETWEEN NVL(msib.start_date_active, cd_process_date) AND NVL(msib.end_date_active, cd_process_date) )
+-- ************* 2009/08/24 1.6 N.Maeda MOD  END  ******************** --
       AND    ( cd_process_date BETWEEN ximb.start_date_active AND  ximb.end_date_active )  --O品目A適用日FROM-TO
       AND    iimb.item_id                 = ximb.item_id                 --結合(O品目 = O品目A)
       AND    msib.segment1                = iimb.item_no                 --結合(D品目 = O品目)
@@ -2917,21 +3046,35 @@ AS
       SELECT xesh.rowid  row_id
       FROM   xxcos_edi_stc_headers xesh
       WHERE  xesh.edi_send_flag          = cv_y          --EDI送信済みフラグ(送信済)
-      AND    TRUNC(xesh.edi_send_date)  <= ld_term_date  --対象日以前
+-- ********** 2009/08/17 N.Maeda 1.6 MOD START ************** --
+      AND    xesh.edi_send_date  <= ld_term_date  --対象日以前
+--      AND    TRUNC(xesh.edi_send_date)  <= ld_term_date  --対象日以前
+-- ********** 2009/08/17 N.Maeda 1.6 MOD  END  ************** --
       FOR UPDATE OF
              xesh.header_id NOWAIT
       ;
     --入庫予定明細
     CURSOR del_line_cur
     IS
+-- ********** 2009/08/17 N.Maeda 1.6 MOD START ************** --
       SELECT xesl.rowid row_id
       FROM   xxcos_edi_stc_lines xesl
-      WHERE  xesl.header_id IN 
-        ( SELECT xesh.header_id  header_id
-          FROM   xxcos_edi_stc_headers xesh
-          WHERE  xesh.edi_send_flag          = cv_y          --EDI送信済みフラグ(送信済)
-          AND    TRUNC(xesh.edi_send_date)  <= ld_term_date  --対象日以前
-        ) --ヘッダの削除条件
+      WHERE  EXISTS ( SELECT 'Y'
+                      FROM   xxcos_edi_stc_headers xesh
+                      WHERE  xesh.edi_send_flag          = cv_y          --EDI送信済みフラグ(送信済)
+                      AND    xesh.edi_send_date         <= ld_term_date  --対象日以前
+                      AND    xesl.header_id              = xesh.header_id
+                    ) --ヘッダの削除条件
+--
+--      SELECT xesl.rowid row_id
+--      FROM   xxcos_edi_stc_lines xesl
+--      WHERE  xesl.header_id IN 
+--        ( SELECT xesh.header_id  header_id
+--          FROM   xxcos_edi_stc_headers xesh
+--          WHERE  xesh.edi_send_flag          = cv_y          --EDI送信済みフラグ(送信済)
+--          AND    TRUNC(xesh.edi_send_date)  <= ld_term_date  --対象日以前
+--        ) --ヘッダの削除条件
+-- ********** 2009/08/17 N.Maeda 1.6 MOD  END  ************** --
       FOR UPDATE OF
              xesl.line_id NOWAIT
       ;
@@ -2955,7 +3098,12 @@ AS
     --==============================================================
     --削除対象日の取得
     --==============================================================
-    ld_term_date := TRUNC( cd_sysdate ) - TO_NUMBER( gv_edi_p_term ); --システム日付-EDI情報削除期間
+-- ********** 2009/08/17 N.Maeda 1.6 MOD START ************** --
+--    ld_term_date := TRUNC( cd_sysdate ) - TO_NUMBER( gv_edi_p_term ); --システム日付-EDI情報削除期間
+    ld_term_date := TO_DATE (
+                      ( TO_CHAR ( TRUNC ( cd_sysdate ) - TO_NUMBER ( gv_edi_p_term ),cv_date_format )|| cv_time_data )
+                      ,cv_date_time_format ); --システム日付-EDI情報削除期間
+-- ********** 2009/08/17 N.Maeda 1.6 MOD  END  ************** --
 --
     --==============================================================
     --ロック処理

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A11C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定情報データ作成 (MD050_COS_014_A11)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/03/16    1.0   K.Kiriu          新規作成
  *  2009/07/01    1.1   K.Kiriu          [T1_1359]数量換算対応
+ *  2009/08/18    1.2   K.Kiriu          [0000445]PT対応
  *
  *****************************************************************************************/
 --
@@ -551,10 +552,16 @@ AS
     ,to_subinv_code      xxcos_edi_stc_headers.to_subinventory_code%TYPE  --搬送先保管場所コード
     ,center_code         xxcos_edi_stc_headers.center_code%TYPE           --センターコード
     ,invoice_number      xxcos_edi_stc_headers.invoice_number%TYPE        --伝票番号
-    ,sch_ship_date_from  VARCHAR2(10)                                     --出荷予定日FROM
-    ,sch_ship_date_to    VARCHAR2(10)                                     --出荷予定日TO
-    ,sch_arrv_date_from  VARCHAR2(10)                                     --入庫予定日FROM
-    ,sch_arrv_date_to    VARCHAR2(10)                                     --入庫予定日TO
+/* 2009/08/18 Ver1.2 Mod Start */
+--    ,sch_ship_date_from  VARCHAR2(10)                                     --出荷予定日FROM
+--    ,sch_ship_date_to    VARCHAR2(10)                                     --出荷予定日TO
+--    ,sch_arrv_date_from  VARCHAR2(10)                                     --入庫予定日FROM
+--    ,sch_arrv_date_to    VARCHAR2(10)                                     --入庫予定日TO
+    ,sch_ship_date_from  xxcos_edi_stc_headers.schedule_shipping_date%TYPE --出荷予定日FROM
+    ,sch_ship_date_to    xxcos_edi_stc_headers.schedule_shipping_date%TYPE --出荷予定日TO
+    ,sch_arrv_date_from  xxcos_edi_stc_headers.schedule_arrival_date%TYPE  --入庫予定日FROM
+    ,sch_arrv_date_to    xxcos_edi_stc_headers.schedule_arrival_date%TYPE  --入庫予定日TO
+/* 2009/08/18 Ver1.2 Mod End   */
     ,move_order_number   xxcos_edi_stc_headers.move_order_num%TYPE        --移動オーダー番号
     ,edi_send_flag       xxcos_edi_stc_headers.edi_send_flag%TYPE         --EDI送信状況
   );
@@ -758,13 +765,22 @@ AS
                      ,cv_tkn_param4
                      ,gt_param_rec.invoice_number      --伝票番号
                      ,cv_tkn_param5
-                     ,gt_param_rec.sch_ship_date_from  --出荷予定日FROM
+/* 2009/08/18 Ver1.2 Mod Start */
+--                     ,gt_param_rec.sch_ship_date_from  --出荷予定日FROM
+--                     ,cv_tkn_param6
+--                     ,gt_param_rec.sch_ship_date_to    --出荷予定日TO
+--                     ,cv_tkn_param7
+--                     ,gt_param_rec.sch_arrv_date_from  --入庫予定日FROM
+--                     ,cv_tkn_param8
+--                     ,gt_param_rec.sch_arrv_date_to    --入庫予定日TO
+                     ,TO_CHAR( gt_param_rec.sch_ship_date_from, cv_date_format10 ) --出荷予定日FROM
                      ,cv_tkn_param6
-                     ,gt_param_rec.sch_ship_date_to    --出荷予定日TO
+                     ,TO_CHAR( gt_param_rec.sch_ship_date_to, cv_date_format10 )   --出荷予定日TO
                      ,cv_tkn_param7
-                     ,gt_param_rec.sch_arrv_date_from  --入庫予定日FROM
+                     ,TO_CHAR( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) --入庫予定日FROM
                      ,cv_tkn_param8
-                     ,gt_param_rec.sch_arrv_date_to    --入庫予定日TO
+                     ,TO_CHAR( gt_param_rec.sch_arrv_date_to, cv_date_format10 )   --入庫予定日TO
+/* 2009/08/18 Ver1.2 Mod End   */
                      ,cv_tkn_param9 
                      ,gt_param_rec.move_order_number   --移動オーダー番号
                      ,cv_tkn_param10
@@ -1280,7 +1296,13 @@ AS
     --EDI連携品目コード「顧客品目」
     CURSOR cust_item_cur
     IS
-      SELECT  xesh.header_id                          header_id                    --ヘッダID
+/* 2009/08/18 Ver1.2 Mod Start */
+--      SELECT  xesh.header_id                          header_id                    --ヘッダID
+      SELECT  /*+
+                USE_NL(xesl)
+              */
+              xesh.header_id                          header_id                    --ヘッダID
+/* 2009/08/18 Ver1.2 Mod End   */
              ,xesh.move_order_header_id               move_order_header_id         --移動オーダーヘッダID
              ,xesh.move_order_num                     move_order_num               --移動オーダー番号
              ,xesh.to_subinventory_code               to_subinventory_code         --搬送先保管場所
@@ -1352,6 +1374,12 @@ AS
                        ,SUM( xesl.case_qty )    case_qty_sum
                        ,SUM( xesl.indv_qty )    indv_qty_sum
                 FROM    xxcos_edi_stc_lines   xesl
+/* 2009/08/18 Ver1.2 Add Start */
+                       ,xxcos_edi_stc_headers xesh2
+                WHERE   xesh2.edi_chain_code = gt_param_rec.chain_code
+                AND     xesh2.fix_flag       = cv_y
+                AND     xesh2.header_id      = xesl.header_id
+/* 2009/08/18 Ver1.2 Add End   */
                 GROUP BY
                         xesl.header_id
                        ,xesl.inventory_item_id
@@ -1419,26 +1447,48 @@ AS
                 ( xesh.center_code      = gt_param_rec.center_code )
               )                                                                 --センターコード
       AND     xesh.invoice_number       = NVL( gt_param_rec.invoice_number, xesh.invoice_number )        --伝票番号
+/* 2009/08/17 Ver1.2 Mod Start */
+--      AND     (
+--                ( TO_DATE( gt_param_rec.sch_ship_date_from, cv_date_format10 ) IS NULL )
+--                OR 
+--                (  TO_DATE( gt_param_rec.sch_ship_date_from, cv_date_format10 ) <= xesh.schedule_shipping_date )
+--              )
+--      AND     (
+--                ( TO_DATE( gt_param_rec.sch_ship_date_to, cv_date_format10 ) IS NULL )
+--                OR
+--                ( TO_DATE( gt_param_rec.sch_ship_date_to, cv_date_format10 ) >= xesh.schedule_shipping_date )
+--              )                                                                 --出荷予定日FROM-TO
+--      AND     (
+--                ( TO_DATE( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) IS NULL )
+--                OR 
+--                ( TO_DATE( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) <= xesh.schedule_arrival_date )
+--              )
+--      AND     (
+--                ( TO_DATE( gt_param_rec.sch_arrv_date_to, cv_date_format10 ) IS NULL )
+--                OR
+--                ( TO_DATE( gt_param_rec.sch_arrv_date_to, cv_date_format10 ) >= xesh.schedule_arrival_date )
+--              )                                                                 --入庫予定日FROM-TO
       AND     (
-                ( TO_DATE( gt_param_rec.sch_ship_date_from, cv_date_format10 ) IS NULL )
+                ( gt_param_rec.sch_ship_date_from IS NULL )
                 OR 
-                (  TO_DATE( gt_param_rec.sch_ship_date_from, cv_date_format10 ) <= xesh.schedule_shipping_date )
+                ( gt_param_rec.sch_ship_date_from <= xesh.schedule_shipping_date )
               )
       AND     (
-                ( TO_DATE( gt_param_rec.sch_ship_date_to, cv_date_format10 ) IS NULL )
+                ( gt_param_rec.sch_ship_date_to IS NULL )
                 OR
-                ( TO_DATE( gt_param_rec.sch_ship_date_to, cv_date_format10 ) >= xesh.schedule_shipping_date )
+                ( gt_param_rec.sch_ship_date_to >= xesh.schedule_shipping_date )
               )                                                                 --出荷予定日FROM-TO
       AND     (
-                ( TO_DATE( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) IS NULL )
+                ( gt_param_rec.sch_arrv_date_from IS NULL )
                 OR 
-                ( TO_DATE( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) <= xesh.schedule_arrival_date )
+                ( gt_param_rec.sch_arrv_date_from <= xesh.schedule_arrival_date )
               )
       AND     (
-                ( TO_DATE( gt_param_rec.sch_arrv_date_to, cv_date_format10 ) IS NULL )
+                ( gt_param_rec.sch_arrv_date_to IS NULL )
                 OR
-                ( TO_DATE( gt_param_rec.sch_arrv_date_to, cv_date_format10 ) >= xesh.schedule_arrival_date )
+                ( gt_param_rec.sch_arrv_date_to >= xesh.schedule_arrival_date )
               )                                                                 --入庫予定日FROM-TO
+/* 2009/08/17 Ver1.2 Mod Start */
       AND     (
                 ( gt_param_rec.move_order_number IS NULL )
                 OR
@@ -1455,7 +1505,13 @@ AS
     --EDI連携品目コード「JANコード」
     CURSOR jan_item_cur
     IS
-      SELECT  xesh.header_id                          header_id                    --ヘッダID
+/* 2009/08/18 Ver1.2 Mod Start */
+--      SELECT  xesh.header_id                          header_id                    --ヘッダID
+      SELECT  /*+
+                USE_NL(xesl)
+              */
+              xesh.header_id                          header_id                    --ヘッダID
+/* 2009/08/18 Ver1.2 Mod End   */
              ,xesh.move_order_header_id               move_order_header_id         --移動オーダーヘッダID
              ,xesh.move_order_num                     move_order_num               --移動オーダー番号
              ,xesh.to_subinventory_code               to_subinventory_code         --搬送先保管場所
@@ -1527,6 +1583,12 @@ AS
                        ,SUM( xesl.case_qty )    case_qty_sum
                        ,SUM( xesl.indv_qty )    indv_qty_sum
                 FROM    xxcos_edi_stc_lines   xesl
+/* 2009/08/18 Ver1.2 Add Start */
+                       ,xxcos_edi_stc_headers xesh2
+                WHERE   xesh2.edi_chain_code = gt_param_rec.chain_code
+                AND     xesh2.fix_flag       = cv_y
+                AND     xesh2.header_id      = xesl.header_id
+/* 2009/08/18 Ver1.2 Add End   */
                 GROUP BY
                         xesl.header_id
                        ,xesl.inventory_item_id
@@ -1576,26 +1638,48 @@ AS
                 ( xesh.center_code      = gt_param_rec.center_code )
               )                                                                 --センターコード
       AND     xesh.invoice_number       = NVL( gt_param_rec.invoice_number, xesh.invoice_number )        --伝票番号
+/* 2009/08/17 Ver1.2 Mod Start */
+--      AND     (
+--                ( TO_DATE( gt_param_rec.sch_ship_date_from, cv_date_format10 ) IS NULL )
+--                OR 
+--                (  TO_DATE( gt_param_rec.sch_ship_date_from, cv_date_format10 ) <= xesh.schedule_shipping_date )
+--              )
+--      AND     (
+--                ( TO_DATE( gt_param_rec.sch_ship_date_to, cv_date_format10 ) IS NULL )
+--                OR
+--                ( TO_DATE( gt_param_rec.sch_ship_date_to, cv_date_format10 ) >= xesh.schedule_shipping_date )
+--              )                                                                 --出荷予定日FROM-TO
+--      AND     (
+--                ( TO_DATE( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) IS NULL )
+--                OR 
+--                ( TO_DATE( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) <= xesh.schedule_arrival_date )
+--              )
+--      AND     (
+--                ( TO_DATE( gt_param_rec.sch_arrv_date_to, cv_date_format10 ) IS NULL )
+--                OR
+--                ( TO_DATE( gt_param_rec.sch_arrv_date_to, cv_date_format10 ) >= xesh.schedule_arrival_date )
+--              )                                                                 --入庫予定日FROM-TO
       AND     (
-                ( TO_DATE( gt_param_rec.sch_ship_date_from, cv_date_format10 ) IS NULL )
+                ( gt_param_rec.sch_ship_date_from IS NULL )
                 OR 
-                (  TO_DATE( gt_param_rec.sch_ship_date_from, cv_date_format10 ) <= xesh.schedule_shipping_date )
+                ( gt_param_rec.sch_ship_date_from <= xesh.schedule_shipping_date )
               )
       AND     (
-                ( TO_DATE( gt_param_rec.sch_ship_date_to, cv_date_format10 ) IS NULL )
+                ( gt_param_rec.sch_ship_date_to IS NULL )
                 OR
-                ( TO_DATE( gt_param_rec.sch_ship_date_to, cv_date_format10 ) >= xesh.schedule_shipping_date )
+                ( gt_param_rec.sch_ship_date_to >= xesh.schedule_shipping_date )
               )                                                                 --出荷予定日FROM-TO
       AND     (
-                ( TO_DATE( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) IS NULL )
+                ( gt_param_rec.sch_arrv_date_from IS NULL )
                 OR 
-                ( TO_DATE( gt_param_rec.sch_arrv_date_from, cv_date_format10 ) <= xesh.schedule_arrival_date )
+                ( gt_param_rec.sch_arrv_date_from <= xesh.schedule_arrival_date )
               )
       AND     (
-                ( TO_DATE( gt_param_rec.sch_arrv_date_to, cv_date_format10 ) IS NULL )
+                ( gt_param_rec.sch_arrv_date_to IS NULL )
                 OR
-                ( TO_DATE( gt_param_rec.sch_arrv_date_to, cv_date_format10 ) >= xesh.schedule_arrival_date )
-              )                                                                 --入庫予定日FROM-TO
+                ( gt_param_rec.sch_arrv_date_to >= xesh.schedule_arrival_date )
+              )
+/* 2009/08/17 Ver1.2 Mod End   */
       AND     (
                 ( gt_param_rec.move_order_number IS NULL )
                 OR
@@ -1704,7 +1788,13 @@ AS
     END IF;
     -- 税率
     BEGIN
-      SELECT  xtrv.tax_rate             --税率
+/* 2009/08/18 Ver1.2 Mod Start */
+--      SELECT  xtrv.tax_rate             --税率
+      SELECT  /*+
+                LEADING(xca)
+              */
+              xtrv.tax_rate             --税率
+/* 2009/08/18 Ver1.2 Mod End   */
       INTO    gt_tax_rate
       FROM    hz_cust_accounts    hca   --顧客
              ,hz_parties          hp    --パーティ
@@ -2660,10 +2750,16 @@ AS
     gt_param_rec.to_subinv_code      := iv_to_subinv_code;        --搬送先保管場所コード
     gt_param_rec.center_code         := iv_center_code;           --センターコード
     gt_param_rec.invoice_number      := iv_invoice_number;        --伝票番号
-    gt_param_rec.sch_ship_date_from  := iv_sch_ship_date_from;    --出荷予定日FROM
-    gt_param_rec.sch_ship_date_to    := iv_sch_ship_date_to;      --出荷予定日TO
-    gt_param_rec.sch_arrv_date_from  := iv_sch_arrv_date_from;    --入庫予定日FROM
-    gt_param_rec.sch_arrv_date_to    := iv_sch_arrv_date_to;      --入庫予定日TO
+/* 2009/08/17 Ver1.2 Mod Start */
+--    gt_param_rec.sch_ship_date_from  := iv_sch_ship_date_from;    --出荷予定日FROM
+--    gt_param_rec.sch_ship_date_to    := iv_sch_ship_date_to;      --出荷予定日TO
+--    gt_param_rec.sch_arrv_date_from  := iv_sch_arrv_date_from;    --入庫予定日FROM
+--    gt_param_rec.sch_arrv_date_to    := iv_sch_arrv_date_to;      --入庫予定日TO
+    gt_param_rec.sch_ship_date_from  := TO_DATE( iv_sch_ship_date_from, cv_date_format10);  --出荷予定日FROM
+    gt_param_rec.sch_ship_date_to    := TO_DATE( iv_sch_ship_date_to, cv_date_format10);    --出荷予定日TO
+    gt_param_rec.sch_arrv_date_from  := TO_DATE( iv_sch_arrv_date_from, cv_date_format10);  --入庫予定日FROM
+    gt_param_rec.sch_arrv_date_to    := TO_DATE( iv_sch_arrv_date_to, cv_date_format10);    --入庫予定日TO
+/* 2009/08/17 Ver1.2 Mod End   */
     gt_param_rec.move_order_number   := iv_move_order_number;     --移動オーダー番号
     gt_param_rec.edi_send_flag       := iv_edi_send_flag;         --EDI送信状況
     -- ===============================
