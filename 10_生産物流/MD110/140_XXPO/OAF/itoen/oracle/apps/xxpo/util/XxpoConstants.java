@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,13 +12,14 @@
 * 2008-07-11 1.3  伊藤ひとみ     内部変更要求#153対応(メッセージ追加)
 * 2008-07-11 1.3  二瓶大輔　     ST#421対応(メッセージ追加)
 * 2008-07-30 1.4  伊藤ひとみ     内部変更要求#176(メッセージ追加)
+* 2008-10-23 1.5  伊藤ひとみ     T_TE08_BPO_340 指摘5
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
 /***************************************************************************
  * 仕入共通定数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.2
+ * @version 1.5
  ***************************************************************************
  */
 public class XxpoConstants 
@@ -227,6 +228,12 @@ public class XxpoConstants
   /** メッセージ：APP-XXPO-10265 入庫日未来日エラー */
   public static final String XXPO10265   = "APP-XXPO-10265";
 // 2008-07-30 H.Itou Add END
+// 2008-10-23 H.Itou Add START
+  /** メッセージ：APP-XXPO-10274 相手先在庫管理対象NULLエラー */
+  public static final String XXPO10274   = "APP-XXPO-10274";
+  /** メッセージ：APP-XXPO-10275 相手先在庫管理対象不一致エラー */
+  public static final String XXPO10275   = "APP-XXPO-10275";
+// 2008-10-23 H.Itou Add END
   /** トークン：ENTRY */
   public static final String TOKEN_ENTRY       = "ENTRY";
   /** トークン：DATA */
@@ -343,6 +350,12 @@ public class XxpoConstants
   public static final String TOKEN_NAME_REQUEST_NO = "依頼No";
   /** トークン名称：出庫処理 */
   public static final String TOKEN_CONC_NAME = "コンカレント名称";
+// 2008-10-23 H.Itou Add START
+  /** トークン名称：伊藤園在庫管理倉庫 */
+  public static final String TOKEN_CUSTOMER_STOCK_WHSE_ITOEN = "伊藤園在庫管理倉庫";
+  /** トークン名称：相手先在庫管理倉庫 */
+  public static final String TOKEN_CUSTOMER_STOCK_WHSE_AITE = "相手先在庫管理倉庫";
+// 2008-10-23 H.Itou Add END
   /** アプリケーション短縮名：XXPO⇒使用不可 */
   public static final String APPL_XXPO = "XXPO";
   /** 試験有無区分：1 有 */
@@ -425,6 +438,12 @@ public class XxpoConstants
   public static final String RCV_CLASS_ON  = "1";
   /** 支給指示受領区分：2 未受領  */
   public static final String RCV_CLASS_OFF = "2";
+// 2008-10-23 H.Itou Add Start
+  /** 相手先在庫管理対象：0 伊藤園在庫管理対象  */
+  public static final String CUSTOMER_STOCK_WHSE_ITOEN = "0";
+  /** 相手先在庫管理対象：1 相手先在庫管理対象  */
+  public static final String CUSTOMER_STOCK_WHSE_AITE = "1";
+// 2008-10-23 H.Itou Add End
   /** URL：発注受入:検索画面 */
   public static final String URL_XXPO310001JS = "OA.jsp?page=/itoen/oracle/apps/xxpo/xxpo310001j/webui/XxpoOrderReceiptPG";
   /** URL：発注受入:詳細画面 */

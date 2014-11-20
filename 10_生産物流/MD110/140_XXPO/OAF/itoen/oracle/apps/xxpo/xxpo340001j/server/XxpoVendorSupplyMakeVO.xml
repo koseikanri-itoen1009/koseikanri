@@ -664,11 +664,22 @@ AND    xvv.end_date_active    >= TRUNC(xvst.manufactured_date)
    </ViewAttribute>
    <ViewAttribute
       Name="OrganizationId"
+      IsQueriable="false"
       IsPersistent="false"
       Type="oracle.jbo.domain.Number"
       ColumnType="NUMBER"
       AliasName="VIEW_ATTR"
       SQLType="NUMERIC" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CustomerStockWhse"
+      IsQueriable="false"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="VIEW_ATTR"
+      SQLType="VARCHAR" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">
       <Item Value="TxnsId" />

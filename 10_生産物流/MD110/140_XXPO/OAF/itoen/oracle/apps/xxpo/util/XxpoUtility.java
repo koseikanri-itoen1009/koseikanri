@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.14
+* バージョン : 1.15
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -22,6 +22,7 @@
 * 2008-10-21 1.12 二瓶大輔     統合障害#384
 * 2008-10-22 1.13 伊藤ひとみ   変更要求#217,238,統合テスト指摘49対応
 * 2008-10-22 1.14 吉元強樹     統合テスト指摘426対応
+* 2008-10-23 1.15 伊藤ひとみ   T_TE080_BPO_340 指摘5
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -43,7 +44,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.13
+ * @version 1.15
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -1109,12 +1110,18 @@ public class XxpoUtility
     sb.append("        ,somb.orgn_code             orgn_code "            ); // 4:組織コード
     sb.append("        ,haou.location_id           ship_to_location_id "  ); // 5:納入先事業所ID
     sb.append("        ,xilv.mtl_organization_id   organization_id "      ); // 6:在庫組織ID
+// 2008-10-23 H.Itou Add Start T_TE080_BPO_340 指摘5 相手先在庫管理対象チェック追加
+    sb.append("        ,xilv.customer_stock_whse   customer_stock_whse "  ); // 7:相手先在庫管理対象
+// 2008-10-23 H.Itou Add End
     sb.append("  INTO   :1 "                                              );
     sb.append("        ,:2 "                                              );
     sb.append("        ,:3 "                                              );
     sb.append("        ,:4 "                                              );
     sb.append("        ,:5 "                                              );
     sb.append("        ,:6 "                                              );
+// 2008-10-23 H.Itou Add Start T_TE080_BPO_340 指摘5 相手先在庫管理対象チェック追加
+    sb.append("        ,:7 "                                              );
+// 2008-10-23 H.Itou Add End
     sb.append("  FROM   xxcmn_item_locations_v     xilv "                 ); // OPM保管場所情報V
     sb.append("        ,ic_whse_mst                iwm "                  ); // OPM倉庫マスタ
     sb.append("        ,sy_orgn_mst_b              somb "                 ); // OPMプラントマスタ
@@ -1144,6 +1151,9 @@ public class XxpoUtility
       cstmt.registerOutParameter(4, Types.VARCHAR); // 組織コード
       cstmt.registerOutParameter(5, Types.INTEGER); // 納入先事業所ID
       cstmt.registerOutParameter(6, Types.INTEGER); // 在庫組織ID
+// 2008-10-23 H.Itou Add Start T_TE080_BPO_340 指摘5 相手先在庫管理対象チェック追加
+      cstmt.registerOutParameter(7, Types.VARCHAR); // 相手先在庫管理対象
+// 2008-10-23 H.Itou Add End
 
       //PL/SQL実行
       cstmt.execute();
@@ -1155,6 +1165,9 @@ public class XxpoUtility
       retHashMap.put("OrgnCode",         cstmt.getObject(4)); // 組織コード
       retHashMap.put("ShipToLocationId", cstmt.getObject(5)); // 納入先事業所ID
       retHashMap.put("OrganizationId",   cstmt.getObject(6)); // 在庫組織ID
+// 2008-10-23 H.Itou Add Start T_TE080_BPO_340 指摘5 相手先在庫管理対象チェック追加
+      retHashMap.put("CustomerStockWhse", cstmt.getObject(7)); // 相手先在庫管理対象
+// 2008-10-23 H.Itou Add End
 
     // PL/SQL実行時例外の場合
     } catch(SQLException s)

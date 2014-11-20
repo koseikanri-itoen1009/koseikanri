@@ -1,18 +1,19 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-11 1.0  伊藤ひとみ   新規作成
-* 2008-05-07      伊藤ひとみ   変更要求対応(#86,90)、内部変更要求対応(#28,29,41)
-* 2008-05-15      伊藤ひとみ   結合バグ#340_2
+* 2008-05-07 1.0   伊藤ひとみ   変更要求対応(#86,90)、内部変更要求対応(#28,29,41)
+* 2008-05-15 1.0  伊藤ひとみ   結合バグ#340_2
 *                              外部ユーザーの場合、表示された取引先コードで検索できない。
-* 2008-05-21      伊藤ひとみ   内部変更要求対応(#104)
+* 2008-05-21 1.0  伊藤ひとみ   内部変更要求対応(#104)
 * 2008-07-11 1.1  二瓶大輔     ST#421対応
 * 2008-07-22 1.2  伊藤ひとみ   内部課題#32対応 換算ありの場合、ケース入数がNULLまたは0はエラー
+* 2008-10-23 1.3  伊藤ひとみ   T_TE080_BPO_340 指摘5
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -39,7 +40,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 外注出来高報告のアプリケーションモジュールクラスです。
  * @author  ORACLE 伊藤 ひとみ
- * @version 1.1
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -725,6 +726,56 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     }
   }
 
+// 2008-10-23 H.Itou Add Start
+  /***************************************************************************
+   * 倉庫管理元チェックを行うメソッドです。
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void customerStockWhseCheck() throws OAException 
+  {
+    // 外注出来高情報:登録VO取得
+    OAViewObject vendorSupplyMakeVo = getXxpoVendorSupplyMakeVO1();
+    // 1行めを取得
+    OARow vendorSupplyMakeRow = (OARow)vendorSupplyMakeVo.first();
+    // データ取得
+    Object productResultType  = vendorSupplyMakeRow.getAttribute("ProductResultType"); // 処理タイプ
+    Object customerStockWhse  = vendorSupplyMakeRow.getAttribute("CustomerStockWhse"); // 相手先在庫管理対象
+    Object factoryCode        = vendorSupplyMakeRow.getAttribute("FactoryCode");       // 工場コード
+
+    // 相手先在庫管理対象フラグがNULLの場合エラー
+    if (XxcmnUtility.isBlankOrNull(customerStockWhse))
+    {
+      // エラーメッセージ取得
+      throw new OAException(XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO10274);
+    
+    // 処理タイプ1:相手先在庫で、相手先在庫管理対象フラグが1：相手先在庫管理倉庫でない場合、エラー
+    } else if (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType)
+             && !XxpoConstants.CUSTOMER_STOCK_WHSE_AITE.equals(customerStockWhse))
+    {
+      // エラーメッセージトークン取得
+      MessageToken[] tokens = {new MessageToken(XxpoConstants.TOKEN_VALUE, XxpoConstants.TOKEN_CUSTOMER_STOCK_WHSE_AITE)};
+        
+      // エラーメッセージ取得
+      throw new OAException(XxcmnConstants.APPL_XXPO, 
+                             XxpoConstants.XXPO10275,
+                             tokens);
+
+    // 処理タイプ2:即時仕入で、相手先在庫管理対象フラグが0：伊藤園在庫管理倉庫でない場合、エラー
+    } else if (XxpoConstants.PRODUCT_RESULT_TYPE_P.equals(productResultType)
+             && !XxpoConstants.CUSTOMER_STOCK_WHSE_ITOEN.equals(customerStockWhse))
+    {
+      // エラーメッセージトークン取得
+      MessageToken[] tokens = {new MessageToken(XxpoConstants.TOKEN_VALUE, XxpoConstants.TOKEN_CUSTOMER_STOCK_WHSE_ITOEN)};
+      
+      // エラーメッセージ取得
+      throw new OAException(XxcmnConstants.APPL_XXPO, 
+                              XxpoConstants.XXPO10275,
+                              tokens);
+    }
+  }
+// 2008-10-23 H.Itou Add End
   /***************************************************************************
    * 在庫クローズチェックを行うメソッドです。(登録画面用)
    * @param exceptions - エラーリスト
@@ -924,6 +975,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       vendorSupplyMakeRow.setAttribute("OrgnCode",         retHashMap.get("OrgnCode"));         // 組織コード
       vendorSupplyMakeRow.setAttribute("ShipToLocationId", retHashMap.get("ShipToLocationId")); // 納入先事業所ID
       vendorSupplyMakeRow.setAttribute("OrganizationId",   retHashMap.get("OrganizationId"));   // 在庫組織ID
+// 2008-10-23 H.Itou Add Start 相手先在庫管理対象を追加
+      vendorSupplyMakeRow.setAttribute("CustomerStockWhse", retHashMap.get("CustomerStockWhse"));   // 相手先在庫管理対象
+// 2008-10-23 H.Itou Add End
   }
 
   /***************************************************************************
@@ -1018,6 +1072,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     params.put("OrgnCode",          vendorSupplyMakeRow.getAttribute("OrgnCode"));          // 組織コード
     params.put("ShipToLocationId",  vendorSupplyMakeRow.getAttribute("ShipToLocationId"));  // 納入先事業所ID
     params.put("OrganizationId",    vendorSupplyMakeRow.getAttribute("OrganizationId"));    // 在庫組織ID
+// 2008-10-23 H.Itou Add Start 相手先在庫管理対象を追加
+    params.put("CustomerStockWhse", vendorSupplyMakeRow.getAttribute("CustomerStockWhse")); // 相手先在庫管理対象
+// 2008-10-23 H.Itou Add End
       
     // 処理フラグ1:登録 2:更新
     params.put("ProcessFlag",       vendorSupplyMakeRow.getAttribute("ProcessFlag"));
@@ -1494,6 +1551,17 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     {
       OAException.raiseBundledOAException(exceptions);
     }
+// 2008-10-23 H.Itou Add Start 倉庫が相手先在庫管理か伊藤園在庫管理かチェックする。
+    // ************************ //
+    // *    納入先情報取得    * //
+    // ************************ //
+    getLocationData();
+
+    // ************************** //
+    // *   倉庫管理元チェック   * //
+    // ************************** //
+    customerStockWhseCheck();
+// 2008-10-23 H.Itou Add End
 
     // ******************************* //
     // *   在庫クローズチェック      * //
@@ -1560,11 +1628,12 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
       getPoNumber();
     }
 
-    // ************************ //
-    // *    納入先情報取得    * //
-    // ************************ //
-    getLocationData();
-    
+// 2008-10-23 H.Itou Del Start チェック処理時に取得するため、削除
+//    // ************************ //
+//    // *    納入先情報取得    * //
+//    // ************************ //
+//    getLocationData();
+// 2008-10-23 H.Itou Del End
     // ************************ //
     // * ロットマスタ登録     * //
     // ************************ //
@@ -1689,10 +1758,12 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
         // 処理タイプ1:相手先在庫管理の場合のみ完了在庫トランザクション作成
       if (XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType))
       {
-        // ************************ //
-        // *    納入先情報取得    * //
-        // ************************ //
-        getLocationData();
+// 2008-10-23 H.Itou Del Start チェック処理時に取得するため、削除
+//        // ************************ //
+//        // *    納入先情報取得    * //
+//        // ************************ //
+//        getLocationData();
+// 2008-10-23 H.Itou Del End
     
         // ******************************** //
         // * 完了在庫トランザクション登録 * //
