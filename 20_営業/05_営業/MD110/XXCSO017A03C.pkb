@@ -7,7 +7,7 @@ AS
  * Description      : 販売先用見積入力画面から、見積番号、版毎に見積書を
  *                    帳票に出力します。
  * MD.050           : MD050_CSO_017_A03_見積書（販売先用）PDF出力
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *                                       (郵便番号の取得、JANコードの編集)
  *  2009-04-03    1.2   Kazuo.Satomura   ＳＴ障害対応(T1_0294)
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
+ *  2009-05-07    1.4   Kazuo.Satomura   ＳＴ障害対応(T1_0889)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -319,7 +320,10 @@ AS
     cv_yes                   CONSTANT VARCHAR2(1)  := 'Y';
     cv_zero                  CONSTANT VARCHAR2(1)  := '0';
     cv_quote_div             CONSTANT VARCHAR2(1)  := '4';                  -- 見積区分 4:原価割れ(特別販売)
-    cv_fmt                   CONSTANT VARCHAR2(7)  := 'FM9,999';            -- 規格編集用フォーマット
+    /* 2009.05.07 K.Satomura T1_0889対応 START */
+    --cv_fmt                   CONSTANT VARCHAR2(7)  := 'FM9,999';            -- 規格編集用フォーマット
+    cv_fmt                   CONSTANT VARCHAR2(9)  := 'FM9,999.9';            -- 規格編集用フォーマット
+    /* 2009.05.07 K.Satomura T1_0889対応 END */
     cv_unit_type_hs          CONSTANT VARCHAR2(1)  := '1';                  -- 単価区分:1(本数)
     cv_unit_type_cs          CONSTANT VARCHAR2(1)  := '2';                  -- 単価区分:2(C/S)
     cv_unit_type_bl          CONSTANT VARCHAR2(1)  := '3';                  -- 単価区分:3:ボール
