@@ -5,9 +5,9 @@ AS
  *
  * Package Name     : xxinv5300001(body)
  * Description      : 棚卸結果インターフェース
- * MD.050           : 棚卸Issue1.0(T_MD050_BPO_530)
- * MD.070           : 棚卸Issue1.0(T_MD070_BPO_53A)
- * Version          : 1.4
+ * MD.050           : 棚卸(T_MD050_BPO_530)
+ * MD.070           : 結果インターフェース(T_MD070_BPO_53A)
+ * Version          : 1.5
  *
  * Program List
  *  ----------------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ AS
  *  2008/05/08    1.3   M.Inamine        修正(仕様変更対応、ロット管理外の場合ロットIDはNULLへ)
  *  2008/05/09    1.4   M.Inamine        修正(2008/05/08 03 不具合対応：日付書式の誤り)
  *  2008/05/20    1.4   T.Ikehara        修正(不具合ID6対応：出力メッセージの誤り)
- *
+ *  2008/09/04    1.5   H.Itou           修正(PT 6-3_39指摘#12 動的SQLの変数をバインド変数化)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -451,26 +451,43 @@ AS
     -- 同要求ID配下での重複チェック
     lv_sql  :=  'SELECT COUNT(xsi.report_post_code) cnt '  -- カウント
       ||  'FROM  xxinv_stc_inventory_interface xsi '  -- 1.棚卸データインタフェース
-      ||  'WHERE xsi.request_id        = '    ||  if_rec.request_id                -- 要求ID
-      ||  '  AND xsi.report_post_code  = '''  ||  if_rec.report_post_code  || '''' -- 報告部署
-      ||  '  AND xsi.invent_whse_code  = '''  ||  if_rec.invent_whse_code  || '''' -- 棚卸倉庫
-      ||  '  AND xsi.invent_seq        = '''  ||  if_rec.invent_seq        || '''' -- 棚卸連番
-      ||  '  AND xsi.item_code         = '''  ||  if_rec.item_code         || '''';-- 品目
+-- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+--      ||  'WHERE xsi.request_id        = '    ||  if_rec.request_id                -- 要求ID
+--      ||  '  AND xsi.report_post_code  = '''  ||  if_rec.report_post_code  || '''' -- 報告部署
+--      ||  '  AND xsi.invent_whse_code  = '''  ||  if_rec.invent_whse_code  || '''' -- 棚卸倉庫
+--      ||  '  AND xsi.invent_seq        = '''  ||  if_rec.invent_seq        || '''' -- 棚卸連番
+--      ||  '  AND xsi.item_code         = '''  ||  if_rec.item_code         || '''';-- 品目
+      ||  'WHERE xsi.request_id        = :request_id        ' -- 要求ID
+      ||  '  AND xsi.report_post_code  = :report_post_code  ' -- 報告部署
+      ||  '  AND xsi.invent_whse_code  = :invent_whse_code  ' -- 棚卸倉庫
+      ||  '  AND xsi.invent_seq        = :invent_seq        ' -- 棚卸連番
+      ||  '  AND xsi.item_code         = :item_code         ';-- 品目
+-- 2008/09/04 H.Itou Mod End
     --品目区分が製品の場合
     IF  (iv_item_typ   = gv_item_cls_prdct) THEN
       lv_sql  :=  lv_sql
-      ||  '  AND xsi.maker_date  = '''  ||  if_rec.maker_date   || ''''  --製造日
-      ||  '  AND xsi.limit_date  = '''  ||  if_rec.limit_date   || ''''  --賞味期限
-      ||  '  AND xsi.proper_mark = '''  ||  if_rec.proper_mark  || ''''  --固有記号
-      --2008/5/02(レビューNo2)
-      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
-                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+-- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+--      ||  '  AND xsi.maker_date  = '''  ||  if_rec.maker_date   || ''''  --製造日
+--      ||  '  AND xsi.limit_date  = '''  ||  if_rec.limit_date   || ''''  --賞味期限
+--      ||  '  AND xsi.proper_mark = '''  ||  if_rec.proper_mark  || ''''  --固有記号
+--      --2008/5/02(レビューNo2)
+--      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
+--                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+      ||  '  AND xsi.maker_date  = :maker_date   '  -- 製造日
+      ||  '  AND xsi.limit_date  = :limit_date   '  -- 賞味期限
+      ||  '  AND xsi.proper_mark = :proper_mark  '  -- 固有記号
+      ||  '  AND xsi.invent_date = :invent_date  '; -- 棚卸日
+-- 2008/09/04 H.Itou Mod End
     --品目区分が製品以外
     ELSE
       lv_sql  :=  lv_sql
-      ||  '  AND xsi.lot_no      = '''  ||  if_rec.lot_no  || '''' --ロットNo
-      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
-                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+-- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+--      ||  '  AND xsi.lot_no      = '''  ||  if_rec.lot_no  || '''' --ロットNo
+--      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
+--                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+      ||  '  AND xsi.lot_no      = :lot_no       '  --ロットNo
+      ||  '  AND xsi.invent_date = :invent_date  '; --棚卸日
+-- 2008/09/04 H.Itou Mod End
     END IF;
 --
     lv_sql  :=  lv_sql
@@ -494,7 +511,35 @@ AS
     END IF;
 --
     BEGIN
-      EXECUTE  IMMEDIATE lv_sql INTO  ln_cnt;
+-- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+--      EXECUTE  IMMEDIATE lv_sql INTO  ln_cnt;
+      --品目区分が製品の場合
+      IF  (iv_item_typ   = gv_item_cls_prdct) THEN
+        EXECUTE  IMMEDIATE lv_sql INTO  ln_cnt
+        USING if_rec.request_id       -- 要求ID
+             ,if_rec.report_post_code -- 報告部署
+             ,if_rec.invent_whse_code -- 棚卸倉庫
+             ,if_rec.invent_seq       -- 棚卸連番
+             ,if_rec.item_code        -- 品目
+             ,if_rec.maker_date       -- 製造日
+             ,if_rec.limit_date       -- 賞味期限
+             ,if_rec.proper_mark      -- 固有記号
+             ,if_rec.invent_date      -- 棚卸日
+        ;
+--
+      --品目区分が製品以外
+      ELSE
+        EXECUTE  IMMEDIATE lv_sql INTO  ln_cnt
+        USING if_rec.request_id       -- 要求ID
+             ,if_rec.report_post_code -- 報告部署
+             ,if_rec.invent_whse_code -- 棚卸倉庫
+             ,if_rec.invent_seq       -- 棚卸連番
+             ,if_rec.item_code        -- 品目
+             ,if_rec.lot_no           -- ロットNo
+             ,if_rec.invent_date      -- 棚卸日
+        ;
+      END IF;
+-- 2008/09/04 H.Itou Mod End
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         ln_cnt :=  0;
@@ -511,26 +556,42 @@ AS
         ||  'COUNT(xsi.report_post_code) cnt '      -- カウント
         ||  'FROM  xxinv_stc_inventory_interface xsi '  -- 1.棚卸データインタフェース
         ||  'WHERE '
-        ||  '      xsi.report_post_code  = '''  ||  if_rec.report_post_code  || '''' -- 報告部署
-        ||  '  AND xsi.invent_whse_code  = '''  ||  if_rec.invent_whse_code  || '''' -- 棚卸倉庫
-        ||  '  AND xsi.invent_seq        = '''  ||  if_rec.invent_seq        || '''' -- 棚卸連番
-        ||  '  AND xsi.item_code         = '''  ||  if_rec.item_code         || '''';-- 品目
+-- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+--        ||  '      xsi.report_post_code  = '''  ||  if_rec.report_post_code  || '''' -- 報告部署
+--        ||  '  AND xsi.invent_whse_code  = '''  ||  if_rec.invent_whse_code  || '''' -- 棚卸倉庫
+--        ||  '  AND xsi.invent_seq        = '''  ||  if_rec.invent_seq        || '''' -- 棚卸連番
+--        ||  '  AND xsi.item_code         = '''  ||  if_rec.item_code         || '''';-- 品目
+        ||  '      xsi.report_post_code  = :report_post_code  ' -- 報告部署
+        ||  '  AND xsi.invent_whse_code  = :invent_whse_code  ' -- 棚卸倉庫
+        ||  '  AND xsi.invent_seq        = :invent_seq        ' -- 棚卸連番
+        ||  '  AND xsi.item_code         = :item_code         ';-- 品目
+-- 2008/09/04 H.Itou Mod End
 --
       --品目区分が製品の場合
       IF  (iv_item_typ   = gv_item_cls_prdct) THEN
         lv_sql  :=  lv_sql
-        ||  '  AND xsi.maker_date  = '''  ||  if_rec.maker_date   || ''''  --製造日
-        ||  '  AND xsi.limit_date  = '''  ||  if_rec.limit_date   || ''''  --賞味期限
-        ||  '  AND xsi.proper_mark = '''  ||  if_rec.proper_mark  || ''''  --固有記号
-        --2008/5/02(レビューNo2)
-        ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
-                              TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+-- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+--      ||  '  AND xsi.maker_date  = '''  ||  if_rec.maker_date   || ''''  --製造日
+--      ||  '  AND xsi.limit_date  = '''  ||  if_rec.limit_date   || ''''  --賞味期限
+--      ||  '  AND xsi.proper_mark = '''  ||  if_rec.proper_mark  || ''''  --固有記号
+--      --2008/5/02(レビューNo2)
+--      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
+--                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+      ||  '  AND xsi.maker_date  = :maker_date   '  -- 製造日
+      ||  '  AND xsi.limit_date  = :limit_date   '  -- 賞味期限
+      ||  '  AND xsi.proper_mark = :proper_mark  '  -- 固有記号
+      ||  '  AND xsi.invent_date = :invent_date  '; -- 棚卸日
+-- 2008/09/04 H.Itou Mod End
       --品目区分が製品以外
       ELSE
         lv_sql  :=  lv_sql
-        ||  '  AND xsi.lot_no      = '''  ||  if_rec.lot_no  || '''' --ロットNo
-        ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
-                              TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+-- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+--      ||  '  AND xsi.lot_no      = '''  ||  if_rec.lot_no  || '''' --ロットNo
+--      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
+--                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+      ||  '  AND xsi.lot_no      = :lot_no       '  --ロットNo
+      ||  '  AND xsi.invent_date = :invent_date  '; --棚卸日
+-- 2008/09/04 H.Itou Mod End
       END IF;
 --
       lv_sql  :=  lv_sql
@@ -554,8 +615,34 @@ AS
       END IF;
 --
       BEGIN
-        EXECUTE  IMMEDIATE lv_sql
-          INTO  ln_request_id, ln_cnt;
+-- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+--        EXECUTE  IMMEDIATE lv_sql
+--          INTO  ln_request_id, ln_cnt;
+      --品目区分が製品の場合
+      IF  (iv_item_typ   = gv_item_cls_prdct) THEN
+        EXECUTE  IMMEDIATE lv_sql INTO  ln_request_id, ln_cnt
+        USING if_rec.report_post_code -- 報告部署
+             ,if_rec.invent_whse_code -- 棚卸倉庫
+             ,if_rec.invent_seq       -- 棚卸連番
+             ,if_rec.item_code        -- 品目
+             ,if_rec.maker_date       -- 製造日
+             ,if_rec.limit_date       -- 賞味期限
+             ,if_rec.proper_mark      -- 固有記号
+             ,if_rec.invent_date      -- 棚卸日
+        ;
+--
+      --品目区分が製品以外
+      ELSE
+        EXECUTE  IMMEDIATE lv_sql INTO  ln_request_id, ln_cnt
+        USING if_rec.report_post_code -- 報告部署
+             ,if_rec.invent_whse_code -- 棚卸倉庫
+             ,if_rec.invent_seq       -- 棚卸連番
+             ,if_rec.item_code        -- 品目
+             ,if_rec.lot_no           -- ロットNo
+             ,if_rec.invent_date      -- 棚卸日
+        ;
+      END IF;
+-- 2008/09/04 H.Itou Mod End
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           ln_request_id :=  0;
@@ -1232,7 +1319,7 @@ AS
                 lv_product_type   --商品区分
 --
         FROM  xxcmn_item_mst_v itm,                   -- 1.OPM品目マスタ(有効期限のみ)
-              xxcmn_item_categories4_v icmt           -- 5.品目カテゴリ、セット
+              xxcmn_item_categories5_v icmt           -- 5.品目カテゴリ、セット
 --
         WHERE itm.item_no = inv_if_rec(i).item_code
           AND icmt.item_id = itm.item_id;
@@ -2437,7 +2524,7 @@ AS
     IF  (iv_item_type IS NOT NULL) THEN
       lv_sql  :=  lv_sql
       ||  ',xxcmn_item_mst_v itm '                    -- 4.OPM品目マスタ(有効期限のみ)
-      ||  ',xxcmn_item_categories4_v ictm ';          -- 5.OPM品目カテゴリVIW４
+      ||  ',xxcmn_item_categories5_v ictm ';          -- 5.OPM品目カテゴリVIW４
     END IF;
 --
     lv_sql  :=  lv_sql  ||
@@ -2661,14 +2748,16 @@ AS
         IF (xxinv_stc_inventory_if_cur%ISOPEN) THEN
           CLOSE xxinv_stc_inventory_if_cur;
         END IF;
-        -- エラーメッセージ取得
-        lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
-                       gv_xxcmn               -- モジュール名略称：XXCMN 共通
-                      ,'APP-XXCMN-10019'      -- ロック失敗
-                      ,gv_tkn_table           -- トークンTABLE
-                      ,gv_xxcmn_del_table_name-- テーブル名：棚卸データインターフェーステーブル
-                      ),1,5000);
-        RAISE global_api_expt;
+-- 2008/09/04 H.Itou Del Start PT 6-3_39指摘#12対応 同時実行した場合にパージデータのロックを取得できなくても処理を続行する。
+--        -- エラーメッセージ取得
+--        lv_errmsg := SUBSTRB(xxcmn_common_pkg.get_msg(
+--                       gv_xxcmn               -- モジュール名略称：XXCMN 共通
+--                      ,'APP-XXCMN-10019'      -- ロック失敗
+--                      ,gv_tkn_table           -- トークンTABLE
+--                      ,gv_xxcmn_del_table_name-- テーブル名：棚卸データインターフェーステーブル
+--                      ),1,5000);
+--        RAISE global_api_expt;
+-- 2008/09/04 H.Itou Del Start PT 6-3_39指摘#12対応
       WHEN OTHERS THEN
         -- カーソルをCLOSE
         IF (xxinv_stc_inventory_if_cur%ISOPEN) THEN
