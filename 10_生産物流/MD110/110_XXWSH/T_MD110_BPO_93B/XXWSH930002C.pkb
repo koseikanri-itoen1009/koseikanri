@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.63
+ * Version          : 1.64
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -165,6 +165,7 @@ AS
  *  2010/02/02    1.60 SCS    宮川真理子 本稼動障害  #1322 運送業者マスタチェック条件に、運賃区分がONの場合およびOFFでも運送業者入力済の場合を追加
  *  2010/03/11    1.62 SCS    北寒寺正夫 本稼働障害  #1871 依頼No/移動番号重複チェックを追加
  *  2010/03/12    1.63 SCS    北寒寺正夫 本稼働障害  #1622 移動の実績訂正の際に実績計上済区分をYからNに更新するように修正
+ *  2010/04/16    1.64 SCS    伊藤ひとみ E_本稼動_02302    指示なし実績のとき、入力拠点に報告部署をセットする。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -12452,6 +12453,7 @@ AS
        ,deliver_from_id                             -- 出荷元ID
        ,deliver_from                                -- 出荷元保管場所
        ,head_sales_branch                           -- 管轄拠点
+       ,input_sales_branch                          -- 入力拠点             -- 2010/04/16 H.Itou ADD E_本稼動_02302
        ,prod_class                                  -- 商品区分
        ,no_cont_freight_class                       -- 契約外運賃区分
        ,arrival_time_from                           -- 着荷時間from
@@ -12517,6 +12519,7 @@ AS
        ,gr_order_h_rec.deliver_from_id              -- 出荷元ID
        ,gr_order_h_rec.deliver_from                 -- 出荷元保管場所
        ,gr_order_h_rec.head_sales_branch            -- 管轄拠点
+       ,gr_order_h_rec.instruction_dept             -- 入力拠点＝報告部署   -- 2010/04/16 H.Itou ADD E_本稼動_02302
        ,gr_order_h_rec.prod_class                   -- 商品区分
        ,gv_include_exclude_0                        -- 物流担当確認依頼区分
        ,gr_order_h_rec.arrival_time_from            -- 着荷時間from
