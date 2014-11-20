@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009/07/21    1.12  H.Sasaki         [0000768]PT対応
  *  2009/07/30    1.13  N.Abe            [0000638]数量の取得項目修正
  *  2009/08/20    1.14  H.Sasaki         [0001003]夜間強制確定処理の分割（PT対応）
+ *  2010/01/05    1.15  H.Sasaki         [E_本稼動_00850]日次データ取得SQLの分割（PT対応）
  *
  *****************************************************************************************/
 --
@@ -476,10 +477,13 @@ AS
      ,NULL                                inventory_date            -- 棚卸日
     FROM    xxcoi_inv_reception_daily   xird                        -- 月次在庫受払表（日次）
     WHERE   xird.organization_id    =   gn_f_organization_id
-    AND     ((iv_base_code IS NOT NULL AND xird.base_code = iv_base_code)
-             OR
-             (iv_base_code IS NULL)
-            )
+-- == 2010/01/05 V1.15 Modified START ===============================================================
+--    AND     ((iv_base_code IS NOT NULL AND xird.base_code = iv_base_code)
+--             OR
+--             (iv_base_code IS NULL)
+--            )
+    AND     xird.base_code          =   iv_base_code
+-- == 2010/01/05 V1.15 Modified END   ===============================================================
     AND     xird.practice_date     >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
     AND     xird.practice_date     <=   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
     GROUP BY
@@ -492,6 +496,73 @@ AS
             xird.base_code
            ,xird.subinventory_code;
 -- == 2009/07/21 V1.12 Modified END   ===============================================================
+-- == 2010/01/05 V1.15 Added START ===============================================================
+  CURSOR invrcp_daily_3_cur
+  IS
+    SELECT
+      xird.base_code                      base_code                 -- 拠点コード
+     ,xird.organization_id                organization_id           -- 組織ID
+     ,xird.subinventory_code              subinventory_code         -- 保管場所
+     ,xird.subinventory_type              subinventory_type         -- 保管場所区分
+     ,xird.inventory_item_id              inventory_item_id         -- 品目ID
+     ,MAX(xird.operation_cost)            operation_cost            -- 営業原価
+     ,MAX(xird.standard_cost)             standard_cost             -- 標準原価
+     ,SUM(xird.sales_shipped)             sales_shipped             -- 売上出庫
+     ,SUM(xird.sales_shipped_b)           sales_shipped_b           -- 売上出庫振戻
+     ,SUM(xird.return_goods)              return_goods              -- 返品
+     ,SUM(xird.return_goods_b)            return_goods_b            -- 返品振戻
+     ,SUM(xird.warehouse_ship)            warehouse_ship            -- 倉庫へ返庫
+     ,SUM(xird.truck_ship)                truck_ship                -- 営業車へ出庫
+     ,SUM(xird.others_ship)               others_ship               -- 入出庫＿その他出庫
+     ,SUM(xird.warehouse_stock)           warehouse_stock           -- 倉庫より入庫
+     ,SUM(xird.truck_stock)               truck_stock               -- 営業車より入庫
+     ,SUM(xird.others_stock)              others_stock              -- 入出庫＿その他入庫
+     ,SUM(xird.change_stock)              change_stock              -- 倉替入庫
+     ,SUM(xird.change_ship)               change_ship               -- 倉替出庫
+     ,SUM(xird.goods_transfer_old)        goods_transfer_old        -- 商品振替（旧商品）
+     ,SUM(xird.goods_transfer_new)        goods_transfer_new        -- 商品振替（新商品）
+     ,SUM(xird.sample_quantity)           sample_quantity           -- 見本出庫
+     ,SUM(xird.sample_quantity_b)         sample_quantity_b         -- 見本出庫振戻
+     ,SUM(xird.customer_sample_ship)      customer_sample_ship      -- 顧客見本出庫
+     ,SUM(xird.customer_sample_ship_b)    customer_sample_ship_b    -- 顧客見本出庫振戻
+     ,SUM(xird.customer_support_ss)       customer_support_ss       -- 顧客協賛見本出庫
+     ,SUM(xird.customer_support_ss_b)     customer_support_ss_b     -- 顧客協賛見本出庫振戻
+     ,SUM(xird.vd_supplement_stock)       vd_supplement_stock       -- 消化VD補充入庫
+     ,SUM(xird.vd_supplement_ship)        vd_supplement_ship        -- 消化VD補充出庫
+     ,SUM(xird.inventory_change_in)       inventory_change_in       -- 基準在庫変更入庫
+     ,SUM(xird.inventory_change_out)      inventory_change_out      -- 基準在庫変更出庫
+     ,SUM(xird.factory_return)            factory_return            -- 工場返品
+     ,SUM(xird.factory_return_b)          factory_return_b          -- 工場返品振戻
+     ,SUM(xird.factory_change)            factory_change            -- 工場倉替
+     ,SUM(xird.factory_change_b)          factory_change_b          -- 工場倉替振戻
+     ,SUM(xird.removed_goods)             removed_goods             -- 廃却
+     ,SUM(xird.removed_goods_b)           removed_goods_b           -- 廃却振戻
+     ,SUM(xird.factory_stock)             factory_stock             -- 工場入庫
+     ,SUM(xird.factory_stock_b)           factory_stock_b           -- 工場入庫振戻
+     ,SUM(xird.ccm_sample_ship)           ccm_sample_ship           -- 顧客広告宣伝費A自社商品
+     ,SUM(xird.ccm_sample_ship_b)         ccm_sample_ship_b         -- 顧客広告宣伝費A自社商品振戻
+     ,SUM(xird.wear_decrease)             wear_decrease             -- 棚卸減耗増
+     ,SUM(xird.wear_increase)             wear_increase             -- 棚卸減耗減
+     ,SUM(xird.selfbase_ship)             selfbase_ship             -- 保管場所移動＿自拠点出庫
+     ,SUM(xird.selfbase_stock)            selfbase_stock            -- 保管場所移動＿自拠点入庫
+     ,NULL                                inventory_seq             -- 棚卸SEQ
+     ,MAX(xird.practice_date)             practice_date             -- 受払作成日
+     ,NULL                                inventory_date            -- 棚卸日
+    FROM    xxcoi_inv_reception_daily   xird                        -- 月次在庫受払表（日次）
+    WHERE   xird.organization_id    =   gn_f_organization_id
+    AND     xird.practice_date     >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+    AND     xird.practice_date     <=   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
+    GROUP BY
+            xird.base_code
+           ,xird.organization_id
+           ,xird.subinventory_code
+           ,xird.inventory_item_id
+           ,xird.subinventory_type
+    ORDER BY
+            xird.base_code
+           ,xird.subinventory_code;
+-- == 2010/01/05 V1.15 Added END   ===============================================================
+  --
   -- A-6.棚卸結果情報抽出(【起動パラメータ】棚卸区分:1)
   CURSOR  inv_result_1_cur(
             iv_base_code          IN  VARCHAR2                -- 拠点コード
@@ -4569,9 +4640,21 @@ AS
             );
     ELSE
       -- 棚卸区分：２（月末）の場合
-      OPEN  invrcp_daily_2_cur(
-              iv_base_code        =>  it_base_code                  -- 拠点コード
-           );
+-- == 2010/01/05 V1.15 Modified START ===============================================================
+--      OPEN  invrcp_daily_2_cur(
+--              iv_base_code        =>  it_base_code                  -- 拠点コード
+--           );
+      --
+      IF  (gv_param_exec_flag = cv_exec_1)  THEN
+        -- 起動フラグ：１（コンカレント起動）
+        OPEN  invrcp_daily_2_cur(
+                iv_base_code        =>  it_base_code                  -- 拠点コード
+             );
+      ELSE
+        -- 起動フラグ：３（夜間強制確定（日次情報取込））
+        OPEN  invrcp_daily_3_cur;
+      END IF;
+-- == 2010/01/05 V1.15 Modified END   ===============================================================
     END IF;
     --
     <<daily_data_loop>>    -- 日次データ出力LOOP
@@ -4585,8 +4668,19 @@ AS
         EXIT  daily_data_loop   WHEN  invrcp_daily_1_cur%NOTFOUND;
         --
       ELSE
-        FETCH invrcp_daily_2_cur  INTO  invrcp_daily_rec;
-        EXIT  daily_data_loop   WHEN  invrcp_daily_2_cur%NOTFOUND;
+-- == 2010/01/05 V1.15 Modified START ===============================================================
+--        FETCH invrcp_daily_2_cur  INTO  invrcp_daily_rec;
+--        EXIT  daily_data_loop   WHEN  invrcp_daily_2_cur%NOTFOUND;
+        IF  (gv_param_exec_flag = cv_exec_1)  THEN
+          -- 起動フラグ：１（コンカレント起動）
+          FETCH invrcp_daily_2_cur  INTO  invrcp_daily_rec;
+          EXIT  daily_data_loop   WHEN  invrcp_daily_2_cur%NOTFOUND;
+        ELSE
+          -- 起動フラグ：３（夜間強制確定（日次情報取込））
+          FETCH invrcp_daily_3_cur  INTO  invrcp_daily_rec;
+          EXIT  daily_data_loop   WHEN  invrcp_daily_3_cur%NOTFOUND;
+        END IF;
+-- == 2010/01/05 V1.15 Modified END   ===============================================================
         --
         BEGIN
           -- 棚卸区分：２（月末）の場合、棚卸情報（棚卸日）を取得
@@ -4927,7 +5021,17 @@ AS
       IF (gv_param_inventory_kbn  = cv_inv_kbn_1) THEN
         CLOSE invrcp_daily_1_cur;
       ELSE
-        CLOSE invrcp_daily_2_cur;
+-- == 2010/01/05 V1.15 Modified START ===============================================================
+--        CLOSE invrcp_daily_2_cur;
+        --
+        IF  (gv_param_exec_flag = cv_exec_1)  THEN
+          -- 起動フラグ：１（コンカレント起動）
+          CLOSE invrcp_daily_2_cur;
+        ELSE
+          -- 起動フラグ：３（夜間強制確定（日次情報取込））
+          CLOSE invrcp_daily_3_cur;
+        END IF;
+-- == 2010/01/05 V1.15 Modified END   ===============================================================
       END IF;
     --
   EXCEPTION
