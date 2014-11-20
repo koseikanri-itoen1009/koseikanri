@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,9 @@ AS
  *                                         保管場所の有効チェック取得条件変更
  *  2009/04/02    1.2   T.Nakamura       障害番号T1_0004 get_summary_record, get_detail_record
  *                                         出荷実績数量を小数2桁に丸めるよう変更
+ *  2009/04/16    1.3   H.Sasaki         [T1_0386]データ抽出条件の変更（配送先番号）
+ *                                                抽出情報の変更（配送先番号）
+ *                                       [T1_0387]データ抽出条件の変更（レコードタイプ）
  *
  *****************************************************************************************/
 --
@@ -583,7 +586,10 @@ AS
             , hca.account_number               AS base_code           -- 拠点コード
             , xola.delete_flag                 AS delete_flag         -- 削除フラグ
             , xca.dept_hht_div                 AS dept_hht_div        -- 百貨店用HHT区分
-            , hcasa.attribute18                AS deliverly_code      -- 配送先コード
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--            , hcasa.attribute18                AS deliverly_code      -- 配送先コード
+            , hl.province                      AS deliverly_code
+-- == 2009/04/16 V1.3 Modified END   ===============================================================
             , imbc.attribute11                 AS case_in_qty         -- ケース入数
             , CASE WHEN xoha.req_status = gt_ship_status_result THEN
                 CASE WHEN otta.order_category_code = cv_order_type THEN
@@ -623,6 +629,9 @@ AS
             , xxcmm_cust_accounts              xca                    -- 顧客追加情報
             , oe_transaction_types_all         otta                   -- 受注タイプマスタ
             , oe_transaction_types_tl          ottt
+-- == 2009/04/16 V1.3 Added START ===============================================================
+            ,hz_locations                      hl                     -- 事業所マスタ
+-- == 2009/04/16 V1.3 Added END   ===============================================================
       WHERE  xoha.order_header_id = xola.order_header_id
       AND    xola.request_item_id = msib.inventory_item_id
       AND    imbc.item_no         = msib.segment1
@@ -683,7 +692,11 @@ AS
       AND     hca.cust_account_id         = xca.customer_id
       AND     hca.customer_class_code     = cv_class_code
       AND     hca.status                  = cv_status_flag
-      AND     SUBSTRB ( hcasa.attribute18 , 1 , 1 ) = cv_0
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--      AND     SUBSTRB ( hcasa.attribute18 , 1 , 1 ) = cv_0
+      AND     hps.location_id             = hl.location_id
+      AND     SUBSTRB(hl.province, 1, 1)  = cv_0
+-- == 2009/04/16 V1.3 Modified END   ===============================================================
       GROUP BY  xoha.req_status
               , xoha.request_no
               , hca.account_number
@@ -696,7 +709,10 @@ AS
               , imbp.item_no
               , xola.delete_flag
               , xca.dept_hht_div
-              , hcasa.attribute18
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--            , hcasa.attribute18
+              , hl.province
+-- == 2009/04/16 V1.3 Modified END   ===============================================================
               , imbc.attribute11
               , otta.order_category_code
       ORDER BY  xoha.req_status
@@ -824,7 +840,10 @@ AS
             , hca.account_number               AS base_code           -- 拠点コード
             , xola.delete_flag                 AS delete_flag         -- 削除フラグ
             , xca.dept_hht_div                 AS dept_hht_div        -- 百貨店用HHT区分
-            , hcasa.attribute18                AS deliverly_code      -- 配送先コード
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--            , hcasa.attribute18                AS deliverly_code      -- 配送先コード
+            , hl.province                      AS deliverly_code
+-- == 2009/04/16 V1.3 Modified END   ===============================================================
             , imbc.attribute11                 AS case_in_qty         -- ケース入数
             , ilm.attribute3                   AS taste_term          -- 賞味期限
             , ilm.attribute2                   AS difference_summary_code
@@ -871,6 +890,9 @@ AS
             , ic_lots_mst                      ilm                    -- OPMロットマスタ
             , oe_transaction_types_all         otta                   -- 受注タイプマスタ
             , oe_transaction_types_tl          ottt
+-- == 2009/04/16 V1.3 Added START ===============================================================
+            , hz_locations                     hl                     -- 事業所マスタ
+-- == 2009/04/16 V1.3 Added END   ===============================================================
       WHERE   xoha.order_header_id = xola.order_header_id
       AND     xola.request_item_id = msib.inventory_item_id
       AND     imbc.item_no         = msib.segment1
@@ -921,7 +943,11 @@ AS
       AND     hca.cust_account_id         = xca.customer_id
       AND     hca.customer_class_code     = cv_class_code
       AND     hca.status                  = cv_status_flag
-      AND     SUBSTRB ( hcasa.attribute18 , 1 , 1 ) = cv_0
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--      AND     SUBSTRB ( hcasa.attribute18 , 1 , 1 ) = cv_0
+      AND     hps.location_id             = hl.location_id
+      AND     SUBSTRB(hl.province, 1, 1)  = cv_0
+-- == 2009/04/16 V1.3 Modified END   ===============================================================
       AND     xola.order_line_id          = xmld.mov_line_id(+)
       AND     xmld.lot_id                 = ilm.lot_id(+)
       AND     xmld.item_id                = ilm.item_id(+)
@@ -931,13 +957,23 @@ AS
       AND     xola.request_item_code      = g_summary_tab ( in_slip_cnt ) .item_no
       AND ( (
               xoha.req_status                IN ( gt_ship_status_close , gt_ship_status_cancel )
-              AND xmld.record_type_code      = gt_lot_status_request
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--              AND xmld.record_type_code      = gt_lot_status_request
+              AND (   (xmld.record_type_code  = gt_lot_status_request)
+                   OR (xmld.record_type_code  IS NULL)
+                  )
+-- == 2009/04/16 V1.3 Modified END   ===============================================================
               AND xoha.deliver_to            = g_summary_tab ( in_slip_cnt ) .result_deliver_to
               AND xoha.schedule_arrival_date = g_summary_tab ( in_slip_cnt ) .slip_date
             )
          OR (
               xoha.req_status            = gt_ship_status_result
-              AND xmld.record_type_code  = gt_lot_status_results
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--              AND xmld.record_type_code  = gt_lot_status_results
+              AND (   (xmld.record_type_code  = gt_lot_status_results)
+                   OR (xmld.record_type_code  IS NULL)
+                  )
+-- == 2009/04/16 V1.3 Modified END   ===============================================================
               AND xoha.result_deliver_to = g_summary_tab ( in_slip_cnt ) .result_deliver_to
               AND xoha.arrival_date      = g_summary_tab ( in_slip_cnt ) .slip_date
             )
@@ -954,7 +990,10 @@ AS
               , imbp.item_no
               , xola.delete_flag
               , xca.dept_hht_div
-              , hcasa.attribute18
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--            , hcasa.attribute18
+              , hl.province
+-- == 2009/04/16 V1.3 Modified END   ===============================================================
               , imbc.attribute11
               , otta.order_category_code
               , xmld.lot_no
@@ -1037,15 +1076,17 @@ AS
    * Description      : 保管場所情報処理(A-4)
    ***********************************************************************************/
   PROCEDURE get_subinventories(
-      iv_base_code   IN VARCHAR2                                      -- 1.拠点コード
-    , it_org_id      IN mtl_secondary_inventories.organization_id%TYPE-- 2.在庫組織ID
-    , ot_store_code OUT xxcoi_subinventory_info_v.store_code%TYPE     -- 3.倉庫コード
-    , ot_shop_code  OUT xxcoi_subinventory_info_v.shop_code%TYPE      -- 4.店舗コード
-    , ot_auto_confirmation_flag OUT mtl_secondary_inventories.attribute11%TYPE
-                                                                      -- 5.自動入庫確認フラグ
-    , ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
-    , ov_retcode    OUT VARCHAR2     --   リターン・コード             --# 固定 #
-    , ov_errmsg     OUT VARCHAR2 )   --   ユーザー・エラー・メッセージ --# 固定 #
+      iv_base_code              IN VARCHAR2                                         -- 1.拠点コード
+-- == 2009/04/16 V1.3 Added START ===============================================================
+    , it_deliverly_code         IN  hz_locations.province%TYPE                      -- 2.配送先コード
+-- == 2009/04/16 V1.3 Added END   ===============================================================
+    , it_org_id                 IN mtl_secondary_inventories.organization_id%TYPE   -- 3.在庫組織ID
+    , ot_store_code             OUT xxcoi_subinventory_info_v.store_code%TYPE       -- 4.倉庫コード
+    , ot_shop_code              OUT xxcoi_subinventory_info_v.shop_code%TYPE        -- 5.店舗コード
+    , ot_auto_confirmation_flag OUT mtl_secondary_inventories.attribute11%TYPE      -- 6.自動入庫確認フラグ
+    , ov_errbuf                 OUT VARCHAR2     --   エラー・メッセージ           --# 固定 #
+    , ov_retcode                OUT VARCHAR2     --   リターン・コード             --# 固定 #
+    , ov_errmsg                 OUT VARCHAR2 )   --   ユーザー・エラー・メッセージ --# 固定 #
   IS
     -- ===============================
     -- 固定ローカル定数
@@ -1090,41 +1131,48 @@ AS
     --==============================================================
     --1.本社拠点倉庫コードの取得
     --==============================================================
-    BEGIN
-      SELECT xsi.store_code
-      INTO   lt_store_code
-      FROM   xxcoi_subinventory_info_v xsi
-      WHERE  xsi.base_code = iv_base_code
-      AND    xsi.base_code NOT LIKE '7%'
-      AND    xsi.organization_id = it_org_id
-      AND    xsi.auto_confirmation_flag = cv_y_flag
-      AND    xsi.subinventory_class = cv_1
-      ;
-    EXCEPTION
-      WHEN OTHERS THEN
+-- == 2009/04/16 V1.3 Modified START ===============================================================
+--    BEGIN
+--      SELECT xsi.store_code
+--      INTO   lt_store_code
+--      FROM   xxcoi_subinventory_info_v xsi
+--      WHERE  xsi.base_code              = iv_base_code
+--      AND    xsi.base_code NOT LIKE '7%'
+--      AND    xsi.organization_id        = it_org_id
+--      AND    xsi.auto_confirmation_flag = cv_y_flag
+--      AND    xsi.subinventory_class     = cv_1
+--      ;
+--    EXCEPTION
+--      WHEN OTHERS THEN
+--    --==============================================================
+--    --2.顧客所在地マスタより倉庫コードの取得
+--    --==============================================================
+--        BEGIN
+--          SELECT  SUBSTRB ( hcasa.attribute18 , LENGTHB(hcasa.attribute18)-1 , 2 )
+--          INTO    lt_store_code
+--          FROM    hz_cust_accounts        hca             -- 顧客マスタ
+--                , hz_cust_acct_sites_all  hcasa           -- 顧客所在地
+--                , hz_cust_site_uses_all   hcsua           -- 顧客使用目的
+--          WHERE   hca.account_number      = iv_base_code
+--          AND     hca.cust_account_id     = hcasa.cust_account_id
+--          AND     hcasa.cust_acct_site_id = hcsua.cust_acct_site_id
+--          AND     hca.customer_class_code = cv_class_code
+--          AND     hca.status              = cv_status_flag
+--          AND     hcsua.site_use_code     = cv_site_use_code
+--          AND     hcsua.status            = hca.status
+--          AND     hcsua.primary_flag      = cv_y_flag
+--          ;
+--        EXCEPTION
+--          WHEN NO_DATA_FOUND THEN
+--            RAISE subinventory_found_expt;
+--        END;
+--    END;
+--
     --==============================================================
-    --2.顧客所在地マスタより倉庫コードの取得
+    --1.倉庫コードの取得
     --==============================================================
-        BEGIN
-          SELECT  SUBSTRB ( hcasa.attribute18 , LENGTHB(hcasa.attribute18)-1 , 2 )
-          INTO    lt_store_code
-          FROM    hz_cust_accounts hca
-                , hz_cust_acct_sites_all hcasa
-                , hz_cust_site_uses_all hcsua
-          WHERE   hca.account_number = iv_base_code
-          AND     hca.cust_account_id = hcasa.cust_account_id
-          AND     hcasa.cust_acct_site_id = hcsua.cust_acct_site_id
-          AND     hca.customer_class_code = cv_class_code
-          AND     hca.status = cv_status_flag
-          AND     hcsua.site_use_code = cv_site_use_code
-          AND     hcsua.status = hca.status
-          AND     hcsua.primary_flag = cv_y_flag
-          ;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-            RAISE subinventory_found_expt;
-        END;
-    END;
+    lt_store_code :=  SUBSTRB ( it_deliverly_code , LENGTHB(it_deliverly_code)-1 , 2 );
+-- == 2009/04/16 V1.3 Added END   ===============================================================
 --
     --==============================================================
     --3.1もしくは2で取得した倉庫コードより保管場所の存在チェックを行う
@@ -1132,9 +1180,9 @@ AS
     SELECT COUNT(1)
     INTO   ln_valid_cnt
     FROM   xxcoi_subinventory_info_v xsi
-    WHERE  xsi.base_code = iv_base_code
-    AND    xsi.store_code = lt_store_code
-    AND    xsi.organization_id = it_org_id
+    WHERE  xsi.base_code        = iv_base_code
+    AND    xsi.store_code       = lt_store_code
+    AND    xsi.organization_id  = it_org_id
     AND    ROWNUM = 1
     ;
 --
@@ -3244,10 +3292,14 @@ AS
           get_subinventories(
               iv_base_code              => g_summary_tab(gn_slip_cnt).base_code
                                                                       -- 1.拠点コード
-            , it_org_id                 => gt_org_id                  -- 2.在庫組織ID
-            , ot_store_code             => lt_store_code              -- 3.倉庫コード
-            , ot_shop_code              => lt_shop_code               -- 4.店舗コード
-            , ot_auto_confirmation_flag => lt_auto_confirmation_flg   -- 5.自動入庫確認フラグ
+-- == 2009/04/16 V1.3 Added START ===============================================================
+            , it_deliverly_code         => g_summary_tab(gn_slip_cnt).deliverly_code
+                                                                      -- 2.配送先コード
+-- == 2009/04/16 V1.3 Added END   ===============================================================
+            , it_org_id                 => gt_org_id                  -- 3.在庫組織ID
+            , ot_store_code             => lt_store_code              -- 4.倉庫コード
+            , ot_shop_code              => lt_shop_code               -- 5.店舗コード
+            , ot_auto_confirmation_flag => lt_auto_confirmation_flg   -- 6.自動入庫確認フラグ
             , ov_errbuf                 => lv_errbuf                  -- エラー・メッセージ
             , ov_retcode                => lv_retcode                 -- リターン・コード
             , ov_errmsg                 => lv_errmsg                  -- ユーザー・エラー・メッセージ

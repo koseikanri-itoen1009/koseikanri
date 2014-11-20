@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/01/27    1.0   N.Abe            新規作成
  *  2009/02/18    1.1   N.Abe            [障害COI_014] ログ出力不備対応
  *  2009/02/18    1.2   N.Abe            [障害COI_018] 良品区分値の不備対応
+ *  2009/04/21    1.3   H.Sasaki         [T1_0654]取込データの前後スペース削除
  *
  *****************************************************************************************/
 --
@@ -1350,22 +1351,37 @@ AS
         --col = 1,6,14は不使用項目の為除外
         --項目1(拠点コード)
         IF ( ln_col = 2 ) THEN
-           lv_base_code        := SUBSTR(lv_line, cn_first_char, ln_length);
+-- == 2009/04/21 V1.3 Modified START ===============================================================
+--           lv_base_code        := SUBSTR(lv_line, cn_first_char, ln_length);
+           lv_base_code        := TRIM(SUBSTR(lv_line, cn_first_char, ln_length));
+-- == 2009/04/21 V1.3 Modified END   ===============================================================
         --項目2(棚卸区分)
         ELSIF ( ln_col = 3 ) THEN
-          lv_inventory_kbn     := SUBSTR(lv_line, cn_first_char, ln_length);
+-- == 2009/04/21 V1.3 Modified START ===============================================================
+--          lv_inventory_kbn     := SUBSTR(lv_line, cn_first_char, ln_length);
+          lv_inventory_kbn     := TRIM(SUBSTR(lv_line, cn_first_char, ln_length));
+-- == 2009/04/21 V1.3 Modified END   ===============================================================
         --項目3(棚卸日)
         ELSIF ( ln_col = 4 ) THEN
           lv_inventory_date    := SUBSTR (lv_line, cn_first_char, ln_length);
         --項目4(倉庫区分)
         ELSIF ( ln_col = 5 ) THEN
-          lv_warehouse_kbn     := SUBSTR (lv_line, cn_first_char, ln_length);
+-- == 2009/04/21 V1.3 Modified START ===============================================================
+--          lv_warehouse_kbn     := SUBSTR (lv_line, cn_first_char, ln_length);
+          lv_warehouse_kbn     := TRIM(SUBSTR (lv_line, cn_first_char, ln_length));
+-- == 2009/04/21 V1.3 Modified END   ===============================================================
         --項目5(棚卸場所)
         ELSIF ( ln_col = 7) THEN
-          lv_inventory_place   := SUBSTR (lv_line, cn_first_char, ln_length);
+-- == 2009/04/21 V1.3 Modified START ===============================================================
+--          lv_inventory_place   := SUBSTR (lv_line, cn_first_char, ln_length);
+          lv_inventory_place   := TRIM(SUBSTR (lv_line, cn_first_char, ln_length));
+-- == 2009/04/21 V1.3 Modified END   ===============================================================
         --項目6(品目コード)
         ELSIF ( ln_col = 8 ) THEN
-          lv_item_code         := SUBSTR(lv_line, cn_first_char, ln_length);
+-- == 2009/04/21 V1.3 Modified START ===============================================================
+--          lv_item_code         := SUBSTR(lv_line, cn_first_char, ln_length);
+          lv_item_code         := TRIM(SUBSTR(lv_line, cn_first_char, ln_length));
+-- == 2009/04/21 V1.3 Modified END   ===============================================================
         --項目7(ケース数)
         ELSIF ( ln_col = 9 ) THEN
           lv_case_qty          := SUBSTR(lv_line, cn_first_char, ln_length);
@@ -1377,10 +1393,16 @@ AS
           lv_quantity          := SUBSTR(lv_line, cn_first_char, ln_length);
         --項目10(伝票№)
         ELSIF ( ln_col = 12 ) THEN
-          lv_slip_no           := SUBSTR(lv_line, cn_first_char, ln_length);
+-- == 2009/04/21 V1.3 Modified START ===============================================================
+--          lv_slip_no           := SUBSTR(lv_line, cn_first_char, ln_length);
+          lv_slip_no           := TRIM(SUBSTR(lv_line, cn_first_char, ln_length));
+-- == 2009/04/21 V1.3 Modified END   ===============================================================
         --項目11(良品区分)
         ELSIF ( ln_col = 13 ) THEN
-          lv_quality_goods_kbn := SUBSTR(lv_line, cn_first_char, ln_length);
+-- == 2009/04/21 V1.3 Modified START ===============================================================
+--          lv_quality_goods_kbn := SUBSTR(lv_line, cn_first_char, ln_length);
+          lv_quality_goods_kbn := TRIM(SUBSTR(lv_line, cn_first_char, ln_length));
+-- == 2009/04/21 V1.3 Modified END   ===============================================================
         --項目12(受信日時)
         ELSIF ( ln_col = 15 ) THEN
           lv_receive_date      := SUBSTR(lv_line, cn_first_char, ln_length);
