@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *                                       [E_本稼動_00700]明細金額の端数処理変更対応
  *  2010/01/22    1.9   Y.Kikuchi        [E_本稼動_00408]伝票計出力対応
  *  2010/03/08    1.10  M.Sano           [E_本稼動_01657]数量の参照元変更
+ *  2010/03/29    1.11  M.Sano           [E_本稼動_02006]PT対応(その他（CSV/画面）)
  *
  *****************************************************************************************/
 --
@@ -1564,6 +1565,12 @@ AS
     CURSOR data_edi_not_cur
     IS
       SELECT
+/* 2010/03/29 Ver1.11 Add Start */
+        /*+
+           LEADING(xca)
+           USE_NL(xca hca ooha oos jrs jrre papf1)
+         */
+/* 2010/03/29 Ver1.11 Add End   */
         oola.rowid                             AS row_id                     -- rowid
         ,ooha.order_source_id                  AS order_source_id            -- 受注ソース
         ,oos.name                              AS order_source               -- 受注ソース
@@ -1723,6 +1730,10 @@ AS
           iv_order_source <> gv_order_source_edi_chk 
           -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
           AND oola.flow_status_code NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
+/* 2010/03/29 Ver1.11 Add Start */
+          -- 受注ヘッダ.ステータス≠ｸﾛｰｽﾞor取消
+          AND ooha.flow_status_code NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
+/* 2010/03/29 Ver1.11 Add End   */
           AND (
             --受注ヘッダとパラメータの受注日両方NULLの場合 退避する
             ooha.ordered_date IS NULL
