@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009/12/21    1.9   H.Sasaki         [E_本稼動_00549]出荷数量のNULL対応
  *  2010/01/13    1.10  H.Sasaki         [E_本稼動_01094]伝票日付差異を出力対象外
  *  2010/01/18    1.11  H.Sasaki         [E_本稼動_01167]同一データの重複出力を修正
+ *  2011/02/15    1.12  H.Sekine         [E_本稼動_04380]入力パラメータ「拠点コード」が未入力の場合は全拠点を出力対象とする
  *
  *****************************************************************************************/
 --
@@ -109,6 +110,9 @@ AS
   cv_output_type   CONSTANT VARCHAR2(100) := 'XXCOI1_UNCONFIRMED_LIST_DIV'; -- 入庫未確認リスト出力区分
   cv_list_type     CONSTANT VARCHAR2(100) := 'XXCOI1_STOCKED_VOUCH_DIV'; -- 入庫確認伝票区分
   cv_prf_org_code  CONSTANT VARCHAR2(100) := 'XXCOI1_ORGANIZATION_CODE'; -- 在庫組織
+-- == 2011/02/15 V1.12 Added START   ==============================================================
+  cv_prf_name_item_dept  CONSTANT VARCHAR2(30) :=  'XXCOI1_ITEM_DEPT_BASE_CODE';   -- 商品部拠点コード
+-- == 2011/02/15 V1.12 Added END     ==============================================================
 --
   cv_msg_00008     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008';      -- 0件メッセージ
   cv_msg_00010     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00010';      -- APIエラーメッセージ
@@ -119,6 +123,9 @@ AS
   cv_msg_10240     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10240';      -- 日付不正メッセージ
   cv_msg_10156     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10156';      -- ロック取得エラー
   cv_msg_10337     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10337';      -- 日付大小関係不正メッセージ
+-- == 2011/02/15 V1.12 Added START   ==============================================================
+  cv_msg_10296     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10296';      -- 商品部拠点コード取得失敗エラーメッセージ
+-- == 2011/02/15 V1.12 Added END     ==============================================================
 --
   cv_tok_base      CONSTANT VARCHAR2(100) := 'BASE_CODE';             -- トークン「BASE_CODE」
   cv_tok_output    CONSTANT VARCHAR2(100) := 'P_OUTPUT_TYPE';         -- トークン「P_OUTPUT_TYPE」
@@ -183,6 +190,9 @@ AS
 -- == 2009/08/07 V1.5 Modified END   ===============================================================
 -- == 2009/04/15 V1.2 Modified END   ===============================================================
   gv_zero_message           VARCHAR2(200);                            -- 0件メッセージ格納
+-- == 2011/02/15 V1.12 Added START   ==============================================================
+  gv_item_dept_base_code    xxcoi_storage_information.base_code%TYPE; -- 商品部拠点コード
+-- == 2011/02/15 V1.12 Added END     ==============================================================
 --
   CURSOR storage_info_cur(
              iv_base_code   VARCHAR2
@@ -190,150 +200,237 @@ AS
            , iv_date_from   VARCHAR2
            , iv_date_to     VARCHAR2)
   IS
-  SELECT xsi.base_code                            AS base_code        -- 拠点コード
-        ,SUBSTRB(hca_b.account_name,1,8)          AS base_name        -- 拠点名
-        ,xsi.slip_date                            AS slip_date        -- 伝票日付
-        ,xsi.slip_num                             AS slip_num         -- 伝票番号
-        ,xsi.check_warehouse_code                 AS check_warehouse_code
-                                                                      -- 倉庫コード
-        ,xsi.item_code                            AS item_code        -- 子品目コード
-        ,SUBSTRB(ximb.item_short_name,1,20)       AS item_name        -- 品目略称
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN NULL ELSE xsi.taste_term END   AS taste_term       -- 賞味期限
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN NULL ELSE xsi.difference_summary_code END          -- 工場固有記号
-                                                  AS factory_unique_mark
--- == 2009/12/21 V1.9 Modified START ===============================================================
---        ,xsi.case_in_qty                          AS case_in_qty      -- 入数
---        ,xsi.ship_case_qty                        AS ship_case_qty    -- 出庫数量ケース数
---        ,xsi.ship_singly_qty                      AS ship_singly_qty  -- 出庫数量バラ数
---        ,xsi.ship_summary_qty                     AS ship_summary_qty -- 出庫数量総バラ数
-        ,NVL(xsi.case_in_qty, 0)                  AS case_in_qty      -- 入数
-        ,NVL(xsi.ship_case_qty, 0)                AS ship_case_qty    -- 出庫数量ケース数
-        ,NVL(xsi.ship_singly_qty, 0)              AS ship_singly_qty  -- 出庫数量バラ数
-        ,NVL(xsi.ship_summary_qty, 0)             AS ship_summary_qty -- 出庫数量総バラ数
--- == 2009/12/21 V1.9 Modified END   ===============================================================
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN NVL(xsi.check_case_qty,0) ELSE NULL END            -- 確認数量ケース数
-                                                  AS check_case_qty
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN NVL(xsi.check_singly_qty,0) ELSE NULL END          -- 確認数量バラ数
-                                                  AS check_singly_qty
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN NVL(xsi.check_summary_qty,0) ELSE NULL END         -- 確認数量総バラ数
-                                                  AS check_summary_qty
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN NVL(xsi.ship_summary_qty,0) - NVL(xsi.check_summary_qty,0) ELSE NULL END -- 差引合計数量
-                                                  AS difference_summary_qty
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN flv.meaning ELSE NULL END      AS slip_type        -- 伝票区分
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN xsi.ship_base_code ELSE NULL END                   -- 出庫拠点コード
-                                                  AS ship_base_code
--- == 2009/07/02 V1.4 Deleted START ===============================================================
+-- == 2011/02/15 V1.12 Deleted START  ===========================================================
+--  SELECT xsi.base_code                            AS base_code        -- 拠点コード
+--        ,SUBSTRB(hca_b.account_name,1,8)          AS base_name        -- 拠点名
+--        ,xsi.slip_date                            AS slip_date        -- 伝票日付
+--        ,xsi.slip_num                             AS slip_num         -- 伝票番号
+--        ,xsi.check_warehouse_code                 AS check_warehouse_code
+--                                                                      -- 倉庫コード
+--        ,xsi.item_code                            AS item_code        -- 子品目コード
+--        ,SUBSTRB(ximb.item_short_name,1,20)       AS item_name        -- 品目略称
 --        ,CASE WHEN xsi.summary_data_flag = cv_yes
----- == 2009/04/23 V1.3 Modified START ===============================================================
-----                THEN ship_base.ship_base_name
---                THEN SUBSTRB(ship_base.ship_base_name, 1, 8)
----- == 2009/04/23 V1.3 Modified END   ===============================================================
---                ELSE NULL
---              END                                 AS ship_base_name   -- 出庫拠点名
--- == 2009/07/02 V1.4 Deleted END   ===============================================================
--- == 2009/07/02 V1.4 Added START ===============================================================
-        ,xsi.slip_type                            AS slip_type_code   -- 伝票区分コード
--- == 2009/07/02 V1.4 Added EDN   ===============================================================
-        ,CASE WHEN xsi.summary_data_flag = cv_yes
-              THEN cv_summary_kbn ELSE cv_detail_kbn END AS data_type -- データ種別
-  FROM   xxcoi_storage_information xsi
-        ,hz_cust_accounts  hca_b                                      -- 顧客マスタ（拠点）
-        ,ic_item_mst_b     iimb                                       -- OPM品目マスタ（子）
-        ,xxcmn_item_mst_b  ximb                                       -- OPM品目アドオンマスタ
-        ,fnd_lookup_values flv                                        -- クイックコードマスタ
--- == 2009/07/02 V1.4 Deleted START ===============================================================
---        ,(SELECT   xsi.transaction_id
---                 , ship_base.ship_base_name
---          FROM     (SELECT   xsi.transaction_id
---                           , hca.account_name ship_base_name
---                    FROM     xxcoi_storage_information xsi
---                           , hz_cust_accounts hca
---                    WHERE    xsi.ship_base_code = hca.account_number
---                    AND      xsi.slip_type = cv_slip_type_2
---                    UNION
---                    SELECT   xsi.transaction_id
----- == 2009/04/23 V1.3 Modified START ===============================================================
-----                           , mil.description ship_base_name
---                           , mil.attribute12    ship_base_name
----- == 2009/04/23 V1.3 Modified END   ===============================================================
---                    FROM     xxcoi_storage_information  xsi
---                           , mtl_item_locations         mil
---                    WHERE    xsi.ship_base_code = mil.segment1
---                    AND      xsi.slip_type      = cv_slip_type_1
---                   ) ship_base
---                   , xxcoi_storage_information xsi
---          WHERE  xsi.transaction_id = ship_base.transaction_id
---        )ship_base
--- == 2009/07/02 V1.4 Deleted END   ===============================================================
--- == 2010/01/18 V1.11 Modified START ===============================================================
---        ,(SELECT xsi.slip_num
-        ,(SELECT DISTINCT xsi.slip_num
--- == 2010/01/18 V1.11 Modified END   ===============================================================
-          FROM   xxcoi_storage_information xsi
-          WHERE  xsi.base_code = iv_base_code
-          AND    TRUNC(xsi.slip_date) BETWEEN TO_DATE(iv_date_from,'YYYY/MM/DD') AND TO_DATE(iv_date_to,'YYYY/MM/DD')
-          AND    xsi.summary_data_flag = cv_yes
-          AND   ((iv_output_type = cv_output_div_10
-                  AND xsi.store_check_flag = cv_no
-                 )
-                 OR(iv_output_type = cv_output_div_20
--- == 2009/12/21 V1.9 Modified START ===============================================================
---                    AND xsi.ship_summary_qty <> xsi.check_summary_qty
-                    AND NVL(xsi.ship_summary_qty, 0) <> xsi.check_summary_qty
--- == 2009/12/21 V1.9 Modified START ===============================================================
-                   )
-                 OR iv_output_type = cv_output_div_30
-                 )
--- == 2010/01/13 V1.10 Deleted START ===============================================================
---          UNION
---          SELECT xsi1.slip_num
---          FROM   xxcoi_storage_information xsi1
---                ,xxcoi_storage_information xsi2
---          WHERE  xsi1.base_code         = iv_base_code
----- == 2009/12/09 V1.8 Added START ===============================================================
---          AND    xsi2.base_code         = iv_base_code
----- == 2009/12/09 V1.8 Added END   ===============================================================
---          AND    TRUNC(xsi1.slip_date) BETWEEN TO_DATE(iv_date_from,'YYYY/MM/DD') AND TO_DATE(iv_date_to,'YYYY/MM/DD')
---          AND    xsi1.summary_data_flag = cv_yes
---          AND    xsi1.slip_num          = xsi2.slip_num
---          AND    TRUNC(xsi1.slip_date) <> TRUNC(xsi2.slip_date)
---          AND    iv_output_type         = cv_output_div_20
--- == 2010/01/13 V1.10 Deleted END   ===============================================================
-        )xsii
-  WHERE  xsi.base_code    = hca_b.account_number
--- == 2009/11/27 V1.7 Added START ===============================================================
-  AND    xsi.base_code    = iv_base_code
--- == 2009/11/27 V1.7 Added END   ===============================================================
-  AND    xsi.slip_type    = flv.lookup_code
-  AND    iimb.item_id     = ximb.item_id
--- == 2009/09/08 V1.6 Added START ===============================================================
-  AND    xsi.slip_date    BETWEEN ximb.start_date_active
+--              THEN NULL ELSE xsi.taste_term END   AS taste_term       -- 賞味期限
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+--              THEN NULL ELSE xsi.difference_summary_code END          -- 工場固有記号
+--                                                  AS factory_unique_mark
+---- == 2009/12/21 V1.9 Modified START ===============================================================
+----        ,xsi.case_in_qty                          AS case_in_qty      -- 入数
+----        ,xsi.ship_case_qty                        AS ship_case_qty    -- 出庫数量ケース数
+----        ,xsi.ship_singly_qty                      AS ship_singly_qty  -- 出庫数量バラ数
+----        ,xsi.ship_summary_qty                     AS ship_summary_qty -- 出庫数量総バラ数
+--        ,NVL(xsi.case_in_qty, 0)                  AS case_in_qty      -- 入数
+--        ,NVL(xsi.ship_case_qty, 0)                AS ship_case_qty    -- 出庫数量ケース数
+--        ,NVL(xsi.ship_singly_qty, 0)              AS ship_singly_qty  -- 出庫数量バラ数
+--        ,NVL(xsi.ship_summary_qty, 0)             AS ship_summary_qty -- 出庫数量総バラ数
+---- == 2009/12/21 V1.9 Modified END   ===============================================================
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+--              THEN NVL(xsi.check_case_qty,0) ELSE NULL END            -- 確認数量ケース数
+--                                                  AS check_case_qty
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+--              THEN NVL(xsi.check_singly_qty,0) ELSE NULL END          -- 確認数量バラ数
+--                                                  AS check_singly_qty
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+--              THEN NVL(xsi.check_summary_qty,0) ELSE NULL END         -- 確認数量総バラ数
+--                                                  AS check_summary_qty
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+--              THEN NVL(xsi.ship_summary_qty,0) - NVL(xsi.check_summary_qty,0) ELSE NULL END -- 差引合計数量
+--                                                  AS difference_summary_qty
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+--              THEN flv.meaning ELSE NULL END      AS slip_type        -- 伝票区分
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+--              THEN xsi.ship_base_code ELSE NULL END                   -- 出庫拠点コード
+--                                                  AS ship_base_code
+---- == 2009/07/02 V1.4 Deleted START ===============================================================
+----        ,CASE WHEN xsi.summary_data_flag = cv_yes
+------ == 2009/04/23 V1.3 Modified START ===============================================================
+------                THEN ship_base.ship_base_name
+----                THEN SUBSTRB(ship_base.ship_base_name, 1, 8)
+------ == 2009/04/23 V1.3 Modified END   ===============================================================
+----                ELSE NULL
+----              END                                 AS ship_base_name   -- 出庫拠点名
+---- == 2009/07/02 V1.4 Deleted END   ===============================================================
+---- == 2009/07/02 V1.4 Added START ===============================================================
+--        ,xsi.slip_type                            AS slip_type_code   -- 伝票区分コード
+---- == 2009/07/02 V1.4 Added EDN   ===============================================================
+--        ,CASE WHEN xsi.summary_data_flag = cv_yes
+--              THEN cv_summary_kbn ELSE cv_detail_kbn END AS data_type -- データ種別
+--  FROM   xxcoi_storage_information xsi
+--        ,hz_cust_accounts  hca_b                                      -- 顧客マスタ（拠点）
+--        ,ic_item_mst_b     iimb                                       -- OPM品目マスタ（子）
+--        ,xxcmn_item_mst_b  ximb                                       -- OPM品目アドオンマスタ
+--        ,fnd_lookup_values flv                                        -- クイックコードマスタ
+---- == 2009/07/02 V1.4 Deleted START ===============================================================
+----        ,(SELECT   xsi.transaction_id
+----                 , ship_base.ship_base_name
+----          FROM     (SELECT   xsi.transaction_id
+----                           , hca.account_name ship_base_name
+----                    FROM     xxcoi_storage_information xsi
+----                           , hz_cust_accounts hca
+----                    WHERE    xsi.ship_base_code = hca.account_number
+----                    AND      xsi.slip_type = cv_slip_type_2
+----                    UNION
+----                    SELECT   xsi.transaction_id
+------ == 2009/04/23 V1.3 Modified START ===============================================================
+------                           , mil.description ship_base_name
+----                           , mil.attribute12    ship_base_name
+------ == 2009/04/23 V1.3 Modified END   ===============================================================
+----                    FROM     xxcoi_storage_information  xsi
+----                           , mtl_item_locations         mil
+----                    WHERE    xsi.ship_base_code = mil.segment1
+----                    AND      xsi.slip_type      = cv_slip_type_1
+----                   ) ship_base
+----                   , xxcoi_storage_information xsi
+----          WHERE  xsi.transaction_id = ship_base.transaction_id
+----        )ship_base
+---- == 2009/07/02 V1.4 Deleted END   ===============================================================
+---- == 2010/01/18 V1.11 Modified START ===============================================================
+----        ,(SELECT xsi.slip_num
+--        ,(SELECT DISTINCT xsi.slip_num
+---- == 2010/01/18 V1.11 Modified END   ===============================================================
+--          FROM   xxcoi_storage_information xsi
+--          WHERE  xsi.base_code = iv_base_code
+--          AND    TRUNC(xsi.slip_date) BETWEEN TO_DATE(iv_date_from,'YYYY/MM/DD') AND TO_DATE(iv_date_to,'YYYY/MM/DD')
+--          AND    xsi.summary_data_flag = cv_yes
+--          AND   ((iv_output_type = cv_output_div_10
+--                  AND xsi.store_check_flag = cv_no
+--                 )
+--                 OR(iv_output_type = cv_output_div_20
+---- == 2009/12/21 V1.9 Modified START ===============================================================
+----                    AND xsi.ship_summary_qty <> xsi.check_summary_qty
+--                    AND NVL(xsi.ship_summary_qty, 0) <> xsi.check_summary_qty
+---- == 2009/12/21 V1.9 Modified START ===============================================================
+--                   )
+--                 OR iv_output_type = cv_output_div_30
+--                 )
+---- == 2010/01/13 V1.10 Deleted START ===============================================================
+----          UNION
+----          SELECT xsi1.slip_num
+----          FROM   xxcoi_storage_information xsi1
+----                ,xxcoi_storage_information xsi2
+----          WHERE  xsi1.base_code         = iv_base_code
+------ == 2009/12/09 V1.8 Added START ===============================================================
+----          AND    xsi2.base_code         = iv_base_code
+------ == 2009/12/09 V1.8 Added END   ===============================================================
+----          AND    TRUNC(xsi1.slip_date) BETWEEN TO_DATE(iv_date_from,'YYYY/MM/DD') AND TO_DATE(iv_date_to,'YYYY/MM/DD')
+----          AND    xsi1.summary_data_flag = cv_yes
+----          AND    xsi1.slip_num          = xsi2.slip_num
+----          AND    TRUNC(xsi1.slip_date) <> TRUNC(xsi2.slip_date)
+----          AND    iv_output_type         = cv_output_div_20
+---- == 2010/01/13 V1.10 Deleted END   ===============================================================
+--        )xsii
+--  WHERE  xsi.base_code    = hca_b.account_number
+---- == 2009/11/27 V1.7 Added START ===============================================================
+--  AND    xsi.base_code    = iv_base_code
+---- == 2009/11/27 V1.7 Added END   ===============================================================
+--  AND    xsi.slip_type    = flv.lookup_code
+--  AND    iimb.item_id     = ximb.item_id
+---- == 2009/09/08 V1.6 Added START ===============================================================
+--  AND    xsi.slip_date    BETWEEN ximb.start_date_active
+--                          AND     NVL(ximb.end_date_active, xsi.slip_date)
+---- == 2009/09/08 V1.6 Added END   ===============================================================
+--  AND    xsi.item_code    = iimb.item_no
+--  AND    xsi.slip_num     = xsii.slip_num
+--  AND    flv.enabled_flag = cv_yes
+--  AND    flv.language     = userenv('LANG')
+--  AND    flv.lookup_type  = cv_list_type
+--  AND    TRUNC(SYSDATE) BETWEEN TRUNC(flv.start_date_active) AND NVL(flv.end_date_active,TRUNC(SYSDATE))
+---- == 2009/07/02 V1.4 Deleted START ===============================================================
+----  AND    xsi.transaction_id = ship_base.transaction_id
+---- == 2009/07/02 V1.4 Deleted END   ===============================================================
+--  ORDER BY  xsi.slip_num
+--           ,xsi.slip_date
+--           ,xsi.base_code
+--           ,xsi.check_warehouse_code
+--           ,xsi.item_code
+--           ,xsi.slip_type
+--           ,xsi.summary_data_flag DESC;
+-- == 2011/02/15 V1.12 Deleted END    ===========================================================
+-- == 2011/02/15 V1.12 Added START ==============================================================
+  --
+  SELECT  xsi.base_code                                           AS base_code                        --  拠点コード
+        , SUBSTRB(hca.account_name, 1, 8)                         AS base_name                        --  拠点名
+        , xsi.slip_date                                           AS slip_date                        --  伝票日付
+        , xsi.slip_num                                            AS slip_num                         --  伝票番号
+        , xsi.check_warehouse_code                                AS check_warehouse_code             --  倉庫コード
+        , xsi.item_code                                           AS item_code                        --  子品目コード
+        , SUBSTRB(ximb.item_short_name, 1, 20)                    AS item_name                        --  品目略称
+        , CASE  WHEN  xsi.summary_data_flag = cv_yes
+                  THEN  NULL
+                  ELSE  xsi.taste_term
+          END                                                     AS taste_term                       --  賞味期限
+        , CASE  WHEN  xsi.summary_data_flag = cv_yes
+                  THEN  NULL
+                  ELSE  xsi.difference_summary_code
+          END                                                     AS  factory_unique_mark             --  工場固有記号
+        , NVL(xsi.case_in_qty, 0)                                 AS  case_in_qty                     --  入数
+        , NVL(xsi.ship_case_qty, 0)                               AS  ship_case_qty                   --  出庫数量ケース数
+        , NVL(xsi.ship_singly_qty, 0)                             AS  ship_singly_qty                 --  出庫数量バラ数
+        , NVL(xsi.ship_summary_qty, 0)                            AS  ship_summary_qty                --  出庫数量総バラ数
+        , CASE  WHEN  xsi.summary_data_flag = cv_yes
+                  THEN  NVL(xsi.check_case_qty, 0)
+                  ELSE  NULL
+          END                                                     AS  check_case_qty                  --  確認数量ケース数
+        , CASE  WHEN xsi.summary_data_flag = cv_yes
+                  THEN  NVL(xsi.check_singly_qty, 0)
+                  ELSE  NULL
+          END                                                     AS  check_singly_qty                --  確認数量バラ数
+        , CASE  WHEN  xsi.summary_data_flag = cv_yes
+                  THEN  NVL(xsi.check_summary_qty, 0)
+                  ELSE  NULL
+          END                                                     AS  check_summary_qty               --  確認数量総バラ数
+        , CASE  WHEN  xsi.summary_data_flag = cv_yes
+                  THEN  NVL(xsi.ship_summary_qty, 0) - NVL(xsi.check_summary_qty, 0)
+                  ELSE  NULL
+          END                                                     AS  difference_summary_qty          --  差引合計数量
+        , CASE  WHEN  xsi.summary_data_flag = cv_yes
+                  THEN  flv.meaning
+                  ELSE  NULL
+          END                                                     AS  slip_type                       --  伝票区分
+        , CASE  WHEN  xsi.summary_data_flag = cv_yes
+                  THEN  xsi.ship_base_code
+                  ELSE  NULL
+          END                                                     AS  ship_base_code                  --  出庫拠点コード
+        , xsi.slip_type                                           AS  slip_type_code                  --  伝票区分コード
+        , CASE  WHEN  xsi.summary_data_flag = cv_yes
+                  THEN  cv_summary_kbn
+                  ELSE  cv_detail_kbn
+          END                                                     AS  data_type                       --  データ種別
+  FROM    xxcoi_storage_information           xsi
+        , hz_cust_accounts                    hca
+        , ic_item_mst_b                       iimb
+        , xxcmn_item_mst_b                    ximb
+        , fnd_lookup_values                   flv
+  WHERE   xsi.base_code                   =   hca.account_number
+  AND     xsi.slip_type                   =   flv.lookup_code
+  AND     xsi.item_code                   =   iimb.item_no
+  AND     iimb.item_id                    =   ximb.item_id
+  AND     xsi.slip_date                   >=  TO_DATE(iv_date_from, 'YYYY/MM/DD')
+  AND     xsi.slip_date                   <   TO_DATE(iv_date_to,   'YYYY/MM/DD') + 1
+  AND     xsi.base_code                   =   NVL(iv_base_code, xsi.base_code)
+  AND     flv.enabled_flag                =   cv_yes
+  AND     flv.language                    =   USERENV('LANG')
+  AND     flv.lookup_type                 =   cv_list_type
+  AND     TRUNC(SYSDATE)  BETWEEN TRUNC(flv.start_date_active)
+                          AND     TRUNC(NVL(flv.end_date_active, SYSDATE))
+  AND     xsi.slip_date   BETWEEN ximb.start_date_active
                           AND     NVL(ximb.end_date_active, xsi.slip_date)
--- == 2009/09/08 V1.6 Added END   ===============================================================
-  AND    xsi.item_code    = iimb.item_no
-  AND    xsi.slip_num     = xsii.slip_num
-  AND    flv.enabled_flag = cv_yes
-  AND    flv.language     = userenv('LANG')
-  AND    flv.lookup_type  = cv_list_type
-  AND    TRUNC(SYSDATE) BETWEEN TRUNC(flv.start_date_active) AND NVL(flv.end_date_active,TRUNC(SYSDATE))
--- == 2009/07/02 V1.4 Deleted START ===============================================================
---  AND    xsi.transaction_id = ship_base.transaction_id
--- == 2009/07/02 V1.4 Deleted END   ===============================================================
-  ORDER BY  xsi.slip_num
-           ,xsi.slip_date
-           ,xsi.base_code
-           ,xsi.check_warehouse_code
-           ,xsi.item_code
-           ,xsi.slip_type
-           ,xsi.summary_data_flag DESC;
+  AND EXISTS(
+              SELECT  1
+              FROM    xxcoi_storage_information     xsi_s
+              WHERE   xsi_s.slip_date           >=  TO_DATE(iv_date_from, 'YYYY/MM/DD')
+              AND     xsi_s.slip_date           <   TO_DATE(iv_date_to,   'YYYY/MM/DD') + 1
+              AND     xsi_s.summary_data_flag   =   cv_yes
+              AND     xsi_s.base_code           =   NVL(iv_base_code, xsi_s.base_code)
+              AND    ((iv_output_type = cv_output_div_10 AND xsi_s.store_check_flag   =   cv_no )
+                      OR
+                      (iv_output_type = cv_output_div_20 AND NVL(xsi_s.ship_summary_qty, 0)  <>  NVL(xsi_s.check_summary_qty, 0))
+                      OR
+                      (iv_output_type = cv_output_div_30 )
+                     )
+              AND     xsi_s.slip_num = xsi.slip_num
+            );
+-- == 2011/02/15 V1.12 Added END   ==============================================================
 --
   storage_info_rec storage_info_cur%ROWTYPE;
 --
@@ -486,6 +583,25 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE get_output_type_expt;
     END IF;
+-- == 2011/02/15 V1.12 Added START   ==============================================================
+--
+    --==============================================================
+    --プロファイルより商品部拠点コード取得
+    --==============================================================
+    gv_item_dept_base_code := fnd_profile.value( cv_prf_name_item_dept );
+    -- プロファイルが取得できない場合
+    IF ( gv_item_dept_base_code IS NULL ) THEN
+      -- 商品部拠点コード取得エラーメッセージ
+      lv_errmsg   := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_10296
+                     );
+      lv_errbuf   := lv_errmsg;
+      --
+      RAISE global_api_expt;
+    END IF;
+--
+-- == 2011/02/15 V1.12 Added END     ==============================================================
   EXCEPTION
     WHEN prm_date_expt THEN
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
@@ -597,32 +713,47 @@ AS
 --    FROM   xxcoi_base_info2_v xbiv
 -- == 2009/04/15 V1.2 Modified END   ===============================================================
 --    WHERE  xbiv.focus_base_code = gt_base_code;
-    SELECT  acc.account_number
-           ,SUBSTRB(acc.account_name, 1, 8)
-    BULK COLLECT INTO gt_base_tab
-    FROM   (SELECT hca.account_number                                 -- 拠点コード
-                  ,hca.account_name                                   -- 拠点略称
-            FROM   hz_cust_accounts hca                               -- 顧客マスタ
-                  ,xxcmm_cust_accounts xca                            -- 顧客追加情報
-            WHERE  xca.management_base_code = gt_base_code
-            AND    hca.status               = 'A'
-            AND    hca.customer_class_code  = '1'
-            AND    hca.cust_account_id      = xca.customer_id
-            UNION ALL
-            SELECT hca.account_number                                 -- 拠点コード
-                  ,hca.account_name                                   -- 拠点略称
-            FROM   hz_cust_accounts hca                               -- 顧客マスタ
-                  ,xxcmm_cust_accounts xca                            -- 顧客追加情報
-            WHERE  hca.account_number       = gt_base_code
-            AND    hca.status               = 'A'
-            AND    hca.customer_class_code  = '1'
-            AND    hca.cust_account_id      = xca.customer_id
-            AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
-           ) acc
-    ;
+-- == 2011/02/15 V1.12 Added START =================================================================
+    --
+    -- 入力パラメータ「拠点コード」がNULL、かつ、ログインユーザの所属拠点が商品部拠点コード(1020)の場合
+    IF  ( iv_base_code IS NULL ) AND ( gt_base_code = gv_item_dept_base_code )  THEN
+      --
+      gn_output_base_num := 1;
+      --
+      gt_base_tab(1).base_code := NULL;
+      gt_base_tab(1).base_name := NULL;
+      --
+    ELSE
+-- == 2011/02/15 V1.12 Added END   =================================================================
+      SELECT  acc.account_number
+             ,SUBSTRB(acc.account_name, 1, 8)
+      BULK COLLECT INTO gt_base_tab
+      FROM   (SELECT hca.account_number                                 -- 拠点コード
+                    ,hca.account_name                                   -- 拠点略称
+              FROM   hz_cust_accounts hca                               -- 顧客マスタ
+                    ,xxcmm_cust_accounts xca                            -- 顧客追加情報
+              WHERE  xca.management_base_code = gt_base_code
+              AND    hca.status               = 'A'
+              AND    hca.customer_class_code  = '1'
+              AND    hca.cust_account_id      = xca.customer_id
+              UNION ALL
+              SELECT hca.account_number                                 -- 拠点コード
+                    ,hca.account_name                                   -- 拠点略称
+              FROM   hz_cust_accounts hca                               -- 顧客マスタ
+                    ,xxcmm_cust_accounts xca                            -- 顧客追加情報
+              WHERE  hca.account_number       = gt_base_code
+              AND    hca.status               = 'A'
+              AND    hca.customer_class_code  = '1'
+              AND    hca.cust_account_id      = xca.customer_id
+              AND    hca.account_number      <> NVL(xca.management_base_code,'99999')
+             ) acc
+      ;
 -- == 2009/08/07 V1.5 Modified END   ===============================================================
 --
-    gn_output_base_num := gt_base_tab.COUNT;
+      gn_output_base_num := gt_base_tab.COUNT;
+-- == 2011/02/15 V1.12 Added START =================================================================
+    END IF;
+-- == 2011/02/15 V1.12 Added END   =================================================================
 --
   EXCEPTION
 --
@@ -766,8 +897,12 @@ AS
     ) VALUES (
         xxcoi_rep_storage_info_s01.nextval          -- 01
       , iv_output_type                              -- 02
-      , iv_base_code                                -- 03
-      , iv_base_name                                -- 04
+-- == 2011/02/15 V1.12 Modified START ===========================================================
+--      , iv_base_code                                -- 03
+--      , iv_base_name                                -- 04
+      , storage_info_rec.base_code                  -- 03
+      , storage_info_rec.base_name                  -- 04
+-- == 2011/02/15 V1.12 Modified END   ===========================================================
       , iv_date_from                                -- 05
       , iv_date_to                                  -- 06
       , storage_info_rec.base_code                  -- 07
