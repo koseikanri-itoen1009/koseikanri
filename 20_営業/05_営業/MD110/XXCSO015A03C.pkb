@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009-12-07    1.19  K.Satomura       E_本稼動_00349 指定の作業会社コードの場合は処理を
                                          スキップする（暫定対応）
                                          物件データワークテーブル削除条件修正（恒久対応）
+ *  2009-12-11    1.20  K.Satomura       E_本稼動_00420 完了区分が設置中止の場合の処理変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -210,6 +211,9 @@ AS
   cv_instance_type_vd     CONSTANT VARCHAR2(1) := '1';        -- インスタンスステータスタイプ（自販機）
 --
 /*20090507_mori_T1_0439 END*/
+  /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
+  ct_comp_kbn_comp        CONSTANT xxcso_in_work_data.completion_kbn%TYPE := 1;
+  /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
   -- DEBUG_LOG用メッセージ
   cv_debug_msg1           CONSTANT VARCHAR2(200) := '<< システム日付取得処理 >>';
   cv_debug_msg2           CONSTANT VARCHAR2(200) := 'od_sysdate = ';
@@ -5885,6 +5889,205 @@ AS
 --
   END update_item_instances;
 --
+  /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
+  /**********************************************************************************
+   * Procedure Name   : update_item_instances2
+   * Description      : 物件データ更新処理2 (A-8-1)
+   ***********************************************************************************/
+  PROCEDURE update_item_instances2(
+     io_inst_base_data_rec IN OUT NOCOPY g_get_data_rtype -- (IN)物件マスタ情報
+    ,id_process_date       IN     DATE                    -- 業務処理日付
+    ,ov_errbuf             OUT    NOCOPY VARCHAR2         -- エラー・メッセージ            --# 固定 #
+    ,ov_retcode            OUT    NOCOPY VARCHAR2         -- リターン・コード              --# 固定 #
+    ,ov_errmsg             OUT    NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ  --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'update_item_instances2'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_api_version      CONSTANT NUMBER        := 1.0;
+    cv_inst_base_insert CONSTANT VARCHAR2(100) := 'インストールベースマスタ';
+    cv_update_process   CONSTANT VARCHAR2(100) := '更新';
+    cv_flg_no           CONSTANT VARCHAR2(100) := 'N';
+    --
+    -- *** ローカル変数 ***
+    lv_commit           VARCHAR2(1);    -- コミットフラグ
+    lv_init_msg_list    VARCHAR2(2000); -- メッセージリスト
+    ln_validation_level NUMBER;         -- バリデーションレーベル
+    --
+    -- API戻り値格納用
+    lv_return_status VARCHAR2(1);
+    lv_msg_data      VARCHAR2(5000);
+    lv_io_msg_data   VARCHAR2(5000);
+    ln_msg_count     NUMBER;
+    ln_io_msg_count  NUMBER;
+    --
+    -- API入出力レコード値格納用
+    l_txn_rec               csi_datastructures_pub.transaction_rec;
+    l_instance_rec          csi_datastructures_pub.instance_rec;
+    l_party_tab             csi_datastructures_pub.party_tbl;
+    l_account_tab           csi_datastructures_pub.party_account_tbl;
+    l_pricing_attrib_tab    csi_datastructures_pub.pricing_attribs_tbl;
+    l_org_assignments_tab   csi_datastructures_pub.organization_units_tbl;
+    l_asset_assignment_tab  csi_datastructures_pub.instance_asset_tbl;
+    l_ext_attrib_values_tab csi_datastructures_pub.extend_attrib_values_tbl;
+    l_instance_id_lst       csi_datastructures_pub.id_tbl;
+    --
+    -- *** ローカル例外 ***
+    update_error_expt EXCEPTION;
+    --
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--  
+    -- データの格納
+    lv_commit        := fnd_api.g_false;
+    lv_init_msg_list := fnd_api.g_true;
+    --
+    -- ================================
+    -- 1.インスタンスレコード作成
+    -- ================================
+    l_instance_rec.instance_id            := io_inst_base_data_rec.instance_id;     -- インスタンスID
+    l_instance_rec.attribute4             := cv_flg_no;                             -- 作業依頼中フラグ
+    l_instance_rec.object_version_number  := io_inst_base_data_rec.object_version1; -- オブジェクトバージョン番号
+    l_instance_rec.request_id             := cn_request_id;                         -- REQUEST_ID
+    l_instance_rec.program_application_id := cn_program_application_id;             -- PROGRAM_APPLICATION_ID
+    l_instance_rec.program_id             := cn_program_id;                         -- PROGRAM_ID
+    l_instance_rec.program_update_date    := cd_program_update_date;                -- PROGRAM_UPDATE_DATE
+    --
+    -- ===============================
+    -- 2.取引レコードデータ作成
+    -- ===============================
+    l_txn_rec.transaction_date        := SYSDATE;
+    l_txn_rec.source_transaction_date := SYSDATE;
+    l_txn_rec.transaction_type_id     := gt_txn_type_id;
+    --
+    -- =================================
+    -- 3.標準APIより、物件更新処理を行う
+    -- =================================
+    BEGIN
+      csi_item_instance_pub.update_item_instance(
+         p_api_version           => cn_api_version
+        ,p_commit                => lv_commit
+        ,p_init_msg_list         => lv_init_msg_list
+        ,p_validation_level      => ln_validation_level
+        ,p_instance_rec          => l_instance_rec
+        ,p_ext_attrib_values_tbl => l_ext_attrib_values_tab
+        ,p_party_tbl             => l_party_tab
+        ,p_account_tbl           => l_account_tab
+        ,p_pricing_attrib_tbl    => l_pricing_attrib_tab
+        ,p_org_assignments_tbl   => l_org_assignments_tab
+        ,p_asset_assignment_tbl  => l_asset_assignment_tab
+        ,p_txn_rec               => l_txn_rec
+        ,x_instance_id_lst       => l_instance_id_lst
+        ,x_return_status         => lv_return_status
+        ,x_msg_count             => ln_msg_count
+        ,x_msg_data              => lv_msg_data
+      );
+      --
+      -- 正常終了でない場合
+      IF (lv_return_status <> fnd_api.g_ret_sts_success) THEN
+        RAISE update_error_expt;
+        --
+      END IF;
+      --
+    EXCEPTION
+      -- *** OTHERS例外ハンドラ ***
+      WHEN OTHERS THEN
+        IF (fnd_msg_pub.count_msg > 0) THEN
+          FOR i IN 1..fnd_msg_pub.count_msg LOOP
+            fnd_msg_pub.get(
+               p_msg_index     => i
+              ,p_encoded       => cv_encoded_f
+              ,p_data          => lv_io_msg_data
+              ,p_msg_index_out => ln_io_msg_count
+            );
+            --
+            lv_msg_data := lv_msg_data || lv_io_msg_data;
+            --
+          END LOOP;
+          --
+        END IF;
+        --
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application   => cv_app_name                                   -- アプリケーション短縮名
+                       ,iv_name          => cv_tkn_number_25                              -- メッセージコード
+                       ,iv_token_name1   => cv_tkn_table                                  -- トークンコード1
+                       ,iv_token_value1  => cv_inst_base_insert                           -- トークン値1
+                       ,iv_token_name2   => cv_tkn_process                                -- トークンコード2
+                       ,iv_token_value2  => cv_update_process                             -- トークン値2
+                       ,iv_token_name3   => cv_tkn_seq_no                                 -- トークンコード3
+                       ,iv_token_value3  => TO_CHAR(io_inst_base_data_rec.seq_no)         -- トークン値3
+                       ,iv_token_name4   => cv_tkn_slip_num                               -- トークンコード4
+                       ,iv_token_value4  => TO_CHAR(io_inst_base_data_rec.slip_no)        -- トークン値4
+                       ,iv_token_name5   => cv_tkn_slip_branch_num                        -- トークンコード5
+                       ,iv_token_value5  => TO_CHAR(io_inst_base_data_rec.slip_branch_no) -- トークン値5
+                       ,iv_token_name6   => cv_tkn_bukken1                                -- トークンコード6
+                       ,iv_token_value6  => io_inst_base_data_rec.install_code1           -- トークン値6
+                       ,iv_token_name7   => cv_tkn_bukken2                                -- トークンコード7
+                       ,iv_token_value7  => io_inst_base_data_rec.install_code2           -- トークン値7
+                       ,iv_token_name8   => cv_tkn_account_num1                           -- トークンコード8
+                       ,iv_token_value8  => io_inst_base_data_rec.account_number1         -- トークン値8
+                       ,iv_token_name9   => cv_tkn_account_num2                           -- トークンコード9
+                       ,iv_token_value9  => io_inst_base_data_rec.account_number2         -- トークン値9
+                       ,iv_token_name10  => cv_tkn_errmsg                                 -- トークンコード10
+                       ,iv_token_value10 => lv_msg_data                                   -- トークン値10
+                     );
+        --
+        lv_errbuf := lv_errmsg;
+        RAISE update_error_expt;
+        --
+    END;
+    --
+  EXCEPTION
+    -- *** 更新失敗例外ハンドラ ***
+    WHEN update_error_expt THEN
+      -- 更新失敗ロールバックフラグの設定。
+      gb_rollback_flg := TRUE;
+      --
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_warn;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END update_item_instances2;
+--
+  /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
   /**********************************************************************************
    * Procedure Name   : update_cust_or_party
    * Description      : 顧客アドオンマスタとパーティマスタ更新処理 (A-10)
@@ -7562,7 +7765,12 @@ AS
           RAISE skip_process_expt;
         END IF;
 --
-        IF (gb_insert_process_flg = TRUE) THEN
+        /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
+        --IF (gb_insert_process_flg = TRUE) THEN
+        IF (gb_insert_process_flg = TRUE
+         AND l_g_get_data_rec.completion_kbn = ct_comp_kbn_comp)
+        THEN
+        /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
           -- ========================================
           -- A-5.物件データ登録処理
           -- ========================================
@@ -7581,7 +7789,12 @@ AS
             RAISE skip_process_expt;
           END IF;
 --
-        ELSE
+        /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
+        --ELSE
+        END IF;
+        --
+        IF (gb_insert_process_flg = FALSE) THEN
+        /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
           ln_instance_status_id := l_g_get_data_rec.instance_status_id; 
           -- ========================================
           -- A-6.論理削除更新チェック処理
@@ -7616,18 +7829,37 @@ AS
             RAISE skip_process_expt;
           END IF;
 --
-          -- ========================================
-          -- A-8.物件データ更新処理
-          -- ========================================
+          /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
+          IF (l_g_get_data_rec.completion_kbn = ct_comp_kbn_comp) THEN
+          /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
+            -- ========================================
+            -- A-8.物件データ更新処理
+            -- ========================================
 --
-          update_item_instances(
-             io_inst_base_data_rec   => l_g_get_data_rec --(IN)物件マスタ情報
-            ,id_process_date         => ld_process_date  -- 業務処理日付
-            ,ov_errbuf               => lv_errbuf        -- エラー・メッセージ            --# 固定 #
-            ,ov_retcode              => lv_sub_retcode   -- リターン・コード              --# 固定 #
-            ,ov_errmsg               => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
-          );
+            update_item_instances(
+               io_inst_base_data_rec   => l_g_get_data_rec --(IN)物件マスタ情報
+              ,id_process_date         => ld_process_date  -- 業務処理日付
+              ,ov_errbuf               => lv_errbuf        -- エラー・メッセージ            --# 固定 #
+              ,ov_retcode              => lv_sub_retcode   -- リターン・コード              --# 固定 #
+              ,ov_errmsg               => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
 --
+          /* 2009.12.11 K.Satomura E_本稼動_00420対応 START */
+          ELSE
+            -- ========================================
+            -- A-8-1.物件データ更新処理2
+            -- ========================================
+            update_item_instances2(
+               io_inst_base_data_rec => l_g_get_data_rec --(IN)物件マスタ情報
+              ,id_process_date       => ld_process_date  -- 業務処理日付
+              ,ov_errbuf             => lv_errbuf        -- エラー・メッセージ            --# 固定 #
+              ,ov_retcode            => lv_sub_retcode   -- リターン・コード              --# 固定 #
+              ,ov_errmsg             => lv_errmsg        -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
+            --
+          END IF;
+          --
+          /* 2009.12.11 K.Satomura E_本稼動_00420対応 END */
           IF (lv_sub_retcode = cv_status_error) THEN
             RAISE global_process_expt;
           ELSIF (lv_sub_retcode = cv_status_warn) THEN
