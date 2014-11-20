@@ -237,7 +237,10 @@ COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.intro_business_person IS 'Ğ‰î‰c‹Æˆ
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.edi_chain_code IS 'ƒ`ƒF[ƒ““XƒR[ƒh(EDI)yeƒŒƒR[ƒh—pz'
 /
-COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.latitude IS 'ˆÜ“x'
+-- 2010/05/18 mod start by Y.Kuboshima
+--COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.latitude IS 'ˆÜ“x'
+COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.latitude IS '“X•Ü‰c‹Æ‹æ•ª'
+-- 2010/05/18 mod end by Y.Kuboshima
 /
 COMMENT ON COLUMN apps.xxcmm_cust_accounts_v.longitude IS 'Œo“x'
 /
