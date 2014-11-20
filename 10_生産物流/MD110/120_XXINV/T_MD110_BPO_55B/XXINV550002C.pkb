@@ -7,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.11
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2008/06/09    1.9   Kazuo Kumamoto   結合テスト障害対応(生産の日付条件変更)
  *  2008/06/09    1.10  Kazuo Kumamoto   結合テスト障害対応(出荷の受払区分アドオンマスタ抽出条件追加)
  *  2008/06/23    1.11  Kazuo Kumamoto   結合テスト障害対応(単位の出力内容変更)
+ *  2008/07/01    1.12  Kazuo Kumamoto   結合テスト障害対応(パラメータ.品目・商品区分・品目区分組み合わせチェック)
+ *  2008/07/01    1.13  Kazuo Kumamoto   結合テスト障害対応(パラメータ.物流ブロック・倉庫/保管倉庫をOR条件とする)
  *
  *****************************************************************************************/
 --
@@ -2939,41 +2941,59 @@ AS
       AND  ( civ_symbol IS NULL
       OR  civ_symbol = ilm.attribute2
       )
-      --パラメータによる絞込み(物流ブロック)
-      AND ( civ_block_01 IS NULL
-        AND civ_block_02 IS NULL
-        AND civ_block_03 IS NULL
-      OR  civ_block_01 = slip.distribution_block
-      OR  civ_block_02 = slip.distribution_block
-      OR  civ_block_03 = slip.distribution_block
-      )
-      --パラメータによる絞込み(保管倉庫・倉庫)
---mod start 1.3
---      AND ( civ_wh_code_01 IS NULL
---        AND civ_wh_code_02 IS NULL
---        AND civ_wh_code_03 IS NULL
---      OR (   civ_wh_loc_ctl = gv_wh_loc_ctl_loc --保管倉庫の場合
---        AND  civ_wh_code_01 = slip.location
---          OR civ_wh_code_02 = slip.location
---          OR civ_wh_code_03 = slip.location
+--mod start 1.13
+--      --パラメータによる絞込み(物流ブロック)
+--      AND ( civ_block_01 IS NULL
+--        AND civ_block_02 IS NULL
+--        AND civ_block_03 IS NULL
+--      OR  civ_block_01 = slip.distribution_block
+--      OR  civ_block_02 = slip.distribution_block
+--      OR  civ_block_03 = slip.distribution_block
+--      )
+--      --パラメータによる絞込み(保管倉庫・倉庫)
+----mod start 1.3
+----      AND ( civ_wh_code_01 IS NULL
+----        AND civ_wh_code_02 IS NULL
+----        AND civ_wh_code_03 IS NULL
+----      OR (   civ_wh_loc_ctl = gv_wh_loc_ctl_loc --保管倉庫の場合
+----        AND  civ_wh_code_01 = slip.location
+----          OR civ_wh_code_02 = slip.location
+----          OR civ_wh_code_03 = slip.location
+----        )
+----      OR (   civ_wh_loc_ctl = gv_wh_loc_ctl_wh --倉庫の場合
+----        AND  civ_wh_code_01 = slip.whse_code
+----          OR civ_wh_code_02 = slip.whse_code
+----          OR civ_wh_code_03 = slip.whse_code
+----        )
+----     )
+--      AND ( NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+--        AND NVL(civ_wh_code_02,gv_nullvalue) = gv_nullvalue
+--        AND NVL(civ_wh_code_03,gv_nullvalue) = gv_nullvalue
+--      OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_loc
+--        AND slip.location IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03))
+--      OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_wh
+--        AND  slip.whse_code IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03)
 --        )
---      OR (   civ_wh_loc_ctl = gv_wh_loc_ctl_wh --倉庫の場合
---        AND  civ_wh_code_01 = slip.whse_code
---          OR civ_wh_code_02 = slip.whse_code
---          OR civ_wh_code_03 = slip.whse_code
---        )
---     )
-      AND ( NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
-        AND NVL(civ_wh_code_02,gv_nullvalue) = gv_nullvalue
-        AND NVL(civ_wh_code_03,gv_nullvalue) = gv_nullvalue
-      OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_loc
-        AND slip.location IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03))
-      OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_wh
-        AND  slip.whse_code IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03)
-        )
+--      )
+----mod end 1.3
+      AND
+      (
+           NVL(civ_block_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_block_02,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_block_03,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+       AND NVL(civ_wh_code_01,gv_nullvalue) = gv_nullvalue
+        --パラメータによる絞込み(物流ブロック)
+        OR  slip.distribution_block IN (civ_block_01,civ_block_02,civ_block_03)
+        --パラメータによる絞込み(保管倉庫)
+        OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_loc
+          AND slip.location IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03))
+        --パラメータによる絞込み(倉庫)
+        OR (  civ_wh_loc_ctl = gv_wh_loc_ctl_wh
+          AND  slip.whse_code IN (civ_wh_code_01, civ_wh_code_02, civ_wh_code_03))
       )
---mod end 1.3
-      --パラメータによる絞込み(品目)
+--mod end 1.13
 --mod start 1.3
 --      AND ( civ_item_code_01 IS NULL
 --        AND civ_item_code_02 IS NULL
@@ -2982,6 +3002,7 @@ AS
 --      OR  civ_item_code_02 = ximv.item_no
 --      OR  civ_item_code_03 = ximv.item_no
 --      )
+      --パラメータによる絞込み(品目)
       AND ( NVL(civ_item_code_01,gv_nullvalue) = gv_nullvalue
         AND NVL(civ_item_code_02,gv_nullvalue) = gv_nullvalue
         AND NVL(civ_item_code_03,gv_nullvalue) = gv_nullvalue
@@ -3144,6 +3165,10 @@ AS
       civ_item_01 VARCHAR2
      ,civ_item_02 VARCHAR2
      ,civ_item_03 VARCHAR2
+--add start 1.12
+     ,civ_prod_div VARCHAR2
+     ,civ_item_div VARCHAR2
+--add end 1.12
     )
     IS
       SELECT xicv.category_set_name                           category_set_name   --カテゴリセット名
@@ -3153,6 +3178,12 @@ AS
       AND    xicv.item_no IN (civ_item_01,civ_item_02,civ_item_03)                --品目コード(パラメータ.品目1～3)
       AND    xicv.enabled_flag = 'Y'                                              --使用可能フラグ
       AND    xicv.disable_date IS NULL                                            --無効日
+--add start 1.12
+      AND   (xicv.category_set_name = gv_category_prod
+        AND  xicv.segment1 = NVL(civ_prod_div,xicv.segment1)
+      OR     xicv.category_set_name = gv_category_item
+        AND  xicv.segment1 = NVL(civ_item_div,xicv.segment1))
+--add end 1.12
       ;
 --
     TYPE lr_item IS RECORD(
@@ -3213,6 +3244,10 @@ AS
         ir_prm.item_code_01
        ,ir_prm.item_code_02
        ,ir_prm.item_code_03
+--add start 1.12
+       ,ir_prm.prod_div
+       ,ir_prm.item_div
+--add end 1.12
       );
       --バルクフェッチ
       FETCH cur_item BULK COLLECT INTO lt_item;
