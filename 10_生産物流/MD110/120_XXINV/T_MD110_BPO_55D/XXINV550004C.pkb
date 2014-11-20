@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/09/16    1.5   Y.Yamamoto       PT 2-1_12 #63
  *  2008/09/24    1.6   Y.Kawano         T_S_500対応
  *  2008/10/02    1.7   Y.Yamamoto       PT 2-1_12 #85
+ *  2008/11/11    1.8   Y.Kawano         統合テスト指摘#565対応
  *
  *****************************************************************************************/
 --  
@@ -851,7 +852,10 @@ AS
                 AND    xmrih.shipped_locat_id    = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
                 AND    xilv.whse_code             = curr_whse_code_tbl(i)         --④の倉庫コード= d-2で取得した倉庫コード
                 AND    xmril.item_id             = curr_item_id_tbl(i)            --②の品目id= d-2で取得した品目id
-                AND    xmrih.status              IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+-- 2008/11/11 Y.Kawano MOD Start
+--                AND    xmrih.status              IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+                AND    xmrih.status              IN ('04','06')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+-- 2008/11/11 Y.Kawano MOD End
                 AND    xmril.delete_flg          = 'N'                            --②の取消フラグ= "off"
                 AND    xmld.document_type_code   = '20'                           --③の文書タイプ= "移動"
                 AND    xmld.record_type_code     = '20'                           --③のレコードタイプ= "出庫実績"
@@ -882,7 +886,10 @@ AS
                 AND    xmrih.shipped_locat_id    = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
                 AND    xilv.whse_code             = curr_whse_code_tbl(i)         --④の倉庫コード= d-2で取得した倉庫コード
                 AND    xmril.item_id             = curr_item_id_tbl(i)            --②の品目id= d-2で取得した品目id
-                AND    xmrih.status              IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+-- 2008/11/11 Y.Kawano MOD Start
+--                AND    xmrih.status              IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+                AND    xmrih.status              IN ('04','06')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+-- 2008/11/11 Y.Kawano MOD End
                 AND    xmril.delete_flg          = 'N'                            --②の取消フラグ= "off"
                 -- 2008/05/07 mod 日付TRUNC対応 start
                 --AND    xmrih.actual_ship_date    BETWEEN ld_invent_begin_ymd
@@ -1186,7 +1193,10 @@ AS
               AND   xmrih.shipped_locat_id       = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
               AND   xilv.whse_code               = pre_whse_code_tbl(i)           --④の倉庫コード= d-6で取得した倉庫コード
               AND   xmril.item_id                = pre_item_id_tbl(i)             --②の品目id= d-6で取得した品目id
-              AND   xmrih.status                 IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+-- 2008/11/11 Y.Kawano MOD Start
+--              AND   xmrih.status                 IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+              AND    xmrih.status              IN ('04','06')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+-- 2008/11/11 Y.Kawano MOD End
               AND   xmril.delete_flg             = 'N'                            --②の取消フラグ= "off"
               AND   xmld.document_type_code      = '20'                           --③の文書タイプ= "移動"
               AND   xmld.record_type_code        = '20'                           --③のレコードタイプ= "出庫実績"
@@ -1217,7 +1227,10 @@ AS
               AND   xmrih.shipped_locat_id       = xilv.inventory_location_id     --①の出庫元id=⑤の保管倉庫id
               AND   xilv.whse_code               = pre_whse_code_tbl(i)           --④の倉庫コード= d-6で取得した倉庫コード
               AND   xmril.item_id                = pre_item_id_tbl(i)             --②の品目id= d-6で取得した品目id
-              AND   xmrih.status                 IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+-- 2008/11/11 Y.Kawano MOD Start
+--              AND   xmrih.status                 IN ('04','05')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+              AND    xmrih.status              IN ('04','06')                   --①のステータス=  "出庫報告有"または"入出庫報告有"
+-- 2008/11/11 Y.Kawano MOD End
               AND   xmril.delete_flg             = 'N'                            --②の取消フラグ= "off"
               -- 2008/05/07 mod 日付TRUNC対応 start
               --AND   xmrih.actual_ship_date       BETWEEN ld_pre_invent_begin_ymd

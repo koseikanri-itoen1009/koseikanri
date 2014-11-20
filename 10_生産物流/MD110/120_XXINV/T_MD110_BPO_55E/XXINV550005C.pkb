@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 棚卸スナップショット作成           (T_MD070_BPO_55E)
- * Version          : 1.0
+ * Version          : 1.1
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/22    1.0  Oracle 大橋孝郎  新規作成
+ *  2008/11/13    1.1  Y.Kawano         統合テスト指摘#580対応
  *
  *****************************************************************************************/
 --
@@ -64,6 +65,12 @@ AS
   ------------------------------
   gc_application_inv     CONSTANT VARCHAR2(5)   := 'XXINV' ;           -- アプリケーション（XXINV）
   gc_xxinv_10117         CONSTANT VARCHAR2(15)  := 'APP-XXINV-10117' ; -- 棚卸スナップショット作成エラー
+-- 2008/11/13 Y.Kawano Add Start
+  gc_xxinv_10009         CONSTANT VARCHAR2(15)  := 'APP-XXINV-10009';  -- データ取得失敗
+  -- トークン
+  gv_c_tkn_msg           CONSTANT VARCHAR2(30)  := 'MSG';
+  gv_c_calendar          CONSTANT VARCHAR2(60)  := 'OPM在庫会計期間CLOSE年月';
+-- 2008/11/13 Y.Kawano Add End
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
@@ -114,9 +121,15 @@ AS
     -- *** ローカル変数 ***
     ln_ret_num        NUMBER ;        -- 関数戻り値：数値型
     lv_err_code       VARCHAR2(100) ; -- エラーコード格納用
+-- 2008/11/13 Y.Kawano Add Start
+    lv_invent_ym      VARCHAR2(6) ;   -- 対象年月
+-- 2008/11/13 Y.Kawano Add End
 --
     -- *** ローカル・例外処理 ***
     create_snap_expt  EXCEPTION ;     -- 棚卸スナップショット作成エラー
+-- 2008/11/13 Y.Kawano Add Start
+    get_data_err_expt EXCEPTION ;     -- データ取得エラー
+-- 2008/11/13 Y.Kawano Add End
 --
   BEGIN
 --
@@ -126,10 +139,30 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/11/13 Y.Kawano Add Start
+   -- パラメータ：対象年月がNULLの場合、直近締月の翌月を設定
+   IF ( iv_invent_ym IS NULL )
+   THEN
+     -- OPM在庫カレンダの直近締月の翌月取得
+     lv_invent_ym := TO_CHAR(ADD_MONTHS(TO_DATE(xxcmn_common_pkg.get_opminv_close_period, 'YYYYMM'), 1),'YYYYMM');
+     --
+     IF ( lv_invent_ym IS NULL )              --*** データ取得エラー ***
+     THEN
+      RAISE get_data_err_expt;
+     END IF;
+     --
+   ELSE
+     lv_invent_ym := iv_invent_ym;
+   END IF;
+-- 2008/11/13 Y.Kawano Add End
+--
     -- ====================================================
     -- 棚卸スナップショット作成プログラム呼出
     -- ====================================================
-    ln_ret_num := xxinv550004c.create_snapshot( iv_invent_ym         -- 対象年月
+-- 2008/11/13 Y.Kawano Add Start
+--    ln_ret_num := xxinv550004c.create_snapshot( iv_invent_ym         -- 対象年月
+    ln_ret_num := xxinv550004c.create_snapshot( lv_invent_ym         -- 対象年月
+-- 2008/11/13 Y.Kawano Add End
                                                ,iv_whse_code1        -- 倉庫コード1
                                                ,iv_whse_code2        -- 倉庫コード2
                                                ,iv_whse_code3        -- 倉庫コード3
@@ -164,6 +197,20 @@ AS
       ov_errmsg := lv_errmsg ;
       ov_errbuf := SQLERRM;
       ov_retcode := gv_status_error ;
+--
+-- 2008/11/13 Y.Kawano Add Start
+    --*** データ取得エラー例外 ***
+    WHEN get_data_err_expt THEN
+      -- メッセージセット
+       lv_errmsg := xxcmn_common_pkg.get_msg(gc_application_inv,
+                                             gc_xxinv_10009,   -- データ取得エラー
+                                             gv_c_tkn_msg,     -- トークンMSG
+                                             gv_c_calendar     -- トークン値
+                                             );
+      ov_errmsg := lv_errmsg ;
+      ov_errbuf := SQLERRM;
+      ov_retcode := gv_status_error ;
+-- 2008/11/13 Y.Kawano Add Start
 --
 --#################################  固定例外処理部 START   ###################################
 --
