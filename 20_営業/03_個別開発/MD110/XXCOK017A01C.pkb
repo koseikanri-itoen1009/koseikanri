@@ -7,7 +7,7 @@ AS
  * Description      : 「本振用FBデータ作成」にて支払対象となった
  *                     自販機販売手数料に関する仕訳を作成し、GLモジュールへ連携
  * MD.050           : GLインターフェイス（GL I/F） MD050_COK_017_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *  2008/11/14    1.0   A.Yano           新規作成
  *  2009/03/03    1.1   A.Yano           [障害COK_071] GL記帳日の不具合対応
  *  2009/05/13    1.2   M.Hiruta         [障害T1_0867] GLへ連携するデータの顧客コードにダミーを設定しないよう変更
+ *  2009/05/25    1.3   M.Hiruta         [障害T1_1166] GLへ連携するデータの顧客コードの取得処理において
+ *                                                     正確な顧客コードを取得できるよう変更
  *
  *****************************************************************************************/
 --
@@ -84,6 +86,10 @@ AS
   cv_cust_code_token             CONSTANT VARCHAR2(10)  := 'CUST_CODE';             -- 顧客コード
   cv_pay_date_token              CONSTANT VARCHAR2(10)  := 'PAY_DATE';              -- 支払日
   -- プロファイル名
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+  -- MO: 営業単位
+  cv_org_id                      CONSTANT VARCHAR2(10)  := 'ORG_ID';
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
   -- 会計帳簿名
   cv_set_of_bks_name             CONSTANT VARCHAR2(20)  := 'GL_SET_OF_BKS_NAME';
   -- 会計帳簿ID
@@ -166,6 +172,9 @@ AS
   gn_error_cnt                    NUMBER                        DEFAULT 0;     -- エラー件数
   gn_warn_cnt                     NUMBER                        DEFAULT 0;     -- スキップ件数
   -- プロファイル値
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+  gn_org_id                       NUMBER                        DEFAULT NULL;  -- 営業単位ID
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
   gv_set_of_bks_name              VARCHAR2(20)                  DEFAULT NULL;  -- 会計帳簿名
   gv_set_of_bks_id                VARCHAR2(20)                  DEFAULT NULL;  -- 会計帳簿ID
   gv_aff1_company_code            VARCHAR2(20)                  DEFAULT NULL;  -- 会社コード
@@ -231,6 +240,9 @@ AS
             OR( pvsa.inactive_date    >= gd_payment_date ) )
     AND   pvsa.attribute4 IN( cv_bm_payment_type1, cv_bm_payment_type2 )
     AND   xbb.cust_code               =  hca.account_number
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+    AND   pvsa.org_id = gn_org_id
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
     GROUP BY xbb.base_code
             ,xbb.supplier_code
             ,xbb.supplier_site_code
@@ -583,6 +595,17 @@ AS
     -- ====================================================
     gv_batch_name := xxcok_common_pkg.get_batch_name_f( gv_gl_category_bm );
 --
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+    -- ====================================================
+    -- 30. 営業単位ID取得
+    -- ====================================================
+    gn_org_id := TO_NUMBER( FND_PROFILE.VALUE( cv_org_id ) );
+    IF( gn_org_id IS NULL ) THEN
+      lv_nodata_profile := cv_org_id;
+      RAISE nodata_profile_expt;
+    END IF;
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--
   EXCEPTION
     --*** プロファイル値取得例外 ***
     WHEN nodata_profile_expt THEN
@@ -724,6 +747,9 @@ AS
     ,ot_supplier_site_code_vendor OUT xxcok_backmargin_balance.supplier_site_code%TYPE -- 仕入先サイトコード(MAX)
     ,on_bank_chrg_amt_vendor      OUT NUMBER                                           -- 振込手数料額（仕入先）
     ,on_bank_sales_tax_vendor     OUT NUMBER                                           -- 振込手数料税額（仕入先）
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+    ,ot_cust_code_vendor          OUT xxcok_backmargin_balance.cust_code%TYPE          -- 顧客コード(MAX)
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
   )
   IS
     -- ===============================
@@ -755,6 +781,9 @@ AS
     lt_supplier_code_max       xxcok_backmargin_balance.supplier_code%TYPE      DEFAULT NULL; -- 仕入先コード(MAX)
     lt_supplier_site_code_max  xxcok_backmargin_balance.supplier_site_code%TYPE DEFAULT NULL; -- 仕入先サイトコード(MAX)
     lt_payment_amt_max         xxcok_backmargin_balance.payment_amt_tax%TYPE    DEFAULT NULL; -- 支払額(MAX)
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+    lt_cust_code_max           xxcok_backmargin_balance.cust_code%TYPE          DEFAULT NULL; -- 顧客コード(MAX)
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
 --
   BEGIN
 --
@@ -857,6 +886,9 @@ AS
       AND   (   ( pvsa.inactive_date IS NULL )
               OR( pvsa.inactive_date >= gd_payment_date ) )
       AND   pvsa.attribute4 IN( cv_bm_payment_type1, cv_bm_payment_type2 )
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+      AND   pvsa.org_id = gn_org_id
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
       GROUP BY xbb.supplier_code
               ,xbb.supplier_site_code
       ;
@@ -883,18 +915,30 @@ AS
             ,base.supplier_code       AS supplier_code      -- 仕入先コード
             ,base.supplier_site_code  AS supplier_site_code -- 仕入先サイトコード
             ,base.payment_amt         AS payment_amt_max    -- 支払額（MAX）
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+            ,base.cust_code           AS cust_code
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
       INTO lt_base_code_max
           ,lt_supplier_code_max
           ,lt_supplier_site_code_max
           ,lt_payment_amt_max
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+          ,lt_cust_code_max
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
       FROM ( SELECT ROW_NUMBER() over (
                       ORDER BY SUM( xbb.payment_amt_tax ) DESC
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+                              ,xbb.cust_code              ASC
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
                               ,xbb.base_code              ASC
                     )                              AS row_num
                    ,xbb.base_code                  AS base_code
                    ,xbb.supplier_code              AS supplier_code
                    ,xbb.supplier_site_code         AS supplier_site_code
                    ,SUM( xbb.payment_amt_tax )     AS payment_amt
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+                   ,xbb.cust_code                  AS cust_code
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
              FROM xxcok_backmargin_balance  xbb
                  ,po_vendors                pv
                  ,po_vendor_sites_all       pvsa
@@ -908,9 +952,15 @@ AS
              AND   (   ( pvsa.inactive_date      IS NULL )
                      OR( pvsa.inactive_date      >= gd_payment_date ) )
              AND   pvsa.attribute4 IN( cv_bm_payment_type1, cv_bm_payment_type2 )
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+             AND   pvsa.org_id                 = gn_org_id
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
              GROUP BY xbb.base_code
                      ,xbb.supplier_code
                      ,xbb.supplier_site_code
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+                     ,xbb.cust_code
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
              ) base
       WHERE base.row_num = 1
       ;
@@ -923,6 +973,9 @@ AS
       ot_supplier_site_code_vendor  := lt_supplier_site_code_max;  -- 仕入先サイトコード
       on_bank_chrg_amt_vendor       := ln_bank_chrg_amt;           -- 振込手数料
       on_bank_sales_tax_vendor      := ln_bank_sales_tax;          -- 振込手数料消費税額
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+      ot_cust_code_vendor           := lt_cust_code_max;           -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
     END IF;
 --
     -- ====================================================
@@ -1193,6 +1246,9 @@ AS
     lt_supplier_code_before       xxcok_backmargin_balance.supplier_code%TYPE      DEFAULT NULL; -- 仕入先コード
     lt_supplier_site_code_before  xxcok_backmargin_balance.supplier_site_code%TYPE DEFAULT NULL; -- 仕入先サイトコード
     lt_cust_code_before           xxcok_backmargin_balance.cust_code%TYPE          DEFAULT NULL; -- 顧客コード
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+    lt_cust_code_vendor           xxcok_backmargin_balance.cust_code%TYPE          DEFAULT NULL; -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
 --
   BEGIN
 --
@@ -1318,6 +1374,9 @@ AS
       lt_slip_number               := iv_slip_number;                  -- 伝票番号
       lt_dept_base                 := it_base_code_before;             -- 起票部門
       lt_sales_staff_code          := iv_sales_staff_code;             -- 伝票入力者
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+      lt_cust_code_vendor          := it_cust_code_before;             -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
       -- ====================================================
       -- 1. 銀行手数料負担者が当方の場合
       -- ====================================================
@@ -1348,7 +1407,10 @@ AS
 -- Start 2009/05/13 Ver_1.2 T1_0867 M.Hiruta
 --            ,it_customer_code             => lt_customer_code             -- 顧客コード
 --            ,it_corp_code                 => lt_corp_code                 -- 企業コード
-            ,it_customer_code             => g_gl_interface_rec.cust_code -- 顧客コード
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--            ,it_customer_code             => g_gl_interface_rec.cust_code -- 顧客コード
+            ,it_customer_code             => lt_cust_code_vendor          -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
             ,it_corp_code                 => iv_corp_code                 -- 企業コード
 -- End   2009/05/13 Ver_1.2 T1_0867 M.Hiruta
             ,it_gl_name                   => lt_gl_name                   -- 仕訳名
@@ -1557,7 +1619,10 @@ AS
 -- Start 2009/05/13 Ver_1.2 T1_0867 M.Hiruta
 --            ,it_customer_code             => lt_customer_code             -- 顧客コード
 --            ,it_corp_code                 => lt_corp_code                 -- 企業コード
-            ,it_customer_code             => g_gl_interface_rec.cust_code -- 顧客コード
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--            ,it_customer_code             => g_gl_interface_rec.cust_code -- 顧客コード
+            ,it_customer_code             => lt_cust_code_vendor          -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
             ,it_corp_code                 => iv_corp_code                 -- 企業コード
 -- End   2009/05/13 Ver_1.2 T1_0867 M.Hiruta
             ,it_gl_name                   => lt_gl_name                   -- 仕訳名
@@ -1775,6 +1840,10 @@ AS
     lt_expect_payment_date_before  xxcok_backmargin_balance.expect_payment_date%TYPE DEFAULT NULL; -- 支払予定日
     lt_bank_charge_bearer_before   po_vendor_sites_all.bank_charge_bearer%TYPE       DEFAULT NULL; -- 銀行手数料負担者
     lt_payment_currency_before     po_vendor_sites_all.payment_currency_code%TYPE    DEFAULT NULL; -- 支払通貨
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+    lt_cust_code_vendor            xxcok_backmargin_balance.cust_code%TYPE           DEFAULT NULL; -- 顧客コード
+    lt_cust_code_slip              xxcok_backmargin_balance.cust_code%TYPE           DEFAULT NULL; -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
 --
   BEGIN
 --
@@ -1837,6 +1906,9 @@ AS
           ,ot_supplier_site_code_vendor =>   lt_supplier_site_code_vendor -- 仕入先サイトコード
           ,on_bank_chrg_amt_vendor      =>   ln_bank_chrg_amt_vendor      -- 振込手数料額
           ,on_bank_sales_tax_vendor     =>   ln_bank_sales_tax_vendor     -- 振込手数料税額
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+          ,ot_cust_code_vendor          =>   lt_cust_code_vendor          -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
         );
         IF( lv_retcode = cv_status_error ) THEN
           RAISE global_process_expt;
@@ -1865,6 +1937,9 @@ AS
           lt_supplier_site_code_slip  := lt_supplier_site_code_vendor; -- 仕入先サイトコード
           ln_bank_chrg_amt_slip       := ln_bank_chrg_amt_vendor;      -- 振込手数料額
           ln_bank_sales_tax_slip      := ln_bank_sales_tax_vendor;     -- 振込手数料税額
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+          lt_cust_code_slip           := lt_cust_code_vendor;          -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
         END IF;
 --
         -- ====================================================
@@ -1967,7 +2042,10 @@ AS
           ,it_payment_currency_before    =>  lt_payment_currency_before     -- 支払通貨
           ,it_supplier_code_before       =>  lt_supplier_code_before        -- 仕入先コード
           ,it_supplier_site_code_before  =>  lt_supplier_site_code_before   -- 仕入先サイトコード
-          ,it_cust_code_before           =>  lt_cust_code_before            -- 顧客コード
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--          ,it_cust_code_before           =>  lt_cust_code_before            -- 顧客コード
+          ,it_cust_code_before           =>  lt_cust_code_slip              -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
           ,iv_corp_code                  =>  lv_corp_code                   -- 企業コード
           ,in_bm_sum_amt_tax_before      =>  ln_bm_sum_amt_tax_before       -- 販売手数料消費税額合計
           ,in_electric_sum_tax_before    =>  ln_electric_sum_tax_before     -- 電気料消費税額合計
@@ -2029,7 +2107,10 @@ AS
       ,it_payment_currency_before    =>  lt_payment_currency_before     -- 支払通貨
       ,it_supplier_code_before       =>  lt_supplier_code_before        -- 仕入先コード
       ,it_supplier_site_code_before  =>  lt_supplier_site_code_before   -- 仕入先サイトコード
-      ,it_cust_code_before           =>  lt_cust_code_before            -- 顧客コード
+-- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--      ,it_cust_code_before           =>  lt_cust_code_before            -- 顧客コード
+      ,it_cust_code_before           =>  lt_cust_code_slip              -- 顧客コード
+-- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
       ,iv_corp_code                  =>  lv_corp_code                   -- 企業コード
       ,in_bm_sum_amt_tax_before      =>  ln_bm_sum_amt_tax_before       -- 販売手数料消費税額合計
       ,in_electric_sum_tax_before    =>  ln_electric_sum_tax_before     -- 電気料消費税額合計
