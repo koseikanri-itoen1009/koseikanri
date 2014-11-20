@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52C
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  * ------------- ----- ------------------- -------------------------------------------------
  *  2008/11/11    1.0  Oracle 二瓶 大輔    初回作成
  *  2009/01/15    1.1  SCS    伊藤 ひとみ  指摘2,7対応
+ *  2009/02/03    1.2  SCS    伊藤 ひとみ  本番障害#1113対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -123,6 +124,9 @@ AS
   gv_msg_xxinv_10066    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10066'; -- 未来日エラー
   gv_msg_52a_71         CONSTANT VARCHAR2(15)   := 'APP-XXINV-10071'; -- パラメータ摘要サイズエラー
   gv_msg_52a_72         CONSTANT VARCHAR2(15)   := 'APP-XXINV-10072'; -- 入力パラメータ必須エラー
+-- 2009/02/03 H.Itou Add Start 本番障害#1113対応
+  gv_msg_xxinv_10186    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10186'; -- 同一品目エラー
+-- 2009/02/03 H.Itou Add End
 --
   gv_msg_52a_77         CONSTANT VARCHAR2(15)   := 'APP-XXINV-10177'; -- 品目振替_処理区分
   gv_msg_52a_45         CONSTANT VARCHAR2(15)   := 'APP-XXINV-10145'; -- 品目振替_保管倉庫
@@ -571,6 +575,19 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2009/02/03 H.Itou Add Start 本番障害#1113対応
+    -- ==================================
+    -- 同一品目チェック
+    -- ==================================
+    -- 振替元品目と振替先品目が同じ場合はエラー
+    IF ( ir_masters_rec.from_item_no = ir_masters_rec.to_item_no ) THEN
+      -- エラーメッセージを取得
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+                                          , gv_msg_xxinv_10186);
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END IF;
+-- 2009/02/03 H.Itou Add End
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1781,7 +1798,10 @@ AS
     GMD_FORMULA_PUB.INSERT_FORMULA(
           p_api_version        => 1.0                   -- APIバージョン番号
         , p_init_msg_list      => FND_API.G_FALSE       -- メッセージ初期化フラグ
-        , p_commit             => FND_API.G_TRUE        -- 自動コミットフラグ
+-- 2009/02/03 H.Itou Mod Start 本番障害#1113対応
+--        , p_commit             => FND_API.G_TRUE        -- 自動コミットフラグ
+        , p_commit             => FND_API.G_FALSE       -- 自動コミットフラグ
+-- 2009/02/03 H.Itou Mod End
         , p_called_from_forms  => 'NO'
         , x_return_status      => lv_return_status      -- プロセス終了ステータス
         , x_msg_count          => ln_message_count      -- エラーメッセージ件数
@@ -1813,13 +1833,17 @@ AS
       SELECT ffmb.formula_id   formula_id                  -- フォーミュラID
       INTO   ir_masters_rec.formula_id                     -- フォーミュラID
       FROM   fm_form_mst_b     ffmb                        -- フォーミュラマスタ
-           , fm_matl_dtl       fmd1                        -- フォーミュラマスタ明細(振替元)
-           , fm_matl_dtl       fmd2                        -- フォーミュラマスタ明細(振替先)
-      WHERE  ffmb.formula_id = fmd1.formula_id             -- 結合条件(フォーミュラマスタ = フォーミュラマスタ明細(振替元))
-      AND    ffmb.formula_id = fmd2.formula_id             -- 結合条件(フォーミュラマスタ = フォーミュラマスタ明細(振替先))
-      AND    fmd1.item_id    = ir_masters_rec.from_item_id -- 振替元の品目ID
-      AND    fmd2.item_id    = ir_masters_rec.to_item_id   -- 振替先の品目ID
-      AND    ffmb.formula_no = ir_masters_rec.formula_no   -- フォーミュラNo
+-- 2009/02/03 H.Itou Del Start 本番障害#1113対応
+--           , fm_matl_dtl       fmd1                        -- フォーミュラマスタ明細(振替元)
+--           , fm_matl_dtl       fmd2                        -- フォーミュラマスタ明細(振替先)
+--      WHERE  ffmb.formula_id = fmd1.formula_id             -- 結合条件(フォーミュラマスタ = フォーミュラマスタ明細(振替元))
+--      AND    ffmb.formula_id = fmd2.formula_id             -- 結合条件(フォーミュラマスタ = フォーミュラマスタ明細(振替先))
+--      AND    fmd1.item_id    = ir_masters_rec.from_item_id -- 振替元の品目ID
+--      AND    fmd2.item_id    = ir_masters_rec.to_item_id   -- 振替先の品目ID
+-- 2009/02/03 H.Itou Del End
+-- 2009/02/03 H.Itou Mod Start 本番障害#1113対応
+      WHERE  ffmb.formula_no = ir_masters_rec.formula_no   -- フォーミュラNo
+-- 2009/02/03 H.Itou Mod End
       ;
     END IF;
 --
@@ -2819,6 +2843,9 @@ AS
     FROM   gme_material_details    gmd                 -- 生産原料詳細
     WHERE  gmd.batch_id = ir_masters_rec.batch_id      -- バッチID
     AND    gmd.item_id  = ir_masters_rec.from_item_id  -- 品目ID(振替元)
+-- 2009/02/03 H.Itou Add Start 本番障害#1113対応
+    AND    gmd.line_type   = gn_line_type_i            -- ラインタイプが原料
+-- 2009/02/03 H.Itou Add End
     ;
 --
     -- 振替先品目の生産原料詳細IDの取得
@@ -2827,6 +2854,9 @@ AS
     FROM   gme_material_details gmd                    -- 生産原料詳細
     WHERE  gmd.batch_id = ir_masters_rec.batch_id      -- バッチID
     AND    gmd.item_id  = ir_masters_rec.to_item_id    -- 品目ID(振替先)
+-- 2009/02/03 H.Itou Add Start 本番障害#1113対応
+    AND    gmd.line_type   = gn_line_type_p            -- ラインタイプが製品
+-- 2009/02/03 H.Itou Add End
     ;
 --
   EXCEPTION
@@ -4186,7 +4216,6 @@ AS
     -- メッセージ初期化API
     FND_MSG_PUB.INITIALIZE();
 --
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'ir_masters_rec.from_trans_id:'||ir_masters_rec.from_trans_id);
     -- ======================================
     -- ロット割当削除API
     -- ======================================
@@ -4319,7 +4348,6 @@ FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'ir_masters_rec.from_trans_id:'||ir_masters_re
     -- メッセージ初期化API
     FND_MSG_PUB.INITIALIZE();
 --
-FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'ir_masters_rec.to_trans_id:'||ir_masters_rec.to_trans_id);
     -- ======================================
     -- ロット割当削除API
     -- ======================================
