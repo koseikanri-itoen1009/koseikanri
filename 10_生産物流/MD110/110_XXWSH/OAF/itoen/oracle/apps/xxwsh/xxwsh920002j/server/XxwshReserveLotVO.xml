@@ -327,6 +327,9 @@ SELECT ilm.lot_no                            lot_no,                            
          FROM    xxwsh_order_headers_all    oha  -- 受注ヘッダ（アドオン）
                 ,xxwsh_order_lines_all      ola  -- 受注明細（アドオン）
                 ,xxinv_mov_lot_details      mld  -- 移動ロット詳細（アドオン）
+-- 2010/01/27 M.Hokkanji 本稼働障害#1320 Add Start
+                ,oe_transaction_types_all   otta   -- 受注タイプ
+-- 2010/01/27 M.Hokkanji 本稼働障害#1320 Add End
          WHERE   oha.req_status           IN ('04','08')
          AND     oha.actual_confirm_class  = 'N'
          AND     oha.latest_external_flag  = 'Y'
@@ -338,7 +341,19 @@ SELECT ilm.lot_no                            lot_no,                            
          AND     mld.record_type_code      = '20'
 --         AND     mld.actual_date          >= TO_DATE(:28, 'YYYY/MM/DD')     -- 実績計上前なのでOPEN日付のデータのみ対象。 -- 2010/01/08 Del 本稼動障害#861
          AND     oha.shipped_date         >= TO_DATE(:28, 'YYYY/MM/DD')     -- 実績計上前なのでOPEN日付のデータのみ対象。 -- 2010/01/08 Add
-         AND     NVL(mld.before_actual_quantity, 0) - mld.actual_quantity > 0 -- 出庫訂正はマイナス訂正のみ取得
+-- 2010/01/27 M.Hokkanji 本稼働障害#1320 Mod Start
+         AND     otta.transaction_type_id  = oha.order_type_id  
+         AND     otta.attribute1           IN ('1','2')
+         AND     (
+                   (otta.order_category_code = 'ORDER'
+                     AND NVL(mld.before_actual_quantity, 0) - mld.actual_quantity > 0 -- 出庫訂正はマイナス訂正のみ取得
+                   ) OR
+                   (otta.order_category_code = 'RETURN'
+                     AND mld.actual_quantity - NVL(mld.before_actual_quantity, 0) > 0
+                   )
+                )
+--         AND     NVL(mld.before_actual_quantity, 0) - mld.actual_quantity > 0 -- 出庫訂正はマイナス訂正のみ取得
+-- 2010/01/27 M.Hokkanji 本稼働障害#1320 Mod End
 -- 2010/01/05 H.Itou 本稼動障害#861 Add End
          UNION
          -- 引当済ロット
