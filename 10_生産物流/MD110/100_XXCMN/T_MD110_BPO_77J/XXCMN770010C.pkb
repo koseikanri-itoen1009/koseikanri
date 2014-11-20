@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY xxcmn770010c
+create or replace PACKAGE BODY xxcmn770010c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.14
+ * Version          : 1.17
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -44,7 +44,9 @@ AS
  *  2008/11/29    1.13  N.Yoshida        本番#215対応
  *  2008/12/02    1.14  N.Yoshida        本番#345対応(振替入庫、緑営１、緑営２追加対応)
  *                                       本番#385対応
- *  2008/12/06    1.15  T.Miyata         本番#495,498対応
+ *  2008/12/06    1.15  T.Miyata         本番#495対応
+ *  2008/12/06    1.16  T.Miyata         本番#498対応
+ *  2008/12/07    1.17  N.Yoshida        本番#496対応
  *
  *****************************************************************************************/
 --
@@ -581,7 +583,7 @@ AS
     --                            102:製品出荷
     --                            112:振替出荷_出荷
     --===============================================================
-    lv_select101_1 := 
+    lv_select101_1 :=
        -- '  SELECT /*+ leading ( itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm ) use_nl ( itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm ) */ '
        '  SELECT /*+ leading (xoha ooha otta xrpm xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xrpm xola rsl itp gic1 mcb1 gic2 mcb2) */ '
     || '         iimb.item_no             item_code'            -- 品目コード
@@ -667,7 +669,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select101_2 := 
+    lv_select101_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -756,7 +758,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select101_3 := 
+    lv_select101_3 :=
        '  SELECT /*+ leading (xoha xrpm ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha xrpm ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -840,7 +842,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select101_4 := 
+    lv_select101_4 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -933,7 +935,7 @@ AS
     -- 対象取引区分(OMSO/PORC) ⇒ 105:振替有償_出荷
     --                            108:商品振替有償_出荷
     --===============================================================
-    lv_select102_1 := 
+    lv_select102_1 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1021,7 +1023,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select102_2 := 
+    lv_select102_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1118,7 +1120,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select102_3 := 
+    lv_select102_3 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1205,7 +1207,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select102_4 := 
+    lv_select102_4 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1305,7 +1307,7 @@ AS
     -- 検索条件.受払区分       ⇒ 103
     -- 対象取引区分(OMSO/PORC) ⇒ 105:有償
     --===============================================================
-    lv_select103_1 := 
+    lv_select103_1 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xrpm xola rsl itp gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1390,7 +1392,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select103_2 := 
+    lv_select103_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xrpm xola wdd itp gic1 mcb1 gic2 mcb2) */'
     || '             iimb.item_no             item_code'            -- 品目コード
     || '            ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1484,7 +1486,7 @@ AS
     -- 検索条件.受払区分       ⇒ 105
     -- 対象取引区分(OMSO/PORC) ⇒ 107:商品振替有償_受入
     --===============================================================
-    lv_select105_1 := 
+    lv_select105_1 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1589,7 +1591,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select105_2 := 
+    lv_select105_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1697,7 +1699,7 @@ AS
     -- 検索条件.受払区分       ⇒ 106
     -- 対象取引区分(OMSO/PORC) ⇒ 109:商品振替有償_払出
     --===============================================================
-    lv_select106_1 := 
+    lv_select106_1 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xrpm xola rsl itp gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1797,7 +1799,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select106_2 := 
+    lv_select106_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xrpm xola wdd itp gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1901,7 +1903,7 @@ AS
     -- 検索条件.受払区分       ⇒ 107
     -- 対象取引区分(OMSO/PORC) ⇒ 104:振替有償_受入
     --===============================================================
-    lv_select107_1 := 
+    lv_select107_1 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1915,7 +1917,16 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
-    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update start
+    || '        ,CASE WHEN xrpm.dealings_div_name IN (''' || gv_d_name_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_item_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_gen || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_han || ''')'
+    || '                   THEN itp.trans_qty * TO_NUMBER(''' || gc_rcv_pay_div_adj || ''')'
+    || '              ELSE itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+    || '         END                              trans_qty'
+--    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update end
     || '  FROM   ic_tran_pnd               itp'
     || '        ,rcv_shipment_lines        rsl'
     || '        ,oe_order_headers_all      ooha'
@@ -1983,7 +1994,7 @@ AS
     || '  AND    xrpm.item_div_ahead       = ''5'''
     ;
 --
-    lv_select107_2 := 
+    lv_select107_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -1997,7 +2008,16 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
-    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update start
+    || '        ,CASE WHEN xrpm.dealings_div_name IN (''' || gv_d_name_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_item_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_gen || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_han || ''')'
+    || '                   THEN itp.trans_qty * TO_NUMBER(''' || gc_rcv_pay_div_adj || ''')'
+    || '              ELSE itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+    || '         END                              trans_qty'
+--    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update end
     || '  FROM   ic_tran_pnd               itp'
     || '        ,wsh_delivery_details      wdd'
     || '        ,oe_order_headers_all      ooha'
@@ -2077,7 +2097,7 @@ AS
     -- 検索条件.受払区分       ⇒ 109
     -- 対象取引区分(OMSO/PORC) ⇒ 110:振替出荷_受入_原
     --===============================================================
-    lv_select109_1 := 
+    lv_select109_1 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2091,7 +2111,16 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
-    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update start
+    || '        ,CASE WHEN xrpm.dealings_div_name IN (''' || gv_d_name_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_item_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_gen || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_han || ''')'
+    || '                   THEN itp.trans_qty * TO_NUMBER(''' || gc_rcv_pay_div_adj || ''')'
+    || '              ELSE itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+    || '         END                              trans_qty'
+--    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update end
     || '  FROM   ic_tran_pnd               itp'
     || '        ,rcv_shipment_lines        rsl'
     || '        ,oe_order_headers_all      ooha'
@@ -2151,18 +2180,20 @@ AS
     || '  AND    xoha.req_status           = ''04'''
     || '  AND    otta.attribute1           = ''1'''
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
--- 2008/12/06 v1.15 miyata update start
+-- 2008/12/06 v1.16 miyata update start
 --    || '  AND    xrpm.dealings_div         = ''109'''
     || '  AND    xrpm.dealings_div         = ''110'''
--- 2008/12/06 v1.15 miyata update end
+-- 2008/12/06 v1.16 miyata update end
     || '  AND    xrpm.shipment_provision_div = ''1'''
-    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+-- 2008/12/06 v1.16 miyata delete start
+--    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+-- 2008/12/06 v1.16 miyata update end
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
     ;
 --
-    lv_select109_2 := 
+    lv_select109_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2176,7 +2207,16 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
-    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update start
+    || '        ,CASE WHEN xrpm.dealings_div_name IN (''' || gv_d_name_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_item_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_gen || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_han || ''')'
+    || '                   THEN itp.trans_qty * TO_NUMBER(''' || gc_rcv_pay_div_adj || ''')'
+    || '              ELSE itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+    || '         END                              trans_qty'
+--    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update end
     || '  FROM   ic_tran_pnd               itp'
     || '        ,wsh_delivery_details      wdd'
     || '        ,oe_order_headers_all      ooha'
@@ -2233,14 +2273,16 @@ AS
     || '  AND    xrpm.doc_type             = itp.doc_type'
     || '  AND    xrpm.doc_type             = ''OMSO'''
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
--- 2008/12/06 v1.15 miyata update start
+-- 2008/12/06 v1.16 miyata update start
 --    || '  AND    xrpm.dealings_div         = ''109'''
     || '  AND    xrpm.dealings_div         = ''110'''
--- 2008/12/06 v1.15 miyata update end
+-- 2008/12/06 v1.16 miyata update end
     || '  AND    xoha.req_status           = ''04'''
     || '  AND    otta.attribute1           = ''1'''
     || '  AND    xrpm.shipment_provision_div = ''1'''
-    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+-- 2008/12/06 v1.16 miyata delete start
+--    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+-- 2008/12/06 v1.16 miyata delete end
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
@@ -2250,7 +2292,7 @@ AS
     -- 検索条件.受払区分       ⇒ 111
     -- 対象取引区分(OMSO/PORC) ⇒ 111:振替出荷_受入_半
     --===============================================================
-    lv_select111_1 := 
+    lv_select111_1 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2264,7 +2306,16 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
-    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update start
+    || '        ,CASE WHEN xrpm.dealings_div_name IN (''' || gv_d_name_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_item_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_gen || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_han || ''')'
+    || '                   THEN itp.trans_qty * TO_NUMBER(''' || gc_rcv_pay_div_adj || ''')'
+    || '              ELSE itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+    || '         END                              trans_qty'
+--    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update end
     || '  FROM   ic_tran_pnd               itp'
     || '        ,rcv_shipment_lines        rsl'
     || '        ,oe_order_headers_all      ooha'
@@ -2326,13 +2377,15 @@ AS
     || '  AND    xrpm.new_div_account      = ''' || ir_param.rcv_pay_div || ''''
     || '  AND    xrpm.dealings_div         = ''111'''
     || '  AND    xrpm.shipment_provision_div = ''1'''
-    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+-- 2008/12/07 v1.17 yoshida delete start
+--    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+-- 2008/12/07 v1.17 yoshida delete end
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
     ;
 --
-    lv_select111_2 := 
+    lv_select111_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb gic1 mcb1 gic2 mcb2 wdd itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2346,7 +2399,16 @@ AS
     || '        ,SUBSTR(mcb3.segment1, 1, 3)    crowd_low'      --小群
     || '        ,SUBSTR(mcb3.segment1, 1, 2)    crowd_mid'      --中群
     || '        ,SUBSTR(mcb3.segment1, 1, 1)    crowd_high'     --大群
-    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update start
+    || '        ,CASE WHEN xrpm.dealings_div_name IN (''' || gv_d_name_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_item_trn_rcv || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_gen || ''','
+    || '                                              ''' || gv_d_name_trn_ship_rcv_han || ''')'
+    || '                   THEN itp.trans_qty * TO_NUMBER(''' || gc_rcv_pay_div_adj || ''')'
+    || '              ELSE itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)'
+    || '         END                              trans_qty'
+--    || '        ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty'  -- 数量
+-- 2008/12/07 v1.17 yoshida update end
     || '  FROM   ic_tran_pnd               itp'
     || '        ,wsh_delivery_details      wdd'
     || '        ,oe_order_headers_all      ooha'
@@ -2407,7 +2469,9 @@ AS
     || '  AND    xoha.req_status           = ''04'''
     || '  AND    otta.attribute1           = ''1'''
     || '  AND    xrpm.shipment_provision_div = ''1'''
-    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+-- 2008/12/07 v1.17 yoshida delete start
+--    || '  AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11'
+-- 2008/12/07 v1.17 yoshida delete end
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     || '  AND    xrpm.shipment_provision_div = otta.attribute1'
     || '  AND    xrpm.item_div_ahead       = ''5'''
@@ -2418,7 +2482,7 @@ AS
     -- 検索条件.受払区分          ⇒ 201
     -- 対象取引区分(ADJI/PORC_PO) ⇒ 202:仕入
     --===============================================================
-    lv_select201_1 := 
+    lv_select201_1 :=
        '  SELECT /*+ leading ( xrpm itc gic1 mcb1 gic2 mcb2 ) use_nl ( xrpm itc gic1 mcb1 gic2 mcb2 ) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2480,7 +2544,7 @@ AS
     || '  AND    xrpm.break_col_10       IS NOT NULL'
     ;
 --
-    lv_select201_2 := 
+    lv_select201_2 :=
        '  SELECT /*+ leading ( itp gic1 mcb1 gic2 mcb2 rsl rt xrpm ) use_nl ( itp gic1 mcb1 gic2 mcb2 rsl rt xrpm ) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2547,7 +2611,7 @@ AS
     -- 対象取引区分(OMSO/PORC)    ⇒ 201:倉替
     --                            ⇒ 203:返品
     --===============================================================
-    lv_select202_03_1 := 
+    lv_select202_03_1 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2627,7 +2691,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select202_03_2 := 
+    lv_select202_03_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2 wdd itp) use_nl (xoha ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2 wdd itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2724,7 +2788,7 @@ AS
     --                            ⇒ 311:包装
     --                            ⇒ 307:セット
     --===============================================================
-    lv_select3xx_1 := 
+    lv_select3xx_1 :=
        '  SELECT /*+ leading (itp gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (itp gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2798,7 +2862,7 @@ AS
     --                            ⇒ 314
     -- 対象取引区分(PROD)         ⇒ 309:
     --===============================================================
-    lv_select31x_1 := 
+    lv_select31x_1 :=
        '  SELECT /*+ leading (itp gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (itp gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2893,7 +2957,7 @@ AS
     -- 対象取引区分(ADJI/TRNI/XFER)  ⇒ 401:倉庫移動_入庫
     --                               ⇒ 402:倉庫移動_出庫
     --===============================================================
-    lv_select4xx_1 := 
+    lv_select4xx_1 :=
        '  SELECT /*+ leading (xmrh xmrl ijm iaj itc xrpm gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc xrpm gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -2967,7 +3031,7 @@ AS
     || '                                  END'
     ;
 --
-    lv_select4xx_2 := 
+    lv_select4xx_2 :=
        '  SELECT /*+ leading (xmrih xmril ixm itp xrpm gic1 mcb1 gic2 mcb2) use_nl (xmrih xmril ixm itp xrpm gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -3035,7 +3099,7 @@ AS
     || '  AND    xrpm.break_col_10       IS NOT NULL'
     ;
 --
-    lv_select4xx_3 := 
+    lv_select4xx_3 :=
        '  SELECT /*+ leading (xmrih xmril ijm iaj itc xrpm gic1 mcb1 gic2 mcb2) use_nl (xmrih xmril ijm iaj itc xrpm gic1 mcb1 gic2 mcb2) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -3129,7 +3193,7 @@ AS
     --                               ⇒ 511:黙視品目払出
     --                               ⇒ 512:黙視品目受入
     --===============================================================
-    lv_select5xx_1 := 
+    lv_select5xx_1 :=
        '  SELECT /*+ leading ( xrpm itc gic1 mcb1 gic2 mcb2 ) use_nl ( xrpm itc gic1 mcb1 gic2 mcb2 ) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -3207,7 +3271,7 @@ AS
     || '  AND    xrpm.break_col_10       IS NOT NULL'
     ;
 --
-    lv_select5xx_2 := 
+    lv_select5xx_2 :=
        '  SELECT /*+ leading ( xrpm itc gic1 mcb1 gic2 mcb2 ) use_nl ( xrpm itc gic1 mcb1 gic2 mcb2 ) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -3269,7 +3333,7 @@ AS
     || '  AND    xrpm.break_col_10       IS NOT NULL'
     ;
 --
-    lv_select5xx_3 := 
+    lv_select5xx_3 :=
        '  SELECT /*+ leading ( xrpm itc gic1 mcb1 gic2 mcb2 ) use_nl ( xrpm itc gic1 mcb1 gic2 mcb2 ) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -3336,7 +3400,7 @@ AS
     -- 対象取引区分(ADJI/OMSO/PORC)  ⇒ 504:見本
     --                               ⇒ 509:廃却
     --===============================================================
-    lv_select504_09_1 := 
+    lv_select504_09_1 :=
        '  SELECT /*+ leading ( xrpm itc gic1 mcb1 gic2 mcb2 ) use_nl ( xrpm itc gic1 mcb1 gic2 mcb2 ) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -3396,7 +3460,7 @@ AS
     || '                                  END'
     ;
 --
-    lv_select504_09_2 := 
+    lv_select504_09_2 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2 rsl itp) use_nl (xoha ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2 rsl itp) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称
@@ -3473,7 +3537,7 @@ AS
     || '  AND    xrpm.break_col_10         IS NOT NULL'
     ;
 --
-    lv_select504_09_3 := 
+    lv_select504_09_3 :=
        '  SELECT /*+ leading (xoha ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2 wdd trn) use_nl (xoha ooha otta xrpm xola iimb2 gic1 mcb1 gic2 mcb2 wdd trn) */'
     || '         iimb.item_no             item_code'            -- 品目コード
     || '        ,ximb.item_short_name     item_name'            -- 品目名称

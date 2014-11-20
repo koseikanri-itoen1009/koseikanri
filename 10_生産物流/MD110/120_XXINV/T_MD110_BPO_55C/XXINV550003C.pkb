@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.10
+ * Version          : 1.11
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -41,6 +41,7 @@ AS
  *  2008/11/11    1.8  Takao Ohashi     指摘549対応
  *  2008/11/20    1.9  Takao Ohashi     指摘691対応
  *  2008/11/28    1.10 Akiyosi Shiina   本番#227対応
+ *  2008/12/06    1.11 Takahito Miyata  本番#521対応 
  *
  *****************************************************************************************/
 --
@@ -1291,7 +1292,10 @@ AS
     IF(in_line_type = -1) THEN
 -- mod start ver1.8
 --      lv_sql_body := lv_sql_body || ' SELECT ' ;
-      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm iimb ximb gic mcb mct) */' ;
+-- 2008/12/06 v1.11 UPDATE START
+--      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm iimb ximb gic mcb mct) */' ;
+      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm.xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm.xrpm flv iimb ximb gic mcb mct) */' ;
+-- 2008/12/06 v1.11 UPDATE END
 -- mod end ver1.8
       lv_sql_body := lv_sql_body || '  NULL                        AS batch_id' ;
       lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
@@ -1355,7 +1359,10 @@ AS
     ELSE
 -- mod start ver1.8
 --      lv_sql_body := lv_sql_body || ' SELECT ' ;
-      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm iimb ximb gic mcb mct) */' ;
+-- 2008/12/06 v1.11 UPDATE START
+--      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm iimb ximb gic mcb mct) */' ;
+      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm.xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm.xrpm flv iimb ximb gic mcb mct) */' ;
+-- 2008/12/06 v1.11 UPDATE END
 -- mod end ver1.8
       lv_sql_body := lv_sql_body || '  NULL                        AS batch_id' ;
       lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
