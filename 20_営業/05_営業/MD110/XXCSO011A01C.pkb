@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -75,7 +75,8 @@ AS
  *  2009-11-30    1.19  K.Satomura       【E_本稼動_00204】作業希望日のチェックを一時的に外す
  *  2009-11-30    1.20  T.Maruyama       【E_本稼動_00119】チェック強化対応
  *  2009-12-07    1.21  K.Satomura       【E_本稼動_00336】E_本稼動_00204の対応を元に戻す
- *  2009-12-16    1.22  D.Abe            【E_本稼動_00354】廃棄決済でリース物件存在チェック対応
+ *  2009-12-09    1.22  K.Satomura       【E_本稼動_00341】承認時のチェックを申請時のチェックと同様にする
+ *  2009-12-16    1.23  D.Abe            【E_本稼動_00354】廃棄決済でリース物件存在チェック対応
  *                                       【E_本稼動_00498】リース物件ステータスの「再リース待ち」対応
  *****************************************************************************************/
   --
@@ -105,6 +106,9 @@ AS
   --
   --#######################  固定グローバル変数宣言部 START   #######################
   --
+  /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+  gv_requisition_number po_requisition_headers.segment1%type;
+  /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
   gv_out_msg       VARCHAR2(2000);
   gv_sep_msg       VARCHAR2(2000);
   gv_exec_user     VARCHAR2(100);
@@ -221,7 +225,9 @@ AS
   cv_tkn_number_58  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00584';  -- 作業会社メーカーチェックエラーメッセージ
   cv_tkn_number_59  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00585';  -- 引揚先入力不可チェックエラーメッセージ
   /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
-
+  /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+  cv_tkn_number_60  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00588';  -- 物件未依頼エラーメッセージ
+  /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -260,10 +266,20 @@ AS
   cv_tkn_colname        CONSTANT VARCHAR2(20) := 'COLNAME';
   cv_tkn_format         CONSTANT VARCHAR2(20) := 'FORMAT';    
   /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */  
+  /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+  cv_tkn_sagyo          CONSTANT VARCHAR(20)  := 'SAGYO';
+  /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
   --
   cv_machinery_status       CONSTANT VARCHAR2(100) := '物件データワークテーブルの機器状態'; 
 /* 20090511_abe_ST965 END*/
-
+  /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+  cv_tkn_install            CONSTANT VARCHAR(20)  := '設置';
+  cv_tkn_withdraw           CONSTANT VARCHAR(20)  := '引揚';
+  cv_tkn_ablsh              CONSTANT VARCHAR(20)  := '廃棄';
+  cv_tkn_subject1           CONSTANT VARCHAR(20)  := '購買依頼 ';
+  cv_tkn_subject2           CONSTANT VARCHAR(100) := ' 申請時のチェック処理でエラーが発生しました';
+  cv_tkn_subject3           CONSTANT VARCHAR(100) := ' 承認時のチェック処理でエラーが発生しました';
+  /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
   --
 /*20090416_yabuki_ST549 START*/
   -- 参照タイプのIBステータスタイプコード
@@ -580,6 +596,9 @@ AS
                                , aname    => cv_doc_number
                              );
     --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    gv_requisition_number := ov_requisition_number;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     -- 発注依頼番号が取得できなかった場合エラー
     IF ( ov_requisition_number IS NULL ) THEN
       lv_errbuf := xxccp_common_pkg.get_msg(
@@ -2209,6 +2228,9 @@ AS
   PROCEDURE check_ib_info(
       iv_install_code  IN         xxcso_install_base_v.install_code%TYPE  -- 物件コード
     , i_instance_rec   IN         g_instance_rtype                        -- 物件情報
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    , iv_process_kbn   IN         VARCHAR2
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     , ov_errbuf        OUT NOCOPY VARCHAR2                                -- エラー・メッセージ --# 固定 #
     , ov_retcode       OUT NOCOPY VARCHAR2                                -- リターン・コード   --# 固定 #
   ) IS
@@ -2244,20 +2266,47 @@ AS
     --
     --###########################  固定部 END   ############################
     --
-    -- 作業依頼中フラグ_設置用がＯＮの場合
-    IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
-      lv_errbuf2 := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                      , iv_name         => cv_tkn_number_17          -- メッセージコード
-                      , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                      , iv_token_value1 => iv_install_code           -- トークン値1
-                    );
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
+      -- 処理区分が「発注依頼申請」の場合
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+      IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
+        -- 作業依頼中フラグ_設置用がＯＮの場合
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_17          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                        , iv_token_value1 => iv_install_code           -- トークン値1
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
       --
-      lv_errbuf  := lv_errbuf2;
-      ov_retcode := cv_status_error;
-      --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
     END IF;
     --
+    IF (iv_process_kbn = cv_proc_kbn_req_aprv) THEN
+      -- 処理区分が「発注依頼承認」の場合
+      IF (i_instance_rec.op_req_flag = cv_op_req_flag_off) THEN
+        -- 作業依頼中フラグ_設置用がＯＦＦの場合
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_60         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_sagyo             -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_install           -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken            -- トークンコード2
+                        ,iv_token_value2 => iv_install_code          -- トークン値2
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
+      --
+    END IF;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     -- 機器状態１（稼動状態）がNULLまたは「滞留」以外の場合
     IF ( i_instance_rec.jotai_kbn1 IS NULL )
       OR ( i_instance_rec.jotai_kbn1 <> cv_jotai_kbn1_hold )
@@ -2338,6 +2387,9 @@ AS
   PROCEDURE check_withdraw_ib_info(
       iv_install_code  IN         xxcso_install_base_v.install_code%TYPE  -- 物件コード
     , i_instance_rec   IN         g_instance_rtype                        -- 物件情報
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    , iv_process_kbn   IN         VARCHAR2
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     , ov_errbuf        OUT NOCOPY VARCHAR2                                -- エラー・メッセージ --# 固定 #
     , ov_retcode       OUT NOCOPY VARCHAR2                                -- リターン・コード   --# 固定 #
   ) IS
@@ -2373,20 +2425,47 @@ AS
     --
     --###########################  固定部 END   ############################
     --
-    -- 作業依頼中フラグがＯＮの場合
-    IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
-      lv_errbuf2 := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                      , iv_name         => cv_tkn_number_20          -- メッセージコード
-                      , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                      , iv_token_value1 => iv_install_code           -- トークン値1
-                    );
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
+      -- 処理区分が「発注依頼申請」の場合
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+      IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
+        -- 作業依頼中フラグがＯＮの場合
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_20          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                        , iv_token_value1 => iv_install_code           -- トークン値1
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
       --
-      lv_errbuf  := lv_errbuf2;
-      ov_retcode := cv_status_error;
-      --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
     END IF;
     --
+    IF (iv_process_kbn = cv_proc_kbn_req_aprv) THEN
+      -- 処理区分が「発注依頼承認」の場合
+      IF (i_instance_rec.op_req_flag = cv_op_req_flag_off) THEN
+        -- 作業依頼中フラグ_設置用がＯＦＦの場合
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_60         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_sagyo             -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_withdraw          -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken            -- トークンコード2
+                        ,iv_token_value2 => iv_install_code          -- トークン値2
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
+      --
+    END IF;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     -- 機器状態１（稼動状態）がNULLまたは「稼動」以外の場合
     IF ( i_instance_rec.jotai_kbn1 IS NULL )
       OR ( i_instance_rec.jotai_kbn1 <> cv_jotai_kbn1_operate )
@@ -2441,6 +2520,9 @@ AS
   PROCEDURE check_ablsh_appl_ib_info(
       iv_install_code  IN         xxcso_install_base_v.install_code%TYPE  -- 物件コード
     , i_instance_rec   IN         g_instance_rtype                        -- 物件情報
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    , iv_process_kbn   IN         VARCHAR2
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     , ov_errbuf        OUT NOCOPY VARCHAR2                                -- エラー・メッセージ --# 固定 #
     , ov_retcode       OUT NOCOPY VARCHAR2                                -- リターン・コード   --# 固定 #
   ) IS
@@ -2476,19 +2558,46 @@ AS
     --
     --###########################  固定部 END   ############################
     --
-    -- 作業依頼中フラグがＯＮの場合
-    IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
-      lv_errbuf2 := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                      , iv_name         => cv_tkn_number_22          -- メッセージコード
-                      , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                      , iv_token_value1 => iv_install_code           -- トークン値1
-                    );
-      --
-      lv_errbuf  := lv_errbuf2;
-      ov_retcode := cv_status_error;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
+      -- 処理区分が「発注依頼申請」の場合
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+      -- 作業依頼中フラグがＯＮの場合
+      IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_22          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                        , iv_token_value1 => iv_install_code           -- トークン値1
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    END IF;
+    --
+    IF (iv_process_kbn = cv_proc_kbn_req_aprv) THEN
+      -- 処理区分が「発注依頼承認」の場合
+      IF (i_instance_rec.op_req_flag = cv_op_req_flag_off) THEN
+        -- 作業依頼中フラグ_設置用がＯＦＦの場合
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_60         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_sagyo             -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_ablsh             -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken            -- トークンコード2
+                        ,iv_token_value2 => iv_install_code          -- トークン値2
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
       --
     END IF;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     --
     -- 機器状態１（稼動状態）がNULLまたは「滞留」以外の場合
     IF ( i_instance_rec.jotai_kbn1 IS NULL )
@@ -2510,25 +2619,55 @@ AS
       --
     END IF;
     --
-    -- 機器状態３（廃棄情報）がNULLまたは「予定無」以外の場合
-    IF ( i_instance_rec.jotai_kbn3 IS NULL )
-      OR ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_non_schdl )
-    THEN
-      lv_errbuf2 := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_sales_appl_short_name   -- アプリケーション短縮名
-                      , iv_name         => cv_tkn_number_24           -- メッセージコード
-                      , iv_token_name1  => cv_tkn_bukken              -- トークンコード1
-                      , iv_token_value1 => iv_install_code            -- トークン値1
-                      , iv_token_name2  => cv_tkn_status3             -- トークンコード2
-                      , iv_token_value2 => i_instance_rec.jotai_kbn3  -- トークン値2
-                    );
-      --
-      lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
-                         THEN lv_errbuf2
-                         ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
-      ov_retcode := cv_status_error;
-      --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
+      -- 処理区分が「発注依頼申請」の場合
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+      -- 機器状態３（廃棄情報）がNULLまたは「予定無」以外の場合
+      IF ( i_instance_rec.jotai_kbn3 IS NULL )
+        OR ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_non_schdl )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name   -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_24           -- メッセージコード
+                        , iv_token_name1  => cv_tkn_bukken              -- トークンコード1
+                        , iv_token_value1 => iv_install_code            -- トークン値1
+                        , iv_token_name2  => cv_tkn_status3             -- トークンコード2
+                        , iv_token_value2 => i_instance_rec.jotai_kbn3  -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_error;
+        --
+      END IF;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
     END IF;
+    --
+    IF (iv_process_kbn = cv_proc_kbn_req_aprv) THEN
+      -- 処理区分が「発注依頼承認」の場合
+      -- 機器状態３（廃棄情報）がNULLまたは「廃棄申請中」以外の場合
+      IF ( i_instance_rec.jotai_kbn3 IS NULL )
+        OR ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_ablsh_appl )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name   -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_25           -- メッセージコード
+                        , iv_token_name1  => cv_tkn_bukken              -- トークンコード1
+                        , iv_token_value1 => iv_install_code            -- トークン値1
+                        , iv_token_name2  => cv_tkn_status3             -- トークンコード2
+                        , iv_token_value2 => i_instance_rec.jotai_kbn3  -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_error;
+      END IF;
+    END IF;
+    --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
     --
     -- チェックでエラーがあった場合
     IF ( ov_retcode = cv_status_error ) THEN
@@ -2563,6 +2702,9 @@ AS
   PROCEDURE check_ablsh_aprv_ib_info(
       iv_install_code  IN         xxcso_install_base_v.install_code%TYPE  -- 物件コード
     , i_instance_rec   IN         g_instance_rtype                        -- 物件情報
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    , iv_process_kbn   IN         VARCHAR2
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     , ov_errbuf        OUT NOCOPY VARCHAR2                                -- エラー・メッセージ --# 固定 #
     , ov_retcode       OUT NOCOPY VARCHAR2                                -- リターン・コード   --# 固定 #
   ) IS
@@ -2669,6 +2811,9 @@ AS
   PROCEDURE check_mvmt_in_shp_ib_info(
       iv_install_code  IN         xxcso_install_base_v.install_code%TYPE  -- 物件コード
     , i_instance_rec   IN         g_instance_rtype                        -- 物件情報
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    , iv_process_kbn   IN         VARCHAR2
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     , ov_errbuf        OUT NOCOPY VARCHAR2                                -- エラー・メッセージ --# 固定 #
     , ov_retcode       OUT NOCOPY VARCHAR2                                -- リターン・コード   --# 固定 #
   ) IS
@@ -2691,6 +2836,9 @@ AS
     -- *** ローカル定数 ***
     --
     -- *** ローカル変数 ***
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     --
     -- *** ローカル例外 ***
     --
@@ -2702,20 +2850,48 @@ AS
     --
     --###########################  固定部 END   ############################
     --
-    -- 作業依頼中フラグがＯＮの場合
-    IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
-      lv_errbuf := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
-                     , iv_name         => cv_tkn_number_17          -- メッセージコード
-                     , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
-                     , iv_token_value1 => iv_install_code           -- トークン値1
-                   );
-      --
-      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
-      ov_retcode := cv_status_error;
-      --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    IF (iv_process_kbn = cv_proc_kbn_req_appl) THEN
+      -- 処理区分が「発注依頼申請」の場合
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+      -- 作業依頼中フラグがＯＮの場合
+      IF ( i_instance_rec.op_req_flag = cv_op_req_flag_on ) THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                       , iv_name         => cv_tkn_number_17          -- メッセージコード
+                       , iv_token_name1  => cv_tkn_bukken             -- トークンコード1
+                       , iv_token_value1 => iv_install_code           -- トークン値1
+                     );
+        --
+        ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+        ov_retcode := cv_status_error;
+        --
+      END IF;
+    --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
     END IF;
     --
+    IF (iv_process_kbn = cv_proc_kbn_req_aprv) THEN
+      -- 処理区分が「発注依頼承認」の場合
+      IF (i_instance_rec.op_req_flag = cv_op_req_flag_off) THEN
+        -- 作業依頼中フラグ_設置用がＯＦＦの場合
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_60         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_sagyo             -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_install           -- トークン値1
+                        ,iv_token_name2  => cv_tkn_bukken            -- トークンコード2
+                        ,iv_token_value2 => iv_install_code          -- トークン値2
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+        ov_retcode := cv_status_error;
+        --
+      END IF;
+      --
+    END IF;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
   EXCEPTION
     --
     --#################################  固定例外処理部 START   ####################################
@@ -3577,6 +3753,15 @@ AS
     --
     --###########################  固定部 END   ############################
     --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    --------------------------------------------------
+    -- 処理区分が「発注依頼承認」の場合
+    --------------------------------------------------
+    IF ( iv_process_kbn = cv_proc_kbn_req_aprv ) THEN
+      RETURN;
+    END IF;
+    --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     -- ========================================
     -- A-13. 物件ロック処理
     -- ========================================
@@ -3792,6 +3977,15 @@ AS
     --
     --###########################  固定部 END   ############################
     --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    --------------------------------------------------
+    -- 処理区分が「発注依頼承認」の場合
+    --------------------------------------------------
+    IF ( iv_process_kbn = cv_proc_kbn_req_aprv ) THEN
+      RETURN;
+    END IF;
+    --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     -- ========================================
     -- A-13. 物件ロック処理
     -- ========================================
@@ -5059,6 +5253,9 @@ AS
     cv_wf_xxcso_approver_user_name    CONSTANT VARCHAR2(30) := 'XXCSO_APPROVER_USER_NAME';
     cv_wf_xxcso_ib_chk_errmsg         CONSTANT VARCHAR2(30) := 'XXCSO_IB_CHK_ERRMSG';
     cv_wf_xxcso_notification_id       CONSTANT VARCHAR2(30) := 'XXCSO_APPROVAL_NOTIFICATION_ID';
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    cv_wf_xxcso_ib_chk_subject        CONSTANT VARCHAR2(30) := 'XXCSO_IB_CHK_SUBJECT';
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     --
     cv_wf_approver_user_name          CONSTANT VARCHAR2(30) := 'APPROVER_USER_NAME';
     --
@@ -5124,6 +5321,15 @@ AS
       , avalue   => lv_wf_approver_user_name
     );
     --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    -- 件名
+    wf_engine.setitemattrtext(
+        itemtype => cv_wf_itemtype
+      , itemkey  => lv_itemkey
+      , aname    => cv_wf_xxcso_ib_chk_subject
+      , avalue   => cv_tkn_subject1 || gv_requisition_number || cv_tkn_subject3
+    );
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     -- エラーメッセージ
     WF_ENGINE.SETITEMATTRTEXT(
         itemtype => cv_wf_itemtype
@@ -5592,9 +5798,14 @@ AS
     SAVEPOINT save_point;
     --
     ----------------------------------------------------------------------
-    -- 処理区分が「発注依頼申請」の場合
+    -- 処理区分が「発注依頼申請」「発注依頼承認」の場合
     ----------------------------------------------------------------------
-    IF ( iv_process_kbn = cv_proc_kbn_req_appl ) THEN
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    --IF ( iv_process_kbn = cv_proc_kbn_req_appl ) THEN
+    IF ( iv_process_kbn = cv_proc_kbn_req_appl
+      OR iv_process_kbn = cv_proc_kbn_req_aprv )
+    THEN
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
       --------------------------------------------------
       -- カテゴリ区分が「新台設置」の場合
       --------------------------------------------------
@@ -5957,6 +6168,9 @@ AS
         check_withdraw_ib_info(
             iv_install_code => l_requisition_rec.withdraw_install_code  -- 引揚用物件コード
           , i_instance_rec  => l_withdraw_instance_rec                  -- 物件情報（引揚用）
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+          , iv_process_kbn  => iv_process_kbn                           -- 処理区分
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
           , ov_errbuf       => lv_errbuf                                -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                               -- リターン・コード    --# 固定 #
         );
@@ -6213,6 +6427,9 @@ AS
         check_ib_info(
             iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
           , i_instance_rec  => l_instance_rec                  -- 物件情報（設置用）
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+          , iv_process_kbn  => iv_process_kbn                  -- 処理区分
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
           , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
         );
@@ -6447,6 +6664,9 @@ AS
         check_ib_info(
             iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
           , i_instance_rec  => l_instance_rec                  -- 物件情報（設置用）
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+          , iv_process_kbn  => iv_process_kbn                  -- 処理区分
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
           , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
         );
@@ -6462,6 +6682,9 @@ AS
         check_withdraw_ib_info(
             iv_install_code => l_requisition_rec.withdraw_install_code  -- 引揚用物件コード
           , i_instance_rec  => l_withdraw_instance_rec                  -- 物件情報（引揚用）
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+          , iv_process_kbn  => iv_process_kbn                           -- 処理区分
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
           , ov_errbuf       => lv_errbuf                                -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                               -- リターン・コード    --# 固定 #
         );
@@ -6697,6 +6920,9 @@ AS
         check_withdraw_ib_info(
             iv_install_code => l_requisition_rec.withdraw_install_code  -- 引揚用物件コード
           , i_instance_rec  => l_withdraw_instance_rec                  -- 物件情報（引揚用）
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+          , iv_process_kbn  => iv_process_kbn                           -- 処理区分
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
           , ov_errbuf       => lv_errbuf                                -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                               -- リターン・コード    --# 固定 #
         );
@@ -6891,6 +7117,9 @@ AS
         check_ablsh_appl_ib_info(
             iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
           , i_instance_rec  => l_abolishment_instance_rec                  -- 物件情報（廃棄用）
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+          , iv_process_kbn  => iv_process_kbn                              -- 処理区分
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
           , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -7024,6 +7253,9 @@ AS
         check_ablsh_aprv_ib_info(
             iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
           , i_instance_rec  => l_abolishment_instance_rec                  -- 物件情報（廃棄用）
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+          , iv_process_kbn  => iv_process_kbn                              -- 処理区分
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
           , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
         );
@@ -7204,6 +7436,9 @@ AS
         check_mvmt_in_shp_ib_info(
             iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
           , i_instance_rec  => l_instance_rec                  -- 物件情報（設置用）
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+          , iv_process_kbn  => iv_process_kbn                  -- 処理区分
+          /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
           , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
           , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
         );
@@ -7272,201 +7507,271 @@ AS
         --
       END IF;
       --
+      /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+      IF (iv_process_kbn = cv_proc_kbn_req_aprv) THEN
+        -- 処理区分が「発注依頼承認」の場合
+        -- ========================================
+        -- A-18. 作業依頼／発注情報連携対象テーブル存在チェック処理
+        -- ========================================
+        chk_wk_req_proc(
+           i_requisition_rec => l_requisition_rec -- 発注依頼情報
+          ,on_rec_count      => ln_rec_count      -- レコード件数（作業依頼／発注情報連携対象テーブル）
+          ,ov_errbuf         => lv_errbuf         -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode        -- リターン・コード    --# 固定 #
+        );
+        --
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+        -- 作業依頼／発注情報連携対象テーブルに該当するレコードが存在しない場合
+        IF (ln_rec_count = cn_zero) THEN
+          -- ========================================
+          -- A-19. 作業依頼／発注情報連携対象テーブル登録処理
+          -- ========================================
+          insert_wk_req_proc(
+             i_requisition_rec => l_requisition_rec -- 発注依頼情報
+            ,ov_errbuf         => lv_errbuf         -- エラー・メッセージ  --# 固定 #
+            ,ov_retcode        => lv_retcode        -- リターン・コード    --# 固定 #
+          );
+          --
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE reg_upd_process_expt;
+            --
+          END IF;
+          --
+        ELSE
+          -- ========================================
+          -- A-20. 作業依頼／発注情報連携対象テーブル更新処理
+          -- ========================================
+          update_wk_req_proc(
+             i_requisition_rec => l_requisition_rec -- 発注依頼情報
+            ,ov_errbuf         => lv_errbuf         -- エラー・メッセージ  --# 固定 #
+            ,ov_retcode        => lv_retcode        -- リターン・コード    --# 固定 #
+          );
+          --
+          IF (lv_retcode <> cv_status_normal) THEN
+            RAISE reg_upd_process_expt;
+            --
+          END IF;
+          --
+        END IF;
+        --
+        -- ========================================
+        -- A-23. 発注依頼明細更新処理
+        -- ========================================
+        update_po_req_line(
+           i_requisition_rec => l_requisition_rec -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf         -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode        -- リターン・コード    --# 固定 #
+        );
+        --
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE reg_upd_process_expt;
+          --
+        END IF;
+        --
+      END IF;
+      --
+      /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     ----------------------------------------------------------------------
     -- 処理区分が「発注依頼承認」の場合
     ----------------------------------------------------------------------
-    ELSIF ( iv_process_kbn = cv_proc_kbn_req_aprv ) THEN
-      --------------------------------------------------
-      -- カテゴリ区分が「廃棄申請」の場合
-      --------------------------------------------------
-      IF ( l_requisition_rec.category_kbn = cv_category_kbn_ablsh_appl ) THEN
-        -- ========================================
-        -- A-4. 物件マスタ存在チェック処理
-        -- ========================================
-        check_ib_existence(
-            iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
-          , o_instance_rec  => l_abolishment_instance_rec                  -- 物件情報（廃棄用）
-          , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
-          , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE global_process_expt;
-          --
-        END IF;
-        --
-        -- ========================================
-        -- A-16. 廃棄申請用物件更新処理
-        -- ========================================
-        update_abo_appl_ib_info(
-            iv_process_kbn         => iv_process_kbn              -- 処理区分
-          , i_instance_rec         => l_abolishment_instance_rec  -- 物件情報（廃棄用）
-          , i_requisition_rec      => l_requisition_rec           -- 発注依頼情報
-          , i_ib_ext_attr_id_rec   => l_ib_ext_attr_id_rec        -- IB追加属性ID情報
-          , in_transaction_type_id => ln_transaction_type_id      -- 取引タイプID
-          , ov_errbuf              => lv_errbuf                   -- エラー・メッセージ  --# 固定 #
-          , ov_retcode             => lv_retcode                  -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE reg_upd_process_expt;
-          --
-        END IF;
-        --
-      --------------------------------------------------
-      -- カテゴリ区分が「廃棄決裁」の場合
-      --------------------------------------------------
-      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_ablsh_dcsn ) THEN
-        --
-        -- ========================================
-        -- A-4. 物件マスタ存在チェック処理
-        -- ========================================
-        check_ib_existence(
-            iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
-          , o_instance_rec  => l_abolishment_instance_rec                  -- 物件情報（廃棄用）
-          , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
-          , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE global_process_expt;
-          --
-        END IF;
-        --
-        -- ========================================
-        -- A-17. 廃棄決裁用物件更新処理
-        -- ========================================
-        update_abo_aprv_ib_info(
-            iv_process_kbn         => iv_process_kbn              -- 処理区分
-          , id_process_date        => ld_process_date             -- 業務処理日付
-          , i_instance_rec         => l_abolishment_instance_rec  -- 物件情報（廃棄用）
-          , i_requisition_rec      => l_requisition_rec           -- 発注依頼情報
-          , i_ib_ext_attr_id_rec   => l_ib_ext_attr_id_rec        -- IB追加属性ID情報
-          , in_transaction_type_id => ln_transaction_type_id      -- 取引タイプID
-          , ov_errbuf              => lv_errbuf                   -- エラー・メッセージ  --# 固定 #
-          , ov_retcode             => lv_retcode                  -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE reg_upd_process_expt;
-          --
-        END IF;
-        --
-/* 20090708_abe_0000464 START*/
-      --------------------------------------------------
-      -- カテゴリ区分が「新台設置」の場合
-      --------------------------------------------------
-      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_new_install ) THEN
-        -- ========================================
-        -- A-24. メーカーコードチェック処理
-        -- ========================================
-        check_maker_code(
-            id_process_date       => ld_process_date      -- 業務処理日付
-          , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
-          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
-          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE global_process_expt;
-          --
-        END IF;
-        --
-      --------------------------------------------------
-      -- カテゴリ区分が「新台代替」の場合
-      --------------------------------------------------
-      ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_new_replace ) THEN
-        -- ========================================
-        -- A-24. メーカーコードチェック処理
-        -- ========================================
-        check_maker_code(
-            id_process_date       => ld_process_date      -- 業務処理日付
-          , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
-          , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
-          , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE global_process_expt;
-          --
-        END IF;
-        --
-/* 20090708_abe_0000464 END*/
-      END IF;
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    --ELSIF ( iv_process_kbn = cv_proc_kbn_req_aprv ) THEN
+    --  --------------------------------------------------
+    --  -- カテゴリ区分が「廃棄申請」の場合
+    --  --------------------------------------------------
+    --  IF ( l_requisition_rec.category_kbn = cv_category_kbn_ablsh_appl ) THEN
+    --    -- ========================================
+    --    -- A-4. 物件マスタ存在チェック処理
+    --    -- ========================================
+    --    check_ib_existence(
+    --        iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
+    --      , o_instance_rec  => l_abolishment_instance_rec                  -- 物件情報（廃棄用）
+    --      , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+    --      , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
+    --    );
+    --    --
+    --    IF ( lv_retcode <> cv_status_normal ) THEN
+    --      RAISE global_process_expt;
+    --      --
+    --    END IF;
+    --    --
+    --    -- ========================================
+    --    -- A-16. 廃棄申請用物件更新処理
+    --    -- ========================================
+    --    update_abo_appl_ib_info(
+    --        iv_process_kbn         => iv_process_kbn              -- 処理区分
+    --      , i_instance_rec         => l_abolishment_instance_rec  -- 物件情報（廃棄用）
+    --      , i_requisition_rec      => l_requisition_rec           -- 発注依頼情報
+    --      , i_ib_ext_attr_id_rec   => l_ib_ext_attr_id_rec        -- IB追加属性ID情報
+    --      , in_transaction_type_id => ln_transaction_type_id      -- 取引タイプID
+    --      , ov_errbuf              => lv_errbuf                   -- エラー・メッセージ  --# 固定 #
+    --      , ov_retcode             => lv_retcode                  -- リターン・コード    --# 固定 #
+    --    );
+    --    --
+    --    IF ( lv_retcode <> cv_status_normal ) THEN
+    --      RAISE reg_upd_process_expt;
+    --      --
+    --    END IF;
+    --    --
+    --  --------------------------------------------------
+    --  -- カテゴリ区分が「廃棄決裁」の場合
+    --  --------------------------------------------------
+    --  ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_ablsh_dcsn ) THEN
+    --    --
+    --    -- ========================================
+    --    -- A-4. 物件マスタ存在チェック処理
+    --    -- ========================================
+    --    check_ib_existence(
+    --        iv_install_code => l_requisition_rec.abolishment_install_code  -- 廃棄_物件コード
+    --      , o_instance_rec  => l_abolishment_instance_rec                  -- 物件情報（廃棄用）
+    --      , ov_errbuf       => lv_errbuf                                   -- エラー・メッセージ  --# 固定 #
+    --      , ov_retcode      => lv_retcode                                  -- リターン・コード    --# 固定 #
+    --    );
+    --    --
+    --    IF ( lv_retcode <> cv_status_normal ) THEN
+    --      RAISE global_process_expt;
+    --      --
+    --    END IF;
+    --    --
+    --    -- ========================================
+    --    -- A-17. 廃棄決裁用物件更新処理
+    --    -- ========================================
+    --    update_abo_aprv_ib_info(
+    --        iv_process_kbn         => iv_process_kbn              -- 処理区分
+    --      , id_process_date        => ld_process_date             -- 業務処理日付
+    --      , i_instance_rec         => l_abolishment_instance_rec  -- 物件情報（廃棄用）
+    --      , i_requisition_rec      => l_requisition_rec           -- 発注依頼情報
+    --      , i_ib_ext_attr_id_rec   => l_ib_ext_attr_id_rec        -- IB追加属性ID情報
+    --      , in_transaction_type_id => ln_transaction_type_id      -- 取引タイプID
+    --      , ov_errbuf              => lv_errbuf                   -- エラー・メッセージ  --# 固定 #
+    --      , ov_retcode             => lv_retcode                  -- リターン・コード    --# 固定 #
+    --    );
+    --    --
+    --    IF ( lv_retcode <> cv_status_normal ) THEN
+    --      RAISE reg_upd_process_expt;
+    --      --
+    --    END IF;
+    --    --
+    --  /* 20090708_abe_0000464 START*/
+    --  --------------------------------------------------
+    --  -- カテゴリ区分が「新台設置」の場合
+    --  --------------------------------------------------
+    --  ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_new_install ) THEN
+    --    -- ========================================
+    --    -- A-24. メーカーコードチェック処理
+    --    -- ========================================
+    --    check_maker_code(
+    --        id_process_date       => ld_process_date      -- 業務処理日付
+    --      , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+    --      , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+    --      , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+    --    );
+    --    --
+    --    IF ( lv_retcode <> cv_status_normal ) THEN
+    --      RAISE global_process_expt;
+    --      --
+    --    END IF;
+    --    --
+    --  --------------------------------------------------
+    --  -- カテゴリ区分が「新台代替」の場合
+    --  --------------------------------------------------
+    --  ELSIF ( l_requisition_rec.category_kbn = cv_category_kbn_new_replace ) THEN
+    --    -- ========================================
+    --    -- A-24. メーカーコードチェック処理
+    --    -- ========================================
+    --    check_maker_code(
+    --        id_process_date       => ld_process_date      -- 業務処理日付
+    --      , i_requisition_rec     => l_requisition_rec    -- 発注依頼情報
+    --      , ov_errbuf             => lv_errbuf            -- エラー・メッセージ  --# 固定 #
+    --      , ov_retcode            => lv_retcode           -- リターン・コード    --# 固定 #
+    --    );
+    --    --
+    --    IF ( lv_retcode <> cv_status_normal ) THEN
+    --      RAISE global_process_expt;
+    --      --
+    --    END IF;
+    --    --
+    --  /* 20090708_abe_0000464 END*/
+    --  END IF;
+    --  --
+    --  /*20090406_yabuki_ST101 START*/
+    --  -- ========================================
+    --  -- A-18. 作業依頼／発注情報連携対象テーブル存在チェック処理
+    --  -- ========================================
+    --  chk_wk_req_proc(
+    --      i_requisition_rec => l_requisition_rec  -- 発注依頼情報
+    --    , on_rec_count      => ln_rec_count       -- レコード件数（作業依頼／発注情報連携対象テーブル）
+    --    , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
+    --    , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
+    --  );
+    --  --
+    --  IF ( lv_retcode <> cv_status_normal ) THEN
+    --    RAISE reg_upd_process_expt;
+    --    --
+    --  END IF;
+    --  --
+    --  -- 作業依頼／発注情報連携対象テーブルに該当するレコードが存在しない場合
+    --  IF ( ln_rec_count = cn_zero ) THEN
+    --    -- ========================================
+    --    -- A-19. 作業依頼／発注情報連携対象テーブル登録処理
+    --    -- ========================================
+--  --      -- ========================================
+--  --      -- A-18. 作業依頼／発注情報連携対象テーブル登録処理
+--  --      -- ========================================
+    --    /*20090406_yabuki_ST101 END*/
+    --    insert_wk_req_proc(
+    --        i_requisition_rec => l_requisition_rec  -- 発注依頼情報
+    --      , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
+    --      , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
+    --    );
+    --    --
+    --    IF ( lv_retcode <> cv_status_normal ) THEN
+    --      RAISE reg_upd_process_expt;
+    --      --
+    --    END IF;
+    --    --
+    --    /*20090406_yabuki_ST101 START*/
+    --  ELSE
+    --    -- ========================================
+    --    -- A-20. 作業依頼／発注情報連携対象テーブル更新処理
+    --    -- ========================================
+    --    update_wk_req_proc(
+    --        i_requisition_rec => l_requisition_rec  -- 発注依頼情報
+    --      , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
+    --      , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
+    --    );
+    --    --
+    --    IF ( lv_retcode <> cv_status_normal ) THEN
+    --      RAISE reg_upd_process_expt;
+    --      --
+    --    END IF;
+    --    --
+    --  END IF;
+    --  --
+    --  /*20090406_yabuki_ST101 END*/
+    --  /* 20090701_abe_ST529 START*/
+    --  -- ========================================
+    --  -- A-23. 発注依頼明細更新処理
+    --  -- ========================================
+    --  update_po_req_line(
+    --      i_requisition_rec => l_requisition_rec  -- 発注依頼情報
+    --    , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
+    --    , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
+    --  );
+    --  --
+    --  IF ( lv_retcode <> cv_status_normal ) THEN
+    --    RAISE reg_upd_process_expt;
+    --    --
+    --  END IF;
+    --  --
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+    /* 20090701_abe_ST529 END*/
       --
-/*20090406_yabuki_ST101 START*/
-      -- ========================================
-      -- A-18. 作業依頼／発注情報連携対象テーブル存在チェック処理
-      -- ========================================
-      chk_wk_req_proc(
-          i_requisition_rec => l_requisition_rec  -- 発注依頼情報
-        , on_rec_count      => ln_rec_count       -- レコード件数（作業依頼／発注情報連携対象テーブル）
-        , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
-        , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
-      );
-      --
-      IF ( lv_retcode <> cv_status_normal ) THEN
-        RAISE reg_upd_process_expt;
-        --
-      END IF;
-      --
-      -- 作業依頼／発注情報連携対象テーブルに該当するレコードが存在しない場合
-      IF ( ln_rec_count = cn_zero ) THEN
-        -- ========================================
-        -- A-19. 作業依頼／発注情報連携対象テーブル登録処理
-        -- ========================================
---        -- ========================================
---        -- A-18. 作業依頼／発注情報連携対象テーブル登録処理
---        -- ========================================
-/*20090406_yabuki_ST101 END*/
-        insert_wk_req_proc(
-            i_requisition_rec => l_requisition_rec  -- 発注依頼情報
-          , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
-          , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE reg_upd_process_expt;
-          --
-        END IF;
-        --
-/*20090406_yabuki_ST101 START*/
-      ELSE
-        -- ========================================
-        -- A-20. 作業依頼／発注情報連携対象テーブル更新処理
-        -- ========================================
-        update_wk_req_proc(
-            i_requisition_rec => l_requisition_rec  -- 発注依頼情報
-          , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
-          , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE reg_upd_process_expt;
-          --
-        END IF;
-        --
-      END IF;
-      --
-/*20090406_yabuki_ST101 END*/
-/* 20090701_abe_ST529 START*/
-      -- ========================================
-      -- A-23. 発注依頼明細更新処理
-      -- ========================================
-      update_po_req_line(
-          i_requisition_rec => l_requisition_rec  -- 発注依頼情報
-        , ov_errbuf         => lv_errbuf          -- エラー・メッセージ  --# 固定 #
-        , ov_retcode        => lv_retcode         -- リターン・コード    --# 固定 #
-      );
-      --
-      IF ( lv_retcode <> cv_status_normal ) THEN
-        RAISE reg_upd_process_expt;
-        --
-      END IF;
-      --
-/* 20090701_abe_ST529 END*/
-      --
-/*20090416_yabuki_ST398 START*/
+    /*20090416_yabuki_ST398 START*/
     ----------------------------------------------------------------------
     -- 処理区分が「発注依頼否認」の場合
     ----------------------------------------------------------------------
@@ -7836,6 +8141,9 @@ AS
     -- ===============================
     cv_prg_name       CONSTANT VARCHAR2(100) := 'main_for_application';  -- プログラム名
     cv_ib_chk_errmsg  CONSTANT VARCHAR2(30)  := 'XXCSO_IB_CHK_ERRMSG';
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+    cv_ib_chk_subject CONSTANT VARCHAR2(30)  := 'XXCSO_IB_CHK_SUBJECT';
+    /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
     --
     -- ===============================
     -- ローカル変数
@@ -7864,6 +8172,15 @@ AS
     ELSIF lv_retcode = cv_status_error THEN
       resultout   := wf_engine.eng_completed || cv_msg_part_only || cv_result_no;
       --
+      /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+      wf_engine.setitemattrtext(
+          itemtype => itemtype
+        , itemkey  => itemkey
+        , aname    => cv_ib_chk_subject
+        , avalue   => cv_tkn_subject1 || gv_requisition_number || cv_tkn_subject2
+      );
+      /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
+
       wf_engine.setitemattrtext(
           itemtype => itemtype
         , itemkey  => itemkey
@@ -7879,6 +8196,14 @@ AS
       resultout := wf_engine.eng_completed || cv_msg_part_only || cv_result_no;
       lv_errbuf := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM || lv_errbuf;
       --
+      /* 2009.12.09 K.Satomura E_本稼動_00341対応 START */
+      wf_engine.setitemattrtext(
+          itemtype => itemtype
+        , itemkey  => itemkey
+        , aname    => cv_ib_chk_subject
+        , avalue   => cv_tkn_subject1 || gv_requisition_number || cv_tkn_subject2
+      );
+      /* 2009.12.09 K.Satomura E_本稼動_00341対応 END */
       wf_engine.setitemattrtext(
           itemtype => itemtype
         , itemkey  => itemkey
