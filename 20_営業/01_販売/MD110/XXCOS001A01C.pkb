@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,7 +54,8 @@ AS
  *  2009/12/01    1.19  M.Sano           [E_本稼動_00234] 成績者、納品者の妥当性チェック修正
  *  2009/12/10    1.20  M.Sano           [E_本稼動_00108] 共通関数＜会計期間情報取得＞異常終了時の処理修正
  *  2010/01/18    1.21  M.Uehara         [E_本稼動_01128] カード売区分設定時のカード会社存在チェック追加
- *  2010/01/27    1.22  N.Maeda          [E_本稼動_01321]カード会社取得済配列設定
+ *  2010/01/27    1.22  N.Maeda          [E_本稼動_01321] カード会社取得済配列設定
+ *  2010/01/27    1.23  N.Maeda          [E_本稼動_01191] 処理起動モード3(納品ワークパージ)を追加
  *
  *****************************************************************************************/
 --
@@ -166,6 +167,13 @@ AS
   cv_msg_para        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10028';     -- パラメータ出力メッセージ
   cv_msg_mode1       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10029';     -- 納品ジャーナル取込モード
   cv_msg_mode2       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10030';     -- 納品データパージ処理モード
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+  cv_msg_mode3       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13513';     -- 納品ワークテーブル削除処理モード
+  cv_msg_mode3_comp  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13514';     -- 納品ワークテーブル削除確認メッセージ
+  cv_msg_wh_del_count CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13515';     -- ヘッダワークテーブル削除件数メッセージ
+  cv_msg_wl_del_count CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13516';     -- 明細ワークテーブル削除件数メッセージ
+  cv_msg_no_del_target CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13517';    -- ワークテーブル削除対象データなしメッセージ
+--****************************** 2010/01/27 1.23 N.Maeda  ADD END   *******************************--
   cv_msg_head_tab    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10031';     -- 納品ヘッダテーブル
   cv_msg_line_tab    CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10032';     -- 納品明細テーブル
   cv_msg_headwk_tab  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10033';     -- 納品ヘッダワークテーブル
@@ -219,6 +227,9 @@ AS
   cv_hit             CONSTANT VARCHAR2(1)   := '1';                    -- フラグ判定
   cv_daytime         CONSTANT VARCHAR2(1)   := '1';                    -- 昼間起動モード＝1
   cv_night           CONSTANT VARCHAR2(1)   := '2';                    -- 夜間起動モード＝2
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+  cv_truncate        CONSTANT VARCHAR2(1)   := '3';                    -- 起動モード＝3(納品ワークパージ)
+--****************************** 2010/01/27 1.23 N.Maeda  ADD END   *******************************--
   cv_depart          CONSTANT VARCHAR2(1)   := '1';                    -- 百貨店用HHT区分＝1：百貨店
   cv_general         CONSTANT VARCHAR2(1)   := NULL;                   -- 百貨店用HHT区分＝NULL：一般拠点
 --****************************** 2009/05/15 1.13 N.Maeda ADD START  *****************************--
@@ -652,6 +663,10 @@ AS
   gv_tkn1                   VARCHAR2(50);                   -- エラーメッセージ用トークン１
   gv_tkn2                   VARCHAR2(50);                   -- エラーメッセージ用トークン２
   gv_tkn3                   VARCHAR2(50);                   -- エラーメッセージ用トークン３
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+  gn_wh_del_count           NUMBER;                         -- ヘッダワーク削除件数
+  gn_wl_del_count           NUMBER;                         -- 明細ワーク削除件数
+--****************************** 2010/01/27 1.23 N.Maeda  ADD  END  *******************************--
 --
 --
   /**********************************************************************************
@@ -751,6 +766,32 @@ AS
                                              gv_tkn1
                                            )
       );
+--****************************** 2010/01/27 1.23 N.Maeda  MOD START *******************************--
+    ELSIF ( gv_mode = cv_truncate ) THEN    -- 起動時の処理
+      gv_tkn1 := xxccp_common_pkg.get_msg( cv_application, cv_msg_mode3 );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => xxccp_common_pkg.get_msg( cv_application,
+                                             cv_msg_para,
+                                             cv_tkn_para1,
+                                             gv_mode,
+                                             cv_tkn_para2,
+                                             gv_tkn1
+                                           )
+      );
+      -- メッセージログ
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => xxccp_common_pkg.get_msg( cv_application,
+                                             cv_msg_para,
+                                             cv_tkn_para1,
+                                             gv_mode,
+                                             cv_tkn_para2,
+                                             gv_tkn1
+                                           )
+      );
+--
+--****************************** 2010/01/27 1.23 N.Maeda  MOD END   *******************************--
     END IF;
 --
     --空行挿入
@@ -4403,6 +4444,22 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+--
+    -- 納品ヘッダワーク全データロック
+    CURSOR loc_headers_cur
+    IS
+      SELECT 'Y'
+      FROM   xxcos_dlv_headers_work
+    FOR UPDATE NOWAIT;
+    -- 納品明細ワーク全データロック
+    CURSOR loc_lines_cur
+    IS
+      SELECT 'Y'
+      FROM   xxcos_dlv_lines_work
+    FOR UPDATE NOWAIT;
+--
+--****************************** 2010/01/27 1.23 N.Maeda  ADD  END  *******************************--
 --
     -- *** ローカル・レコード ***
 --
@@ -4415,11 +4472,60 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+    --  起動処理区分3の場合排他制御処理を実施
+    IF ( gv_mode = cv_truncate ) THEN
+--
+      -- ヘッダワークに排他制御を実施
+      BEGIN
+--
+        OPEN  loc_headers_cur;
+        CLOSE loc_headers_cur;
+--
+      EXCEPTION
+        WHEN lock_expt THEN
+        gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_headwk_tab );
+        lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_lock, cv_tkn_table, gv_tkn1 );
+        lv_errbuf  := lv_errmsg;
+        -- カーソルCLOSE
+        IF ( loc_headers_cur%ISOPEN ) THEN
+          CLOSE loc_headers_cur;
+        END IF;
+--
+        RAISE global_api_expt;
+      END;
+--
+      -- 明細ワークに排他制御を実施
+      BEGIN
+--
+        OPEN  loc_lines_cur;
+        CLOSE loc_lines_cur;
+--
+      EXCEPTION
+        WHEN lock_expt THEN
+          gv_tkn1    := xxccp_common_pkg.get_msg( cv_application, cv_msg_linewk_tab );
+          lv_errmsg  := xxccp_common_pkg.get_msg( cv_application, cv_msg_lock, cv_tkn_table, gv_tkn1 );
+          lv_errbuf  := lv_errmsg;
+--
+          -- カーソルCLOSE
+          IF ( loc_lines_cur%ISOPEN ) THEN
+            CLOSE loc_lines_cur;
+          END IF;
+--
+          RAISE global_api_expt;
+      END;
+--
+    END IF;
+--****************************** 2010/01/27 1.23 N.Maeda  ADD  END  *******************************--
     --==============================================================
     -- 納品ヘッダワークテーブルのレコード削除
     --==============================================================
     BEGIN
-      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcos.xxcos_dlv_headers_work';
+--****************************** 2010/01/27 1.23 N.Maeda  MOD START *******************************--
+--      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcos.xxcos_dlv_headers_work';
+      DELETE FROM xxcos_dlv_headers_work;
+      gn_wh_del_count := SQL%ROWCOUNT;
+--****************************** 2010/01/27 1.23 N.Maeda  MOD  END  *******************************--
     EXCEPTION
       WHEN OTHERS THEN
         gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_headwk_tab );
@@ -4432,7 +4538,11 @@ AS
     -- 納品明細ワークテーブルのレコード削除
     --==============================================================
     BEGIN
-      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcos.xxcos_dlv_lines_work';
+--****************************** 2010/01/27 1.23 N.Maeda  MOD START *******************************--
+--      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcos.xxcos_dlv_lines_work';
+      DELETE FROM xxcos_dlv_lines_work;
+      gn_wl_del_count := SQL%ROWCOUNT;
+--****************************** 2010/01/27 1.23 N.Maeda  MOD  END  *******************************--
     EXCEPTION
       WHEN OTHERS THEN
         gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_linewk_tab );
@@ -4771,6 +4881,10 @@ AS
     gn_nor_cnt_l  := 0;
     gn_del_cnt_h  := 0;
     gn_del_cnt_l  := 0;
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+    gn_wh_del_count := 0;
+    gn_wl_del_count := 0;
+--****************************** 2010/01/27 1.23 N.Maeda  ADD  END  *******************************--
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -4913,6 +5027,7 @@ AS
 --
       END IF;
 --
+--
     ELSIF ( gv_mode = cv_night ) THEN    -- 夜間起動時の処理
 --
       -- ============================================
@@ -4940,6 +5055,22 @@ AS
       IF ( lv_retcode = cv_status_error ) THEN
         RAISE global_process_expt;
       END IF;
+--****************************** 2010/01/27 1.23 N.Maeda  MOD START *******************************--
+    ELSIF ( gv_mode = cv_truncate ) THEN    -- 起動時の処理
+      -- ============================================
+      -- ワークテーブルレコード削除(A-6)
+      -- ============================================
+      work_data_delete(
+        lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+        lv_retcode,             -- リターン・コード             --# 固定 #
+        lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      --エラー処理
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+--
+--****************************** 2010/01/27 1.23 N.Maeda  MOD END   *******************************--
 --
     END IF;
 --
@@ -5037,6 +5168,10 @@ AS
       -- 成功件数初期化
       gn_nor_cnt_h := 0;
       gn_nor_cnt_l := 0;
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+      gn_wh_del_count := 0;
+      gn_wl_del_count := 0;
+--****************************** 2010/01/27 1.23 N.Maeda  ADD  END  *******************************--
 --
       FND_FILE.PUT_LINE(
          which  => FND_FILE.OUTPUT
@@ -5104,6 +5239,32 @@ AS
         ,buff   => gv_out_msg
       );
       --
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+      --ヘッダワーク削除件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_wh_del_count
+                      ,iv_token_name1  => cv_tkn_count
+                      ,iv_token_value1 => TO_CHAR( gn_wh_del_count )
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+      --
+      --明細ワーク削除件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_wl_del_count
+                      ,iv_token_name1  => cv_tkn_count
+                      ,iv_token_value1 => TO_CHAR( gn_wl_del_count )
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+      --
+--****************************** 2010/01/27 1.23 N.Maeda  ADD END   *******************************--
       --エラー件数出力
       gv_out_msg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_short_name
@@ -5116,6 +5277,68 @@ AS
         ,buff   => gv_out_msg
       );
     --
+--****************************** 2010/01/27 1.23 N.Maeda  ADD START *******************************--
+    ELSIF ( iv_mode = cv_truncate ) THEN
+      --
+      IF ( lv_retcode = cv_status_normal ) THEN
+--
+        --削除対象が存在しない場合
+        IF ( gn_wh_del_count = 0 ) AND ( gn_wl_del_count = 0 ) THEN
+          --ワークテーブル削除対象データなしメッセージ
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_no_del_target
+                         )
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => ''
+          );
+          
+        ELSE
+--
+          --全削除メッセージ
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => xxccp_common_pkg.get_msg(
+                           iv_application  => cv_application
+                          ,iv_name         => cv_msg_mode3_comp
+                         )
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => ''
+          );
+        END IF;
+      END IF;
+      --
+      --ヘッダワーク削除件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_wh_del_count
+                      ,iv_token_name1  => cv_tkn_count
+                      ,iv_token_value1 => TO_CHAR( gn_wh_del_count )
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+      --
+      --明細ワーク削除件数出力
+      gv_out_msg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_application
+                      ,iv_name         => cv_msg_wl_del_count
+                      ,iv_token_name1  => cv_tkn_count
+                      ,iv_token_value1 => TO_CHAR( gn_wl_del_count )
+                     );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => gv_out_msg
+      );
+--
+--****************************** 2010/01/27 1.23 N.Maeda  ADD END   *******************************--
     END IF;
 --
     --終了メッセージ
