@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A02C(body)
  * Description      : 受注OIFへの取込機能
  * MD.050           : 受注OIFへの取込(MD050_COS_010_A02)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *                                       [COS_044]受注インポート連携不具合対応
  *  2009/02/10    1.2   T.Oura           [COS_046]受注OIF(ヘッダ、明細)のCONTEXT値設定対応
  *  2009/02/24    1.3   T.Nakamura       [COS_133]メッセージ出力、ログ出力への出力内容の追加・修正
+ *  2009/04/15    1.4   T.Kitajima       [T1_0484]検索用拠点取得方法変更
+ *                                       [T1_0469]受注明細OIF.顧客発注番号の編集修正
  *
  *****************************************************************************************/
 --
@@ -154,23 +156,23 @@ AS
   cv_qck_type_2             CONSTANT VARCHAR2(50)  := 'XXCOS1_TXN_TYPE_MST_010_A02';  -- タイプ
   cv_qck_code_3             CONSTANT VARCHAR2(50)  := 'XXCOS_010_A02_02';             -- コード
   cv_qck_type_3             CONSTANT VARCHAR2(50)  := 'XXCOS1_SALE_CLASS';            -- タイプ
-  cv_qck_code_2             CONSTANT VARCHAR2(50)  := 1;                              -- コード
+  cv_qck_code_2             CONSTANT VARCHAR2(50)  := '1';                              -- コード
   cv_qck_type_4             CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_CREATE_CLASS';      -- タイプ
-  cv_qck_code_4             CONSTANT VARCHAR2(50)  := 10;                             -- コード
-  cv_qck_code_5             CONSTANT VARCHAR2(50)  := 20;                             -- コード
+  cv_qck_code_4             CONSTANT VARCHAR2(50)  := '10';                             -- コード
+  cv_qck_code_5             CONSTANT VARCHAR2(50)  := '20';                             -- コード
   -- その他定数
   cv_order_forward_flag     CONSTANT VARCHAR2(10)  := 'N';                            -- 受注連携済フラグ(N)
-  cv_cust_class_18          CONSTANT VARCHAR2(10)  := 18;                             -- 顧客区分(チェーン店)
-  cv_cust_class_10          CONSTANT VARCHAR2(10)  := 10;                             -- 顧客区分(顧客)
-  cv_info_class_10          CONSTANT VARCHAR2(10)  := 10;                             -- 情報区分
-  cv_creat_class_order      CONSTANT VARCHAR2(10)  := 01;                             -- 作成元区分(受注データ)
-  cv_tsukagatazaiko_11      CONSTANT VARCHAR2(10)  := 11;                             -- 通貨在庫型区分
-  cv_tsukagatazaiko_12      CONSTANT VARCHAR2(10)  := 12;                             -- 通貨在庫型区分
-  cv_tsukagatazaiko_24      CONSTANT VARCHAR2(10)  := 24;                             -- 通貨在庫型区分
-  cv_data_type_code_11      CONSTANT VARCHAR2(10)  := 11;                             -- データ種コード
-  cv_creat_class_deliv      CONSTANT VARCHAR2(10)  := 02;                             -- 作成元区分(納品確定データ)
-  cv_tsukagatazaiko_13      CONSTANT VARCHAR2(10)  := 13;                             -- 通貨在庫型区分
-  cv_data_type_code_31      CONSTANT VARCHAR2(10)  := 31;                             -- データ種コード
+  cv_cust_class_18          CONSTANT VARCHAR2(10)  := '18';                             -- 顧客区分(チェーン店)
+  cv_cust_class_10          CONSTANT VARCHAR2(10)  := '10';                             -- 顧客区分(顧客)
+  cv_info_class_10          CONSTANT VARCHAR2(10)  := '10';                             -- 情報区分
+  cv_creat_class_order      CONSTANT VARCHAR2(10)  := '01';                             -- 作成元区分(受注データ)
+  cv_tsukagatazaiko_11      CONSTANT VARCHAR2(10)  := '11';                             -- 通貨在庫型区分
+  cv_tsukagatazaiko_12      CONSTANT VARCHAR2(10)  := '12';                             -- 通貨在庫型区分
+  cv_tsukagatazaiko_24      CONSTANT VARCHAR2(10)  := '24';                             -- 通貨在庫型区分
+  cv_data_type_code_11      CONSTANT VARCHAR2(10)  := '11';                             -- データ種コード
+  cv_creat_class_deliv      CONSTANT VARCHAR2(10)  := '02';                             -- 作成元区分(納品確定データ)
+  cv_tsukagatazaiko_13      CONSTANT VARCHAR2(10)  := '13';                             -- 通貨在庫型区分
+  cv_data_type_code_31      CONSTANT VARCHAR2(10)  := '31';                             -- データ種コード
 --
   cv_trans_type_code        CONSTANT VARCHAR2(50)  := 'ORDER';                        -- 取引タイプコード
   cv_order_category         CONSTANT VARCHAR2(50)  := 'MIXED';                        -- 受注カテゴリ
@@ -227,6 +229,10 @@ AS
          , xeh.creation_class                creation_class                 -- 作成元区分
          , xca.ship_storage_code             ship_storage_code              -- 出荷元保管場所(EDI)
          , CASE
+--****************************** 2009/04/15 1.4 T.Kitajima ADD START ******************************--
+             WHEN (xca.rsv_sale_base_act_date IS NULL ) THEN
+               xca.sale_base_code
+--****************************** 2009/04/15 1.4 T.Kitajima ADD  END  ******************************--
              WHEN (xca.rsv_sale_base_act_date <= xeh.order_date ) THEN
                xca.sale_base_code
              ELSE
@@ -1318,7 +1324,10 @@ AS
                                                            NVL( gt_edi_headers ( gn_idx ).order_date,
                                                              gt_edi_headers ( gn_idx ).creation_date ))); 
                                                                                                   -- 予定出荷日
-    gt_customer_po_number_l( gn_l_idx_all )        :=  gt_edi_headers ( gn_idx ).conv_customer_code;   -- 顧客発注番号
+--****************************** 2009/04/15 1.4 T.Kitajima MOD START ******************************--
+--    gt_customer_po_number_l( gn_l_idx_all )        :=  gt_edi_headers ( gn_idx ).conv_customer_code;   -- 顧客発注番号
+    gt_customer_po_number_l( gn_l_idx_all )        :=  gt_edi_headers ( gn_idx ).invoice_number;  -- 顧客発注番号
+--****************************** 2009/04/15 1.4 T.Kitajima MOD START ******************************--
     gt_customer_line_number( gn_l_idx_all )        :=  gt_edi_lines( gn_l_idx ).line_no;          -- 顧客発注明細番号
     gt_orig_sys_document_ref_l( gn_l_idx_all )     :=  gt_edi_headers ( gn_idx ).order_connection_number;
                                                                                                   -- 外部システム受注番号
