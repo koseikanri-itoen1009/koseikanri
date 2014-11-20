@@ -49,6 +49,7 @@ AS
  *  2007/10/29   11.5.10.2.10D  通貨の精度チェック(入力可能精度か桁チェック)追加
  *  2010/01/14   11.5.10.2.11   障害「E_本稼動_01066」対応
  *  2010/02/16   11.5.10.2.12   障害「E_本稼動_01408」対応
+ *  2010/11/22   11.5.10.2.13   障害「E_本稼動_05407」対応
  *
  *****************************************************************************************/
 --
@@ -122,6 +123,18 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver.11.5.10.2.13 2010/11/29 Add Start [E_本稼動_05407]
+    -- プロファイル名
+    cv_profile_name_01    CONSTANT fnd_profile_options.profile_option_name%TYPE := 'ORG_ID';                        -- MO: 営業単位
+    -- クイックコード
+    cv_lookup_gyotai_chk3 CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCFR1_TRANSTYPE_GYOTAI_CHK3';  -- フルVD消化
+    cv_lookup_gyotai_chk4 CONSTANT fnd_lookup_values_vl.lookup_type%TYPE        := 'XXCFR1_TRANSTYPE_GYOTAI_CHK4';  -- フルVD消化、フルVD以外
+    cv_enabled_flag_yes   CONSTANT VARCHAR2(1)  := 'Y';  -- 有効フラグ：有効
+    -- 制御コード
+    cv_no_exists_code     CONSTANT VARCHAR2(1)  := '0';  -- 該当しない
+    cv_ok_exists_code     CONSTANT VARCHAR2(1)  := '1';  -- 該当する
+--
+-- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
 --
     -- *** ローカル変数 ***
     TYPE  errflg_tbl_type IS TABLE OF VARCHAR2(1)    INDEX BY BINARY_INTEGER;    -- エラーフラグ用配列タイプ
@@ -130,6 +143,9 @@ AS
     errmsg_tbl                errmsg_tbl_type;
     ln_err_cnt                NUMBER := 0;         -- パラメータ添字用変数
     ln_books_id               NUMBER;              -- 帳簿ID
+-- Ver.11.5.10.2.13 2010/11/29 Add Start [E_本稼動_05407]
+    ln_org_id                 NUMBER;              -- 営業単位ID
+-- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
     lv_first_flg              VARCHAR2(1) := 'Y';  -- 1件目のレコードか否か
 -- ver 11.5.10.1.6F Chg Start
     --ln_check_seq              NUMBER;              -- エラーチェックシーケンス番号
@@ -714,6 +730,69 @@ AS
                       AND   SYSDATE BETWEEN NVL(flvv.start_date_active,SYSDATE) AND NVL(flvv.end_date_active,SYSDATE));
 -- ver 11.5.10.2.11 Add Start
 --
+-- Ver.11.5.10.2.13 2010/11/29 Add Start [E_本稼動_05407]
+  -- 支払条件チェックカーソル(入金時値引を登録する際には、即時(00_00_00)以外認めない)
+  CURSOR  xx03_terms_name_chk_cur(
+      in_org_id           IN  NUMBER  -- 営業単位ID
+    , in_set_of_books_id  IN  NUMBER  -- 会計帳簿ID
+  )
+  IS
+    SELECT COUNT( 1 )  AS exist_check
+    FROM   xx03_receivable_slips xrs   -- AR部門入力ヘッダ
+          ,ra_cust_trx_types_all rctt  -- 取引タイプマスタ
+    WHERE  xrs.receivable_id     =  in_receivable_id     -- 伝票ID（プロシージャの入力パラメータ）
+    AND    xrs.org_id            =  in_org_id            -- 営業単位ID
+    AND    xrs.set_of_books_id   =  in_set_of_books_id   -- 会計帳簿ID
+    AND    rctt.cust_trx_type_id =  xrs.trans_type_id    -- 取引タイプID
+    AND    rctt.org_id           =  xrs.org_id           -- 営業単位ID
+    AND    rctt.set_of_books_id  =  xrs.set_of_books_id  -- 会計帳簿ID
+    AND    (     rctt.attribute9 IS NULL  -- 支払条件参照タイプチェック用が未設定
+             OR  EXISTS( SELECT  'X'
+                         FROM    fnd_lookup_values_vl  flvv  -- クイックコード
+                         WHERE   flvv.lookup_type  =  rctt.attribute9      -- 支払条件参照タイプチェック用
+                         AND     flvv.lookup_code  =  xrs.terms_name       -- 支払条件名称
+                         AND     flvv.enabled_flag =  cv_enabled_flag_yes  -- 有効フラグ
+                         AND     TRUNC( SYSDATE )  BETWEEN NVL( flvv.start_date_active, TRUNC( SYSDATE ) )
+                                                   AND     NVL( flvv.end_date_active  , TRUNC( SYSDATE ) )
+                         AND     ROWNUM = 1
+                 )
+           )
+  ;
+--
+  -- 入金時値引の対象顧客チェックカーソル(入金時値引を登録する際には、顧客に値引率が登録されていること)
+  CURSOR  xx03_customer_chk_cur(
+      in_org_id          IN  NUMBER  -- 営業単位ID
+    , in_set_of_books_id IN  NUMBER  -- 会計帳簿ID
+  )
+  IS
+    SELECT xca.receiv_discount_rate     AS receiv_discount_rate -- 入金値引率
+          ,xca.contractor_supplier_code AS bm1_code             -- 契約者仕入先CD
+          ,xca.bm_pay_supplier_code1    AS bm2_code             -- 紹介者BM支払仕入先CD1
+          ,xca.bm_pay_supplier_code2    AS bm3_code             -- 紹介者BM支払仕入先CD2
+          ,DECODE(rctt.attribute4        -- 業態チェック用参照タイプ
+                 ,cv_lookup_gyotai_chk3  -- クイックコード：AR部門入力業態チェック(入金時値引訂正_フルVD(消化))
+                 ,cv_ok_exists_code      -- '1'(フルVD消化の意味)
+                 ,cv_no_exists_code      -- '0'
+           )                            AS exists_fvd_s         -- フルVD消化
+          ,DECODE(rctt.attribute4        -- 業態チェック用参照タイプ
+                 ,cv_lookup_gyotai_chk4  -- クイックコード：AR部門入力業態チェック(入金時値引訂正_その他)
+                 ,cv_ok_exists_code      -- '1'(フルVD消化、フルVD以外の意味)
+                 ,cv_no_exists_code      -- '0'
+           )                            AS exists_else          -- フルVD消化、フルVD以外
+    FROM   xx03_receivable_slips xrs   -- AR部門入力ヘッダ
+          ,xxcmm_cust_accounts   xca   -- 顧客追加情報
+          ,ra_cust_trx_types_all rctt  -- 取引タイプマスタ
+    WHERE  xrs.receivable_id    = in_receivable_id        -- 伝票ID（プロシージャの入力パラメータ）
+    AND    xrs.customer_id      = xca.customer_id         -- 内部ID
+    AND    xrs.trans_type_id    = rctt.cust_trx_type_id   -- 内部ID
+    AND    xrs.org_id           = in_org_id               -- 営業単位ID
+    AND    xrs.set_of_books_id  = in_set_of_books_id      -- 会計帳簿ID
+    AND    rctt.attribute4    IN( cv_lookup_gyotai_chk3   -- クイックコード：AR部門入力業態チェック(入金時値引訂正_フルVD(消化))
+                                , cv_lookup_gyotai_chk4   -- クイックコード：AR部門入力業態チェック(入金時値引訂正_その他)
+                              )
+    ;
+-- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
+--
 -- ver 11.5.10.2.12 Modify Start
     -- 文字列バイトチェック
     CURSOR xx03_length_chk_cur
@@ -794,6 +873,12 @@ AS
     -- 勘定科目チェックカーソル
     xx03_account_chk_rec xx03_account_chk_cur%ROWTYPE;
 -- ver 11.5.10.2.11 Add End
+-- Ver.11.5.10.2.13 2010/11/29 Add Start [E_本稼動_05407]
+    -- 支払条件チェックカーソルレコード型
+    xx03_terms_name_chk_rec      xx03_terms_name_chk_cur%ROWTYPE;
+    -- 入金時値引の対象顧客チェックカーソルレコード型
+    xx03_customer_chk_rec        xx03_customer_chk_cur%ROWTYPE;
+-- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
 -- ver 11.5.10.2.12 Modify Start
     -- 文字列バイトチェックレコード型
     xx03_length_chk_rec xx03_length_chk_cur%ROWTYPE;
@@ -838,6 +923,11 @@ AS
 --
     -- 帳簿ID取得
     ln_books_id := xx00_profile_pkg.value('GL_SET_OF_BKS_ID');
+-- Ver.11.5.10.2.13 2010/11/29 Add Start [E_本稼動_05407]
+    -- MO: 営業単位 取得
+    ln_org_id := TO_NUMBER( xx00_profile_pkg.value( 'ORG_ID' ) );
+-- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
+--
 --
     -- 処理対象データ取得カーソルオープン
     OPEN xx03_xrsjlv_cur;
@@ -1397,6 +1487,66 @@ AS
 -- ver 11.5.10.1.6G Add Start
         END IF;
 -- ver 11.5.10.1.6G Add End
+--
+-- Ver.11.5.10.2.13 2010/11/29 Add Start [E_本稼動_05407]
+        -- 支払条件チェック
+        OPEN xx03_terms_name_chk_cur(
+                 in_org_id          => ln_org_id    -- 営業単位ID
+               , in_set_of_books_id => ln_books_id  -- 会計帳簿ID
+             );
+        FETCH xx03_terms_name_chk_cur INTO xx03_terms_name_chk_rec;
+        IF ( xx03_terms_name_chk_rec.exist_check = 0 ) THEN
+          -- 支払条件チェックエラー
+          errflg_tbl( ln_err_cnt ) := 'E';
+          errmsg_tbl( ln_err_cnt ) := xx00_message_pkg.get_msg('XX03', 'APP-XX03-13064','SLIP_NUM','');
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_terms_name_chk_cur;
+--
+        -- 入金時値引の対象顧客チェック
+        OPEN xx03_customer_chk_cur(
+                 in_org_id          => ln_org_id    -- 営業単位ID
+               , in_set_of_books_id => ln_books_id  -- 会計帳簿ID
+             );
+        FETCH xx03_customer_chk_cur INTO xx03_customer_chk_rec;
+--
+        -- 入金時値引の取引タイプであるときは顧客をチェックする
+        IF ( xx03_customer_chk_cur%FOUND ) THEN
+--
+          -- 顧客がフルVD消化のとき
+          IF    ( xx03_customer_chk_rec.exists_fvd_s = cv_ok_exists_code ) THEN
+--
+            -- 仕入先CDが一つも設定されていないときはメッセージ出力
+            IF ( ( xx03_customer_chk_rec.bm1_code IS NULL )  -- 契約者仕入先CD
+             AND ( xx03_customer_chk_rec.bm2_code IS NULL )  -- 紹介者BM支払仕入先CD1
+             AND ( xx03_customer_chk_rec.bm3_code IS NULL )  -- 紹介者BM支払仕入先CD2
+            ) THEN
+              -- 入金時値引が計算不可の為、エラー
+              errflg_tbl( ln_err_cnt ) := 'E';
+              errmsg_tbl( ln_err_cnt ) := xx00_message_pkg.get_msg('XXCFR','APP-XXCFR1-00129');
+              ln_err_cnt := ln_err_cnt + 1;
+            END IF;
+          -- 顧客がフルVD消化、フルVD以外のとき
+          ELSIF ( xx03_customer_chk_rec.exists_else = cv_ok_exists_code ) THEN
+--
+            -- 入金値引率が0以下もしくは設定されていないときはメッセージ出力
+            IF ( ( xx03_customer_chk_rec.receiv_discount_rate IS NULL )  -- 入金値引率
+              OR ( xx03_customer_chk_rec.receiv_discount_rate <= 0    )  -- 入金値引率
+            ) THEN
+              -- 入金時値引が計算不可の為、エラー
+              errflg_tbl( ln_err_cnt ) := 'E';
+              errmsg_tbl( ln_err_cnt ) := xx00_message_pkg.get_msg('XXCFR','APP-XXCFR1-00129');
+              ln_err_cnt := ln_err_cnt + 1;
+            END IF;
+--
+          -- フルVDの時はチェックしない
+          ELSE
+            NULL;
+          END IF;  -- 業態分岐
+--
+        END IF;  -- カーソル取得分岐
+        CLOSE xx03_customer_chk_cur;
+-- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
 --
 -- ver 11.5.10.2.12 Modify Start
         -- 文字列バイトチェック(納品書番号、請求明細備考)
@@ -1984,6 +2134,14 @@ AS
       IF xx03_errchk_result_cur%ISOPEN THEN
         CLOSE xx03_errchk_result_cur;
       END IF;
+      -- Ver.11.5.10.2.13 2010/11/29 Add Start [E_本稼動_05407]
+      IF ( xx03_terms_name_chk_cur%ISOPEN ) THEN
+        CLOSE xx03_terms_name_chk_cur;
+      END IF;
+      IF ( xx03_customer_chk_cur%ISOPEN ) THEN
+        CLOSE xx03_customer_chk_cur;
+      END IF;
+      -- Ver.11.5.10.2.13 2010/11/29 Add End   [E_本稼動_05407]
 --
 --###############################  固定例外処理部 START   ###################################
 --
