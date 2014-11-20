@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2008/11/06    1.9  Oracle 福田 直樹  統合#537対応
  *  2008/11/06    1.9  Oracle 福田 直樹  統合#563対応
  *  2008/11/28    1.10 Oracle 野村 正幸  本番#222対応
+ *  2008/12/06    1.11 Oracle 野村 正幸  本番#532対応
  *
  *****************************************************************************************/
 --
@@ -979,7 +980,10 @@ AS
            xoha.result_deliver_to,               -- 7.出荷先_実績
            xoha.result_shipping_method_code,     -- 8.配送区分_実績
 -- ##### 20080609 MOD TE080指摘事項対応 end  #####
-           xoha.small_quantity,                  -- 9.小口個数
+-- ##### 20081206 Ver.1.11 本番#532対応 start #####
+--           xoha.small_quantity,                  -- 9.小口個数
+           NVL(xoha.small_quantity, 0),            -- 9.小口個数
+-- ##### 20081206 Ver.1.11 本番#532対応 end   #####
            xoha.prod_class,                      -- 10.商品区分
            TO_CHAR(xoha.arrival_date, 'YYYYMM'), -- 11.対象年月(形式:YYYYMM)
            xola.shipping_item_code,              -- 12.出荷品目
