@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_tmp_014a01c_custdata2_n1
+ON xxcok.xxcok_tmp_014a01c_custdata2 (
+     ship_cust_code
+   , calc_target_period_from
+   , calc_target_period_to
+)
+TABLESPACE xxidx2
+/

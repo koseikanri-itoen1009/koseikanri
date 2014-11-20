@@ -1,0 +1,69 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOK_BM_CONTRACT_ERR2
+ * Description : 販手条件エラーテーブル2
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2012/04/24    1.0   S.Niki           新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOK.XXCOK_BM_CONTRACT_ERR2
+(
+   BASE_CODE              VARCHAR2(4),
+   CUST_CODE              VARCHAR2(9),
+   ITEM_CODE              VARCHAR2(7),
+   CONTAINER_TYPE_CODE    VARCHAR2(4),
+   SELLING_PRICE          NUMBER,
+   SELLING_AMT_TAX        NUMBER(9),
+   CLOSING_DATE           DATE,
+   CREATED_BY             NUMBER(15,0)   NOT NULL,
+   CREATION_DATE          DATE           NOT NULL,
+   LAST_UPDATED_BY        NUMBER(15,0)   NOT NULL,
+   LAST_UPDATE_DATE       DATE           NOT NULL,
+   LAST_UPDATE_LOGIN      NUMBER(15,0),
+   REQUEST_ID             NUMBER(15,0),
+   PROGRAM_APPLICATION_ID NUMBER(15,0),
+   PROGRAM_ID             NUMBER(15,0),
+   PROGRAM_UPDATE_DATE    DATE
+)
+PCTFREE 10 PCTUSED 60 INITRANS 16 STORAGE ( INITIAL 2M )
+/
+COMMENT ON TABLE  XXCOK.XXCOK_BM_CONTRACT_ERR2                        IS '販手条件エラーテーブル2'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.BASE_CODE              IS '拠点コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.CUST_CODE              IS '顧客コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.ITEM_CODE              IS '品目コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.CONTAINER_TYPE_CODE    IS '容器区分コード'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.SELLING_PRICE          IS '売価'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.SELLING_AMT_TAX        IS '売上金額(税込)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.CLOSING_DATE           IS '締め日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.CREATED_BY             IS '作成者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.CREATION_DATE          IS '作成日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.LAST_UPDATED_BY        IS '最終更新者'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.LAST_UPDATE_DATE       IS '最終更新日'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.LAST_UPDATE_LOGIN      IS '最終更新ログイン'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.REQUEST_ID             IS '要求ID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.PROGRAM_APPLICATION_ID IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.PROGRAM_ID             IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BM_CONTRACT_ERR2.PROGRAM_UPDATE_DATE    IS 'プログラム更新日'
+/

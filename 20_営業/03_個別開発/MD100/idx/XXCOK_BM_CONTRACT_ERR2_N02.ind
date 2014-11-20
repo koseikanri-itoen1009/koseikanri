@@ -1,0 +1,8 @@
+CREATE INDEX xxcok.xxcok_bm_contract_err2_n02
+ON xxcok.xxcok_bm_contract_err2 (
+     base_code
+   , item_code
+   , container_type_code
+)
+TABLESPACE xxidx2
+/
