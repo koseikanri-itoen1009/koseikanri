@@ -3,13 +3,14 @@
  *
  * View Name   : XXCOK_001A01F_V
  * Description : ŒÚ‹qˆÚs“ü—Í‰æ–ÊiŒÚ‹q’PˆÊjƒrƒ…[
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          V‹Kì¬
+ *  2011/02/03    1.1   M.Hirose         [E_–{‰Ò“®_02010,06187]‘Î‰
  *
  **************************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcok_001a01f_v(
@@ -31,6 +32,12 @@ CREATE OR REPLACE VIEW apps.xxcok_001a01f_v(
  ,vd_inv_trnsfr_status
  ,sale_base_code
  ,management_base_code
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR START
+ ,department_code
+ ,new_base_code_from
+ ,new_base_code_to
+ ,customer_class_code
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR END
  ,created_by
  ,creation_date
  ,last_updated_by
@@ -56,6 +63,12 @@ SELECT xcsi.ROWID                       AS row_id
      , xcsi.vd_inv_trnsfr_status        AS vd_inv_trnsfr_status
      , xca.sale_base_code               AS sale_base_code
      , xca.management_base_code         AS management_base_code
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR START
+     , xadv.aff_department_code         AS department_code
+     , TRUNC(xadv.start_date_active)    AS new_base_code_from
+     , TRUNC(xadv.end_date_active  )    AS new_base_code_to
+     , hca1.customer_class_code         AS customer_class_code
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR END
      , xcsi.created_by                  AS created_by
      , xcsi.creation_date               AS creation_date
      , xcsi.last_updated_by             AS last_updated_by
@@ -69,6 +82,9 @@ FROM xxcok_cust_shift_info    xcsi
    , hz_parties               hp2
    , hz_parties               hp3
    , xxcmm_cust_accounts      xca
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR START
+   , xxcff_aff_department_v   xadv
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR END
 WHERE xcsi.cust_code          = hca1.account_number
   AND xcsi.prev_base_code     = hca2.account_number
   AND xcsi.new_base_code      = hca3.account_number
@@ -76,6 +92,9 @@ WHERE xcsi.cust_code          = hca1.account_number
   AND hca2.party_id           = hp2.party_id
   AND hca3.party_id           = hp3.party_id
   AND hca1.cust_account_id    = xca.customer_id
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR START
+  AND xcsi.new_base_code      = xadv.aff_department_code(+)
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR END
 /
 COMMENT ON TABLE  apps.xxcok_001a01f_v                           IS 'ŒÚ‹qˆÚs“ü—Í‰æ–ÊiŒÚ‹q’PˆÊjƒrƒ…['
 /
@@ -115,6 +134,16 @@ COMMENT ON COLUMN apps.xxcok_001a01f_v.sale_base_code            IS '”„ã’S“–‹’“
 /
 COMMENT ON COLUMN apps.xxcok_001a01f_v.management_base_code      IS 'ŠÇ—Œ³‹’“_ƒR[ƒh'
 /
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR START
+COMMENT ON COLUMN apps.xxcok_001a01f_v.department_code           IS 'V‹’“_ƒR[ƒhiAFFj'
+/
+COMMENT ON COLUMN apps.xxcok_001a01f_v.new_base_code_from        IS 'V‹’“_ƒR[ƒhŠJn“ú'
+/
+COMMENT ON COLUMN apps.xxcok_001a01f_v.new_base_code_to          IS 'V‹’“_ƒR[ƒhI—¹“ú'
+/
+COMMENT ON COLUMN apps.xxcok_001a01f_v.customer_class_code       IS 'ŒÚ‹q‹æ•ª'
+/
+-- 2011/02/03 Ver.1.1 [E_–{‰Ò“®_02010,06187] SCS M.Hirose REPAIR END
 COMMENT ON COLUMN apps.xxcok_001a01f_v.created_by                IS 'ì¬Ò'
 /
 COMMENT ON COLUMN apps.xxcok_001a01f_v.creation_date             IS 'ì¬“ú'

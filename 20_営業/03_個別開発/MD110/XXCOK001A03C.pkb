@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK001A03C_pkg(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：顧客移行情報のI/Fファイル作成 販売物流 MD050_COK_001_A03
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/02/02    1.1   K.Suenaga        [障害COK_001]夜バッチ対応/営業単位ID追加
  *  2009/02/05    1.2   K.Suenaga        [障害COK_009]クイックコードビューに有効日・無効日の判定を追加
  *                                                    ディレクトリパスの出力方法を変更
+ *  2011/02/17    1.3   M.Hirose         [E_本稼動_02085] ステータス：確定前の追加
  *
  *****************************************************************************************/
   -- ===============================
@@ -37,7 +38,7 @@ AS
   -- ===============================
   --ステータス・コード
   cv_status_normal          CONSTANT VARCHAR2(1)    := xxccp_common_pkg.set_status_normal; -- 正常:0
-  cv_status_warn            CONSTANT VARCHAR2(1)    := xxccp_common_pkg.set_status_warn;   --警告:1
+  cv_status_warn            CONSTANT VARCHAR2(1)    := xxccp_common_pkg.set_status_warn;   -- 警告:1
   cv_status_error           CONSTANT VARCHAR2(1)    := xxccp_common_pkg.set_status_error;  -- 異常:2
   --WHOカラム
   cn_created_by              CONSTANT NUMBER        := fnd_global.user_id;         --CREATED_BY
@@ -87,6 +88,9 @@ AS
   --ステータス
   cv_input_status           CONSTANT VARCHAR2(1)    := 'I';                        -- 入力中のステータス
   cv_cancel_status          CONSTANT VARCHAR2(1)    := 'C';                        -- 取消のステータス
+-- 2011/02/07 Ver.1.3 [E_本稼動_02085] SCS M.Hirose INS START
+  cv_wait_status            CONSTANT VARCHAR2(1)    := 'W';                        -- 確定前のステータス
+-- 2011/02/07 Ver.1.3 [E_本稼動_02085] SCS M.Hirose INS END
   --移行区分
   cv_shift_type             CONSTANT VARCHAR2(1)    := '1';                        -- 移行区分の年次定数
   --起動区分
@@ -494,7 +498,12 @@ AS
       SELECT 'X'
       FROM   xxcok_cust_shift_info xcsi
       WHERE  xcsi.cust_shift_date <= gd_operation_date
-      AND    xcsi.status           = cv_input_status
+-- 2011/02/07 Ver.1.3 [E_本稼動_02085] SCS M.Hirose UPD START
+--      AND    xcsi.status           = cv_input_status
+      AND    xcsi.status           IN( cv_input_status  -- 入力中
+                                     , cv_wait_status   -- 確定前
+                                   )
+-- 2011/02/07 Ver.1.3 [E_本稼動_02085] SCS M.Hirose UPD END
       FOR UPDATE OF xcsi.cust_shift_id NOWAIT;
 --
   BEGIN
@@ -518,7 +527,13 @@ AS
            , xcsi.program_id              = cn_program_id             -- コンカレント・プログラムID
            , xcsi.program_update_date     = SYSDATE                   -- システム日付
       WHERE  xcsi.cust_shift_date        <= gd_operation_date
-      AND    xcsi.status                  = cv_input_status;
+-- 2011/02/07 Ver.1.3 [E_本稼動_02085] SCS M.Hirose UPD START
+--      AND    xcsi.status                  = cv_input_status;
+      AND    xcsi.status                 IN( cv_input_status  -- 入力済
+                                           , cv_wait_status   -- 確定前
+                                         )
+      ;
+-- 2011/02/07 Ver.1.3 [E_本稼動_02085] SCS M.Hirose UPD END
 --
     EXCEPTION
       -- *** 未確定データ取消処理エラー ***
