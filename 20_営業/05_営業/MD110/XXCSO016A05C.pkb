@@ -58,6 +58,7 @@ AS
  *  2010-02-26    1.15  K.Hosoi          E_本稼動_01568対応
  *  2010-03-17    1.16  K.Hosoi          E_本稼動_01881対応
  *  2010-04-21    1.17  T.Maruyama       E_本稼動_02391対応 INSTANCE_NUMBERはEBSで7桁以上となるため固定値をセット
+ *  2010-05-19    1.18  T.Maruyama       E_本稼動_02787対応 先月末拠点CDの導出項目を売上拠点から前月売上拠点へ変更
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -963,6 +964,9 @@ AS
     /* 2010.02.26 K.Hosoi E_本稼動_01568 END */
     /* 2009.06.09 K.Hosoi T1_1154(再修正) 対応 START */
     ln_target_cnt         NUMBER;             -- カーソル抽出件数格納
+     /* 2010.05.19 T.Maruyama E_本稼動_02787対応 START */
+    lt_past_sale_base_code xxcmm_cust_accounts.past_sale_base_code%TYPE; --前月売上拠点CD
+     /* 2010.05.19 T.Maruyama E_本稼動_02787対応 END */ 
     -- *** ローカル・カーソル ***
     CURSOR get_act_wk_dt_cur(
              it_instll_cd IN xxcso_install_base_v.install_code%TYPE
@@ -1101,6 +1105,9 @@ AS
     /* 2009.08.06 K.Satomura 0000935対応 END */
     lv_sale_base_code   := NULL;  -- 拠点コードにNULLをセット
     lv_account_number   := NULL;  -- 顧客コードにNULLをセット
+    /* 2010.05.19 T.Maruyama E_本稼動_02787対応 START */
+    lt_past_sale_base_code := NULL; --前月売上拠点CDにNULLをセット
+    /* 2010.05.19 T.Maruyama E_本稼動_02787対応 END */
     /* 2009.08.06 K.Satomura 0000935対応 START */
     --ELSIF (l_get_rec.jotai_kbn1 IS NOT NULL) THEN
     /* 2009.08.06 K.Satomura 0000935対応 END */
@@ -1123,8 +1130,14 @@ AS
       SELECT   xcav.sale_base_code             -- 拠点(部門)コード
       /* 2009.11.27 K.Satomura E_本稼動_00118対応 END */
               ,xcav.account_number             -- 顧客コード
+              /* 2010.05.19 T.Maruyama E_本稼動_02787対応 START */
+              ,xcav.past_sale_base_code        -- 前月売上拠点
+              /* 2010.05.19 T.Maruyama E_本稼動_02787対応 END */
       INTO     lv_sale_base_code               -- 拠点(部門)コード
               ,lv_account_number               -- 顧客コード
+              /* 2010.05.19 T.Maruyama E_本稼動_02787対応 START */
+              ,lt_past_sale_base_code          -- 前月売上拠点
+              /* 2010.05.19 T.Maruyama E_本稼動_02787対応 END */
       FROM     xxcso_cust_accounts_v xcav      -- 顧客マスタビュー
       WHERE    xcav.cust_account_id = l_get_rec.install_account_id; -- アカウントID
 
@@ -1597,7 +1610,10 @@ AS
         lv_lst_accnt_num        := NULL;  -- 先月末顧客コードにNULLをセット
       -- 初回設置日<>業務月の場合
       ELSE
-        lv_last_month_base_cd   := lv_sale_base_code;  -- 先月末拠点コードに現在の拠点コードをセット
+        /* 2010.05.19 T.Maruyama E_本稼動_02787対応 START */
+        --lv_last_month_base_cd   := lv_sale_base_code;  -- 先月末拠点コードに現在の拠点コードをセット
+        lv_last_month_base_cd   := lt_past_sale_base_code;  -- 先月末拠点コードに現在の顧客の前月売上拠点コードをセット
+        /* 2010.05.19 T.Maruyama E_本稼動_02787対応 END */
         lv_lst_accnt_num        := lv_account_number;  -- 先月末顧客コードに現在の顧客コードをセット
       END IF;
 --
@@ -1607,7 +1623,10 @@ AS
     ELSIF (l_get_rec.last_year_month <> TO_CHAR(ADD_MONTHS(ld_bsnss_mnth,cn_mnth_shft),cv_yr_mnth_frmt))
     /* 2009.09.03 M.Maruyama 0001192対応 END */
     THEN
-      lv_last_month_base_cd   := lv_sale_base_code;  -- 先月末拠点コードに現在の拠点コードをセット
+      /* 2010.05.19 T.Maruyama E_本稼動_02787対応 START */
+      --lv_last_month_base_cd   := lv_sale_base_code;  -- 先月末拠点コードに現在の拠点コードをセット
+      lv_last_month_base_cd   := lt_past_sale_base_code;  -- 先月末拠点コードに現在の顧客の前月売上拠点コードをセット
+      /* 2010.05.19 T.Maruyama E_本稼動_02787対応 END */
       lv_lst_accnt_num        := lv_account_number;  -- 先月末顧客コードに現在の顧客コードをセット
 --
     -- 先月末年月=業務月-１の場合
@@ -1620,25 +1639,34 @@ AS
       --ELSIF (l_get_rec.last_jotai_kbn IN (cv_jotai_kbn1_1,cv_jotai_kbn1_2)) THEN
       /* 2009.08.06 K.Satomura 0000935対応 END */
       BEGIN
-        SELECT (CASE
-                  WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_1 THEN
-                    xcav.past_sale_base_code  -- 前月売上拠点(部門)コード
-                  /* 2009.08.06 K.Satomura 0000935対応 START */
-                  --WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_2 THEN
-                  WHEN l_get_rec.last_jotai_kbn IN (cv_jotai_kbn1_2, cv_jotai_kbn1_3) THEN
-                  /* 2009.08.06 K.Satomura 0000935対応 END */
-                    /* 2009.12.09 T.Maruyama E_本稼動_00117 START */
-                    --xcav.account_number       -- 顧客コード
-                    xcav.sale_base_code       -- 売上担当拠点コード
-                  ELSE
-                    xcav.sale_base_code       -- 売上担当拠点コード
-                    /* 2009.12.09 T.Maruyama E_本稼動_00117 END */
-                  END) last_month_base_cd
+        /* 2010.05.19 T.Maruyama E_本稼動_02787対応 START */
+         SELECT xcav.past_sale_base_code  last_month_base_cd-- 前月売上拠点(部門)コード 
                ,l_get_rec.last_inst_cust_code  -- 先月末顧客コード
           INTO  lv_last_month_base_cd           -- 先月末売上拠点コード
                ,lv_lst_accnt_num                -- 先月末顧客コード
           FROM  xxcso_cust_accounts_v xcav      -- 顧客マスタビュー
          WHERE  xcav.account_number = l_get_rec.last_inst_cust_code; -- 顧客コード
+         
+        --SELECT (CASE
+        --          WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_1 THEN
+        --            xcav.past_sale_base_code  -- 前月売上拠点(部門)コード
+        --          /* 2009.08.06 K.Satomura 0000935対応 START */
+        --          --WHEN l_get_rec.last_jotai_kbn = cv_jotai_kbn1_2 THEN
+        --          WHEN l_get_rec.last_jotai_kbn IN (cv_jotai_kbn1_2, cv_jotai_kbn1_3) THEN
+        --          /* 2009.08.06 K.Satomura 0000935対応 END */
+        --            /* 2009.12.09 T.Maruyama E_本稼動_00117 START */
+        --            --xcav.account_number       -- 顧客コード
+        --            xcav.sale_base_code       -- 売上担当拠点コード
+        --          ELSE
+        --            xcav.sale_base_code       -- 売上担当拠点コード
+        --            /* 2009.12.09 T.Maruyama E_本稼動_00117 END */
+        --          END) last_month_base_cd
+        --       ,l_get_rec.last_inst_cust_code  -- 先月末顧客コード
+        --  INTO  lv_last_month_base_cd           -- 先月末売上拠点コード
+        --       ,lv_lst_accnt_num                -- 先月末顧客コード
+        --  FROM  xxcso_cust_accounts_v xcav      -- 顧客マスタビュー
+        -- WHERE  xcav.account_number = l_get_rec.last_inst_cust_code; -- 顧客コード
+        /* 2010.05.19 T.Maruyama E_本稼動_02787対応 END */
       EXCEPTION
         -- 検索結果がない場合、抽出失敗した場合
         WHEN OTHERS THEN
@@ -1661,7 +1689,10 @@ AS
           --    );
           --lv_errbuf  := lv_errmsg;
           --RAISE select_error_expt;
-          lv_last_month_base_cd := lv_sale_base_code;
+          /* 2010.05.19 T.Maruyama E_本稼動_02787対応 START */
+          --lv_last_month_base_cd := lv_sale_base_code;
+          lv_last_month_base_cd := lt_past_sale_base_code;
+          /* 2010.05.19 T.Maruyama E_本稼動_02787対応 END */
           lv_lst_accnt_num      := lv_account_number;
           ov_retcode            := cv_status_warn;
           lv_errmsg             := xxccp_common_pkg.get_msg(
