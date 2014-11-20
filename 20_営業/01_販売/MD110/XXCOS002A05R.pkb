@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A05R (body)
  * Description      : 納品書チェックリスト
  * MD.050           : 納品書チェックリスト MD050_COS_002_A05
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -59,6 +59,8 @@ AS
  *                                       データパージの不具合を修正
  *  2009/07/13    1.13  T.Tominaga       障害[0000651]対応
  *                                       税処理を行う対象を変更（VD以外⇒VD）、確認項目の処理をVD,VD以外の両方で行うように変更
+ *  2009/08/24    1.14  M.Sano           障害[0001162]対応
+ *                                       従業員マスタの抽出条件の追加
  *
  *****************************************************************************************/
 --
@@ -944,7 +946,10 @@ AS
         ,xxcmm_cust_accounts      cuac          -- 顧客追加情報
         ,hz_parties               parb          -- パーティ_拠点
         ,hz_parties               parc          -- パーティ_顧客
-        ,per_people_f             ppf           -- 従業員マスタ_成績者名
+-- 2009/08/24 Ver.1.14 M.Sano Start
+--        ,per_people_f             ppf           -- 従業員マスタ_成績者名
+        ,per_all_people_f         ppf           -- 従業員マスタ_成績者名
+-- 2009/08/24 Ver.1.14 M.Sano End
         ,ic_item_mst_b            iimb          -- OPM品目
         ,xxcmn_item_mst_b         ximb          -- OPM品目アドオン
         ,xxcos_rs_info_v          riv           -- 営業員情報view
@@ -1271,6 +1276,10 @@ AS
       AND cust.party_id              = parc.party_id                                                     -- 顧客マスタ_顧客＝パーティ_顧客
       AND infh.create_class IN ( orct.meaning )                                                          -- 作成元区分＝クイックコード
       AND infh.results_employee_code = ppf.employee_number(+)
+-- 2009/08/24 Ver.1.14 M.Sano Start
+      AND infh.delivery_date        >= ppf.effective_start_date(+)
+      AND infh.delivery_date        <= ppf.effective_end_date(+)
+-- 2009/08/24 Ver.1.14 M.Sano End
       AND infd.item_code             = iimb.item_no
       AND iimb.item_id               = ximb.item_id
       AND ximb.obsolete_class       <> cv_obsolete_class_one
