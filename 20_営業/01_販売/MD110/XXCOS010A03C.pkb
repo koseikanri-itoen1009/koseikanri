@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2010/04/20    1.20  Y.Goto           [E_本稼動_01719] 営業担当チェックを共通関数に変更
  *                                       [E_本稼動_01900] EDI明細情報テーブルにEDI原単価(発注)を追加
  *  2010/05/06    1.21  K.Oomata         [E_本稼動_02569] 受注作成対象外データの担当営業員取得エラー不具合対応
+ *  2010/05/10    1.22  K.Oomata         [E_本稼動_02626] EDIエラー情報テーブルのパージタイミング不具合対応
  *
  *****************************************************************************************/
 --
@@ -153,6 +154,10 @@ AS
   cv_prf_err_purge_term  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_ERRMSG_PARGE_TERM';
                                                                                 -- XXCOS:EDIエラー情報保持期間
 -- 2010/01/29 Ver1.17 K.Hosoi Add End
+-- 2010/05/10 Ver.1.22 K.Oomata Add Start
+  cv_prf_err_purge_term_all CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_ERRMSG_PERGE_TERM_ALL';
+                                                                                -- XXCOS:EDIエラー情報削除期間(ALL)
+-- 2010/05/10 Ver.1.22 K.Oomata Add End
   -- プロファイル
   cv_prf_purge_term      CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_PURGE_TERM';     -- XXCOS:EDI情報削除期間
   cv_prf_case_uom        CONSTANT VARCHAR2(50)  := 'XXCOS1_CASE_UOM_CODE';      -- XXCOS:ケース単位コード
@@ -208,6 +213,9 @@ AS
 -- 2010/01/29 Ver1.17 K.Hosoi Add Start
   cv_msg_err_purge_term  CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11962';          -- XXCOS:EDIエラー情報削除期間
 -- 2010/01/29 Ver1.17 K.Hosoi Add End
+-- 2010/05/10 Ver.1.22 K.Oomata Add Start
+  cv_msg_err_purge_term_all CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11967';          -- XXCOS:EDIエラー情報削除期間(ALL)
+-- 2010/05/10 Ver.1.22 K.Oomata Add End
   cv_msg_shop_code       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11954';          -- 店コード
   cv_msg_line_no         CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11955';          -- 行番号
   cv_msg_order_qty       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-11956';          -- 発注数量（合計、バラ）
@@ -269,6 +277,9 @@ AS
   cv_qck_edi_exe         CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_EXE_TYPE';       -- 実行区分
   cv_qck_creation_class  CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_CREATE_CLASS';   -- EDI作成元区分
   cv_qck_edi_err_type    CONSTANT VARCHAR2(50)  := 'XXCOS1_EDI_ITEM_ERR_TYPE';  -- EDI品目エラータイプ
+-- 2010/05/10 Ver.1.22 K.Oomata Add Start
+  cv_qct_err_list_msg    CONSTANT VARCHAR2(50)  := 'XXCOS1_ORDER_ERR_LIST_MESSAGE'; -- 受注エラーリスト出力メッセージ
+-- 2010/05/10 Ver.1.22 K.Oomata Add End
   -- その他定数
   cv_exe_type_new        CONSTANT VARCHAR2(10)  := '0';                         -- 実行区分：新規
   cv_exe_type_retry      CONSTANT VARCHAR2(10)  := '1';                         -- 実行区分：再実施
@@ -1890,6 +1901,9 @@ AS
 -- 2010/01/29 Ver1.17 K.Hosoi Add Start
   gv_err_purge_term                          fnd_profile_option_values.profile_option_value%TYPE;   -- EDIエラー情報保持期間
 -- 2010/01/29 Ver1.17 K.Hosoi Add End
+-- 2010/05/10 Ver.1.22 K.Oomata Add Start
+  gv_err_purge_term_all                      fnd_profile_option_values.profile_option_value%TYPE;   -- EDIエラー情報削除期間(ALL)
+-- 2010/05/10 Ver.1.22 K.Oomata Add End
   gv_case_uom_code                           fnd_profile_option_values.profile_option_value%TYPE;   -- ケース単位コード
   gn_organization_id                         NUMBER;                                                -- 在庫組織ID
   gn_org_unit_id                             NUMBER;                                                -- 営業単位
@@ -2685,6 +2699,24 @@ AS
     END IF;
 --
 -- 2010/01/29 Ver1.17 K.Hosoi Add End
+-- 2010/05/10 Ver.1.22 K.Oomata Add Start
+    --==============================================================
+    -- プロファイルの取得(XXCOS:EDIエラー情報削除期間(ALL))
+    --==============================================================
+    gv_err_purge_term_all := FND_PROFILE.VALUE( cv_prf_err_purge_term_all );
+--
+    -- プロファイルが取得できなかった場合
+    IF ( gv_err_purge_term_all IS NULL ) THEN
+      -- プロファイル（XXCOS:EDIエラー情報削除期間)取得エラーを出力
+      lv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_err_purge_term_all );
+      lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_profile, cv_tkn_profile, lv_tkn1 );
+      lv_errbuf := lv_errmsg;
+      -- ログ出力
+      proc_msg_output( cv_prg_name, lv_errbuf );
+      ov_retcode := cv_status_error;
+    END IF;
+--
+-- 2010/05/10 Ver.1.22 K.Oomata Add End
     --==============================================================
     -- EDI作成元区分取得
     --==============================================================
@@ -7645,6 +7677,9 @@ AS
 --
     -- *** ローカル変数 ***
     ld_purge_date        DATE;
+-- 2010/05/10 Ver.1.22 K.Oomata Add Start
+    ld_purge_date_all    DATE;
+-- 2010/05/10 Ver.1.22 K.Oomata Add End
 --
     -- *** ローカル・カーソル ***
 --
@@ -7696,12 +7731,40 @@ AS
     -- EDI情報削除対象カーソル(EDI受信日)
     CURSOR edi_errors_lock2_cur (
       id_purge_date DATE
+-- 2010/05/10 Ver.1.22 K.Oomata Add Start
+     ,id_purge_date_all DATE
+-- 2010/05/10 Ver.1.22 K.Oomata Add End
     )
     IS
       SELECT  xee.edi_err_id                          -- EDIエラーID
       FROM    xxcos_edi_errors  xee                   -- EDIエラーテーブル
-      WHERE   xee.creation_date < id_purge_date       -- EDI受信日
-      AND     xee.edi_create_class  = cv_edi_create_class -- エラーリスト種別：納品確定
+-- 2010/05/10 Ver.1.22 K.Oomata Mod Start
+--      WHERE   xee.creation_date < id_purge_date       -- EDI受信日
+--      AND     xee.edi_create_class  = cv_edi_create_class -- エラーリスト種別：納品確定
+      WHERE  xee.edi_create_class = cv_edi_create_class -- エラーリスト種別：受注
+      AND (
+           -- 期間パージ対象の場合
+           (
+            xee.creation_date < id_purge_date
+            AND EXISTS(
+                     SELECT 1
+                     FROM   fnd_lookup_values flv
+                     WHERE  flv.language      = cv_default_language  -- JA
+                     AND    flv.enabled_flag  = cv_enabled           -- Y
+                     AND    flv.lookup_type   = cv_qct_err_list_msg  -- 受注エラーリスト出力メッセージ
+                     AND    flv.meaning       = xee.err_message_code
+                     AND    flv.attribute5    = '1'                  -- 期間パージ対象
+                     AND    flv.start_date_active <= TRUNC(ct_order_date_def)
+                     AND    (flv.end_date_active IS NULL
+                             OR
+                             flv.end_date_active >= TRUNC(ct_order_date_def))
+                )
+           )
+           -- 期間パージ対象以外の場合
+           OR
+           xee.creation_date < id_purge_date_all
+          )
+-- 2010/05/10 Ver.1.22 K.Oomata Mod End
       FOR UPDATE NOWAIT;
 --
 -- 2010/01/29 Ver1.17 K.Hosoi Add End
@@ -7809,15 +7872,50 @@ AS
     INTO    ld_purge_date
     FROM    dual;
 --
+-- 2010/05/10 Ver.1.22 K.Oomata Add Start
+    -- EDI情報削除基準日を取得
+    SELECT  TRUNC( SYSDATE - TO_NUMBER( gv_err_purge_term_all ) )
+    INTO    ld_purge_date_all
+    FROM    dual;
+--
+-- 2010/05/10 Ver.1.22 K.Oomata Add End
     -- EDI情報削除対象のEDIエラー情報テーブルのロックを取得する。
-    OPEN edi_errors_lock2_cur(ld_purge_date);
+-- 2010/05/10 Ver.1.22 K.Oomata Mod Start
+--    OPEN edi_errors_lock2_cur(ld_purge_date);
+    OPEN edi_errors_lock2_cur(ld_purge_date,ld_purge_date_all);
+-- 2010/05/10 Ver.1.22 K.Oomata Mod End
     CLOSE edi_errors_lock2_cur;
 --
     -- 対象データを削除
     DELETE
     FROM   xxcos_edi_errors xee
-    WHERE  xee.creation_date < ld_purge_date       -- EDI受信日
-    AND    xee.edi_create_class  = cv_edi_create_class -- エラーリスト種別：納品確定
+-- 2010/05/10 Ver.1.22 K.Oomata Mod Start
+--    WHERE  xee.creation_date < ld_purge_date       -- EDI受信日
+--    AND    xee.edi_create_class  = cv_edi_create_class -- エラーリスト種別：納品確定
+    WHERE  xee.edi_create_class = cv_edi_create_class -- エラーリスト種別：受注
+    AND (
+         -- 期間パージ対象の場合
+         (
+          xee.creation_date < ld_purge_date
+          AND EXISTS(
+                   SELECT 1
+                   FROM   fnd_lookup_values flv
+                   WHERE  flv.language      = cv_default_language  -- JA
+                   AND    flv.enabled_flag  = cv_enabled           -- Y
+                   AND    flv.lookup_type   = cv_qct_err_list_msg  -- 受注エラーリスト出力メッセージ
+                   AND    flv.meaning       = xee.err_message_code
+                   AND    flv.attribute5    = '1'                  -- 期間パージ対象
+                   AND    flv.start_date_active <= TRUNC(ct_order_date_def)
+                   AND    (flv.end_date_active IS NULL
+                           OR
+                           flv.end_date_active >= TRUNC(ct_order_date_def))
+              )
+         )
+         -- 期間パージ対象以外の場合
+         OR
+         xee.creation_date < ld_purge_date_all
+        )
+-- 2010/05/10 Ver.1.22 K.Oomata Mod End
     ;
 -- 2010/01/29 Ver1.17 K.Hosoi Add End
 --
