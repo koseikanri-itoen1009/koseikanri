@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/05/13    1.2   T.Nakamura       [障害T1_0709] 出力区分チェックを削除
  *  2009/06/19    1.3   H.Sasaki         [障害T1_1444] PT対応
  *  2009/07/22    1.4   H.Sasaki         [0000685]パラメータ日付項目のPT対応
+ *  2009/08/06    1.5   H.Sasaki         [0000893]PT対応
  *
  *****************************************************************************************/
 --
@@ -308,7 +309,11 @@ AS
     -- *** ローカル・カーソル(A-2-2) ***
     CURSOR daily_cur
     IS
-      SELECT  ird.practice_date                             ird_practice_date             -- 年月日
+      SELECT
+-- == 2009/08/06 V1.5 Added START ===============================================================
+              /*+ leading(biv msi ird) */
+-- == 2009/08/06 V1.5 Added END   ===============================================================
+              ird.practice_date                             ird_practice_date             -- 年月日
              ,ird.base_code                                 ird_base_code                 -- 拠点コード
              ,biv.base_short_name                           biv_base_short_name           -- 拠点名称
              ,SUBSTR(msi.secondary_inventory_name, 6, 2)    msi_warehouse_code            -- 倉庫コード
@@ -367,59 +372,98 @@ AS
              ,ird.selfbase_stock                            ird_selfbase_stock            -- 保管場所移動＿自拠点入庫
              ,ird.book_inventory_quantity                   ird_book_inventory_quantity   -- 帳簿在庫数
     FROM      xxcoi_inv_reception_daily         ird                                       -- 月次在庫受払表 (日次)
-             ,xxcoi_base_info2_v                biv                                       -- 拠点情報ビュー
              ,mtl_secondary_inventories         msi                                       -- 保管場所マスタ (INV)
              ,hz_cust_accounts                  hca                                       -- 顧客マスタ
              ,mtl_system_items_b                sib                                       -- Disc品目マスタ
              ,xxcmn_item_mst_b                  imb                                       -- OPM品目アドオン(XXCMN)
              ,ic_item_mst_b                     iib                                       -- OPM品目        (GMI)
-    WHERE     biv.focus_base_code       =   NVL(iv_base_code, gv_user_base)
-    AND       biv.base_code             =   ird.base_code
-    AND       ird.practice_date         =   gd_inventory_date
-    AND       ird.inventory_item_id     =   sib.inventory_item_id
-    AND       sib.organization_id       =   ird.organization_id
-    AND       sib.segment1              =   iib.item_no                                   -- OPM品目コード
-    AND       iib.item_id               =   imb.item_id
-    AND       ird.organization_id       =   msi.organization_id
-    AND       ird.subinventory_code     =   msi.secondary_inventory_name
-    AND       msi.attribute4            =   hca.account_number(+)
-    AND       msi.attribute7            =   ird.base_code
--- == 2009/06/19 V1.3 Modified START ===============================================================
---    AND  ((iv_output_kbn             = cv_out_kbn1
---    AND    SUBSTR(msi.secondary_inventory_name,6,2)
---                                     = NVL(iv_warehouse,SUBSTR(msi.secondary_inventory_name,6,2)))
---    OR    (iv_output_kbn            <> cv_out_kbn1
---    AND    msi.attribute4            = NVL(iv_left_base,msi.attribute4)))
---    AND (((iv_output_kbn             = cv_out_kbn1
---    AND    msi.attribute1            = cv_subinv_1)
---    OR    (iv_output_kbn            <> cv_out_kbn1
---    AND    msi.attribute1            = cv_subinv_3))                 -- 保管場所区分(預け先)
---    OR  (((iv_output_kbn             = cv_out_kbn1
---    AND    msi.attribute1            = cv_subinv_1)
---    OR    (iv_output_kbn            <> cv_out_kbn1
---    AND    msi.attribute1            = cv_subinv_4))                 -- 保管場所区分(専門店)
---    AND  ((msi.attribute13          <> cv_subinv_7                   -- 保管場所分類(消化VD)
---    AND    iv_left_base IS NULL)
---    OR    (iv_left_base IS NOT NULL))))
+-- == 2009/08/06 V1.5 Modified START ===============================================================
+--             ,xxcoi_base_info2_v                biv                                       -- 拠点情報ビュー
+             ,(SELECT  hca.account_number
+                      ,SUBSTRB(hca.account_name,1,8)  base_short_name
+               FROM    hz_cust_accounts    hca
+                      ,xxcmm_cust_accounts xca
+               WHERE   xca.management_base_code  =   NVL(iv_base_code, gv_user_base)
+               AND     hca.status                =   'A'
+               AND     hca.customer_class_code   =   '1'
+               AND     hca.cust_account_id       =   xca.customer_id
+               UNION
+               SELECT  hca.account_number
+                      ,SUBSTRB(hca.account_name,1,8)  base_short_name
+               FROM    hz_cust_accounts    hca
+                      ,xxcmm_cust_accounts xca
+               WHERE   xca.customer_code         =   NVL(iv_base_code, gv_user_base)
+               AND     hca.status                =   'A'
+               AND     hca.customer_class_code   =   '1'
+               AND     hca.cust_account_id       =   xca.customer_id
+              )       biv
+-- == 2009/08/06 V1.5 Modified END   ===============================================================
+-- == 2009/08/06 V1.5 Modified START ===============================================================
+--    WHERE     biv.focus_base_code       =   NVL(iv_base_code, gv_user_base)
+--    AND       biv.base_code             =   ird.base_code
+--    AND       ird.practice_date         =   gd_inventory_date
+--    AND       ird.inventory_item_id     =   sib.inventory_item_id
+--    AND       sib.organization_id       =   ird.organization_id
+--    AND       sib.segment1              =   iib.item_no                                   -- OPM品目コード
+--    AND       iib.item_id               =   imb.item_id
+--    AND       ird.organization_id       =   msi.organization_id
+--    AND       ird.subinventory_code     =   msi.secondary_inventory_name
+--    AND       msi.attribute4            =   hca.account_number(+)
+--    AND       msi.attribute7            =   ird.base_code
+---- == 2009/06/19 V1.3 Modified START ===============================================================
+----    AND  ((iv_output_kbn             = cv_out_kbn1
+----    AND    SUBSTR(msi.secondary_inventory_name,6,2)
+----                                     = NVL(iv_warehouse,SUBSTR(msi.secondary_inventory_name,6,2)))
+----    OR    (iv_output_kbn            <> cv_out_kbn1
+----    AND    msi.attribute4            = NVL(iv_left_base,msi.attribute4)))
+----    AND (((iv_output_kbn             = cv_out_kbn1
+----    AND    msi.attribute1            = cv_subinv_1)
+----    OR    (iv_output_kbn            <> cv_out_kbn1
+----    AND    msi.attribute1            = cv_subinv_3))                 -- 保管場所区分(預け先)
+----    OR  (((iv_output_kbn             = cv_out_kbn1
+----    AND    msi.attribute1            = cv_subinv_1)
+----    OR    (iv_output_kbn            <> cv_out_kbn1
+----    AND    msi.attribute1            = cv_subinv_4))                 -- 保管場所区分(専門店)
+----    AND  ((msi.attribute13          <> cv_subinv_7                   -- 保管場所分類(消化VD)
+----    AND    iv_left_base IS NULL)
+----    OR    (iv_left_base IS NOT NULL))))
+----    ORDER BY
+----           ird_base_code
+----          ,DECODE(iv_output_kbn, cv_out_kbn1, msi_warehouse_code
+----                                            , msi_left_base_code
+----           )
+----          ,iib_gun_code
+----          ,iib_item_no;
+--    AND       (
+--               (iv_warehouse IS NULL)
+--               OR
+--               (iv_warehouse IS NOT NULL AND SUBSTR(msi.secondary_inventory_name, 6, 2) = iv_warehouse)
+--              )
+--    AND       msi.attribute1            =  cv_subinv_1                                       -- 日次は倉庫のみ対象
 --    ORDER BY
 --           ird_base_code
---          ,DECODE(iv_output_kbn, cv_out_kbn1, msi_warehouse_code
---                                            , msi_left_base_code
---           )
+--          ,msi_warehouse_code
 --          ,iib_gun_code
 --          ,iib_item_no;
+-- == 2009/06/19 V1.3 Modified END   ===============================================================
+    WHERE     biv.account_number            =   msi.attribute7
+    AND       msi.organization_id           =   gn_organization_id
+    AND       msi.attribute7                =   ird.base_code
+    AND       msi.organization_id           =   ird.organization_id
+    AND       msi.secondary_inventory_name  =   ird.subinventory_code
+    AND       msi.attribute4                =   hca.account_number(+)
+    AND       ird.practice_date             =   gd_inventory_date
+    AND       ird.inventory_item_id         =   sib.inventory_item_id
+    AND       ird.organization_id           =   sib.organization_id
+    AND       sib.segment1                  =   iib.item_no                                   -- OPM品目コード
+    AND       iib.item_id                   =   imb.item_id
     AND       (
                (iv_warehouse IS NULL)
                OR
                (iv_warehouse IS NOT NULL AND SUBSTR(msi.secondary_inventory_name, 6, 2) = iv_warehouse)
               )
-    AND       msi.attribute1            =  cv_subinv_1                                       -- 日次は倉庫のみ対象
-    ORDER BY
-           ird_base_code
-          ,msi_warehouse_code
-          ,iib_gun_code
-          ,iib_item_no;
--- == 2009/06/19 V1.3 Modified END   ===============================================================
+    AND       msi.attribute1                =  cv_subinv_1;                                   -- 日次は倉庫のみ対象
+-- == 2009/08/06 V1.5 Modified END ===============================================================
 --
     -- *** ローカル・レコード ***
     daily_rec daily_cur%ROWTYPE;
@@ -973,6 +1017,9 @@ AS
   lv_sql_str  :=  NULL;
   -- SQL設定
   lv_sql_str  :=    'SELECT '
+-- == 2009/08/06 V1.5 Added START ===============================================================
+                ||  '/*+ leading(biv msi irm) */'
+-- == 2009/08/06 V1.5 Added START ===============================================================
                 ||  'irm.practice_month  irm_practice_month '
                 ||  ',irm.practice_date  irm_practice_date '
                 ||  ',irm.base_code  irm_base_code '
@@ -1038,28 +1085,57 @@ AS
   lv_sql_str  :=    lv_sql_str
                 ||  'FROM '
                 ||  'xxcoi_inv_reception_monthly  irm '
-                ||  ',xxcoi_base_info2_v  biv '
                 ||  ',mtl_secondary_inventories  msi '
                 ||  ',hz_cust_accounts  hca '
                 ||  ',mtl_system_items_b  sib '
                 ||  ',xxcmn_item_mst_b  imb '
-                ||  ',ic_item_mst_b  iib ';
+                ||  ',ic_item_mst_b  iib '
+-- == 2009/08/06 V1.5 Modified START ===============================================================
+--                ||  ',xxcoi_base_info2_v  biv ';
+                ||  ',(SELECT  hca.account_number '
+                ||  '         ,SUBSTRB(hca.account_name,1,8)  base_short_name '
+                ||  '  FROM    hz_cust_accounts    hca '
+                ||  '         ,xxcmm_cust_accounts xca '
+                ||  '  WHERE   xca.management_base_code  =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
+                ||  '  AND     hca.status                ='   || '''' || 'A' || ''' '
+                ||  '  AND     hca.customer_class_code   ='   || '''' || '1' || ''' '
+                ||  '  AND     hca.cust_account_id       =   xca.customer_id '
+                ||  '  UNION '
+                ||  '  SELECT  hca.account_number '
+                ||  '         ,SUBSTRB(hca.account_name,1,8)  base_short_name '
+                ||  '  FROM    hz_cust_accounts    hca '
+                ||  '         ,xxcmm_cust_accounts xca '
+                ||  '  WHERE   xca.customer_code         =   NVL(' || iv_base_code || ', ' || gv_user_base || ') '
+                ||  '  AND     hca.status                ='   || '''' || 'A' || ''' '
+                ||  '  AND     hca.customer_class_code   ='   || '''' || '1' || ''' '
+                ||  '  AND     hca.cust_account_id       =   xca.customer_id '
+                ||  ' )       biv ';
+-- == 2009/08/06 V1.5 Modified END   ===============================================================
   -- WHERE句
   --
-  IF (iv_base_code IS NOT NULL) THEN
-    -- パラメータ.拠点が設定されている場合
-    lv_sql_str  :=    lv_sql_str
-                  ||  'WHERE biv.focus_base_code = ' || '''' || iv_base_code || '''' || ' ';
-  ELSE
-    -- パラメータ.拠点が設定されていない場合
-    lv_sql_str  :=    lv_sql_str
-                  ||  'WHERE biv.focus_base_code = ' || '''' || gv_user_base || '''' || ' ';
-  END IF;
+-- == 2009/08/06 V1.5 Deleted START ===============================================================
+--  IF (iv_base_code IS NOT NULL) THEN
+--    -- パラメータ.拠点が設定されている場合
+--    lv_sql_str  :=    lv_sql_str
+--                  ||  'WHERE biv.focus_base_code = ' || '''' || iv_base_code || '''' || ' ';
+--  ELSE
+--    -- パラメータ.拠点が設定されていない場合
+--    lv_sql_str  :=    lv_sql_str
+--                  ||  'WHERE biv.focus_base_code = ' || '''' || gv_user_base || '''' || ' ';
+--  END IF;
+-- == 2009/08/06 V1.5 Deleted END   ===============================================================
   --
   lv_sql_str  :=    lv_sql_str
-                ||  'AND biv.base_code = irm.base_code '
-                ||  'AND irm.organization_id = msi.organization_id '
-                ||  'AND irm.subinventory_code = msi.secondary_inventory_name '
+-- == 2009/08/06 V1.5 Modified START ===============================================================
+--                ||  'AND biv.base_code = irm.base_code '
+--                ||  'AND irm.organization_id = msi.organization_id '
+--                ||  'AND irm.subinventory_code = msi.secondary_inventory_name '
+                ||  'WHERE biv.account_number = msi.attribute7 '
+                ||  'AND   msi.organization_id = ' || gn_organization_id || ' '
+                ||  'AND   msi.attribute7 = irm.base_code '
+                ||  'AND   msi.organization_id = irm.organization_id '
+                ||  'AND   msi.secondary_inventory_name = irm.subinventory_code '
+-- == 2009/08/06 V1.5 Modified END   ===============================================================
                 ||  'AND irm.inventory_item_id = sib.inventory_item_id '
                 ||  'AND sib.organization_id = irm.organization_id '
                 ||  'AND sib.segment1 = iib.item_no '
@@ -1100,22 +1176,24 @@ AS
     END IF;
   END IF;
   --
-  -- ORDER BY句の設定
-  lv_sql_str  :=    lv_sql_str
-                ||  'ORDER BY '
-                ||  'irm_base_code ';
-  IF (iv_output_kbn = cv_out_kbn1) THEN
-    -- 倉庫の場合
-    lv_sql_str  :=    lv_sql_str
-                  || ',msi_warehouse_code ';
-  ELSE
-    -- 預け先の場合
-    lv_sql_str  :=    lv_sql_str
-                  || ',msi_left_base_code ';
-  END IF;
-  lv_sql_str  :=    lv_sql_str
-                ||  ',iib_gun_code '
-                ||  ',iib_item_no';
+-- == 2009/08/06 V1.5 Deleted START ===============================================================
+--  -- ORDER BY句の設定
+--  lv_sql_str  :=    lv_sql_str
+--                ||  'ORDER BY '
+--                ||  'irm_base_code ';
+--  IF (iv_output_kbn = cv_out_kbn1) THEN
+--    -- 倉庫の場合
+--    lv_sql_str  :=    lv_sql_str
+--                  || ',msi_warehouse_code ';
+--  ELSE
+--    -- 預け先の場合
+--    lv_sql_str  :=    lv_sql_str
+--                  || ',msi_left_base_code ';
+--  END IF;
+--  lv_sql_str  :=    lv_sql_str
+--                ||  ',iib_gun_code '
+--                ||  ',iib_item_no';
+-- == 2009/08/06 V1.5 Deleted END   ===============================================================
   --
   -- カーソルOPEN
   OPEN  month_cur FOR lv_sql_str;

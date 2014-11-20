@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A14R(body)
  * Description      : 受払残高表（営業員）
  * MD.050           : 受払残高表（営業員） <MD050_COI_A14>
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/01/26    1.0   N.Abe            新規作成
  *  2009/07/14    1.1   N.Abe            [0000462]群コード取得方法修正
  *  2009/07/22    1.2   H.Sasaki         [0000685]パラメータ日付項目のPT対応
+ *  2009/08/04    1.3   H.Sasaki         [0000895]PT対応
  *
  *****************************************************************************************/
 --
@@ -136,7 +137,11 @@ AS
            ,iv_inventory_date   IN VARCHAR2
            ,in_organization_id  IN NUMBER)
   IS
-    SELECT    papf.employee_number                emp_no              -- 1.営業員コード
+    SELECT
+-- == 2009/08/04 V1.3 Added START ===============================================================
+              /*+ leading(msi papf xird) */
+-- == 2009/08/04 V1.3 Added END   ===============================================================
+              papf.employee_number                emp_no              -- 1.営業員コード
              ,papf.per_information18 || papf.per_information19
                                                   emp_name            -- 2.営業員名称（漢字姓＋漢字名）
 -- == 2009/07/14 V1.1 Modified START ===============================================================
@@ -193,16 +198,23 @@ AS
     AND       msi.attribute1              = cv_2
     AND       msi.organization_id         = in_organization_id
     AND       xird.subinventory_code      = msi.secondary_inventory_name
-    AND       xird.base_code              = iv_base_code
+-- == 2009/08/04 V1.3 Modified START ===============================================================
+--    AND       xird.base_code              = iv_base_code
+    AND       msi.attribute7              = iv_base_code
+    AND       msi.attribute7              = xird.base_code
+    AND       msi.organization_id         = xird.organization_id
+-- == 2009/08/04 V1.3 Modified END   ===============================================================
     AND       xird.subinventory_type      = cv_2
     AND       xird.practice_date          = TO_DATE(iv_inventory_date, cv_ymd)
     AND       xird.organization_id        = msib.organization_id
     AND       xird.inventory_item_id      = msib.inventory_item_id
     AND       msib.segment1               = iimb.item_no
     AND       iimb.item_id                = ximb.item_id
-    ORDER BY  papf.employee_number
-             ,SUBSTR(iimb.attribute2, 1, 3)
-             ,iimb.item_no
+-- == 2009/08/04 V1.3 Deleted START ===============================================================
+--    ORDER BY  papf.employee_number
+--             ,SUBSTR(iimb.attribute2, 1, 3)
+--             ,iimb.item_no
+-- == 2009/08/04 V1.3 Deleted END   ===============================================================
     ;
 --
   --受払残高表（月次）
@@ -214,7 +226,11 @@ AS
            ,iv_inventory_kbn    IN VARCHAR2
            ,in_organization_id  IN NUMBER)
   IS
-    SELECT    papf.employee_number                emp_no              -- 1.営業員コード
+    SELECT
+-- == 2009/08/04 V1.3 Added START ===============================================================
+              /*+ leading(msi papf xirm) */
+-- == 2009/08/04 V1.3 Added END   ===============================================================
+              papf.employee_number                emp_no              -- 1.営業員コード
              ,papf.per_information18 || papf.per_information19
                                                   emp_name            -- 2.営業員名称（漢字姓＋漢字名）
 -- == 2009/07/14 V1.1 Modified START ===============================================================
@@ -276,7 +292,12 @@ AS
     AND       msi.attribute1              = cv_2
     AND       msi.organization_id         = in_organization_id
     AND       xirm.subinventory_code      = msi.secondary_inventory_name
-    AND       xirm.base_code              = iv_base_code
+-- == 2009/08/04 V1.3 Modified START ===============================================================
+--    AND       xirm.base_code              = iv_base_code
+    AND       msi.attribute7              = iv_base_code
+    AND       msi.attribute7              = xirm.base_code
+    AND       msi.organization_id         = xirm.organization_id
+-- == 2009/08/04 V1.3 Modified END   ===============================================================
     AND       xirm.subinventory_type      = cv_2
     AND       (xirm.practice_date         = TO_DATE(iv_inventory_date, cv_ymd)
     OR        xirm.practice_month         = iv_inventory_month)
@@ -285,9 +306,11 @@ AS
     AND       xirm.inventory_item_id      = msib.inventory_item_id
     AND       msib.segment1               = iimb.item_no
     AND       iimb.item_id                = ximb.item_id
-    ORDER BY  papf.employee_number
-             ,SUBSTR(iimb.attribute2, 1, 3)
-             ,iimb.item_no
+-- == 2009/08/04 V1.3 Deleted START ===============================================================
+--    ORDER BY  papf.employee_number
+--             ,SUBSTR(iimb.attribute2, 1, 3)
+--             ,iimb.item_no
+-- == 2009/08/04 V1.3 Deleted END   ===============================================================
     ;
 --
   /**********************************************************************************
