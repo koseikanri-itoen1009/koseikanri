@@ -40,6 +40,9 @@ SELECT
               IWM.whse_code  = XSIMS.whse_code
          AND  IWM.attribute1 = '0'
       UNION ALL
+      -- ----------------------------------------------------
+      -- XFER :経理受払区分情報ＶＩＷ移動積送あり
+      -- ----------------------------------------------------
       SELECT /*+ leading (xmrh xmril ixm itp gic2 mcb2 gic1 mcb1 iimb ximb) use_nl (xmrh xmril ixm itp gic2 mcb2 gic1 mcb1 iimb ximb) */
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
@@ -72,8 +75,14 @@ SELECT
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
-      UNION ALL
-      SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
+      UNION ALL --trni
+      -- ----------------------------------------------------
+      -- TRNI :経理受払区分情報ＶＩＷ移動積送なし
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
@@ -100,7 +109,10 @@ SELECT
       AND    itc.doc_id              = iaj.doc_id
       AND    itc.doc_line            = iaj.doc_line
       AND    ijm.journal_id          = iaj.journal_id
-      AND    ijm.attribute1          = TO_CHAR(xmril.mov_line_id)
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    ijm.attribute1          = TO_CHAR(xmril.mov_line_id)
+      AND    xmril.mov_line_id          = TO_NUMBER(ijm.attribute1)
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    xrpm.rcv_pay_div        = CASE
                                        WHEN itc.trans_qty >= 0 THEN 1
                                        ELSE -1
@@ -110,7 +122,13 @@ SELECT
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
-      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分情報VIEW在庫調整(他)
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
@@ -153,6 +171,9 @@ SELECT
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分情報VIEW在庫調整(仕入)
+      -- ----------------------------------------------------
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
@@ -175,6 +196,9 @@ SELECT
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分情報ＶＩＷ在庫調整(浜岡)
+      -- ----------------------------------------------------
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
@@ -197,6 +221,9 @@ SELECT
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分情報ＶＩＷ在庫調整(移動)
+      -- ----------------------------------------------------
       SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
@@ -233,6 +260,9 @@ SELECT
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
+      -- ----------------------------------------------------
+      -- ADJI :経理受払区分情報ＶＩＷ在庫調整(その他払出)
+      -- ----------------------------------------------------
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
@@ -258,7 +288,13 @@ SELECT
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
-      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
+      -- ----------------------------------------------------
+      --  PROD :経理受払区分情報ＶＩＷ生産関連（Reverse_idなし）品種・品目振替なし
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -294,7 +330,13 @@ SELECT
       AND    xrpm.break_col_01       IS NOT NULL
       AND    xrpm.routing_class      <> '70'
       UNION ALL
-      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
+      -- ----------------------------------------------------
+      --  PROD :経理受払区分情報ＶＩＷ生産関連（Reverse_idなし）品種・品目振替
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -352,7 +394,13 @@ SELECT
                       AND    gic.category_id = mcb.category_id
                       AND    mcb.segment1    = xrpm.item_div_ahead))
       UNION ALL
-      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      -- ----------------------------------------------------
+      --  SQL11
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -368,7 +416,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -381,11 +431,16 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    rsl.oe_order_header_id  = xola.header_id
       AND    rsl.oe_order_line_id    = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         IN ('1','2')
-      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.request_item_code  = xola.shipping_item_code
       AND    xrpm.doc_type           = itp.doc_type
@@ -399,7 +454,13 @@ SELECT
       AND    xrpm.item_div_origin    IS NULL
       AND    xrpm.item_div_ahead     IS NULL
       UNION ALL
-      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      -- ----------------------------------------------------
+      --  SQL12
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,iimb.item_id                         item_id
             ,itp.lot_id                           lot_id
@@ -415,7 +476,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -434,11 +497,16 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    rsl.oe_order_header_id  = xoha.header_id
       AND    rsl.oe_order_line_id    = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         IN ('1','2')
-      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
@@ -452,6 +520,9 @@ SELECT
       AND    xicv2.item_class_code   <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
+      -- ----------------------------------------------------
+      --  SQL13
+      -- ----------------------------------------------------
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
              itp.whse_code                        whse_code
             ,iimb.item_id                         item_id
@@ -502,6 +573,9 @@ SELECT
       AND    xicv2.item_class_code  <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
+      -- ----------------------------------------------------
+      --  SQL14
+      -- ----------------------------------------------------
       SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
@@ -541,7 +615,13 @@ SELECT
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
-      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
+      -- ----------------------------------------------------
+      --  SQL15
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -570,7 +650,13 @@ SELECT
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
-      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      -- ----------------------------------------------------
+      --  SQL16
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -586,7 +672,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -598,11 +686,16 @@ SELECT
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         IN ('1','2')
-      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.request_item_code  = xola.shipping_item_code
       AND    xrpm.doc_type           = itp.doc_type
@@ -615,7 +708,13 @@ SELECT
       AND    xrpm.item_div_origin    IS NULL
       AND    xrpm.item_div_ahead     IS NULL
       UNION ALL
-      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
+      -- ----------------------------------------------------
+      --  SQL17
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,iimb.item_id                         item_id
             ,itp.lot_id                           lot_id
@@ -631,7 +730,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -650,11 +751,16 @@ SELECT
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       = '106'
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -666,7 +772,13 @@ SELECT
       AND    xicv2.item_class_code  <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
-      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
+      -- ----------------------------------------------------
+      --  SQL18
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
+      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 otta xrpm) */
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,iimb.item_id                         item_id
             ,itp.lot_id                           lot_id
@@ -682,7 +794,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -701,11 +815,16 @@ SELECT
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
-      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       = '113'
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -715,7 +834,13 @@ SELECT
       AND    xicv2.item_class_code  <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       UNION ALL
-      SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
+      -- ----------------------------------------------------
+      --  SQL19
+      -- ----------------------------------------------------
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
+      SELECT
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -731,7 +856,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -739,12 +866,20 @@ SELECT
       WHERE  itp.doc_type            = 'OMSO'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
+-- 2010/02/16 T.Yoshimoto Add Start 本稼動#1168
+      AND    xoha.req_status         = '04'
+-- 2010/02/16 T.Yoshimoto Add End 本稼動#1168
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    otta.attribute4         = '2'
-      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('504','509')
@@ -775,10 +910,16 @@ SELECT
             ,xxinv_mov_req_instr_headers xmrih
             ,xxcmn_rcv_pay_mst          xrpm
       WHERE  itp.doc_type            = 'XFER'
+-- 2010/02/16 T.Yoshimoto Add Start 本稼動#1168
+      AND    itp.reason_code         = 'X122'
+-- 2010/02/16 T.Yoshimoto Add End 本稼動#1168
       AND    itp.completed_ind       = 1
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
       AND    ixm.transfer_id         = itp.doc_id
-      AND    ixm.attribute1          = TO_CHAR(xmril.mov_line_id)
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    ixm.attribute1          = TO_CHAR(xmril.mov_line_id)
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    xrpm.rcv_pay_div        = CASE
                                          WHEN itp.trans_qty >= 0
                                          THEN '1'
@@ -818,7 +959,10 @@ SELECT
       AND    itc.doc_id              = iaj.doc_id
       AND    itc.doc_line            = iaj.doc_line
       AND    ijm.journal_id          = iaj.journal_id
-      AND    ijm.attribute1          = TO_CHAR(xmril.mov_line_id)
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    ijm.attribute1          = TO_CHAR(xmril.mov_line_id)
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    xrpm.rcv_pay_div        = CASE
                                        WHEN itc.trans_qty >= 0 THEN 1
                                        ELSE -1
@@ -932,7 +1076,10 @@ SELECT
       AND    iaj.doc_id              = itc.doc_id
       AND    iaj.doc_line            = itc.doc_line
       AND    ijm.journal_id          = iaj.journal_id
-      AND    ijm.attribute1          = TO_CHAR(xmrl.mov_line_id)
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    ijm.attribute1          = TO_CHAR(xmrl.mov_line_id)
+      AND    xmrl.mov_line_id       = TO_NUMBER(ijm.attribute1)
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = CASE
@@ -1049,7 +1196,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--            ,oe_order_headers_all             ooha
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -1057,12 +1206,23 @@ SELECT
       WHERE  itp.doc_type            = 'OMSO'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
+-- 2010/02/16 T.Yoshimoto Add Start 本稼動#1168
+      AND    xoha.req_status         = '04'
+-- 2010/02/16 T.Yoshimoto Add End 本稼動#1168
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod Start 本稼動#1168
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2010/02/16 T.Yoshimoto Mod End 本稼動#1168
+-- 2010/02/16 T.Yoshimoto Add Start 本稼動#1168
+      AND    otta.attribute1 = '1'
+-- 2010/02/16 T.Yoshimoto Add End 本稼動#1168
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.line_id            = wdd.source_line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del Start 本稼動#1168
+--      AND    xoha.header_id          = ooha.header_id
+-- 2010/02/16 T.Yoshimoto Del End 本稼動#1168
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('504','509')
       AND    xrpm.stock_adjustment_div = otta.attribute4
