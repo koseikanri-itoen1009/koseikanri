@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A02C (body)
  * Description      : 入金データの取込を行う
  * MD.050           : HHT入金データ取込 (MD050_COS_001_A02)
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *                                       [COS_005]業態小分類における取込対象条件の不具合に対応
  *  2009/02/20    1.2   S.Miyakoshi      パラメータのログファイル出力対応
  *  2009/04/30    1.3   T.Kitajima       [T1_0268]CHAR項目のTRIM対応
+ *  2009/05/15    1.4   T.Kitajima       [T1_0639]拠点コード設定変更(売上拠点→入金拠点)
+ *  2009/05/19    1.5   N.Maeda          [T1_1011]エラーリスト登録用拠点抽出条件変更
  *
  *****************************************************************************************/
 --
@@ -749,8 +751,11 @@ AS
     lt_pay_class_name   xxcos_rep_hht_err_list.payment_class_name%TYPE; -- 入金区分名称
     lt_error_message    xxcos_rep_hht_err_list.error_message%TYPE;      -- エラー内容
     lv_err_flag         VARCHAR2(1)  DEFAULT  '0';                      -- エラーフラグ
-    lt_sale_base        xxcmm_cust_accounts.sale_base_code%TYPE;        -- 売上拠点コード
-    lt_past_sale_base   xxcmm_cust_accounts.past_sale_base_code%TYPE;   -- 前月売上拠点コード
+--****************************** 2009/05/15 1.4 T.Kitajima MOD START ******************************--
+--    lt_sale_base        xxcmm_cust_accounts.sale_base_code%TYPE;        -- 売上拠点コード
+--    lt_past_sale_base   xxcmm_cust_accounts.past_sale_base_code%TYPE;   -- 前月売上拠点コード
+    lt_receiv_base      xxcmm_cust_accounts.receiv_base_code%TYPE;      -- 入金拠点コード
+--****************************** 2009/05/15 1.4 T.Kitajima MOD  END  ******************************--
     lt_cus_status       hz_parties.duns_number_c%TYPE;                  -- 顧客ステータス
     lt_bus_low_type     xxcmm_cust_accounts.business_low_type%TYPE;     -- 業態（小分類）
     ln_err_no           NUMBER  DEFAULT  '1';                           -- エラー配列ナンバー
@@ -917,8 +922,11 @@ AS
           --== 顧客マスタデータ抽出 ==--
           SELECT parties.party_name           party_name,           -- 顧客名称
                  parties.party_id             party_id,             -- パーティID
-                 custadd.sale_base_code       sale_base_code,       -- 売上拠点コード
-                 custadd.past_sale_base_code  past_sale_base,       -- 前月売上拠点コード
+--****************************** 2009/05/15 1.4 T.Kitajima MOD START ******************************--
+--                 custadd.sale_base_code       sale_base_code,       -- 売上拠点コード
+--                 custadd.past_sale_base_code  past_sale_base,       -- 前月売上拠点コード
+                 custadd.receiv_base_code     receiv_base_code,       -- 入金拠点コード
+--****************************** 2009/05/15 1.4 T.Kitajima MOD  END  ******************************--
                  parties.duns_number_c        customer_status,      -- 顧客ステータス
                  custadd.business_low_type    business_low_type,    -- 業態（小分類）
                  base.account_name            account_name,         -- 拠点名称
@@ -926,8 +934,11 @@ AS
                  salesreps.resource_id        resource_id           -- リソースID
           INTO   lt_customer_name,
                  lt_party_id,
-                 lt_sale_base,
-                 lt_past_sale_base,
+--****************************** 2009/05/15 1.4 T.Kitajima MOD START ******************************--
+--                 lt_sale_base,
+--                 lt_past_sale_base,
+                 lt_receiv_base,
+--****************************** 2009/05/15 1.4 T.Kitajima MOD  END  ******************************--
                  lt_cus_status,
                  lt_bus_low_type,
                  lt_base_name,
@@ -991,7 +1002,10 @@ AS
             AND  cust.customer_class_code = cus_class.cus          -- 顧客マスタ.顧客区分 = '10'(顧客) or '12'(上様)
             AND  cust.account_number      = lt_customer_number     -- 顧客マスタ.顧客コード = 抽出した顧客コード
             AND  cust.party_id            = parties.party_id       -- 顧客マスタ.パーティID=パーティ.パーティID
-            AND  custadd.sale_base_code   = base.account_number    -- 顧客追加情報_顧客.売上拠点=拠点マスタ.顧客コード
+--****************************** 2009/05/19 1.5 N.Maeda MOD START ******************************--
+            AND  lt_base_code   = base.account_number                -- 抽出した拠点コード=拠点マスタ.顧客コード
+--            AND  custadd.sale_base_code   = base.account_number    -- 顧客追加情報_顧客.売上拠点=拠点マスタ.顧客コード
+--****************************** 2009/05/19 1.5 N.Maedaa MOD  END  ******************************--
             AND  base.cust_account_id     = baseadd.customer_id    -- 拠点マスタ.顧客ID=顧客追加情報_拠点.顧客ID
             AND  base.customer_class_code = base_class.base        -- 拠点マスタ.顧客区分 = '1'(拠点)
             AND  (
@@ -1026,36 +1040,40 @@ AS
             END IF;
           END LOOP;
 --
-          --== 売上拠点コードチェック ==--
-          -- 売上拠点コードと前月売上拠点コードの使用判定
-          IF ( TRUNC( lt_payment_date, cv_month ) < TRUNC( gd_process_date, cv_month ) ) THEN
-            lt_sale_base := NVL( lt_past_sale_base, lt_sale_base );
-          END IF;
+--****************************** 2009/05/15 1.4 T.Kitajima DEL START ******************************--
+--          --== 売上拠点コードチェック ==--
+--          -- 売上拠点コードと前月売上拠点コードの使用判定
+--          IF ( TRUNC( lt_payment_date, cv_month ) < TRUNC( gd_process_date, cv_month ) ) THEN
+--            lt_sale_base := NVL( lt_past_sale_base, lt_sale_base );
+--          END IF;
+--****************************** 2009/05/15 1.4 T.Kitajima DEL  END  ******************************--
 --
   /*-----2009/02/03-----START-------------------------------------------------------------------------------*/
           -- 一般拠点の場合
 --      IF ( lt_hht_class = cv_general ) THEN
-        IF ( lt_hht_class IS NULL ) THEN
-            -- 売上拠点コード妥当性チェック
-            IF ( lt_sale_base != lt_base_code ) THEN
-              -- ログ出力
-              lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_base );
-              FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
-              ov_retcode := cv_status_warn;
-              -- エラー変数へ格納
-              gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
-              gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
-              gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
-              gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
-              gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
-              gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
-              gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
-              gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
-              ln_err_no := ln_err_no + 1;
-              -- エラーフラグ更新
-              lv_err_flag := cv_hit;
-            END IF;
-          END IF;
+--****************************** 2009/05/15 1.4 T.Kitajima DEL START ******************************--
+--          IF ( lt_hht_class IS NULL ) THEN
+--            -- 売上拠点コード妥当性チェック
+--            IF ( lt_sale_base != lt_base_code ) THEN
+--              -- ログ出力
+--              lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_base );
+--              FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+--              ov_retcode := cv_status_warn;
+--              -- エラー変数へ格納
+--              gt_err_base_code(ln_err_no)        :=  lt_base_code;                 -- 拠点コード
+--              gt_err_base_name(ln_err_no)        :=  lt_base_name;                 -- 拠点名称
+--              gt_err_entry_number(ln_err_no)     :=  lt_hht_invoice_no;            -- 伝票NO
+--              gt_err_party_num(ln_err_no)        :=  lt_customer_number;           -- 顧客コード
+--              gt_err_cus_name(ln_err_no)         :=  lt_customer_name;             -- 顧客名
+--              gt_err_pay_dlv_date(ln_err_no)     :=  lt_payment_date;              -- 入金/納品日
+--              gt_err_pay_class_name(ln_err_no)   :=  lt_pay_class_name;            -- 入金区分名称
+--              gt_err_error_message(ln_err_no)    :=  SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
+--              ln_err_no := ln_err_no + 1;
+--              -- エラーフラグ更新
+--              lv_err_flag := cv_hit;
+--            END IF;
+--          END IF;
+--****************************** 2009/05/15 1.4 T.Kitajima DEL  END  ******************************--
 --
           --== 業態（小分類）チェック ==--
           FOR j IN 1..gt_qck_busi.COUNT LOOP
@@ -1214,7 +1232,10 @@ AS
       -- 入金データを変数へ格納
       --==============================================================
       IF ( lv_err_flag = cv_default ) THEN
-        gt_pay_base_code(ln_ok_no)        :=  lt_sale_base;          -- 拠点コード
+--****************************** 2009/05/15 1.4 T.Kitajima MOD START ******************************--
+--        gt_pay_base_code(ln_ok_no)        :=  lt_sale_base;          -- 拠点コード
+        gt_pay_base_code(ln_ok_no)        :=  lt_receiv_base;        -- 拠点コード
+--****************************** 2009/05/15 1.4 T.Kitajima MOD  END  ******************************--
         gt_pay_customer_number(ln_ok_no)  :=  lt_customer_number;    -- 顧客コード
         gt_pay_payment_amount(ln_ok_no)   :=  lt_payment_amount;     -- 入金額
         gt_pay_payment_date(ln_ok_no)     :=  lt_payment_date;       -- 入金日
