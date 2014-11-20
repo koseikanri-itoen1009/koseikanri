@@ -45,6 +45,7 @@ AS
  *                                      ＣＳＶファイル名の表示変更*
  *  2009/03/02    1.2   SCS礒崎祐次     [障害CFF_068] 業務エラーメッセージは
  *                                      出力ファイルに出力する。
+ *  2009/05/14    1.3   SCS礒崎祐次     [障害T1_0783]数量がNULLの場合は、1を設定する。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4569,7 +4570,14 @@ AS
     gr_object_data_rec.age_type             := gr_contract_info_rec.age_type;             -- 年式
     gr_object_data_rec.model                := gr_contract_info_rec.model;                -- 機種
     gr_object_data_rec.serial_number        := gr_contract_info_rec.serial_number;        -- 機番
-    gr_object_data_rec.quantity             := gr_contract_info_rec.quantity;             -- 数量
+-- T1_0783 2009/05/14 MOD START --
+--  gr_object_data_rec.quantity             := gr_contract_info_rec.quantity;             -- 数量
+    IF (gr_contract_info_rec.quantity IS NULL) THEN                                       -- 数量
+      gr_object_data_rec.quantity           := 1;
+    ELSE
+      gr_object_data_rec.quantity           := gr_contract_info_rec.quantity;
+    END IF;
+-- T1_0783 2009/05/14 MOD END   --
     gr_object_data_rec.manufacturer_name    := gr_contract_info_rec.manufacturer_name;    -- メーカー名
     gr_object_data_rec.department_code      := gr_contract_info_rec.department_code;      -- 管理部門コード
     gr_object_data_rec.owner_company        := gr_contract_info_rec.owner_company;        -- 本社／工場
