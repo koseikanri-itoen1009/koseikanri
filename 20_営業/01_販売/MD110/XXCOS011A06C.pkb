@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/09/03    1.6   N.Maeda         [0001199]販売実績明細の排他制御削除
  *  2009/11/05    1.7   M.Sano          [E_T4_00088]伝票区分の算出方法変更
  *                                      [E_T4_00142]顧客使用目的（請求先）のセット項目修正
+ *  2009/11/24    1.8   K.Atsushiba     [E_本番_00348]PT対応
  *
  *****************************************************************************************/
 --
@@ -1954,7 +1955,20 @@ AS
     --==============================================================
     CURSOR sale_data_cur
     IS
-      SELECT  xseh.sales_exp_header_id                header_id                    --販売実績ヘッダID
+/* 2009/11/24 Ver1.8 Mod Start */
+      SELECT  /*+ 
+                 LEADING(xlvv xcchv xseh xsel iimb)
+                 INDEX(xseh XXCOS_SALES_EXP_HEADERS_N03)
+                 USE_NL(xhpc.msib xhpc.mic xhpc.mp xhpc.mcsb xhpc.mcst xhpc.mcb xhpc.mct)
+                 USE_NL(xseh xsel1)
+                 USE_NL(xseh xsel)
+                 USE_NL(xsel iimb msib ximb xhpc)
+                 USE_NL(xseh hcam hcan)
+                 USE_NL(xseh xlvv xcchv)
+              */
+              xseh.sales_exp_header_id                header_id                    --販売実績ヘッダID
+--      SELECT  xseh.sales_exp_header_id                header_id                    --販売実績ヘッダID
+/* 2009/11/24 Ver1.8 Mod End */
              ,xsel.sales_exp_line_id                  line_id                      --販売実績明細ID
              ,xseh.sales_base_code                    sales_base_code              --売上拠点コード
              ,hcam.sales_base_name                    sales_base_name              --売上拠点名
@@ -2013,7 +2027,14 @@ AS
              ,xxcfr_cust_hierarchy_v    xcchv  --顧客マスタ階層ビュー
              ,ra_terms_vl               rtv    --支払条件
              ,xxcos_sales_exp_headers   xseh   --販売実績ヘッダ
-             ,( SELECT  hca.account_number             account_number              --納品顧客コード
+/* 2009/11/24 Ver1.8 Mod Start */
+             ,( SELECT  /*+ 
+                          index(hca HZ_CUST_ACCOUNTS_U2)
+                          USE_NL(hca hp xca_2 hcasa hcsua hps hl)
+                        */
+                        hca.account_number             account_number              --納品顧客コード
+--             ,( SELECT  hca.account_number             account_number              --納品顧客コード
+/* 2009/11/24 Ver1.8 Mod End */
                        ,hp.organization_name_phonetic  organization_name_phonetic  --納品先顧客名カナ
                        ,hl.state || hl.city || hl.address1 || hl.address2
                                                        address                     --都道府県+市区+住所1+住所2
@@ -2041,7 +2062,14 @@ AS
                 AND     xca_2.customer_id         =  hca.cust_account_id
 --****************　2009/06/12   N.Maeda  Ver1.5   ADD    END   *********************************************--
               )                         hcan   --納品顧客
-             ,( SELECT  hca.account_number             sales_base_code         --売上拠点コード
+/* 2009/11/24 Ver1.8 Mod Start */
+             ,( SELECT  /*+ 
+                          index(hca HZ_CUST_ACCOUNTS_U2)
+                          USE_NL(hca hp xca1)
+                        */
+                        hca.account_number             sales_base_code         --売上拠点コード
+--             ,( SELECT  hca.account_number             sales_base_code         --売上拠点コード
+/* 2009/11/24 Ver1.8 Mod End */
                        ,hp.party_name                  sales_base_name         --売上拠点名
                        ,hp.organization_name_phonetic  sales_base_phonetic     --売上拠点名カナ
                 FROM    hz_cust_accounts        hca
@@ -2051,7 +2079,14 @@ AS
                 AND     hca.customer_class_code =  cv_1                 --売上拠点(顧客) 顧客区分=1
                 AND     hca.cust_account_id     =  xca1.customer_id     --結合(顧客 = 顧客追加)
               )                          hcam  --売上拠点
-             ,( SELECT  xseh.ship_to_customer_code   ship_to_customer_code
+/* 2009/11/24 Ver1.8 Mod Start */
+             ,( SELECT  /*+ 
+                          INDEX(xseh XXCOS_SALES_EXP_HEADERS_N03)
+                          USE_NL(xseh xsel xlvv)
+                        */
+                        xseh.ship_to_customer_code   ship_to_customer_code
+--             ,( SELECT  xseh.ship_to_customer_code   ship_to_customer_code
+/* 2009/11/24 Ver1.8 Mod End */
                        ,xseh.dlv_invoice_number      dlv_invoice_number
                        ,SUM( DECODE(  xlvv.lookup_code
                                      ,'', xsel.standard_qty
@@ -2075,7 +2110,10 @@ AS
              ,mtl_system_items_b        msib   --Disc品目
              ,xxcmm_system_items_b      xsib   --Disc品目アドオン
              ,xxcos_head_prod_class_v   xhpc   --本社商品区分ビュー
-      WHERE   msib.inventory_item_id     = xhpc.inventory_item_id(+)   --結合(Disc品目=本社商品区分)
+/* 2009/11/24 Ver1.8 Mod Start */
+      WHERE   msib.inventory_item_id     = xhpc.inventory_item_id   --結合(Disc品目=本社商品区分)
+--      WHERE   msib.inventory_item_id     = xhpc.inventory_item_id(+)   --結合(Disc品目=本社商品区分)
+/* 2009/11/24 Ver1.8 Mod End */
       AND     msib.organization_id       = gv_prf_organization_id      --在庫組織ID
       AND     msib.segment1              = xsib.item_code              --結合(Disc品目=Disc品目A)
       AND     iimb.item_no               = msib.segment1               --結合(OPM品目=Disc品目)
