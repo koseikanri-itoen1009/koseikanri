@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/04/28    1.4   K.Kiriu          [T1_0482]訪問データ抽出条件統一対応
  *                                       [T1_0718]新規獲得ポイント条件追加対応
  *                                       [T1_1146]群コード取得条件不正対応
+ *  2009/05/26    1.5   K.Kiriu          [T1_1213]顧客軒数カウント条件マスタ結合条件修正
  *
  *****************************************************************************************/
 --
@@ -341,6 +342,14 @@ AS
   ct_cust_class_base            CONSTANT  hz_cust_accounts.customer_class_code%TYPE := '1';
   --  顧客
   ct_cust_class_customer        CONSTANT  hz_cust_accounts.customer_class_code%TYPE := '10';
+/* 2009/05/26 Ver1.5 Start */
+  -- 訪問対象区分
+  -- 訪問対象
+  ct_vist_target_div_yes        CONSTANT xxcmm_cust_accounts.vist_target_div%TYPE := '1';
+  -- 売上実績振替
+  -- 振替なし
+  ct_selling_transfer_div_no    CONSTANT xxcmm_cust_accounts.selling_transfer_div%TYPE := '*';
+/* 2009/05/26 Ver1.5 End   */
   --  タスク
   --  パーティ
   ct_task_obj_type_party        CONSTANT  jtf_tasks_b.source_object_type_code%TYPE := 'PARTY';
@@ -2706,8 +2715,12 @@ AS
               AND     xcac.cnvs_date              <=      it_account_info.base_date
               AND     xlva.lookup_type            =       ct_qct_customer_count_type
               AND     xlva.attribute1             =       hzca.customer_class_code
-              AND     xlva.attribute2             =       xcac.vist_target_div
-              AND     xlva.attribute3             =       xcac.selling_transfer_div
+/* 2009/05/26 Ver1.5 Start */
+--              AND     xlva.attribute2             =       xcac.vist_target_div
+--              AND     xlva.attribute3             =       xcac.selling_transfer_div
+              AND     xlva.attribute2             =       NVL( xcac.vist_target_div, ct_vist_target_div_yes )
+              AND     xlva.attribute3             =       NVL( xcac.selling_transfer_div, ct_selling_transfer_div_no )
+/* 2009/05/26 Ver1.5 End   */
               AND     xlva.attribute4             =
                                                   DECODE(it_account_idx,  cn_this_month,  hzpt.duns_number_c
                                                                                        ,  xcac.past_customer_status)
@@ -2899,8 +2912,12 @@ AS
               AND     xcac.cnvs_date              <=      it_account_info.base_date
               AND     xlva.lookup_type            =       ct_qct_customer_count_type
               AND     xlva.attribute1             =       hzca.customer_class_code
-              AND     xlva.attribute2             =       xcac.vist_target_div
-              AND     xlva.attribute3             =       xcac.selling_transfer_div
+/* 2009/05/26 Ver1.5 Start */
+--              AND     xlva.attribute2             =       xcac.vist_target_div
+--              AND     xlva.attribute3             =       xcac.selling_transfer_div
+              AND     xlva.attribute2             =       NVL( xcac.vist_target_div, ct_vist_target_div_yes )
+              AND     xlva.attribute3             =       NVL( xcac.selling_transfer_div, ct_selling_transfer_div_no )
+/* 2009/05/26 Ver1.5 End   */
               AND     xlva.attribute4             =
                                                   DECODE(it_account_idx,  cn_this_month,  hzpt.duns_number_c
                                                                                        ,  xcac.past_customer_status)
@@ -3105,8 +3122,12 @@ AS
               AND     xcac.cnvs_date              <=      it_account_info.base_date
               AND     xlva.lookup_type            =       ct_qct_customer_count_type
               AND     xlva.attribute1             =       hzca.customer_class_code
-              AND     xlva.attribute2             =       xcac.vist_target_div
-              AND     xlva.attribute3             =       xcac.selling_transfer_div
+/* 2009/05/26 Ver1.5 Start */
+--              AND     xlva.attribute2             =       xcac.vist_target_div
+--              AND     xlva.attribute3             =       xcac.selling_transfer_div
+              AND     xlva.attribute2             =       NVL( xcac.vist_target_div, ct_vist_target_div_yes )
+              AND     xlva.attribute3             =       NVL( xcac.selling_transfer_div, ct_selling_transfer_div_no )
+/* 2009/05/26 Ver1.5 End   */
               AND     xlva.attribute4             =       DECODE(it_account_idx,  cn_this_month,  hzpt.duns_number_c
                                                                                                ,  xcac.past_customer_status)
               AND     xlva.attribute7             =       cv_yes
