@@ -1,0 +1,97 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Table Name  : XXCOS_DEPOSIT_VD_SLIP_WORK
+ * Description : 預り金VD納品伝票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/03/06    1.0   K.Kumamoto       新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK
+(
+    RECORD_ID                 NUMBER            NOT NULL   --レコードID
+   ,GROUP_ID                  NUMBER            NOT NULL   --グループID
+   ,COMPANY_NAME              VARCHAR2(40)                 --社名
+   ,SHOP_CODE                 VARCHAR2(10)                 --店コード
+   ,SHOP_NAME                 VARCHAR2(40)                 --店名
+   ,ORDER_DATE                DATE                         --発注日
+   ,DELIVERY_DATE             DATE                         --納品日
+   ,INVOICE_CLASS             VARCHAR2(2)                  --伝票区分
+   ,CLASSIFICATION_CODE       VARCHAR2(4)                  --分類コード
+   ,INVOICE_NUMBER            VARCHAR2(12)                 --伝票番号
+   ,VENDOR_CODE               VARCHAR2(8)                  --取引先コード
+   ,VENDOR_NAME               VARCHAR2(40)                 --取引先名
+   ,LINE_NO                   NUMBER                       --行No
+   ,PRODUCT_CODE              VARCHAR2(16)                 --商品コード
+   ,ITEM_NAME                 VARCHAR2(60)                 --品名
+   ,ITEM_NAME_UPPER           VARCHAR2(15)                 --品名上段
+   ,ITEM_NAME_LOWER_L         VARCHAR2(15)                 --品名下段左
+   ,ITEM_NAME_LOWER_R         VARCHAR2(15)                 --品名下段右
+   ,QUANTITY                  NUMBER                       --数量
+   ,UNIT_PRICE                NUMBER                       --原単価
+   ,COST_AMOOUNT              NUMBER                       --原価金額
+   ,SELLING_PRICE             NUMBER                       --売単価
+   ,SELLING_AMOUNT            NUMBER                       --売価金額
+   ,SUM_AMOUNT_TITLE          VARCHAR2(17)                 --金額合計タイトル
+   ,SUM_AMOUNT                VARCHAR2(17)                 --金額合計
+   ,SUM_QUANTITY              NUMBER                       --数量合計
+   ,SUM_COST_AMOUNT           NUMBER                       --原価金額合計
+   ,SUM_SELLING_AMOUNT        NUMBER                       --売価金額合計
+   ,CREATED_BY                NUMBER                       --作成者
+   ,CREATION_DATE             DATE                         --作成日
+   ,LAST_UPDATED_BY           NUMBER                       --最終更新者
+   ,LAST_UPDATE_DATE          DATE                         --最終更新日
+   ,LAST_UPDATE_LOGIN         NUMBER                       --最終更新ログイン
+   ,REQUEST_ID                NUMBER                       --要求ID
+   ,PROGRAM_APPLICATION_ID    NUMBER                       --コンカレント・プログラム・アプリケーションID
+   ,PROGRAM_ID                NUMBER                       --コンカレント・プログラムID
+   ,PROGRAM_UPDATE_DATE       DATE                         --プログラム更新日
+   ,CONSTRAINT XXCOS_DEPOSIT_VD_SLIP_WORK_PK PRIMARY KEY(RECORD_ID)
+    USING INDEX TABLESPACE xxidx2
+)
+/
+--
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.RECORD_ID                 IS 'レコードID';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.GROUP_ID                  IS 'レコードID';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.COMPANY_NAME              IS '社名';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SHOP_CODE                 IS '店コード';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SHOP_NAME                 IS '店名';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.ORDER_DATE                IS '発注日';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.DELIVERY_DATE             IS '納品日';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.INVOICE_CLASS             IS '伝票区分';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.CLASSIFICATION_CODE       IS '分類コード';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.INVOICE_NUMBER            IS '伝票番号';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.VENDOR_CODE               IS '取引先コード';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.VENDOR_NAME               IS '取引先名';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.LINE_NO                   IS '行No';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.PRODUCT_CODE              IS '商品コード';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.ITEM_NAME                 IS '品名';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.ITEM_NAME_UPPER           IS '品名上段';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.ITEM_NAME_LOWER_L         IS '品名下段左';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.ITEM_NAME_LOWER_R         IS '品名下段右';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.QUANTITY                  IS '数量';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.UNIT_PRICE                IS '原単価';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.COST_AMOOUNT              IS '原価金額';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SELLING_PRICE             IS '売単価';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SELLING_AMOUNT            IS '売価金額';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SUM_AMOUNT_TITLE          IS '金額合計タイトル';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SUM_AMOUNT                IS '金額合計';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SUM_QUANTITY              IS '数量合計';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SUM_COST_AMOUNT           IS '原価金額合計';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.SUM_SELLING_AMOUNT        IS '売価金額合計';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.CREATED_BY                IS '作成者';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.CREATION_DATE             IS '作成日';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.LAST_UPDATED_BY           IS '最終更新者';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.LAST_UPDATE_DATE          IS '最終更新日';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.LAST_UPDATE_LOGIN         IS '最終更新ログイン';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.REQUEST_ID                IS '要求ID';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.PROGRAM_APPLICATION_ID    IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.PROGRAM_ID                IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK.PROGRAM_UPDATE_DATE       IS 'プログラム更新日';
+--
+COMMENT ON TABLE  XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK                            IS '預り金VD納品伝票ワークテーブル';

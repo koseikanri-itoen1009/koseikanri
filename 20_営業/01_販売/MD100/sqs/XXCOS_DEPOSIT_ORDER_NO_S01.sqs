@@ -1,0 +1,14 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * View Name       : XXCOS_DEPOSIT_VD_SLIP_WORK_S01
+ * Description     : ì`ï[î‘çÜ(óaÇËã‡VDî[ïiì`ï[)
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/03/06    1.0   K.Kumamoto       êVãKçÏê¨
+ ************************************************************************/
+CREATE SEQUENCE xxcos.xxcos_deposit_vd_slip_work_s01 MINVALUE 1 MAXVALUE 999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER NOCYCLE;

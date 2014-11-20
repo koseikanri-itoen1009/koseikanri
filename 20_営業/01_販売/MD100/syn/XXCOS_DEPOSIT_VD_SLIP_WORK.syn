@@ -1,0 +1,14 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * View Name       : XXCOS_DEPOSIT_VD_SLIP_WORK
+ * Description     : 預り金VD納品伝票ワークテーブル（シノニム）
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009/03/06    1.0   K.Kumamoto       新規作成
+ ************************************************************************/
+CREATE OR REPLACE SYNONYM apps.XXCOS_DEPOSIT_VD_SLIP_WORK FOR XXCOS.XXCOS_DEPOSIT_VD_SLIP_WORK;
