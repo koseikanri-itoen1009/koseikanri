@@ -7,7 +7,7 @@ AS
  * Package Name           : xx03_deptinput_ap_check_pkg(body)
  * Description            : 部門入力(AP)において入力チェックを行う共通関数
  * MD.070                 : 部門入力(AP)共通関数 OCSJ/BFAFIN/MD070/F409
- * Version                : 11.5.10.2.11
+ * Version                : 11.5.10.2.12
  *
  * Program List
  *  -------------------------- ---- ----- --------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *                              yyyy/mm/ddを自動認識できない場合にエラーとなる事の修正
  *  2012/02/15   11.5.10.2.11   [E_本稼動_09132]対応 摘要コードのDFF10(税コード)と
  *                              入力した税コードが一致しているかチェックする修正
+ *  2013/06/10   11.5.10.2.12   [E_本稼動_10838]対応 画面表示値と登録値のチェック追加
  *
  *****************************************************************************************/
 --
@@ -749,6 +750,65 @@ AS
        ORDER BY xei.line_number;
 -- ver11.5.10.1.6B Add End
 --
+-- 2013/06/10 Ver11.5.10.2.12 ADD START
+    -- 画面表示値-登録値相違エラーチェック結果取得カーソル
+    CURSOR xx03_save_code_chk_cur
+    IS
+      SELECT /*+ LEADING(xps xpsl) */
+             COUNT(1)                AS exist_check
+      FROM   xx03_payment_slips      xps
+            ,xx03_payment_slip_lines xpsl
+      WHERE  xps.org_id     = XX00_PROFILE_PKG.VALUE('ORG_ID')
+      AND    xps.invoice_id = xpsl.invoice_id
+      AND    xps.invoice_id = in_invoice_id
+      AND (
+           ( SUBSTRB( xps.requestor_person_name, 1, 5 )  <> ( SELECT papf.employee_number      AS employee_number      -- 申請者名
+                                                              FROM   per_all_people_f          papf
+                                                              WHERE  papf.person_id = xps.requestor_person_id
+                                                              AND    TRUNC(SYSDATE) BETWEEN papf.effective_start_date
+                                                                                    AND     papf.effective_end_date ) )
+        OR ( SUBSTRB( xps.approver_person_name, 1, 5 )   <> ( SELECT papf.employee_number      AS employee_number      -- 承認者名
+                                                              FROM   per_all_people_f          papf
+                                                              WHERE  papf.person_id = xps.approver_person_id
+                                                              AND    TRUNC(SYSDATE) BETWEEN papf.effective_start_date
+                                                                                    AND     papf.effective_end_date ) )
+        OR ( SUBSTRB( xps.vendor_name, 1, 9 )            <> ( SELECT pv.segment1               AS segment1             -- 仕入先名
+                                                              FROM   po_vendors                pv
+                                                              WHERE  pv.vendor_id = xps.vendor_id ) )
+        OR ( xps.vendor_site_name                        <> ( SELECT pvs.vendor_site_code      AS vendor_site_code     -- 仕入先サイト名
+                                                              FROM   po_vendor_sites_all       pvs
+                                                              WHERE  pvs.vendor_site_id = xps.vendor_site_id
+                                                              AND    pvs.org_id         = xps.org_id ) )
+        OR ( ( xps.exchange_rate_type_name IS NULL )     AND ( xps.exchange_rate_type IS NOT NULL ) )                  -- 換算レートタイプ名
+        OR ( ( xps.exchange_rate_type_name IS NOT NULL ) AND ( xps.exchange_rate_type IS NULL ) )                      -- 換算レートタイプ名
+        OR ( xps.exchange_rate_type_name                 <> ( SELECT gdct.user_conversion_type AS user_conversion_type -- 換算レートタイプ名
+                                                              FROM   gl_daily_conversion_types gdct
+                                                              WHERE  gdct.conversion_type = xps.exchange_rate_type ) )
+        OR ( xps.terms_name                              <> ( SELECT at.name                   AS name                 -- 支払条件名
+                                                              FROM   ap_terms                  at
+                                                              WHERE  at.term_id = xps.terms_id ) )
+        OR ( xps.pay_group_lookup_name                   <> ( SELECT flv.meaning               AS meaning              -- 支払グループ名
+                                                              FROM   fnd_lookup_values         flv
+                                                              WHERE  flv.lookup_code  = xps.pay_group_lookup_code
+                                                              AND    flv.lookup_type  = 'PAY GROUP'
+                                                              AND    flv.language     = USERENV('LANG')
+                                                              AND    flv.enabled_flag = 'Y'
+                                                              AND    TRUNC(SYSDATE) BETWEEN NVL( flv.start_date_active, TO_DATE('1000/01/01','YYYY/MM/DD') )
+                                                              AND                           NVL( flv.end_date_active  , TO_DATE('4712/12/31','YYYY/MM/DD') ) ) )
+        OR ( xpsl.slip_line_type <> SUBSTRB( xpsl.slip_line_type_name, 1, LENGTHB(xpsl.slip_line_type) ) )             -- 摘要コード名
+        OR ( xpsl.tax_code <> SUBSTRB( xpsl.tax_name, 1, LENGTHB(xpsl.tax_code) ) )                                    -- 税区分名
+        OR ( xpsl.segment1 <> SUBSTRB( xpsl.segment1_name, 1, LENGTHB(xpsl.segment1) ) )                               -- AFF 会社
+        OR ( xpsl.segment2 <> SUBSTRB( xpsl.segment2_name, 1, LENGTHB(xpsl.segment2) ) )                               -- AFF 部門
+        OR ( xpsl.segment3 <> SUBSTRB( xpsl.segment3_name, 1, LENGTHB(xpsl.segment3) ) )                               -- AFF 勘定科目
+        OR ( xpsl.segment4 <> SUBSTRB( xpsl.segment4_name, 1, LENGTHB(xpsl.segment4) ) )                               -- AFF 補助科目
+        OR ( xpsl.segment5 <> SUBSTRB( xpsl.segment5_name, 1, LENGTHB(xpsl.segment5) ) )                               -- AFF 顧客
+        OR ( xpsl.segment6 <> SUBSTRB( xpsl.segment6_name, 1, LENGTHB(xpsl.segment6) ) )                               -- AFF 企業
+        OR ( xpsl.segment7 <> SUBSTRB( xpsl.segment7_name, 1, LENGTHB(xpsl.segment7) ) )                               -- AFF 予備１
+        OR ( xpsl.segment8 <> SUBSTRB( xpsl.segment8_name, 1, LENGTHB(xpsl.segment8) ) )                               -- AFF 予備２
+          )
+      ;
+-- 2013/06/10 Ver11.5.10.2.12 ADD END
+--
     -- *** ローカル・レコード ***
     -- 処理対象データ取得カーソルレコード型
     xx03_xpsjlv_rec            xx03_xpsjlv_cur%ROWTYPE;
@@ -804,6 +864,10 @@ AS
     -- 税金コード変更チェックカーソルレコード型
     xx03_tax_chenge_rec          xx03_tax_chenge_cur%ROWTYPE;
 -- 2012/02/15 Ver11.5.10.2.11 ADD END
+-- 2013/06/10 Ver11.5.10.2.12 ADD START
+    -- チェックカーソルレコード型
+    xx03_save_code_chk_rec       xx03_save_code_chk_cur%ROWTYPE;
+-- 2013/06/10 Ver11.5.10.2.12 ADD START
 --
     -- ===============================
     -- ユーザー定義例外
@@ -1369,6 +1433,20 @@ AS
         CLOSE xx03_tax_chenge_cur;
 --
 -- 2012/02/15 Ver11.5.10.2.11 ADD END
+-- 2013/06/10 Ver11.5.10.2.12 ADD START
+        -- 画面表示値-登録値相違エラーチェック
+        OPEN  xx03_save_code_chk_cur;
+        FETCH xx03_save_code_chk_cur INTO xx03_save_code_chk_rec;
+        -- 相違エラーチェックが1件でも存在する場合
+        IF ( xx03_save_code_chk_rec.exist_check <> 0 ) THEN
+          -- 項目相違エラー
+          errflg_tbl(ln_err_cnt) := 'E';
+          errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFO'    ,'APP-XXCFO1-00046'
+                                                            );
+          ln_err_cnt := ln_err_cnt + 1;
+        END IF;
+        CLOSE xx03_save_code_chk_cur;
+-- 2013/06/10 Ver11.5.10.2.12 ADD END
 --
         -- ver 11.5.10.2.10F Add Start
         -- 通貨が正しく入力されている場合はチェック
