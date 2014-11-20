@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.4
+ * Version                : 1.5
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  2008/10/22   1.2   D.Nihei          統合障害#123対応（PT 6-2_31）(ロットステータスVIEW箇所修正)
  *  2008/10/29   1.3   D.Nihei          統合障害#481対応（ORDER BY句編集) 
  *  2008/11/19   1.4   D.Nihei          統合障害#681対応（条件追加) 
+ *  2008/12/02   1.5   D.Nihei          本番障害#251対応（条件追加) 
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -557,6 +558,9 @@ AS
 -- 2008/11/19 v1.4 D.Nihei ADD START 統合障害#681
         wk_sql1 := wk_sql1 || '       AND     itp.doc_type           = ''PROD'' ';
 -- 2008/11/19 v1.4 D.Nihei ADD END
+-- 2008/12/02 v1.5 D.Nihei ADD START 統合障害#251
+        wk_sql1 := wk_sql1 || '       AND     itp.delete_mark        = 0 ';
+-- 2008/12/02 v1.5 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '       AND     itp.line_id            = gmd.material_detail_id  ';
         wk_sql1 := wk_sql1 || '       AND     itp.item_id            = gmd.item_id ';
         wk_sql1 := wk_sql1 || '       AND     itp.lot_id             = mld.lot_id ';
@@ -1078,6 +1082,9 @@ AS
 -- 2008/11/19 v1.4 D.Nihei ADD START 統合障害#681
         wk_sql2 := wk_sql2 || '                 AND     itp.doc_type           = ''PROD'' ';
 -- 2008/11/19 v1.4 D.Nihei ADD END
+-- 2008/12/02 v1.5 D.Nihei ADD START 統合障害#251
+        wk_sql2 := wk_sql2 || '                 AND     itp.delete_mark        = 0 ';
+-- 2008/12/02 v1.5 D.Nihei ADD END
         wk_sql2 := wk_sql2 || '                 AND     itp.line_id            = gmd.material_detail_id  ';
         wk_sql2 := wk_sql2 || '                 AND     itp.item_id            = gmd.item_id ';
         wk_sql2 := wk_sql2 || '                 AND     itp.lot_id             = mld.lot_id ';
