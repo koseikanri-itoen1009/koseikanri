@@ -2483,6 +2483,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
+      AND    xsims.monthly_stock    <> 0
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -4274,6 +4275,7 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
+      AND    xsims.monthly_stock    <> 0
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -6099,11 +6101,11 @@ AS
       AND    gic3.item_id            = xsims.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+      AND    xsims.monthly_stock    <> 0
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -7911,10 +7913,10 @@ AS
       AND    gic3.item_id            = xsims.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       AND    iwm.whse_code           = ir_param.locat_code
+      AND    xsims.monthly_stock    <> 0
       ORDER BY h_whse_code
               ,crowd_code
               ,item_code
@@ -9685,9 +9687,9 @@ AS
       AND    gic3.item_id            = xsims.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    mcb3.segment1           = lt_crowd_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
       AND    mcb3.segment1           = lt_crowd_code
+      AND    xsims.monthly_stock    <> 0
       ORDER BY crowd_code
               ,item_code
       ;
@@ -11439,8 +11441,8 @@ AS
       AND    gic3.item_id            = xsims.item_id
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
-      AND    mcb3.segment1           = lt_crowd_code
       AND    xsims.invent_ym         = TO_CHAR(gd_s_date, gc_char_ym_format)
+      AND    xsims.monthly_stock    <> 0
       ORDER BY crowd_code
               ,item_code
       ;
@@ -12555,8 +12557,10 @@ NULL;
 */
           SELECT  SUM(NVL(stc.monthly_stock, 0)) AS stock
                  ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
-                 ,SUM(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0)) AS stock_amt
-                 ,SUM(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0)) AS cargo_price
+                 --,SUM(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0)) AS stock_amt
+                 --,SUM(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0)) AS cargo_price
+                 ,SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
           INTO   on_inv_qty_tbl
                 ,ln_cargo_qty
                 ,on_inv_amt_tbl
@@ -12600,8 +12604,10 @@ NULL;
 */
           SELECT  SUM(NVL(stc.monthly_stock, 0)) AS stock
                  ,SUM(NVL(stc.cargo_stock, 0))   AS cargo_stock
-                 ,SUM(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0)) AS stock_amt
-                 ,SUM(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0)) AS cargo_price
+                 --,SUM(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0)) AS stock_amt
+                 --,SUM(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0)) AS cargo_price
+                 ,SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))) AS stock_amt
+                 ,SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))) AS cargo_price
           INTO   on_inv_qty_tbl
                 ,ln_cargo_qty
                 ,on_inv_amt_tbl

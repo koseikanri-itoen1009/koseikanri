@@ -3015,6 +3015,7 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = gv_exec_year_month_bef
+      AND    xsims.monthly_stock    <> 0
       ORDER BY h_whse_code      -- 倉庫コード
               ,crowd_code       -- 群コード
               ,item_code        -- 品目コード
@@ -5391,6 +5392,7 @@ AS
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = gv_exec_year_month_bef
       AND    iwm.whse_code           = ir_param.locat_code
+      AND    xsims.monthly_stock    <> 0
       ORDER BY h_whse_code      -- 倉庫コード
               ,crowd_code       -- 群コード
               ,item_code        -- 品目コード
@@ -7767,6 +7769,7 @@ AS
       AND    iwm.whse_code           = xsims.whse_code
       AND    xsims.invent_ym         = gv_exec_year_month_bef
       AND    mcb3.segment1           = lt_crowd_code
+      AND    xsims.monthly_stock    <> 0
       ORDER BY h_whse_code      -- 倉庫コード
               ,crowd_code       -- 群コード
               ,item_code        -- 品目コード
@@ -10169,6 +10172,7 @@ AS
       AND    xsims.invent_ym         = gv_exec_year_month_bef
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = ir_param.locat_code
+      AND    xsims.monthly_stock    <> 0
       ORDER BY h_whse_code      -- 倉庫コード
               ,crowd_code       -- 群コード
               ,item_code        -- 品目コード
@@ -12414,7 +12418,6 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
-      AND    mcb3.segment1           = lt_crowd_code
     -- ----------------------------------------------------
     -- 当月受払無しデータ
     -- ----------------------------------------------------
@@ -12468,6 +12471,7 @@ AS
       AND    gic3.category_set_id    = ln_crowd_code_id
       AND    gic3.category_id        = mcb3.category_id
       AND    xsims.invent_ym         = gv_exec_year_month_bef
+      AND    xsims.monthly_stock    <> 0
       ORDER BY crowd_code       -- 群コード
               ,item_code        -- 品目コード
               ,column_no        -- 項目位置
@@ -14791,6 +14795,7 @@ AS
       AND    gic3.category_id        = mcb3.category_id
       AND    xsims.invent_ym         = gv_exec_year_month_bef
       AND    mcb3.segment1           = lt_crowd_code
+      AND    xsims.monthly_stock    <> 0
       ORDER BY crowd_code       -- 群コード
               ,item_code        -- 品目コード
               ,column_no        -- 項目位置
@@ -16502,10 +16507,12 @@ AS
 -- 2008/11/17 v1.16 ADD START
                 ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
 -- 2008/11/17 v1.16 ADD END
-                ,NVL(SUM(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0)),0)
+                --,NVL(SUM(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0)),0)
+                ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))),0)
                                                        as price
 -- 2008/11/17 v1.16 ADD START
-                ,NVL(SUM(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0)),0)
+                --,NVL(SUM(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0)),0)
+                ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(xlc.unit_ploce, 0))),0)
                                                        as cargo_price
 -- 2008/11/17 v1.16 ADD END
           INTO   on_inv_qty
