@@ -32,6 +32,7 @@ AS
  *  2008/11/11    1.8   Y.Kawano         統合テスト指摘#565対応
  *  2008/12/12    1.9   Y.Yamamoto       本番#674対応
  *  2009/03/30    1.10  H.Iida           本番障害#1346対応（営業単位対応）
+ *  2009/09/10    1.11  M.Nomura         本番障害#1607対応
  *
  *****************************************************************************************/
 --  
@@ -743,7 +744,10 @@ AS
         || '      ,xxcmn_item_locations_v   xilv '           -- OPM保管場所情報VIEW
         || '      ,ic_item_mst_b            iimb '           -- OPM品目マスタ
         || '      ,xxcmn_item_mst_b         ximb '           -- OPM品目アドオンマスタ
+-- *----------* 2009/09/10 Ver.1.11 本番#1607対応 start *----------*
         || '      ,ic_lots_mst              ilm '            -- OPMロットマスタ
+        || '      ,xxinv_lots_notzero_mst_v xlmv '           -- 手持取引ロットVIEW
+-- *----------* 2009/09/10 Ver.1.11 本番#1607対応 end   *----------*
         || '      ,xxcmn_item_categories5_v xicv '           -- OPM品目カテゴリ割当情報VIEW1
         || 'WHERE xicv.prod_class_code    = :arti_div_code '
         || 'AND   xicv.item_class_code    = :item_class_code '
@@ -769,6 +773,12 @@ AS
         || 'AND   ili.lot_id    = ilm.lot_id '
         || 'AND   ili.whse_code = xilv.whse_code '
         || 'AND   ili.location  = xilv.segment1 '   -- add 2008/05/07 #47対応
+-- *----------* 2009/09/10 Ver.1.11 本番#1607対応 start *----------*
+        || 'AND   ili.item_id   = xlmv.item_id '
+        || 'AND   ili.lot_id    = xlmv.lot_id '
+        || 'AND   ili.whse_code = xlmv.whse_code '
+        || 'AND   ili.location  = xlmv.location '
+-- *----------* 2009/09/10 Ver.1.11 本番#1607対応 end   *----------*
         || 'GROUP BY '
         || '      xilv.whse_code '
         || '     ,iimb.item_id '
@@ -1331,7 +1341,10 @@ AS
 --2008/09/24 Y.Kawano Mod End
         || '      ,ic_item_mst_b            iimb '           -- OPM品目マスタ
         || '      ,xxcmn_item_mst_b         ximb '           -- OPM品目アドオンマスタ
+-- *----------* 2009/09/10 Ver.1.11 本番#1607対応 start *----------*
         || '      ,ic_lots_mst              ilm '            -- OPMロットマスタ
+        || '      ,xxinv_lots_notzero_mst_v xlmv '           -- 手持取引ロットVIEW
+-- *----------* 2009/09/10 Ver.1.11 本番#1607対応 end   *----------*
         || '      ,xxcmn_item_categories5_v xicv '           -- OPM品目カテゴリ割当情報VIEW1
         || 'WHERE  xicv.prod_class_code     = :arti_div_code '
         || 'AND    xicv.item_class_code     = :item_class_code '
@@ -1364,6 +1377,12 @@ AS
         || 'AND    ipb.whse_code   = xilv.whse_code '
         || 'AND    ipb.lot_id      = ilm.lot_id '
         || 'AND    ipb.location    = xilv.segment1 '            -- add 2008/05/07 #47対応
+-- *----------* 2009/09/10 Ver.1.11 本番#1607対応 start *----------*
+        || 'AND    ipb.item_id     = xlmv.item_id '
+        || 'AND    ipb.lot_id      = xlmv.lot_id '
+        || 'AND    ipb.whse_code   = xlmv.whse_code '
+        || 'AND    ipb.location    = xlmv.location '
+-- *----------* 2009/09/10 Ver.1.11 本番#1607対応 end   *----------*
 --2008/09/24 Y.Kawano Mod Start
 --        || 'AND    ipb.fiscal_year = to_char(oap.period_year) ' -- mod 2008/05/07 #62対応
 --        || 'AND    ipb.period      = oap.period_num '
