@@ -7,7 +7,7 @@ AS
  * Description      : 指定した営業員の指定した日の１時間ごとの訪問実績(訪問先)を表示します。
  *                    １週間前の訪問実績を同様に表示して比較の対象とします。
  * MD.050           : MD050_CSO_019_A07_営業員別訪問実績表
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009-04-21    1.2   Daisuke.Abe      【T1_0681】業務処理日付対応
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-20    1.4   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
+ *  2009-06-03    1.5   Kazuo.Satomura   ＳＴ障害対応(T1_0696 SQLERRMを削除)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -511,7 +512,10 @@ AS
                        ,iv_token_name1  => cv_tkn_entry        --トークンコード1
                        ,iv_token_value1 => cv_vst_dt           --トークン値1
                      );
-        lv_errbuf := lv_errmsg || SQLERRM;
+        /* 2009.06.03 K.Satomura T1_0696対応 START */
+        --lv_errbuf := lv_errmsg || SQLERRM;
+        lv_errbuf := lv_errmsg;
+        /* 2009.06.03 K.Satomura T1_0696対応 END */
         RAISE chk_param_expt;
       WHEN OTHERS THEN
         -- エラーメッセージ取得
@@ -521,7 +525,10 @@ AS
                        ,iv_token_name1  => cv_tkn_entry        --トークンコード1
                        ,iv_token_value1 => cv_vst_dt           --トークン値1
                      );
-        lv_errbuf := lv_errmsg || SQLERRM;
+        /* 2009.06.03 K.Satomura T1_0696対応 START */
+        --lv_errbuf := lv_errmsg || SQLERRM;
+        lv_errbuf := lv_errmsg;
+        /* 2009.06.03 K.Satomura T1_0696対応 END */
         RAISE chk_param_expt;
     END;
     -- ===========================

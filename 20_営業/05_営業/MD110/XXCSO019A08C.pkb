@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、営業員ごとに指定日を含む月の1日～指定日まで
  *                    訪問実績の無い顧客を表示します。
  * MD.050           : MD050_CSO_019_A08_未訪問顧客一覧表
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-14    1.4   Makoto.Ohtsuki   【T1_0790】出力条件の変更
  *  2009-05-20    1.5   Makoto.Ohtsuki   ＳＴ障害対応(T1_0696)
+ *  2009-06-03    1.6   Kazuo.Satomura   ＳＴ障害対応(T1_0696 SQLERRMを削除)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -388,7 +389,10 @@ AS
                        ,iv_token_name1  => cv_tkn_entry        --トークンコード1
                        ,iv_token_value1 => cv_crnt_dt          --トークン値1
                      );
-        lv_errbuf := lv_errmsg || SQLERRM;
+        /* 2009.06.03 K.Satomura T1_0696対応 START */
+        --lv_errbuf := lv_errmsg || SQLERRM;
+        lv_errbuf := lv_errmsg;
+        /* 2009.06.03 K.Satomura T1_0696対応 END */
         RAISE chk_param_expt;
       WHEN OTHERS THEN
         -- エラーメッセージ取得
@@ -398,7 +402,10 @@ AS
                        ,iv_token_name1  => cv_tkn_entry        --トークンコード1
                        ,iv_token_value1 => cv_crnt_dt          --トークン値1
                      );
-        lv_errbuf := lv_errmsg || SQLERRM;
+        /* 2009.06.03 K.Satomura T1_0696対応 START */
+        --lv_errbuf := lv_errmsg || SQLERRM;
+        lv_errbuf := lv_errmsg;
+        /* 2009.06.03 K.Satomura T1_0696対応 END */
         RAISE chk_param_expt;
     END;
 --
