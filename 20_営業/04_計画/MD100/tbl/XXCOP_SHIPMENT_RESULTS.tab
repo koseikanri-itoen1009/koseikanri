@@ -3,7 +3,7 @@
  *
  * View Name       : XXCOP_SHIPMENT_RESULTS
  * Description     : 親コード出荷実績表
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2008-11-13    1.0   SCS.Kikuchi     新規作成
  *  2009-03-19    1.1   SCS.Kayahara    APPSに作られていたので、XXCOPスキーマに変更
+ *  2009-04-15    1.2   SCS.Kikuchi     UNIQUE制約を削除
  *
  ************************************************************************/
 CREATE TABLE xxcop.xxcop_shipment_results (
@@ -37,10 +38,12 @@ CREATE TABLE xxcop.xxcop_shipment_results (
     ,program_update_date            DATE
   ,CONSTRAINT xxcop_shipment_result_pk PRIMARY KEY (order_header_id,order_line_id)
   USING INDEX TABLESPACE xxidx2
-  ,CONSTRAINT xxcop_shipment_result_n01 UNIQUE (shipment_date,base_code,item_no,latest_deliver_from)
-  USING INDEX TABLESPACE xxidx2
-  ,CONSTRAINT xxcop_shipment_result_n02 UNIQUE (shipment_date,item_no,latest_deliver_from)
-  USING INDEX TABLESPACE xxidx2
+--20090415_Ver1.2_T1_0563_SCS.Kikuchi_DEL_START
+--  ,CONSTRAINT xxcop_shipment_result_n01 UNIQUE (shipment_date,base_code,item_no,latest_deliver_from)
+--  USING INDEX TABLESPACE xxidx2
+--  ,CONSTRAINT xxcop_shipment_result_n02 UNIQUE (shipment_date,item_no,latest_deliver_from)
+--  USING INDEX TABLESPACE xxidx2
+--20090415_Ver1.2_T1_0563_SCS.Kikuchi_DEL_END
   ) ;
 --
 COMMENT ON COLUMN xxcop.xxcop_shipment_results.order_header_id                         IS '受注ヘッダアドオンID';
