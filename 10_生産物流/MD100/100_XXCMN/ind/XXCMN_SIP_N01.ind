@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_sip_n01 ON xxcmn.xxcmn_ship_methods( code_class1,entering_despatching_code1,code_class2,entering_despatching_code2 ) TABLESPACE xxidx;

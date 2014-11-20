@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_imb_n03 ON xxcmn.xxcmn_item_mst_b( start_date_active,end_date_active ) TABLESPACE xxidx;

@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_par_n01 ON xxcmn.xxcmn_parties( party_id,start_date_active,end_date_active ) TABLESPACE xxidx;
