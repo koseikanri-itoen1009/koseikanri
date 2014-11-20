@@ -15,6 +15,7 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
  *  2008/11/26    1.0  SCS 中村 博    チェーン店コードの型をVARCHAR2(4)に変更
  *  2009/01/23    1.0  SCS 中村 博    EBS取込日を論理データモデルに合わせNOT NULLに
  *  2009/04/22    1.1  SCS 萱原 伸哉  障害番号T1_0128対応 桁数修正
+ *  2009/07/21    1.2  SCS 廣瀬 真佐人[0000792]障害対応
  ************************************************************************/
 ( 
   payment_note_id             NUMBER      NOT NULL  ,     -- 支払通知情報ID
@@ -94,6 +95,9 @@ CREATE TABLE xxcfr.xxcfr_payment_notes
   CONSTRAINT xxcfr_payment_notes_pk PRIMARY KEY ( payment_note_id )
   USING INDEX TABLESPACE xxidx2
 )
+/* 2009.07.21 (0000792) START */
+PCTFREE 10 PCTUSED 40 INITRANS 1 STORAGE ( INITIAL 500M)
+/* 2009.07.21 (0000792) END */
 --  TABLESPACE xxdata2
 --  STORAGE (
 --    INITIAL     4K

@@ -5,13 +5,14 @@ CREATE TABLE xxcfr.xxcfr_sales_data_reletes
  * Description     : 売上実績連携済テーブル
  * MD.050          : MD.050_LDM_CFR_001
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2008/11/17    1.0  SCS 中村 博    初回作成
+ *  2009/07/21    1.1  SCS 廣瀬 真佐人[0000792]障害対応
  ************************************************************************/
 ( 
   customer_trx_id             NUMBER      NOT NULL  ,     -- 取引ヘッダID
@@ -27,6 +28,9 @@ CREATE TABLE xxcfr.xxcfr_sales_data_reletes
   CONSTRAINT xxcfr_sales_data_reletes_pk PRIMARY KEY ( customer_trx_id )
   USING INDEX TABLESPACE xxidx2
 )
+/* 2009.07.21 (0000792) START */
+PCTFREE 10 PCTUSED 40 INITRANS 1 STORAGE ( INITIAL 10M)
+/* 2009.07.21 (0000792) END */
 --  TABLESPACE xxdata2
 --  STORAGE (
 --    INITIAL     4K
