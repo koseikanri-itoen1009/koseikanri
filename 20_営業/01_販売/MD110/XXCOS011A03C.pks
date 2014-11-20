@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (spec)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2010/03/01    1.15  S.Karikomi       [E_本稼働_01635]ヘッダ出力拠点修正
  *                                                       件数カウント単位の同期対応
  *  2010/06/11    1.16  S.Niki           [E_本稼動_03075]拠点選択対応
+ *  2011/12/15    1.17  T.Yoshimoto      [E_本稼動_02817]パラメータ(解除拠点コード)追加対応
  *
  *****************************************************************************************/
 --
@@ -74,8 +75,11 @@ AS
     iv_carrier_means    IN     VARCHAR2,         --  13.輸送手段
     iv_proc_date        IN     VARCHAR2,         --  14.処理日
     iv_proc_time        IN     VARCHAR2,         --  15.処理時刻
+/* 2011/12/15 Ver1.17 T.Yoshimoto Add Start E_本稼動_02871 */
+    iv_cancel_bace_code IN     VARCHAR2,         --  16.解除拠点コード
+/* 2011/12/15 Ver1.17 T.Yoshimoto Add End */
 /* 2010/06/11 Ver1.21 Add Start */
-    iv_slct_base_code   IN     VARCHAR2          --  16.出力拠点コード
+    iv_slct_base_code   IN     VARCHAR2          --  17.出力拠点コード
 /* 2010/06/11 Ver1.21 Add End */
   );
 END XXCOS011A03C;

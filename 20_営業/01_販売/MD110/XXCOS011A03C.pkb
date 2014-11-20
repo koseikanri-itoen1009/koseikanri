@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,8 @@ AS
  *  2011/02/15    1.23  N.Horigome       [E_本稼動_02155]クイック受注の伝票番号の修正対応
  *  2011/04/27    1.24  K.Kiriu          [E_本稼動_07182]納品予定データ作成処理遅延対応
  *  2011/09/03    1.25  K.Kiriu          [E_本稼動_07906]流通BMS対応
+ *  2011/12/15    1.26  T.Yoshimoto      [E_本稼動_02817]パラメータ(解除拠点コード)追加対応
+ *                                       [E_本稼動_07554]受注明細の単位項目へのNVL対応
  *
  *****************************************************************************************/
 --
@@ -345,6 +347,10 @@ AS
   cv_y                  CONSTANT VARCHAR2(1)   := 'Y';                 -- 固定値:Y
   cv_n                  CONSTANT VARCHAR2(1)   := 'N';                 -- 固定値:N
   cv_w                  CONSTANT VARCHAR2(1)   := 'W';                 -- 固定値:W
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+  cv_comma              CONSTANT VARCHAR2(1)   := ',';                 -- 固定値:,
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
+
 -- ************ 2009/09/03 N.Maeda 1.12 ADD START ***************** --
   ct_user_lang                    CONSTANT mtl_category_sets_tl.language%TYPE := USERENV('LANG'); --LANG
 -- ************ 2009/09/03 N.Maeda 1.12 ADD  END  ***************** --
@@ -1595,8 +1601,11 @@ AS
     iv_carrier_means    IN  VARCHAR2,     --  13.輸送手段
     iv_proc_date        IN  VARCHAR2,     --  14.処理日
     iv_proc_time        IN  VARCHAR2,     --  15.処理時刻
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+    iv_cancel_bace_code IN  VARCHAR2,     --  16.解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
 /* 2010/06/11 Ver1.21 Add Start */
-    iv_slct_base_code   IN  VARCHAR2,     --  16.出力拠点コード
+    iv_slct_base_code   IN  VARCHAR2,     --  17.出力拠点コード
 /* 2010/06/11 Ver1.21 Add End */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -1721,16 +1730,20 @@ AS
     ELSIF ( iv_make_class = cv_make_class_release ) THEN
       -- パラメータ出力メッセージ取得
       lv_param_msg := xxccp_common_pkg.get_msg(
-                         iv_application  => cv_application     -- アプリケーション
-                        ,iv_name         => cv_msg_param3      -- パラメーター出力
-                        ,iv_token_name1  => cv_tkn_param01     -- トークンコード１
-                        ,iv_token_value1 => iv_make_class      -- 作成区分
-                        ,iv_token_name2  => cv_tkn_param02     -- トークンコード２
-                        ,iv_token_value2 => iv_edi_c_code      -- EDIチェーン店コード
-                        ,iv_token_name3  => cv_tkn_param03     -- トークンコード３
-                        ,iv_token_value3 => iv_proc_date       -- 処理日
-                        ,iv_token_name4  => cv_tkn_param04     -- トークンコード４
-                        ,iv_token_value4 => iv_proc_time       -- 処理時刻
+                         iv_application  => cv_application      -- アプリケーション
+                        ,iv_name         => cv_msg_param3       -- パラメーター出力
+                        ,iv_token_name1  => cv_tkn_param01      -- トークンコード１
+                        ,iv_token_value1 => iv_make_class       -- 作成区分
+                        ,iv_token_name2  => cv_tkn_param02      -- トークンコード２
+                        ,iv_token_value2 => iv_edi_c_code       -- EDIチェーン店コード
+                        ,iv_token_name3  => cv_tkn_param03      -- トークンコード３
+                        ,iv_token_value3 => iv_proc_date        -- 処理日
+                        ,iv_token_name4  => cv_tkn_param04      -- トークンコード４
+                        ,iv_token_value4 => iv_proc_time        -- 処理時刻
+/* 2011/12/15 Ver1.26 T.Yoshimoto Mod Start E_本稼動_02871 */
+                        ,iv_token_name5  => cv_tkn_param05      -- トークンコード５
+                        ,iv_token_value5 => iv_cancel_bace_code -- 解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Mod End */
                       );
     END IF;
     -- パラメータをメッセージに出力
@@ -3600,6 +3613,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_07554 */
+    cv_uom_hon         CONSTANT VARCHAR2(2)   := '本';                 -- 固定値:本
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
 --
     -- *** ローカル変数 ***
     lv_tkn_value1      VARCHAR2(50);    -- トークン取得用1
@@ -4223,7 +4239,12 @@ AS
       xxcos_common2_pkg.convert_quantity(
 /* 2009/07/24 Ver1.11 Mod Start */
 --               iv_uom_code             => gt_data_tab(ln_data_cnt)(cv_uom_code)               --IN :単位コード
-               iv_uom_code             => gt_edi_order_tab(ln_loop_cnt).order_quantity_uom --IN :単位コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_07554 */
+--               iv_uom_code             => gt_edi_order_tab(ln_loop_cnt).order_quantity_uom --IN :単位コード
+               iv_uom_code             => NVL( gt_edi_order_tab(ln_loop_cnt).order_quantity_uom
+                                              ,cv_uom_hon
+                                             )                                             --IN :単位コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
 /* 2009/07/24 Ver1.11 Mod End   */
               ,in_case_qty             => gt_data_tab(ln_data_cnt)(cv_num_of_cases)        --IN :ケース入数
               ,in_ball_qty             => NVL( gt_edi_order_tab(ln_loop_cnt).num_of_ball
@@ -5284,8 +5305,11 @@ AS
    ***********************************************************************************/
   PROCEDURE release_edi_trans(
     iv_edi_c_code       IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_proc_date        IN  VARCHAR2,     --  13.処理日
-    iv_proc_time        IN  VARCHAR2,     --  14.処理時刻
+    iv_proc_date        IN  VARCHAR2,     --  14.処理日
+    iv_proc_time        IN  VARCHAR2,     --  15.処理時刻
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+    iv_cancel_bace_code IN  VARCHAR2,      -- 16.解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -5325,6 +5349,9 @@ AS
       WHERE  TRUNC(xeh.process_date)        = TO_DATE(iv_proc_date, cv_date_format)  -- 入力パラメータの処理日
       AND    xeh.process_time               = iv_proc_time                           -- 入力パラメータの処理時刻
       AND    xeh.edi_chain_code             = iv_edi_c_code                          -- 入力パラメータのEDIチェーン店コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+      AND    xeh.base_code                  = iv_cancel_bace_code                    -- 入力パラメータの解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
       AND    xeh.edi_delivery_schedule_flag = cv_y                                   -- 送信済
       FOR UPDATE OF
              xeh.edi_header_info_id  NOWAIT
@@ -5369,6 +5396,9 @@ AS
                                        WHERE  TRUNC(xeh.process_date)        = TO_DATE(iv_proc_date, cv_date_format)  -- 入力パラメータの処理日
                                        AND    xeh.process_time               = iv_proc_time                           -- 入力パラメータの処理時刻
                                        AND    xeh.edi_chain_code             = iv_edi_c_code                          -- 入力パラメータのEDIチェーン店コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+                                       AND    xeh.base_code                  = iv_cancel_bace_code                    -- 入力パラメータの解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
                                        AND    xeh.edi_delivery_schedule_flag = cv_y                                   -- 送信済
                                      );                                              -- EDIヘッダ情報ID = ロックを取得したEDIヘッダ情報ID
 /* 2010/03/01 Ver1.15 Add  End  */
@@ -5387,6 +5417,9 @@ AS
       WHERE  TRUNC(xeh.process_date)        = TO_DATE(iv_proc_date, cv_date_format)  -- 入力パラメータの処理日
       AND    xeh.process_time               = iv_proc_time                           -- 入力パラメータの処理時刻
       AND    xeh.edi_chain_code             = iv_edi_c_code                          -- 入力パラメータのEDIチェーン店コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+      AND    xeh.base_code                  = iv_cancel_bace_code                    -- 入力パラメータの解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
       AND    xeh.edi_delivery_schedule_flag = cv_y                                   -- 送信済
       ;
     EXCEPTION
@@ -5403,7 +5436,10 @@ AS
                        ,iv_token_name1  => cv_tkn_table_name    -- トークンコード１
                        ,iv_token_value1 => lv_tkn_value1        -- EDIヘッダ情報テーブル
                        ,iv_token_name2  => cv_tkn_key_data      -- トークンコード２
-                       ,iv_token_value2 => iv_edi_c_code        -- 入力パラメータのEDIチェーン店コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Mod Start E_本稼動_02871 */
+                       --,iv_token_value2 => iv_edi_c_code        -- 入力パラメータのEDIチェーン店コード
+                       ,iv_token_value2 => iv_edi_c_code || cv_comma || iv_cancel_bace_code  -- 入力パラメータのEDIチェーン店コード及び、解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Mod End */
                      );
         RAISE global_api_others_expt;
     END;
@@ -5478,8 +5514,11 @@ AS
     iv_carrier_means    IN  VARCHAR2,     --  13.輸送手段
     iv_proc_date        IN  VARCHAR2,     --  14.処理日
     iv_proc_time        IN  VARCHAR2,     --  15.処理時刻
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+    iv_cancel_bace_code IN  VARCHAR2,     --  16.解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
 /* 2010/06/11 Ver1.21 Add Start */
-    iv_slct_base_code   IN  VARCHAR2,     --  16.出力拠点コード
+    iv_slct_base_code   IN  VARCHAR2,     --  17.出力拠点コード
 /* 2010/06/11 Ver1.21 Add End */
     ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT VARCHAR2,     --   リターン・コード             --# 固定 #
@@ -5550,8 +5589,11 @@ AS
       ,iv_carrier_means    -- 13.輸送手段
       ,iv_proc_date        -- 14.処理日
       ,iv_proc_time        -- 15.処理時刻
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+      ,iv_cancel_bace_code -- 16.解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
 /* 2010/06/11 Ver1.21 Add Start */
-      ,iv_slct_base_code   -- 16.出力拠点コード
+      ,iv_slct_base_code   -- 17.出力拠点コード
 /* 2010/06/11 Ver1.21 Add End */
       ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
       ,lv_retcode          -- リターン・コード             --# 固定 #
@@ -5621,7 +5663,10 @@ AS
       release_edi_trans(
          iv_edi_c_code       --  3.EDIチェーン店コード
         ,iv_proc_date        -- 13.処理日
-        ,iv_proc_time        -- 14.処理時刻
+        ,iv_proc_time        -- 15.処理時刻
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+        ,iv_cancel_bace_code -- 16.解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
         ,lv_errbuf           -- エラー・メッセージ           --# 固定 #
         ,lv_retcode          -- リターン・コード             --# 固定 #
         ,lv_errmsg           -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5684,7 +5729,10 @@ AS
 /* 2010/06/11 Ver1.21 Mod Start */
 --    iv_proc_time        IN  VARCHAR2       --  15.処理時刻
     iv_proc_time        IN  VARCHAR2,      --  15.処理時刻
-    iv_slct_base_code   IN  VARCHAR2       --  16.出力拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+    iv_cancel_bace_code IN  VARCHAR2,      --  16.解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
+    iv_slct_base_code   IN  VARCHAR2       --  17.出力拠点コード
 /* 2010/06/11 Ver1.21 Mod End */
   )
 --
@@ -5755,8 +5803,11 @@ AS
       ,iv_carrier_means    --  13.輸送手段
       ,iv_proc_date        --  14.処理日
       ,iv_proc_time        --  15.処理時刻
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add Start E_本稼動_02871 */
+      ,iv_cancel_bace_code --  16.解除拠点コード
+/* 2011/12/15 Ver1.26 T.Yoshimoto Add End */
 /* 2010/06/11 Ver1.21 Add Start */
-      ,iv_slct_base_code   --  16.出力拠点コード
+      ,iv_slct_base_code   --  17.出力拠点コード
 /* 2010/06/11 Ver1.21 Add End */
       ,lv_errbuf   -- エラー・メッセージ           --# 固定 #
       ,lv_retcode  -- リターン・コード             --# 固定 #
