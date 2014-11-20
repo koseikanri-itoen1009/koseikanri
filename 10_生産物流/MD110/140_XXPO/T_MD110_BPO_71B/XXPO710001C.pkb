@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（仕入）
  * MD.050/070       : 生産物流（仕入）Issue1.0  (T_MD050_BPO_710)
  *                    荒茶製造表                (T_MD070_BPO_71B)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/05/20    1.3   Yohei    Takayama  結合テスト障害対応(710_11)
  *  2008/07/02    1.4   Satoshi Yunba      禁則文字対応
  *  2009/02/18    1.5   Akiyoshi Shiina    T_S_448対応
+ *  2009/03/11    1.6   Akiyoshi Shiina    本番#1265対応
  *
  *****************************************************************************************/
 --
@@ -155,6 +156,9 @@ AS
     ,receive1_final_price   xxpo_namaha_prod_txns.receive1_final_price%TYPE      -- 受入1金額(正)
     ,receive2_final_price   xxpo_namaha_prod_txns.receive2_final_price%TYPE      -- 受入2金額(正)
     ,shipment_final_price   xxpo_namaha_prod_txns.shipment_final_price%TYPE      -- 出荷金額(正)
+-- 2009/03/11 v1.6 ADD START
+    ,nijirushi              xxpo_namaha_prod_txns.nijirushi%TYPE                 -- 荷印
+-- 2009/03/11 v1.6 ADD END
 -- 2009/02/18 v1.5 ADD END
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
@@ -493,6 +497,9 @@ AS
             ,xnpt.receive1_final_price  AS receive1_final_price  -- 受入1金額(正)
             ,xnpt.receive2_final_price  AS receive2_final_price  -- 受入2金額(正)
             ,xnpt.shipment_final_price  AS shipment_final_price  -- 出荷金額(正)
+-- 2009/03/11 v1.6 ADD START
+            ,xnpt.nijirushi             AS nijirushi             -- 荷印
+-- 2009/03/11 v1.6 ADD END
 -- 2009/02/18 v1.5 UPDATE END
       FROM   xxpo_namaha_prod_txns      xnpt                     -- 生葉実績（アドオン）
             ,ic_lots_mst                ilm                      -- OPMロットマスタ
@@ -846,6 +853,11 @@ AS
       -- 入庫倉庫
       insert_xml_plsql_table(iox_xml_data, 'location_name', lv_location_name, 
                                                           gc_tag_type_data, gc_tag_value_type_char);
+-- 2009/03/11 v1.6 ADD START
+      -- 荷印
+      insert_xml_plsql_table(iox_xml_data, 'nijirushi', gt_main_data(i).nijirushi, 
+                                                          gc_tag_type_data, gc_tag_value_type_char);
+-- 2009/03/11 v1.6 ADD END
       -- 備考
       insert_xml_plsql_table(iox_xml_data, 'description', SUBSTRB( gt_main_data(i).description, 1, 50 ), 
                                                           gc_tag_type_data, gc_tag_value_type_char);

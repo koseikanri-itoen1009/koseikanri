@@ -8,7 +8,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.19
+ * Version          : 1.20
  * Program List
  * ---------------------------    ----------------------------------------------------------
  *  Name                           Description
@@ -55,6 +55,7 @@ AS
  *  2009/01/16    1.17 Takao Ohashi     I_S_50対応(予実区分値修正)
  *  2009/01/20    1.18 Akiyoshi Shiina  本番#263対応
  *  2009/03/06    1.19 H.Itou           本番#1283対応
+ *  2009/03/12    1.20 Akiyoshi Shiina  本番#1296対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -226,6 +227,9 @@ AS
       ,pay_item_no         xxcmn_item_mst2_v.item_no%TYPE                -- 払出品目コード
       ,pay_item_name       xxcmn_item_mst2_v.item_short_name%TYPE        -- 払出品目名称
       ,pay_lot_no          ic_lots_mst.lot_no%TYPE                       -- 払出ロットNO
+-- 2009/03/12 v1.20 ADD START
+      ,pay_rank1           ic_lots_mst.attribute14%TYPE                  -- 払出ランク１
+-- 2009/03/12 v1.20 ADD END
       ,pay_quant           NUMBER                                        -- 払出総数
       ,pay_unt_price       ic_lots_mst.attribute7%TYPE                   -- 払出単価
       ,rcv_reason_code     xxcmn_rcv_pay_mst.new_div_invent%TYPE         -- 受入事由コード
@@ -234,6 +238,9 @@ AS
       ,rcv_item_no         xxcmn_item_mst2_v.item_no%TYPE                -- 受入品目コード
       ,rcv_item_name       xxcmn_item_mst2_v.item_short_name%TYPE        -- 受入品目名称
       ,rcv_lot_no          ic_lots_mst.lot_no%TYPE                       -- 受入ロットNO
+-- 2009/03/12 v1.20 ADD START
+      ,rcv_rank1           ic_lots_mst.attribute14%TYPE                  -- 受入ランク１
+-- 2009/03/12 v1.20 ADD END
       ,rcv_quant           NUMBER                                        -- 受入総数
       ,rcv_unt_price       ic_lots_mst.attribute7%TYPE                   -- 受入単価
 -- 2009/01/20 v1.18 ADD START
@@ -567,6 +574,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itp.trans_qty),4) AS pay_quant' ;
     lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -582,6 +592,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
 -- 2009/01/20 v1.18 ADD START
@@ -826,6 +839,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itp.trans_qty),4) AS pay_quant' ;
     lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -841,6 +857,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
 -- 2009/01/20 v1.18 ADD START
@@ -1222,6 +1241,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itp.trans_qty),4) AS pay_quant' ;
     lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -1237,6 +1259,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
 -- 2009/01/20 v1.18 ADD START
@@ -1482,6 +1507,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itp.trans_qty),4) AS pay_quant' ;
     lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -1497,6 +1525,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
 -- 2009/01/20 v1.18 ADD START
@@ -1851,6 +1882,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,0                           AS pay_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS pay_unt_price' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS rcv_reason_code' ;
@@ -1859,6 +1893,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS rcv_item_name' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS rcv_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itp.trans_qty),4) AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -2019,6 +2056,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,0                           AS pay_quant' ;
     lv_sql_body := lv_sql_body || ' ,0                           AS pay_unt_price' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS rcv_reason_code' ;
@@ -2027,6 +2067,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS rcv_item_name' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS rcv_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itp.trans_qty),4) AS rcv_quant' ;
     lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -2254,6 +2297,9 @@ AS
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_no' ;
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_item_name';
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_lot_no';
+-- 2009/03/12 v1.20 ADD START
+      lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
       lv_sql_body := lv_sql_body || ' ,0                           AS pay_quant';
       lv_sql_body := lv_sql_body || ' ,0                           AS pay_unt_price' ;
       lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS rcv_reason_code' ;
@@ -2262,6 +2308,9 @@ AS
       lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS rcv_item_no' ;
       lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS rcv_item_name';
       lv_sql_body := lv_sql_body || ' ,DECODE(ilm.lot_id,0,NULL,ilm.lot_no) AS rcv_lot_no';
+-- 2009/03/12 v1.20 ADD START
+      lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
       lv_sql_body := lv_sql_body || ' ,ROUND(itc.trans_qty,4) AS rcv_quant';
       lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
       lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
@@ -2572,6 +2621,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
     lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name' ;
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no' ;
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,ilm. attribute14            AS pay_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     IF (iv_doc_type = gc_doc_type_porc) THEN
       lv_sql_body := lv_sql_body || ',ROUND(itp.trans_qty*-1,4)    AS pay_quant' ;
     ELSE
@@ -2591,6 +2643,9 @@ AS
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_no' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_item_name';
     lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_lot_no';
+-- 2009/03/12 v1.20 ADD START
+    lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_rank1' ;
+-- 2009/03/12 v1.20 ADD END
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant';
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
 -- 2009/01/20 v1.18 ADD START
@@ -2944,6 +2999,9 @@ AS
             lt_prod_all_data(ln_prod_cnt). pay_item_no        := NULL ;
             lt_prod_all_data(ln_prod_cnt). pay_item_name      := NULL ;
             lt_prod_all_data(ln_prod_cnt). pay_lot_no         := NULL ;
+-- 2009/03/12 v1.20 ADD START
+            lt_prod_all_data(ln_prod_cnt). pay_rank1          := NULL ;
+-- 2009/03/12 v1.20 ADD END
             lt_prod_all_data(ln_prod_cnt). pay_quant          := 0 ;
             lt_prod_all_data(ln_prod_cnt). pay_unt_price      := 0 ;
             lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
@@ -2952,6 +3010,9 @@ AS
             lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
             lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
             lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+            lt_prod_all_data(ln_prod_cnt). rcv_rank1          := lt_prod_rcv_data(ln_rcv_cnt).rcv_rank1 ;
+-- 2009/03/12 v1.20 ADD END
             lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
             lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
 -- 2009/01/20 v1.18 ADD START
@@ -2999,6 +3060,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). pay_item_no        := lt_prod_pay_data(i).pay_item_no ;
         lt_prod_all_data(ln_prod_cnt). pay_item_name      := lt_prod_pay_data(i).pay_item_name ;
         lt_prod_all_data(ln_prod_cnt). pay_lot_no         := lt_prod_pay_data(i).pay_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+        lt_prod_all_data(ln_prod_cnt). pay_rank1          := lt_prod_pay_data(i).pay_rank1 ;
+-- 2009/03/12 v1.20 ADD END
         lt_prod_all_data(ln_prod_cnt). pay_quant          := lt_prod_pay_data(i).pay_quant ;
         lt_prod_all_data(ln_prod_cnt). pay_unt_price      := lt_prod_pay_data(i).pay_unt_price ;
         lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
@@ -3007,6 +3071,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
         lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+        lt_prod_all_data(ln_prod_cnt). rcv_rank1          := lt_prod_rcv_data(ln_rcv_cnt).rcv_rank1 ;
+-- 2009/03/12 v1.20 ADD END
         lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
         lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
 -- 2009/01/20 v1.18 ADD START
@@ -3034,6 +3101,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). pay_item_no        := lt_prod_pay_data(i).pay_item_no ;
         lt_prod_all_data(ln_prod_cnt). pay_item_name      := lt_prod_pay_data(i).pay_item_name ;
         lt_prod_all_data(ln_prod_cnt). pay_lot_no         := lt_prod_pay_data(i).pay_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+        lt_prod_all_data(ln_prod_cnt). pay_rank1          := lt_prod_pay_data(i).pay_rank1 ;
+-- 2009/03/12 v1.20 ADD END
         lt_prod_all_data(ln_prod_cnt). pay_quant          := lt_prod_pay_data(i).pay_quant ;
         lt_prod_all_data(ln_prod_cnt). pay_unt_price      := lt_prod_pay_data(i).pay_unt_price ;
         lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := NULL ;
@@ -3042,6 +3112,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). rcv_item_no        := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_item_name      := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := NULL ;
+-- 2009/03/12 v1.20 ADD START
+        lt_prod_all_data(ln_prod_cnt). rcv_rank1          := NULL ;
+-- 2009/03/12 v1.20 ADD END
         lt_prod_all_data(ln_prod_cnt). rcv_quant          := 0 ;
         lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := 0 ;
 -- 2009/01/20 v1.18 ADD START
@@ -3074,6 +3147,9 @@ AS
           lt_prod_all_data(ln_prod_cnt). pay_item_no        := NULL ;
           lt_prod_all_data(ln_prod_cnt). pay_item_name      := NULL ;
           lt_prod_all_data(ln_prod_cnt). pay_lot_no         := NULL ;
+-- 2009/03/12 v1.20 ADD START
+          lt_prod_all_data(ln_prod_cnt). pay_rank1          := NULL ;
+-- 2009/03/12 v1.20 ADD END
           lt_prod_all_data(ln_prod_cnt). pay_quant          := 0 ;
           lt_prod_all_data(ln_prod_cnt). pay_unt_price      := 0 ;
           lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
@@ -3082,6 +3158,9 @@ AS
           lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
           lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
           lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+          lt_prod_all_data(ln_prod_cnt). rcv_rank1          := lt_prod_rcv_data(ln_rcv_cnt).rcv_rank1 ;
+-- 2009/03/12 v1.20 ADD END
           lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
           lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
 -- 2009/01/20 v1.18 ADD START
@@ -3285,6 +3364,9 @@ AS
             lt_prod_all_data(ln_prod_cnt). pay_item_no        := NULL ;
             lt_prod_all_data(ln_prod_cnt). pay_item_name      := NULL ;
             lt_prod_all_data(ln_prod_cnt). pay_lot_no         := NULL ;
+-- 2009/03/12 v1.20 ADD START
+            lt_prod_all_data(ln_prod_cnt). pay_rank1          := NULL ;
+-- 2009/03/12 v1.20 ADD END
             lt_prod_all_data(ln_prod_cnt). pay_quant          := 0 ;
             lt_prod_all_data(ln_prod_cnt). pay_unt_price      := 0 ;
             lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
@@ -3293,6 +3375,9 @@ AS
             lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
             lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
             lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+            lt_prod_all_data(ln_prod_cnt). rcv_rank1          := lt_prod_rcv_data(ln_rcv_cnt).rcv_rank1 ;
+-- 2009/03/12 v1.20 ADD END
             lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
             lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
 -- 2009/01/20 v1.18 ADD START
@@ -3340,6 +3425,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). pay_item_no        := lt_prod_pay_data(i).pay_item_no ;
         lt_prod_all_data(ln_prod_cnt). pay_item_name      := lt_prod_pay_data(i).pay_item_name ;
         lt_prod_all_data(ln_prod_cnt). pay_lot_no         := lt_prod_pay_data(i).pay_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+        lt_prod_all_data(ln_prod_cnt). pay_rank1          := lt_prod_pay_data(i).pay_rank1 ;
+-- 2009/03/12 v1.20 ADD END
         lt_prod_all_data(ln_prod_cnt). pay_quant          := lt_prod_pay_data(i).pay_quant ;
         lt_prod_all_data(ln_prod_cnt). pay_unt_price      := lt_prod_pay_data(i).pay_unt_price ;
         lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
@@ -3348,6 +3436,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
         lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+        lt_prod_all_data(ln_prod_cnt). rcv_rank1          := lt_prod_rcv_data(ln_rcv_cnt).rcv_rank1 ;
+-- 2009/03/12 v1.20 ADD END
         lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
         lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
 -- 2009/01/20 v1.18 ADD START
@@ -3375,6 +3466,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). pay_item_no        := lt_prod_pay_data(i).pay_item_no ;
         lt_prod_all_data(ln_prod_cnt). pay_item_name      := lt_prod_pay_data(i).pay_item_name ;
         lt_prod_all_data(ln_prod_cnt). pay_lot_no         := lt_prod_pay_data(i).pay_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+        lt_prod_all_data(ln_prod_cnt). pay_rank1          := lt_prod_pay_data(i).pay_rank1 ;
+-- 2009/03/12 v1.20 ADD END
         lt_prod_all_data(ln_prod_cnt). pay_quant          := lt_prod_pay_data(i).pay_quant ;
         lt_prod_all_data(ln_prod_cnt). pay_unt_price      := lt_prod_pay_data(i).pay_unt_price ;
         lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := NULL ;
@@ -3383,6 +3477,9 @@ AS
         lt_prod_all_data(ln_prod_cnt). rcv_item_no        := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_item_name      := NULL ;
         lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := NULL ;
+-- 2009/03/12 v1.20 ADD START
+        lt_prod_all_data(ln_prod_cnt). rcv_rank1          := NULL ;
+-- 2009/03/12 v1.20 ADD END
         lt_prod_all_data(ln_prod_cnt). rcv_quant          := 0 ;
         lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := 0 ;
 -- 2009/01/20 v1.18 ADD START
@@ -3415,6 +3512,9 @@ AS
           lt_prod_all_data(ln_prod_cnt). pay_item_no        := NULL ;
           lt_prod_all_data(ln_prod_cnt). pay_item_name      := NULL ;
           lt_prod_all_data(ln_prod_cnt). pay_lot_no         := NULL ;
+-- 2009/03/12 v1.20 ADD START
+          lt_prod_all_data(ln_prod_cnt). pay_rank1          := NULL ;
+-- 2009/03/12 v1.20 ADD END
           lt_prod_all_data(ln_prod_cnt). pay_quant          := 0 ;
           lt_prod_all_data(ln_prod_cnt). pay_unt_price      := 0 ;
           lt_prod_all_data(ln_prod_cnt). rcv_reason_code    := lt_prod_rcv_data(ln_rcv_cnt).rcv_reason_code ;
@@ -3423,6 +3523,9 @@ AS
           lt_prod_all_data(ln_prod_cnt). rcv_item_no        := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_no ;
           lt_prod_all_data(ln_prod_cnt). rcv_item_name      := lt_prod_rcv_data(ln_rcv_cnt).rcv_item_name ;
           lt_prod_all_data(ln_prod_cnt). rcv_lot_no         := lt_prod_rcv_data(ln_rcv_cnt).rcv_lot_no ;
+-- 2009/03/12 v1.20 ADD START
+          lt_prod_all_data(ln_prod_cnt). rcv_rank1          := lt_prod_rcv_data(ln_rcv_cnt).rcv_rank1 ;
+-- 2009/03/12 v1.20 ADD END
           lt_prod_all_data(ln_prod_cnt). rcv_quant          := lt_prod_rcv_data(ln_rcv_cnt).rcv_quant ;
           lt_prod_all_data(ln_prod_cnt). rcv_unt_price      := lt_prod_rcv_data(ln_rcv_cnt).rcv_unt_price ;
 -- 2009/01/20 v1.18 ADD START
@@ -3509,6 +3612,9 @@ AS
     ,pay_item_no         -- 払出品目コード
     ,pay_item_name       -- 払出品目名称
     ,pay_lot_no          -- 払出ロットNO
+-- 2009/03/12 v1.20 ADD START
+    ,pay_rank1           -- 払出ランク１
+-- 2009/03/12 v1.20 ADD END
     ,pay_quant           -- 払出総数
     ,pay_unt_price       -- 払出単価
     ,rcv_reason_code     -- 受入事由コード
@@ -3517,6 +3623,9 @@ AS
     ,rcv_item_no         -- 受入品目コード
     ,rcv_item_name       -- 受入品目名称
     ,rcv_lot_no          -- 受入ロットNO
+-- 2009/03/12 v1.20 ADD START
+    ,rcv_rank1           -- 受入ランク１
+-- 2009/03/12 v1.20 ADD END
     ,rcv_quant           -- 受入総数
     ,rcv_unt_price       -- 受入単価
 -- 2009/01/20 ADD START
@@ -3607,6 +3716,9 @@ AS
     ,pay_item_no         -- 払出品目コード
     ,pay_item_name       -- 払出品目名称
     ,pay_lot_no          -- 払出ロットNO
+-- 2009/03/12 v1.20 ADD START
+    ,pay_rank1           -- 払出ランク１
+-- 2009/03/12 v1.20 ADD END
     ,pay_quant           -- 払出総数
     ,pay_unt_price       -- 払出単価
     ,rcv_reason_code     -- 受入事由コード
@@ -3615,6 +3727,9 @@ AS
     ,rcv_item_no         -- 受入品目コード
     ,rcv_item_name       -- 受入品目名称
     ,rcv_lot_no          -- 受入ロットNO
+-- 2009/03/12 v1.20 ADD START
+    ,rcv_rank1           -- 受入ランク１
+-- 2009/03/12 v1.20 ADD END
     ,rcv_quant           -- 受入総数
     ,rcv_unt_price       -- 受入単価
 -- 2009/01/20 ADD START
@@ -4372,6 +4487,13 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'pay_lot_num' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_out_data(i).pay_lot_no;
+-- 2009/03/12 v1.20 ADD START
+        -- 払出ランク１
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'pay_rank1' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_out_data(i).pay_rank1;
+-- 2009/03/12 v1.20 ADD END
         -- 払出総数
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'pay_quant' ;
@@ -4418,6 +4540,13 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_lot_num' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_out_data(i).rcv_lot_no;
+-- 2009/03/12 v1.20 ADD START
+        -- 受入ランク１
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_rank1' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := gc_tag_type_d ;
+        gt_xml_data_table(gl_xml_idx).tag_value := it_out_data(i).rcv_rank1;
+-- 2009/03/12 v1.20 ADD END
         -- 受入総数
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'rcv_quant' ;
