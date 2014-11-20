@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/03/06    1.12  Yuki Kazama        本番障害#785
  *  2009/05/18    1.13  D.Sugahara         本番障害#1482 パフォーマンス対応
  *  2009/05/21    1.14  H.Itou             本番障害#1476,1398
+ *  2012/03/30    1.15  K.Nakamura         E_本稼動_09296 パフォーマンス対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1440,9 +1441,18 @@ AS
            -- 引当済分を抽出するための不足品目の取得(出荷)
            ----------------------------------------------------------------------------------
     || '   SELECT '
--- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
-    || '/*+ INDEX ( xtc xxwsh_tico_n02 ) INDEX ( xottv oe_transaction_types_all_u1 ) INDEX ( xilv mtl_item_locations_u1 ) */'
--- 2008/12/10 Miyata Add End 本番#637
+-- 2012/03/30 K.Nakamura Mod Start E_本稼動_09296
+---- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
+--    || '/*+ INDEX ( xtc xxwsh_tico_n02 ) INDEX ( xottv oe_transaction_types_all_u1 ) INDEX ( xilv mtl_item_locations_u1 ) */'
+---- 2008/12/10 Miyata Add End 本番#637
+    || '/*+ INDEX ( xtc       xxwsh_tico_n02 )
+            INDEX ( xottv     oe_transaction_types_all_u1 )
+            INDEX ( xilv      mtl_item_locations_u1 )
+            INDEX ( ximv.ximb xxcmn_item_mst_b_pk )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n01 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n02 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n03 ) */'
+-- 2012/03/30 K.Nakamura Mod End E_本稼動_09296
     || '     xoha.deliver_from             AS  shipped_cd '   -- 出荷元保管場所
     || '    ,xola.shipping_item_code       AS  item_cd '      -- 出荷品目
     || '    ,xoha.schedule_ship_date       AS  shipped_date ' -- 出荷予定日
@@ -1508,9 +1518,16 @@ AS
            ----------------------------------------------------------------------------------
     || '   UNION ALL '
     || '   SELECT '
--- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
-    || '/*+ INDEX ( xilv mtl_item_locations_u1 ) */'
--- 2008/12/10 Miyata Add End 本番#637
+-- 2012/03/30 K.Nakamura Mod Start E_本稼動_09296
+---- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
+--    || '/*+ INDEX ( xilv mtl_item_locations_u1 ) */'
+---- 2008/12/10 Miyata Add End 本番#637
+    || '/*+ INDEX ( xilv      mtl_item_locations_u1 )
+            INDEX ( ximv.ximb xxcmn_item_mst_b_pk )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n01 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n02 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n03 ) */'
+-- 2012/03/30 K.Nakamura Mod End E_本稼動_09296
     || '     xmrih.shipped_locat_code       AS  shipped_cd '  -- 出庫元保管場所
     || '    ,xmril.item_code                AS  item_cd '     -- 品目
     || '    ,xmrih.schedule_ship_date       AS  shipped_date '-- 出庫予定日
@@ -1573,9 +1590,18 @@ AS
     -- ======================================
     lv_sql_wsh_short_stock :=
        ' SELECT '
--- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
-    || '/*+ INDEX ( xtc xxwsh_tico_n02 ) INDEX ( xottv oe_transaction_types_all_u1 ) INDEX ( xilv mtl_item_locations_u1 ) */'
--- 2008/12/10 Miyata Add End 本番#637
+-- 2012/03/30 K.Nakamura Mod Start E_本稼動_09296
+---- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
+--    || '/*+ INDEX ( xtc xxwsh_tico_n02 ) INDEX ( xottv oe_transaction_types_all_u1 ) INDEX ( xilv mtl_item_locations_u1 ) */'
+---- 2008/12/10 Miyata Add End 本番#637
+    || '/*+ INDEX ( xtc       xxwsh_tico_n02 )
+            INDEX ( xottv     oe_transaction_types_all_u1 )
+            INDEX ( xilv      mtl_item_locations_u1 )
+            INDEX ( ximv.ximb xxcmn_item_mst_b_pk )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n01 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n02 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n03 ) */'
+-- 2012/03/30 K.Nakamura Mod End E_本稼動_09296
          ----------------------------------------------------------------------------------
          -- ヘッダ部
          ----------------------------------------------------------------------------------
@@ -1770,9 +1796,18 @@ AS
     -- ======================================
     lv_sql_wsh_stock :=
        ' SELECT '
--- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
-    || '/*+ INDEX ( xtc xxwsh_tico_n02 ) INDEX ( xottv oe_transaction_types_all_u1 ) INDEX ( xilv mtl_item_locations_u1) */'
--- 2008/12/10 Miyata Add End 本番#637
+-- 2012/03/30 K.Nakamura Mod Start E_本稼動_09296
+---- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
+--    || '/*+ INDEX ( xtc xxwsh_tico_n02 ) INDEX ( xottv oe_transaction_types_all_u1 ) INDEX ( xilv mtl_item_locations_u1) */'
+---- 2008/12/10 Miyata Add End 本番#637
+    || '/*+ INDEX ( xtc       xxwsh_tico_n02 )
+            INDEX ( xottv     oe_transaction_types_all_u1 )
+            INDEX ( xilv      mtl_item_locations_u1)
+            INDEX ( ximv.xibm xxcmn_item_mst_b_pk )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n01 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n02 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n03 ) */'
+-- 2012/03/30 K.Nakamura Mod End E_本稼動_09296
          ----------------------------------------------------------------------------------
          -- ヘッダ部
          ----------------------------------------------------------------------------------
@@ -1972,9 +2007,17 @@ AS
     -- ======================================
     lv_sql_inv_short_stock :=
        ' SELECT '
--- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
-    || '/*+ INDEX ( xilv mtl_item_locations_u1 ) INDEX (xilv2 mtl_item_locations_u1 ) */'
--- 2008/12/10 Miyata Add End 本番#637
+-- 2012/03/30 K.Nakamura Mod Start E_本稼動_09296
+---- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
+--    || '/*+ INDEX ( xilv mtl_item_locations_u1 ) INDEX (xilv2 mtl_item_locations_u1 ) */'
+---- 2008/12/10 Miyata Add End 本番#637
+    || '/*+ INDEX ( xilv      mtl_item_locations_u1 )
+            INDEX ( xilv2     mtl_item_locations_u1 )
+            INDEX ( ximv.ximb xxcmn_item_mst_b_pk )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n01 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n02 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n03 ) */'
+-- 2012/03/30 K.Nakamura Mod End E_本稼動_09296
          ----------------------------------------------------------------------------------
          -- ヘッダ情報
          ----------------------------------------------------------------------------------
@@ -2138,9 +2181,17 @@ AS
     -- ======================================
     lv_sql_inv_stock :=
        ' SELECT '
--- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
-    || '/*+ INDEX ( xilv1 mtl_item_locations_u1 ) INDEX ( xilv2 mtl_item_locations_u1 ) */'
--- 2008/12/10 Miyata Add End 本番#637
+-- 2012/03/30 K.Nakamura Mod Start E_本稼動_09296
+---- 2008/12/10 Miyata Add Start 本番#637 パフォーマンス改善
+--    || '/*+ INDEX ( xilv1 mtl_item_locations_u1 ) INDEX ( xilv2 mtl_item_locations_u1 ) */'
+---- 2008/12/10 Miyata Add End 本番#637
+    || '/*+ INDEX ( xilv1     mtl_item_locations_u1 )
+            INDEX ( xilv2     mtl_item_locations_u1 )
+            INDEX ( ximv.ximb xxcmn_item_mst_b_pk )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n01 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n02 )
+            NO_INDEX ( ximv.ximb xxcmn_imb_n03 ) */'
+-- 2012/03/30 K.Nakamura Mod End E_本稼動_09296
          ----------------------------------------------------------------------------------
          -- ヘッダ情報
          ----------------------------------------------------------------------------------
