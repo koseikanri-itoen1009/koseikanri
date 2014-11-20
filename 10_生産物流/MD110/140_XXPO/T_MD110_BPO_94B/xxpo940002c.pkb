@@ -7,7 +7,7 @@ AS
  * Description      : 出来高実績取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 出来高実績取込処理 T_MD070_BPO_94B
- * Version          : 1.5
+ * Version          : 1.6
  * Program List
  * ------------------------- ----------------------------------------------------------
  *  Name                      Description
@@ -36,6 +36,7 @@ AS
  *  2008/08/18    1.3   Oracle 伊藤ひとみ   T_S_595 品目情報VIEW2を製造日基準で抽出する
  *  2008/12/02    1.4   Oracle 伊藤ひとみ   本番障害#171
  *  2008/12/24    1.5   Oracle 山本 恭久    本番障害#743
+ *  2008/12/26    1.6   Oracle 伊藤 ひとみ  本番障害#809
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1038,6 +1039,7 @@ AS
 -- 2008/12/02 H.Itou Add End
       END IF;
 --
+-- 2008/12/02 H.Itou Add Start 本番障害#171
     -- 品目区分が5:製品以外の場合で、固有記号に入力がある場合
     ELSIF (gr_main_data.koyu_code IS NOT NULL) THEN
       -- ===========================
@@ -1077,6 +1079,7 @@ AS
         -- リターン・コードに警告をセット
         ov_retcode := gv_status_warn;
       END IF;
+-- 2008/12/02 H.Itou Add End
     END IF;
 --
     -- ===========================
@@ -1826,6 +1829,9 @@ AS
       lr_qty_in.reason_code    := gv_ctpty_inv_rcv_rsn;               -- 事由コード
       lr_qty_in.user_name      := FND_GLOBAL.USER_NAME;               -- ユーザー名
       lr_qty_in.attribute1     := TO_CHAR(gt_txns_id);                -- ソース文書ID
+-- 2008/12/26 H.Itou Add Start 発注(相手先在庫仕入)と区別するため、外注出来高の場合はDFF4にYを立てる。
+      lr_qty_in.attribute4     := gv_flg_y;                           -- 
+-- 2008/12/26 H.Itou Add End
 --
       -- API実行
       GMIPAPI.INVENTORY_POSTING(
