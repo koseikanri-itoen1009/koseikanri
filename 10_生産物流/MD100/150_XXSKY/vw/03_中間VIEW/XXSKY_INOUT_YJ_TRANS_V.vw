@@ -1121,7 +1121,10 @@ UNION ALL
      --保管場所情報取得
      AND  xoha_out_om.deliver_from_id                   = xilv_out_om.inventory_location_id
      --受払先情報取得（拠点）
-     AND  xoha_out_om.customer_id                       = xcst_out_om.party_id
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--     AND  xoha_out_om.customer_id                       = xcst_out_om.party_id
+     AND  xpas_out_om.party_id                          = xcst_out_om.party_id
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
      AND  xoha_out_om.schedule_ship_date               >= xcst_out_om.start_date_active --適用開始日
      AND  xoha_out_om.schedule_ship_date               <= xcst_out_om.end_date_active   --適用終了日
      --受払先情報取得（管轄拠点）
@@ -1129,7 +1132,10 @@ UNION ALL
      AND  xoha_out_om.schedule_ship_date               >= xcst_out_om_h.start_date_active(+) --適用開始日
      AND  xoha_out_om.schedule_ship_date               <= xcst_out_om_h.end_date_active(+)   --適用終了日
      --配送先取得
-     AND  xoha_out_om.deliver_to_id                     = xpas_out_om.party_site_id
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--     AND  xoha_out_om.deliver_to_id                     = xpas_out_om.party_site_id
+     AND  xoha_out_om.deliver_to                        = xpas_out_om.party_site_number
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
      AND  xoha_out_om.schedule_ship_date               >= xpas_out_om.start_date_active --適用開始日
      AND  xoha_out_om.schedule_ship_date               <= xpas_out_om.end_date_active   --適用終了日
      --部署名取得
@@ -3314,7 +3320,10 @@ UNION ALL
      --保管場所情報取得
      AND  xoha_out_om_e.deliver_from_id                 = xilv_out_om_e.inventory_location_id
      --受払先情報取得（拠点）
-     AND  xoha_out_om_e.customer_id                     = xcst_out_om_e.party_id
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--     AND  xoha_out_om_e.customer_id                     = xcst_out_om_e.party_id
+     AND  xpas_out_om_e.party_id                        = xcst_out_om_e.party_id
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
      AND  xoha_out_om_e.shipped_date                   >= xcst_out_om_e.start_date_active --適用開始日
      AND  xoha_out_om_e.shipped_date                   <= xcst_out_om_e.end_date_active   --適用終了日
      --受払先情報取得（管轄拠点）
@@ -3322,7 +3331,10 @@ UNION ALL
      AND  xoha_out_om_e.schedule_ship_date             >= xcst_out_om_e_h.start_date_active(+) --適用開始日
      AND  xoha_out_om_e.schedule_ship_date             <= xcst_out_om_e_h.end_date_active(+)   --適用終了日
      --配送先取得
-     AND  xoha_out_om_e.result_deliver_to_id            = xpas_out_om_e.party_site_id
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--     AND  xoha_out_om_e.result_deliver_to_id            = xpas_out_om_e.party_site_id
+     AND  xoha_out_om_e.result_deliver_to               = xpas_out_om_e.party_site_number
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
      AND  xoha_out_om_e.shipped_date                   >= xpas_out_om_e.start_date_active --適用開始日
      AND  xoha_out_om_e.shipped_date                   <= xpas_out_om_e.end_date_active   --適用終了日
      --部署名取得

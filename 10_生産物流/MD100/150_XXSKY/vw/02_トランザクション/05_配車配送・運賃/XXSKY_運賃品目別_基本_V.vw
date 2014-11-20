@@ -225,7 +225,10 @@ SELECT
            AND  DELV.arrival_date >= XCRV.start_date_active(+)
            AND  DELV.arrival_date <= XCRV.end_date_active(+)
            -- 出荷_配送先名取得条件
-           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+           AND  DELV.deliver_to    = XPSV.party_site_number(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
            AND  DELV.arrival_date >= XPSV.start_date_active(+)
            AND  DELV.arrival_date <= XPSV.end_date_active(+)
            -- 出庫元名取得条件
@@ -422,7 +425,10 @@ SELECT
            AND  DELV.arrival_date >= XCRV.start_date_active(+)
            AND  DELV.arrival_date <= XCRV.end_date_active(+)
            -- 出荷_配送先名取得条件
-           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+           AND  DELV.deliver_to    = XPSV.party_site_number(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
            AND  DELV.arrival_date >= XPSV.start_date_active(+)
            AND  DELV.arrival_date <= XPSV.end_date_active(+)
            -- 出庫元名取得条件
@@ -695,7 +701,10 @@ SELECT
            AND  DELV.arrival_date >= XCRV.start_date_active(+)
            AND  DELV.arrival_date <= XCRV.end_date_active(+)
            -- 出荷_配送先名取得条件
-           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+           AND  DELV.deliver_to    = XPSV.party_site_number(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
            AND  DELV.arrival_date >= XPSV.start_date_active(+)
            AND  DELV.arrival_date <= XPSV.end_date_active(+)
            -- 出庫元名取得条件
@@ -1224,7 +1233,6 @@ SELECT
                                                   ,XMRH11.actual_arrival_date
                                                   ,XMRL11.item_code
 --                                                ,XMRL11.shipped_quantity
-
                                                   ,XMRL11.ship_to_quantity   shipped_quantity
                                                   ,XMRL11.weight
                                               FROM xxinv_mov_req_instr_headers XMRH11,

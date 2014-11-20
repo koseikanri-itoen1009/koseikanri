@@ -32,6 +32,9 @@ SELECT
   FROM (
           SELECT
                   SHIP.deliver_to_id                        deliver_to_id       --配送先ID
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+                 ,SHIP.deliver_to                           deliver_to          --配送先コード
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
                  ,SHIP.item_id                              item_id             --品目ID
                  ,MAX( SHIP.shipped_date )                  shipped_date        --出庫日
                  ,MAX( SHIP.lot_date )                      max_lot_date        --最大製造年月日
@@ -41,6 +44,10 @@ SELECT
                    SELECT
                            NVL( XOHA.result_deliver_to_id, XOHA.deliver_to_id )
                                                             deliver_to_id       --配送先ID
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+                          ,NVL( XOHA.result_deliver_to, XOHA.deliver_to )
+                                                            deliver_to          --配送先コード
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
                           ,XMLD.item_id                     item_id             --品目ID
                           ,NVL( XOHA.shipped_date, XOHA.schedule_ship_date )
                                                             shipped_date        --出庫日
@@ -76,6 +83,9 @@ SELECT
                  )    SHIP
           GROUP BY
                   SHIP.deliver_to_id                        --配送先ID
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+                 ,SHIP.deliver_to                           --配送先コード
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
                  ,SHIP.item_id                              --品目ID
        )                           SSHP                     --各トランザクション情報
        ,xxsky_prod_class_v         XPCV                     --商品区分取得用
@@ -93,7 +103,10 @@ SELECT
    AND  SSHP.item_id               = XICV.item_id(+)        --品目区分
    AND  SSHP.item_id               = XCCV.item_id(+)        --群コード
    --配送先名取得条件
-   AND  SSHP.deliver_to_id         = XPS2V.party_site_id(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--   AND  SSHP.deliver_to_id         = XPS2V.party_site_id(+)
+   AND  SSHP.deliver_to            = XPS2V.party_site_number(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
    AND  SSHP.shipped_date         >= XPS2V.start_date_active(+)
    AND  SSHP.shipped_date         <= XPS2V.end_date_active(+)
 /

@@ -338,7 +338,12 @@ SELECT
                 ,XOHA.latest_external_flag                  latest_external_flag          --最新フラグ
                 ,XOHA.base_request_no                       base_request_no               --元依頼No
                 ,XOHA.prev_delivery_no                      prev_delivery_no              --前回配送No
-                ,XOHA.customer_id                           customer_id                   --顧客ID
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--                ,XOHA.customer_id                           customer_id                   --顧客ID
+                ,CASE WHEN XOHA.result_deliver_to IS NULL THEN PSIT1.party_id   --出荷先実績が存在しない場合は配送先（予定）の顧客ID
+                      ELSE                                     PSIT2.party_id   --出荷先実績が存在する場合は配送先（実績）の顧客ID
+                 END                                        customer_id                   --顧客ID
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
                 ,XOHA.deliver_to                            deliver_to                    --出荷_入庫先
                 ,PSIT1.party_site_name                      deliver_to_name               --出荷_入庫先名
                 ,XOHA.shipping_instructions                 shipping_instructions         --出荷指示
@@ -450,11 +455,19 @@ SELECT
             AND  OTTT.language(+)            = 'JA'
             AND  XOHA.order_type_id          = OTTT.transaction_type_id(+)
             --出荷_入庫先名取得
-            AND  XOHA.deliver_to_id          = PSIT1.party_site_id(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+-- idによる結合ではなくcodeで結合する
+--            AND  XOHA.deliver_to_id          = PSIT1.party_site_id(+)
+            AND  XOHA.deliver_to             = PSIT1.party_site_number(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
             AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= PSIT1.start_date_active(+)  --有効開始日
             AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= PSIT1.end_date_active(+)    --有効終了日
             --出荷先_実績名取得
-            AND  XOHA.result_deliver_to_id   = PSIT2.party_site_id(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+-- idによる結合ではなくcodeで結合する
+--            AND  XOHA.result_deliver_to_id   = PSIT2.party_site_id(+)
+            AND  XOHA.result_deliver_to   = PSIT2.party_site_number(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
             AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= PSIT2.start_date_active(+)  --有効開始日
             AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= PSIT2.end_date_active(+)    --有効終了日
             --ステータス名取得

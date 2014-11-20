@@ -135,6 +135,9 @@ SELECT
            SELECT
                   1                      class   -- 1:配送先
                  ,party_site_id          id      -- 配送先コード
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+                 ,party_site_number      code    -- 配送先コード
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
                  ,party_site_name        name    -- 配送先名
                  ,start_date_active      dstart  -- 適用開始日
                  ,end_date_active        dend    -- 適用終了日
@@ -144,6 +147,9 @@ SELECT
            SELECT
                   2                      class   -- 2:保管場所
                  ,inventory_location_id  id      -- 保管倉庫コード
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+                 ,segment1               code      -- 保管倉庫コード
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
                  ,description            name    -- 保管倉庫名
                  ,TO_DATE( '19000101', 'YYYYMMDD' )
                                          dstart  -- 適用開始日
@@ -155,6 +161,9 @@ SELECT
            SELECT
                   3                      class   -- 3:工場
                  ,vendor_site_id         id      -- 取引先サイトコード
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+                 ,vendor_site_code       code    -- 取引先サイトコード
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
                  ,vendor_site_name       name    -- 取引先サイト名
                  ,start_date_active      dstart  -- 適用開始日
                  ,end_date_active        dend    -- 適用終了日
@@ -198,7 +207,11 @@ SELECT
               , '10', '1'     --10:顧客     → 1:配送先マスタから名称取得
               , '11', '3'     --11:支給先   → 3:仕入先サイトマスタから名称取得
               , NULL ) = DVTO.class(+)
-   AND  XCS.deliver_to_id = DVTO.id(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+-- 一律コードにて結合
+--   AND  XCS.deliver_to_id = DVTO.id(+)
+   AND  XCS.deliver_to    = DVTO.code(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
    AND  NVL( XCS.schedule_ship_date, SYSDATE ) >= DVTO.dstart(+)
    AND  NVL( XCS.schedule_ship_date, SYSDATE ) <= DVTO.dend(+)
     --受注タイプ名(出庫形態)取得条件

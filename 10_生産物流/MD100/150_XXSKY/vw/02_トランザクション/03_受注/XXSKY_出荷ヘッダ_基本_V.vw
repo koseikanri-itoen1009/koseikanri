@@ -136,10 +136,21 @@ SELECT
        ,XOHA.latest_external_flag        --最新フラグ
        ,XOHA.base_request_no             --元依頼No
        ,XOHA.prev_delivery_no            --前回配送No
-       ,XOHA.customer_code               --顧客
-       ,XCA2V01.party_name               --顧客名
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--       ,XOHA.customer_code               --顧客        *****
+--       ,XCA2V01.party_name               --顧客名      *****
+       ,CASE WHEN XOHA.result_deliver_to IS NULL THEN DELTO11.party_number
+             ELSE                                     DELTO12.party_number
+        END                              --顧客
+       ,CASE WHEN XOHA.result_deliver_to IS NULL THEN DELTO11.party_name
+             ELSE                                     DELTO12.party_name
+        END                              --顧客名
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
        ,XOHA.deliver_to                  --出荷先
-       ,XPS2V01.party_site_name          --出荷先名
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--       ,XPS2V01.party_site_name          --出荷先名
+       ,DELTO11.party_site_name          --出荷先名
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
        ,XOHA.shipping_instructions       --出荷指示
        ,XOHA.freight_carrier_code        --運送業者
        ,XC2V01.party_name                --運送業者名
@@ -214,10 +225,16 @@ SELECT
        ,XOHA.result_deliver_to           --出荷先_実績
        ,NVL( XOHA.result_deliver_to, XOHA.deliver_to )                            --NVL( 出荷先_実績, 出荷先 )
                                          --出荷先_予実
-       ,XPS2V02.party_site_name          --出荷先_実績名
-       ,CASE WHEN XOHA.result_deliver_to IS NULL THEN XPS2V01.party_site_name     --出荷先_実績が存在しない場合は出荷先名
-             ELSE                                     XPS2V02.party_site_name     --出荷先_実績が存在する場合は出荷先_実績名
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--       ,XPS2V02.party_site_name          --出荷先_実績名
+--       ,CASE WHEN XOHA.result_deliver_to IS NULL THEN XPS2V01.party_site_name     --出荷先_実績が存在しない場合は出荷先名
+--             ELSE                                     XPS2V02.party_site_name     --出荷先_実績が存在する場合は出荷先_実績名
+--        END                              --出荷先_予実名
+       ,DELTO12.party_site_name          --出荷先_実績名
+       ,CASE WHEN XOHA.result_deliver_to IS NULL THEN DELTO11.party_site_name     --出荷先_実績が存在しない場合は出荷先名
+             ELSE                                     DELTO12.party_site_name     --出荷先_実績が存在する場合は出荷先_実績名
         END                              --出荷先_予実名
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
        ,XOHA.shipped_date                --出荷日
        ,NVL( XOHA.shipped_date, XOHA.schedule_ship_date )                         --NVL( 出荷日, 出荷予定日 )
                                          --出荷日_予実
@@ -288,15 +305,43 @@ SELECT
        ,xxwsh_carriers_schedule      XCS     --配車配送アドオンテーブル
        ,oe_transaction_types_tl      OTTT    --受注タイプマスタ(日本語)
        ,hr_all_organization_units_tl HAOUT   --倉庫(組織名)
-       ,xxsky_cust_accounts2_v       XCA2V01 --SKYLINK用中間VIEW 顧客情報VIEW2(顧客名)
-       ,xxsky_party_sites2_v         XPS2V01 --SKYLINK用中間VIEW 配送先情報VIEW2(配送先名)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+       ,( SELECT XCA2V11.party_number              --顧客
+                ,XCA2V11.party_name                --顧客名
+                ,XCA2V11.start_date_active  yk_start_date  -- 顧客：適用開始日
+                ,XCA2V11.end_date_active    yk_end_date    -- 顧客：適用終了日
+                ,XPS2V11.party_site_number         --配送先
+                ,XPS2V11.party_site_name           --配送先名
+                ,XPS2V11.start_date_active  yh_start_date  -- 配送先：適用開始日
+                ,XPS2V11.end_date_active    yh_end_date    -- 配送先：適用終了日
+          FROM   xxsky_cust_accounts2_v  XCA2V11
+                ,xxsky_party_sites2_v    XPS2V11
+          WHERE  XCA2V11.party_id = XPS2V11.party_id
+        )                            DELTO11 --配送先（予定）
+       ,( SELECT XCA2V12.party_number                      --顧客
+                ,XCA2V12.party_name                        --顧客名
+                ,XCA2V12.start_date_active  jk_start_date  -- 顧客：適用開始日
+                ,XCA2V12.end_date_active    jk_end_date    -- 顧客：適用終了日
+                ,XPS2V12.party_site_number                 --配送先
+                ,XPS2V12.party_site_name                   --配送先名
+                ,XPS2V12.start_date_active  jh_start_date  -- 配送先：適用開始日
+                ,XPS2V12.end_date_active    jh_end_date    -- 配送先：適用終了日
+          FROM   xxsky_cust_accounts2_v  XCA2V12
+                ,xxsky_party_sites2_v    XPS2V12
+          WHERE  XCA2V12.party_id = XPS2V12.party_id
+        )                          DELTO12 --配送先（実績）
+--       ,xxsky_cust_accounts2_v       XCA2V01 --SKYLINK用中間VIEW 顧客情報VIEW2(顧客名)
+--       ,xxsky_party_sites2_v         XPS2V01 --SKYLINK用中間VIEW 配送先情報VIEW2(配送先名)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
        ,xxsky_carriers2_v            XC2V01  --SKYLINK用中間VIEW 運送業者情報VIEW2(運送業者名)
        ,qp_list_headers_tl           QLHT    --価格表
        ,xxsky_item_locations2_v      XIL2V   --SKYLINK用中間VIEW OPM保管場所情報VIEW2(出荷元保管場所名)
        ,xxsky_cust_accounts2_v       XCA2V02 --SKYLINK用中間VIEW 顧客情報VIEW2(管轄拠点)
        ,xxsky_cust_accounts2_v       XCA2V03 --SKYLINK用中間VIEW 顧客情報VIEW2(入力拠点)
        ,xxsky_carriers2_v            XC2V02  --SKYLINK用中間VIEW 運送業者情報VIEW2(運送業者_実績名)
-       ,xxsky_party_sites2_v         XPS2V02 --SKYLINK用中間VIEW 配送先情報VIEW2(出荷先_実績名)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--       ,xxsky_party_sites2_v         XPS2V02 --SKYLINK用中間VIEW 配送先情報VIEW2(出荷先_実績名)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
        ,xxsky_locations2_v           XL2V01  --SKYLINK用中間VIEW 事業所情報VIEW2(成績管理部署)
        ,xxsky_locations2_v           XL2V02  --SKYLINK用中間VIEW 事業所情報VIEW2(指示部署名)
        ,xxsky_locations2_v           XL2V03  --SKYLINK用中間VIEW 事業所情報VIEW2(振替先名)
@@ -337,14 +382,28 @@ SELECT
    --組織名取得
    AND  HAOUT.language(+) = 'JA'
    AND  XOHA.organization_id = HAOUT.organization_id(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
    --顧客名取得
-   AND  XOHA.customer_id = XCA2V01.party_id(+)
-   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XCA2V01.start_date_active(+)
-   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XCA2V01.end_date_active(+)
+--   AND  XOHA.customer_id = XCA2V01.party_id(+)
+--   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XCA2V01.start_date_active(+)
+--   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XCA2V01.end_date_active(+)
    --出荷先名取得
-   AND  XOHA.deliver_to_id = XPS2V01.party_site_id(+)
-   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XPS2V01.start_date_active(+)
-   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XPS2V01.end_date_active(+)
+--   AND  XOHA.deliver_to_id = XPS2V01.party_site_id(+)
+--   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XPS2V01.start_date_active(+)
+--   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XPS2V01.end_date_active(+)
+   -- 顧客・配送先取得（予定）
+   AND  XOHA.deliver_to = DELTO11.party_site_number(+)
+   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= DELTO11.yk_start_date(+)
+   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= DELTO11.yk_end_date(+)
+   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= DELTO11.yh_start_date(+)
+   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= DELTO11.yh_end_date(+)
+   -- 顧客・配送先取得（実績）
+   AND  XOHA.result_deliver_to = DELTO12.party_site_number(+)
+   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= DELTO12.jk_start_date(+)
+   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= DELTO12.jk_end_date(+)
+   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= DELTO12.jh_start_date(+)
+   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= DELTO12.jh_end_date(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
    --運送業者名取得
    AND  XOHA.career_id = XC2V01.party_id(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XC2V01.start_date_active(+)
@@ -367,9 +426,11 @@ SELECT
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XC2V02.start_date_active(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XC2V02.end_date_active(+)
    --出荷先_実績名取得
-   AND  XOHA.result_deliver_to_id = XPS2V02.party_site_id(+)
-   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XPS2V02.start_date_active(+)
-   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XPS2V02.end_date_active(+)
+-- *----------* 2009/06/23 本番#1438対応 start *----------*
+--   AND  XOHA.result_deliver_to_id = XPS2V02.party_site_id(+)
+--   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XPS2V02.start_date_active(+)
+--   AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XPS2V02.end_date_active(+)
+-- *----------* 2009/06/23 本番#1438対応 end   *----------*
    --成績管理部署名取得
    AND  XOHA.performance_management_dept = XL2V01.location_code(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XL2V01.start_date_active(+)
