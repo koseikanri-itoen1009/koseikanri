@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A07C(body)
  * Description      : その他取引データOIF更新
  * MD.050           : その他取引データOIF更新 MD050_COI_001_A07
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/12/19    1.0   K.Nakamura       新規作成
  *  2009/02/12    1.1   S.Moriyama       結合テスト障害No003対応
  *  2009/04/28    1.2   T.Nakamura       システムテスト障害T1_0640対応
+ *  2009/05/18    1.3   T.Nakamura       システムテスト障害T1_0640対応
  *
  *****************************************************************************************/
 --
@@ -794,7 +795,9 @@ AS
       AND     mcb.enabled_flag                   = cv_flag_on                                    -- 使用可能フラグ
       AND     gd_date                            < NVL( TRUNC( mcb.disable_date ), gd_date + 1 ) -- 無効日
 -- == 2009/04/28 V1.2 Added START ===============================================================
-      AND     xsi.material_transaction_unset_qty <> 0                                            -- 資材取引未連携数量 <> 0
+-- == 2009/05/18 V1.3 Deleted START =============================================================
+--      AND     xsi.material_transaction_unset_qty <> 0                                            -- 資材取引未連携数量 <> 0
+-- == 2009/05/18 V1.3 Deleted END   =============================================================
 -- == 2009/04/28 V1.2 Added END   ===============================================================
     ;
     -- <カーソル名>レコード型
@@ -2400,6 +2403,10 @@ AS
         <<gt_inside_info_tab_loop>>
         FOR gn_inside_info_loop_cnt IN 1 .. gn_inside_info_cnt LOOP
 --
+-- == 2009/05/18 V1.3 Added START ===============================================================
+        -- 資材取引未連携数量 <> 0の場合
+        IF ( gt_inside_info_tab( gn_inside_info_loop_cnt ).material_transaction_unset_qty <> 0 ) THEN
+-- == 2009/05/18 V1.3 Added END   ===============================================================
           -- ===============================
           -- 項目チェック処理 (A-5)
           -- ===============================
@@ -2451,7 +2458,7 @@ AS
               gn_err_flag_cnt := gn_err_flag_cnt + 1;
             END IF;
 --
-            -- ロック取得エラーが発生した場合
+            -- ロック取得エラーが発生していない場合
             IF ( gn_err_flag_cnt = 0 ) THEN
 --
               -- ===============================
@@ -2472,6 +2479,48 @@ AS
 --
           END IF;
 --
+-- == 2009/05/18 V1.3 Added START ===============================================================
+        -- 資材取引未連携数量 = 0の場合
+        ELSE
+          -- ===============================
+          -- ロック取得処理 (A-7)
+          -- ===============================
+          get_lock(
+              gn_inside_info_loop_cnt => gn_inside_info_loop_cnt -- 取引ID単位ループカウンタ
+            , ov_errbuf               => lv_errbuf               -- エラー・メッセージ           --# 固定 #
+            , ov_retcode              => lv_retcode              -- リターン・コード             --# 固定 #
+            , ov_errmsg               => lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+--
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          ELSIF ( lv_retcode = cv_status_warn ) THEN
+            -- エラー判別用カウンタ
+            gn_err_flag_cnt := gn_err_flag_cnt + 1;
+          END IF;
+--
+          -- ロック取得エラーが発生していない場合
+          IF ( gn_err_flag_cnt = 0 ) THEN
+--
+            -- ===============================
+            -- 入庫情報一時表更新処理 (A-8)
+            -- ===============================
+            upd_storage_info_tab(
+                gn_inside_info_loop_cnt => gn_inside_info_loop_cnt -- 取引ID単位ループカウンタ
+              , ov_errbuf               => lv_errbuf               -- エラー・メッセージ           --# 固定 #
+              , ov_retcode              => lv_retcode              -- リターン・コード             --# 固定 #
+              , ov_errmsg               => lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+--
+            IF ( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+            END IF;
+--
+          END IF;
+--
+        END IF;
+--
+-- == 2009/05/18 V1.3 Added END   ===============================================================
         END LOOP gt_inside_info_tab_loop;
 --
         -- 正常の場合
