@@ -7,7 +7,7 @@ AS
  * Description      : 請求更新処理
  * MD.050           : 運賃計算（月次）   T_MD050_BPO_740
  * MD.070           : 請求更新           T_MD070_BPO_74B
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/04/14    1.0  Oracle 和田 大輝  初回作成
  *  2008/09/29    1.1  Oracle 吉田 夏樹  T_S_614対応
  *  2008/10/21    1.2  Oracle 野村 正幸  T_S_571対応
+ *  2008/11/07    1.3  Oracle 野村 正幸  統合#552、553対応
  *
  *****************************************************************************************/
 --
@@ -561,7 +562,10 @@ AS
       , dhc.judgement_yyyymm  AS billing_date     -- 請求年月
 -- ##### 20081021 Ver.1.2 T_S_571対応 END   #####
       , dhc.consumption_tax_classe    -- 消費税区分
-      , SUM(dhc.charged_amount)       -- 今月売上額
+-- ##### 20081107 Ver.1.12 統合#552、553対応 START #####
+--      , SUM(dhc.charged_amount)       -- 今月売上額
+      , SUM(dhc.total_amount)         -- 今月売上額（請求データの合計のサマリ）
+-- ##### 20081107 Ver.1.12 統合#552、553対応 END   #####
 -- 2008/09/29 1.1 N.Yoshida start
       --, SUM(dhc.line_tax)             -- 消費税（明細）
       , NULL                          -- 消費税（明細）
@@ -579,7 +583,10 @@ AS
                  , xdc.consumption_tax_classe             AS  consumption_tax_classe -- 消費税区分
                  , xdc.billing_code                       AS  billing_code        -- 請求先コード
                  , TO_CHAR(xd.judgement_date, 'YYYYMM')   AS  judgement_yyyymm    -- 請求年月
-                 , NVL(xd.charged_amount, 0)              AS  charged_amount      -- 今月売上額
+-- ##### 20081107 Ver.1.12 統合#552、553対応 START #####
+--                 , NVL(xd.charged_amount, 0)              AS  charged_amount      -- 今月売上額
+                 , NVL(xd.total_amount, 0)                AS  total_amount      -- 今月売上額（請求データの合計）
+-- ##### 20081107 Ver.1.12 統合#552、553対応 END   #####
                  , NVL(xd.congestion_charge, 0)           AS  congestion_charge   -- 通行料等
                  , NVL(xd.picking_charge, 0)              AS  picking_charge      -- ピッキング料
                  , NVL(xd.many_rate, 0)                   AS  many_rate           -- 諸料金
@@ -1535,8 +1542,12 @@ AS
        i_bil_my_tran_dt_tab(ln_index),                 -- 9.振込日
        i_bil_cn_set_dt_tab(ln_index),                  -- 10.支払条件設定日
        i_bil_lt_mt_chrg_amt_tab(ln_index),             -- 11.前月請求額
-       NULL,                                           -- 12.今回入金額
-       NULL,                                           -- 13.調整費
+-- ##### 20081107 Ver.1.12 統合#552、553対応 START #####
+--       NULL,                                           -- 12.今回入金額
+--       NULL,                                           -- 13.調整費
+       0,                                              -- 12.今回入金額（初期設定０）
+       0,                                              -- 13.調整費    （初期設定０）
+-- ##### 20081107 Ver.1.12 統合#552、553対応 END   #####
        i_bil_blc_crd_fw_tab(ln_index),                 -- 14.繰越額
        i_bil_chrg_amt_tab(ln_index),                   -- 15.今回請求金額
        i_bil_chrg_amt_ttl_tab(ln_index),               -- 16.請求金額合計
