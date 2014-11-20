@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.0
+ * Version          : 1.3
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -35,6 +35,10 @@ AS
  *  2008/01/10    1.0   Masayuki Ikeda   新規作成
  *  2008/05/20    1.1   Masayuki Ikeda   内部変更要求#113対応
  *  2008/06/10    1.2   Kazuo Kumamoto   結合テスト障害対応(Null値によるテンプレート式エラー対応)
+ *  2008/06/24    1.3   Kazuo Kumamoto   障害対応
+ *                                       (1.3.1)システムテスト障害対応(仕入標準単価ヘッダ抽出条件追加)
+ *                                       (1.3.2)結合テスト障害対応(ヘッダだけのページが出力される不具合の修正)
+ *                                       (1.3.3)結合テスト障害対応(実質原価の算出方法変更)
  *
  *****************************************************************************************/
 --
@@ -90,6 +94,10 @@ AS
   gv_sql_cmn_from       VARCHAR2(32000) ;   -- 共通Ｆｒｏｍ句
   gv_sql_cmn_where      VARCHAR2(32000) ;   -- 共通Ｗｈｅｒｅ句
 --
+--add start 1.3.2
+  gv_dept_code          VARCHAR2(1000);
+  gv_dept_name          VARCHAR2(1000);
+--add end 1.3.2
   -- ==================================================
   -- ユーザー定義グローバル型
   -- ==================================================
@@ -615,7 +623,10 @@ AS
           SELECT flv.attribute1         AS detail_code
                 ,flv.meaning            AS detail_name
                 ,0                                              AS s_amount
-                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
+--mod start 1.3.3
+--                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
+                ,xrart.quantity * xpl.unit_price AS r_amount
+--mod end 1.3.3
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,ic_item_mst_b            iimc
               ,po_headers_all           pha
@@ -635,6 +646,9 @@ AS
                                            , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                       )               BETWEEN xph.start_date_active AND xph.end_date_active
           AND   xph.price_type        = gc_price_type_r
+--add start 1.3.1
+          AND   xph.supply_to_id IS NULL
+--add end 1.3.1
           AND   xrart.item_id         = xph.item_id
           AND   pla.attribute3        = xph.futai_code
           AND   pla.attribute2        = xph.factory_code
@@ -949,6 +963,9 @@ AS
                                            , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                       )               BETWEEN xph.start_date_active AND xph.end_date_active
           AND   xph.price_type        = gc_price_type_r
+--add start 1.3.1
+          AND   xph.supply_to_id IS NULL
+--add end 1.3.1
           AND   xrart.item_id         = xph.item_id
           AND   pla.attribute3        = xph.futai_code
           AND   pla.attribute2        = xph.factory_code
@@ -1496,6 +1513,10 @@ AS
     lr_amount_rcv           rec_amount_data ;   -- 算出項目：仮受金合計
     lr_amount_dtl           rec_amount_data ;   -- 算出項目：項目計
     lv_s_dtl_sct_name       VARCHAR2(10) ;
+--add start 1.3.2
+    lb_s_dtl                BOOLEAN; -- 取引先情報取得判定
+    lb_item_info            BOOLEAN;
+--add end 1.3.2
 --
     -- ==================================================
     -- Ｒｅｆカーソル宣言
@@ -1554,7 +1575,10 @@ AS
           SELECT flv.attribute1
                 ,flv.meaning
                 ,0                                              AS s_amount
-                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
+--mod start 1.3.3
+--                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
+                ,xrart.quantity * xpl.unit_price AS r_amount
+--mod end 1.3.3
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,ic_item_mst_b            iimc
               ,po_headers_all           pha
@@ -1573,6 +1597,9 @@ AS
                                            , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                       )               BETWEEN xph.start_date_active AND xph.end_date_active
           AND   xph.price_type        = gc_price_type_r
+--add start 1.3.1
+          AND   xph.supply_to_id IS NULL
+--add end 1.3.1
           AND   xrart.item_id         = xph.item_id
           AND   pla.attribute3        = xph.futai_code
           AND   pla.attribute2        = xph.factory_code
@@ -1643,20 +1670,81 @@ AS
          ,gd_fiscal_date_to
     ;
 --
-    -- ====================================================
-    -- リストグループ開始タグ
-    -- ====================================================
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_item_info' ;
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--del start 1.3.2 ※明細カーソルの下に移動
+--    -- ====================================================
+--    -- リストグループ開始タグ
+--    -- ====================================================
+--    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--    gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_item_info' ;
+--    gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--del end 1.3.2
 --
+--add start 1.3.2
+    lb_item_info := false;
+--add end 1.3.2
     <<main_data_loop>>
     LOOP
 --
       FETCH lc_ref INTO lr_ref ;
       EXIT WHEN lc_ref%NOTFOUND ;
 --
+--add start 1.3.2
+      lb_s_dtl := FALSE;
+      <<sum_dtl_data_loop>>
+      FOR re_sum_dtl IN cu_sum_dtl
+        (
+          p_item_id    => lr_ref.item_id
+         ,p_dept_code  => iv_dept_code
+        )
+      LOOP
+--add end 1.3.2
       gb_get_flg := TRUE ;
+--add start 1.3.2
+      IF (cu_sum_dtl%ROWCOUNT = 1) THEN
+--add end 1.3.2
+--add start 1.3.2
+        IF (lc_ref%ROWCOUNT = 1 AND cu_sum_dtl%ROWCOUNT = 1) THEN
+          IF (gr_param.output_type IN( xxcmn820011c.program_id_01            -- 明細：部門別品目別
+                                      ,xxcmn820011c.program_id_02            -- 合計：部門別品目別
+                                      ,xxcmn820011c.program_id_05            -- 明細：部門別取引先別
+                                      ,xxcmn820011c.program_id_06) ) THEN    -- 合計：部門別取引先別
+            -- ====================================================
+            -- 開始タグ
+            -- ====================================================
+            gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+            gt_xml_data_table(gl_xml_idx).tag_name  := 'g_dpt' ;
+            gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+      --
+            -- ====================================================
+            -- データタグ
+            -- ====================================================
+            -- 所属部署コード
+            gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+            gt_xml_data_table(gl_xml_idx).tag_name  := 'dept_code' ;
+            gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+--mod start 1.3.2
+--            gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.dept_code ;
+            gt_xml_data_table(gl_xml_idx).tag_value := gv_dept_code ;
+--mod end 1.3.2
+            -- 所属部署名称
+            gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+            gt_xml_data_table(gl_xml_idx).tag_name  := 'dept_name' ;
+            gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+--mod start 1.3.2
+--            gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.dept_name ;
+            gt_xml_data_table(gl_xml_idx).tag_value := gv_dept_name ;
+--mod end 1.3.2
+          END IF;
+          -- ====================================================
+          -- リストグループ開始タグ
+          -- ====================================================
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_item_info' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--
+          lb_item_info := TRUE;
+        END IF;
+--add end 1.3.2
       -- ----------------------------------------------------
       -- 開始タグ
       -- ----------------------------------------------------
@@ -1736,12 +1824,18 @@ AS
                   ,0  AS s_rcv_amount
                   ,CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
-                          xrart.quantity * xpl.unit_price * xpl.quantity
+--mod start 1.3.3
+--                          xrart.quantity * xpl.unit_price * xpl.quantity
+                          xrart.quantity * xpl.unit_price
+--mod end 1.3.3
                      ELSE 0
                    END r_dif_amount
                   ,CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
-                          xrart.quantity * xpl.unit_price * xpl.quantity
+--mod start 1.3.3
+--                          xrart.quantity * xpl.unit_price * xpl.quantity
+                          xrart.quantity * xpl.unit_price
+--mod end 1.3.3
                      ELSE 0
                    END r_rcv_amount
             FROM xxpo_rcv_and_rtn_txns  xrart
@@ -1762,6 +1856,9 @@ AS
                                              , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                         )               BETWEEN xph.start_date_active AND xph.end_date_active
             AND   xph.price_type        = gc_price_type_r
+--add start 1.3.1
+            AND   xph.supply_to_id IS NULL
+--add end 1.3.1
             AND   xrart.item_id         = xph.item_id
             AND   pla.attribute3        = xph.futai_code
             AND   pla.attribute2        = xph.factory_code
@@ -1917,14 +2014,21 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_s_dtl' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--add start 1.3.2
 --
-      <<sum_dtl_data_loop>>
-      FOR re_sum_dtl IN cu_sum_dtl
-        (
-          p_item_id    => lr_ref.item_id
-         ,p_dept_code  => iv_dept_code
-        )
-      LOOP
+      lb_s_dtl := TRUE;
+      END IF;
+--add end 1.3.2
+--
+--del start 1.3.2 ※メインカーソルの下へ移動
+--      <<sum_dtl_data_loop>>
+--      FOR re_sum_dtl IN cu_sum_dtl
+--        (
+--          p_item_id    => lr_ref.item_id
+--         ,p_dept_code  => iv_dept_code
+--        )
+--      LOOP
+--del end 1.3.2
         -- ----------------------------------------------------
         -- 開始タグ
         -- ----------------------------------------------------
@@ -2028,6 +2132,9 @@ AS
 --
       END LOOP sum_dtl_data_loop ;
 --
+--add start 1.3.2
+      IF (lb_s_dtl) THEN
+--add end 1.3.2
       -- ----------------------------------------------------
       -- 終了タグ
       -- ----------------------------------------------------
@@ -2059,15 +2166,48 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := '/g_itm' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--add start 1.3.2
+      END IF;
+--add end 1.3.2
 --
     END LOOP main_data_loop ;
 --
-    -- ====================================================
-    -- リストグループ終了タグ
-    -- ====================================================
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_item_info' ;
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--mod start 1.3.2
+--    -- ====================================================
+--    -- リストグループ終了タグ
+--    -- ====================================================
+--    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--    gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_item_info' ;
+--    gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+    IF (lb_item_info) THEN
+      -- ====================================================
+      -- リストグループ終了タグ
+      -- ====================================================
+      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_item_info' ;
+      gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+      IF (gr_param.output_type IN( xxcmn820011c.program_id_01            -- 明細：部門別品目別
+                                  ,xxcmn820011c.program_id_02            -- 合計：部門別品目別
+                                  ,xxcmn820011c.program_id_05            -- 明細：部門別取引先別
+                                  ,xxcmn820011c.program_id_06) ) THEN    -- 合計：部門別取引先別
+--
+        -- 数量（部署計）
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'quant_dpt' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_quant_dpt;
+--
+        gv_quant_dpt := 0 ;
+--
+        -- ====================================================
+        -- 終了タグ
+        -- ====================================================
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := '/g_dpt' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+      END IF;
+    END IF;
+--mod end 1.3.2
 --
     -- ====================================================
     -- カーソルクローズ
@@ -2145,6 +2285,10 @@ AS
     lr_amount_rcv           rec_amount_data ;   -- 算出項目：仮受金合計
     lr_amount_dtl           rec_amount_data ;   -- 算出項目：項目計
     lv_s_dtl_sct_name       VARCHAR2(10) ;
+--add start 1.3.2
+    lb_s_dtl                BOOLEAN;
+    lb_vnd_info             BOOLEAN;
+--add end 1.3.2
 --
     -- ==================================================
     -- Ｒｅｆカーソル宣言
@@ -2209,7 +2353,10 @@ AS
           SELECT flv.attribute1
                 ,flv.meaning
                 ,0                                              AS s_amount
-                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
+--mod start 1.3.3
+--                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
+                ,xrart.quantity * xpl.unit_price AS r_amount
+--mod end 1.3.3
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,xxcmn_item_categories4_v xicv
               ,ic_item_mst_b            iimc
@@ -2229,6 +2376,9 @@ AS
                                            , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                       )               BETWEEN xph.start_date_active AND xph.end_date_active
           AND   xph.price_type        = gc_price_type_r
+--add start 1.3.1
+          AND   xph.supply_to_id IS NULL
+--add end 1.3.1
           AND   xrart.item_id         = xph.item_id
           AND   pla.attribute3        = xph.futai_code
           AND   pla.attribute2        = xph.factory_code
@@ -2302,20 +2452,81 @@ AS
          ,gd_fiscal_date_to
     ;
 -- 
-    -- ====================================================
-    -- リストグループ開始タグ
-    -- ====================================================
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_vnd_info' ;
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--del start 1.3.2 ※明細カーソルの下に移動
+--    -- ====================================================
+--    -- リストグループ開始タグ
+--    -- ====================================================
+--    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--    gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_vnd_info' ;
+--    gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--del end 1.3.2
 --
+--add start 1.3.2
+    lb_vnd_info := FALSE;
+--add end 1.3.2
     <<main_data_loop>>
     LOOP
 --
       FETCH lc_ref INTO lr_ref ;
       EXIT WHEN lc_ref%NOTFOUND ;
 --
+--add start 1.3.2
+      lb_s_dtl := FALSE;
+      <<sum_dtl_data_loop>>
+      FOR re_sum_dtl IN cu_sum_dtl
+        (
+          p_vendor_id   => lr_ref.vendor_id
+         ,p_dept_code   => iv_dept_code
+        )
+      LOOP
+--add end 1.3.2
       gb_get_flg := TRUE ;
+--add start 1.3.2
+      IF (cu_sum_dtl%ROWCOUNT = 1) THEN
+--add end 1.3.2
+--add start 1.3.2
+        IF (lc_ref%ROWCOUNT = 1 AND cu_sum_dtl%ROWCOUNT = 1) THEN
+          IF (gr_param.output_type IN( xxcmn820011c.program_id_01            -- 明細：部門別品目別
+                                      ,xxcmn820011c.program_id_02            -- 合計：部門別品目別
+                                      ,xxcmn820011c.program_id_05            -- 明細：部門別取引先別
+                                      ,xxcmn820011c.program_id_06) ) THEN    -- 合計：部門別取引先別
+            -- ====================================================
+            -- 開始タグ
+            -- ====================================================
+            gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+            gt_xml_data_table(gl_xml_idx).tag_name  := 'g_dpt' ;
+            gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+      --
+            -- ====================================================
+            -- データタグ
+            -- ====================================================
+            -- 所属部署コード
+            gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+            gt_xml_data_table(gl_xml_idx).tag_name  := 'dept_code' ;
+            gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+--mod start 1.3.2
+--            gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.dept_code ;
+            gt_xml_data_table(gl_xml_idx).tag_value := gv_dept_code ;
+--mod end 1.3.2
+            -- 所属部署名称
+            gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+            gt_xml_data_table(gl_xml_idx).tag_name  := 'dept_name' ;
+            gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+--mod start 1.3.2
+--            gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.dept_name ;
+            gt_xml_data_table(gl_xml_idx).tag_value := gv_dept_name ;
+--mod end 1.3.2
+          END IF;
+          -- ====================================================
+          -- リストグループ開始タグ
+          -- ====================================================
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_vnd_info' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--
+          lb_vnd_info := TRUE;
+        END IF;
+--add end 1.3.2
       -- ----------------------------------------------------
       -- 開始タグ
       -- ----------------------------------------------------
@@ -2397,12 +2608,18 @@ AS
                   ,0  AS s_rcv_amount
                   ,CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
-                          xrart.quantity * xpl.unit_price * xpl.quantity
+--mod start 1.3.3
+--                          xrart.quantity * xpl.unit_price * xpl.quantity
+                          xrart.quantity * xpl.unit_price
+--mod end 1.3.3
                      ELSE 0
                    END r_dif_amount
                   ,CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
-                          xrart.quantity * xpl.unit_price * xpl.quantity
+--mod start 1.3.3
+--                          xrart.quantity * xpl.unit_price * xpl.quantity
+                          xrart.quantity * xpl.unit_price
+--mod end 1.3.3
                      ELSE 0
                    END r_rcv_amount
             FROM xxpo_rcv_and_rtn_txns    xrart
@@ -2424,6 +2641,9 @@ AS
                                              , FND_DATE.CANONICAL_TO_DATE( pha.attribute4 )
                         )               BETWEEN xph.start_date_active AND xph.end_date_active
             AND   xph.price_type        = gc_price_type_r
+--add start 1.3.1
+            AND   xph.supply_to_id IS NULL
+--add end 1.3.1
             AND   xrart.item_id         = xph.item_id
             AND   pla.attribute3        = xph.futai_code
             AND   pla.attribute2        = xph.factory_code
@@ -2581,14 +2801,21 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_s_dtl' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--add start 1.3.2
 --
-      <<sum_dtl_data_loop>>
-      FOR re_sum_dtl IN cu_sum_dtl
-        (
-          p_vendor_id   => lr_ref.vendor_id
-         ,p_dept_code   => iv_dept_code
-        )
-      LOOP
+      lb_s_dtl := TRUE;
+      END IF;
+--add end 1.3.2
+--
+--del start 1.3.2 ※メインカーソルの下へ移動
+--      <<sum_dtl_data_loop>>
+--      FOR re_sum_dtl IN cu_sum_dtl
+--        (
+--          p_vendor_id   => lr_ref.vendor_id
+--         ,p_dept_code   => iv_dept_code
+--        )
+--      LOOP
+--del end 1.3.2
         -- ----------------------------------------------------
         -- 開始タグ
         -- ----------------------------------------------------
@@ -2692,6 +2919,9 @@ AS
 --
       END LOOP sum_dtl_data_loop ;
 --
+--add start 1.3.2
+      IF (lb_s_dtl) THEN
+--add end 1.3.2
       -- ----------------------------------------------------
       -- 終了タグ
       -- ----------------------------------------------------
@@ -2725,15 +2955,48 @@ AS
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := '/g_vnd' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--add start 1.3.2
+      END IF;
+--add end 1.3.2
 --
     END LOOP main_data_loop ;
 --
-    -- ====================================================
-    -- リストグループ終了タグ
-    -- ====================================================
-    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-    gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_vnd_info' ;
-    gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--mod start 1.3.2
+--    -- ====================================================
+--    -- リストグループ終了タグ
+--    -- ====================================================
+--    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--    gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_vnd_info' ;
+--    gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+    IF (lb_vnd_info) THEN
+      -- ====================================================
+      -- リストグループ終了タグ
+      -- ====================================================
+      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      gt_xml_data_table(gl_xml_idx).tag_name  := '/lg_vnd_info' ;
+      gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+      IF (gr_param.output_type IN( xxcmn820011c.program_id_01            -- 明細：部門別品目別
+                                  ,xxcmn820011c.program_id_02            -- 合計：部門別品目別
+                                  ,xxcmn820011c.program_id_05            -- 明細：部門別取引先別
+                                  ,xxcmn820011c.program_id_06) ) THEN    -- 合計：部門別取引先別
+--
+        -- 数量（部署計）
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'quant_dpt' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        gt_xml_data_table(gl_xml_idx).tag_value := gv_quant_dpt;
+--
+        gv_quant_dpt := 0 ;
+--
+        -- ====================================================
+        -- 終了タグ
+        -- ====================================================
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := '/g_dpt' ;
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+      END IF;
+    END IF;
+--mod end 1.3.2
 --
     -- ====================================================
     -- カーソルクローズ
@@ -2860,34 +3123,45 @@ AS
     gt_xml_data_table(gl_xml_idx).tag_name  := 'lg_dpt_info' ;
     gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
 --
+--add start 1.3.2
+      gb_get_flg := FALSE ;
+--add end 1.3.2
     <<main_data_loop>>
     LOOP
 --
       FETCH lc_ref INTO lr_ref ;
       EXIT WHEN lc_ref%NOTFOUND ;
 --
-      gb_get_flg := TRUE ;
-      -- ====================================================
-      -- 開始タグ
-      -- ====================================================
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'g_dpt' ;
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--del start 1.3.2
+--      gb_get_flg := TRUE ;
+--del end 1.3.2
+--del start 1.3.2 ※prc_create_xml_data_itmとprc_create_xml_data_vndへ移動
+--      -- ====================================================
+--      -- 開始タグ
+--      -- ====================================================
+--      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--      gt_xml_data_table(gl_xml_idx).tag_name  := 'g_dpt' ;
+--      gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+----
+--      -- ====================================================
+--      -- データタグ
+--      -- ====================================================
+--      -- 所属部署コード
+--      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--      gt_xml_data_table(gl_xml_idx).tag_name  := 'dept_code' ;
+--      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.dept_code ;
+--      -- 所属部署名称
+--      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--      gt_xml_data_table(gl_xml_idx).tag_name  := 'dept_name' ;
+--      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+--      gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.dept_name ;
+--del end 1.3.2
 --
-      -- ====================================================
-      -- データタグ
-      -- ====================================================
-      -- 所属部署コード
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'dept_code' ;
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.dept_code ;
-      -- 所属部署名称
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'dept_name' ;
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := lr_ref.dept_name ;
---
+--add start 1.3.2
+      gv_dept_code := lr_ref.dept_code;
+      gv_dept_name := lr_ref.dept_name;
+--add end 1.3.2
       ------------------------------
       -- 品目別取引先別表の場合
       ------------------------------
@@ -2926,20 +3200,22 @@ AS
 --
       END IF ;
 --
-      -- 数量（部署計）
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'quant_dpt' ;
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := gv_quant_dpt;
+--del start 1.3.2 ※prc_create_xml_data_itmとprc_create_xml_data_vndへ移動
+--      -- 数量（部署計）
+--      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--      gt_xml_data_table(gl_xml_idx).tag_name  := 'quant_dpt' ;
+--      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+--      gt_xml_data_table(gl_xml_idx).tag_value := gv_quant_dpt;
 --
-      gv_quant_dpt := 0 ;
---
-      -- ====================================================
-      -- 終了タグ
-      -- ====================================================
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := '/g_dpt' ;
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--      gv_quant_dpt := 0 ;
+----
+--      -- ====================================================
+--      -- 終了タグ
+--      -- ====================================================
+--      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+--      gt_xml_data_table(gl_xml_idx).tag_name  := '/g_dpt' ;
+--      gt_xml_data_table(gl_xml_idx).tag_type  := 'T' ;
+--del end 1.3.2
 --
     END LOOP main_data_loop ;
 --

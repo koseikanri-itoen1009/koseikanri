@@ -7,7 +7,7 @@ AS
  * Description      : 新旧差額計算表作成
  * MD.050/070       : 標準原価マスタDraft1C (T_MD050_BPO_820)
  *                    新旧差額計算表作成    (T_MD070_BPO_82D)
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/01/18    1.0   Kazuo Kumamoto   新規作成
  *  2008/05/21    1.1   Masayuki Ikeda   結合テスト障害対応
  *  2008/06/09    1.2   Marushita        レビュー指摘No6対応
+ *  2008/06/26    1.3   Marushita        ST不具合No.288,289対応
  *
  *****************************************************************************************/
 --
@@ -298,17 +299,11 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
-    lv_prev_year       mrp_forecast_designators.attribute6%TYPE;
-    lv_prev_gene       mrp_forecast_designators.attribute5%TYPE;
---
-    data_check_expt    EXCEPTION ;             -- データチェックエクセプション
 --
     CURSOR cur_main_data
       (
         civ_current_year VARCHAR2
        ,civ_current_gene VARCHAR2
-       ,civ_prev_year VARCHAR2
-       ,civ_prev_gene VARCHAR2
        ,civ_prod_div VARCHAR2
        ,civ_crowd_code_01 VARCHAR2
        ,civ_crowd_code_02 VARCHAR2
@@ -322,7 +317,7 @@ AS
        ,m.prod_div_name                       AS prod_div_name --商品区分名
        ,m.crowd_code                          AS crowd_code --群コード
        ,np.item_code                          AS item_code --品目コード
-       ,ximb.item_name                        AS item_name --品目名
+       ,ximb.item_short_name                  AS item_name --品目名
        ,NVL(iimb.attribute11,'0')             AS in_case --ケース入り数
        ,np.forecast_quantity_new              AS forecast_quantity_new --数量
        ,np.cost_price_new                     AS cost_price_new --新.標準原価
@@ -411,6 +406,7 @@ AS
         AND mfdesi.organization_id = mfdate.organization_id
         AND mfdate.inventory_item_id = msib.inventory_item_id
         AND mfdate.organization_id = msib.organization_id
+        -- 今年度の原価を取得する。
         AND mfdate.forecast_date
           BETWEEN xp.start_date_active AND NVL(xp.end_date_active,mfdate.forecast_date)
         AND mfdesi.disable_date IS NULL
@@ -425,6 +421,7 @@ AS
         SELECT
           xp.item_id                         AS item_id
          ,xp.item_code                       AS item_code
+         -- 今年度の数量で昨年の原価だといくらになるかを計算する
          ,SUM(mfdate.original_forecast_quantity * xp.unit_price)  AS cost_price_old
          ,SUM(CASE WHEN xp.cost_type = gc_row_material_cost
                      THEN mfdate.original_forecast_quantity * xp.unit_price
@@ -489,11 +486,13 @@ AS
         AND mfdesi.organization_id = mfdate.organization_id
         AND mfdate.inventory_item_id = msib.inventory_item_id
         AND mfdate.organization_id = msib.organization_id
-        AND mfdate.forecast_date
-          BETWEEN xp.start_date_active AND NVL(xp.end_date_active,mfdate.forecast_date)
+        -- 前年の原価を取得する。
+        AND ADD_MONTHS(mfdate.forecast_date,-12) 
+          BETWEEN xp.start_date_active AND NVL(xp.end_date_active,ADD_MONTHS(mfdate.forecast_date,-12))
         AND mfdesi.disable_date IS NULL
-        AND mfdesi.attribute6 = civ_prev_year --新.年度
-        AND mfdesi.attribute5 = civ_prev_gene --新.世代
+        -- 数量は今年度の数量（前年度の数量ではない）
+        AND mfdesi.attribute6 = civ_current_year --新.年度
+        AND mfdesi.attribute5 = civ_current_gene --新.世代
         AND msib.segment1 = xp.item_code
         GROUP BY 
           xp.item_id
@@ -557,39 +556,6 @@ AS
 --###########################  固定部 END   ############################
 --
     -- ====================================================
-    -- 前年度の最新世代取得
-    -- ====================================================
-    lv_prev_year := TO_CHAR(TO_NUMBER(ir_param_rec.fiscal_year) - 1);
---
-    BEGIN
-      SELECT NVL(MAX(mfdesi.attribute5),'0')
-      INTO lv_prev_gene
-       FROM
-         mrp_forecast_designators  mfdesi
-        ,xxcmn_lookup_values2_v    flv
-        ,mrp_forecast_dates        mfdate
-        ,mtl_system_items_b        msib
-      WHERE flv.lookup_type = gc_fc_type
-      AND flv.description = gc_fc_description
-      AND mfdesi.attribute1 = flv.lookup_code
-      AND mfdate.forecast_date
-        BETWEEN flv.start_date_active AND NVL(flv.end_date_active,mfdate.forecast_date)
-      AND mfdesi.forecast_designator = mfdate.forecast_designator
-      AND mfdesi.organization_id = mfdate.organization_id
-      AND mfdate.inventory_item_id = msib.inventory_item_id
-      AND mfdate.organization_id = msib.organization_id
-      AND mfdesi.attribute6 = lv_prev_year
-      AND mfdesi.disable_date IS NULL
-      ;
---
-    EXCEPTION
-      WHEN OTHERS THEN
-        lv_errmsg  := xxcmn_common_pkg.get_msg(gv_msg_kbn   , gv_msg_num_10003
-                                              ,'TABLE' , gv_prev_gene_err_name
-                                              ,'KEY', lv_prev_year );
-        RAISE data_check_expt ;
-    END;
-    -- ====================================================
     -- データ抽出
     -- ====================================================
     -- カーソルオープン
@@ -597,8 +563,6 @@ AS
       (
         ir_param_rec.fiscal_year
        ,ir_param_rec.generation
-       ,lv_prev_year
-       ,lv_prev_gene
        ,ir_param_rec.prod_div
        ,ir_param_rec.crowd_code_01
        ,ir_param_rec.crowd_code_02
@@ -613,11 +577,6 @@ AS
     CLOSE cur_main_data;
 --
   EXCEPTION
---
-    WHEN data_check_expt THEN
-      ov_errmsg  := lv_errmsg ;
-      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
-      ov_retcode := gv_status_error ;
 --
 --#################################  固定例外処理部 START   ####################################
 --

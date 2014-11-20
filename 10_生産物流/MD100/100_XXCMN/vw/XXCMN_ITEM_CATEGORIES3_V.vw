@@ -112,6 +112,17 @@ AND   mcsb.structure_id     = mcb.structure_id
 AND   gic.category_id       = mcb.category_id
 AND   mcst.source_lang      = 'JA'
 AND   mcst.language         = 'JA'
+AND   mcst.category_set_name IN(
+    '商品区分',
+    '本社商品区分',
+    '品目区分',
+    '品目GL区分',
+    '品目割当区分',
+    '内外区分',
+    'バラ茶区分',
+    '商品製品区分',
+    '群コード',
+    '経理部用群コード')
 AND   mcsb.category_set_id  = mcst.category_set_id
 AND   gic.category_set_id   = mcsb.category_set_id
 AND   iimb.item_id          = gic.item_id
