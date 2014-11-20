@@ -1,0 +1,58 @@
+/************************************************************************
+ * Copyright(c)Oracle Corporation Japan, 2009. All rights reserved.
+ *
+ * View Name       : XXCOP_ASSIGNMENT_CONTROLS
+ * Description     : 特別横持制御マスタコントロールテーブル
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2009-08-07    1.0   SCS.Fukada      新規作成
+ *
+ ************************************************************************/
+CREATE TABLE XXCOP.XXCOP_ASSIGNMENT_CONTROLS
+(
+  MOV_HDR_ID              NUMBER,
+  MOV_NUM                 VARCHAR2(12),
+  MOV_LINE_ID             NUMBER,
+  LINE_NUMBER             NUMBER(3),
+  LOT_ID                  NUMBER,
+  LOT_NO                  VARCHAR2(10),
+  ITEM_CODE               VARCHAR2(7),
+  ARRIVAL_DATE            DATE,
+  MOV_QTY                 NUMBER,
+  CREATED_BY              NUMBER(15,0)        NOT NULL ENABLE, 
+  CREATION_DATE           DATE                NOT NULL ENABLE, 
+  LAST_UPDATED_BY         NUMBER(15,0)        NOT NULL ENABLE, 
+  LAST_UPDATE_DATE        DATE                NOT NULL ENABLE, 
+  LAST_UPDATE_LOGIN       NUMBER(15,0), 
+  REQUEST_ID              NUMBER(15,0), 
+  PROGRAM_APPLICATION_ID  NUMBER(15,0), 
+  PROGRAM_ID              NUMBER(15,0), 
+  PROGRAM_UPDATE_DATE     DATE,
+  CONSTRAINT XXCOP_ASSIGNMENT_CONTROLS_PK PRIMARY KEY (MOV_HDR_ID, MOV_LINE_ID, LOT_ID)
+  );
+-- 
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.MOV_HDR_ID             IS '移動ヘッダID';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.MOV_NUM                IS '移動番号';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.MOV_LINE_ID            IS '移動明細ID';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.LINE_NUMBER            IS '明細番号';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.LOT_ID                 IS 'ロットID';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.LOT_NO                 IS 'ロットNO';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.ITEM_CODE              IS '品目コード';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.ARRIVAL_DATE           IS '着日';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.MOV_QTY                IS '移動数量';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.CREATED_BY             IS '作成者';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.CREATION_DATE          IS '作成日';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.LAST_UPDATED_BY        IS '最終更新者';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.LAST_UPDATE_DATE       IS '最終更新日';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.LAST_UPDATE_LOGIN      IS '最終更新ログイン';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.REQUEST_ID             IS '要求ID';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.PROGRAM_APPLICATION_ID IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.PROGRAM_ID             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN XXCOP.XXCOP_ASSIGNMENT_CONTROLS.PROGRAM_UPDATE_DATE    IS 'プログラム更新日';
+--
+COMMENT ON TABLE XXCOP.XXCOP_ASSIGNMENT_CONTROLS  IS '特別横持制御マスタコントロールテーブル';
+/
