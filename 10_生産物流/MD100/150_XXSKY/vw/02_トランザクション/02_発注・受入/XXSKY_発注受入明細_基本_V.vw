@@ -2,6 +2,9 @@ CREATE OR REPLACE VIEW APPS.XXSKY_発注受入明細_基本_V
 (
  発注番号
 ,受入返品番号
+-- 2010/09/10 T.Yoshimoto Add Start
+,納入日
+-- 2010/09/10 T.Yoshimoto Add End
 ,明細番号
 ,商品区分
 ,商品区分名
@@ -70,6 +73,9 @@ AS
 SELECT
         POL.po_number                                       po_number                     --発注番号
        ,POL.rcv_rtn_number                                  rcv_rtn_number                --受入返品番号（NULLでも結合条件として使用する為 'Dummy' で表示）
+-- 2010/09/10 T.Yoshimoto Add Start
+       ,POL.deliver_date                                    deliver_date                  --納入日
+-- 2010/09/10 T.Yoshimoto Add End
        ,POL.line_num                                        line_num                      --明細番号
        ,PRODC.prod_class_code                               prod_class_code               --商品区分
        ,PRODC.prod_class_name                               prod_class_name               --商品区分名
@@ -83,17 +89,49 @@ SELECT
        ,NVL( POL.quantity, 0 )                              quantity                      --数量
        ,NVL( DECODE( POL.lot_no, 'DEFAULTLOT', '0', POL.lot_no ), '0' )
                                                             lot_no                        --ロットNo('DEFALTLOT'、ロット未割当は'0')
-       ,CASE WHEN ITEM.lot_ctl = 1 THEN LOT.attribute1  --ロット管理品   →製造年月日を取得
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,CASE WHEN ITEM.lot_ctl = 1 THEN LOT.attribute1  --ロット管理品   →製造年月日を取得
+       ,CASE 
+          WHEN ITEM.lot_ctl = 1 THEN
+            (SELECT LOT.attribute1                       --ロット管理品   →製造年月日を取得
+             FROM ic_lots_mst LOT
+             WHERE POL.item_id = LOT.item_id
+             AND   POL.lot_no  = LOT.lot_no)
+-- 2010/09/10 T.Yoshimoto Mod End
              ELSE NULL                                  --非ロット管理品 →NULL
         END                                                 manufacture_date              --製造年月日
-       ,CASE WHEN ITEM.lot_ctl = 1 THEN LOT.attribute2  --ロット管理品   →固有記号を取得
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,CASE WHEN ITEM.lot_ctl = 1 THEN LOT.attribute2  --ロット管理品   →固有記号を取得
+       ,CASE 
+          WHEN ITEM.lot_ctl = 1 THEN
+            (SELECT LOT.attribute2                       --ロット管理品   →製造年月日を取得
+             FROM ic_lots_mst LOT
+             WHERE POL.item_id = LOT.item_id
+             AND   POL.lot_no  = LOT.lot_no)
+-- 2010/09/10 T.Yoshimoto Mod End
              ELSE NULL                                  --非ロット管理品 →NULL
         END                                                 uniqe_sign                    --固有記号
-       ,CASE WHEN ITEM.lot_ctl = 1 THEN LOT.attribute3  --ロット管理品   →賞味期限を取得
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,CASE WHEN ITEM.lot_ctl = 1 THEN LOT.attribute3  --ロット管理品   →賞味期限を取得
+       ,CASE
+          WHEN ITEM.lot_ctl = 1 THEN
+            (SELECT LOT.attribute3                       --ロット管理品   →製造年月日を取得
+             FROM ic_lots_mst LOT
+             WHERE POL.item_id = LOT.item_id
+             AND   POL.lot_no  = LOT.lot_no)
+-- 2010/09/10 T.Yoshimoto Mod End
              ELSE NULL                                  --非ロット管理品 →NULL
         END                                                 expiration_date               --賞味期限
        ,POL.factory_code                                    factory_code                  --工場コード
-       ,VDST.vendor_site_name                               factory_name                  --工場名
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,VDST.vendor_site_name                               factory_name                  --工場名
+       ,(SELECT VDST.vendor_site_name
+         FROM  xxsky_vendor_sites2_v VDST
+         WHERE POL.factory_code                  = VDST.vendor_site_code
+         AND   NVL( POL.deliver_date, SYSDATE ) >= VDST.start_date_active
+         AND   NVL( POL.deliver_date, SYSDATE ) <= VDST.end_date_active
+        )                                                   factory_name                  --工場名
+-- 2010/09/10 T.Yoshimoto Mod End
        ,POL.futai_code                                      futai_code                    --付帯コード
        ,NVL( POL.pack_qty, 0 )                              pack_qty                      --在庫入数
        ,NVL( POL.request_qty, 0 )                           request_qty                   --依頼数量
@@ -106,13 +144,43 @@ SELECT
        ,POL.order_uom                                       order_uom                     --発注単位
        ,NVL( POL.order_qty, 0 )                             order_qty                     --発注数量
        ,POL.party_dlvr_to                                   party_dlvr_to                 --相手先在庫入庫先
-       ,ILOC.description                                    party_dlvr_to_name            --相手先在庫入庫先名
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,ILOC.description                                    party_dlvr_to_name            --相手先在庫入庫先名
+       ,(SELECT ILOC.description
+         FROM xxsky_item_locations_v ILOC
+         WHERE ILOC.segment1 = POL.party_dlvr_to
+        )                                                   party_dlvr_to_name            --相手先在庫入庫先名
+-- 2010/09/10 T.Yoshimoto Mod End
        ,POL.fix_qty_flg                                     fix_qty_flg                   --数量確定フラグ
-       ,FLV01.meaning                                       fix_qty_flg_name              --数量確定フラグ名
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,FLV01.meaning                                       fix_qty_flg_name              --数量確定フラグ名
+      ,(SELECT FLV01.meaning
+        FROM  fnd_lookup_values FLV01
+        WHERE FLV01.language    = 'JA'
+        AND   FLV01.lookup_type = 'XXCMN_YESNO'
+        AND   FLV01.lookup_code = POL.fix_qty_flg
+       )                                                    fix_qty_flg_name              --数量確定フラグ名
+-- 2010/09/10 T.Yoshimoto Mod End
        ,POL.fix_amt_flg                                     fix_amt_flg                   --金額確定フラグ
-       ,FLV02.meaning                                       fix_amt_flg_name              --金額確定フラグ名
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,FLV02.meaning                                       fix_amt_flg_name              --金額確定フラグ名
+       ,(SELECT FLV02.meaning
+         FROM  fnd_lookup_values FLV02
+         WHERE FLV02.language    = 'JA'
+         AND   FLV02.lookup_type = 'XXCMN_YESNO'
+         AND   FLV02.lookup_code = POL.fix_amt_flg
+        )                                                   fix_amt_flg_name              --金額確定フラグ名
+-- 2010/09/10 T.Yoshimoto Mod End
        ,NVL( POL.cancel_flg, 'N' )                          cancel_flg                    --取消フラグ
-       ,FLV03.meaning                                       cancel_flg_name               --取消フラグ名
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,FLV03.meaning                                       cancel_flg_name               --取消フラグ名
+       ,(SELECT FLV03.meaning
+         FROM  fnd_lookup_values FLV03
+         WHERE FLV03.language    = 'JA'
+         AND   FLV03.lookup_type = 'XXCMN_YESNO'
+         AND   FLV03.lookup_code = NVL( POL.cancel_flg, 'N' )
+        )                                                   cancel_flg_name               --取消フラグ名
+-- 2010/09/10 T.Yoshimoto Mod End
        ,POL.description                                     description                   --摘要
        ,FU_CB_H.user_name                                   h_created_by                  --発注_作成者
        ,TO_CHAR( POL.h_creation_date   , 'YYYY/MM/DD HH24:MI:SS' )
@@ -129,11 +197,27 @@ SELECT
        ,NVL( POL.kobiki_rate, 0 )                           kobiki_rate                   --粉引率
        ,NVL( POL.kobki_converted_unit_price, 0 )            kobki_converted_unit_price    --粉引後単価
        ,POL.kousen_type                                     kousen_type                   --口銭区分
-       ,FLV04.meaning                                       kousen_type_name              --口銭区分名
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,FLV04.meaning                                       kousen_type_name              --口銭区分名
+       ,(SELECT FLV04.meaning
+         FROM  fnd_lookup_values FLV04
+         WHERE FLV04.language    = 'JA'
+         AND   FLV04.lookup_type = 'XXPO_KOUSEN_TYPE'
+         AND   FLV04.lookup_code = POL.kousen_type
+        )                                                   kousen_type_name              --口銭区分名
+-- 2010/09/10 T.Yoshimoto Mod End
        ,NVL( POL.kousen_rate_or_unit_price, 0 )             kousen_rate_or_unit_price     --口銭
        ,NVL( POL.kousen_price, 0 )                          kousen_price                  --預り口銭金額
        ,POL.fukakin_type                                    fukakin_type                  --賦課金区分
-       ,FLV05.meaning                                       fukakin_type_name             --賦課金区分名
+-- 2010/09/10 T.Yoshimoto Mod Start
+--       ,FLV05.meaning                                       fukakin_type_name             --賦課金区分名
+       ,(SELECT FLV05.meaning
+         FROM  fnd_lookup_values FLV05
+         WHERE FLV05.language    = 'JA'
+         AND   FLV05.lookup_type = 'XXPO_FUKAKIN_TYPE'
+         AND   FLV05.lookup_code = POL.fukakin_type
+        )                                                   fukakin_type_name             --賦課金区分名
+-- 2010/09/10 T.Yoshimoto Mod End
        ,NVL( POL.fukakin_rate_or_unit_price, 0 )            fukakin_rate_or_unit_price    --賦課金
        ,NVL( POL.fukakin_price, 0 )                         fukakin_price                 --賦課金額
        ,NVL( POL.kobki_converted_price, 0 )                 kobki_converted_price         --粉引後金額（粉引後単価×受入数量）
@@ -207,18 +291,21 @@ SELECT
              --発注依頼ヘッダとの結合
                   XRH.requisition_header_id                 = XRL.requisition_header_id
              --発注済データは『発注･受入データ』として表示する為、除外する
-             AND  NOT EXISTS
-                  (
-                    SELECT  E_XRL.requisition_line_id
-                      FROM  xxpo_requisition_headers        E_XRH
-                           ,po_headers_all                  E_PHA
-                           ,xxpo_requisition_lines          E_XRL
-                           ,po_lines_all                    E_PLA
-                     WHERE  E_XRH.po_header_number          = E_PHA.segment1
-                       AND  E_XRH.requisition_header_id     = E_XRL.requisition_header_id
-                       AND  E_PHA.po_header_id              = E_PLA.po_header_id
-                       AND  E_XRL.requisition_line_id       = XRL.requisition_line_id
-                  )
+-- 2010/09/10 T.Yoshimoto Mod Start
+             AND  XRH.status                               IN ('5', '10', '99')
+--             AND  NOT EXISTS
+--                  (
+--                    SELECT  E_XRL.requisition_line_id
+--                      FROM  xxpo_requisition_headers        E_XRH
+--                           ,po_headers_all                  E_PHA
+--                           ,xxpo_requisition_lines          E_XRL
+--                           ,po_lines_all                    E_PLA
+--                     WHERE  E_XRH.po_header_number          = E_PHA.segment1
+--                       AND  E_XRH.requisition_header_id     = E_XRL.requisition_header_id
+--                       AND  E_PHA.po_header_id              = E_PLA.po_header_id
+--                       AND  E_XRL.requisition_line_id       = XRL.requisition_line_id
+--                  )
+-- 2010/09/10 T.Yoshimoto Mod End
           --[ 発注依頼データ  END ]
         UNION ALL
 -- 2010/07/16 T.Yoshimoto Del Start E_本稼動_03772
@@ -416,6 +503,7 @@ SELECT
              --発注納入明細との結合（【粉引率】以下の項目は受入返品実績のデータではなくこちらを使用する）
              AND  PHA.po_header_id                = PLLA.po_header_id
              AND  PLA.po_line_id                  = PLLA.po_line_id
+             AND  PHA.org_id                      = TO_NUMBER(FND_PROFILE.VALUE('ORG_ID'))
           --[ 発注・受入実績なしデータ  END ]
         UNION ALL
           --========================================================================
@@ -527,6 +615,7 @@ SELECT
              AND  XRART.txns_type                 = '1'                         -- 実績区分:'1:受入'
              AND  PHA.segment1                    = XRART.rcv_rtn_number
              AND  PLA.line_num                    = XRART.source_document_line_num
+             AND  PHA.org_id                      = TO_NUMBER(FND_PROFILE.VALUE('ORG_ID'))
           --[ 受入実績データ  END ]
 -- 2010/07/16 T.Yoshimoto Add End E_本稼動_03772
         UNION ALL
@@ -602,6 +691,10 @@ SELECT
              AND  XRART.txns_type                           = '2'                         -- 実績区分:'2:発注あり返品'
              AND  PHA.segment1                              = XRART.source_document_number
              AND  PLA.line_num                              = XRART.source_document_line_num
+-- 2010/09/10 T.Yoshimoto Add Start
+             AND  PHA.attribute1                            = '35'                        -- 金額確定済
+             AND  PHA.org_id                                = TO_NUMBER(FND_PROFILE.VALUE('ORG_ID'))
+-- 2010/09/10 T.Yoshimoto Add End
           --[ 発注あり返品データ  END ]
         UNION ALL
           --========================================================================
@@ -617,7 +710,14 @@ SELECT
                  ,XRART.lot_number                          lot_no                        --ロット番号
                  ,XRART.factory_code                        factory_code                  --工場コード
                  ,XRART.futai_code                          futai_code                    --付帯コード
-                 ,TO_NUMBER( LOT.attribute6 )               pack_qty                      --在庫入数
+-- 2010/09/10 T.Yoshimoto Mod Start
+--                 ,TO_NUMBER( LOT.attribute6 )               pack_qty                      --在庫入数
+                 ,(SELECT TO_NUMBER( LOT.attribute6 )
+                   FROM ic_lots_mst LOT
+                   WHERE  XRART.item_id = LOT.item_id
+                   AND  XRART.lot_id    = LOT.lot_id
+                  )                                         pack_qty                      --在庫入数
+-- 2010/09/10 T.Yoshimoto Mod End
                  ,0                                         request_qty                   --依頼数量
                  ,NULL                                      request_uom                   --依頼数量単位コード
                  ,NULL                                      vendor_dlvr_date              --仕入先出荷日
@@ -660,12 +760,16 @@ SELECT
                  ,XRART.txns_date                           deliver_date                  --納入日
             FROM
                   xxpo_rcv_and_rtn_txns                     XRART                         --受入返品実績(アドオン)
-                 ,ic_lots_mst                               LOT                           --ロットマスタ
+-- 2010/09/10 T.Yoshimoto Del Start
+--                 ,ic_lots_mst                               LOT                           --ロットマスタ
+-- 2010/09/10 T.Yoshimoto Del End
            WHERE
                   XRART.txns_type                           = '3'                         --実績区分:'3:発注無し返品'
              --ロットマスタとの結合
-             AND  XRART.item_id                             = LOT.item_id(+)
-             AND  XRART.lot_id                              = LOT.lot_id(+)
+-- 2010/09/10 T.Yoshimoto Del Start
+--             AND  XRART.item_id                             = LOT.item_id(+)
+--             AND  XRART.lot_id                              = LOT.lot_id(+)
+-- 2010/09/10 T.Yoshimoto Del End
           --[ 発注無し返品データ  END ]
        )                                          POL                           --発注受入明細データ
        ------------------------------------------
@@ -675,9 +779,11 @@ SELECT
        ,xxsky_prod_class_v                        PRODC                         --商品区分取得用
        ,xxsky_item_class_v                        ITEMC                         --品目区分取得用
        ,xxsky_crowd_code_v                        CROWD                         --群コード取得用
-       ,ic_lots_mst                               LOT                           --ロット情報取得用
-       ,xxsky_vendor_sites2_v                     VDST                          --SKYLINK用中間VIEW 仕入先サイト情報VIEW2(工場名)
-       ,xxsky_item_locations_v                    ILOC                          --SKYLINK用中間VIEW OPM保管場所情報VIEW2(相手先在庫入庫先名)
+-- 2010/09/10 T.Yoshimoto Del Start
+--       ,ic_lots_mst                               LOT                           --ロット情報取得用
+--       ,xxsky_vendor_sites2_v                     VDST                          --SKYLINK用中間VIEW 仕入先サイト情報VIEW2(工場名)
+--       ,xxsky_item_locations_v                    ILOC                          --SKYLINK用中間VIEW OPM保管場所情報VIEW2(相手先在庫入庫先名)
+-- 2010/09/10 T.Yoshimoto Del End
        ,fnd_user                                  FU_CB_H                       --ユーザーマスタ(発注_created_by名称取得用)
        ,fnd_user                                  FU_LU_H                       --ユーザーマスタ(発注_last_updated_by名称取得用)
        ,fnd_user                                  FU_LL_H                       --ユーザーマスタ(発注_last_update_login名称取得用)
@@ -686,29 +792,41 @@ SELECT
        ,fnd_user                                  FU_LU_U                       --ユーザーマスタ(受入返品_last_updated_by名称取得用)
        ,fnd_user                                  FU_LL_U                       --ユーザーマスタ(受入返品_last_update_login名称取得用)
        ,fnd_logins                                FL_LL_U                       --ログインマスタ(受入返品_last_update_login名称取得用)
-       ,fnd_lookup_values                         FLV01                         --クイックコード(数量確定フラグ名)
-       ,fnd_lookup_values                         FLV02                         --クイックコード(金額確定フラグ名)
-       ,fnd_lookup_values                         FLV03                         --クイックコード(取消フラグ名)
-       ,fnd_lookup_values                         FLV04                         --クイックコード(口銭区分名)
-       ,fnd_lookup_values                         FLV05                         --クイックコード(賦課金区分名)
+-- 2010/09/10 T.Yoshimoto Del Start
+--       ,fnd_lookup_values                         FLV01                         --クイックコード(数量確定フラグ名)
+--       ,fnd_lookup_values                         FLV02                         --クイックコード(金額確定フラグ名)
+--       ,fnd_lookup_values                         FLV03                         --クイックコード(取消フラグ名)
+--       ,fnd_lookup_values                         FLV04                         --クイックコード(口銭区分名)
+--       ,fnd_lookup_values                         FLV05                         --クイックコード(賦課金区分名)
+-- 2010/09/10 T.Yoshimoto Del End
  WHERE
    --品目情報取得
-        POL.item_id                               = ITEM.item_id(+)
-   AND  NVL( POL.deliver_date, SYSDATE )         >= ITEM.start_date_active(+)
-   AND  NVL( POL.deliver_date, SYSDATE )         <= ITEM.end_date_active(+)
+-- 2010/09/10 T.Yoshimoto Mod Start
+--        POL.item_id                               = ITEM.item_id(+)
+--   AND  NVL( POL.deliver_date, SYSDATE )         >= ITEM.start_date_active(+)
+--   AND  NVL( POL.deliver_date, SYSDATE )         <= ITEM.end_date_active(+)
+        POL.item_id                               = ITEM.item_id
+   AND  NVL( POL.deliver_date, SYSDATE )         >= ITEM.start_date_active
+   AND  NVL( POL.deliver_date, SYSDATE )         <= ITEM.end_date_active
    --品目カテゴリ情報取得
-   AND  POL.item_id                               = PRODC.item_id(+)            --商品区分
-   AND  POL.item_id                               = ITEMC.item_id(+)            --品目区分
-   AND  POL.item_id                               = CROWD.item_id(+)            --群コード
+--   AND  POL.item_id                               = PRODC.item_id(+)            --商品区分
+--   AND  POL.item_id                               = ITEMC.item_id(+)            --品目区分
+--   AND  POL.item_id                               = CROWD.item_id(+)            --群コード
+   AND  POL.item_id                               = PRODC.item_id            --商品区分
+   AND  POL.item_id                               = ITEMC.item_id            --品目区分
+   AND  POL.item_id                               = CROWD.item_id            --群コード
+-- 2010/09/10 T.Yoshimoto Mod End
    --ロット情報取得
-   AND  POL.item_id                               = LOT.item_id(+)
-   AND  POL.lot_no                                = LOT.lot_no(+)
-   --工場名取得
-   AND  POL.factory_code                          = VDST.vendor_site_code(+)
-   AND  NVL( POL.deliver_date, SYSDATE )         >= VDST.start_date_active(+)
-   AND  NVL( POL.deliver_date, SYSDATE )         <= VDST.end_date_active(+)
+-- 2010/09/10 T.Yoshimoto Del Start
+--   AND  POL.item_id                               = LOT.item_id(+)
+--   AND  POL.lot_no                                = LOT.lot_no(+)
+--   --工場名取得
+--   AND  POL.factory_code                          = VDST.vendor_site_code(+)
+--   AND  NVL( POL.deliver_date, SYSDATE )         >= VDST.start_date_active(+)
+--   AND  NVL( POL.deliver_date, SYSDATE )         <= VDST.end_date_active(+)
    --相手先在庫入庫先名取得
-   AND  POL.party_dlvr_to                         = ILOC.segment1(+)
+--   AND  POL.party_dlvr_to                         = ILOC.segment1(+)
+-- 2010/09/10 T.Yoshimoto Del Start
    --発注明細のWHOカラム情報取得
    AND  POL.h_created_by                          = FU_CB_H.user_id(+)
    AND  POL.h_last_updated_by                     = FU_LU_H.user_id(+)
@@ -720,31 +838,35 @@ SELECT
    AND  POL.u_last_update_login                   = FL_LL_U.login_id(+)
    AND  FL_LL_U.user_id                           = FU_LL_U.user_id(+)
    --【クイックコード】数量確定フラグ名
-   AND  FLV01.language(+)                         = 'JA'
-   AND  FLV01.lookup_type(+)                      = 'XXCMN_YESNO'
-   AND  FLV01.lookup_code(+)                      = POL.fix_qty_flg
-   --【クイックコード】金額確定フラグ名
-   AND  FLV02.language(+)                         = 'JA'
-   AND  FLV02.lookup_type(+)                      = 'XXCMN_YESNO'
-   AND  FLV02.lookup_code(+)                      = POL.fix_amt_flg
-   --【クイックコード】取消フラグ名
-   AND  FLV03.language(+)                         = 'JA'
-   AND  FLV03.lookup_type(+)                      = 'XXCMN_YESNO'
-   AND  FLV03.lookup_code(+)                      = NVL( POL.cancel_flg, 'N' )
-   --【クイックコード】口銭区分名
-   AND  FLV04.language(+)                         = 'JA'
-   AND  FLV04.lookup_type(+)                      = 'XXPO_KOUSEN_TYPE'
-   AND  FLV04.lookup_code(+)                      = POL.kousen_type
-   --【クイックコード】賦課金区分名
-   AND  FLV05.language(+)                         = 'JA'
-   AND  FLV05.lookup_type(+)                      = 'XXPO_FUKAKIN_TYPE'
-   AND  FLV05.lookup_code(+)                      = POL.fukakin_type
+-- 2010/09/10 T.Yoshimoto Del Start
+--   AND  FLV01.language(+)                         = 'JA'
+--   AND  FLV01.lookup_type(+)                      = 'XXCMN_YESNO'
+--   AND  FLV01.lookup_code(+)                      = POL.fix_qty_flg
+--   --【クイックコード】金額確定フラグ名
+--   AND  FLV02.language(+)                         = 'JA'
+--   AND  FLV02.lookup_type(+)                      = 'XXCMN_YESNO'
+--   AND  FLV02.lookup_code(+)                      = POL.fix_amt_flg
+--   --【クイックコード】取消フラグ名
+--   AND  FLV03.language(+)                         = 'JA'
+--   AND  FLV03.lookup_type(+)                      = 'XXCMN_YESNO'
+--   AND  FLV03.lookup_code(+)                      = NVL( POL.cancel_flg, 'N' )
+--   --【クイックコード】口銭区分名
+--   AND  FLV04.language(+)                         = 'JA'
+--   AND  FLV04.lookup_type(+)                      = 'XXPO_KOUSEN_TYPE'
+--   AND  FLV04.lookup_code(+)                      = POL.kousen_type
+--   --【クイックコード】賦課金区分名
+--   AND  FLV05.language(+)                         = 'JA'
+--   AND  FLV05.lookup_type(+)                      = 'XXPO_FUKAKIN_TYPE'
+--   AND  FLV05.lookup_code(+)                      = POL.fukakin_type
+-- 2010/09/10 T.Yoshimoto Del End
 /
 COMMENT ON TABLE APPS.XXSKY_発注受入明細_基本_V IS 'SKYLINK用発注受入明細（基本）VIEW'
 /
 COMMENT ON COLUMN APPS.XXSKY_発注受入明細_基本_V.発注番号 IS '発注番号'
 /
 COMMENT ON COLUMN APPS.XXSKY_発注受入明細_基本_V.受入返品番号 IS '受入返品番号'
+/
+COMMENT ON COLUMN APPS.XXSKY_発注受入明細_基本_V.納入日 IS '納入日'
 /
 COMMENT ON COLUMN APPS.XXSKY_発注受入明細_基本_V.明細番号 IS '明細番号'
 /
