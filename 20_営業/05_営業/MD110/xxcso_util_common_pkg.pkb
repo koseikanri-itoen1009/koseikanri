@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_util_common_pkg(BODY)
  * Description      : 共通関数(XXCSOユーティリティ）
  * MD.050/070       :
- * Version          : 1.4
+ * Version          : 1.7
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  get_rs_base_code          F    -     所属拠点取得
  *  get_current_rs_base_code  F    -     現所属拠点取得
  *  conv_ng_char_vdms         F    -     自販機管理S禁則文字変換関数
+ *  compare_tax_code          F    V     税比較関数
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -69,6 +70,7 @@ AS
  *  2010/04/19    1.6   T.Maruyama       get_working_daysで使用するカレンダ名をXXCSOのプロファイル
  *                                       から取得するよう変更。（各業務で必要に応じて変更できるようにする。）
  *                                      （E_本稼動_02251）
+ *  2014/03/13    1.7   K.Kiriu          E_本稼動_11670対応 compare_tax_code新規追加
  *****************************************************************************************/
 --
   -- ===============================
@@ -1829,6 +1831,70 @@ AS
 --
   END conv_ng_char_vdms;
   /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
+  /* 2014.03.13 K.Kiriu E_本稼動_11670 START */
+  /**********************************************************************************
+   * Function  Name   : compare_tax_code
+   * Description      : 税比較関数
+   *                    引数の日付時点と、業務日付時点の税が異なるかチェックする。
+   ***********************************************************************************/
+  FUNCTION compare_tax_code(
+    id_orig_data_tax_date IN DATE  --基準日
+  ) RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_prg_name              CONSTANT VARCHAR2(100) := 'compare_tax_code';          -- プログラム名
+    cd_process_date          CONSTANT DATE          := xxccp_common_pkg2.get_process_date;
+    cv_ap_tax_rate_sales     CONSTANT VARCHAR2(24)  := 'XXCSO1_AP_TAX_RATE_SALES';  -- 参照タイプ「AP税率マスタ課税売上」
+    cv_same                  CONSTANT VARCHAR2(1)   := '1';
+    cv_not_same              CONSTANT VARCHAR2(1)   := '0';
+    cv_y                     CONSTANT VARCHAR2(1)   := 'Y';
+--
+    -- *** ローカル変数 ***
+    lv_return                VARCHAR2(1);
+--
+--
+  -- 業務日付時点の税率(税コード)が引数で指定された日付時点と異なるかチェック
+  BEGIN
+--
+    BEGIN
+      --データが取得できる=税率が同じ。取得できない=税率が異なる。
+      SELECT cv_same  same
+      INTO   lv_return
+      FROM   fnd_lookup_values_vl flvv
+      WHERE  flvv.lookup_type  = cv_ap_tax_rate_sales
+      AND    cd_process_date   BETWEEN flvv.start_date_active
+                               AND     NVL( flvv.end_date_active, cd_process_date )
+      AND    flvv.enabled_flag = cv_y
+      AND    flvv.lookup_code = (
+               SELECT flvvs.lookup_code
+               FROM   fnd_lookup_values_vl flvvs
+               WHERE  flvvs.lookup_type     = cv_ap_tax_rate_sales
+               AND    id_orig_data_tax_date BETWEEN flvvs.start_date_active
+                                            AND     NVL( flvvs.end_date_active, id_orig_data_tax_date )
+               AND    flvvs.enabled_flag    = cv_y
+             )
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_return := cv_not_same;
+    END;
+--
+    RETURN lv_return;
+--
+  EXCEPTION
+--
+--
+--###############################  固定例外処理部 START   ###################################
+--
+    WHEN OTHERS THEN
+      xxcso_common_pkg.raise_api_others_expt(gv_pkg_name, cv_prg_name);
+--
+--###################################  固定部 END   #########################################
+--
+  END compare_tax_code;
+  /* 2014.03.13 K.Kiriu E_本稼動_11670 END */
 --
 END xxcso_util_common_pkg;
 /

@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-10 1.0  SCS小川浩    新規作成
+* 2014-03-13 1.1  SCSK桐生和幸 [E_本稼動_11670]税率変更警告メッセージ出力対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.webui;
@@ -24,6 +25,9 @@ import itoen.oracle.apps.xxcso.common.util.XxcsoConstants;
 import itoen.oracle.apps.xxcso.xxcso020001j.util.XxcsoSpDecisionConstants;
 import java.io.Serializable;
 import com.sun.java.util.collections.HashMap;
+// 2014-03-13 [E_本稼動_11670] Add Start
+import oracle.apps.fnd.framework.OAException;
+// 2014-03-13 [E_本稼動_11670] Add End
 
 /*******************************************************************************
  * SP専決書検索画面のコントローラクラスです。
@@ -140,28 +144,47 @@ public class XxcsoSpDecisionSearchCO extends OAControllerImpl
       String spDecisionHeaderId
         = (String)am.invokeMethod("handleCopyButton");
 
-      HashMap params = new HashMap(2);
-      params.put(
-        XxcsoConstants.EXECUTE_MODE
-       ,XxcsoSpDecisionConstants.COPY_MODE
-      );
-      params.put(
-        XxcsoConstants.TRANSACTION_KEY1
-       ,spDecisionHeaderId
-      );
-      params.put(
-        XxcsoConstants.TRANSACTION_KEY2
-        ,pageContext.getParameter(XxcsoConstants.EXECUTE_MODE)
-      );
+// 2014-03-13 [E_本稼動_11670] Add Start
+      // コピー元の最終更新日時点と業務日付時点の税率をチェック
+      Boolean returnValue = (Boolean)am.invokeMethod("compareTaxCodeCheck");
+      //税率が異なる場合は警告メッセージを出力
+      if ( ! returnValue.booleanValue() )
+      {
+        OAException confirmMsg = (OAException)am.invokeMethod("getMessage");
 
-      pageContext.forwardImmediately(
-        XxcsoConstants.FUNC_SP_DECISION_REGIST_PG
-       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
-       ,null
-       ,params
-       ,true
-       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
-      );
+        this.createWarnCopyDialog(
+          pageContext
+         ,confirmMsg
+        );
+      }
+      else
+      {
+// 2014-03-13 [E_本稼動_11670] Add End
+        HashMap params = new HashMap(2);
+        params.put(
+          XxcsoConstants.EXECUTE_MODE
+         ,XxcsoSpDecisionConstants.COPY_MODE
+        );
+        params.put(
+          XxcsoConstants.TRANSACTION_KEY1
+         ,spDecisionHeaderId
+        );
+        params.put(
+          XxcsoConstants.TRANSACTION_KEY2
+          ,pageContext.getParameter(XxcsoConstants.EXECUTE_MODE)
+        );
+
+        pageContext.forwardImmediately(
+          XxcsoConstants.FUNC_SP_DECISION_REGIST_PG
+         ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+         ,null
+         ,params
+         ,true
+         ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+        );
+// 2014-03-13 [E_本稼動_11670] Add Start
+      }
+// 2014-03-13 [E_本稼動_11670] Add End
     }
 
     if ( pageContext.getParameter("DetailButton") != null )
@@ -192,7 +215,39 @@ public class XxcsoSpDecisionSearchCO extends OAControllerImpl
        ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
       );
     }
-    
+
+// 2014-03-13 [E_本稼動_11670] Add Start
+    // 警告ダイアログでのOKボタン（コピー時の税比較）
+    if ( pageContext.getParameter("WarnCopyOkButton") != null )
+    {
+      String spDecisionHeaderId
+        = (String)am.invokeMethod("handleCopyButton");
+
+      HashMap params = new HashMap(2);
+      params.put(
+        XxcsoConstants.EXECUTE_MODE
+       ,XxcsoSpDecisionConstants.COPY_MODE
+      );
+      params.put(
+        XxcsoConstants.TRANSACTION_KEY1
+       ,spDecisionHeaderId
+      );
+      params.put(
+        XxcsoConstants.TRANSACTION_KEY2
+        ,pageContext.getParameter(XxcsoConstants.EXECUTE_MODE)
+      );
+
+      pageContext.forwardImmediately(
+        XxcsoConstants.FUNC_SP_DECISION_REGIST_PG
+       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+       ,null
+       ,params
+       ,true
+       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+      );
+    }
+// 2014-03-13 [E_本稼動_11670] Add End 
+
     XxcsoUtils.debug(pageContext, "[END]");
   }
 
@@ -214,5 +269,44 @@ public class XxcsoSpDecisionSearchCO extends OAControllerImpl
       }
     }
   }
+
+// 2014-03-13 [E_本稼動_11670] Add Start
+  /*****************************************************************************
+   * 警告ダイアログ生成処理（コピー時の税比較）
+   * @param pageContext ページコンテキスト
+   * @param confirmMsg  確認画面表示用メッセージ
+   *****************************************************************************
+   */
+  private void createWarnCopyDialog(
+    OAPageContext pageContext
+   ,OAException   confirmMsg
+  )
+  {
+    XxcsoUtils.debug(pageContext, "[START]");
+    // ダイアログを生成
+    OADialogPage warnCopyDialog
+      = new OADialogPage(
+          OAException.WARNING
+         ,confirmMsg
+         ,null
+         ,""
+         ,""
+        );
+          
+    String ok = pageContext.getMessage("AK", "FWK_TBX_T_YES", null);
+    String no = pageContext.getMessage("AK", "FWK_TBX_T_NO", null);
+
+    warnCopyDialog.setOkButtonItemName("WarnCopyOkButton");
+    warnCopyDialog.setOkButtonToPost(true);
+    warnCopyDialog.setNoButtonToPost(true);
+    warnCopyDialog.setPostToCallingPage(true);
+    warnCopyDialog.setOkButtonLabel(ok);
+    warnCopyDialog.setNoButtonLabel(no);
+
+    pageContext.redirectToDialogPage(warnCopyDialog);
+
+    XxcsoUtils.debug(pageContext, "[END]");
+  }
+// 2014-03-13 [E_本稼動_11670] Add End
 
 }

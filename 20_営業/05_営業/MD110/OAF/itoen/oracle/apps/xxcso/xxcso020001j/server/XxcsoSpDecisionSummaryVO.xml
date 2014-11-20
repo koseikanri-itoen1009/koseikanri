@@ -34,6 +34,7 @@ SELECT  (SELECT  DECODE(xsdc.customer_id
          ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)
         ) status_name
        ,xsdh.sp_decision_header_id
+       ,TO_DATE( TO_CHAR(xsdh.last_update_date,'YYYY/MM/DD'), 'YYYY/MM/DD') orig_data_tax_date
 FROM    xxcso_sp_decision_headers  xsdh
        ,(SELECT  :1  search_class
                 ,:2  app_base_code
@@ -363,5 +364,14 @@ WHERE   (
       AliasName="SELECTFLAG"
       Passivate="true"
       SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrigDataTaxDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="OrigDataTaxDate"
+      Expression="OrigDataTaxDate"
+      SQLType="DATE" >
    </ViewAttribute>
 </ViewObject>

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractSearchCO
 * 概要説明   : 契約書情報検索コントローラクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-02-17 1.1  SCS柳平直人  [CT1内部]確認ダイアログパラメータ修正
 * 2009-06-10 1.2  SCS柳平直人  [ST障害T1_1317]明細チェック最大件数対応
 * 2010-02-09 1.3  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
+* 2014-03-20 1.4  SCSK菅原大輔 [E_本稼動_11670]税率チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010001j.webui;
@@ -198,17 +199,32 @@ public class XxcsoContractSearchCO extends OAControllerImpl
         else
         {
 // 2010-02-09 [E_本稼動_01538] Mod End
-          //パラメータ値取得
-          HashMap params = (HashMap)am.invokeMethod("getUrlParamCopy");
-          //登録更新画面に遷移
-          pageContext.forwardImmediately(
-            XxcsoConstants.FUNC_CONTRACT_REGIST_PG
-           ,OAWebBeanConstants.KEEP_MENU_CONTEXT
-           ,null
-           ,params
-           ,true
-           ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
-          );
+// 2014-03-13 [E_本稼動_11670] Add Start
+          // 税率チェック
+          returnValue = (Boolean)am.invokeMethod("compareTaxCode");
+          if ( ! returnValue.booleanValue() )
+          {
+            OAException msg = (OAException)am.invokeMethod("getMessage");
+            this.createWarnCopyContractDialog(
+              pageContext
+             ,msg
+            );
+          }
+          else
+          {
+            //パラメータ値取得
+            HashMap params = (HashMap)am.invokeMethod("getUrlParamCopy");
+            //登録更新画面に遷移
+            pageContext.forwardImmediately(
+              XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+             ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+             ,null
+             ,params
+             ,true
+             ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+            );
+          }
+// 2014-03-13 [E_本稼動_11670] Add End
 // 2010-02-09 [E_本稼動_01538] Mod Start
         }
 // 2010-02-09 [E_本稼動_01538] Mod End
@@ -381,6 +397,24 @@ public class XxcsoContractSearchCO extends OAControllerImpl
     }
 // 2010-02-09 [E_本稼動_01538] Mod End
     XxcsoUtils.debug(pageContext, "[END]");
+// 2014-03-13 [E_本稼動_11670] Add Start
+    // 確認ダイアログでのOKボタン（コピー時消費税コード比較チェック）
+    if ( pageContext.getParameter("WarnCopyOkButton") != null )
+    {
+      //パラメータ値取得
+      HashMap params = (HashMap)am.invokeMethod("getUrlParamCopy");
+      //登録更新画面に遷移
+      pageContext.forwardImmediately(
+        XxcsoConstants.FUNC_CONTRACT_REGIST_PG
+       ,OAWebBeanConstants.KEEP_MENU_CONTEXT
+       ,null
+       ,params
+       ,true
+       ,OAWebBeanConstants.ADD_BREAD_CRUMB_NO
+      );
+    }
+// 2014-03-13 [E_本稼動_11670] Add End
+
   }
 
   /*****************************************************************************
@@ -493,5 +527,43 @@ public class XxcsoContractSearchCO extends OAControllerImpl
     XxcsoUtils.debug(pageContext, "[END]");
   }
 // 2010-02-09 [E_本稼動_01538] Mod End
+// 2014-03-14 [E_本稼動_11670] Add Start
+  /*****************************************************************************
+   * 警告ダイアログ生成処理（コピー時の税比較）
+   * @param pageContext ページコンテキスト
+   * @param confirmMsg  確認画面表示用メッセージ
+   *****************************************************************************
+   */
+  private void createWarnCopyContractDialog(
+    OAPageContext pageContext
+   ,OAException   confirmMsg
+  )
+  {
+    XxcsoUtils.debug(pageContext, "[START]");
+    // ダイアログを生成
+    OADialogPage warnCopyContractyDialog
+      = new OADialogPage(
+          OAException.WARNING
+         ,confirmMsg
+         ,null
+         ,""
+         ,""
+        );
+          
+    String ok = pageContext.getMessage("AK", "FWK_TBX_T_YES", null);
+    String no = pageContext.getMessage("AK", "FWK_TBX_T_NO", null);
+
+    warnCopyContractyDialog.setOkButtonItemName("WarnCopyOkButton");
+    warnCopyContractyDialog.setOkButtonToPost(true);
+    warnCopyContractyDialog.setNoButtonToPost(true);
+    warnCopyContractyDialog.setPostToCallingPage(true);
+    warnCopyContractyDialog.setOkButtonLabel(ok);
+    warnCopyContractyDialog.setNoButtonLabel(no);
+
+    pageContext.redirectToDialogPage(warnCopyContractyDialog);
+
+    XxcsoUtils.debug(pageContext, "[END]");
+  }
+// 2014-03-14 [E_本稼動_11670] Add End
 
 }

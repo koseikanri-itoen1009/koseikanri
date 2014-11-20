@@ -36,7 +36,8 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
   protected static final int SPDECISIONHEADERID = 9;
   protected static final int SPDECISIONHEADERNUM = 10;
   protected static final int SELECTFLAG = 11;
-  protected static final int LINECOUNT = 12;
+  protected static final int ORIGDATATAXDATE = 12;
+  protected static final int LINECOUNT = 13;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -168,6 +169,8 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
         return getSpDecisionHeaderNum();
       case SELECTFLAG:
         return getSelectFlag();
+      case ORIGDATATAXDATE:
+        return getOrigDataTaxDate();
       case LINECOUNT:
         return getLineCount();
       default:
@@ -369,6 +372,24 @@ public class XxcsoContractSummaryVORowImpl extends OAViewRowImpl
   public void setLineCount(Number value)
   {
     setAttributeInternal(LINECOUNT, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute OrigDataTaxDate
+   */
+  public Date getOrigDataTaxDate()
+  {
+    return (Date)getAttributeInternal(ORIGDATATAXDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute OrigDataTaxDate
+   */
+  public void setOrigDataTaxDate(Date value)
+  {
+    setAttributeInternal(ORIGDATATAXDATE, value);
   }
 
 

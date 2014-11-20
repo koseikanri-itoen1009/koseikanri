@@ -8,6 +8,7 @@
    RowClass="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractSummaryVORowImpl"
    ComponentClass="itoen.oracle.apps.xxcso.xxcso010001j.server.XxcsoContractSummaryVOImpl"
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 WITH
@@ -28,6 +29,7 @@ WITH
          ,xsdh.sp_decision_header_id   AS sp_decision_header_id
          ,xsdh.sp_decision_number      AS sp_decision_header_num
          ,NULL                         AS select_flag
+         ,TO_DATE(TO_CHAR(xcm.last_update_date,'YYYY/MM/DD'),'YYYY/MM/DD') orig_data_tax_date
    FROM   xxcso_contract_managements xcm
          ,xxcso_sp_decision_headers xsdh
    WHERE  (
@@ -81,6 +83,7 @@ SELECT line_data.contract_management_id
       ,line_data.sp_decision_header_id
       ,line_data.sp_decision_header_num
       ,line_data.select_flag
+      ,line_data.orig_data_tax_date
       ,(
         SELECT COUNT('X')
         FROM   line_data
@@ -209,6 +212,16 @@ WHERE  ROWNUM <= FND_PROFILE.VALUE('VO_MAX_FETCH_SIZE')
       AliasName="SELECT_FLAG"
       Expression="SELECT_FLAG"
       SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="OrigDataTaxDate"
+      IsUpdateable="false"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="orig_data_tax_date"
+      Expression="orig_data_tax_date"
+      SQLType="DATE" >
    </ViewAttribute>
    <ViewAttribute
       Name="LineCount"

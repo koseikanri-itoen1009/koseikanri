@@ -33,6 +33,7 @@ public class XxcsoSpDecisionSummaryVORowImpl extends OAViewRowImpl
   protected static final int STATUSNAME = 5;
   protected static final int SPDECISIONHEADERID = 6;
   protected static final int SELECTFLAG = 7;
+  protected static final int ORIGDATATAXDATE = 8;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -188,6 +189,8 @@ public class XxcsoSpDecisionSummaryVORowImpl extends OAViewRowImpl
         return getSpDecisionHeaderId();
       case SELECTFLAG:
         return getSelectFlag();
+      case ORIGDATATAXDATE:
+        return getOrigDataTaxDate();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -222,6 +225,9 @@ public class XxcsoSpDecisionSummaryVORowImpl extends OAViewRowImpl
       case SELECTFLAG:
         setSelectFlag((String)value);
         return;
+      case ORIGDATATAXDATE:
+        setOrigDataTaxDate((Date)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -244,6 +250,24 @@ public class XxcsoSpDecisionSummaryVORowImpl extends OAViewRowImpl
   public void setSelectFlag(String value)
   {
     setAttributeInternal(SELECTFLAG, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute OrigDataTaxDate
+   */
+  public Date getOrigDataTaxDate()
+  {
+    return (Date)getAttributeInternal(ORIGDATATAXDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute OrigDataTaxDate
+   */
+  public void setOrigDataTaxDate(Date value)
+  {
+    setAttributeInternal(ORIGDATATAXDATE, value);
   }
 
 

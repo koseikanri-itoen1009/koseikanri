@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractSearchAMImpl
 * 概要説明   : 契約書検索アプリケーション・モジュールクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-05-26 1.1  SCS柳平直人  [ST障害T1_1165]明細チェック障害対応
 * 2009-06-10 1.2  SCS柳平直人  [ST障害T1_1317]明細チェック最大件数対応
 * 2010-02-09 1.3  SCS阿部大輔  [E_本稼動_01538]契約書の複数確定対応
+* 2014-03-20 1.4  SCSK菅原大輔 [E_本稼動_11670]税率チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010001j.server;
@@ -1548,7 +1549,106 @@ public class XxcsoContractSearchAMImpl extends OAApplicationModuleImpl
     return returnValue;
   }
 // 2010-02-09 [E_本稼動_01538] Mod End
+// 2014-03-20 [E_本稼動_11670] Add Start
+  /*****************************************************************************
+   * 業務日付時点の税コードとコピー元の税コードの比較チェックです。
+   *****************************************************************************
+   */
+  public Boolean compareTaxCode()
+  {
+    OADBTransaction txn = getOADBTransaction();
 
+    XxcsoUtils.debug(txn, "[START]");
+
+    Boolean returnValue = Boolean.TRUE;
+
+    XxcsoContractSummaryVOImpl sumVo = getXxcsoContractSummaryVO1();
+    if ( sumVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionSummaryVOImpl"
+        );      
+    }
+
+    XxcsoContractSummaryVORowImpl sumRow
+      = (XxcsoContractSummaryVORowImpl)sumVo.first();
+
+    OracleCallableStatement stmt = null;
+
+    //明細選択チェック
+    while ( sumRow != null )
+    {
+      if ( "Y".equals(sumRow.getSelectFlag()))
+      {
+        // 消費税コード比較チェック
+        String ChkResult = null;
+        stmt = null;
+
+        try
+        {
+          StringBuffer sql = new StringBuffer(300);
+          sql.append("BEGIN");
+          sql.append("  :1 := xxcso_util_common_pkg.compare_tax_code(");
+          sql.append("        id_orig_data_tax_date => :2");  //コピー元の契約の最終更新日
+          sql.append("       );");
+          sql.append("END;");
+
+          stmt
+            = (OracleCallableStatement)
+                txn.createCallableStatement(sql.toString(), 0);
+
+          stmt.registerOutParameter(1, OracleTypes.VARCHAR);
+          stmt.setDATE(2, sumRow.getOrigDataTaxDate());
+
+          stmt.execute();
+
+          ChkResult = stmt.getString(1);
+        }
+        catch ( SQLException e )
+        {
+          XxcsoUtils.unexpected(txn, e);
+          throw
+            XxcsoMessage.createSqlErrorMessage(
+              e
+             ,XxcsoContractConstants.TOKEN_VALUE_COMPARE_TAX_CODE //税比較関数の実行
+            );
+        }
+        finally
+        {
+          try
+          {
+            if ( stmt != null )
+            {
+              stmt.close();
+            }
+          }
+          catch ( SQLException e )
+          {
+            XxcsoUtils.unexpected(txn, e);
+          }
+        }
+        if ( "0".equals(ChkResult)  ) //チェック警告(消費税コードが異なる)
+        {
+          mMessage
+            = XxcsoMessage.createWarningMessage(
+                XxcsoConstants.APP_XXCSO1_00661
+              );
+          returnValue = Boolean.FALSE;
+        }
+        break;
+      }
+      sumRow = (XxcsoContractSummaryVORowImpl)sumVo.next();
+    }
+
+    //先頭行にカーソルを戻す
+    sumVo.first();
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return returnValue;
+  }
+// 2014-03-20 [E_本稼動_11670] Add End
   /**
    * 
    * Container's getter for XxcsoContractQueryTermsVO1

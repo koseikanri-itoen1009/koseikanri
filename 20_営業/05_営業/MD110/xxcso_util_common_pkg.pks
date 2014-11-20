@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO_UTIL_COMMON_PKG(SPEC)
  * Description      : 共通関数(XXCSOユーティリティ）
  * MD.050/070       :
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  chk_responsibility        F    -     ログイン者職責判定関数
  *  conv_multi_byte           F    -     半角文字全角置換関数
  *  conv_ng_char_vdms         F    -     自販機管理S禁則文字変換関数
+ *  compare_tax_code          F    V     税比較関数
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -54,6 +55,7 @@ AS
  *  2009/05/12    1.3   K.Satomura       get_rs_base_code
  *                                       get_current_rs_base_code 新規作成(T1_0593対応)
  *  2009/12/14    1.4   T.Maruyama       E_本稼動_00469対応 conv_ng_char_vdms新規作成
+ *  2014/03/13    1.5   K.Kiriu          E_本稼動_11670対応 compare_tax_code新規追加
  *****************************************************************************************/
 --
   /**********************************************************************************
@@ -259,6 +261,15 @@ AS
     iv_char IN VARCHAR2 -- 文字列
   ) RETURN VARCHAR2;
   /* 2009.12.14 T.Maruyama E_本稼動_00469 END */
+  /* 2014.03.13 K.Kiriu E_本稼動_11670 START */
+    /**********************************************************************************
+   * Function Name    : compare_tax_code
+   * Description      : 税比較関数
+   ***********************************************************************************/
+  FUNCTION compare_tax_code(
+    id_orig_data_tax_date IN DATE
+  ) RETURN VARCHAR2;
+  /* 2014.03.13 K.Kiriu E_本稼動_11670 END */
 --
 END xxcso_util_common_pkg;
 --
