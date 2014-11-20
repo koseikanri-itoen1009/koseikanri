@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/08    1.0   S.Moriyama       main新規作成
  *  2009/03/05    1.1   H.Wada           障害番号 #034 成功件数修正
+ *  2009/03/05    1.2   H.Sasaki         [T1_0397]拠点情報取得Viewの変更
  *
  *****************************************************************************************/
 --
@@ -138,8 +139,12 @@ AS
   -- ===============================
   -- 出力拠点レコード型
   TYPE gr_output_base_rec IS RECORD(                                  -- 出力対象拠点情報格納レコード
-      base_code              xxcoi_base_info_v.base_code%TYPE
-    , base_name              xxcoi_base_info_v.base_short_name%TYPE
+-- == 2009/04/15 V1.2 Modified START ===============================================================
+--      base_code              xxcoi_base_info_v.base_code%TYPE
+--    , base_name              xxcoi_base_info_v.base_short_name%TYPE
+      base_code              xxcoi_base_info2_v.base_code%TYPE
+    , base_name              xxcoi_base_info2_v.base_short_name%TYPE
+-- == 2009/04/15 V1.2 Modified END   ===============================================================
   );
   TYPE gt_output_base_ttype                                           -- 出力対象拠点格納用テーブル変数
   IS TABLE OF gr_output_base_rec INDEX BY BINARY_INTEGER;
@@ -157,7 +162,10 @@ AS
   gn_output_rec_num         NUMBER;                                   -- 出力レコード件数
   gn_output_rec_cnt         NUMBER;                                   -- 出力レコードカウンタ
   gt_base_code              xxcoi_storage_information.base_code%TYPE; -- 拠点コード
-  gt_base_name              xxcoi_base_info_v.base_short_name%TYPE;   -- 拠点名
+-- == 2009/04/15 V1.2 Modified START ===============================================================
+--  gt_base_name              xxcoi_base_info_v.base_short_name%TYPE;   -- 拠点名
+  gt_base_name              xxcoi_base_info2_v.base_short_name%TYPE;   -- 拠点名
+-- == 2009/04/15 V1.2 Modified END   ===============================================================
   gv_zero_message           VARCHAR2(200);                            -- 0件メッセージ格納
 --
   CURSOR storage_info_cur(
@@ -527,7 +535,10 @@ AS
     SELECT xbiv.base_code
           ,xbiv.base_short_name
     BULK COLLECT INTO gt_base_tab
-    FROM   xxcoi_base_info_v xbiv
+-- == 2009/04/15 V1.2 Modified START ===============================================================
+--    FROM   xxcoi_base_info_v xbiv
+    FROM   xxcoi_base_info2_v xbiv
+-- == 2009/04/15 V1.2 Modified END   ===============================================================
     WHERE  xbiv.focus_base_code = gt_base_code;
 --
     gn_output_base_num := gt_base_tab.COUNT;
