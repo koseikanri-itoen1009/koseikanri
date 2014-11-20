@@ -8,7 +8,7 @@ AS
  *                    ＣＳＶファイルを作成します。
  * MD.050           : MD050_CSO_016_A07_情報系-EBSインターフェース：
  *                    (OUT)拠点別営業人員
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008-03-02    1.0   Mio.Maruyama     新規作成
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
  *  2009-07-21    1.2   Mio.Maruyama     統合テスト障害(0000783)対応
+ *  2011-02-07    1.3   N.Horigome       E_本稼動_02682対応
  *
  *****************************************************************************************/
 --
@@ -129,6 +130,10 @@ AS
   cv_debug_msg11      CONSTANT VARCHAR2(200) := '<< CSVファイルをオープンしました >>' ;
   cv_debug_msg12      CONSTANT VARCHAR2(200) := '<< CSVファイルをクローズしました >>' ;
   cv_debug_msg13      CONSTANT VARCHAR2(200) := '<< ロールバックしました >>' ;
+  /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+  cv_debug_msg14      CONSTANT VARCHAR2(200) := '<< 前月年度取得処理 >>';
+  cv_debug_msg15      CONSTANT VARCHAR2(200) := 'ln_business_pre_year = ';
+  /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
   cv_debug_msg_fnm    CONSTANT VARCHAR2(200) := 'filename = ';
   cv_debug_msg_fcls   CONSTANT VARCHAR2(200) := '<< 例外処理内でCSVファイルをクローズしました >>';
   cv_debug_msg_copn   CONSTANT VARCHAR2(200) := '<< カーソルをオープンしました >>';
@@ -244,6 +249,9 @@ AS
    ***********************************************************************************/
   PROCEDURE get_param_year(
      on_year             OUT NUMBER                  -- データ抽出パラメータ(年度)
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    ,on_pre_year         OUT NUMBER                  -- データ抽出パラメータ（前月年度）
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
     ,ov_errbuf           OUT NOCOPY VARCHAR2         -- エラー・メッセージ            --# 固定 #
     ,ov_retcode          OUT NOCOPY VARCHAR2         -- リターン・コード              --# 固定 #
     ,ov_errmsg           OUT NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -268,6 +276,9 @@ AS
     -- *** ローカル変数 ***
     ld_process_date  DATE;           -- 業務処理日付格納用
     ln_business_year NUMBER;         -- 現在年度格納用
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    ln_business_pre_year NUMBER;     -- 先月年度格納
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
     lv_msg           VARCHAR2(4000); -- 取得データメッセージ出力用
   BEGIN
 --
@@ -325,6 +336,37 @@ AS
       lv_errbuf := lv_errmsg || SQLERRM;
       RAISE global_api_expt;
     END IF;
+--
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    -- =====================
+    -- 前月年度取得処理 
+    -- =====================
+    ln_business_pre_year := xxcso_util_common_pkg.get_business_year(
+                              TO_CHAR(ADD_MONTHS(ld_process_date,-1),'yyyymm')
+                            );
+    -- *** DEBUG_LOG ***
+    -- 取得した年度をログ出力
+    fnd_file.put_line(
+       which  => FND_FILE.LOG
+      ,buff   => cv_debug_msg14 || CHR(10) ||
+                 cv_debug_msg15 || ln_business_pre_year || CHR(10) ||
+                 ''
+    );
+--
+    -- 年度取得に失敗した場合
+    IF (ln_business_pre_year IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name                  --アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_02             --メッセージコード
+                   );
+      lv_errbuf := lv_errmsg || SQLERRM;
+      RAISE global_api_expt;
+    END IF;
+    
+    -- 戻り値に取得した前月年度を設定
+    on_pre_year := ln_business_pre_year;
+--
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
 --
     -- 戻り値に取得した年度を設定
     on_year := ln_business_year;
@@ -1074,6 +1116,10 @@ AS
     lv_company_cd   VARCHAR2(2000); -- 会社コード（固定値001）
     lv_csv_dir      VARCHAR2(2000); -- CSVファイル出力先
     lv_csv_nm       VARCHAR2(2000); -- CSVファイル名
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    ln_pre_year     NUMBER;         -- データ抽出パラメータ（前月年度）
+    ln_end_year     NUMBER;         -- LOOP終了条件(現年度)
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END ´  */
     -- ファイルオープン確認戻り値格納
     lb_fopn_retcd   BOOLEAN;
     -- メッセージ出力用
@@ -1128,10 +1174,13 @@ AS
     -- A-2.データ抽出パラメータ(年度)取得 
     -- ========================================
     get_param_year(
-       on_year    => ln_year            -- データ抽出パラメータ(年度)
-      ,ov_errbuf  => lv_errbuf          -- エラー・メッセージ            --# 固定 #
-      ,ov_retcode => lv_retcode         -- リターン・コード              --# 固定 #
-      ,ov_errmsg  => lv_errmsg          -- ユーザー・エラー・メッセージ  --# 固定 #
+       on_year     => ln_year            -- データ抽出パラメータ(年度)
+       /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+      ,on_pre_year => ln_pre_year        -- データ抽出パラメータ(前月年度)
+       /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
+      ,ov_errbuf   => lv_errbuf          -- エラー・メッセージ            --# 固定 #
+      ,ov_retcode  => lv_retcode         -- リターン・コード              --# 固定 #
+      ,ov_errmsg   => lv_errmsg          -- ユーザー・エラー・メッセージ  --# 固定 #
     );
 --
     IF (lv_retcode = cv_status_error) THEN
@@ -1189,62 +1238,76 @@ AS
                  ''                  -- 空行の挿入
     );
 --
-    -- カーソルオープン
-    OPEN xdss_data_cur;
-    -- *** DEBUG_LOG ***
-    -- カーソルオープンしたことをログ出力
-    fnd_file.put_line(
-       which  => FND_FILE.LOG
-      ,buff   => cv_debug_msg_copn || CHR(10) ||
-                 ''
-    );
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    
+    -- LOOP終了条件格納
+    ln_end_year := ln_year;
 --
-    <<get_data_loop>>
-    LOOP
-      FETCH xdss_data_cur INTO l_xdss_data_rec;
-      -- 処理対象件数格納
-      gn_target_cnt := xdss_data_cur%ROWCOUNT;
+    <<increment_year_loop>>
+    FOR ln_loop_year IN ln_pre_year..ln_end_year LOOP
+      -- データ取得条件格納
+      ln_year := ln_loop_year;
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
 --
-      EXIT WHEN xdss_data_cur%NOTFOUND
-      OR  xdss_data_cur%ROWCOUNT = 0;
-      -- レコード変数初期化
-      l_get_data_rec := NULL;
-      -- 取得データを格納
-      l_get_data_rec.company_cd   := lv_company_cd;                              -- 会社コード
-      l_get_data_rec.fiscal_year  := l_xdss_data_rec.fiscal_year;                -- 年度
-      l_get_data_rec.year_month   := l_xdss_data_rec.year_month;                 -- 年月
-      l_get_data_rec.base_code    := l_xdss_data_rec.base_code;                  -- 拠点ＣＤ
-      l_get_data_rec.sales_staff  := NVL(l_xdss_data_rec.sales_staff,dflt_num);  -- 営業人員(NULLの場合は0をセット)
-      l_get_data_rec.cprtn_date   := ld_sysdate;                                 -- 連携日時
---
-      -- ========================================
-      -- A-6.営業員別計画データCSV出力 
-      -- ========================================
-      create_csv_rec(
-        ir_xdss_data   =>  l_get_data_rec        -- 営業員別計画抽出データ
-       ,ov_errbuf      =>  lv_errbuf             -- エラー・メッセージ
-       ,ov_retcode     =>  lv_retcode            -- リターン・コード
-       ,ov_errmsg      =>  lv_errmsg             -- ユーザー・エラー・メッセージ
+      -- カーソルオープン
+      OPEN xdss_data_cur;
+      -- *** DEBUG_LOG ***
+      -- カーソルオープンしたことをログ出力
+      fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   => cv_debug_msg_copn || CHR(10) ||
+                   ''
       );
-      --
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_process_expt;
-      END IF;
-      -- 正常件数カウントアップ
-      gn_normal_cnt := gn_normal_cnt + 1;
 --
-    END LOOP get_data_loop;
+      <<get_data_loop>>
+      LOOP
+        FETCH xdss_data_cur INTO l_xdss_data_rec;
+        -- 処理対象件数格納
+        gn_target_cnt := xdss_data_cur%ROWCOUNT;
 --
-    -- カーソルクローズ
-    CLOSE xdss_data_cur;
-    -- *** DEBUG_LOG ***
-    -- カーソルクローズしたことをログ出力
-    fnd_file.put_line(
-       which  => FND_FILE.LOG
-      ,buff   => cv_debug_msg_ccls1 || CHR(10) ||
-                 ''
-    );
+        EXIT WHEN xdss_data_cur%NOTFOUND
+        OR  xdss_data_cur%ROWCOUNT = 0;
+        -- レコード変数初期化
+        l_get_data_rec := NULL;
+        -- 取得データを格納
+        l_get_data_rec.company_cd   := lv_company_cd;                              -- 会社コード
+        l_get_data_rec.fiscal_year  := l_xdss_data_rec.fiscal_year;                -- 年度
+        l_get_data_rec.year_month   := l_xdss_data_rec.year_month;                 -- 年月
+        l_get_data_rec.base_code    := l_xdss_data_rec.base_code;                  -- 拠点ＣＤ
+        l_get_data_rec.sales_staff  := NVL(l_xdss_data_rec.sales_staff,dflt_num);  -- 営業人員(NULLの場合は0をセット)
+        l_get_data_rec.cprtn_date   := ld_sysdate;                                 -- 連携日時
 --
+        -- ========================================
+        -- A-6.営業員別計画データCSV出力 
+        -- ========================================
+        create_csv_rec(
+          ir_xdss_data   =>  l_get_data_rec        -- 営業員別計画抽出データ
+         ,ov_errbuf      =>  lv_errbuf             -- エラー・メッセージ
+         ,ov_retcode     =>  lv_retcode            -- リターン・コード
+         ,ov_errmsg      =>  lv_errmsg             -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+        -- 正常件数カウントアップ
+        gn_normal_cnt := gn_normal_cnt + 1;
+--
+      END LOOP get_data_loop;
+--
+      -- カーソルクローズ
+      CLOSE xdss_data_cur;
+      -- *** DEBUG_LOG ***
+      -- カーソルクローズしたことをログ出力
+      fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   => cv_debug_msg_ccls1 || CHR(10) ||
+                   ''
+      );
+--
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    END LOOP increment_year_loop;
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
   /* 2009.07.21 Mio.Maruyama 0000783 対応 START */  
   --  -- 処理対象件数が0件の場合
   --  IF (gn_target_cnt = 0) THEN

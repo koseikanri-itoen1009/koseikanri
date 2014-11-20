@@ -9,7 +9,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_004_A02_拠点別営業人員一覧格納
  *                    
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-02-17    1.0   kyo     新規作成
  *  2009-05-01    1.1   Tomoko.Mori      T1_0897対応
+ *  2011-02-07    1.2   N.Horigome       E_本稼動_02682対応
  *
  *****************************************************************************************/
 -- 
@@ -125,6 +126,10 @@ AS
 --
   cv_tkn_number_25       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00497';  -- AFF部門マスタビュー抽出エラー
 --
+  /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+  cv_tkn_number_26       CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00609';  -- 会計期間クローズエラー
+--
+  /* 2011.02.07 N.Horigome E_本稼動_02682 END */
   -- トークンコード
   cv_tkn_tbl             CONSTANT VARCHAR2(20) := 'TABLE';
   cv_tkn_item            CONSTANT VARCHAR2(20) := 'ITEM';
@@ -147,6 +152,9 @@ AS
   cv_debug_msg4          CONSTANT VARCHAR2(200) := '<< 業務処理日付取得処理 >>';
   cv_debug_msg5          CONSTANT VARCHAR2(200) := 'ld_process_date = ';
   cv_debug_msg6          CONSTANT VARCHAR2(200) := 'ロールバックしました。';
+  /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+  cv_debug_msg7          CONSTANT VARCHAR2(200) := 'ln_business_pre_year = ';
+  /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
 --
   -- CSVファイル中の項目順番
   cn_fscl_year_num       CONSTANT NUMBER       := 1;                  -- 年度
@@ -196,6 +204,9 @@ AS
   PROCEDURE init(
      od_process_date            OUT NOCOPY DATE       -- 業務処理日付
     ,on_process_year            OUT NOCOPY NUMBER     -- 現在年度
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    ,on_pre_year                OUT NOCOPY NUMBER     -- 前月年度
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
     ,ov_errbuf                  OUT NOCOPY VARCHAR2   -- エラー・メッセージ            -- # 固定 #
     ,ov_retcode                 OUT NOCOPY VARCHAR2   -- リターン・コード              -- # 固定 #
     ,ov_errmsg                  OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ  -- # 固定 #
@@ -381,6 +392,38 @@ AS
         RAISE global_process_expt;
     END;
 --
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+--
+    BEGIN
+      lv_current_yymm  := TO_CHAR(ADD_MONTHS(ld_process_date,-1), 'YYYYMM');
+      -- 前月年度を取得します。
+      ln_business_year := xxcso_util_common_pkg.get_business_year(
+                           lv_current_yymm
+                         );
+      IF (ln_business_year IS NULL) THEN
+        RAISE global_process_expt;
+      END IF;
+      on_pre_year  := ln_business_year;
+      -- ログ出力
+      fnd_file.put_line(
+         which  => FND_FILE.LOG
+        ,buff   => cv_debug_msg7 || TO_CHAR(ln_business_year) || CHR(10) ||
+                   ''
+      );
+--
+    EXCEPTION
+      -- 前月年度抽出に失敗した場合の後処理
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name            -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_03       -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_year_month      -- トークンコード1
+                       ,iv_token_value1 => lv_current_yymm        -- トークン値1
+                     );
+        lv_errbuf := lv_errmsg || SQLERRM;
+        RAISE global_process_expt;
+    END;
+--    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
   EXCEPTION
     -- *** 処理例外ハンドラ ***
     WHEN global_process_expt THEN
@@ -563,6 +606,9 @@ AS
   PROCEDURE data_proper_check(
      iv_base_value         IN  VARCHAR2                 -- 当該行データ
     ,in_process_year       IN  NUMBER                   -- 現在年度
+  /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    ,in_pre_year           IN  NUMBER                   -- 前月年度
+  /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
     ,ov_errbuf             OUT NOCOPY VARCHAR2          -- エラー・メッセージ           -- # 固定 #
     ,ov_retcode            OUT NOCOPY VARCHAR2          -- リターン・コード             -- # 固定 #
     ,ov_errmsg             OUT NOCOPY VARCHAR2          -- ユーザー・エラー・メッセージ -- # 固定 #
@@ -595,6 +641,9 @@ AS
     cv_year_month          CONSTANT VARCHAR2(100) := '年月';      -- 年月
     cv_base_code           CONSTANT VARCHAR2(100) := '拠点コード'; -- 拠点コード
     cv_sales_staff         CONSTANT VARCHAR2(100) := '営業人員';   -- 営業人員
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    cv_false               CONSTANT VARCHAR2(50)  := 'FALSE';      --FALSE
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END */
 --
     -- *** ローカル変数 ***
     lv_fiscal_year         VARCHAR2(100);                              -- 年度
@@ -605,6 +654,9 @@ AS
     lv_item_nm             VARCHAR2(100);                              -- 該当項目名
     ln_year                NUMBER;                                     -- (CSV)年月の年
     lb_return              BOOLEAN;                                    -- リターンステータス
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    lv_result              VARCHAR2(10);                               -- 会計期間クローズチェック戻り値格納
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
 --
     lv_tmp                 VARCHAR2(2000);
     ln_pos                 NUMBER;
@@ -773,20 +825,45 @@ AS
       RAISE global_skip_error_expt;
     END IF;
 --
-    -- 6. 年度不一致チェック
-    IF (TO_CHAR(in_process_year) <> lv_fiscal_year) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name        -- アプリケーション短縮名
-                     ,iv_name         => cv_tkn_number_12   -- メッセージコード
-                     ,iv_token_name1  => cv_tkn_cur_year    -- トークンコード1
-                     ,iv_token_value1 => TO_CHAR(in_process_year)     -- トークン値1
-                     ,iv_token_name2  => cv_tkn_base_val    -- トークンコード2
-                     ,iv_token_value2 => iv_base_value      -- トークン値2
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_skip_error_expt;
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    -- 6．現在年度・前月年度比較チェック
+    IF (in_process_year = in_pre_year) THEN
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
+      -- 6-1. 年度不一致チェック
+      IF (TO_CHAR(in_process_year) <> lv_fiscal_year) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name        -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_12   -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_cur_year    -- トークンコード1
+                       ,iv_token_value1 => TO_CHAR(in_process_year)     -- トークン値1
+                       ,iv_token_name2  => cv_tkn_base_val    -- トークンコード2
+                       ,iv_token_value2 => iv_base_value      -- トークン値2
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_skip_error_expt;
+      END IF;
+--
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    ELSE
+      -- 6-2.AR会計期間クローズチェック
+      lv_result := xxcso_util_common_pkg.check_ar_gl_period_status(TO_DATE(lv_year_month,'YYYYMM'));
+--
+      -- 会計期間がクローズされている場合
+      IF (lv_result = cv_false) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name        -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_26   -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_year_month  -- トークンコード1
+                       ,iv_token_value1 => lv_year_month      -- トークン値1
+                       ,iv_token_name2  => cv_tkn_base_val    -- トークンコード2
+                       ,iv_token_value2 => iv_base_value      -- トークン値2
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_skip_error_expt;
+      END IF;
     END IF;
 --
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END */
     -- 7. 年度・年月整合性チェック
     BEGIN
       ln_year := xxcso_util_common_pkg.get_business_year(
@@ -1424,6 +1501,9 @@ AS
     lv_base_value     VARCHAR2(5000);         -- 当該行データ
     ln_count_process  NUMBER;                 -- 抽出件数
     ln_process_year   NUMBER;                 -- 現在年度
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+    ln_pre_year       NUMBER;                 -- 前月年度
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
     ld_process_date   DATE;                   -- 業務処理日付
 --
   BEGIN
@@ -1445,6 +1525,9 @@ AS
     init(
        od_process_date  => ld_process_date     -- 業務処理日付
       ,on_process_year  => ln_process_year     -- 現在年度
+    /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+      ,on_pre_year      => ln_pre_year         -- 前月年度
+    /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
       ,ov_errbuf        => lv_errbuf           -- エラー・メッセージ            -- # 固定 #
       ,ov_retcode       => lv_retcode          -- リターン・コード              -- # 固定 #
       ,ov_errmsg        => lv_errmsg           -- ユーザー・エラー・メッセージ  -- # 固定 #
@@ -1492,6 +1575,9 @@ AS
         data_proper_check(
            iv_base_value    => lv_base_value    -- 当該行データ
           ,in_process_year  => ln_process_year  -- 現在年度
+        /* 2011.02.07 N.Horigome E_本稼動_02682 START */
+          ,in_pre_year      => ln_pre_year      -- 前月年度
+        /* 2011.02.07 N.Horigome E_本稼動_02682 END   */
           ,ov_errbuf        => lv_errbuf        -- エラー・メッセージ            -- # 固定 #
           ,ov_retcode       => lv_sub_retcode   -- リターン・コード              -- # 固定 #
           ,ov_errmsg        => lv_errmsg        -- ユーザー・エラー・メッセージ  -- # 固定 #
