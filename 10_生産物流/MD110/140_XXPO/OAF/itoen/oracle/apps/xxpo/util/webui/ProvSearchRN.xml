@@ -2,7 +2,7 @@
 <!-- dbdrv: exec java oracle/jrad/tools/xml/importer XMLImporter.class java &phase=dat+24 checkfile:~PROD:~PATH:~FILE &fullpath:~PROD:~PATH:~FILE -username &un_apps -password &pw_apps -dbconnection &jdbc_db_addr  -userId "1" -rootPackage /oracle/apps/~PROD  -rootdir &fullpath:~PROD:mds:directory  -->
 <oa:tableLayout version="9.0.3.8.13_1566" xml:lang="en-US" xmlns:oa="http://xmlns.oracle.com/oa" xmlns:jrad="http://xmlns.oracle.com/jrad" xmlns:ui="http://xmlns.oracle.com/uix/ui" xmlns:user="http://xmlns.oracle.com/jrad/user" xmlns="http://xmlns.oracle.com/jrad" file-version="$Header$" scope="/">
    <ui:contents>
-      <oa:rowLayout id="region1">
+      <oa:rowLayout id="SearchRow01">
          <ui:contents>
             <oa:cellFormat id="SearchCell100" hAlign="right">
                <ui:contents>
@@ -36,7 +36,7 @@
             </oa:cellFormat>
          </ui:contents>
       </oa:rowLayout>
-      <oa:rowLayout id="region2">
+      <oa:rowLayout id="SearchRow02">
          <ui:contents>
             <oa:cellFormat id="SearchCell201" hAlign="right" width="80">
                <ui:contents>
@@ -89,12 +89,12 @@
                   <oa:formValue id="ShShipToNameFv" viewName="XxpoProvSearchVO1" viewAttr="ShipToName"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell503" hAlign="right">
+            <oa:cellFormat id="SearchCell207" hAlign="right">
                <ui:contents>
                   <oa:messageStyledText id="ShShipWhseCodePrompt" prompt="出庫倉庫"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell504" width="90">
+            <oa:cellFormat id="SearchCell208" width="90">
                <ui:contents>
                   <oa:messageLovInput id="ShShipWhseCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ShipWhseCodeLovRN" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoProvSearchVO1" viewAttr="ShipWhseCode" shortDesc="出庫倉庫">
                      <lovMappings>
@@ -106,7 +106,7 @@
                   </oa:messageLovInput>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell505" width="110">
+            <oa:cellFormat id="SearchCell209" width="110">
                <ui:contents>
                   <oa:messageStyledText id="ShShipWhseName" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="ShipWhseName" shortDesc="出庫倉庫名"/>
                   <oa:formValue id="ShShipWhseNameFv" viewName="XxpoProvSearchVO1" viewAttr="ShipWhseName"/>
@@ -114,34 +114,34 @@
             </oa:cellFormat>
          </ui:contents>
       </oa:rowLayout>
-      <oa:rowLayout id="region3">
+      <oa:rowLayout id="SearchRow03">
          <ui:contents>
-            <oa:cellFormat id="SearchCell401" hAlign="right">
+            <oa:cellFormat id="SearchCell301" hAlign="right">
                <ui:contents>
                   <oa:messageStyledText id="ShReqNoPrompt" prompt="依頼No"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell402" columnSpan="3">
+            <oa:cellFormat id="SearchCell302" columnSpan="3">
                <ui:contents>
                   <oa:messageTextInput id="ShReqNo" shortDesc="依頼No" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="ReqNo" maximumLength="12" columns="15"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell501" hAlign="right">
+            <oa:cellFormat id="SearchCell303" hAlign="right">
                <ui:contents>
                   <oa:messageStyledText id="ShShipToNoPrompt" prompt="配送No"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell502" columnSpan="3">
+            <oa:cellFormat id="SearchCell304" columnSpan="3">
                <ui:contents>
                   <oa:messageTextInput id="ShShipToNo" shortDesc="配送No" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="ShipToNo" maximumLength="12" columns="15"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell304" hAlign="right">
+            <oa:cellFormat id="SearchCell305" hAlign="right">
                <ui:contents>
                   <oa:messageStyledText id="ShReqDeptCodePrompt" prompt="依頼部署"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell305">
+            <oa:cellFormat id="SearchCell306">
                <ui:contents>
                   <oa:messageLovInput id="ShReqDeptCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/ReqDeptCodeLovRN" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoProvSearchVO1" viewAttr="ReqDeptCode" shortDesc="依頼部署">
                      <lovMappings>
@@ -153,7 +153,7 @@
                   </oa:messageLovInput>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell306" columnSpan="2">
+            <oa:cellFormat id="SearchCell307" columnSpan="2">
                <ui:contents>
                   <oa:messageStyledText id="ShReqDeptName" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="ReqDeptName" shortDesc="依頼部署名"/>
                   <oa:formValue id="ShReqDeptNameFv" viewName="XxpoProvSearchVO1" viewAttr="ReqDeptName"/>
@@ -161,54 +161,54 @@
             </oa:cellFormat>
          </ui:contents>
       </oa:rowLayout>
-      <oa:rowLayout id="SearchRow06">
+      <oa:rowLayout id="SearchRow04">
          <ui:contents>
-            <oa:cellFormat id="SearchCell601" hAlign="right">
+            <oa:cellFormat id="SearchCell401" hAlign="right">
                <ui:contents>
                   <oa:messageStyledText id="ShShipDatePrompt" prompt="出庫日"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell602">
+            <oa:cellFormat id="SearchCell402">
                <ui:contents>
                   <oa:messageTextInput id="ShShipDateFrom" shortDesc="出庫日" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="ShipDateFrom" dataType="DATE" columns="12"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell603" height="23">
+            <oa:cellFormat id="SearchCell403" height="23">
                <ui:contents>
                   <oa:messageStyledText id="ShShipDateHyphen" prompt="-"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell604">
+            <oa:cellFormat id="SearchCell404">
                <ui:contents>
                   <oa:messageTextInput id="ShShipDateTo" shortDesc="出庫日" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="ShipDateTo" dataType="DATE" columns="12"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell301" hAlign="right">
+            <oa:cellFormat id="SearchCell405" hAlign="right">
                <ui:contents>
                   <oa:messageStyledText id="ShArvlDatePrompt" prompt="入庫日"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell302">
+            <oa:cellFormat id="SearchCell406">
                <ui:contents>
                   <oa:messageTextInput id="ShArvlDateFrom" shortDesc="入庫日" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="ArvlDateFrom" dataType="DATE" columns="12"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell303">
+            <oa:cellFormat id="SearchCell407">
                <ui:contents>
                   <oa:messageStyledText id="ShArvlDateHyphen" prompt="-"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell207">
+            <oa:cellFormat id="SearchCell408">
                <ui:contents>
                   <oa:messageTextInput id="ShArvlDateTo" shortDesc="入庫日" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="ArvlDateTo" dataType="DATE" columns="12"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell403" hAlign="right">
+            <oa:cellFormat id="SearchCell409" hAlign="right">
                <ui:contents>
                   <oa:messageStyledText id="ShInstDeptCodePrompt" prompt="指示部署"/>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell404">
+            <oa:cellFormat id="SearchCell410">
                <ui:contents>
                   <oa:messageLovInput id="ShInstDeptCode" externalListOfValues="/itoen/oracle/apps/xxpo/lov/webui/InstDeptCodeLovRN" styleClass="LegendText" maximumLength="4" columns="7" viewName="XxpoProvSearchVO1" viewAttr="InstDeptCode" shortDesc="指示部署">
                      <lovMappings>
@@ -220,7 +220,7 @@
                   </oa:messageLovInput>
                </ui:contents>
             </oa:cellFormat>
-            <oa:cellFormat id="SearchCell405" columnSpan="3">
+            <oa:cellFormat id="SearchCell411" columnSpan="3">
                <ui:contents>
                   <oa:messageStyledText id="ShInstDeptName" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="InstDeptName" shortDesc="指示部署名"/>
                   <oa:formValue id="ShInstDeptNameFv" viewName="XxpoProvSearchVO1" viewAttr="InstDeptName"/>
@@ -228,10 +228,24 @@
             </oa:cellFormat>
          </ui:contents>
       </oa:rowLayout>
-      <oa:rowLayout id="SearchRow07">
+      <oa:rowLayout id="SearchRow05" rendered="false">
          <ui:contents>
-            <oa:cellFormat id="SearchCell701" columnSpan="1"/>
-            <oa:cellFormat id="SearchCell702" columnSpan="7">
+            <oa:cellFormat id="SearchCell501" hAlign="right">
+               <ui:contents>
+                  <oa:messageStyledText id="ShBaseReqNoPrompt" prompt="元依頼No"/>
+               </ui:contents>
+            </oa:cellFormat>
+            <oa:cellFormat id="SearchCell502" columnSpan="3">
+               <ui:contents>
+                  <oa:messageTextInput id="ShBaseReqNo" shortDesc="元依頼No" styleClass="LegendText" viewName="XxpoProvSearchVO1" viewAttr="BaseReqNo" maximumLength="12" columns="15"/>
+               </ui:contents>
+            </oa:cellFormat>
+         </ui:contents>
+      </oa:rowLayout>
+      <oa:rowLayout id="SearchRow06">
+         <ui:contents>
+            <oa:cellFormat id="SearchCell601" columnSpan="1"/>
+            <oa:cellFormat id="SearchCell602" columnSpan="7">
                <ui:contents>
                   <oa:submitButton id="Go" text="進む" prompt="進む"/>
                   <oa:spacer id="ShBtnSp" width="20" height="30"/>

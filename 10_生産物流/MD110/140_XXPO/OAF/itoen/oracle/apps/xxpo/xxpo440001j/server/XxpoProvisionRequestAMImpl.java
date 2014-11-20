@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,8 @@
 * 2008-06-06 1.0  二瓶大輔     内部変更要求#137対応
 * 2008-06-17 1.1  二瓶大輔     ST不具合#126対応
 * 2008-06-18 1.2  二瓶大輔     不具合対応
+* 2008-06-02 1.3  二瓶大輔     変更要求#42対応
+*                             ST不具合#199対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -38,10 +40,12 @@ import oracle.apps.fnd.framework.server.OAViewObjectImpl;
 import oracle.jbo.Row;
 import oracle.jbo.domain.Date;
 import oracle.jbo.domain.Number;
+import oracle.jbo.AttributeDef;
+import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -130,6 +134,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
           // 受領ボタン・手動指示確定ボタン押下不可  
           prow.setAttribute("RcvBtnReject",        Boolean.TRUE); // 受領ボタン
           prow.setAttribute("ManualFixBtnReject",  Boolean.TRUE); // 手動指示確定ボタン
+          prow.setAttribute("CopyBtnReject",       Boolean.TRUE); // コピーボタン
           
         } else
         {
@@ -140,6 +145,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         }
         // 価格設定ボタン押下不可
         prow.setAttribute("PriceSetBtnReject", Boolean.TRUE); // 価格設定ボタン
+        // 金額確定ボタン押下不可
+        prow.setAttribute("AmountFixBtnReject", Boolean.TRUE); // 金額確定ボタン
 
       }
     }
@@ -174,6 +181,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     shParams.put("instDeptCode", shRow.getAttribute("InstDeptCode"));    // 指示部署
     shParams.put("shipWhseCode", shRow.getAttribute("ShipWhseCode"));    // 出庫倉庫
     shParams.put("exeType",      shRow.getAttribute("ExeType"));         // 起動タイプ
+    shParams.put("baseReqNo",    shRow.getAttribute("BaseReqNo"));       // 元依頼No
 
     // 支給指示結果VO取得
     XxpoProvReqtResultVOImpl vo = getXxpoProvReqtResultVO1();
@@ -2257,6 +2265,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("   ,freight_carrier_code       "); // 運送業者
     sb.append("   ,shipping_method_code       "); // 配送区分
     sb.append("   ,request_no                 "); // 依頼No
+    sb.append("   ,base_request_no            "); // 元依頼No
     sb.append("   ,req_status                 "); // ステータス
     sb.append("   ,schedule_ship_date         "); // 出荷予定日
     sb.append("   ,schedule_arrival_date      "); // 着荷予定日
@@ -2310,8 +2319,8 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("   ,:7 ");
     sb.append("   ,:8 ");
     sb.append("   ,:9 ");
-    sb.append("   ,'05' ");
     sb.append("   ,:10 ");
+    sb.append("   ,'05' ");
     sb.append("   ,:11 ");
     sb.append("   ,:12 ");
     sb.append("   ,:13 ");
@@ -2319,14 +2328,14 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("   ,:15 ");
     sb.append("   ,:16 ");
     sb.append("   ,:17 ");
-    sb.append("   ,FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') ");
     sb.append("   ,:18 ");
+    sb.append("   ,FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') ");
     sb.append("   ,:19 ");
     sb.append("   ,:20 ");
     sb.append("   ,:21 ");
     sb.append("   ,:22 ");
     sb.append("   ,:23 ");
-    sb.append("   ,TO_NUMBER(:24) ");
+    sb.append("   ,:24 ");
     sb.append("   ,TO_NUMBER(:25) ");
     sb.append("   ,TO_NUMBER(:26) ");
     sb.append("   ,TO_NUMBER(:27) ");
@@ -2335,16 +2344,17 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     sb.append("   ,TO_NUMBER(:30) ");
     sb.append("   ,TO_NUMBER(:31) ");
     sb.append("   ,TO_NUMBER(:32) ");
-    sb.append("   ,:33 ");
+    sb.append("   ,TO_NUMBER(:33) ");
+    sb.append("   ,:34 ");
     sb.append("   ,'N' ");
     sb.append("   ,'10' ");
     sb.append("   ,'N' ");
-    sb.append("   ,:34 ");
     sb.append("   ,:35 ");
     sb.append("   ,:36 ");
     sb.append("   ,:37 ");
     sb.append("   ,:38 ");
     sb.append("   ,:39 ");
+    sb.append("   ,:40 ");
     sb.append("   ,FND_GLOBAL.USER_ID ");
     sb.append("   ,SYSDATE ");
     sb.append("   ,FND_GLOBAL.USER_ID ");
@@ -2368,6 +2378,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       String freightCarrierCode  = (String)hdrRow.getAttribute("FreightCarrierCode");    // 運送業者
       String shippingMethodCode  = (String)hdrRow.getAttribute("ShippingMethodCode");    // 配送区分
       String requestNo           = (String)hdrRow.getAttribute("RequestNo");             // 依頼No
+      String baseRequestNo       = (String)hdrRow.getAttribute("BaseRequestNo");         // 元依頼No
       Date   shippedDate         = (Date)hdrRow.getAttribute("ShippedDate");             // 出庫予定日
       Date   arrivalDate         = (Date)hdrRow.getAttribute("ArrivalDate");             // 入庫予定日
       String freightChargeClass  = (String)hdrRow.getAttribute("FreightChargeClass");    // 運賃区分
@@ -2417,6 +2428,7 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       cstmt.setString(i++, freightCarrierCode);                   // 運送業者
       cstmt.setString(i++, shippingMethodCode);                   // 配送区分
       cstmt.setString(i++, requestNo);                            // 依頼No
+      cstmt.setString(i++, baseRequestNo);                        // 元依頼No
       cstmt.setDate(i++, XxcmnUtility.dateValue(shippedDate));    // 出庫日
       cstmt.setDate(i++, XxcmnUtility.dateValue(arrivalDate));    // 入庫日
       cstmt.setString(i++, freightChargeClass);                   // 運賃区分
@@ -4418,6 +4430,316 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
 
   } // setCarriersData
 
+  /***************************************************************************
+   * 支給指示作成ヘッダ画面の初期化処理を行うメソッドです。
+   * @param exeType - 起動タイプ
+   * @param baseReqNo   - 元依頼No
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void initializeCopy(
+    String exeType,
+    String baseReqNo
+    ) throws OAException
+  {
+    // 支給依頼要約検索VO
+    XxpoProvSearchVOImpl svo = getXxpoProvSearchVO1();
+    if (svo.getFetchedRowCount() == 0)
+    {
+      svo.setMaxFetchSize(0);
+      svo.insertRow(svo.createRow());
+      OARow srow = (OARow)svo.first();
+      srow.setNewRowState(OARow.STATUS_INITIALIZED);
+      srow.setAttribute("RowKey",  new Number(1));
+      srow.setAttribute("ExeType", exeType);
+      //プロファイルから代表価格表ID取得
+      String repPriceListId = XxcmnUtility.getProfileValue(
+                                getOADBTransaction(),
+                                XxpoConstants.REP_PRICE_LIST_ID);
+      // 代表価格表が取得できない場合
+      if (XxcmnUtility.isBlankOrNull(repPriceListId)) 
+      {
+        throw new OAException(XxcmnConstants.APPL_XXPO, 
+                              XxpoConstants.XXPO10113);
+      }
+      srow.setAttribute("RepPriceListId", repPriceListId);
+    }
+    // 支給指示作成ヘッダPVO
+    XxpoProvisionInstMakeHeaderPVOImpl pvo = getXxpoProvisionInstMakeHeaderPVO1();
+    // 1行もない場合、空行作成
+    OARow prow = null;
+    if (pvo.getFetchedRowCount() == 0)
+    {
+      pvo.setMaxFetchSize(0);
+      pvo.insertRow(pvo.createRow());
+      prow = (OARow)pvo.first();
+      prow.setNewRowState(OARow.STATUS_INITIALIZED);
+      prow.setAttribute("RowKey", new Number(1));
+
+    } else
+    {
+      prow = (OARow)pvo.first();
+      // 初期化
+      handleEventAllOnHdr(prow);
+
+    }
+
+    OARow hdrRow  = null;
+    // 支給指示作成ヘッダVO取得
+    XxpoProvisionInstMakeHeaderVOImpl hdrVo = getXxpoProvisionInstMakeHeaderVO1();
+    if (hdrVo.getFetchedRowCount() == 0)
+    {
+      hdrVo.setMaxFetchSize(0);
+      hdrVo.executeQuery();
+      hdrVo.insertRow(hdrVo.createRow());
+      hdrRow = (OARow)hdrVo.first();
+      hdrRow.setNewRowState(OARow.STATUS_INITIALIZED);
+    } else
+    {
+      hdrRow = (OARow)hdrVo.first();
+    }
+
+    // キーの設定
+    hdrRow.setAttribute("OrderHeaderId", new Number(-1));
+    // デフォルト値の設定
+    hdrRow.setAttribute("NewFlag",             XxcmnConstants.STRING_Y);              // 新規フラグ
+    hdrRow.setAttribute("TransStatus",         XxpoConstants.PROV_STATUS_NRT);        // ステータス
+    hdrRow.setAttribute("NotifStatus",         XxpoConstants.NOTIF_STATUS_MTT);       // 通知ステータス
+    hdrRow.setAttribute("RcvClass",            XxpoConstants.RCV_CLASS_OFF);          // 指示受領
+    hdrRow.setAttribute("FixClass",            XxpoConstants.FIX_CLASS_OFF);          // 金額確定
+
+    // 支給指示作成コピーヘッダVO取得
+    XxpoProvCopyHeaderVOImpl copyHdrVo = getXxpoProvCopyHeaderVO1();
+    copyHdrVo.initQuery(baseReqNo);
+    copyHdrVo.first();
+    // コピー元の対象データを取得できない場合エラー
+    if ((copyHdrVo == null)  || (copyHdrVo.getFetchedRowCount() == 0)) 
+    {
+      // 参照のみ
+      handleEventAllOffHdr(prow);
+      prow.setAttribute("NextBtnReject", Boolean.TRUE); // 次へボタン
+      // エラーメッセージ出力
+      // TODO メッセージ変更
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10500);
+    }
+
+    OARow copyHdrRow = (OARow)copyHdrVo.first(); 
+    Number baseOrderHdrId = (Number)copyHdrRow.getAttribute("OrderHeaderId"); // 受注ヘッダアドオンID
+    // 支給指示作成コピー明細VO取得
+    XxpoProvCopyLineVOImpl copyLineVo = getXxpoProvCopyLineVO1();
+    copyLineVo.initQuery(exeType, baseOrderHdrId);
+    copyLineVo.first();
+    // コピー元の対象データを取得できない場合エラー
+    if ((copyLineVo == null) || (copyLineVo.getFetchedRowCount() == 0)) 
+    {
+      // 参照のみ
+      handleEventAllOffHdr(prow);
+      prow.setAttribute("NextBtnReject", Boolean.TRUE); // 次へボタン
+      // エラーメッセージ出力
+      // TODO メッセージ変更
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10500);
+
+    }
+
+    // ヘッダコピー処理実施
+    hdrRow.setAttribute("AutoCreatePoClass",   copyHdrRow.getAttribute("AutoCreatePoClass"));  // 自動発注作成区分
+    hdrRow.setAttribute("OrderTypeId",         copyHdrRow.getAttribute("OrderTypeId"));        // 発生区分
+    hdrRow.setAttribute("OrderTypeName",       copyHdrRow.getAttribute("OrderTypeName"));      // 発生区分名
+    hdrRow.setAttribute("WeightCapacityClass", copyHdrRow.getAttribute("WeightCapacityClass")); // 重量容積区分
+    hdrRow.setAttribute("BaseRequestNo",       copyHdrRow.getAttribute("RequestNo"));          // 元依頼No
+    hdrRow.setAttribute("ReqDeptCode",         copyHdrRow.getAttribute("ReqDeptCode"));        // 依頼部署
+    hdrRow.setAttribute("ReqDeptName",         copyHdrRow.getAttribute("ReqDeptName"));        // 依頼部署名
+    hdrRow.setAttribute("InstDeptCode",        copyHdrRow.getAttribute("InstDeptCode"));       // 指示部署
+    hdrRow.setAttribute("InstDeptName",        copyHdrRow.getAttribute("InstDeptName"));       // 指示部署名
+    hdrRow.setAttribute("VendorId",            copyHdrRow.getAttribute("VendorId"));           // 取引先ID
+    hdrRow.setAttribute("VendorCode",          copyHdrRow.getAttribute("VendorCode"));         // 取引先コード
+    hdrRow.setAttribute("VendorName",          copyHdrRow.getAttribute("VendorName"));         // 取引先名
+    hdrRow.setAttribute("ShipToId",            copyHdrRow.getAttribute("ShipToId"));           // 配送先ID
+    hdrRow.setAttribute("ShipToCode",          copyHdrRow.getAttribute("ShipToCode"));         // 配送先コード
+    hdrRow.setAttribute("ShipToName",          copyHdrRow.getAttribute("ShipToName"));         // 配送先名
+    hdrRow.setAttribute("ShipWhseId",          copyHdrRow.getAttribute("ShipWhseId"));         // 出庫倉庫ID
+    hdrRow.setAttribute("ShipWhseCode",        copyHdrRow.getAttribute("ShipWhseCode"));       // 出庫倉庫コード
+    hdrRow.setAttribute("ShipWhseName",        copyHdrRow.getAttribute("ShipWhseName"));       // 出庫倉庫名
+    hdrRow.setAttribute("FreightCarrierId",    copyHdrRow.getAttribute("FreightCarrierId"));   // 運送業者ID
+    hdrRow.setAttribute("FreightCarrierCode",  copyHdrRow.getAttribute("FreightCarrierCode")); // 運送業者コード
+    hdrRow.setAttribute("FreightCarrierName",  copyHdrRow.getAttribute("FreightCarrierName")); // 運送業者名
+    hdrRow.setAttribute("ShippedDate",         copyHdrRow.getAttribute("ShippedDate"));        // 出庫日
+    hdrRow.setAttribute("ArrivalDate",         copyHdrRow.getAttribute("ArrivalDate"));        // 入庫日
+    hdrRow.setAttribute("ArrivalTimeFrom",     copyHdrRow.getAttribute("ArrivalTimeFrom"));    // 着荷時間From
+    hdrRow.setAttribute("ArrivalTimeFromName", copyHdrRow.getAttribute("ArrivalTimeFromName"));// 着荷時間From名
+    hdrRow.setAttribute("ArrivalTimeTo",       copyHdrRow.getAttribute("ArrivalTimeTo"));      // 着荷時間To
+    hdrRow.setAttribute("ArrivalTimeToName",   copyHdrRow.getAttribute("ArrivalTimeToName"));  // 着荷時間To名
+    hdrRow.setAttribute("FreightChargeClass",  copyHdrRow.getAttribute("FreightChargeClass")); // 運賃区分
+    hdrRow.setAttribute("TakebackClass",       copyHdrRow.getAttribute("TakebackClass"));      // 引取区分
+    hdrRow.setAttribute("DesignatedProdDate",  copyHdrRow.getAttribute("DesignatedProdDate")); // 製造日
+    hdrRow.setAttribute("DesignatedItemCode",  copyHdrRow.getAttribute("DesignatedItemCode")); // 製造品目コード
+    hdrRow.setAttribute("DesignatedItemName",  copyHdrRow.getAttribute("DesignatedItemName")); // 製造品目名
+    hdrRow.setAttribute("DesignatedBranchNo",  copyHdrRow.getAttribute("DesignatedBranchNo")); // 製造番号
+    hdrRow.setAttribute("ShippingInstructions", copyHdrRow.getAttribute("ShippingInstructions")); // 摘要
+    hdrRow.setAttribute("DesignatedItemId",    copyHdrRow.getAttribute("DesignatedItemId"));   // 製造品目ID
+    hdrRow.setAttribute("FrequentMover",       copyHdrRow.getAttribute("FrequentMover"));      // 代表運送会社
+    hdrRow.setAttribute("CustomerId",          copyHdrRow.getAttribute("CustomerId"));         // 顧客ID
+    hdrRow.setAttribute("CustomerCode",        copyHdrRow.getAttribute("CustomerCode"));       // 顧客コード
+    hdrRow.setAttribute("PriceList",           copyHdrRow.getAttribute("PriceList"));          // 価格表
+
+    Number orderHeaderId = (Number)hdrRow.getAttribute("OrderHeaderId"); // 受注ヘッダアドオンID
+    // 支給指示作成明細VO取得
+    XxpoProvisionInstMakeLineVOImpl lineVo = getXxpoProvisionInstMakeLineVO1();
+    // 検索を実行します。
+    lineVo.initQuery(exeType, orderHeaderId);
+    copyRows(copyLineVo, lineVo);
+    
+    // 新規時項目制御
+    handleEventInsHdr(exeType, prow, hdrRow);
+
+  } // initializeCopy
+  
+  /***************************************************************************
+   * コピー処理のチェックを行うメソッドです。
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public String chkCopy() throws OAException
+  {
+    XxpoProvReqtResultVOImpl vo = getXxpoProvReqtResultVO1();
+    // 選択されたレコードを取得
+    Row[] rows = vo.getFilteredRows("MultiSelect", XxcmnConstants.STRING_Y);
+    // 未選択チェックを行います。
+    chkNonChoice(rows);
+    // 複数選択チェックを行います。
+    chkManyChoice(rows);
+    // 1番目のレコードを選択
+    OARow row = (OARow)rows[0];
+    // ステータスチェックを行います。
+    String transStatus = (String)row.getAttribute("TransStatus"); // ステータス
+    // ステータスが「入力中」、「入力完了」、「受領済」以外の場合 
+    if (!XxpoConstants.PROV_STATUS_NRT.equals(transStatus)
+     && !XxpoConstants.PROV_STATUS_NRK.equals(transStatus)
+     && !XxpoConstants.PROV_STATUS_ZRZ.equals(transStatus)) 
+    {
+      throw new OAAttrValException(
+                  OAAttrValException.TYP_VIEW_OBJECT,          
+                  vo.getName(),
+                  row.getKey(),
+                  "TransStatus",
+                  transStatus,
+                  XxcmnConstants.APPL_XXPO, 
+                  XxpoConstants.XXPO10145);
+          
+    }
+  
+    return (String)row.getAttribute("RequestNo");
+  } // chkCopy
+
+  /***************************************************************************
+   * 複数選択チェックを行うメソッドです。
+   * @param rows - 行オブジェクト配列
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public void chkManyChoice(
+    Row[] rows
+    ) throws OAException
+  {
+    // 複数選択チェックを行います。
+    if (rows.length != 1)
+    {
+      // エラーメッセージ出力
+      throw new OAException(XxcmnConstants.APPL_XXPO, 
+                            XxpoConstants.XXPO10214);
+    }
+  } // chkManyChoice
+
+  /***************************************************************************
+   * 明細行コピー処理を行うメソッドです。
+   * @param orgVo  - コピー元VO
+   * @param destVo - コピー先VO
+   ***************************************************************************
+   */
+  public static void copyRows(OAViewObjectImpl orgVo, OAViewObjectImpl destVo)
+  {
+    // どちらかのVOがnullの場合は処理終了
+    if (orgVo == null || destVo == null)
+    {
+      return;
+    }
+
+    // コピー元のVOの属性を取得
+    AttributeDef[] attrDefs = orgVo.getAttributeDefs();
+    int attrCount = (attrDefs == null) ? 0 : attrDefs.length;
+    // 属性が取得できない場合は処理終了
+    if (attrCount == 0)
+    {
+      return;
+    }
+    // コピー用イテレータを取得します。
+    RowSetIterator copyIter = orgVo.findRowSetIterator("copyIter");
+    // コピー用イテレータがnullの場合
+    if (copyIter == null)
+    {
+      // イテレータを作成します。
+      copyIter = orgVo.createRowSetIterator("copyIter");
+    }
+
+    boolean rowInserted = false; // 挿入フラグ
+    int lineNum = 1;             // 組織番号
+    
+    // コピーループ
+    while (copyIter.hasNext())
+    {
+      // 行を取得
+      Row sourceRow = copyIter.next();
+
+      // 行を一行でも挿入した場合
+      if (rowInserted)
+      {
+        // コピー先行を次行へ移動します。
+        destVo.next();
+      }
+      // コピー先行を作成
+      Row destRow = destVo.createRow();
+
+      // 属性を全てコピー
+      for (int i = 0; i < attrCount; i++)
+      {
+        byte attrKind = attrDefs[i].getAttributeKind();
+
+        if (!(attrKind == AttributeDef.ATTR_ASSOCIATED_ROW ||
+              attrKind == AttributeDef.ATTR_ASSOCIATED_ROWITERATOR ||
+              attrKind == AttributeDef.ATTR_DYNAMIC))
+
+        {
+
+          String attrName = attrDefs[i].getName();
+          if (destVo.lookupAttributeDef(attrName) != null)
+          {
+
+            Object attrVal = sourceRow.getAttribute(attrName);
+
+            if (attrVal != null)
+            {
+
+              destRow.setAttribute(attrName, attrVal);
+            }
+          }
+        }
+      }
+      // 明細番号：最大の明細番号+1をセット
+      destRow.setAttribute("OrderLineNumber", new Number(lineNum++));  
+      // コピー先を一行挿入します。
+      destVo.insertRow(destRow);
+      // 挿入フラグをtrue
+      rowInserted = true;
+    }
+    // コピー用イテレータをクローズ
+    copyIter.closeRowSetIterator();
+    // コピー先VOをリセットします。
+    destVo.reset();
+
+  } // copyRows
+
   /**
    * 
    * Sample main for debugging Business Components code using the tester.
@@ -4561,5 +4883,23 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
   public OAViewObjectImpl getShipMethodVO1()
   {
     return (OAViewObjectImpl)findViewObject("ShipMethodVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxpoProvCopyHeaderVO1
+   */
+  public XxpoProvCopyHeaderVOImpl getXxpoProvCopyHeaderVO1()
+  {
+    return (XxpoProvCopyHeaderVOImpl)findViewObject("XxpoProvCopyHeaderVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxpoProvCopyLineVO1
+   */
+  public XxpoProvCopyLineVOImpl getXxpoProvCopyLineVO1()
+  {
+    return (XxpoProvCopyLineVOImpl)findViewObject("XxpoProvCopyLineVO1");
   }
 }

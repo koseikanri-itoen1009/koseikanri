@@ -1,18 +1,20 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionInstMakeHeaderCO
 * 概要説明   : 支給指示作成ヘッダコントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-07 1.0  二瓶大輔     新規作成
+* 2008-06-09 1.1  二瓶大輔     変更要求#42対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.webui;
 import com.sun.java.util.collections.HashMap;
 
 import itoen.oracle.apps.xxcmn.util.XxcmnConstants;
+import itoen.oracle.apps.xxcmn.util.XxcmnUtility;
 import itoen.oracle.apps.xxcmn.util.webui.XxcmnOAControllerImpl;
 import itoen.oracle.apps.xxpo.util.XxpoConstants;
 
@@ -30,7 +32,7 @@ import oracle.apps.fnd.framework.webui.beans.OAWebBean;
 /***************************************************************************
  * 支給指示作成ヘッダ画面のコントローラクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
@@ -56,10 +58,21 @@ public class XxpoProvisionInstMakeHeaderCO extends XxcmnOAControllerImpl
 
       // 前画面URL取得
       String prevUrl = pageContext.getParameter(XxpoConstants.URL_PARAM_PREV_URL);
-
+      // 元依頼No取得
+      String baseReqNo = pageContext.getParameter(XxpoConstants.URL_PARAM_BASE_REQ_NO);
+      
+      if (!XxcmnUtility.isBlankOrNull(baseReqNo)) 
+      {
+        // AMの取得
+        OAApplicationModule am = pageContext.getApplicationModule(webBean);
+        // 起動タイプ取得
+        String exeType = pageContext.getParameter(XxpoConstants.URL_PARAM_EXE_TYPE);
+        // 引数設定
+        Serializable param[] = { exeType, baseReqNo };
+        am.invokeMethod("initializeCopy", param);
       // 前画面が有償支給要約画面の場合、初期化処理を実施
-      if (XxpoConstants.URL_XXPO440001J.equals(prevUrl)
-       && pageContext.getParameter("Next") == null)
+      } else if (XxpoConstants.URL_XXPO440001J.equals(prevUrl)
+              && pageContext.getParameter("Next") == null)
       {
         // AMの取得
         OAApplicationModule am = pageContext.getApplicationModule(webBean);

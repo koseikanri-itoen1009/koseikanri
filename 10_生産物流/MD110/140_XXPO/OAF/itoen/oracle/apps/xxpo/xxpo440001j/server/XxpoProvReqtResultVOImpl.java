@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxpoProvReqtResultVOImpl
 * 概要説明   : 支給指示要約結果ビューオブジェクト
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-05 1.0  二瓶大輔     新規作成
+* 2008-06-09 1.1  二瓶大輔     変更要求#42対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -23,7 +24,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 支給指示要約結果ビューオブジェクトクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl 
@@ -66,6 +67,7 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
     String instDeptCode = (String)shParams.get("instDeptCode"); // 指示部署
     String shipWhseCode = (String)shParams.get("shipWhseCode"); // 出庫倉庫  
     String exeType      = (String)shParams.get("exeType");      // 起動タイプ  
+    String baseReqNo    = (String)shParams.get("baseReqNo");    // 元依頼No
     
     // 起動タイプ(必須)
     XxcmnUtility.andAppend(whereClause);
@@ -196,6 +198,19 @@ public class XxpoProvReqtResultVOImpl extends OAViewObjectImpl
       whereClause.append("ship_whse_code = :" + bindCount++);
       //検索値をセット
       parameters.add(shipWhseCode);      
+    }
+    // 元依頼Noが入力されていた場合
+    if (!XxcmnUtility.isBlankOrNull(baseReqNo))
+    {
+      XxcmnUtility.andAppend(whereClause);
+      // Where句生成
+      whereClause.append(" (request_no = :" + bindCount++);
+      //検索値をセット
+      parameters.add(baseReqNo);      
+      // Where句生成
+      whereClause.append(" OR base_request_no = :" + bindCount++ + ") ");
+      //検索値をセット
+      parameters.add(baseReqNo);      
     }
 
     // 検索条件をVOにセット

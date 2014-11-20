@@ -26,7 +26,8 @@
                                           <oa:submitButton id="Rcv" text="受領" prompt="受領" disabled="${oa.XxpoProvisionRequestPVO1.RcvBtnReject}"/>
                                           <oa:submitButton id="ManualFix" text="手動指示確定" prompt="手動指示確定" disabled="${oa.XxpoProvisionRequestPVO1.ManualFixBtnReject}"/>
                                           <oa:submitButton id="PriceSet" text="価格設定" prompt="価格設定" disabled="${oa.XxpoProvisionRequestPVO1.PriceSetBtnReject}"/>
-                                          <oa:submitButton id="AmountFix" text="金額確定" prompt="金額確定"/>
+                                          <oa:submitButton id="AmountFix" text="金額確定" prompt="金額確定" disabled="${oa.XxpoProvisionRequestPVO1.AmountFixBtnReject}"/>
+                                          <oa:submitButton id="Copy" text="コピー" prompt="コピー" disabled="${oa.XxpoProvisionRequestPVO1.CopyBtnReject}"/>
                                        </ui:contents>
                                     </oa:pageButtonBar>
                                  </ui:contents>

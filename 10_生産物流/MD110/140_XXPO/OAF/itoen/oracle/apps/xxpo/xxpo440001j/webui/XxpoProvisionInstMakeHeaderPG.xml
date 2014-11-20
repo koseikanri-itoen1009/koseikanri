@@ -142,10 +142,20 @@
                               </oa:messageLovInput>
                            </ui:contents>
                         </oa:cellFormat>
-                        <oa:cellFormat id="Cell403" columnSpan="6">
+                        <oa:cellFormat id="Cell403" columnSpan="2">
                            <ui:contents>
                               <oa:messageStyledText id="ReqDeptName" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="ReqDeptName" shortDesc="依頼部署名" styleClass="LegendText" maximumLength="20"/>
                               <oa:formValue id="ReqDeptNameFv" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="ReqDeptName"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell404" hAlign="right">
+                           <ui:contents>
+                              <oa:messageStyledText id="BaseReqNoPrompt" prompt="元依頼No" shortDesc="元依頼No"/>
+                           </ui:contents>
+                        </oa:cellFormat>
+                        <oa:cellFormat id="Cell405" columnSpan="3">
+                           <ui:contents>
+                              <oa:messageStyledText id="BaseRequestNo" shortDesc="元依頼No" styleClass="LegendText" viewName="XxpoProvisionInstMakeHeaderVO1" viewAttr="BaseRequestNo"/>
                            </ui:contents>
                         </oa:cellFormat>
                      </ui:contents>
@@ -508,7 +518,7 @@
                   <oa:submitButton id="PriceSet" text="価格設定" prompt="価格設定" disabled="${oa.XxpoProvisionInstMakeHeaderPVO1.PriceSetBtnReject}"/>
                   <oa:submitButton id="ProvCancel" text="支給取消" prompt="支給取消" disabled="${oa.XxpoProvisionInstMakeHeaderPVO1.ProvCancelBtnReject}"/>
                   <oa:spacer id="BtnSp" width="50"/>
-                  <oa:submitButton id="Next" text="次へ" prompt="次へ"/>
+                  <oa:submitButton id="Next" text="次へ" prompt="次へ" disabled="${oa.XxpoProvisionInstMakeHeaderPVO1.NextBtnReject}"/>
                   <oa:submitButton id="Cancel" text="取消" prompt="取消" serverUnvalidated="true" unvalidated="true"/>
                </ui:contents>
             </oa:pageButtonBar>

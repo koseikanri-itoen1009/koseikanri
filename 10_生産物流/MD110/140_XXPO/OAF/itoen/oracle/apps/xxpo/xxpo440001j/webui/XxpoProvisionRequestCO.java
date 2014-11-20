@@ -1,13 +1,14 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestCO
 * 概要説明   : 支給依頼要約コントローラ
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-03-03 1.0  二瓶大輔     新規作成
 * 2008-06-06 1.0  二瓶 大輔    内部変更要求#137対応
+* 2008-06-09 1.1  二瓶大輔     変更要求#42対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.webui;
@@ -28,10 +29,11 @@ import oracle.apps.fnd.framework.webui.OAWebBeanConstants;
 import oracle.apps.fnd.framework.webui.TransactionUnitHelper;
 import oracle.apps.fnd.framework.webui.beans.OAWebBean;
 import oracle.apps.fnd.framework.webui.beans.message.OAMessageLovInputBean;
+import oracle.apps.fnd.framework.webui.beans.layout.OARowLayoutBean;
 /***************************************************************************
  * 支給依頼要約画面のコントローラクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoProvisionRequestCO extends XxcmnOAControllerImpl
@@ -61,6 +63,10 @@ public class XxpoProvisionRequestCO extends XxcmnOAControllerImpl
       // 起動タイプ取得
       String exeType = pageContext.getParameter(XxpoConstants.URL_PARAM_EXE_TYPE);
       
+      // 検索条件：元依頼Noを表示
+      OARowLayoutBean rowLayoutBean = (OARowLayoutBean)webBean.findChildRecursive("SearchRow05");
+      rowLayoutBean.setRendered(true);
+
       // 起動タイプが「12：パッカー･外注工場用」の場合
       if (XxpoConstants.EXE_TYPE_12.equals(exeType)) 
       {
@@ -203,6 +209,30 @@ public class XxpoProvisionRequestCO extends XxcmnOAControllerImpl
         HashMap pageParams = new HashMap();
         pageParams.put(XxpoConstants.URL_PARAM_EXE_TYPE, exeType); // 起動タイプ
         pageParams.put(XxpoConstants.URL_PARAM_PREV_URL, XxpoConstants.URL_XXPO440001J);   // 次画面のURL
+
+        // 支給指示作成画面へ遷移
+        pageContext.setForwardURL(
+          XxpoConstants.URL_XXPO440001JH,
+          null,
+          OAWebBeanConstants.KEEP_MENU_CONTEXT,
+          null,
+          pageParams,
+          false, // Retain AM
+          OAWebBeanConstants.ADD_BREAD_CRUMB_NO, 
+          OAWebBeanConstants.IGNORE_MESSAGES);    
+
+      // コピーボタン押下された場合
+      } else if (pageContext.getParameter("Copy") != null) 
+      {
+        // 【共通処理】トランザクション終了
+        TransactionUnitHelper.endTransactionUnit(pageContext, XxpoConstants.TXN_XXPO440001J);
+
+        String baseReqNo = (String)am.invokeMethod("chkCopy");
+        //パラメータ用HashMap生成
+        HashMap pageParams = new HashMap();
+        pageParams.put(XxpoConstants.URL_PARAM_EXE_TYPE,    exeType); // 起動タイプ
+        pageParams.put(XxpoConstants.URL_PARAM_PREV_URL,    XxpoConstants.URL_XXPO440001J);   // 次画面のURL
+        pageParams.put(XxpoConstants.URL_PARAM_BASE_REQ_NO, baseReqNo); // 元依頼No
 
         // 支給指示作成画面へ遷移
         pageContext.setForwardURL(

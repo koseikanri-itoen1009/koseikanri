@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE AppModule SYSTEM "jbo_03_01.dtd">
 
 <AppModule
@@ -70,5 +70,13 @@
    <ViewUsage
       Name="ShipMethodVO1"
       ViewObjectName="itoen.oracle.apps.xxpo.poplist.server.ShipMethodVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoProvCopyHeaderVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.xxpo440001j.server.XxpoProvCopyHeaderVO" >
+   </ViewUsage>
+   <ViewUsage
+      Name="XxpoProvCopyLineVO1"
+      ViewObjectName="itoen.oracle.apps.xxpo.xxpo440001j.server.XxpoProvCopyLineVO" >
    </ViewUsage>
 </AppModule>

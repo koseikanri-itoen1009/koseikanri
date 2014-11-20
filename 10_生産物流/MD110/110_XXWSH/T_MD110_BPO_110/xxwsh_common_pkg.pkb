@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.9
+ * Version                : 1.10
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/06/03   1.8   Oracle 上原正好  [配車解除関数]440不具合ログ#44対応
  *                                      有償支給の'出荷実績計上済'ステータスを'08'に修正
  *  2008/06/04   1.9   Oracle 山本恭久  [重量容積小口個数更新関数]440不具合ログ#61対応
+ *  2008/06/26   1.10  Oracle 北寒寺正夫 エラー時のメッセージにSQLERRMを追加
  *
  *****************************************************************************************/
 --
@@ -1738,7 +1739,8 @@ AS
                                                   cv_tkn_api_name, cv_api_xoha,
                                                   cv_tkn_type, lv_tkn_biz_type,
                                                   cv_tkn_no_type, lv_tkn_request_no,
-                                                  cv_tkn_request_no, iv_request_no);
+                                                  cv_tkn_request_no, iv_request_no,
+                                                  cv_tkn_err_msg, SQLERRM);
             FND_LOG.STRING(cv_log_level,gv_pkg_name
                           || cv_colon
                           || cv_prg_name,lv_except_msg);
@@ -1782,7 +1784,8 @@ AS
                                                   cv_tkn_api_name, cv_api_xoha_im,
                                                   cv_tkn_type, lv_tkn_biz_type,
                                                   cv_tkn_no_type, lv_tkn_request_no,
-                                                  cv_tkn_request_no, iv_request_no);
+                                                  cv_tkn_request_no, iv_request_no,
+                                                  cv_tkn_err_msg, SQLERRM);
             FND_LOG.STRING(cv_log_level,gv_pkg_name
                           || cv_colon
                           || cv_prg_name,lv_except_msg);
@@ -1892,7 +1895,8 @@ AS
                                                   cv_tkn_api_name, cv_order_lines_item_mst,
                                                   cv_tkn_type, lv_tkn_biz_type,
                                                   cv_tkn_no_type, lv_tkn_request_no,
-                                                  cv_tkn_request_no, iv_request_no);
+                                                  cv_tkn_request_no, iv_request_no,
+                                                  cv_tkn_err_msg, SQLERRM);
             FND_LOG.STRING(cv_log_level,gv_pkg_name
                           || cv_colon
                           || cv_prg_name,lv_except_msg);
@@ -2098,7 +2102,8 @@ AS
                                                     cv_tkn_api_name, cv_api_update_line_item,
                                                     cv_tkn_type, lv_tkn_biz_type,
                                                     cv_tkn_no_type, lv_tkn_request_no,
-                                                    cv_tkn_request_no, iv_request_no);
+                                                    cv_tkn_request_no, iv_request_no,
+                                                    cv_tkn_err_msg, SQLERRM);
           FND_LOG.STRING(cv_log_level,gv_pkg_name
                         || cv_colon
                         || cv_prg_name,lv_except_msg);
@@ -2168,7 +2173,8 @@ AS
                                                       cv_tkn_api_name, cv_api_xoha,
                                                       cv_tkn_type, lv_tkn_biz_type,
                                                       cv_tkn_no_type, lv_tkn_request_no,
-                                                      cv_tkn_request_no, iv_request_no);
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, SQLERRM);
             FND_LOG.STRING(cv_log_level,gv_pkg_name
                           || cv_colon
                           || cv_prg_name,lv_except_msg);
@@ -2258,7 +2264,8 @@ AS
                                                       cv_tkn_api_name, cv_api_xola,
                                                       cv_tkn_type, lv_tkn_biz_type,
                                                       cv_tkn_no_type, lv_tkn_request_no,
-                                                      cv_tkn_request_no, iv_request_no);
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, SQLERRM);
             FND_LOG.STRING(cv_log_level,gv_pkg_name
                           || cv_colon
                           || cv_prg_name,lv_except_msg);
@@ -2452,7 +2459,8 @@ AS
                                                     cv_tkn_api_name, cv_api_update_line_item,
                                                     cv_tkn_type, lv_tkn_biz_type,
                                                     cv_tkn_no_type, lv_tkn_request_no,
-                                                    cv_tkn_request_no, iv_request_no);
+                                                    cv_tkn_request_no, iv_request_no,
+                                                    cv_tkn_err_msg, SQLERRM);
           FND_LOG.STRING(cv_log_level,gv_pkg_name
                         || cv_colon
                         || cv_prg_name,lv_except_msg);
@@ -2518,7 +2526,8 @@ AS
                                                       cv_tkn_api_name, cv_api_mrih,
                                                       cv_tkn_type, lv_tkn_biz_type,
                                                       cv_tkn_no_type, lv_tkn_request_no,
-                                                      cv_tkn_request_no, iv_request_no);
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, SQLERRM);
             FND_LOG.STRING(cv_log_level,gv_pkg_name
                           || cv_colon
                           || cv_prg_name,lv_except_msg);
@@ -2642,7 +2651,8 @@ AS
                                                       cv_tkn_api_name, cv_api_mril_im,
                                                       cv_tkn_type, lv_tkn_biz_type,
                                                       cv_tkn_no_type, lv_tkn_request_no,
-                                                      cv_tkn_request_no, iv_request_no);
+                                                      cv_tkn_request_no, iv_request_no,
+                                                      cv_tkn_err_msg, SQLERRM);
             FND_LOG.STRING(cv_log_level,gv_pkg_name
                           || cv_colon
                           || cv_prg_name,lv_except_msg);
@@ -2688,7 +2698,8 @@ AS
                                                           cv_tkn_api_name, cv_api_small_sum_class,
                                                           cv_tkn_type, lv_tkn_biz_type,
                                                           cv_tkn_no_type, lv_tkn_request_no,
-                                                          cv_tkn_request_no, iv_request_no);
+                                                          cv_tkn_request_no, iv_request_no,
+                                                          cv_tkn_err_msg, SQLERRM);
                 FND_LOG.STRING(cv_log_level,gv_pkg_name
                               || cv_colon
                               || cv_prg_name,lv_except_msg);
@@ -2891,7 +2902,8 @@ AS
                                                     cv_tkn_api_name, cv_api_update_line_item,
                                                     cv_tkn_type, lv_tkn_biz_type,
                                                     cv_tkn_no_type, lv_tkn_request_no,
-                                                    cv_tkn_request_no, iv_request_no);
+                                                    cv_tkn_request_no, iv_request_no,
+                                                    cv_tkn_err_msg, SQLERRM);
           FND_LOG.STRING(cv_log_level,gv_pkg_name
                         || cv_colon
                         || cv_prg_name,lv_except_msg);
@@ -3384,7 +3396,8 @@ AS
                                                 cv_tkn_api_name, cv_api_lock,
                                                 cv_tkn_type, lv_tkn_biz_type,
                                                 cv_tkn_no_type, lv_tkn_request_no,
-                                                cv_tkn_request_no, iv_request_no);
+                                                cv_tkn_request_no, iv_request_no,
+                                                cv_tkn_err_msg, SQLERRM);
       FND_LOG.STRING(cv_log_level,gv_pkg_name
                     || cv_colon
                     || cv_prg_name,lv_except_msg);
@@ -3399,7 +3412,8 @@ AS
                                                 cv_tkn_api_name, cv_api_update_line_item,
                                                 cv_tkn_type, lv_tkn_biz_type,
                                                 cv_tkn_no_type, lv_tkn_request_no,
-                                                cv_tkn_request_no, iv_request_no);
+                                                cv_tkn_request_no, iv_request_no,
+                                                cv_tkn_err_msg, SQLERRM);
       FND_LOG.STRING(cv_log_level,gv_pkg_name
                     || cv_colon
                     || cv_prg_name,lv_except_msg);

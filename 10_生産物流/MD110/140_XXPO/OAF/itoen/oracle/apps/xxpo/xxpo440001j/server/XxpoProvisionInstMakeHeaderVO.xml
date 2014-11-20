@@ -165,6 +165,7 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
       ,xoha.result_shipping_method_code   db_result_shipping_method_code -- ”z‘—‹æ•ª(ŽÀÑ)
       ,xoha.career_id                     plan_freight_carrier_id        -- ‰^‘—‹ÆŽÒID(—\’è)
       ,xoha.freight_carrier_code          plan_freight_carrier_code      -- ‰^‘—‹ÆŽÒƒR[ƒh(—\’è)
+      ,xoha.base_request_no               base_request_no                -- Œ³ˆË—ŠNo
 FROM   xxwsh_order_headers_all        xoha  -- Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
       ,xxwsh_oe_transaction_types2_v  xottv -- Žó’ƒ^ƒCƒvî•ñVIEW2
       ,xxcmn_locations2_v             xlv1  -- Ž–‹ÆŠî•ñVIEW2(ˆË—Š•”—p)
@@ -1471,6 +1472,19 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN ximv.start_date_a
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseRequestNo"
+      IsPersistent="false"
+      Precision="12"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_REQUEST_NO"
+      Expression="BASE_REQUEST_NO"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="12" />
       </DesignTime>
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">

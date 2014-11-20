@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding='windows-31j'?>
+<?xml version="1.0" encoding='Windows-31J'?>
 <!DOCTYPE JboPackage SYSTEM "jbo_03_01.dtd">
 
 <JboPackage
@@ -47,6 +47,16 @@
    <Containee
       Name="XxpoProvisionInstMakeTotalVO"
       FullName="itoen.oracle.apps.xxpo.xxpo440001j.server.XxpoProvisionInstMakeTotalVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoProvCopyHeaderVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo440001j.server.XxpoProvCopyHeaderVO"
+      ObjectType="ViewObject" >
+   </Containee>
+   <Containee
+      Name="XxpoProvCopyLineVO"
+      FullName="itoen.oracle.apps.xxpo.xxpo440001j.server.XxpoProvCopyLineVO"
       ObjectType="ViewObject" >
    </Containee>
 </JboPackage>

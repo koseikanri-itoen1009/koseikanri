@@ -1,19 +1,20 @@
 /*============================================================================
 * ファイル名 : XxpoConstants
 * 概要説明   : 仕入共通定数
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-10 1.0  伊藤ひとみ     新規作成
+* 2008-06-09 1.1  二瓶大輔　     変更要求#42対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
 /***************************************************************************
  * 仕入共通定数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.0
+ * @version 1.1
  ***************************************************************************
  */
 public class XxpoConstants 
@@ -180,8 +181,10 @@ public class XxpoConstants
   public static final String XXPO10208   = "APP-XXPO-10208";
   /** メッセージ：APP-XXPO-10209 一括受入確認 */
   public static final String XXPO10209   = "APP-XXPO-10209";
-   /** メッセージ：APP-XXPO-10210 ロットステータスエラー */
+  /** メッセージ：APP-XXPO-10210 ロットステータスエラー */
   public static final String XXPO10210   = "APP-XXPO-10210";
+  /** メッセージ：APP-XXPO-10214 複数選択エラー */
+  public static final String XXPO10214   = "APP-XXPO-10214";
   /** メッセージ：APP-XXPO-30040 発注情報未選択 */
   public static final String XXPO30040   = "APP-XXPO-30040";
   /** メッセージ：APP-XXPO-30041 登録完了メッセージ */
@@ -458,6 +461,8 @@ public class XxpoConstants
   public static final String URL_PARAM_EXE_TYPE          = "pExeType";
   /** URLパラメータID：有償支給:依頼No */
   public static final String URL_PARAM_REQ_NO            = "pReqNo";
+  /** URLパラメータID：有償支給:元依頼No */
+  public static final String URL_PARAM_BASE_REQ_NO       = "pBaseReqNo";
   /** URLパラメータID：有償支給:前画面URL */
   public static final String URL_PARAM_PREV_URL          = "pPrevUrl";
   /** URLパラメータID：有償支給:完了メッセージ */
@@ -497,9 +502,9 @@ public class XxpoConstants
   /** テーブル日本語名：rcv_lots_interface */
   public static final String TAB_RCV_LOTS_INTERFACE = "受入ロットトランザクションオープンインタフェース";
   /** 列名：qt_inspect_req_no */
-  public static final String COL_QT_INSPECT_REQ_NO = "検査依頼No";
+  public static final String COL_QT_INSPECT_REQ_NO  = "検査依頼No";
   /** 列名：manufactured_date */
-  public static final String COL_MANUFACTURED_DATE = "生産日";
+  public static final String COL_MANUFACTURED_DATE  = "生産日";
   /** 列名：vendor_code */
   public static final String COL_VENDOR_CODE  = "取引先";
   /** 列名：factory_code */
@@ -591,5 +596,5 @@ public class XxpoConstants
   /** 商品区分：1 リーフ */
   public static final String PROD_CLASS_LEAF   = "1";
   /** 商品区分：2 ドリンク */
-  public static final String PROD_CLASS_DRINK   = "2";
+  public static final String PROD_CLASS_DRINK  = "2";
 }
