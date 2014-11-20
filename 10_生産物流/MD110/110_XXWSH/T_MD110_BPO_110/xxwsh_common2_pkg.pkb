@@ -6,13 +6,14 @@ AS
  * Package Name           : xxwsh_common2_pkg(BODY)
  * Description            : 共通関数(OAF用)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
  *   Name                  Type  Ret   Description
  *  -------------------- ---- ----- --------------------------------------------------
  *  copy_order_data         F    NUM   受注情報コピー処理
+ *  upd_order_req_status    P         受注ヘッダステータス更新処理を追加
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -22,6 +23,7 @@ AS
  *  2008/12/06   1.1   T.Miyata        コピー作成時、出荷実績インタフェース済フラグをN(固定)とする。
  *  2008/12/16   1.2   D.Nihei         追加対象：実績計上済区分を追加。
  *  2008/12/19   1.3   M.Hokkanji      移動ロット詳細複写時に訂正前実績数量を追加
+ *  2009/02/09   1.4   M.Hokkanji      受注ヘッダステータス更新処理を追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -660,5 +662,43 @@ AS
 --
   END copy_order_data;
 --
+-- Ver1.4 M.Hokkanji Start
+  -- 受注ヘッダステータス更新処理
+  PROCEDURE upd_order_req_status(
+    in_order_header_id  IN  NUMBER   -- ヘッダID
+   ,iv_req_status       IN  VARCHAR2 -- 更新するステータス
+   ,ov_ret_code         OUT VARCHAR2 -- リターンコード
+   ,ov_errmsg           OUT VARCHAR2 -- エラーメッセージ
+  )IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_order_req_status'; --プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+  BEGIN
+    ov_ret_code := gv_status_normal;
+    ov_errmsg   := NULL;
+    IF  (in_order_header_id IS NOT NULL )
+    AND (iv_req_status IS NOT NULL ) THEN
+      UPDATE xxwsh_order_headers_all xoha
+         SET xoha.req_status         = iv_req_status,      -- ステータス
+             xoha.last_update_date   = SYSDATE,            -- 最終更新日
+             xoha.last_updated_by    = FND_GLOBAL.USER_ID, -- 最終更新者
+             xoha.last_update_login  = FND_GLOBAL.LOGIN_ID -- 最終更新ログイン
+       WHERE xoha.order_header_id    = in_order_header_id;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ov_errmsg := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000);
+      ov_ret_code := gv_status_error;
+  END upd_order_req_status;
+-- Ver1.4 M.Hokkanji End
 END xxwsh_common2_pkg;
 /
