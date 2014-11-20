@@ -8,7 +8,7 @@ AS
  *                    
  * MD.050           : MD050_CSO_006_A02_訪問実績データ格納
  *                    
- * Version          : 1.3
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                       ・顧客セキュリティ要件対応
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-05-14    1.4   Kazuo.Satomura   T1_0931対応
+ *  2009-05-28    1.5   Kazuo.Satomura   T1_0137対応
  *****************************************************************************************/
 -- 
 -- #######################  固定グローバル定数宣言部 START   #######################
@@ -1342,7 +1343,10 @@ AS
       FROM   xxcso_cust_accounts_v xcav
       WHERE  xcav.account_number = g_visit_data_rec.account_number
       AND    ((
-                 xcav.customer_class_code = cv_cust_class_code_cust
+                 /* 2009.05.28 K.Satomura T1_0137対応 START */
+                 --xcav.customer_class_code = cv_cust_class_code_cust
+                 NVL(xcav.customer_class_code, cv_cust_class_code_cust) = cv_cust_class_code_cust
+                 /* 2009.05.28 K.Satomura T1_0137対応 START */
              AND xcav.customer_status IN (cv_cust_status_mc_candidate, cv_cust_status_mc, cv_cust_status_sp_decision,
                                           cv_cust_status_approved, cv_cust_status_customer, cv_cust_status_break)
              )
