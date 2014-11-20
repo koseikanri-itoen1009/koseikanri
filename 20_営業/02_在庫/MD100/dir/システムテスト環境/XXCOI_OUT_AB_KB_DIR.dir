@@ -1,7 +1,7 @@
 /************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Directory Name : XXCOI_OUT_AB_HA_DIR
+ * Directory Name : XXCOI_OUT_AB_KB_DIR
  * Description    : èÓïÒånOUTBOUNDäiî[ÉfÉBÉåÉNÉgÉä
  * Version        : 1.0
  *
@@ -13,4 +13,3 @@
  *
  ************************************************************************/
 CREATE OR REPLACE DIRECTORY XXCOI_OUT_AB_KB_DIR AS '/var/ST/ebsif/outbound/ab_iffile/kb';
-/

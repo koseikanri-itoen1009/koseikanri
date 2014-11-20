@@ -3,13 +3,14 @@
  *
  * View Name   : XXCOI_INVENTORY_APPROVE_V
  * Description : 棚卸承認画面ビュー
- * Version     : 1.0
+ * Version     : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008/11/28    1.0   H.Sasaki         新規作成
+ *  2009/05/13    1.1   T.Nakamura       [T1_0877]CREATE文のセミコロンを削除
  *
  ************************************************************************/
 CREATE OR REPLACE FORCE VIEW XXCOI_INVENTORY_APPROVE_V(
@@ -78,7 +79,7 @@ AND     msi.attribute1 <> '5'
 AND     msi.attribute1 <> '8'
 AND     flv.lookup_type                 = 'XXCOI1_INV_STATUS_F'
 AND     flv.lookup_code                 = ici.inventory_status
-AND     flv.language                    = USERENV('LANG');
+AND     flv.language                    = USERENV('LANG')
 /
 COMMENT ON TABLE  XXCOI_INVENTORY_APPROVE_V                       IS '棚卸承認画面ビュー';
 /
