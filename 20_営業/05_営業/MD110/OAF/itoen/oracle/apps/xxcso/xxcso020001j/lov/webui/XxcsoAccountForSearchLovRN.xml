@@ -16,8 +16,8 @@ HISTORY
    <ui:contents>
       <oa:table name="XxcsoAccountForSearchLovRN" id="AccountTblRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/AccountTblRN">
          <ui:contents>
-            <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" viewName="XxcsoAccountForSearchLovVO1" viewAttr="AccountNumber" maximumLength="30" queryable="true" sortState="yes" initSortSeq="first" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/AccountNumber"/>
-            <oa:messageStyledText id="PartyName" dataType="VARCHAR2" viewName="XxcsoAccountForSearchLovVO1" viewAttr="PartyName" maximumLength="360" queryable="true" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PartyName"/>
+            <oa:messageStyledText id="AccountNumber" dataType="VARCHAR2" viewName="XxcsoAccountForSearchLovVO1" viewAttr="AccountNumber" maximumLength="30" queryable="true" sortState="yes" initSortSeq="none" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/AccountNumber"/>
+            <oa:messageStyledText id="PartyName" dataType="VARCHAR2" viewName="XxcsoAccountForSearchLovVO1" viewAttr="PartyName" maximumLength="360" queryable="false" sortState="yes" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionLovAttrSets/PartyName"/>
             <oa:formValue id="CustAccountId" dataType="NUMBER" viewName="XxcsoAccountForSearchLovVO1" viewAttr="CustAccountId"/>
             <oa:formValue id="SearchClass" viewName="XxcsoAccountForSearchLovVO1" viewAttr="SearchClass"/>
          </ui:contents>
