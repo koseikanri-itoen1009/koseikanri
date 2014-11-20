@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -85,6 +85,7 @@ AS
  *  2008/08/18    1.7   Oracle 山根 一浩 変更要求No61 不具合修正対応
  *  2008/08/19    1.8   Oracle 山根 一浩 T_TE110_BPO_130-002 指摘216対応
  *  2008/08/25    1.9   Oracle 山根 一浩 T_S_442,T_S_548対応
+ *  2008/10/01    1.10  Oracle 椎名 昭圭 統合障害#291対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2999,27 +3000,45 @@ AS
     -- 配送先コードが同じ件数
     BEGIN
 --
+-- 2008/10/01 v1.10 DELETE START
+/*
       ir_masters_rec.row_s_ins_cnt := 0;
       ir_masters_rec.row_s_upd_cnt := 0;
       ir_masters_rec.row_s_del_cnt := 0;
+*/
+-- 2008/10/01 v1.10 DELETE END
 --
       -- 配送先インタフェース
+-- 2008/10/01 v1.10 UPDATE START
+/*
       SELECT SUM(NVL(DECODE(xsi.proc_code,gn_proc_insert,1),0)),  -- 登録
              SUM(NVL(DECODE(xsi.proc_code,gn_proc_update,1),0)),  -- 更新
              SUM(NVL(DECODE(xsi.proc_code,gn_proc_delete,1),0))   -- 削除
+*/
+      SELECT NVL(SUM(NVL(DECODE(xsi.proc_code,gn_proc_insert,1),0)), 0),  -- 登録
+             NVL(SUM(NVL(DECODE(xsi.proc_code,gn_proc_update,1),0)), 0),  -- 更新
+             NVL(SUM(NVL(DECODE(xsi.proc_code,gn_proc_delete,1),0)), 0)   -- 削除
+-- 2008/10/01 v1.10 UPDATE END
       INTO   ir_masters_rec.row_s_ins_cnt,
              ir_masters_rec.row_s_upd_cnt,
              ir_masters_rec.row_s_del_cnt
       FROM   xxcmn_site_if xsi
       WHERE  xsi.ship_to_code = ir_masters_rec.ship_to_code  -- 配送先コードが同じ
       AND    xsi.seq_number < ir_masters_rec.seq_number      -- SEQ番号が以前のデータ
-      GROUP BY base_code;
+-- 2008/10/01 v1.10 UPDATE START
+--      GROUP BY base_code;
+      ;
+-- 2008/10/01 v1.10 UPDATE END
 --
     EXCEPTION
+/*
+-- 2008/10/01 v1.10 DELETE START
       WHEN NO_DATA_FOUND THEN
         ir_masters_rec.row_s_ins_cnt := 0;
         ir_masters_rec.row_s_upd_cnt := 0;
         ir_masters_rec.row_s_del_cnt := 0;
+*/
+-- 2008/10/01 v1.10 DELETE END
 --
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
@@ -4961,8 +4980,11 @@ AS
     SELECT COUNT(xsi.proc_code)
     INTO   ln_cnt
     FROM   xxcmn_site_if xsi
-    WHERE  xsi.ship_to_code = ir_masters_rec.ship_to_code  -- 配送先コードが同じ
-    AND    xsi.party_num = ir_masters_rec.party_num        -- 顧客コードが同じ
+-- 2008/10/01 v1.10 UPDATE START
+--    WHERE  xsi.ship_to_code = ir_masters_rec.ship_to_code  -- 配送先コードが同じ
+--    AND    xsi.party_num = ir_masters_rec.party_num        -- 顧客コードが同じ
+    WHERE  xsi.party_num = ir_masters_rec.party_num        -- 顧客コードが同じ
+-- 2008/10/01 v1.10 UPDATE END
     AND    (xsi.proc_code = gn_proc_insert                 -- 登録
     OR      xsi.proc_code = gn_proc_update)                -- 更新
     AND    xsi.seq_number < ir_masters_rec.seq_number      -- SEQ番号が以前のデータ
@@ -5984,6 +6006,8 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2008/10/01 v1.10 UPDATE START
+/*
     -- ===============================
     -- 登録
     -- ===============================
@@ -6067,7 +6091,7 @@ AS
         IF (lv_retcode = gv_status_error) THEN
           RAISE global_api_expt;
         END IF;
-2008.08.23 Mod ↑*/
+2008.08.23 Mod ↑*//*
       END IF;
 --
       RAISE check_party_num_expt;
@@ -6193,6 +6217,25 @@ AS
 --
       RAISE check_party_num_expt;
     END IF;
+*/
+      -- 配送先IFの存在チェック
+      chk_party_num_if(ir_masters_rec,
+                       lb_retcd,
+                       lv_errbuf,
+                       lv_retcode,
+                       lv_errmsg);
+--
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+    -- 顧客・パーティマスタデータなし
+    IF ((ln_kbn = gn_data_nothing) AND (lb_retcd = FALSE)) THEN
+      ir_masters_rec.proc_code := gn_proc_insert;  -- 登録
+    ELSE
+      ir_masters_rec.proc_code := gn_proc_update;    -- 更新
+    END IF;
+-- 2008/10/01 v1.10 UPDATE END
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -10291,15 +10334,24 @@ AS
         RAISE check_sub_main_expt;
       END IF;
 --
+-- 2008/10/01 v1.10 UPDATE START
+/*
 --2008/08/08 Add ↓
       -- 顧客コード入力あり
 -- 2008/08/25 Mod ↓
 /*
       IF (lr_masters_rec.party_num IS NOT NULL) THEN
-*/
+*//*
       IF (lr_masters_rec.party_num <> gv_def_party_num) THEN
 -- 2008/08/25 Mod ↑
 --2008/08/08 Add ↑
+*/
+      -- 顧客コード入力ありで、削除レコードでない場合
+      IF (
+           (lr_masters_rec.party_num <> gv_def_party_num)
+             AND (lr_masters_rec.proc_code <> gn_proc_delete)
+         ) THEN
+-- 2008/10/01 v1.10 UPDATE END
         -- ===============================
         -- 顧客データ処理開始
         -- ===============================
