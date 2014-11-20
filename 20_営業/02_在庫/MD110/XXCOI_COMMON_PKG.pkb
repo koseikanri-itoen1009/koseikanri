@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/03/13    1.1   H.Wada           get_subinventory_info1 取得条件修正(障害番号T1_0040)
  *  2009/03/30    1.2   N.Abe            convert_cust_subinv_code 顧客ステータス不備対応(障害番号T1_0165)
  *  2009/04/09    1.3   H.Sasaki         [T1_0380]入庫側顧客コードの戻り値設定
+ *  2009/04/24    1.4   T.Nakamura       [T1_0630]倉庫保管場所変換で、専門店直営の保管場所コード体系に対応
  *
  *****************************************************************************************/
 --
@@ -1215,11 +1216,20 @@ AS
     -- *** ローカル定数 ***
     cv_msg_kbn_coi         CONSTANT VARCHAR2(5)  := 'XXCOI';                        -- アプリケーション短縮名
     cv_msg_coi_10206       CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10206';             -- MSG：保管場所取得エラー
-    cv_msg_coi_10207       CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10207';             -- MSG：保管場所失効エラー
-    cv_tkn_subinv_code     CONSTANT VARCHAR2(13) := 'SUB_INV_CODE';                 -- TKN：保管場所ｺｰﾄﾞ
-    cv_warehouse_div       CONSTANT VARCHAR2(1)  := 'A';                            -- 倉庫識別子
+-- == 2009/04/24 Ver1.4 Modified START ============================================
+--    cv_msg_coi_10207       CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10207';             -- MSG：保管場所失効エラー
+--    cv_tkn_subinv_code     CONSTANT VARCHAR2(13) := 'SUB_INV_CODE';                 -- TKN：保管場所ｺｰﾄﾞ
+--    cv_warehouse_div       CONSTANT VARCHAR2(1)  := 'A';                            -- 倉庫識別子
+    cv_whse_code_whse      CONSTANT VARCHAR2(1)  := '1';                            -- 倉庫
+    cv_whse_code_store     CONSTANT VARCHAR2(1)  := '4';                            -- 専門店
+    cv_msg_coi_10380       CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10380';             -- MSG：保管場所失効エラー
+    cv_tkn_dept_code       CONSTANT VARCHAR2(10) := 'DEPT_CODE';                    -- TKN：拠点ｺｰﾄﾞ
+    cv_tkn_whouse_code     CONSTANT VARCHAR2(11) := 'WHOUSE_CODE';                  -- TKN：倉庫ｺｰﾄﾞ
+-- == 2009/04/24 Ver1.4 Modified END ============================================
     -- *** ローカル変数 ***
-    lt_disable_date         mtl_secondary_inventories.disable_date%TYPE;            -- 保管場所失効日
+-- == 2009/04/24 Ver1.4 Deleted START =========================================
+--    lt_disable_date         mtl_secondary_inventories.disable_date%TYPE;            -- 保管場所失効日
+-- == 2009/04/24 Ver1.4 Deleted END =========================================
     -- *** ローカル例外 ***
     disable_date_expt       EXCEPTION;                                              -- 保管場所失効日エラー
   --
@@ -1241,53 +1251,93 @@ AS
     SELECT 
              msi.secondary_inventory_name   AS secondary_inventory_name -- 1.保管場所コード
             ,msi.attribute7                 AS base_code                -- 2.拠点コード
-            ,msi.disable_date               AS disable_date             -- 3.失効日
+-- == 2009/04/24 Ver1.4 Deleted START =========================================
+--            ,msi.disable_date               AS disable_date             -- 3.失効日
+-- == 2009/04/24 Ver1.4 Deleted END =========================================
             ,msi.attribute5                 AS subinv_div               -- 4.棚卸対象
     INTO
              ov_subinv_code                                             -- 1.保管場所コード
             ,ov_base_code                                               -- 2.拠点コード
-            ,lt_disable_date                                            -- 3.失効日
+-- == 2009/04/24 Ver1.4 Deleted START =========================================
+--            ,lt_disable_date                                            -- 3.失効日
+-- == 2009/04/24 Ver1.4 Deleted END =========================================
             ,ov_subinv_div                                              -- 4.棚卸対象
     FROM    mtl_secondary_inventories msi 
-    WHERE   msi.secondary_inventory_name    = cv_warehouse_div||iv_base_code||iv_warehouse_code
+-- == 2009/04/24 Ver1.4 Modified START =========================================
+--    WHERE   msi.secondary_inventory_name    = cv_warehouse_div||iv_base_code||iv_warehouse_code
+    WHERE   msi.attribute7                             =  iv_base_code
+    AND     SUBSTRB(msi.secondary_inventory_name, -2)  =  iv_warehouse_code
+    AND     msi.attribute1                             IN ( cv_whse_code_whse, cv_whse_code_store )
+    AND     TRUNC( NVL(msi.disable_date, SYSDATE+1 ) ) >  TRUNC( SYSDATE )
+-- == 2009/04/24 Ver1.4 Modified END =========================================
     AND     msi.organization_id             = in_organization_id;
     --
-    IF lt_disable_date IS NOT NULL 
-        AND TRUNC(lt_disable_date) <= TRUNC(SYSDATE) 
-    THEN
-    --
-        RAISE disable_date_expt;
-    --
-    END IF;
+-- == 2009/04/24 Ver1.4 Deleted START =========================================
+--    IF lt_disable_date IS NOT NULL 
+--        AND TRUNC(lt_disable_date) <= TRUNC(SYSDATE) 
+--    THEN
+--    --
+--        RAISE disable_date_expt;
+--    --
+--    END IF;
+-- == 2009/04/24 Ver1.4 Deleted END =========================================
   --
   EXCEPTION
   --
-    WHEN disable_date_expt THEN
-        ov_errmsg  := xxccp_common_pkg.get_msg(
-                   iv_application  => cv_msg_kbn_coi
-                  ,iv_name         => cv_msg_coi_10207
-                  ,iv_token_name1  => cv_tkn_subinv_code
-                  ,iv_token_value1 => cv_warehouse_div||iv_base_code||iv_warehouse_code
-                      );
-        ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
-        ov_retcode := cv_status_warn;
-    --
+-- == 2009/04/24 Ver1.4 Deleted START =========================================
+--    WHEN disable_date_expt THEN
+--        ov_errmsg  := xxccp_common_pkg.get_msg(
+--                   iv_application  => cv_msg_kbn_coi
+--                  ,iv_name         => cv_msg_coi_10207
+--                  ,iv_token_name1  => cv_tkn_subinv_code
+--                  ,iv_token_value1 => cv_warehouse_div||iv_base_code||iv_warehouse_code
+--                      );
+--        ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+--        ov_retcode := cv_status_warn;
+--    --
+-- == 2009/04/24 Ver1.4 Deleted END =========================================
     WHEN NO_DATA_FOUND THEN
         ov_errmsg  := xxccp_common_pkg.get_msg(
                          iv_application  => cv_msg_kbn_coi
                         ,iv_name         => cv_msg_coi_10206
-                        ,iv_token_name1  => cv_tkn_subinv_code
-                        ,iv_token_value1 => cv_warehouse_div||iv_base_code||iv_warehouse_code
+-- == 2009/04/24 Ver1.4 Modified START =========================================
+--                        ,iv_token_name1  => cv_tkn_subinv_code
+--                        ,iv_token_value1 => cv_warehouse_div||iv_base_code||iv_warehouse_code
+                        ,iv_token_name1  => cv_tkn_dept_code
+                        ,iv_token_value1 => iv_base_code
+                        ,iv_token_name2  => cv_tkn_whouse_code
+                        ,iv_token_value2 => iv_warehouse_code
+-- == 2009/04/24 Ver1.4 Modified END =========================================
                       );
         ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
         ov_retcode := cv_status_warn;
     --
+-- == 2009/04/24 Ver1.4 Added START ============================================
+    WHEN TOO_MANY_ROWS THEN
+        ov_errmsg  := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_msg_kbn_coi
+                        ,iv_name         => cv_msg_coi_10380
+                        ,iv_token_name1  => cv_tkn_dept_code
+                        ,iv_token_value1 => iv_base_code
+                        ,iv_token_name2  => cv_tkn_whouse_code
+                        ,iv_token_value2 => iv_warehouse_code
+                      );
+        ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+        ov_retcode := cv_status_warn;
+    --
+-- == 2009/04/24 Ver1.4 Added END ============================================
     WHEN OTHERS THEN
         ov_errmsg  := xxccp_common_pkg.get_msg(
                          iv_application  => cv_msg_kbn_coi
                         ,iv_name         => cv_msg_coi_10206
-                        ,iv_token_name1  => cv_tkn_subinv_code
-                        ,iv_token_value1 => cv_warehouse_div||iv_base_code||iv_warehouse_code
+-- == 2009/04/24 Ver1.4 Modified START =========================================
+--                        ,iv_token_name1  => cv_tkn_subinv_code
+--                        ,iv_token_value1 => cv_warehouse_div||iv_base_code||iv_warehouse_code
+                        ,iv_token_name1  => cv_tkn_dept_code
+                        ,iv_token_value1 => iv_base_code
+                        ,iv_token_name2  => cv_tkn_whouse_code
+                        ,iv_token_value2 => iv_warehouse_code
+-- == 2009/04/24 Ver1.4 Modified END =========================================
                       );
         ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
         ov_retcode := cv_status_error;
