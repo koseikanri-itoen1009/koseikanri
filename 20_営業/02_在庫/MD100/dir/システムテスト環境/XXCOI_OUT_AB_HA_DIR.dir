@@ -1,0 +1,1 @@
+CREATE OR REPLACE DIRECTORY XXCOI_OUT_AB_HA_DIR AS '/var/ST/ebsif/outbound/ab_iffile/ha';

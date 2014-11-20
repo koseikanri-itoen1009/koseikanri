@@ -1,0 +1,1 @@
+CREATE OR REPLACE DIRECTORY XXCOS_OUT_AA_KA_DIR AS '/var/ST/ebsif/outbound/aa_iffile/ka';
