@@ -11,7 +11,7 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT XxcsoQuoteLinesSalesVEO.QUOTE_LINE_ID, 
+SELECT  /*+ leading(XxcsoQuoteLinesSalesVEO) first_rows */ XxcsoQuoteLinesSalesVEO.QUOTE_LINE_ID, 
        XxcsoQuoteLinesSalesVEO.QUOTE_HEADER_ID, 
        XxcsoQuoteLinesSalesVEO.REFERENCE_QUOTE_LINE_ID, 
        XxcsoQuoteLinesSalesVEO.INVENTORY_ITEM_ID, 
