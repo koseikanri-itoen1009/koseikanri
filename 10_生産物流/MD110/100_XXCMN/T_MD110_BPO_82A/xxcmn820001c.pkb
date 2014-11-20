@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価取込
  * MD.050           : 標準原価マスタ T_MD050_BPO_820
  * MD.070           : 標準原価取込   T_MD070_BPO_82A
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  2009/04/09    1.4   SCS丸下          本番障害1395 年度切替対応
  *  2009/04/27    1.5   SCS 椎名         本番障害1407対応
  *  2009/05/12    1.6   SCS丸下          本番障害1474対応
+ *  2009/05/12    1.7   SCS丸下          本番障害1474対応追加分
+ *  2009/05/15    1.8   SCS丸下          本番障害1480対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -696,6 +698,30 @@ AS
         ,in_insert_program_id                     -- コンカレント・プログラムID
         ,id_insert_date);                         -- プログラム更新日
 --
+-- 2009/05/15 ADD START
+    --  品目IDを設定
+    UPDATE  xxpo_price_lines xpl
+    SET xpl.item_id =
+        (SELECT imb.item_id 
+         FROM   ic_item_mst_b imb
+         WHERE  imb.item_no = xpl.item_code)
+        ,xpl.last_updated_by          = in_insert_user_id          -- 最終更新者
+        ,xpl.last_update_date         = id_insert_date             -- 最終更新日
+        ,xpl.last_update_login        = in_insert_login_id         -- 最終更新ログイン
+        ,xpl.request_id               = in_insert_request_id       -- 要求ID
+        ,xpl.program_application_id   = in_insert_program_appl_id  -- コンカレント・プログラム・アプリケーションID
+        ,xpl.program_id               = in_insert_program_id       -- コンカレント・プログラムID
+        ,xpl.program_update_date      = id_insert_date             -- プログラム更新日
+    WHERE xpl.item_code is not null
+    AND   xpl.item_id is null
+    AND   exists(
+          SELECT 'X'
+          FROM xxpo_price_headers xph
+          WHERE xph.price_type = '2'
+          AND   xph.price_header_id = xpl.price_header_id
+    );
+-- 2009/05/15 ADD END
+--
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
@@ -1061,10 +1087,20 @@ AS
       SELECT ximv.item_no item_code
             ,ximv.obsolete_class obsolete_class
       FROM xxcmn_item_mst2_v ximv -- OPM品目情報VIEW2
+-- 2009/05/14 MOD START
+--      WHERE ximv.parent_item_id = in_parent_item_id
+--        AND ximv.item_no <> iv_item_code
+--        AND ximv.start_date_active <= id_start_date
+--        AND ximv.end_date_active >= id_start_date;
+          ,xxcmn_item_categories5_v xic
       WHERE ximv.parent_item_id = in_parent_item_id
         AND ximv.item_no <> iv_item_code
         AND ximv.start_date_active <= id_start_date
-        AND ximv.end_date_active >= id_start_date;
+        AND ximv.end_date_active >= id_start_date
+        AND ximv.item_id         = xic.item_id
+        AND xic.item_class_code  = '5' -- 製品
+        ;
+--2009/05/14 MOD END
 --
     -- *** ローカル・レコード ***
 --
