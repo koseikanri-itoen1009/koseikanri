@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP004A05R(body)
  * Description      : 引取計画立案表出力ワーク登録
  * MD.050           : 引取計画立案表 MD050_COP_004_A05
- * Version          : 1.4
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *  2009/06/10    1.3  SCS.Kikuchi       T1_1411対応
  *  2009/06/23    1.4  SCS.Kikuchi       障害:0000025対応
  *  2009/10/13    1.5  SCS.Fukada        障害:E_T3_00556対応
+ *  2009/10/16    1.6  SCS.Sasaki        障害:0001424対応
+ *  2009/10/20    1.7  SCS.Sasaki        障害:0001424対応(PT対応)
  *
  *****************************************************************************************/
 --
@@ -310,7 +312,58 @@ AS
     ------------------------------------------------------------
     --  管理元拠点＋配下拠点抽出
     ------------------------------------------------------------
-    SELECT hca.account_number        account_number                -- 顧客コード
+--20091020 Ver1.7 Modified START
+--    SELECT hca.account_number        account_number                -- 顧客コード
+--    ,      xp.party_short_name       base_short_name               -- 拠点名
+--    ,      ( SELECT  count(*)
+--             FROM    bom_calendar_dates bom
+--             WHERE   calendar_code = mp.calendar_code
+--             AND     exception_set_id = mp.calendar_exception_set_id
+--             AND     calendar_date BETWEEN gd_last_month_start_day AND gd_last_month_end_day
+--             AND     seq_num is not null
+--           ) ope_days_last_month                                   -- 前月実働日数
+--    ,      ( SELECT  count(*)
+--             FROM    bom_calendar_dates bom
+--             WHERE   calendar_code = mp.calendar_code
+--             AND     exception_set_id = mp.calendar_exception_set_id
+--             AND     calendar_date BETWEEN gd_this_month_start_day AND gd_this_month_end_day
+--             AND     seq_num is not null
+--           ) ope_days_this_month                                   -- 当月稼動予定日数
+--    ,      ( SELECT  count(*)
+--             FROM    bom_calendar_dates bom
+--             WHERE   calendar_code = mp.calendar_code
+--             AND     exception_set_id = mp.calendar_exception_set_id
+--             AND     calendar_date BETWEEN gd_next_month_start_day AND gd_next_month_end_day
+--             AND     seq_num is not null
+--           ) ope_days_next_month                                   -- 翌月稼動予定日数
+--    ,      ( SELECT  count(*)
+--             FROM    bom_calendar_dates bom
+--             WHERE   calendar_code = mp.calendar_code
+--             AND     exception_set_id = mp.calendar_exception_set_id
+--             AND     calendar_date BETWEEN gd_this_month_start_day AND gd_prev_day
+--             AND     seq_num is not null
+--           ) ope_days_this_month_prevday                           -- 当月実働日数
+--    BULK COLLECT
+--    INTO   g_header_data_tbl
+--    FROM   hz_cust_accounts         hca            -- 顧客マスタ
+--    ,      xxcmn_parties            xp             -- パーティアドオンマスタ
+--    ,      mtl_parameters           mp             -- 組織パラメータ
+--    WHERE  hca.customer_class_code =  cv_customer_class_code_base
+--    AND (  hca.account_number      =  gv_base_code
+--        OR hca.cust_account_id     IN ( SELECT customer_id
+--                                        FROM   xxcmm_cust_accounts                      -- 顧客追加情報
+--                                        WHERE  management_base_code = gv_base_code      -- 管理元拠点コード
+--                                      )
+--        )
+--    AND    xp.party_id         (+) =  hca.party_id
+--    AND    xp.start_date_active(+) <= gd_system_date
+--    AND    xp.end_date_active  (+) >= gd_system_date
+----20090428_Ver1.2_T1_0645_SCS.Kikuchi_MOD_START
+----    AND    mp.organization_id      =  gn_mater_org_id
+--    AND    mp.organization_code    =  gv_sales_org_code
+----20090428_Ver1.2_T1_0645_SCS.Kikuchi_MOD_END
+--    ;
+    SELECT cai.account_number        account_number                -- 顧客コード
     ,      xp.party_short_name       base_short_name               -- 拠点名
     ,      ( SELECT  count(*)
              FROM    bom_calendar_dates bom
@@ -342,24 +395,27 @@ AS
            ) ope_days_this_month_prevday                           -- 当月実働日数
     BULK COLLECT
     INTO   g_header_data_tbl
-    FROM   hz_cust_accounts         hca            -- 顧客マスタ
-    ,      xxcmn_parties            xp             -- パーティアドオンマスタ
+    FROM   xxcmn_parties            xp             -- パーティアドオンマスタ
     ,      mtl_parameters           mp             -- 組織パラメータ
-    WHERE  hca.customer_class_code =  cv_customer_class_code_base
-    AND (  hca.account_number      =  gv_base_code
-        OR hca.cust_account_id     IN ( SELECT customer_id
-                                        FROM   xxcmm_cust_accounts                      -- 顧客追加情報
-                                        WHERE  management_base_code = gv_base_code      -- 管理元拠点コード
-                                      )
-        )
-    AND    xp.party_id         (+) =  hca.party_id
+    ,   (  SELECT  hca.account_number
+                  ,hca.party_id
+           FROM    hz_cust_accounts    hca
+           WHERE   hca.customer_class_code = cv_customer_class_code_base
+           AND     hca.account_number      = gv_base_code
+           UNION
+           SELECT  hca.account_number
+                  ,hca.party_id
+           FROM    hz_cust_accounts    hca
+                  ,xxcmm_cust_accounts xca
+           WHERE   hca.customer_class_code  = cv_customer_class_code_base
+           AND     hca.cust_account_id      = xca.customer_id
+           AND     xca.management_base_code = gv_base_code
+        )   cai
+    WHERE  xp.party_id         (+) =  cai.party_id
     AND    xp.start_date_active(+) <= gd_system_date
     AND    xp.end_date_active  (+) >= gd_system_date
---20090428_Ver1.2_T1_0645_SCS.Kikuchi_MOD_START
---    AND    mp.organization_id      =  gn_mater_org_id
-    AND    mp.organization_code    =  gv_sales_org_code
---20090428_Ver1.2_T1_0645_SCS.Kikuchi_MOD_END
-    ;
+    AND    mp.organization_code    =  gv_sales_org_code;
+--20091020 Ver1.7 Modified END
 --
   EXCEPTION
 --
@@ -433,7 +489,11 @@ AS
     SELECT data_type              data_type            -- データ種別区分
     ,      detail_month           detail_month         -- 明細年月
     ,      prod_class_code        prod_class_code      -- 商品区分
-    ,      prod_class_name        prod_class_name      -- 商品区分名
+--20091016 Ver1.6 Modified START
+--    ,      prod_class_name        prod_class_name      -- 商品区分名
+    ,      SUBSTRB(prod_class_name, 1, 8)
+                                  prod_class_name      -- 商品区分名
+--20091016 Ver1.6 Modified END
     ,      crowd_class_code       crowd_class_code     -- 群コード
     ,      inventory_item_id      inventory_item_id    -- INV品目ID
     ,      organization_id        organization_id      -- 組織ID
@@ -1346,7 +1406,10 @@ AS
     --   ※変数定義部で設定済み
     -- ===============================
     -- マスタ検索用日付設定
-    gd_system_date             := TRUNC(SYSDATE);
+--20091016 Ver1.6 Modified START
+--    gd_system_date             := TRUNC(SYSDATE);
+    gd_system_date             := TRUNC(xxccp_common_pkg2.get_process_date);
+--20091016 Ver1.6 Modified END
 
     gd_this_month_start_day    := TO_DATE(TO_CHAR(gd_system_date,cv_target_month_format),cv_target_month_format);
     gd_this_month_end_day      := ADD_MONTHS(gd_this_month_start_day,1) - (1/24/60/60);
