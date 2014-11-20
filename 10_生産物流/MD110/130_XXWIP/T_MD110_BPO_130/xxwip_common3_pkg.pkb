@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwip_common3_pkg(BODY)
  * Description            : 共通関数(XXWIP)(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.2
+ * Version                : 1.3
  *
  * Program List
  *  --------------------   ---- ----- --------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/04/18   1.0   M.Nomura         新規作成
  *  2008/07/02   1.1   M.Nomura         メッセージ出力不具合
  *  2008/07/17   1.2   M.Nomura         変更要求#96、#98対応・内部課題32対応
+ *  2008/10/01   1.3    Y.Kawano        内部変更#220,T_S_500対応
  *
  *****************************************************************************************/
 --
@@ -145,8 +146,13 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル変数 ***
-    lv_open_flag            org_acct_periods.open_flag%TYPE;          -- オープンフラグ
-    ld_period_close_date    org_acct_periods.period_close_date%TYPE;  -- クローズ日付
+--2008/10/01 Y.Kawano Mod Start
+--    lv_open_flag            org_acct_periods.open_flag%TYPE;          -- オープンフラグ
+--    ld_period_close_date    org_acct_periods.period_close_date%TYPE;  -- クローズ日付
+    lv_open_flag            VARCHAR(1);                               -- オープンフラグ
+    lt_close_whse_ind       ic_whse_sts.close_whse_ind%TYPE;          -- ステータス
+    ld_period_close_date    ic_whse_sts.log_end_date%TYPE;            -- クローズ日付
+--2008/10/01 Y.Kawano Mod End
     lv_orgn_code            sy_orgn_mst.orgn_code%TYPE;               -- 組織
     ln_grace_period         NUMBER;                                   -- 運賃計算用猶予期間
     ld_temp_date            DATE;                                     -- クローズ日付+猶予期間
@@ -183,16 +189,40 @@ AS
     --    オープンフラグ、クローズ日取得
     -- ***********************************************
     BEGIN
-      SELECT  oap.open_flag            -- オープンフラグ
-             ,oap.period_close_date    -- クローズ日付
-      INTO    lv_open_flag
+--2008/10/01 Y.Kawano Mod Start
+--      SELECT  oap.open_flag            -- オープンフラグ
+--             ,oap.period_close_date    -- クローズ日付
+--      INTO    lv_open_flag
+--             ,ld_period_close_date
+--      FROM    org_acct_periods        oap -- 在庫会計期間
+--             ,ic_whse_mst             iwm -- OPM倉庫マスタ
+--      WHERE   oap.period_start_date  =
+--              TO_DATE(TO_CHAR(ADD_MONTHS(SYSDATE, -1), 'YYYYMM') || '01', 'YYYYMMDD')  -- 前月の初日
+--      AND     oap.organization_id   = iwm.mtl_organization_id                          -- 在庫組織ID
+--      AND     iwm.whse_code = lv_orgn_code;                                            -- 倉庫コード
+      SELECT  NVL(iws.close_whse_ind,1)   -- ステータス
+             ,TRUNC(iws.log_end_date)     -- クローズ日付
+      INTO    lt_close_whse_ind
              ,ld_period_close_date
-      FROM    org_acct_periods        oap -- 在庫会計期間
-             ,ic_whse_mst             iwm -- OPM倉庫マスタ
-      WHERE   oap.period_start_date  =
-              TO_DATE(TO_CHAR(ADD_MONTHS(SYSDATE, -1), 'YYYYMM') || '01', 'YYYYMMDD')  -- 前月の初日
-      AND     oap.organization_id   = iwm.mtl_organization_id                          -- 在庫組織ID
-      AND     iwm.whse_code = lv_orgn_code;                                            -- 倉庫コード
+      FROM    ic_cldr_dtl            icd  -- OPM在庫カレンダ詳細
+             ,ic_whse_sts            iws  -- OPM倉庫別カレンダ
+      WHERE   TO_CHAR(icd.period_end_date, 'YYYYMM') 
+                                   = TO_CHAR(ADD_MONTHS(SYSDATE, -1), 'YYYYMM')       -- 前月
+      AND     icd.period_id        = iws.period_id(+)
+      AND     iws.whse_code(+)     = lv_orgn_code                                     -- 倉庫コード
+      ;
+      --
+      -- オープン/クローズ判別
+      IF ( lt_close_whse_ind = 1 )
+      THEN
+        --オープンの場合
+        lv_open_flag := gv_type_y;
+      ELSE
+        --暫定クローズ/最終クローズの場合
+        lv_open_flag := gv_type_n;
+      END IF;
+--2008/10/01 Y.Kawano Mod End
+    --
     EXCEPTION
       WHEN NO_DATA_FOUND OR TOO_MANY_ROWS THEN                       --*** データ取得エラー ***
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxcmn,
@@ -220,7 +250,7 @@ AS
       --   クローズ日付 + 猶予期間の営業日を取得
       -- ***********************************************
       xxwip_common_pkg.get_business_date(
-        id_date           => ld_PERIOD_CLOSE_DATE   -- IN  クローズ日付
+        id_date           => ld_period_close_date   -- IN  クローズ日付
        ,in_period         => ln_grace_period        -- IN← プロファイルオプション 猶予期間
        ,od_business_date  => ld_temp_date           -- OUT クローズ日付+猶予期間
        ,ov_errbuf         => lv_errbuf              -- エラー・メッセージ           --# 固定 #
@@ -1081,6 +1111,24 @@ AS
 --
       -- 変換対象の数量 ÷ ケース入り数
       ln_converted_num := CEIL(in_qty / ln_num_of_cases);
+--
+--2008/10/01 Y.Kawano Add Start
+    -- **************************************************
+    -- 入出庫換算単位が設定されていない場合
+    -- **************************************************
+    ELSIF (lv_conv_unit IS NULL ) THEN
+      -- ケース入り数が設定されている場合
+      IF (ln_num_of_cases > 0) THEN
+--
+        -- 変換対象の数量 ÷ ケース入り数
+        ln_converted_num := CEIL(in_qty / ln_num_of_cases);
+--
+      ELSE
+        -- 変換対象の数量そのまま
+        ln_converted_num := in_qty;
+--
+      END IF;
+--2008/10/01 Y.Kawano Add End
 --
     -- **************************************************
     -- 上記以外の場合
