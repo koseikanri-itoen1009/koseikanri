@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A03C (body)
  * Description      : 納品確定情報データ作成(EDI)
  * MD.050           : 納品確定情報データ作成(EDI) MD050_COS_014_A03
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2009/08/13    1.11  M.Sano           [0001043] 売上区分混在チェック削除
  *  2009/09/09    1.12  M.Sano           [0001211] 税関連項目取得基準日修正
  *  2009/10/02    1.13  M.Sano           [0001306] 売上区分混在チェックのIF条件修正
+ *  2010/02/16    1.14  K.Kiriu          [E_本稼動_01590] エラー明細出力対応（単位換算実行チェック追加）
  *
  *****************************************************************************************/
 --
@@ -187,6 +188,9 @@ AS
   --参照タイプ
   ct_qc_sale_class                CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_SALE_CLASS';                   --参照タイプ.売上区分
   ct_qc_consumption_tax_class     CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_CONSUMPTION_TAX_CLASS';        --参照タイプ.消費税区分
+-- 2010/02/16 Ver.1.14 add start
+  cv_qck_edi_err_type             CONSTANT fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_EDI_ITEM_ERR_TYPE';            --参照タイプ.EDI品目エラータイプ
+-- 2010/02/16 Ver.1.14 add end
 --
   --その他
   cv_utl_file_mode                CONSTANT VARCHAR2(1)  := 'w';                                   --UTL_FILE.オープンモード
@@ -200,6 +204,10 @@ AS
 -- 2009/09/09 Ver.1.12 add start
   ct_lang                         CONSTANT fnd_lookup_values.language%TYPE := USERENV('LANG');    -- 言語
 -- 2009/09/09 Ver.1.12 add end
+-- 2010/02/16 Ver.1.14 add start
+  cv_tsukagatazaiko_13            CONSTANT VARCHAR2(2)  := '13';                                   -- 通過在庫型区分13（受注を作成する）
+  cv_data_type_31                 CONSTANT VARCHAR2(2)  := '31';                                   -- データ種(納品確定)
+-- 2010/02/16 Ver.1.14 add start
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -289,8 +297,21 @@ AS
    ,ball_order_qty          xxcos_edi_lines.ball_order_qty%TYPE                  --発注数量（ボール）
    ,sum_order_qty           xxcos_edi_lines.sum_order_qty%TYPE                   --発注数量（合計、バラ）
    ,sum_shipping_qty        xxcos_edi_lines.sum_shipping_qty%TYPE                --出荷数量（合計、バラ）
+-- 2010/02/16 Ver.1.14 add start
+   ,item_code               xxcos_edi_lines.item_code%TYPE                       --品目コード
+   ,indv_shipping_qty       xxcos_edi_lines.indv_shipping_qty%TYPE               --出荷数量(バラ)
+   ,case_shipping_qty       xxcos_edi_lines.case_shipping_qty%TYPE               --出荷数量(ケース)
+   ,ball_shipping_qty       xxcos_edi_lines.ball_shipping_qty%TYPE               --出荷数量(ボール)
+   ,indv_stockout_qty       xxcos_edi_lines.indv_stockout_qty%TYPE               --欠品数量(バラ)
+   ,case_stockout_qty       xxcos_edi_lines.case_stockout_qty%TYPE               --欠品数量(ケース)
+   ,ball_stockout_qty       xxcos_edi_lines.ball_stockout_qty%TYPE               --欠品数量(ボール)
+   ,sum_stockout_qty        xxcos_edi_lines.sum_stockout_qty%TYPE                --欠品数量(合計・バラ)
+-- 2010/02/16 Ver.1.14 add end
   );
   TYPE g_sum_data_tab IS TABLE OF g_sum_data_rtype INDEX BY PLS_INTEGER;
+-- 2010/02/16 Ver.1.14 add start
+  TYPE g_err_item_ttype IS TABLE OF VARCHAR2(30) INDEX BY VARCHAR2(30);  --エラー品目
+-- 2010/02/16 Ver.1.14 add end
 --***************************** 2009/07/16 1.9 N.Maeda  ADD END    *************************** --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -306,6 +327,9 @@ AS
 --***************************** 2009/07/16 1.9 N.Maeda  ADD START  *************************** --
   gt_sum_data_tab            g_sum_data_tab;                                     --伝票計サマリ用インデックステーブル
 --***************************** 2009/07/16 1.9 N.Maeda  ADD END    *************************** --
+-- 2010/02/16 Ver.1.14 add start
+  gt_err_item_tab            g_err_item_ttype;                                   --エラー品目
+-- 2010/02/16 Ver.1.14 add end
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -524,11 +548,26 @@ AS
 -- 2009/02/19 T.Nakamura Ver.1.5 add end
 --
     -- *** ローカル・カーソル ***
+-- 2010/02/16 Ver.1.14 add start
+    -- EDI品目エラータイプカーソル
+    CURSOR edi_item_err_type_cur
+    IS
+      SELECT  flv.lookup_code    err_item_code    -- ダミー品目コード(添字)
+      FROM    fnd_lookup_values  flv
+      WHERE   flv.language       = ct_lang
+      AND     flv.enabled_flag   = cv_enabled_flag
+      AND     flv.lookup_type    = cv_qck_edi_err_type  -- EDI品目エラータイプ
+      AND     TRUNC( g_other_rec.process_date ) BETWEEN flv.start_date_active
+                                  AND     NVL( flv.end_date_active, TRUNC(  g_other_rec.process_date ) );
+-- 2010/02/16 Ver.1.14 add end
 --
     -- *** ローカル・レコード ***
     l_prf_rec g_prf_rtype;
     l_other_rec g_other_rtype;
     l_record_layout_tab xxcos_common2_pkg.g_record_layout_ttype;
+-- 2010/02/16 Ver.1.14 add start
+    l_err_type_rec      edi_item_err_type_cur%ROWTYPE;  -- EDI品目エラータイプカーソル レコード変数
+-- 2010/02/16 Ver.1.14 add end
 --
 --
   BEGIN
@@ -920,6 +959,16 @@ AS
     g_prf_rec := l_prf_rec;
     g_other_rec := l_other_rec;
     g_record_layout_tab := l_record_layout_tab;
+-- 2010/02/16 Ver.1.14 add start
+--
+    --==============================================================
+    --エラー品目の取得
+    --==============================================================
+    <<loop_edi_err_item>>
+    FOR l_err_type_rec IN edi_item_err_type_cur LOOP
+      gt_err_item_tab(l_err_type_rec.err_item_code) := l_err_type_rec.err_item_code;
+    END LOOP loop_edi_err_item;
+-- 2010/02/16 Ver.1.14 add end
 --
     out_line(buff => cv_prg_name || ' end');
   EXCEPTION
@@ -2793,6 +2842,9 @@ AS
 -- 2009/07/29 M.Sano Ver.1.9 add Start
             ,xe.line_uom                                                        line_uom                      --明細単位
 -- 2009/07/29 M.Sano Ver.1.9 add End
+-- 2010/02/16 Ver.1.14 add Start
+            ,xe.tsukagatazaiko_div                                              tsukagatazaiko_div            --通過在庫型区分
+-- 2010/02/16 Ver.1.14 add End
       FROM
              (
               SELECT 1                                                           select_block                  --店舗コードがある
@@ -3129,6 +3181,9 @@ AS
                      ,xca.edi_district_kana                                      edi_district_kana             --EDI地区名カナ（EDI)
                      ,xca.torihikisaki_code                                      torihikisaki_code             --取引先コード
                      ,xca.delivery_base_code                                     delivery_base_code            --納品拠点コード
+-- 2010/02/16 Ver.1.14 add Start
+                     ,xeh.tsukagatazaiko_div                                     tsukagatazaiko_div            --通過在庫型区分
+-- 2010/02/16 Ver.1.14 add End
                      ,hca.account_number                                         account_number                --顧客コード
                      ,hp.party_name                                              party_name                    --顧客名（漢字）
                      ,hp.organization_name_phonetic                              organization_name_phonetic    --顧客名（カナ）
@@ -3519,6 +3574,9 @@ AS
                      ,NULL                                                       edi_district_kana             --EDI地区名カナ（EDI)
                      ,NULL                                                       torihikisaki_code             --取引先コード
                      ,NULL                                                       delivery_base_code            --納品拠点コード
+-- 2010/02/16 Ver.1.14 add Start
+                     ,xeh.tsukagatazaiko_div                                     tsukagatazaiko_div            --通過在庫型区分
+-- 2010/02/16 Ver.1.14 add End
                      ,NULL                                                       account_number                --顧客コード
                      ,NULL                                                       party_name                    --顧客名（漢字）
                      ,NULL                                                       organization_name_phonetic    --顧客名（カナ）
@@ -3732,6 +3790,9 @@ AS
     lt_inv_ball_stockout_qty      xxcos_edi_headers.invoice_ball_stockout_qty%TYPE;   --（伝票計）欠品数量（ボール）
     lt_inv_sum_stockout_qty       xxcos_edi_headers.invoice_sum_stockout_qty%TYPE;    --（伝票計）欠品数量（合計、バラ）
 --***************************** 2009/07/16 1.9 N.Maeda  ADD END    **************************** --
+-- 2010/02/16 Ver.1.14 add start
+    lt_tsukagatazaiko_div         xxcos_edi_headers.tsukagatazaiko_div%TYPE;          -- 通過在庫型区分
+-- 2010/02/16 Ver.1.14 add end
 --
   BEGIN
     out_line(buff => cv_prg_name || ' start');
@@ -4257,6 +4318,9 @@ AS
 -- 2009/07/29 M.Sano Ver.1.9 add start
        ,lt_line_uom
 -- 2009/07/29 M.Sano Ver.1.9 add end
+-- 2010/02/16 Ver.1.14 add start
+       ,lt_tsukagatazaiko_div                                                                                 --通過在庫型区分
+-- 2010/02/16 Ver.1.14 add end
       ;
       EXIT WHEN cur_data_record%NOTFOUND;
 --***************************** 2009/07/16 1.9 N.Maeda  ADD START  *************************** --
@@ -4304,6 +4368,16 @@ AS
                ,xel.ball_order_qty                  --発注数量（ボール）
                ,xel.sum_order_qty                   --発注数量（合計、バラ）
                ,xel.sum_shipping_qty                --出荷数量（合計、バラ）
+-- 2010/02/16 Ver.1.14 add start
+               ,xel.item_code                       --品目コード
+               ,xel.indv_shipping_qty               --出荷数量(バラ)
+               ,xel.case_shipping_qty               --出荷数量(ケース)
+               ,xel.ball_shipping_qty               --出荷数量(ボール)
+               ,xel.indv_stockout_qty               --欠品数量(バラ)
+               ,xel.case_stockout_qty               --欠品数量(ケース)
+               ,xel.ball_stockout_qty               --欠品数量(ボール)
+               ,xel.sum_stockout_qty                --欠品数量(合計・バラ)
+-- 2010/02/16 Ver.1.14 add end
         BULK COLLECT INTO gt_sum_data_tab
         FROM   xxcos_edi_lines   xel      --EDI明細情報テーブル
               ,mtl_system_items_b    msib --DISC品目マスタ
@@ -4318,6 +4392,42 @@ AS
         <<invoice_sum_loop>>
         FOR i IN gt_sum_data_tab.FIRST..gt_sum_data_tab.LAST LOOP
 --
+-- 2010/02/16 Ver.1.14 add start
+          --明細エラーのデータ(ダミー品目、単位がNULL)は単位換算を行わない
+          IF (
+               (
+                 ( l_data_tab('DATA_TYPE_CODE') = cv_data_type_31 )  --納品確定
+                 AND
+                 (
+                   ( lt_tsukagatazaiko_div <> cv_tsukagatazaiko_13 )   --受注を作成しない
+                   OR
+                   ( gt_err_item_tab.EXISTS( gt_sum_data_tab(i).item_code ) )  --エラー品目
+                   OR
+                   ( gt_sum_data_tab(i).line_uom IS NULL )  --単位が存在しない
+                 )
+               )
+             OR
+               (
+                 ( l_data_tab('DATA_TYPE_CODE') <> cv_data_type_31 ) --納品確定以外
+                 AND
+                 (
+                   ( gt_err_item_tab.EXISTS( gt_sum_data_tab(i).item_code ) )  --エラー品目
+                   OR
+                   ( gt_sum_data_tab(i).line_uom IS NULL )  --単位が存在しない
+                 )
+               )
+             )
+          THEN
+            --EDI明細の値を設定する
+            lt_indv_shipping_qty := NVL(gt_sum_data_tab(i).indv_shipping_qty,0); -- 出荷数量(バラ)
+            lt_case_shipping_qty := NVL(gt_sum_data_tab(i).case_shipping_qty,0); -- 出荷数量(ケース)
+            lt_ball_shipping_qty := NVL(gt_sum_data_tab(i).ball_shipping_qty,0); -- 出荷数量(ボール)
+            lt_indv_stockout_qty := NVL(gt_sum_data_tab(i).indv_stockout_qty,0); -- 欠品数量(バラ)
+            lt_case_stockout_qty := NVL(gt_sum_data_tab(i).case_stockout_qty,0); -- 欠品数量(ケース)
+            lt_ball_stockout_qty := NVL(gt_sum_data_tab(i).ball_stockout_qty,0); -- 欠品数量(ボール)
+            lt_sum_stockout_qty  := NVL(gt_sum_data_tab(i).sum_stockout_qty,0);  -- 欠品数量(合計・バラ)
+          ELSE
+-- 2010/02/16 Ver.1.14 add end
             --==============================================================
             --数量換算
             --==============================================================
@@ -4345,33 +4455,36 @@ AS
               RAISE global_api_expt;
             END IF;
 --
-            -- ==========================================
-            -- 数量サマリ処理(発注数量についてはEDI配信時に再計算処理済みのためサマリのみを行います)
-            -- ==========================================
-            --（伝票計）発注数量（バラ）
-            lt_inv_indv_order_qty      := NVL(lt_inv_indv_order_qty,0)    + NVL(gt_sum_data_tab(i).indv_order_qty,0);
-            --（伝票計）発注数量（ケース）
-            lt_inv_case_order_qty      := NVL(lt_inv_case_order_qty,0)    + NVL(gt_sum_data_tab(i).case_order_qty,0);
-            --（伝票計）発注数量（ボール）
-            lt_inv_ball_order_qty      := NVL(lt_inv_ball_order_qty,0)    + NVL(gt_sum_data_tab(i).ball_order_qty,0);
-            --（伝票計）発注数量（合計、バラ）
-            lt_inv_sum_order_qty       := NVL(lt_inv_sum_order_qty,0)     + NVL(gt_sum_data_tab(i).sum_order_qty,0);
-            --（伝票計）出荷数量（バラ）
-            lt_inv_indv_shipping_qty   := NVL(lt_inv_indv_shipping_qty,0) + NVL(lt_indv_shipping_qty,0);
-            --（伝票計）出荷数量（ケース）
-            lt_inv_case_shipping_qty   := NVL(lt_inv_case_shipping_qty,0) + NVL(lt_case_shipping_qty,0);
-            --（伝票計）出荷数量（ボール）
-            lt_inv_ball_shipping_qty   := NVL(lt_inv_ball_shipping_qty,0) + NVL(lt_ball_shipping_qty,0);
-            --（伝票計）出荷数量（合計、バラ）
-            lt_inv_sum_shipping_qty    := NVL(lt_inv_sum_shipping_qty,0)  + NVL(gt_sum_data_tab(i).sum_shipping_qty,0);
-            --（伝票計）欠品数量（バラ）
-            lt_inv_indv_stockout_qty   := NVL(lt_inv_indv_stockout_qty,0) + NVL(lt_indv_stockout_qty,0);
-            --（伝票計）欠品数量（ケース）
-            lt_inv_case_stockout_qty   := NVL(lt_inv_case_stockout_qty,0) + NVL(lt_case_stockout_qty,0);
-            --（伝票計）欠品数量（ボール）
-            lt_inv_ball_stockout_qty   := NVL(lt_inv_ball_stockout_qty,0) + NVL(lt_ball_stockout_qty,0);
-            --（伝票計）欠品数量（合計、バラ）
-            lt_inv_sum_stockout_qty    := NVL(lt_inv_sum_stockout_qty,0)  + NVL(lt_sum_stockout_qty,0);
+-- 2010/02/16 Ver.1.14 add start
+          END IF;
+-- 2010/02/16 Ver.1.14 add end
+          -- ==========================================
+          -- 数量サマリ処理(発注数量についてはEDI配信時に再計算処理済みのためサマリのみを行います)
+          -- ==========================================
+          --（伝票計）発注数量（バラ）
+          lt_inv_indv_order_qty      := NVL(lt_inv_indv_order_qty,0)    + NVL(gt_sum_data_tab(i).indv_order_qty,0);
+          --（伝票計）発注数量（ケース）
+          lt_inv_case_order_qty      := NVL(lt_inv_case_order_qty,0)    + NVL(gt_sum_data_tab(i).case_order_qty,0);
+          --（伝票計）発注数量（ボール）
+          lt_inv_ball_order_qty      := NVL(lt_inv_ball_order_qty,0)    + NVL(gt_sum_data_tab(i).ball_order_qty,0);
+          --（伝票計）発注数量（合計、バラ）
+          lt_inv_sum_order_qty       := NVL(lt_inv_sum_order_qty,0)     + NVL(gt_sum_data_tab(i).sum_order_qty,0);
+          --（伝票計）出荷数量（バラ）
+          lt_inv_indv_shipping_qty   := NVL(lt_inv_indv_shipping_qty,0) + NVL(lt_indv_shipping_qty,0);
+          --（伝票計）出荷数量（ケース）
+          lt_inv_case_shipping_qty   := NVL(lt_inv_case_shipping_qty,0) + NVL(lt_case_shipping_qty,0);
+          --（伝票計）出荷数量（ボール）
+          lt_inv_ball_shipping_qty   := NVL(lt_inv_ball_shipping_qty,0) + NVL(lt_ball_shipping_qty,0);
+          --（伝票計）出荷数量（合計、バラ）
+          lt_inv_sum_shipping_qty    := NVL(lt_inv_sum_shipping_qty,0)  + NVL(gt_sum_data_tab(i).sum_shipping_qty,0);
+          --（伝票計）欠品数量（バラ）
+          lt_inv_indv_stockout_qty   := NVL(lt_inv_indv_stockout_qty,0) + NVL(lt_indv_stockout_qty,0);
+          --（伝票計）欠品数量（ケース）
+          lt_inv_case_stockout_qty   := NVL(lt_inv_case_stockout_qty,0) + NVL(lt_case_stockout_qty,0);
+          --（伝票計）欠品数量（ボール）
+          lt_inv_ball_stockout_qty   := NVL(lt_inv_ball_stockout_qty,0) + NVL(lt_ball_stockout_qty,0);
+          --（伝票計）欠品数量（合計、バラ）
+          lt_inv_sum_stockout_qty    := NVL(lt_inv_sum_stockout_qty,0)  + NVL(lt_sum_stockout_qty,0);
 --
         END LOOP invoice_sum_loop;
 --
@@ -4501,34 +4614,66 @@ AS
 -- 2009/02/19 T.Nakamura Ver.1.5 add end
       END IF;
 --
--- 2009/07/01 M.Sano Ver.1.9 add start
-    --==============================================================
-    --数量換算
-    --==============================================================
-      xxcos_common2_pkg.convert_quantity(
+-- 2010/02/16 Ver.1.14 add start
+      --明細エラーのデータ(ダミー品目、単位がNULL)は単位換算を行わない
+      IF (
+           (
+             ( l_data_tab('DATA_TYPE_CODE') = cv_data_type_31 )  --納品確定
+             AND
+             (
+               ( lt_tsukagatazaiko_div <> cv_tsukagatazaiko_13 ) --受注を作成しない
+               OR
+               ( gt_err_item_tab.EXISTS( l_data_tab('PRODUCT_CODE_ITOUEN') ) ) --エラー品目
+               OR
+               ( lt_line_uom IS NULL )  --単位が存在しない
+             )
+           )
+         OR
+           (
+             ( l_data_tab('DATA_TYPE_CODE') <> cv_data_type_31 ) --納品確定以外
+             AND
+             (
+               ( gt_err_item_tab.EXISTS( l_data_tab('PRODUCT_CODE_ITOUEN') ) ) --エラー品目
+               OR
+               (lt_line_uom IS NULL )  --単位が存在しない
+             )
+           )
+         )
+      THEN
+        NULL;
+      ELSE
+-- 2010/02/16 Ver.1.14 add end
+-- 2009/07/01 M.Sano Ver.1.9 add end
+        --==============================================================
+        --数量換算
+        --==============================================================
+        xxcos_common2_pkg.convert_quantity(
 -- 2009/07/29 M.Sano Ver.1.9 add start
 --        iv_uom_code           => l_data_tab('UOM_CODE')             -- 単位コード
-        iv_uom_code           => lt_line_uom                        -- 単位コード
+          iv_uom_code           => lt_line_uom                        -- 単位コード
 -- 2009/07/29 M.Sano Ver.1.9 add end
-       ,in_case_qty           => l_data_tab('NUM_OF_CASES')         -- ケース入数
-       ,in_ball_qty           => l_data_tab('NUM_OF_BALL')          -- ボール入数
-       ,in_sum_indv_order_qty => l_data_tab('SUM_ORDER_QTY')        -- 発注数量(合計・バラ)
-       ,in_sum_shipping_qty   => l_data_tab('SUM_SHIPPING_QTY')     -- 出荷数量(合計・バラ)
-       ,on_indv_shipping_qty  => l_data_tab('INDV_SHIPPING_QTY')    -- 出荷数量(バラ)
-       ,on_case_shipping_qty  => l_data_tab('CASE_SHIPPING_QTY')    -- 出荷数量(ケース)
-       ,on_ball_shipping_qty  => l_data_tab('BALL_SHIPPING_QTY')    -- 出荷数量(ボール)
-       ,on_indv_stockout_qty  => l_data_tab('INDV_STOCKOUT_QTY')    -- 欠品数量(バラ)
-       ,on_case_stockout_qty  => l_data_tab('CASE_STOCKOUT_QTY')    -- 欠品数量(ケース)
-       ,on_ball_stockout_qty  => l_data_tab('BALL_STOCKOUT_QTY')    -- 欠品数量(ボール)
-       ,on_sum_stockout_qty   => l_data_tab('SUM_STOCKOUT_QTY')     -- 欠品数量(合計・バラ)
-       ,ov_errbuf             => lv_errbuf                          -- エラー・メッセージ
-       ,ov_retcode            => lv_retcode                         -- リターン・コード
-       ,ov_errmsg             => lv_errmsg                          -- ユーザー・エラー・メッセージ
-      );
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE global_api_expt;
-      END IF;
+         ,in_case_qty           => l_data_tab('NUM_OF_CASES')         -- ケース入数
+         ,in_ball_qty           => l_data_tab('NUM_OF_BALL')          -- ボール入数
+         ,in_sum_indv_order_qty => l_data_tab('SUM_ORDER_QTY')        -- 発注数量(合計・バラ)
+         ,in_sum_shipping_qty   => l_data_tab('SUM_SHIPPING_QTY')     -- 出荷数量(合計・バラ)
+         ,on_indv_shipping_qty  => l_data_tab('INDV_SHIPPING_QTY')    -- 出荷数量(バラ)
+         ,on_case_shipping_qty  => l_data_tab('CASE_SHIPPING_QTY')    -- 出荷数量(ケース)
+         ,on_ball_shipping_qty  => l_data_tab('BALL_SHIPPING_QTY')    -- 出荷数量(ボール)
+         ,on_indv_stockout_qty  => l_data_tab('INDV_STOCKOUT_QTY')    -- 欠品数量(バラ)
+         ,on_case_stockout_qty  => l_data_tab('CASE_STOCKOUT_QTY')    -- 欠品数量(ケース)
+         ,on_ball_stockout_qty  => l_data_tab('BALL_STOCKOUT_QTY')    -- 欠品数量(ボール)
+         ,on_sum_stockout_qty   => l_data_tab('SUM_STOCKOUT_QTY')     -- 欠品数量(合計・バラ)
+         ,ov_errbuf             => lv_errbuf                          -- エラー・メッセージ
+         ,ov_retcode            => lv_retcode                         -- リターン・コード
+         ,ov_errmsg             => lv_errmsg                          -- ユーザー・エラー・メッセージ
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
 -- 2009/07/01 M.Sano Ver.1.9 add end
+-- 2010/02/16 Ver.1.14 add start
+      END IF;
+-- 2010/02/16 Ver.1.14 add end
 --
       --==============================================================
       --CSVヘッダレコード作成処理
