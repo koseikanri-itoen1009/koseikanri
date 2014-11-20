@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -109,6 +109,7 @@ AS
  *  2008/11/28    1.14 Oracle 椎名       本番#201対応
  *  2008/12/09    1.15 Oracle 野村       本番#595対応
  *  2008/12/10    1.16 Oracle 野村       本番#401対応
+ *  2008/12/24    1.17 Oracle 野村       本番#323対応
  *
  *****************************************************************************************/
 --
@@ -2330,6 +2331,9 @@ AS
     ld_ship_date              xxwip_delivery_lines.ship_date%TYPE;              -- 出荷日
     ld_arrival_date           xxwip_delivery_lines.arrival_date%TYPE;           -- 着荷日
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+    lv_payments_judgment_classe   xxwip_delivery_lines.payments_judgment_classe%TYPE; -- 支払判断区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
 -- ##### 20081210 Ver.1.16 本番#401対応 START #####
     lv_delivery_no            xxwip_delivery_lines.delivery_no%TYPE;            -- 配送No
     ln_deli_cnt               NUMBER;
@@ -2394,6 +2398,9 @@ AS
 -- ##### 20081210 Ver.1.16 本番#401対応 START #####
               , xwdl.delivery_no            -- 配送No
 -- ##### 20081210 Ver.1.16 本番#401対応 END   #####
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+              , payments_judgment_classe    -- 支払判断区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
         INTO    lv_delivery_company_code
               , lv_whs_code
               , lv_shipping_address_code
@@ -2407,6 +2414,9 @@ AS
 -- ##### 20081210 Ver.1.16 本番#401対応 START #####
               , lv_delivery_no              -- 配送No
 -- ##### 20081210 Ver.1.16 本番#401対応 END   #####
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+              , lv_payments_judgment_classe   -- 支払判断区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
         FROM   xxwip_delivery_lines xwdl    -- 運賃明細アドオン
         WHERE  xwdl.request_no = gt_order_inf_tab(ln_index).request_no; -- 依頼No
       EXCEPTION
@@ -2437,6 +2447,7 @@ AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：出荷日       ：' || TO_CHAR(ld_ship_date    ,'YYYY/MM/DD'));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：着荷日       ：' || TO_CHAR(ld_arrival_date ,'YYYY/MM/DD'));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：配送No       ：' || lv_delivery_no);
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：支払判断区分 ：' || lv_payments_judgment_classe);
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
@@ -2593,7 +2604,7 @@ AS
         -- **************************************************
         -- ***  登録されている内容より再計算が必要な場合
         -- **************************************************
-        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、配送No、個数、重量、出庫日、入庫日
+        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、配送No、個数、重量、出庫日、入庫日、支払判断区分
         IF ((gt_order_inf_tab(ln_index).result_freight_carrier_code  <> lv_delivery_company_code )
           OR (gt_order_inf_tab(ln_index).deliver_from                 <> lv_whs_code              )
           OR (gt_order_inf_tab(ln_index).result_deliver_to            <> lv_shipping_address_code )
@@ -2605,6 +2616,9 @@ AS
           OR (gt_order_inf_tab(ln_index).shipped_date  <>  ld_ship_date     )
           OR (gt_order_inf_tab(ln_index).arrival_date  <>  ld_arrival_date  )
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+          OR (gt_order_inf_tab(ln_index).payments_judgment_classe  <>  lv_payments_judgment_classe  )
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
           OR (gt_order_inf_tab(ln_index).qty                          <> ln_qty                   )
           OR (gt_order_inf_tab(ln_index).delivery_weight              <> ln_delivery_weight       )) THEN
 --
@@ -3626,6 +3640,9 @@ AS
     ld_ship_date              xxwip_delivery_lines.ship_date%TYPE;              -- 出荷日
     ld_arrival_date           xxwip_delivery_lines.arrival_date%TYPE;           -- 着荷日
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+    lv_payments_judgment_classe   xxwip_delivery_lines.payments_judgment_classe%TYPE; -- 支払判断区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
 -- ##### 20081210 Ver.1.16 本番#401対応 START #####
     lv_delivery_no            xxwip_delivery_lines.delivery_no%TYPE;            -- 配送No
     ln_deli_cnt               NUMBER;
@@ -3691,6 +3708,9 @@ AS
 -- ##### 20081210 Ver.1.16 本番#401対応 START #####
               , xwdl.delivery_no            -- 配送No
 -- ##### 20081210 Ver.1.16 本番#401対応 END   #####
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+              , payments_judgment_classe    -- 支払判断区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
         INTO    lv_delivery_company_code
               , lv_whs_code
               , lv_shipping_address_code
@@ -3704,6 +3724,9 @@ AS
 -- ##### 20081210 Ver.1.16 本番#401対応 START #####
               , lv_delivery_no              -- 配送No
 -- ##### 20081210 Ver.1.16 本番#401対応 END   #####
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+              , lv_payments_judgment_classe -- 支払判断区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
         FROM   xxwip_delivery_lines xwdl    -- 運賃明細アドオン
         WHERE  xwdl.request_no = gt_move_inf_tab(ln_index).mov_num; -- 移動番号
       EXCEPTION
@@ -3884,7 +3907,7 @@ AS
         -- **************************************************
         -- ***  登録されている内容より再計算が必要な場合
         -- **************************************************
-        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量、出庫日、入庫日
+        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量、出庫日、入庫日、支払判断区分
         IF ((gt_move_inf_tab(ln_index).actual_freight_carrier_code <> lv_delivery_company_code )
           OR (gt_move_inf_tab(ln_index).shipped_locat_code   <> lv_whs_code              )
           OR (gt_move_inf_tab(ln_index).ship_to_locat_code   <> lv_shipping_address_code )
@@ -3896,6 +3919,9 @@ AS
           OR (gt_move_inf_tab(ln_index).actual_ship_date     <> ld_ship_date    )
           OR (gt_move_inf_tab(ln_index).actual_arrival_date  <> ld_arrival_date )
 -- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+          OR (gt_move_inf_tab(ln_index).payments_judgment_classe  <> lv_payments_judgment_classe )
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
           OR (gt_move_inf_tab(ln_index).qty                  <> ln_qty                   )
           OR (gt_move_inf_tab(ln_index).delivery_weight      <> ln_delivery_weight       )) THEN
 --
@@ -4896,8 +4922,8 @@ AS
     <<req_date_loop>>
     FOR ln_index IN  gt_carcan_info_tab.FIRST.. gt_carcan_info_tab.LAST LOOP
 --
-      -- 依頼No
-      carcan_request_no_tab(ln_index) := gt_carcan_info_tab(ln_index).request_no;
+        -- 依頼No
+        carcan_request_no_tab(ln_index) := gt_carcan_info_tab(ln_index).request_no;
 --
       -- 配車解除の配送No抽出ループ
       <<carcan_data_loop>>
@@ -5882,6 +5908,32 @@ AS
     lv_many_rate        xxwip_deliverys.many_rate%TYPE;       -- 諸料金
     lv_defined_flag     xxwip_deliverys.defined_flag%TYPE;    -- 支払確定区分
     lv_return_flag      xxwip_deliverys.return_flag%TYPE;     -- 支払確定戻
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+    lt_delivery_company_code      xxwip_deliverys.delivery_company_code%TYPE;     -- 運送業者
+    lt_delivery_no                xxwip_deliverys.delivery_no%TYPE;               -- 配送No
+    lt_payments_judgment_classe   xxwip_deliverys.payments_judgment_classe%TYPE;  -- 支払判断区分
+    lt_ship_date                  xxwip_deliverys.ship_date%TYPE;                 -- 出庫日
+    lt_arrival_date               xxwip_deliverys.arrival_date%TYPE;              -- 到着日
+    lt_judgement_date             xxwip_deliverys.judgement_date%TYPE;            -- 判断日
+    lt_goods_classe               xxwip_deliverys.goods_classe%TYPE;              -- 商品区分
+    lt_mixed_code                 xxwip_deliverys.mixed_code%TYPE;                -- 混載区分
+    lt_contract_rate              xxwip_deliverys.contract_rate%TYPE;             -- 契約運賃
+    lt_balance                    xxwip_deliverys.balance%TYPE;                   -- 差額
+    lt_total_amount               xxwip_deliverys.total_amount%TYPE;              -- 合計
+    lt_distance                   xxwip_deliverys.distance%TYPE;                  -- 最長距離
+    lt_delivery_classe            xxwip_deliverys.delivery_classe%TYPE;           -- 配送区分
+    lt_whs_code                   xxwip_deliverys.whs_code%TYPE;                  -- 代表出庫倉庫コード
+    lt_code_division              xxwip_deliverys.code_division%TYPE;             -- 代表配送先コード区分
+    lt_shipping_address_code      xxwip_deliverys.shipping_address_code%TYPE;     -- 代表配送先コード
+    lt_qty1                       xxwip_deliverys.qty1%TYPE;                      -- 個数１
+    lt_delivery_weight1           xxwip_deliverys.delivery_weight1%TYPE;          -- 重量１
+    lt_consolid_surcharge         xxwip_deliverys.consolid_surcharge%TYPE;        -- 混載割増金額
+    lt_actual_distance            xxwip_deliverys.actual_distance%TYPE;           -- 最長実際距離
+    lt_picking_charge             xxwip_deliverys.picking_charge%TYPE;            -- ピッキング料
+    lt_consolid_qty               xxwip_deliverys.consolid_qty%TYPE;              -- 混載数
+    lt_order_type                 xxwip_deliverys.order_type%TYPE;                -- 代表タイプ
+    lt_weight_capacity_class      xxwip_deliverys.weight_capacity_class%TYPE;     -- 重量容積区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
 --
     ln_deliv_flg        VARCHAR2(1);    -- 受注ヘッダアドオン 存在フラグ Y:有 N:無
 --
@@ -5932,10 +5984,62 @@ AS
               , xd.many_rate        -- 諸料金
               , xd.defined_flag     -- 支払確定区分
               , xd.return_flag      -- 支払確定戻
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+              , xd.delivery_company_code      -- 運送業者
+              , xd.delivery_no                -- 配送No
+              , xd.payments_judgment_classe   -- 支払判断区分
+              , xd.ship_date                  -- 出庫日
+              , xd.arrival_date               -- 到着日
+              , xd.judgement_date             -- 判断日
+              , xd.goods_classe               -- 商品区分
+              , xd.mixed_code                 -- 混載区分
+              , xd.contract_rate              -- 契約運賃
+              , xd.balance                    -- 差額
+              , xd.total_amount               -- 合計
+              , xd.distance                   -- 最長距離
+              , xd.delivery_classe            -- 配送区分
+              , xd.whs_code                   -- 代表出庫倉庫コード
+              , xd.code_division              -- 代表配送先コード区分
+              , xd.shipping_address_code      -- 代表配送先コード
+              , xd.qty1                       -- 個数１
+              , xd.delivery_weight1           -- 重量１
+              , xd.consolid_surcharge         -- 混載割増金額
+              , xd.actual_distance            -- 最長実際距離
+              , xd.picking_charge             -- ピッキング料
+              , xd.consolid_qty               -- 混載数
+              , xd.order_type                 -- 代表タイプ
+              , xd.weight_capacity_class      -- 重量容積区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
         INTO    lv_charged_amount
               , lv_many_rate
               , lv_defined_flag
               , lv_return_flag
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+              , lt_delivery_company_code      -- 運送業者
+              , lt_delivery_no                -- 配送No
+              , lt_payments_judgment_classe   -- 支払判断区分
+              , lt_ship_date                  -- 出庫日
+              , lt_arrival_date               -- 到着日
+              , lt_judgement_date             -- 判断日
+              , lt_goods_classe               -- 商品区分
+              , lt_mixed_code                 -- 混載区分
+              , lt_contract_rate              -- 契約運賃
+              , lt_balance                    -- 差額
+              , lt_total_amount               -- 合計
+              , lt_distance                   -- 最長距離
+              , lt_delivery_classe            -- 配送区分
+              , lt_whs_code                   -- 代表出庫倉庫コード
+              , lt_code_division              -- 代表配送先コード区分
+              , lt_shipping_address_code      -- 代表配送先コード
+              , lt_qty1                       -- 個数１
+              , lt_delivery_weight1           -- 重量１
+              , lt_consolid_surcharge         -- 混載割増金額
+              , lt_actual_distance            -- 最長実際距離
+              , lt_picking_charge             -- ピッキング料
+              , lt_consolid_qty               -- 混載数
+              , lt_order_type                 -- 代表タイプ
+              , lt_weight_capacity_class      -- 重量容積区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
         FROM   xxwip_deliverys      xd      -- 運賃ヘッダアドオン
         WHERE  xd.delivery_no = gt_deliv_line_tab(ln_index).delivery_no -- 配送No
         AND    xd.p_b_classe  = gv_pay ;                  -- 支払請求区分（支払）
@@ -6096,7 +6200,11 @@ AS
         -- 送り状No
         u_head_invoice_no_tab(ln_update_cnt)    := gt_deliv_line_tab(ln_index).invoice_no ;
         -- 支払判断区分
-        u_head_pay_judg_cls_tab(ln_update_cnt)  := gv_pay ;
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+-- 誤り修正
+--        u_head_pay_judg_cls_tab(ln_update_cnt)  := gv_pay ;
+        u_head_pay_judg_cls_tab(ln_update_cnt)  := gt_deliv_line_tab(ln_index).payments_judgment_classe ;
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
         -- 出庫日
         u_head_ship_date_tab(ln_update_cnt)     := gt_deliv_line_tab(ln_index).ship_date ;
         -- 到着日
@@ -6244,16 +6352,77 @@ AS
 *****/
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
 --
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+        -- 請求データ削除条件の追加
+        IF   (lt_delivery_company_code    <> u_head_deliv_cmpny_cd_tab(ln_update_cnt))    -- 運送業者
+          OR (lt_delivery_no              <> u_head_deliv_no_tab(ln_update_cnt))          -- 配送No
+          OR (lt_payments_judgment_classe <> u_head_pay_judg_cls_tab(ln_update_cnt))  -- 支払判断区分
+          OR (lt_ship_date                <> u_head_ship_date_tab(ln_update_cnt))         -- 出庫日
+          OR (lt_arrival_date             <> u_head_arrival_date_tab(ln_update_cnt))      -- 到着日
+          OR (lt_judgement_date           <> u_head_judg_date_tab(ln_update_cnt))         -- 判断日
+          OR (lt_goods_classe             <> u_head_goods_cls_tab(ln_update_cnt))         -- 商品区分
+          OR (lt_mixed_code               <> u_head_mixed_cd_tab(ln_update_cnt))          -- 混載区分
+          OR (lt_contract_rate            <> u_head_contract_rate_tab(ln_update_cnt))     -- 契約運賃
+          OR (lt_balance                  <> u_head_balance_tab(ln_update_cnt))           -- 差額
+          OR (lt_total_amount             <> u_head_total_amount_tab(ln_update_cnt))      -- 合計
+          OR (lt_distance                 <> u_head_distance_tab(ln_update_cnt))          -- 最長距離
+          OR (lt_delivery_classe          <> u_head_deliv_cls_tab(ln_update_cnt))         -- 配送区分
+          OR (lt_whs_code                 <> u_head_whs_cd_tab(ln_update_cnt))            -- 代表出庫倉庫コード
+          OR (lt_code_division            <> u_head_cd_dvsn_tab(ln_update_cnt))           -- 代表配送先コード区分
+          OR (lt_shipping_address_code    <> u_head_ship_addr_cd_tab(ln_update_cnt))      -- 代表配送先コード
+          OR (lt_qty1                     <> u_head_qty1_tab(ln_update_cnt))              -- 個数１
+          OR (lt_delivery_weight1         <> u_head_deliv_wght1_tab(ln_update_cnt))       -- 重量１
+          OR (lt_consolid_surcharge       <> u_head_cnsld_srhrg_tab(ln_update_cnt))       -- 混載割増金額
+          OR (lt_actual_distance          <> u_head_actual_ditnc_tab(ln_update_cnt))      -- 最長実際距離
+          OR (lt_picking_charge           <> u_head_pick_charge_tab(ln_update_cnt))       -- ピッキング料
+          OR (lt_consolid_qty             <> u_head_consolid_qty_tab(ln_update_cnt))      -- 混載数
+          OR (lt_order_type               <> u_head_order_type_tab(ln_update_cnt))        -- 代表タイプ
+          OR (lt_weight_capacity_class    <> u_head_wigh_cpcty_cls_tab(ln_update_cnt))    -- 重量容積区分
+        THEN
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
+--
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
-        IF (gv_debug_flg = gv_debug_on) THEN
-          FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：運賃ヘッダアドオン DELETE');
-        END IF;
+          IF (gv_debug_flg = gv_debug_on) THEN
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：運賃ヘッダアドオン DELETE');
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：運送業者             ：' || lt_delivery_company_code   || ' <> ' || u_head_deliv_cmpny_cd_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：配送No               ：' || lt_delivery_no             || ' <> ' || u_head_deliv_no_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：支払判断区分         ：' || lt_payments_judgment_classe|| ' <> ' || u_head_pay_judg_cls_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：出庫日               ：' || TO_CHAR(lt_ship_date,'YYYY/MM/DD')     || ' <> ' ||
+                                                                                         TO_CHAR(u_head_ship_date_tab(ln_update_cnt),'YYYY/MM/DD'));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：到着日               ：' || TO_CHAR(lt_arrival_date,'YYYY/MM/DD')  || ' <> ' ||  
+                                                                                         TO_CHAR(u_head_arrival_date_tab(ln_update_cnt),'YYYY/MM/DD'));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：判断日               ：' || TO_CHAR(lt_judgement_date,'YYYY/MM/DD')|| ' <> ' || 
+                                                                                         TO_CHAR(u_head_judg_date_tab(ln_update_cnt),'YYYY/MM/DD'));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：商品区分             ：' || lt_goods_classe            || ' <> ' ||  u_head_goods_cls_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：混載区分             ：' || lt_mixed_code              || ' <> ' ||  u_head_mixed_cd_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：契約運賃             ：' || TO_CHAR(lt_contract_rate)  || ' <> ' ||  TO_CHAR(u_head_contract_rate_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：差額                 ：' || TO_CHAR(lt_balance)        || ' <> ' ||  TO_CHAR(u_head_balance_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：合計                 ：' || TO_CHAR(lt_total_amount)   || ' <> ' ||  TO_CHAR(u_head_total_amount_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：最長距離             ：' || TO_CHAR(lt_distance)       || ' <> ' ||  TO_CHAR(u_head_distance_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：配送区分             ：' || lt_delivery_classe         || ' <> ' ||  u_head_deliv_cls_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：代表出庫倉庫コード   ：' || lt_whs_code                || ' <> ' ||  u_head_whs_cd_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：代表配送先コード区分 ：' || lt_code_division           || ' <> ' ||  u_head_cd_dvsn_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：代表配送先コード     ：' || lt_shipping_address_code   || ' <> ' ||  u_head_ship_addr_cd_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：個数１               ：' || TO_CHAR(lt_qty1)               || ' <> ' ||  TO_CHAR(u_head_qty1_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：重量１               ：' || TO_CHAR(lt_delivery_weight1)   || ' <> ' ||  TO_CHAR(u_head_deliv_wght1_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：混載割増金額         ：' || TO_CHAR(lt_consolid_surcharge) || ' <> ' ||  TO_CHAR(u_head_cnsld_srhrg_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：最長実際距離         ：' || TO_CHAR(lt_actual_distance)    || ' <> ' ||  TO_CHAR(u_head_actual_ditnc_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：ピッキング料         ：' || TO_CHAR(lt_picking_charge)     || ' <> ' ||  TO_CHAR(u_head_pick_charge_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：混載数               ：' || TO_CHAR(lt_consolid_qty)       || ' <> ' ||  TO_CHAR(u_head_consolid_qty_tab(ln_update_cnt)));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：代表タイプ           ：' || lt_order_type                  || ' <> ' ||  u_head_order_type_tab(ln_update_cnt));
+            FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_deliv_head：重量容積区分         ：' || lt_weight_capacity_class       || ' <> ' ||  u_head_wigh_cpcty_cls_tab(ln_update_cnt));
+          END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
           -- 削除用PL/SQL表 件数
           ln_delete_cnt   := ln_delete_cnt + 1;
           -- 配送No
           d_head_deliv_no_tab(ln_delete_cnt)  := gt_deliv_line_tab(ln_index).delivery_no ;
+--
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+        END IF;
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
+--
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
 /*****
         END IF;
@@ -6563,6 +6732,33 @@ AS
 --
     lv_code_division    xxwip_deliverys.code_division%TYPE;   -- コード区分
 --
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+    lt_delivery_company_code      xxwip_deliverys.delivery_company_code%TYPE;     -- 運送業者
+    lt_delivery_no                xxwip_deliverys.delivery_no%TYPE;               -- 配送No
+    lt_payments_judgment_classe   xxwip_deliverys.payments_judgment_classe%TYPE;  -- 支払判断区分
+    lt_ship_date                  xxwip_deliverys.ship_date%TYPE;                 -- 出庫日
+    lt_arrival_date               xxwip_deliverys.arrival_date%TYPE;              -- 到着日
+    lt_judgement_date             xxwip_deliverys.judgement_date%TYPE;            -- 判断日
+    lt_goods_classe               xxwip_deliverys.goods_classe%TYPE;              -- 商品区分
+    lt_mixed_code                 xxwip_deliverys.mixed_code%TYPE;                -- 混載区分
+    lt_contract_rate              xxwip_deliverys.contract_rate%TYPE;             -- 契約運賃
+    lt_balance                    xxwip_deliverys.balance%TYPE;                   -- 差額
+    lt_total_amount               xxwip_deliverys.total_amount%TYPE;              -- 合計
+    lt_distance                   xxwip_deliverys.distance%TYPE;                  -- 最長距離
+    lt_delivery_classe            xxwip_deliverys.delivery_classe%TYPE;           -- 配送区分
+    lt_whs_code                   xxwip_deliverys.whs_code%TYPE;                  -- 代表出庫倉庫コード
+    lt_code_division              xxwip_deliverys.code_division%TYPE;             -- 代表配送先コード区分
+    lt_shipping_address_code      xxwip_deliverys.shipping_address_code%TYPE;     -- 代表配送先コード
+    lt_qty1                       xxwip_deliverys.qty1%TYPE;                      -- 個数１
+    lt_delivery_weight1           xxwip_deliverys.delivery_weight1%TYPE;          -- 重量１
+    lt_consolid_surcharge         xxwip_deliverys.consolid_surcharge%TYPE;        -- 混載割増金額
+    lt_actual_distance            xxwip_deliverys.actual_distance%TYPE;           -- 最長実際距離
+    lt_picking_charge             xxwip_deliverys.picking_charge%TYPE;            -- ピッキング料
+    lt_consolid_qty               xxwip_deliverys.consolid_qty%TYPE;              -- 混載数
+    lt_order_type                 xxwip_deliverys.order_type%TYPE;                -- 代表タイプ
+    lt_weight_capacity_class      xxwip_deliverys.weight_capacity_class%TYPE;     -- 重量容積区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
+--
     -- 運賃系マスタ 取得用
     lr_delivery_company_tab   xxwip_common3_pkg.delivery_company_rec;   -- 運賃用運送業者
     lr_delivery_distance_tab  xxwip_common3_pkg.delivery_distance_rec;  -- 配送距離
@@ -6757,12 +6953,64 @@ AS
                 , charged_amount        -- 請求金額
                 , xd.defined_flag       -- 支払確定区分
                 , xd.return_flag        -- 支払確定戻
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+                , xd.delivery_company_code      -- 運送業者
+                , xd.delivery_no                -- 配送No
+                , xd.payments_judgment_classe   -- 支払判断区分
+                , xd.ship_date                  -- 出庫日
+                , xd.arrival_date               -- 到着日
+                , xd.judgement_date             -- 判断日
+                , xd.goods_classe               -- 商品区分
+                , xd.mixed_code                 -- 混載区分
+                , xd.contract_rate              -- 契約運賃
+                , xd.balance                    -- 差額
+                , xd.total_amount               -- 合計
+                , xd.distance                   -- 最長距離
+                , xd.delivery_classe            -- 配送区分
+                , xd.whs_code                   -- 代表出庫倉庫コード
+                , xd.code_division              -- 代表配送先コード区分
+                , xd.shipping_address_code      -- 代表配送先コード
+                , xd.qty1                       -- 個数１
+                , xd.delivery_weight1           -- 重量１
+                , xd.consolid_surcharge         -- 混載割増金額
+                , xd.actual_distance            -- 最長実際距離
+                , xd.picking_charge             -- ピッキング料
+                , xd.consolid_qty               -- 混載数
+                , xd.order_type                 -- 代表タイプ
+                , xd.weight_capacity_class      -- 重量容積区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
           INTO    lv_delivery_no
                 , lv_many_rate
                 , lv_consolid_surcharge
                 , lv_charged_amount
                 , lv_defined_flag
                 , lv_return_flag
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+                , lt_delivery_company_code      -- 運送業者
+                , lt_delivery_no                -- 配送No
+                , lt_payments_judgment_classe   -- 支払判断区分
+                , lt_ship_date                  -- 出庫日
+                , lt_arrival_date               -- 到着日
+                , lt_judgement_date             -- 判断日
+                , lt_goods_classe               -- 商品区分
+                , lt_mixed_code                 -- 混載区分
+                , lt_contract_rate              -- 契約運賃
+                , lt_balance                    -- 差額
+                , lt_total_amount               -- 合計
+                , lt_distance                   -- 最長距離
+                , lt_delivery_classe            -- 配送区分
+                , lt_whs_code                   -- 代表出庫倉庫コード
+                , lt_code_division              -- 代表配送先コード区分
+                , lt_shipping_address_code      -- 代表配送先コード
+                , lt_qty1                       -- 個数１
+                , lt_delivery_weight1           -- 重量１
+                , lt_consolid_surcharge         -- 混載割増金額
+                , lt_actual_distance            -- 最長実際距離
+                , lt_picking_charge             -- ピッキング料
+                , lt_consolid_qty               -- 混載数
+                , lt_order_type                 -- 代表タイプ
+                , lt_weight_capacity_class      -- 重量容積区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
           FROM   xxwip_deliverys      xd      -- 運賃ヘッダアドオン
           WHERE  xd.delivery_no = gt_carriers_schedule_tab(ln_index).delivery_no -- 配送No
           AND    xd.p_b_classe = gv_pay ;                           -- 支払請求区分（支払）
@@ -7021,10 +7269,51 @@ AS
           IF (u_head_balance_tab(ln_update_cnt) <> 0 ) THEN
 *****/
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 END   #####
+--
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+          -- 請求データ削除条件の追加
+          IF   (lt_delivery_company_code    <> u_head_deliv_cmpny_cd_tab(ln_update_cnt) ) -- 運送業者
+            OR (lt_delivery_no              <> u_head_deliv_no_tab(ln_update_cnt)       ) -- 配送No
+            OR (lt_payments_judgment_classe <> u_head_pay_judg_cls_tab(ln_update_cnt)   ) -- 支払判断区分
+            OR (lt_ship_date                <> u_head_ship_date_tab(ln_update_cnt)      ) -- 出庫日
+            OR (lt_arrival_date             <> u_head_arrival_date_tab(ln_update_cnt)   ) -- 到着日
+            OR (lt_judgement_date           <> u_head_judg_date_tab(ln_update_cnt)      ) -- 判断日
+            OR (lt_goods_classe             <> u_head_goods_cls_tab(ln_update_cnt)      ) -- 商品区分
+            OR (lt_mixed_code               <> u_head_mixed_cd_tab(ln_update_cnt)       ) -- 混載区分
+            OR (lt_contract_rate            <> u_head_contract_rate_tab(ln_update_cnt)  ) -- 契約運賃
+            OR (lt_balance                  <> u_head_balance_tab(ln_update_cnt)        ) -- 差額
+            OR (lt_total_amount             <> u_head_total_amount_tab(ln_update_cnt)   ) -- 合計
+            OR (lt_distance                 <> u_head_distance_tab(ln_update_cnt)       ) -- 最長距離
+            OR (lt_delivery_classe          <> u_head_deliv_cls_tab(ln_update_cnt)      ) -- 配送区分
+            OR (lt_whs_code                 <> u_head_whs_cd_tab(ln_update_cnt)         ) -- 代表出庫倉庫コード
+            OR (lt_code_division            <> u_head_cd_dvsn_tab(ln_update_cnt)        ) -- 代表配送先コード区分
+            OR (lt_shipping_address_code    <> u_head_ship_addr_cd_tab(ln_update_cnt)   ) -- 代表配送先コード
+            OR (lt_qty1                     <> u_head_qty1_tab(ln_update_cnt)           ) -- 個数１
+            OR (lt_delivery_weight1         <> u_head_deliv_wght1_tab(ln_update_cnt)    ) -- 重量１
+            OR (lt_consolid_surcharge       <> u_head_cnsld_srhrg_tab(ln_update_cnt)    ) -- 混載割増金額
+            OR (lt_actual_distance          <> u_head_actual_ditnc_tab(ln_update_cnt)   ) -- 最長実際距離
+            OR (lt_picking_charge           <> u_head_pick_charge_tab(ln_update_cnt)    ) -- ピッキング料
+            OR (lt_consolid_qty             <> u_head_consolid_qty_tab(ln_update_cnt)   ) -- 混載数
+            OR (lt_order_type               <> u_head_order_type_tab(ln_update_cnt)     ) -- 代表タイプ
+            OR (lt_weight_capacity_class    <> u_head_wigh_cpcty_cls_tab(ln_update_cnt) ) -- 重量容積区分
+          THEN
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+            IF (gv_debug_flg = gv_debug_on) THEN
+              FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：運賃ヘッダアドオン DELETE');
+            END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
             -- 削除用PL/SQL表 件数インクリメント
             ln_delete_cnt   := ln_delete_cnt + 1;
             -- 配送No
             d_head_deliv_no_tab(ln_delete_cnt)  := gt_carriers_schedule_tab(ln_index).delivery_no ;
+--
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+          END IF;
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
+--
 -- ##### 20080912 Ver.1.8 TE080指摘事項15対応 区分設定見直対応 START #####
 /*****
           END IF;
@@ -7134,11 +7423,63 @@ AS
                 , xd.charged_amount     -- 請求金額
                 , xd.defined_flag       -- 支払確定区分
                 , xd.return_flag        -- 支払確定戻
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+                , xd.delivery_company_code      -- 運送業者
+                , xd.delivery_no                -- 配送No
+                , xd.payments_judgment_classe   -- 支払判断区分
+                , xd.ship_date                  -- 出庫日
+                , xd.arrival_date               -- 到着日
+                , xd.judgement_date             -- 判断日
+                , xd.goods_classe               -- 商品区分
+                , xd.mixed_code                 -- 混載区分
+                , xd.contract_rate              -- 契約運賃
+                , xd.balance                    -- 差額
+                , xd.total_amount               -- 合計
+                , xd.distance                   -- 最長距離
+                , xd.delivery_classe            -- 配送区分
+                , xd.whs_code                   -- 代表出庫倉庫コード
+                , xd.code_division              -- 代表配送先コード区分
+                , xd.shipping_address_code      -- 代表配送先コード
+                , xd.qty1                       -- 個数１
+                , xd.delivery_weight1           -- 重量１
+                , xd.consolid_surcharge         -- 混載割増金額
+                , xd.actual_distance            -- 最長実際距離
+                , xd.picking_charge             -- ピッキング料
+                , xd.consolid_qty               -- 混載数
+                , xd.order_type                 -- 代表タイプ
+                , xd.weight_capacity_class      -- 重量容積区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
           INTO    lv_delivery_no
                 , lv_many_rate
                 , lv_charged_amount
                 , lv_defined_flag
                 , lv_return_flag
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+                , lt_delivery_company_code      -- 運送業者
+                , lt_delivery_no                -- 配送No
+                , lt_payments_judgment_classe   -- 支払判断区分
+                , lt_ship_date                  -- 出庫日
+                , lt_arrival_date               -- 到着日
+                , lt_judgement_date             -- 判断日
+                , lt_goods_classe               -- 商品区分
+                , lt_mixed_code                 -- 混載区分
+                , lt_contract_rate              -- 契約運賃
+                , lt_balance                    -- 差額
+                , lt_total_amount               -- 合計
+                , lt_distance                   -- 最長距離
+                , lt_delivery_classe            -- 配送区分
+                , lt_whs_code                   -- 代表出庫倉庫コード
+                , lt_code_division              -- 代表配送先コード区分
+                , lt_shipping_address_code      -- 代表配送先コード
+                , lt_qty1                       -- 個数１
+                , lt_delivery_weight1           -- 重量１
+                , lt_consolid_surcharge         -- 混載割増金額
+                , lt_actual_distance            -- 最長実際距離
+                , lt_picking_charge             -- ピッキング料
+                , lt_consolid_qty               -- 混載数
+                , lt_order_type                 -- 代表タイプ
+                , lt_weight_capacity_class      -- 重量容積区分
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
           FROM   xxwip_deliverys      xd      -- 運賃ヘッダアドオン
           WHERE  xd.delivery_no = gt_carriers_schedule_tab(ln_index).delivery_no -- 配送No
           AND    xd.p_b_classe = gv_pay ;                           -- 支払請求区分（支払）
@@ -7467,13 +7808,52 @@ AS
           END IF;
 -- ##### 20080805 Ver.1.5 ST事前確認障害 END   #####
 --
-          -- **************************************************
-          -- ** 更新対象となった配送Noはの請求情報は全て削除対象
-          -- **************************************************
-          -- 削除用PL/SQL表 件数インクリメント
-          ln_delete_cnt   := ln_delete_cnt + 1;
-          -- 配送No
-          d_head_deliv_no_tab(ln_delete_cnt)  := gt_carriers_schedule_tab(ln_index).delivery_no ;
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+          -- 請求データ削除条件の追加
+          IF   (lt_delivery_company_code    <> u_head_deliv_cmpny_cd_tab(ln_update_cnt) ) -- 運送業者
+            OR (lt_delivery_no              <> u_head_deliv_no_tab(ln_update_cnt)       ) -- 配送No
+            OR (lt_payments_judgment_classe <> u_head_pay_judg_cls_tab(ln_update_cnt)   ) -- 支払判断区分
+            OR (lt_ship_date                <> u_head_ship_date_tab(ln_update_cnt)      ) -- 出庫日
+            OR (lt_arrival_date             <> u_head_arrival_date_tab(ln_update_cnt)   ) -- 到着日
+            OR (lt_judgement_date           <> u_head_judg_date_tab(ln_update_cnt)      ) -- 判断日
+            OR (lt_goods_classe             <> u_head_goods_cls_tab(ln_update_cnt)      ) -- 商品区分
+            OR (lt_mixed_code               <> u_head_mixed_cd_tab(ln_update_cnt)       ) -- 混載区分
+            OR (lt_contract_rate            <> u_head_contract_rate_tab(ln_update_cnt)  ) -- 契約運賃
+            OR (lt_balance                  <> u_head_balance_tab(ln_update_cnt)        ) -- 差額
+            OR (lt_total_amount             <> u_head_total_amount_tab(ln_update_cnt)   ) -- 合計
+            OR (lt_distance                 <> u_head_distance_tab(ln_update_cnt)       ) -- 最長距離
+            OR (lt_delivery_classe          <> u_head_deliv_cls_tab(ln_update_cnt)      ) -- 配送区分
+            OR (lt_whs_code                 <> u_head_whs_cd_tab(ln_update_cnt)         ) -- 代表出庫倉庫コード
+            OR (lt_code_division            <> u_head_cd_dvsn_tab(ln_update_cnt)        ) -- 代表配送先コード区分
+            OR (lt_shipping_address_code    <> u_head_ship_addr_cd_tab(ln_update_cnt)   ) -- 代表配送先コード
+            OR (lt_qty1                     <> u_head_qty1_tab(ln_update_cnt)           ) -- 個数１
+            OR (lt_delivery_weight1         <> u_head_deliv_wght1_tab(ln_update_cnt)    ) -- 重量１
+            OR (lt_consolid_surcharge       <> u_head_cnsld_srhrg_tab(ln_update_cnt)    ) -- 混載割増金額
+            OR (lt_actual_distance          <> u_head_actual_ditnc_tab(ln_update_cnt)   ) -- 最長実際距離
+            OR (lt_picking_charge           <> u_head_pick_charge_tab(ln_update_cnt)    ) -- ピッキング料
+            OR (lt_consolid_qty             <> u_head_consolid_qty_tab(ln_update_cnt)   ) -- 混載数
+            OR (lt_order_type               <> u_head_order_type_tab(ln_update_cnt)     ) -- 代表タイプ
+            OR (lt_weight_capacity_class    <> u_head_wigh_cpcty_cls_tab(ln_update_cnt) ) -- 重量容積区分
+          THEN
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
+--
+--<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
+            IF (gv_debug_flg = gv_debug_on) THEN
+              FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_carri_deliv_head：運賃ヘッダアドオン DELETE');
+            END IF;
+--<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
+--
+            -- **************************************************
+            -- ** 更新対象となった配送Noはの請求情報は全て削除対象
+            -- **************************************************
+            -- 削除用PL/SQL表 件数インクリメント
+            ln_delete_cnt   := ln_delete_cnt + 1;
+            -- 配送No
+            d_head_deliv_no_tab(ln_delete_cnt)  := gt_carriers_schedule_tab(ln_index).delivery_no ;
+--
+-- ##### 20081224 Ver.1.17 本番#323対応 START #####
+          END IF;
+-- ##### 20081224 Ver.1.17 本番#323対応 END   #####
 --
         END IF;
 --
