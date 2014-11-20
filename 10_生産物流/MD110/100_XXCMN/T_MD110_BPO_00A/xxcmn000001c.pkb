@@ -7,7 +7,7 @@ AS
  * Description      : 月次伝票番号更新
  * MD.050           : 月次伝票番号更新       T_MD050_BPO_00A
  * MD.070           : 月次伝票番号更新       T_MD070_BPO_00A
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -20,6 +20,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/03/27    1.0   Oracle 飯田 甫   初回作成
+ *  2009/07/07    1.1   SCS丸下          本番1564対応
  *
  *****************************************************************************************/
 --
@@ -124,6 +125,9 @@ AS
     cv_application_short_name      CONSTANT VARCHAR2(100) := 'XXCMN';
     cv_profile_option_name         CONSTANT VARCHAR2(100) := 'XXCMN_SEQ_YYYYMM';
     cn_level_id                    CONSTANT NUMBER        := 10001;
+-- 2009/07/07 ADD START
+    cv_no_change_msg               CONSTANT VARCHAR2(100) := '採番変更不要:';
+-- 2009/07/07 ADD END
 --
     -- *** ローカル変数 ***
     -- プロファイル
@@ -135,6 +139,10 @@ AS
     lv_profile_option_value        fnd_profile_option_values.profile_option_value%TYPE;
     -- 採番関数
     lv_seq_no                      VARCHAR2(12);            -- 採番後の固定長12桁の番号
+--
+-- 2009/07/07 ADD START
+    lv_present_month fnd_profile_option_values.profile_option_value%TYPE;
+-- 2009/07/07 ADD END
 --
     -- ===============================
     -- ローカル・カーソル
@@ -169,32 +177,12 @@ AS
     gn_user_id  := FND_GLOBAL.USER_ID;              -- 最終更新ユーザID
     gn_login_id := FND_GLOBAL.LOGIN_ID;             -- 最終更新ログイン
 --
+-- 2009/07/07 ADD START
     -- ================================
-    -- 1.シーケンスドロップ
+    -- プロファイル情報取得
     -- ================================
-    EXECUTE IMMEDIATE 'DROP SEQUENCE xxcmn.xxcmn_slip_no_s1';
---
-    -- ================================
-    -- 2.シーケンス作成
-    -- ================================
-    EXECUTE IMMEDIATE 'CREATE SEQUENCE xxcmn.xxcmn_slip_no_s1 MINVALUE 1 MAXVALUE 99999999 '
-      || 'INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER NOCYCLE';
---
-    -- ================================
-    -- 3.プロファイル値更新情報取得
-    -- ================================
-    SELECT fpov.application_id
-          ,fpov.profile_option_id
-          ,fpov.level_id
-          ,fpov.level_value
-          ,fpov.level_value_application_id
-          ,TO_CHAR(ADD_MONTHS(TO_DATE(fpov.profile_option_value, gv_yyyymm), 1), gv_yyyymm)
-    INTO   ln_apprication_id
-          ,ln_profile_option_id
-          ,ln_level_id
-          ,ln_level_value
-          ,ln_level_value_application_id
-          ,lv_profile_option_value
+    SELECT TO_CHAR(TO_DATE(fpov.profile_option_value, gv_yyyymm),gv_yyyymm)
+    INTO   lv_present_month
     FROM   fnd_profile_option_values  fpov
           ,fnd_profile_options        fpo
           ,fnd_application            fa
@@ -205,35 +193,79 @@ AS
     AND    fpov.level_id             = gn_level_id
     AND    fpo.profile_option_id     = fpov.profile_option_id;
 --
-    -- ================================
-    -- 4.プロファイル値更新
-    -- ================================
-    fnd_profile_option_values_pkg.update_row(
-      x_application_id             => ln_apprication_id
-     ,x_profile_option_id          => ln_profile_option_id
-     ,x_level_id                   => ln_level_id
-     ,x_level_value                => ln_level_value
-     ,x_level_value_application_id => ln_level_value_application_id
-     ,x_profile_option_value       => lv_profile_option_value
-     ,x_last_update_date           => gd_sysdate
-     ,x_last_updated_by            => gn_user_id
-     ,x_last_update_login          => gn_login_id
-    );
---
-    -- ================================
-    -- 5.採番関数の実行(採番可能を確認)
-    -- ================================
-    xxcmn_common_pkg.get_seq_no(
-      iv_seq_class => NULL              -- 採番する番号を表す区分
-     ,ov_seq_no    => lv_seq_no         -- 採番した固定長12桁の番号
-     ,ov_errbuf    => lv_errbuf         -- エラー・メッセージ           --# 固定 #
-     ,ov_retcode   => lv_retcode        -- リターン・コード             --# 固定 #
-     ,ov_errmsg    => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
-    );
---
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
+    IF(lv_present_month < TO_CHAR(gd_sysdate,gv_yyyymm)) THEN
+-- 2009/07/07 ADD END
+  --
+      -- ================================
+      -- 1.シーケンスドロップ
+      -- ================================
+      EXECUTE IMMEDIATE 'DROP SEQUENCE xxcmn.xxcmn_slip_no_s1';
+  --
+      -- ================================
+      -- 2.シーケンス作成
+      -- ================================
+      EXECUTE IMMEDIATE 'CREATE SEQUENCE xxcmn.xxcmn_slip_no_s1 MINVALUE 1 MAXVALUE 99999999 '
+        || 'INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER NOCYCLE';
+  --
+      -- ================================
+      -- 3.プロファイル値更新情報取得
+      -- ================================
+      SELECT fpov.application_id
+            ,fpov.profile_option_id
+            ,fpov.level_id
+            ,fpov.level_value
+            ,fpov.level_value_application_id
+            ,TO_CHAR(ADD_MONTHS(TO_DATE(fpov.profile_option_value, gv_yyyymm), 1), gv_yyyymm)
+      INTO   ln_apprication_id
+            ,ln_profile_option_id
+            ,ln_level_id
+            ,ln_level_value
+            ,ln_level_value_application_id
+            ,lv_profile_option_value
+      FROM   fnd_profile_option_values  fpov
+            ,fnd_profile_options        fpo
+            ,fnd_application            fa
+      WHERE  fa.application_short_name = gv_app_name
+      AND    fpo.application_id        = fa.application_id
+      AND    fpo.profile_option_name   = gv_prof_option_name
+      AND    fpov.application_id       = fa.application_id
+      AND    fpov.level_id             = gn_level_id
+      AND    fpo.profile_option_id     = fpov.profile_option_id;
+  --
+      -- ================================
+      -- 4.プロファイル値更新
+      -- ================================
+      fnd_profile_option_values_pkg.update_row(
+        x_application_id             => ln_apprication_id
+       ,x_profile_option_id          => ln_profile_option_id
+       ,x_level_id                   => ln_level_id
+       ,x_level_value                => ln_level_value
+       ,x_level_value_application_id => ln_level_value_application_id
+       ,x_profile_option_value       => lv_profile_option_value
+       ,x_last_update_date           => gd_sysdate
+       ,x_last_updated_by            => gn_user_id
+       ,x_last_update_login          => gn_login_id
+      );
+  --
+      -- ================================
+      -- 5.採番関数の実行(採番可能を確認)
+      -- ================================
+      xxcmn_common_pkg.get_seq_no(
+        iv_seq_class => NULL              -- 採番する番号を表す区分
+       ,ov_seq_no    => lv_seq_no         -- 採番した固定長12桁の番号
+       ,ov_errbuf    => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode   => lv_retcode        -- リターン・コード             --# 固定 #
+       ,ov_errmsg    => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+  --
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+-- 2009/07/07 ADD START
+    ELSE
+      FND_FILE.PUT_LINE(FND_FILE.LOG, cv_no_change_msg || lv_present_month);
     END IF;
+-- 2009/07/07 ADD END
 --
   EXCEPTION
 --
