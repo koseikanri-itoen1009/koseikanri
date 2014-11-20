@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -106,6 +106,7 @@ AS
  *  2008/10/31    1.11 Oracle 野村       統合#531対応
  *  2008/11/07    1.12 Oracle 野村       統合#584対応
  *  2008/11/25    1.13 Oracle 吉田       本番#104対応
+ *  2008/11/28    1.14 Oracle 椎名       本番#201対応
  *
  *****************************************************************************************/
 --
@@ -1549,6 +1550,10 @@ AS
                        AND    xola.last_update_date <= gd_sysdate
                        AND    ROWNUM = 1))
           )
+-- 2008/11/28 v1.14 ADD START
+      -- 積載重量合計の整数部が7桁以上の場合は出力しない
+      AND   LENGTHB(TRUNC(NVL(xoha.sum_weight, 0))) < 7
+-- 2008/11/28 v1.14 ADD END
       UNION ALL
       -- 着日基準_出荷依頼
       SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
@@ -1615,6 +1620,10 @@ AS
                        AND    xola.last_update_date <= gd_sysdate
                        AND    ROWNUM = 1))
           )
+-- 2008/11/28 v1.14 ADD START
+      -- 積載重量合計の整数部が7桁以上の場合は出力しない
+      AND   LENGTHB(TRUNC(NVL(xoha.sum_weight, 0))) < 7
+-- 2008/11/28 v1.14 ADD END
       UNION ALL
       -- 発日基準_支給依頼
       SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
@@ -1680,6 +1689,10 @@ AS
                        AND    xola.last_update_date <= gd_sysdate
                        AND    ROWNUM = 1))
           )
+-- 2008/11/28 v1.14 ADD START
+      -- 積載重量合計の整数部が7桁以上の場合は出力しない
+      AND   LENGTHB(TRUNC(NVL(xoha.sum_weight, 0))) < 7
+-- 2008/11/28 v1.14 ADD END
       UNION ALL
       -- 発日基準_出荷依頼
       SELECT  /*+ leading(xoha otta xdec) use_nl(xoha otta xdec) */
@@ -1745,6 +1758,10 @@ AS
                        AND    xola.last_update_date <= gd_sysdate
                        AND    ROWNUM = 1))
           )
+-- 2008/11/28 v1.14 ADD START
+      -- 積載重量合計の整数部が7桁以上の場合は出力しない
+      AND   LENGTHB(TRUNC(NVL(xoha.sum_weight, 0))) < 7
+-- 2008/11/28 v1.14 ADD END
       ) order_info
       ;
 -- ##### 20081125 Ver.1.13 本番#104対応 END #####
@@ -2899,6 +2916,10 @@ AS
                       AND    xmril.last_update_date <= gd_sysdate
                       AND    ROWNUM = 1))
           )
+-- 2008/11/28 v1.14 ADD START
+      -- 積載重量合計の整数部が7桁以上の場合は出力しない
+      AND   LENGTHB(TRUNC(NVL(xmrih.sum_weight, 0))) < 7
+-- 2008/11/28 v1.14 ADD END
       UNION ALL
       -- 発日
       SELECT /*+ leading (xmrih xdec) use_nl (xmrih xdec) */
@@ -2958,6 +2979,10 @@ AS
                       AND    xmril.last_update_date <= gd_sysdate
                       AND    ROWNUM = 1))
           )
+-- 2008/11/28 v1.14 ADD START
+      -- 積載重量合計の整数部が7桁以上の場合は出力しない
+      AND   LENGTHB(TRUNC(NVL(xmrih.sum_weight, 0))) < 7
+-- 2008/11/28 v1.14 ADD END
       ) move_info
       ;
 -- ##### 20081125 Ver.1.13 本番#104対応 END #####

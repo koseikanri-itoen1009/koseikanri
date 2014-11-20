@@ -8,7 +8,8 @@
 ##   [作成/更新履歴]                                                          ##
 ##        作成者  ：   Oracle 堀井           2008/05/22 1.0.1                 ##
 ##        更新履歴：   Oracle 中村           2008/10/02 1.1.0                 ##
-##                       1.1版                                                ##
+##                     SCS    川田           2008/11/28 1.2.0                 ##
+##                       1.2版                                                ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -35,11 +36,17 @@
   L_sherumei=`/bin/basename $0`      ##実行シェル名
   L_hosutomei=`/bin/hostname`        ##実行ホスト名
   L_enbufairumei="ZCZZCOMN.env"      ##基盤共通環境変数ファイル名
+## 2008/11/28 CRS変数定義追加 川田
+  L_crsfairumei="ZCZZCRS.env"        ##CRS環境設定ファイル名
+## 2008/11/28 追加END
   L_ijou=8                           ##シェル異常終了時のリターンコード
 
 ## ファイル定義
   L_rogumei="${L_rogupasu}/"`/bin/basename ${L_sherumei} .ksh`"${L_hosutomei}${L_hizuke}.log"       ##ログファイル(フルパス)
   L_enbufairu=`/usr/bin/dirname $0`"/${L_enbufairumei}"                                             ##基盤共通環境変数ファイル(フルパス)
+## 2008/11/28 CRSファイル定義追加 川田
+  L_crsfairu=`/usr/bin/dirname $0`"/${L_crsfairumei}"                                               ##CRS環境設定ファイル(フルパス)
+## 2008/11/28 追加END
 
 
 ################################################################################
@@ -87,8 +94,6 @@ trap 'L_shuryo 8' 1 2 3 15
 ##                                 メイン                                     ##
 ################################################################################
 
-
-
 ### 処理開始出力 ###
 
   touch ${L_rogumei}
@@ -110,14 +115,38 @@ trap 'L_shuryo 8' 1 2 3 15
       L_shuryo ${L_ijou}
   fi
 
+## 2008/11/28 追加 川田
+## CRS環境設定ファイル読み込み
+  L_rogushuturyoku "CRS環境設定ファイルを読み込みます。"
+
+  if [ -r "${L_crsfairu}" ]
+    then
+      . ${L_crsfairu}
+      L_rogushuturyoku "CRS環境設定ファイルを読み込みました。"
+  else
+      L_rogushuturyoku "ZCZZ00003:[Error] `/bin/basename ${L_crsfairu}` が存在しない、または見つかりません。   HOST=${L_hosutomei}"
+      echo "ZCZZ00003:[Error] `/bin/basename ${L_crsfairu}` が存在しない、または見つかりません。   HOST=${L_hosutomei}" 1>&2
+      L_shuryo ${L_ijou}
+  fi
+## 2008/11/28 追加END
+
 
 ## コマンド設定
+
   L_crsteisi="/ebsloc/PEBSITO/PEBSITOcrs/10.2.0/bin/crsctl stop crs"   ##CRS停止コマンド
+
+## 2008/11/28 CRSリソース停止コマンド追加 川田
+  L_crsappsteisi="/ebsloc/PEBSITO/PEBSITOcrs/10.2.0/bin/srvctl stop nodeapps -n ${L_hosutomei}"
+## 2008/11/28 追加END
 
 
 ### CRS停止 ###
 
   L_rogushuturyoku "CRSを停止します。"
+
+## 2008/11/28 CRSリソース停止コマンド追加 川田
+  ${L_crsappsteisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
+## 2008/11/28 追加END
 
   ${L_crsteisi} 1>${TE_ZCZZHYOUJUNSHUTURYOKU} 2>${TE_ZCZZHYOUJUNERA}
   L_dashutu=${?}

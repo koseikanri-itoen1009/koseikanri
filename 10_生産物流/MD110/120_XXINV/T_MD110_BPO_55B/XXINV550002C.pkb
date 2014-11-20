@@ -1,5 +1,4 @@
-create or replace
-PACKAGE BODY XXINV550002C
+CREATE OR REPLACE PACKAGE BODY XXINV550002C
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -8,7 +7,7 @@ AS
  * Description      : 受払台帳作成
  * MD.050/070       : 在庫(帳票)Draft2A (T_MD050_BPO_550)
  *                    受払台帳Draft1A   (T_MD070_BPO_55B)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +51,7 @@ AS
  *  2008/11/17    1.21  Takao Ohashi     指摘356対応
  *  2008/11/20    1.22  Naoki Fukuda     統合テスト障害696対応
  *  2008/11/21    1.23  Natsuki Yoshida  統合テスト障害687対応 (大幅な修正の為、履歴を残しておりません)
+ *  2008/11/28    1.24  Hitomi Itou      本番障害#227対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4060,7 +4060,10 @@ AS
          ,sh_info.rcv_pay_div                                 rcv_pay_div         --受払区分
         ----------------------------------------------------------------------------------------
         FROM ( --OMSO関連情報
-          SELECT
+-- 2008/11/28 H.Itou add Start 本番障害#227
+--          SELECT
+          SELECT /*+ leading(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola rsl itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+-- 2008/11/28 H.Itou add End
             itp.doc_type                                  doc_type            --文書タイプ
            ,itp.item_id                                   item_id             --品目ID
            ,itp.whse_code                                 whse_code           --倉庫コード
@@ -4111,16 +4114,30 @@ AS
            ,ic_tran_pnd                                   itp                 --OPM保留在庫トランザクション
            ,wsh_delivery_details                          wdd                 --出荷搬送明細
            ,oe_order_headers_all                          ooha                --受注ヘッダ
-          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+          WHERE 
+-- 2008/11/28 H.Itou del End
+-- 2008/11/28 H.Itou add Start 本番障害#227
+                 wdd.delivery_detail_id  = itp.line_detail_id
+          AND    wdd.source_header_id    = xoha.header_id
+          AND    wdd.source_line_id      = xola.line_id
+          AND    xoha.header_id          = ooha.header_id
+          AND    xola.order_header_id    = xoha.order_header_id
+-- 2008/11/28 H.Itou add End
           AND itp.doc_type = 'OMSO'
           AND itp.completed_ind = gv_tran_cmp                                 --完了フラグ
-          AND itp.line_id = wdd.source_line_id                                --ソース明細ID
-          AND wdd.org_id = ooha.org_id                                        --組織ID
-          AND wdd.source_header_id = ooha.header_id                           --受注ヘッダID
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND itp.line_id = wdd.source_line_id                                --ソース明細ID
+--          AND wdd.org_id = ooha.org_id                                        --組織ID
+--          AND wdd.source_header_id = ooha.header_id                           --受注ヘッダID
+-- 2008/11/28 H.Itou del End
           AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
           AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
-          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+-- 2008/11/28 H.Itou del End
           AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                            --品目コード
           AND itp.item_id         = iimb.item_id                            --品目ID
@@ -4129,13 +4146,23 @@ AS
             BETWEEN ximb.start_date_active
             AND ximb.end_date_active
           --  AND NVL(ximb.end_date_active,itp.trans_date)                    --適用開始日・終了日
-          AND iimb.item_id = gic1.item_id                                     --品目ID
-          AND gic1.item_id = iimb.item_id
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND iimb.item_id = gic1.item_id                                     --品目ID
+-- 2008/11/28 H.Itou del End
+-- 2008/11/28 H.Itou Mod Start 本番障害#227
+--          AND gic1.item_id = iimb.item_id
+          AND gic1.item_id = itp.item_id
+-- 2008/11/28 H.Itou Mod End
           AND gic1.category_set_id = cn_item_class_id
           AND gic1.category_id = mcb1.category_id
           AND mcb1.segment1 = civ_item_div
-          AND iimb.item_id = gic3.item_id                                     --品目ID
-          AND gic3.item_id = iimb.item_id
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND iimb.item_id = gic3.item_id                                     --品目ID
+-- 2008/11/28 H.Itou del End
+-- 2008/11/28 H.Itou Mod Start 本番障害#227
+--          AND gic3.item_id = iimb.item_id
+          AND gic3.item_id = itp.item_id
+-- 2008/11/28 H.Itou Mod End
           AND gic3.category_set_id = cn_prod_class_id
           AND gic3.category_id = mcb3.category_id
           AND mcb3.segment1 = civ_prod_div
@@ -4147,7 +4174,9 @@ AS
           AND itp.trans_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND gic2.item_id = iimb2.item_id                                     --品目ID
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND gic2.item_id = iimb2.item_id                                     --品目ID
+-- 2008/11/28 H.Itou del End
           AND xoha.result_deliver_to_id = hps.party_site_id(+)
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -4219,7 +4248,10 @@ AS
            ,otta.order_category_code
           UNION ALL
            -- PORC関連
-          SELECT
+-- 2008/11/28 H.Itou Mod Start 本番障害#227
+--          SELECT
+          SELECT /*+ leading(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) use_nl(xoha ooha otta xola wdd itp gic1 mcb1 gic3 mcb3 iimb2 gic2 mcb2) */
+-- 2008/11/28 H.Itou Mod End
             itp.doc_type                                  doc_type            --文書タイプ
            ,itp.item_id                                   item_id             --品目ID
            ,itp.whse_code                                 whse_code           --倉庫コード
@@ -4272,17 +4304,32 @@ AS
            ,ic_tran_pnd                                       itp                 --OPM保留在庫トランザクション
            ,rcv_shipment_lines                                rsl             --受入明細
            ,oe_order_headers_all                              ooha                --受注ヘッダ
-          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+-- 2008/11/28 H.Itou add End
+--          WHERE ooha.header_id = xoha.header_id                                --受注ヘッダID
+          WHERE
+-- 2008/11/28 H.Itou del End
+-- 2008/11/28 H.Itou add start
+              rsl.shipment_header_id  = itp.doc_id
+          AND rsl.line_num            = itp.doc_line
+          AND rsl.oe_order_header_id  = xola.header_id
+          AND rsl.oe_order_line_id    = xola.line_id
+          AND xoha.header_id          = ooha.header_id
+          AND xola.order_header_id    = xoha.order_header_id
+-- 2008/11/28 H.Itou add end
           AND itp.doc_type = 'PORC'
           AND rsl.source_document_code = 'RMA'                                --ソース文書
           AND itp.completed_ind = gv_tran_cmp                                         --完了フラグ
-          AND itp.doc_id = rsl.shipment_header_id                             --受入ヘッダID
-          AND itp.doc_line = rsl.line_num                                     --明細番号
-          AND rsl.oe_order_header_id = ooha.header_id                         --受注ヘッダID
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND itp.doc_id = rsl.shipment_header_id                             --受入ヘッダID
+--          AND itp.doc_line = rsl.line_num                                     --明細番号
+--          AND rsl.oe_order_header_id = ooha.header_id                         --受注ヘッダID
+-- 2008/11/28 H.Itou del End
           AND xoha.req_status IN (gv_recsts_shipped,gv_recsts_shipped2)             --ステータス
           AND xoha.actual_confirm_class = gv_confirm_yes                            --実績計上区分
           AND xoha.latest_external_flag = gv_latest_yes                             --最新フラグ
-          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND xoha.order_header_id = xola.order_header_id                         --受注アドオンヘッダID
+-- 2008/11/28 H.Itou del End
           AND ooha.order_type_id = otta.transaction_type_id                    --受注タイプID
           AND xola.shipping_item_code = iimb.item_no                            --品目コード
           AND itp.item_id         = iimb.item_id                            --品目ID
@@ -4290,13 +4337,23 @@ AS
           AND itp.trans_date
             BETWEEN ximb.start_date_active
             AND ximb.end_date_active
-          AND iimb.item_id = gic1.item_id                                     --品目ID
-          AND gic1.item_id = iimb.item_id
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND iimb.item_id = gic1.item_id                                     --品目ID
+-- 2008/11/28 H.Itou del End
+-- 2008/11/28 H.Itou mod Start 本番障害#227
+--          AND gic1.item_id = iimb.item_id
+          AND gic1.item_id = itp.item_id
+-- 2008/11/28 H.Itou del End
           AND gic1.category_set_id = cn_item_class_id
           AND gic1.category_id = mcb1.category_id
           AND mcb1.segment1 = civ_item_div
-          AND iimb.item_id = gic3.item_id                                     --品目ID
-          AND gic3.item_id = iimb.item_id
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND iimb.item_id = gic3.item_id                                     --品目ID
+-- 2008/11/28 H.Itou del End
+-- 2008/11/28 H.Itou mod Start 本番障害#227
+--          AND gic3.item_id = iimb.item_id
+          AND gic3.item_id = itp.item_id
+-- 2008/11/28 H.Itou mod end
           AND gic3.category_set_id = cn_prod_class_id
           AND gic3.category_id = mcb3.category_id
           AND mcb3.segment1 = civ_prod_div
@@ -4308,7 +4365,9 @@ AS
           AND itp.trans_date
             BETWEEN ximb2.start_date_active
             AND ximb2.end_date_active
-          AND gic2.item_id = iimb2.item_id                                     --品目ID
+-- 2008/11/28 H.Itou del Start 本番障害#227
+--          AND gic2.item_id = iimb2.item_id                                     --品目ID
+-- 2008/11/28 H.Itou del End
           AND xoha.result_deliver_to_id = hps.party_site_id(+)
           AND xoha.vendor_site_id = xvsa.vendor_site_id(+)
           AND NVL(xvsa.start_date_active,TO_DATE('1900/01/01',gv_fmt_ymd)) <= TO_DATE(civ_ymd_from,gv_fmt_ymd)
@@ -8185,3 +8244,4 @@ AS
 --###########################  固定部 END   #######################################################
 --
 END XXINV550002C;
+/

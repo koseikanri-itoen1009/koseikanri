@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,8 @@ AS
  *  2008/10/17    1.8  Oracle 野村 正幸  T_S_465対応
  *  2008/11/06    1.9  Oracle 福田 直樹  統合#537対応
  *  2008/11/06    1.9  Oracle 福田 直樹  統合#563対応
+ *  2008/11/28    1.10 Oracle 野村 正幸  本番#222対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1544,14 +1546,30 @@ AS
 -- ********** 20080508 内部変更要求 seq#59 MOD END   **********
 --
           -- 13.金額
-          u_trn_amount_tab(gn_upd_order_inf_cnt) :=
+-- ##### 20081128 Ver.1.10 本番222対応 start #####
+          -- 「ドリンク」の場合
+          IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_drk) THEN
+            -- 単価 × 計算数量
+            u_trn_amount_tab(gn_upd_order_inf_cnt) :=
+                gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt);
+--
+          -- 「リーフ」の場合
+          ELSIF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
+            -- リーフは現状単価を設定（車立については対象外のため、考慮しない）
+            u_trn_amount_tab(gn_upd_order_inf_cnt) :=
+                                  gt_order_inf_tbl(ln_index).setting_amount;
+--
+          END IF;
+--
+--          u_trn_amount_tab(gn_upd_order_inf_cnt) :=
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
 --          gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt);
    -- ##### 20081106 Ver.1.9 統合#537対応 start #####
 --          ROUND(gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt));
-            gt_order_inf_tbl(ln_index).setting_amount;
+--            gt_order_inf_tbl(ln_index).setting_amount;
    -- ##### 20081106 Ver.1.9 統合#537対応 End   #####
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
+-- ##### 20081128 Ver.1.10 本番222対応 end   #####
         END IF;
 --2008/09/22 Add ↓
         IF (ln_msg_flg > 0) THEN
