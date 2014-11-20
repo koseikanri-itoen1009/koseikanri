@@ -7,27 +7,28 @@ AS
  * Description      : ロット引当情報のアップロード
  * MD.050           : 取引先オンライン             T_MD050_BPO_940
  * MD.070           : ロット引当情報のアップロード T_MD070_BPO_94G
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
- * ------------------------- ----------------------------------------------------------
- *  Name                      Description
- * ------------------------- ----------------------------------------------------------
- *  init_proc                 関連データ取得 (G-1)
- *  get_upload_data_proc      ファイルアップロードインタフェースデータ取得 (G-2)
- *  check_proc                妥当性チェック (G-3)
- *  set_data_proc             登録データ設定
- *  insert_lot_reserve_if_proc データ登録 (G-4)
- *  submain                   メイン処理プロシージャ
- *  main                      コンカレント実行ファイル登録プロシージャ
+ * --------------------------- ----------------------------------------------------------
+ *  Name                        Description
+ * --------------------------- ----------------------------------------------------------
+ *  init_proc                   関連データ取得 (G-1)
+ *  get_upload_data_proc        ファイルアップロードインタフェースデータ取得 (G-2)
+ *  check_proc                  妥当性チェック (G-3)
+ *  set_data_proc               登録データ設定
+ *  insert_lot_reserve_if_proc  データ登録 (G-4)
+ *  submain                     メイン処理プロシージャ
+ *  main                        コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
- * ------------- ----- ---------------- -------------------------------------------------
- *  Date          Ver.  Editor           Description
- * ------------- ----- ---------------- -------------------------------------------------
- *  2008/06/17    1.0   Oracle 吉田夏樹   初回作成
- *  2008/07/08    1.1   Oracle 山根一浩   I_S_192対応
- *  2008/07/15    1.2   Oracle 吉田夏樹   データ登録関数名変更
+ * ------------- ----- ------------------ -------------------------------------------------
+ *  Date          Ver.  Editor             Description
+ * ------------- ----- ------------------ -------------------------------------------------
+ *  2008/06/17    1.0   Oracle 吉田夏樹    初回作成
+ *  2008/07/08    1.1   Oracle 山根一浩    I_S_192対応
+ *  2008/07/15    1.2   Oracle 吉田夏樹    データ登録関数名変更
+ *  2008/08/18    1.3   Oracle 伊藤ひとみ  T_TE080_BPO_400 指摘1 更新日はチェックしない
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -846,29 +847,31 @@ AS
           RAISE global_api_expt;
         END IF;
 --
-        -- ==============================
-        -- 更新日時
-        -- ==============================
-        xxcmn_common3_pkg.upload_item_check(gv_c_last_update_date,
-                                            fdata_tbl(ln_index).last_update_date,
-                                            NULL,
-                                            NULL,
-                                            xxcmn_common3_pkg.gv_null_ok,
-                                            xxcmn_common3_pkg.gv_attr_dat,
-                                            lv_errbuf,
-                                            lv_retcode,
-                                            lv_errmsg);
-
-        -- 項目チェックエラー
-        IF (lv_retcode = gv_status_warn) THEN
-          fdata_tbl(ln_index).err_message := fdata_tbl(ln_index).err_message
-                                              || lv_errmsg
-                                              || lv_line_feed;
-        -- プロシージャー異常終了
-        ELSIF (lv_retcode = gv_status_error) THEN
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;        
+-- 2008/08/18 H.Itou Del Start T_TE080_BPO_400 指摘1
+--        -- ==============================
+--        -- 更新日時
+--        -- ==============================
+--        xxcmn_common3_pkg.upload_item_check(gv_c_last_update_date,
+--                                            fdata_tbl(ln_index).last_update_date,
+--                                            NULL,
+--                                            NULL,
+--                                            xxcmn_common3_pkg.gv_null_ok,
+--                                            xxcmn_common3_pkg.gv_attr_dat,
+--                                            lv_errbuf,
+--                                            lv_retcode,
+--                                            lv_errmsg);
+----
+--        -- 項目チェックエラー
+--        IF (lv_retcode = gv_status_warn) THEN
+--          fdata_tbl(ln_index).err_message := fdata_tbl(ln_index).err_message
+--                                              || lv_errmsg
+--                                              || lv_line_feed;
+--        -- プロシージャー異常終了
+--        ELSIF (lv_retcode = gv_status_error) THEN
+--          lv_errbuf := lv_errmsg;
+--          RAISE global_api_expt;
+--        END IF;        
+-- 2008/08/18 H.Itou Del End
 --
       END IF;
 --
@@ -1013,9 +1016,11 @@ AS
       gt_lot_no_tab(ln_index)               := fdata_tbl(ln_index).lot_no;
       -- 引当数量
       gt_reserved_quantity_tab(ln_index)    := fdata_tbl(ln_index).reserved_quantity;
-      -- 更新日時
-      gt_last_update_date_tab(ln_index)     
-                                   := TO_DATE(fdata_tbl(ln_index).last_update_date,'YYYY/MM/DD');
+-- 2008/08/18 H.Itou Del Start T_TE080_BPO_400 指摘1
+--      -- 更新日時
+--      gt_last_update_date_tab(ln_index)     
+--                                   := TO_DATE(fdata_tbl(ln_index).last_update_date,'YYYY/MM/DD');
+-- 2008/08/18 H.Itou Del End
 --
     END LOOP fdata_loop;
 --

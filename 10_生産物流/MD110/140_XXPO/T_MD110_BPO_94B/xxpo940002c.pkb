@@ -7,32 +7,33 @@ AS
  * Description      : 出来高実績取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 出来高実績取込処理 T_MD070_BPO_94B
- * Version          : 1.0
+ * Version          : 1.3
  * Program List
- * ---------------------- ----------------------------------------------------------
- *  Name                   Description
- * ---------------------- ----------------------------------------------------------
- *  init_proc              初期処理(B-1)
- *  check_data             取得データチェック処理(B-3)
- *  get_other_data         関連データ取得処理(B-4)
- *  ins_ic_lot_mst         ロットマスタ登録処理(B-5)
- *  ins_vendor_suppry_txns 外注出来高実績(アドオン)登録処理(B-6)
- *  ins_inventory_data     相手先在庫計上処理(B-7)
- *  ins_po_data            発注自動作成処理(B-8)
- *  ins_qt_inspection      品質検査依頼情報作成処理(B-9)
- *  import_standard_po     標準発注インポートの呼出処理(B-10)
+ * ------------------------- ----------------------------------------------------------
+ *  Name                      Description
+ * ------------------------- ----------------------------------------------------------
+ *  init_proc                 初期処理(B-1)
+ *  check_data                取得データチェック処理(B-3)
+ *  get_other_data            関連データ取得処理(B-4)
+ *  ins_ic_lot_mst            ロットマスタ登録処理(B-5)
+ *  ins_vendor_suppry_txns    外注出来高実績(アドオン)登録処理(B-6)
+ *  ins_inventory_data        相手先在庫計上処理(B-7)
+ *  ins_po_data               発注自動作成処理(B-8)
+ *  ins_qt_inspection         品質検査依頼情報作成処理(B-9)
+ *  import_standard_po        標準発注インポートの呼出処理(B-10)
  *  del_vendor_supply_txns_if データ削除処理(B-11)
- *  put_dump_msg           データダンプ一括出力処理(B-12)
- *  submain                メイン処理プロシージャ
- *  main                   コンカレント実行ファイル登録プロシージャ
+ *  put_dump_msg              データダンプ一括出力処理(B-12)
+ *  submain                   メイン処理プロシージャ
+ *  main                      コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
- * ------------- ----- ---------------- -------------------------------------------------
- *  Date          Ver.  Editor           Description
- * ------------- ----- ---------------- -------------------------------------------------
- *  2008/06/06    1.0  Oracle 伊藤ひとみ  初回作成
- *  2008/07/08    1.1  Oracle 山根一浩    I_S_192対応
- *  2008/07/22    1.2  Oracle 伊藤ひとみ  内部課題#32対応
+ * ------------- ----- ------------------- -------------------------------------------------
+ *  Date          Ver.  Editor              Description
+ * ------------- ----- ------------------- -------------------------------------------------
+ *  2008/06/06    1.0   Oracle 伊藤ひとみ   初回作成
+ *  2008/07/08    1.1   Oracle 山根一浩     I_S_192対応
+ *  2008/07/22    1.2   Oracle 伊藤ひとみ   内部課題#32対応
+ *  2008/08/18    1.3   Oracle 伊藤ひとみ   T_S_595 品目情報VIEW2を製造日基準で抽出する
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -242,10 +243,19 @@ AS
   gt_division_lot     CONSTANT xxwip_qt_inspection.division%TYPE := '3';  -- 区分  3:ロット情報
   gt_division_spl     CONSTANT xxwip_qt_inspection.division%TYPE := '4';  -- 区分  4:外注出来高
   gt_division_tea     CONSTANT xxwip_qt_inspection.division%TYPE := '5';  -- 区分  5:荒茶製造
+--
   -- 処理区分
   gv_disposal_div_ins CONSTANT VARCHAR2(1) := '1'; -- 処理区分  1:追加
   gv_disposal_div_upd CONSTANT VARCHAR2(1) := '2'; -- 処理区分  2:更新
   gv_disposal_div_del CONSTANT VARCHAR2(1) := '3'; -- 処理区分  3:削除
+--
+-- 2008/08/18 H.Itou Add Start T_S_595
+  -- 無効フラグ
+  gv_inactive_ind_y   CONSTANT VARCHAR2(1) := '1'; -- 無効フラグ 1:無効
+--
+  -- 廃止区分
+  gv_obsolete_class_y CONSTANT VARCHAR2(1) := '1'; -- 廃止区分 1:廃止
+-- 2008/08/18 H.Itou Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -378,6 +388,10 @@ AS
                   TO_NUMBER(ximv.num_of_cases)
              ELSE 1
            END                            conversion_factor
+-- 2008/08/18 H.Itou Add Start T_S_595
+          ,ximv.inactive_ind              inactive_ind        -- 無効フラグ
+          ,ximv.obsolete_class            obsolete_class      -- 廃止区分
+-- 2008/08/18 H.Itou Add End
           ,xvsti.corporation_name                         || gv_msg_comma ||
            xvsti.data_class                               || gv_msg_comma ||
            xvsti.transfer_branch_no                       || gv_msg_comma ||
@@ -390,9 +404,12 @@ AS
            TO_CHAR(xvsti.producted_quantity)              || gv_msg_comma ||
            TO_CHAR(xvsti.description)     data_dump           -- データダンプ
     FROM   xxpo_vendor_supply_txns_if     xvsti               -- 出来高実績情報インタフェース
-          ,xxcmn_vendors_v               xvv                  -- 仕入先情報VIEW
-          ,xxcmn_vendor_sites_v          xvsv                 -- 仕入先サイト情報VIEW
-          ,xxcmn_item_mst_v              ximv                 -- OPM品目情報VIEW
+          ,xxcmn_vendors_v                xvv                 -- 仕入先情報VIEW
+          ,xxcmn_vendor_sites_v           xvsv                -- 仕入先サイト情報VIEW
+-- 2008/08/18 H.Itou Mod Start T_S_595
+--          ,xxcmn_item_mst_v              ximv                 -- OPM品目情報VIEW
+          ,xxcmn_item_mst2_v              ximv                -- OPM品目情報VIEW2
+-- 2008/08/18 H.Itou Mod End
           ,xxcmn_item_categories5_v       xicv                -- OPM品目カテゴリ割当情報VIEW5
     WHERE  -- ** 結合条件  仕入先情報VIEW  ** --
            xvsti.vendor_code         = xvv.segment1(+)                 -- 取引先コード
@@ -400,6 +417,10 @@ AS
     AND    xvsti.factory_code         = xvsv.vendor_site_code(+)       -- 工場コード
            -- ** 結合条件  OPM品目情報VIEW  ** --
     AND    xvsti.item_code            = ximv.item_no(+)                -- 品目コード
+-- 2008/08/18 H.Itou Add Start T_S_595
+    AND    ximv.start_date_active(+) <= TRUNC(xvsti.producted_date)    -- 適用開始日 <= 製造日
+    AND    ximv.end_date_active(+)   >= TRUNC(xvsti.producted_date)    -- 適用終了日 >= 製造日
+-- 2008/08/18 H.Itou Add End
            -- ** 結合条件  OPM品目カテゴリ割当情報VIEW3  ** --
     AND    xvsti.item_code            = xicv.item_no(+)                -- 品目コード
            -- ** 抽出条件 ** --
@@ -792,8 +813,14 @@ AS
     -- ===========================
     -- 品目コードチェック
     -- ===========================
-    -- 品目IDを抽出できていない場合、警告
-    IF (gr_main_data.item_id IS NULL) THEN
+-- 2008/08/18 H.Itou Mod Start T_S_595
+--    -- 品目IDを抽出できていない場合、警告
+--    IF (gr_main_data.item_id IS NULL) THEN
+    -- 品目IDを抽出できていない場合、または無効の品目、または廃止の品目の場合、警告
+    IF((gr_main_data.item_id IS NULL)
+    OR (gr_main_data.inactive_ind   = gv_inactive_ind_y)            -- 無効フラグ
+    OR (gr_main_data.obsolete_class = gv_obsolete_class_y)) THEN    -- 廃止区分
+-- 2008/08/18 H.Itou Add End
       -- 警告メッセージ出力
       lv_errmsg  := SUBSTRB(
                       xxcmn_common_pkg.get_msg(
@@ -1331,7 +1358,7 @@ AS
       lr_lot_in.attribute1       := TO_CHAR(gr_main_data.producted_date, gv_yyyymmdd);  -- 製造年月日
       lr_lot_in.attribute2       := gr_main_data.koyu_code;        -- 固有記号
       lr_lot_in.attribute3       := TO_CHAR(gr_main_data.expiration_date, gv_yyyymmdd); -- 賞味期限
-      lr_lot_in.attribute7       := gt_stock_value;               -- 在庫単価
+      lr_lot_in.attribute7       := gt_stock_value;                -- 在庫単価
       lr_lot_in.attribute23      := gr_main_data.lot_status;       -- ロットステータス
       lr_lot_in.attribute8       := gr_main_data.vendor_code;      -- 取引先コード
 --
@@ -1496,12 +1523,12 @@ AS
       lr_vendor_supply_txns.producted_uom          := gr_main_data.producted_uom;         -- 出来高単位コード
       -- 処理タイプが1:相手先在庫の場合
       IF (gv_product_result_type_inv = gr_main_data.product_result_type) THEN
-        lr_vendor_supply_txns.order_created_flg    := gv_flg_n;             -- 発注作成フラグ N
+        lr_vendor_supply_txns.order_created_flg    := gv_flg_n;                           -- 発注作成フラグ N
         lr_vendor_supply_txns.order_created_date   := NULL;                               -- 発注作成日
   --
       -- 処理タイプが2:即時仕入の場合
       ELSIF (gv_product_result_type_po = gr_main_data.product_result_type) THEN
-        lr_vendor_supply_txns.order_created_flg    := gv_flg_y;             -- 発注作成フラグ Y
+        lr_vendor_supply_txns.order_created_flg    := gv_flg_y;                           -- 発注作成フラグ Y
         lr_vendor_supply_txns.order_created_date   := SYSDATE;                            -- 発注作成日
       END IF;
       lr_vendor_supply_txns.description            := gr_main_data.description;           -- 摘要

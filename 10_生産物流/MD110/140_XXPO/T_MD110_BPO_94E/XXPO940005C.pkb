@@ -7,7 +7,7 @@ AS
  * Description      : 支給依頼アップロード処理
  * MD.050           : 取引先オンライン   T_MD050_BPO_940
  * MD.070           : 支給依頼アップロード処理 T_MD070_BPO_94E
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/07/08    1.1   Oracle 山根一浩   I_S_192対応
  *  2008/07/17    1.2   Oracle 椎名       MD050指摘事項#13対応
  *  2008/07/29    1.3   Oracle 椎名       ST不具合対応
+ *  2008/08/18    1.4   Oracle 伊藤       T_TE080_BPO_940 指摘3 ヘッダデータ作成時に明細レコードを使用しない
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1840,7 +1841,10 @@ AS
         , program_update_date                       -- プログラム更新日
       ) VALUES (
           gt_header_id_tab(item_cnt)                -- ヘッダID
-        , gt_l_corporation_name_tab(item_cnt)       -- 会社名
+-- 2008/08/18 H.Itou Mod START T_TE080_BPO_940 指摘3
+--        , gt_l_corporation_name_tab(item_cnt)       -- 会社名
+        , gt_h_corporation_name_tab(item_cnt)       -- 会社名
+-- 2008/08/18 H.Itou Mod End
         , gt_h_data_class_tab(item_cnt)             -- データ種別
         , gt_h_transfer_branch_no_tab(item_cnt)     -- 伝送用枝番
         , gt_trans_type_tab(item_cnt)               -- 発生区分

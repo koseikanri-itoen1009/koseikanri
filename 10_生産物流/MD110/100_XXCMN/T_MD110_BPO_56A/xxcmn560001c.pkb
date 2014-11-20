@@ -7,7 +7,7 @@ AS
  * Description      : トレーサビリティ
  * MD.050           : トレーサビリティ T_MD050_BPO_560
  * MD.070           : トレーサビリティ(56A) T_MD070_BPO_56A
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/05/27    1.1   Masayuki Ikeda   不具合修正
  *  2008/07/02    1.2   ORACLE 丸下博宣  循環参照防止にバッチIDを追加
  *  2008/07/03    1.3   ORACLE 丸下博宣  循環参照防止条件修正
+ *  2008/08/18    1.4   ORACLE 椎名昭圭  TE080指摘事項#6対応
  *
  *****************************************************************************************/
 --
@@ -1356,8 +1357,165 @@ AS
                                                                      ,iv_item_id
                                                                      ,iv_lot_id;
 --
+-- 2008/08/18 v1.4 ADD Start
+      -- 生産系情報の取得チェック
+      -- 子品目情報の在庫情報が存在しない場合、受入情報を取得
+      SELECT itp.item_id
+            ,ilm.lot_id
+            ,ximv.item_no
+            ,ximv.item_name
+            ,ilm.lot_no
+            ,itp.whse_code
+            ,rct.transaction_date
+            ,rsh.receipt_num
+            ,pha.segment1
+            ,ven1.supp_name
+            ,ven1.segment1
+            ,ven2.trader_name
+            ,ilm.attribute1
+            ,ilm.attribute2
+            ,ilm.attribute3
+            ,ilm.attribute4
+            ,ilm.attribute5
+            ,ilm.attribute6
+            ,ilm.attribute10
+            ,ilm.attribute11
+            ,ilm.attribute12
+            ,ilm.attribute13
+            ,ilm.attribute14
+            ,ilm.attribute15
+            ,ilm.attribute16
+            ,ilm.attribute18
+            ,ilm.attribute22
+      BULK COLLECT INTO ot_rcv_tbl
+      FROM   ic_tran_pnd          itp
+            ,xxcmn_item_mst2_v    ximv
+            ,ic_lots_mst          ilm
+            ,rcv_shipment_headers rsh
+            ,rcv_shipment_lines   rsl
+            ,rcv_transactions     rct
+            ,po_headers_all       pha
+            ,( SELECT xpv1.segment1
+                     ,xpv1.vendor_name supp_name
+                     ,xpv1.vendor_id   supp_id
+               FROM   po_headers_all   pha
+                     ,xxcmn_vendors2_v xpv1
+               WHERE  pha.vendor_id    = xpv1.vendor_id
+               GROUP BY xpv1.segment1
+                       ,xpv1.vendor_name
+                       ,xpv1.vendor_id
+             ) ven1
+            ,( SELECT xpv2.vendor_name trader_name
+                     ,xpv2.vendor_id   trader_id
+               FROM   po_headers_all   pha
+                     ,xxcmn_vendors2_v xpv2
+               WHERE  pha.attribute3   = xpv2.vendor_id
+               GROUP BY xpv2.vendor_name
+                       ,xpv2.vendor_id
+             ) ven2
+      WHERE itp.item_id             = iv_item_id
+      AND   itp.lot_id              = iv_lot_id
+      AND   itp.item_id             = ximv.item_id
+      AND   itp.item_id             = ilm.item_id
+      AND   itp.lot_id              = ilm.lot_id
+      AND   ilm.lot_id             <> 0
+      AND   itp.doc_line            = rsl.line_num
+      AND   itp.doc_id              = rsl.shipment_header_id
+      AND   rsl.shipment_header_id  = rct.shipment_header_id
+      AND   rsl.shipment_line_id    = rct.shipment_line_id
+      AND   rsl.shipment_header_id  = rsh.shipment_header_id
+      AND   rct.transaction_type    = gv_rcv_tran_type
+      AND   rsl.po_header_id        = pha.po_header_id
+      AND   ximv.start_date_active <= trunc(itp.last_update_date)
+      AND   ximv.end_date_active   >= trunc(itp.last_update_date)
+      AND   pha.vendor_id           = ven1.supp_id(+)
+      AND   pha.attribute3          = ven2.trader_id(+)
+      AND   pha.org_id              = gn_org_id;
+--
+-- 2008/08/18 v1.4 ADD End
     -- 出力制御(2：ロットトレースバック)
     ELSIF ( iv_out_control = cv_out_back ) THEN
+-- 2008/08/18 v1.4 ADD Start
+      -- 第一階層の場合
+      IF (in_level_num = 1) THEN
+        -- 受入情報を取得
+        SELECT itp.item_id
+              ,ilm.lot_id
+              ,ximv.item_no
+              ,ximv.item_name
+              ,ilm.lot_no
+              ,itp.whse_code
+              ,rct.transaction_date
+              ,rsh.receipt_num
+              ,pha.segment1
+              ,ven1.supp_name
+              ,ven1.segment1
+              ,ven2.trader_name
+              ,ilm.attribute1
+              ,ilm.attribute2
+              ,ilm.attribute3
+              ,ilm.attribute4
+              ,ilm.attribute5
+              ,ilm.attribute6
+              ,ilm.attribute10
+              ,ilm.attribute11
+              ,ilm.attribute12
+              ,ilm.attribute13
+              ,ilm.attribute14
+              ,ilm.attribute15
+              ,ilm.attribute16
+              ,ilm.attribute18
+              ,ilm.attribute22
+        BULK COLLECT INTO ot_rcv_tbl
+        FROM   ic_tran_pnd          itp
+              ,xxcmn_item_mst2_v    ximv
+              ,ic_lots_mst          ilm
+              ,rcv_shipment_headers rsh
+              ,rcv_shipment_lines   rsl
+              ,rcv_transactions     rct
+              ,po_headers_all       pha
+              ,( SELECT xpv1.segment1
+                       ,xpv1.vendor_name supp_name
+                       ,xpv1.vendor_id   supp_id
+                 FROM   po_headers_all   pha
+                       ,xxcmn_vendors2_v xpv1
+                 WHERE  pha.vendor_id    = xpv1.vendor_id
+                 GROUP BY xpv1.segment1
+                         ,xpv1.vendor_name
+                         ,xpv1.vendor_id
+               ) ven1
+              ,( SELECT xpv2.vendor_name trader_name
+                       ,xpv2.vendor_id   trader_id
+                 FROM   po_headers_all   pha
+                       ,xxcmn_vendors2_v xpv2
+                 WHERE  pha.attribute3   = xpv2.vendor_id
+                 GROUP BY xpv2.vendor_name
+                         ,xpv2.vendor_id
+               ) ven2
+        WHERE itp.item_id             = iv_item_id
+        AND   itp.lot_id              = iv_lot_id
+        AND   itp.item_id             = ximv.item_id
+        AND   itp.item_id             = ilm.item_id
+        AND   itp.lot_id              = ilm.lot_id
+        AND   ilm.lot_id             <> 0
+        AND   itp.doc_line            = rsl.line_num
+        AND   itp.doc_id              = rsl.shipment_header_id
+        AND   rsl.shipment_header_id  = rct.shipment_header_id
+        AND   rsl.shipment_line_id    = rct.shipment_line_id
+        AND   rsl.shipment_header_id  = rsh.shipment_header_id
+        AND   rct.transaction_type    = gv_rcv_tran_type
+        AND   rsl.po_header_id        = pha.po_header_id
+        AND   ximv.start_date_active <= trunc(itp.last_update_date)
+        AND   ximv.end_date_active   >= trunc(itp.last_update_date)
+        AND   pha.vendor_id           = ven1.supp_id(+)
+        AND   pha.attribute3          = ven2.trader_id(+)
+        AND   pha.org_id              = gn_org_id;
+--
+      END IF;
+--
+      -- 第二階層以降か、第一階層で受入情報が存在しない場合
+      IF ((in_level_num > 1) OR (ot_rcv_tbl.COUNT = 0)) THEN
+-- 2008/08/18 v1.4 ADD End
 --
       lv_sql_sel := '';
       lv_sql_sel := lv_sql_sel || lv_sql_select_01 || lv_sql_select_02 || lv_sql_from || cv_sql_l_block;
@@ -1382,9 +1540,14 @@ AS
                                                                      ,iv_item_id
                                                                      ,iv_lot_id;
 --
+-- 2008/08/18 v1.4 ADD Start
+      END IF;
+--
+-- 2008/08/18 v1.4 ADD End
     END IF;
 --
-    -- 生産系情報の取得チェック
+-- 2008/08/18 v1.4 DELETE Start
+/*    -- 生産系情報の取得チェック
     -- 子品目情報の在庫情報が存在しない場合、受入情報を取得
     SELECT itp.item_id
           ,ilm.lot_id
@@ -1459,6 +1622,8 @@ AS
     AND   pha.vendor_id           = ven1.supp_id(+)
     AND   pha.attribute3          = ven2.trader_id(+)
     AND   pha.org_id              = gn_org_id;
+*/
+-- 2008/08/18 v1.4 DELETE End
 --
     IF ( (ot_itp_tbl.COUNT = 0) AND (ot_rcv_tbl.COUNT = 0) ) THEN
       RAISE NO_DATA_FOUND;
@@ -2130,13 +2295,39 @@ AS
           RAISE global_process_expt;
         END IF;
 --
-        -- 第一階層の子品目を親品目へ置換え
-        IF ((gt_itp01_tbl.COUNT > 0) AND (gt_itp01_tbl.COUNT >= ln_cnt_01)) THEN
-          IF (gt_itp01_tbl(ln_cnt_01).c_item_no IS NOT NULL) THEN
+-- 2008/08/18 v1.4 UPDATE Start
+--        -- 第一階層の子品目を親品目へ置換え
+--        IF ((gt_itp01_tbl.COUNT > 0) AND (gt_itp01_tbl.COUNT >= ln_cnt_01)) THEN
+--          IF (gt_itp01_tbl(ln_cnt_01).c_item_no IS NOT NULL) THEN
+--            lv_item_id_02  := gt_itp01_tbl(ln_cnt_01).c_item_id;
+--            lv_lot_id_02   := gt_itp01_tbl(ln_cnt_01).c_lot_id;
+--            lv_batch_id_02 := gt_itp01_tbl(ln_cnt_01).p_batch_id;
+        -- 生産情報か受入情報が存在する場合
+        IF (((gt_itp01_tbl.COUNT > 0) AND (gt_itp01_tbl.COUNT >= ln_cnt_01))
+          OR ((gt_rcv01_tbl.COUNT > 0) AND (gt_rcv01_tbl.COUNT >= ln_cnt_01))) THEN
+          -- 生産情報の子品目が存在する場合
+          -- 第一階層の子品目を親品目へ置換え
+          IF (((gt_itp01_tbl.COUNT > 0) AND (gt_itp01_tbl.COUNT >= ln_cnt_01))
+            AND (gt_itp01_tbl(ln_cnt_01).c_item_no IS NOT NULL)) THEN
             lv_item_id_02  := gt_itp01_tbl(ln_cnt_01).c_item_id;
             lv_lot_id_02   := gt_itp01_tbl(ln_cnt_01).c_lot_id;
             lv_batch_id_02 := gt_itp01_tbl(ln_cnt_01).p_batch_id;
 --
+          -- 受入情報が存在する場合
+          ELSIF ((gt_rcv01_tbl.COUNT > 0) AND (gt_rcv01_tbl.COUNT >= ln_cnt_01)) THEN
+            lv_item_id_02  := lv_item_id_01;
+            lv_lot_id_02   := lv_lot_id_01;
+            lv_batch_id_02 := NULL;
+--
+          ELSE
+            lv_item_id_02  := NULL;
+            lv_lot_id_02   := NULL;
+            lv_batch_id_02 := NULL;
+--
+          END IF;
+--
+          IF (lv_item_id_02 IS NOT NULL) THEN
+-- 2008/08/18 v1.4 UPDATE End
             -- ================================
             -- A-5.第二階層ロット系統データ抽出
             -- ================================
