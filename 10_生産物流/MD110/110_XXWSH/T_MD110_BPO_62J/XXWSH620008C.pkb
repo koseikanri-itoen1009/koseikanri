@@ -7,7 +7,7 @@ AS
  * Description      : 積込指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 積込指示書 T_MD070_BPO_62J
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/07/07    1.3   Akiyoshi Shiina    変更要求対応#92
  *                                         禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/15    1.4   Masayoshi Uehara   入数の小数部を切り捨てて、整数で表示
+ *  2008/10/27    1.5   Yuko Kawano        統合指摘#133、課題#32,#62、内部変更#183対応
  *
  *****************************************************************************************/
 --
@@ -106,6 +107,10 @@ AS
   gc_code_shukka                CONSTANT VARCHAR2(1)  :=  '1' ;
 --
   gc_tehai_label                CONSTANT VARCHAR2(8)  :=  '手配No：' ;            -- 手配№
+--
+-- 2008/10/27 Y.Kawano Add Start
+  gc_class_y                    CONSTANT VARCHAR2(1)  :=  'Y';  -- 区分値'Y'
+-- 2008/10/27 Y.Kawano Add End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -585,14 +590,22 @@ AS
                 ,ilm.attribute2                   AS attribute2             -- 固有記号
                 ,CASE
                   -- 製品の場合
-                  WHEN ((xic4v1.item_class_code = lc_code_seihin) 
+-- 2008/10/27 Y.Kawano Mod Start #183
+--                  WHEN ((xic4v1.item_class_code = lc_code_seihin) 
+                  WHEN ((xic5v1.item_class_code = lc_code_seihin) 
+-- 2008/10/27 Y.Kawano Mod End #183
                          AND 
                         (ilm.attribute6 IS NOT NULL)) THEN 
                           xim2v1.num_of_cases
                   -- その他の品目の場合
-                  WHEN (((xic4v1.item_class_code = lc_code_genryou) 
+-- 2008/10/27 Y.Kawano Mod Start #183
+--                  WHEN (((xic4v1.item_class_code = lc_code_genryou) 
+--                          OR  
+--                          (xic4v1.item_class_code = lc_code_hanseihin))
+                  WHEN (((xic5v1.item_class_code = lc_code_genryou) 
                           OR  
-                          (xic4v1.item_class_code = lc_code_hanseihin))
+                          (xic5v1.item_class_code = lc_code_hanseihin))
+-- 2008/10/27 Y.Kawano Mod End #183
                         AND 
                         (ilm.attribute6 IS NOT NULL)) THEN 
                          TO_CHAR(TRUNC(ilm.attribute6))
@@ -603,7 +616,10 @@ AS
                   WHEN  xmldt.mov_line_id IS NULL THEN
                     CASE
                       WHEN  xim2v1.conv_unit IS NOT NULL
-                      AND   xic4v1.item_class_code  = lc_code_seihin  THEN
+-- 2008/10/27 Y.Kawano Mod Start #183
+--                      AND   xic4v1.item_class_code  = lc_code_seihin  THEN
+                      AND   xic5v1.item_class_code  = lc_code_seihin  THEN
+-- 2008/10/27 Y.Kawano Mod End   #183
                         xola.quantity / TO_NUMBER(
                                                 CASE WHEN xim2v1.num_of_cases > 0
                                                         THEN xim2v1.num_of_cases
@@ -615,7 +631,10 @@ AS
                   ELSE
                     CASE
                       WHEN  xim2v1.conv_unit IS NOT NULL 
-                      AND   xic4v1.item_class_code  = lc_code_seihin  THEN
+-- 2008/10/27 Y.Kawano Mod Start #183
+--                      AND   xic4v1.item_class_code  = lc_code_seihin  THEN
+                      AND   xic5v1.item_class_code  = lc_code_seihin  THEN
+-- 2008/10/27 Y.Kawano Mod End   #183
                         xmldt.actual_quantity / TO_NUMBER(
                                                         CASE WHEN xim2v1.num_of_cases > 0
                                                                 THEN xim2v1.num_of_cases
@@ -627,7 +646,11 @@ AS
                 END                               AS sum_quantity   -- 合計数(明細単位)
                 ,CASE
                   WHEN  xim2v1.conv_unit IS NOT NULL 
-                  AND   xic4v1.item_class_code  = lc_code_seihin  THEN
+-- 2008/10/27 Y.Kawano Mod Start #32,#183
+--                  AND   xic4v1.item_class_code  = lc_code_seihin  THEN
+                  AND   xic5v1.item_class_code  = lc_code_seihin
+                  AND   xim2v1.num_of_cases > '0'  THEN
+-- 2008/10/27 Y.Kawano Mod End   #32,#183
                     xim2v1.conv_unit
                   ELSE
                     xim2v1.item_um
@@ -680,7 +703,10 @@ AS
                 ,xxinv_mov_lot_details            xmldt             -- 移動ロット詳細(アドオン)
                 ,ic_lots_mst                      ilm               -- OPMロットマスタ
                 ,xxcmn_item_mst2_v                xim2v1            -- OPM品目情報VIEW2
-                ,xxcmn_item_categories4_v         xic4v1            -- OPM品目カテゴリ割当情報VIEW4
+-- 2008/10/27 Y.Kawano Mod Start
+--                ,xxcmn_item_categories4_v         xic4v1  -- OPM品目カテゴリ割当情報VIEW4
+                ,xxcmn_item_categories5_v         xic5v1  -- OPM品目カテゴリ割当情報VIEW5
+-- 2008/10/27 Y.Kawano Mod End
                 ,xxwsh_ship_method2_v             xsm2v             -- 配送区分情報VIEW2
                 ,fnd_user                         fu                -- ユーザーマスタ
                 ,per_all_people_f                 papf              -- 従業員テーブル
@@ -697,6 +723,9 @@ AS
       -------------------------------------------------------------------------------
       AND       xoha.req_status                   >=  lc_status_shimezumi       -- 締め済み以上
       AND       xoha.req_status                   <>  lc_status_torikeshi       -- 取消を含まない
+-- 2008/10/27 Y.Kawano Add Start #62
+      AND       xoha.schedule_ship_date           IS NOT NULL            -- 指示なし実績対象外
+-- 2008/10/27 Y.Kawano Add End   #62
       -------------------------------------------------------------------------------
       -- 出庫元情報
       -------------------------------------------------------------------------------
@@ -785,9 +814,15 @@ AS
       -- 入数
       -- 合計数(明細単位)
       -- 合計数_単位(明細単位)
-      AND       xim2v1.item_id                    =   xic4v1.item_id
+-- 2008/10/27 Y.Kawano Mod Start #183
+--      AND       xim2v1.item_id                    =   xic4v1.item_id
+      AND       xim2v1.item_id                    =   xic5v1.item_id
+-- 2008/10/27 Y.Kawano Mod End   #183
       AND       (in_commodity_div IS NULL
-        OR        xic4v1.prod_class_code          =   in_commodity_div)
+-- 2008/10/27 Y.Kawano Mod Start #183
+--        OR        xic4v1.prod_class_code          =   in_commodity_div)
+        OR        xic5v1.prod_class_code          =   in_commodity_div)
+-- 2008/10/27 Y.Kawano Mod End   #183
       -------------------------------------------------------------------------------
       -------------------------------------------------------------------------------
       -- OPM保管場所マスタ
@@ -892,13 +927,21 @@ AS
                 ,ilm.attribute2                   AS attribute2             -- 固有記号
                 ,CASE
                   -- 製品の場合
-                  WHEN ((xic4v1.item_class_code = lc_code_seihin) 
+-- 2008/10/27 Y.Kawano Mod Start #183
+--                  WHEN ((xic4v1.item_class_code = lc_code_seihin) 
+                  WHEN ((xic5v1.item_class_code = lc_code_seihin) 
+-- 2008/10/27 Y.Kawano Mod End   #183
                         AND 
                         (ilm.attribute6 IS NOT NULL)) THEN xim2v1.num_of_cases
                   -- その他の品目の場合
-                  WHEN (((xic4v1.item_class_code = lc_code_genryou) 
+-- 2008/10/27 Y.Kawano Mod Start #183
+--                  WHEN (((xic4v1.item_class_code = lc_code_genryou) 
+--                          OR  
+--                         (xic4v1.item_class_code = lc_code_hanseihin))
+                  WHEN (((xic5v1.item_class_code = lc_code_genryou) 
                           OR  
-                         (xic4v1.item_class_code = lc_code_hanseihin))
+                         (xic5v1.item_class_code = lc_code_hanseihin))
+-- 2008/10/27 Y.Kawano Mod End   #183
                         AND (ilm.attribute6 IS NOT NULL)) THEN TO_CHAR(TRUNC(ilm.attribute6))
                   -- 在庫入数が設定されていない,資材他,ロット管理していない場合
                   WHEN ( ilm.attribute6 IS NULL ) THEN TO_CHAR(TRUNC(xim2v1.frequent_qty))
@@ -907,7 +950,10 @@ AS
                   WHEN  xmldt.mov_line_id IS NULL THEN
                     CASE
                       WHEN  xim2v1.conv_unit IS NOT NULL 
-                      AND   xic4v1.item_class_code  = lc_code_seihin THEN
+-- 2008/10/27 Y.Kawano Mod Start #183
+--                      AND   xic4v1.item_class_code  = lc_code_seihin THEN
+                      AND   xic5v1.item_class_code  = lc_code_seihin THEN
+-- 2008/10/27 Y.Kawano Mod End   #183
                         xmril.instruct_qty / TO_NUMBER(
                                                       CASE WHEN xim2v1.num_of_cases > 0
                                                               THEN  xim2v1.num_of_cases
@@ -919,7 +965,10 @@ AS
                   ELSE
                     CASE
                       WHEN  xim2v1.conv_unit IS NOT NULL 
-                      AND   xic4v1.item_class_code  = lc_code_seihin THEN
+-- 2008/10/27 Y.Kawano Mod Start #183
+--                      AND   xic4v1.item_class_code  = lc_code_seihin THEN
+                      AND   xic5v1.item_class_code  = lc_code_seihin THEN
+-- 2008/10/27 Y.Kawano Mod End   #183
                         xmldt.actual_quantity / TO_NUMBER(
                                                         CASE  WHEN  xim2v1.num_of_cases > 0
                                                                 THEN  xim2v1.num_of_cases
@@ -931,7 +980,11 @@ AS
                 END                               AS sum_quantity   -- 合計数(明細単位)
                 ,CASE
                   WHEN  xim2v1.conv_unit IS NOT NULL 
-                  AND   xic4v1.item_class_code  = lc_code_seihin THEN
+-- 2008/10/27 Y.Kawano Mod Start #32,#183
+--                  AND   xic4v1.item_class_code  = lc_code_seihin THEN
+                  AND   xic5v1.item_class_code  = lc_code_seihin
+                  AND   xim2v1.num_of_cases > '0'  THEN
+-- 2008/10/27 Y.Kawano Mod End   #32,#183
                     xim2v1.conv_unit
                   ELSE
                     xim2v1.item_um
@@ -982,7 +1035,10 @@ AS
                 ,xxinv_mov_lot_details            xmldt   -- 移動ロット詳細(アドオン)
                 ,ic_lots_mst                      ilm     -- OPMロットマスタ
                 ,xxcmn_item_mst2_v                xim2v1  -- OPM品目情報VIEW2
-                ,xxcmn_item_categories4_v         xic4v1  -- OPM品目カテゴリ割当情報VIEW4
+-- 2008/10/27 Y.Kawano Mod Start
+--                ,xxcmn_item_categories4_v         xic4v1  -- OPM品目カテゴリ割当情報VIEW4
+                ,xxcmn_item_categories5_v         xic5v1  -- OPM品目カテゴリ割当情報VIEW5
+-- 2008/10/27 Y.Kawano Mod End
                 ,xxwsh_ship_method2_v             xsm2v   -- 配送区分情報VIEW2
                 ,fnd_user                         fu      -- ユーザーマスタ
                 ,xxpo_per_all_people_f2_v         papf    -- 従業員情報VIEW2
@@ -994,6 +1050,10 @@ AS
                 xmrih.mov_type                    <> lc_mov_type_sekisou_nashi  -- 積送無し
       AND       xmrih.status                      >= lc_status_irai_zumi        -- 依頼済以上
       AND       xmrih.status                      <> lc_status_torikeshi        -- 取消を含まない
+-- 2008/10/27 Y.Kawano Add Start #62
+      AND     ((xmrih.no_instr_actual_class       IS NULL)
+       OR      (xmrih.no_instr_actual_class       <>  gc_class_y)) -- 指示なし実績は対象外
+-- 2008/10/27 Y.Kawano Add End   #62
       -------------------------------------------------------------------------------
       -- 出庫元情報(From)
       -------------------------------------------------------------------------------
@@ -1066,12 +1126,18 @@ AS
       -- 入数
       -- 合計数_単位(明細単位)
       AND       xmril.item_id                     =   xim2v1.item_id
-      AND       xim2v1.item_id                    =   xic4v1.item_id
+-- 2008/10/27 Y.Kawano Mod Start #183
+--      AND       xim2v1.item_id                    =   xic4v1.item_id
+      AND       xim2v1.item_id                    =   xic5v1.item_id
+-- 2008/10/27 Y.Kawano Mod End   #183
       -------------------------------------------------------------------------------
       -------------------------------------------------------------------------------
       -- 商品区分
       AND       (in_commodity_div IS NULL
-        OR        xic4v1.prod_class_code          =   in_commodity_div)
+-- 2008/10/27 Y.Kawano Mod Start #183
+--        OR        xic4v1.prod_class_code          =   in_commodity_div)
+        OR        xic5v1.prod_class_code          =   in_commodity_div)
+-- 2008/10/27 Y.Kawano Mod End   #183
       -------------------------------------------------------------------------------
       -------------------------------------------------------------------------------
       -- OPM保管場所マスタ(From)
