@@ -66,6 +66,7 @@ AS
   AND     hp.party_id          = hca.owner_table_id(+) 
   AND     hca.owner_table_name(+) = 'HZ_PARTIES' 
   AND     hca.class_category(+)   = 'TRANSPORTATION_PROVIDERS'
+  AND     hca.status(+)           = 'A'
   AND     xp.start_date_active <= TRUNC(SYSDATE)
   AND     xp.end_date_active   >= TRUNC(SYSDATE)
 ;

@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫情報差異リスト（入庫基準）
  * MD.050/070       : 生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD050_BPO_930)
  *                    生産物流共通（出荷・移動インタフェース）Issue1.0(T_MD070_BPO_93D)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/06/25    1.2   Oracle大橋孝郎   不具合ログ対応
  *  2008/06/30    1.3   Oracle大橋孝郎   不具合ログ対応
  *  2008/07/08    1.4   Oracle弓場哲士   禁則文字対応
+ *  2008/07/09    1.5   Oracle椎名昭圭   変更要求対応#92
  *
  *****************************************************************************************/
 --
@@ -212,6 +213,10 @@ AS
 -- add start ver1.3
      ,prod_class_code VARCHAR(100)    -- 商品区分
 -- add end ver1.3
+-- 2008/07/09 A.Shiina v1.5 Update Start
+     ,freight_charge_code   VARCHAR(1)  -- 運賃区分
+     ,complusion_output_kbn VARCHAR(1)  -- 強制出力区分
+-- 2008/07/09 A.Shiina v1.5 Update Start
     ) ;
 --    
 -- 中間テーブル格納用
@@ -1158,6 +1163,10 @@ AS
     or_temp_tab.ship_date := ir_get_data.ship_date ;  -- 出庫日
     or_temp_tab.arvl_date := ir_get_data.arvl_date ;  -- 入庫日
 --
+-- 2008/07/09 A.Shiina v1.5 Update Start
+   IF  ((ir_get_data.freight_charge_code  = '1')
+    OR (ir_get_data.complusion_output_kbn = '1')) THEN
+-- 2008/07/09 A.Shiina v1.5 Update End
     --------------------------------------------------
     -- 運送業者設定
     --------------------------------------------------
@@ -1170,10 +1179,13 @@ AS
               ,or_temp_tab.career_name  -- 運送業者名称
         FROM xxcmn_carriers2_v  xc      -- 運送業者情報VIEW2
         WHERE gr_param.date_from BETWEEN xc.start_date_active AND xc.end_date_active
--- mod start ver1.1
---        AND   xc.party_number     = ir_get_data.career_id
-        AND   xc.party_id         = ir_get_data.career_id
--- mod end ver1.1
+-- 2008/07/09 A.Shiina v1.5 Update Start
+---- mod start ver1.1
+----        AND   xc.party_number     = ir_get_data.career_id
+--        AND   xc.party_id         = ir_get_data.career_id
+---- mod end ver1.1
+        AND   xc.party_number     = ir_get_data.career_id
+-- 2008/07/09 A.Shiina v1.5 Update End
         ;
      -- 保留データ以外の場合
       ELSE
@@ -1194,6 +1206,9 @@ AS
         or_temp_tab.career_code := NULL ;
         or_temp_tab.career_name := NULL ;
     END ;
+-- 2008/07/09 A.Shiina v1.5 Update Start
+   END IF;
+-- 2008/07/09 A.Shiina v1.5 Update End
 --
     --------------------------------------------------
     -- 配送区分設定
@@ -1684,6 +1699,10 @@ AS
 -- add start ver1.3
             ,xicv.prod_class_code         AS prod_class_code       -- 商品区分
 -- add end ver1.3
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+            ,xmrih.freight_charge_class   AS freight_charge_code   -- 運賃区分
+            ,xcv.complusion_output_code   AS complusion_output_kbn -- 強制出力区分
+-- 2008/07/09 A.Shiina v1.5 ADD End
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
 -- add start ver1.2
@@ -1699,6 +1718,9 @@ AS
 -- add end ver1.1
           ,xxcmn_item_mst2_v              ximv    -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories4_v       xicv    -- ＯＰＭ品目カテゴリ割当情報VIEW4
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+          ,xxcmn_carriers2_v              xcv     -- 運送業者情報VIEW2
+-- 2008/07/09 A.Shiina v1.5 ADD End
       WHERE
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ品目
@@ -1767,6 +1789,13 @@ AS
       AND   xmrih.schedule_arrival_date    BETWEEN gr_param.date_from
                                         AND     NVL( gr_param.date_to, xmrih.schedule_arrival_date )
 -- mod end ver1.1
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+      AND   xmrih.career_id                    =   xcv.party_id
+      AND   ((xcv.start_date_active IS NULL)
+        OR    (xcv.start_date_active         <=  xmrih.schedule_ship_date))
+      AND   ((xcv.end_date_active IS NULL)
+        OR    (xcv.end_date_active           >=  xmrih.schedule_ship_date))
+-- 2008/07/09 A.Shiina v1.5 ADD End
       UNION
       SELECT xmrih.ship_to_locat_code           AS arvl_code            -- 入庫倉庫コード
             ,xil.description                    AS arvl_name            -- 入庫倉庫名称
@@ -1805,6 +1834,10 @@ AS
 -- add start ver1.3
             ,xicv.prod_class_code         AS prod_class_code       -- 商品区分
 -- add end ver1.3
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+            ,xmrih.freight_charge_class    AS freight_charge_code   -- 運賃区分
+            ,xcv.complusion_output_code    AS complusion_output_kbn -- 強制出力区分
+-- 2008/07/09 A.Shiina v1.5 ADD End
       FROM xxinv_mov_req_instr_headers    xmrih   -- 移動依頼/指示ヘッダアドオン
           ,xxinv_mov_req_instr_lines      xmril   -- 移動依頼/指示明細アドオン
 -- add start ver1.2
@@ -1820,6 +1853,9 @@ AS
 -- add end ver1.1
           ,xxcmn_item_mst2_v              ximv    -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories4_v       xicv    -- ＯＰＭ品目カテゴリ割当情報VIEW4
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+          ,xxcmn_carriers2_v              xcv     -- 運送業者情報VIEW2
+-- 2008/07/09 A.Shiina v1.5 ADD End
       WHERE
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ品目
@@ -1888,6 +1924,13 @@ AS
       AND   NVL( xmrih.actual_arrival_date,xmrih.schedule_arrival_date ) BETWEEN gr_param.date_from
                                         AND     NVL( gr_param.date_to, NVL( xmrih.actual_arrival_date,xmrih.schedule_arrival_date ) )
 -- mod end ver1.1
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+      AND   xmrih.career_id                    =   xcv.party_id
+      AND   ((xcv.start_date_active IS NULL)
+        OR    (xcv.start_date_active         <=  xmrih.schedule_ship_date))
+      AND   ((xcv.end_date_active IS NULL)
+        OR    (xcv.end_date_active           >=  xmrih.schedule_ship_date))
+-- 2008/07/09 A.Shiina v1.5 ADD End
     ;
     -- 保留データ取得
     CURSOR cu_reserv
@@ -1918,6 +1961,10 @@ AS
             ,xsli.ship_to_quantity            AS quant_i          -- 入庫数
             ,xsli.shiped_quantity             AS quant_o          -- 出庫数
             ,NULL                             AS status           -- ヘッダステータス
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+            ,xshi.filler14                    AS freight_charge_code   -- 運賃区分
+            ,xcv.complusion_output_code       AS complusion_output_kbn -- 強制出力区分
+-- 2008/07/09 A.Shiina v1.5 ADD End
       FROM xxwsh_shipping_headers_if  xshi      -- 出荷依頼インタフェースヘッダアドオン
           ,xxwsh_shipping_lines_if    xsli      -- 出荷依頼インタフェース明細アドオン
           ,xxcmn_item_locations2_v    xil       -- ＯＰＭ保管場所マスタ
@@ -1926,6 +1973,9 @@ AS
 -- add end ver1.1
           ,xxcmn_item_mst2_v          ximv      -- ＯＰＭ品目情報VIEW2
           ,xxcmn_item_categories4_v   xicv      -- ＯＰＭ品目カテゴリ割当情報VIEW4
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+          ,xxcmn_carriers2_v          xcv       -- 運送業者情報VIEW2
+-- 2008/07/09 A.Shiina v1.5 ADD End
       WHERE
       ----------------------------------------------------------------------------------------------
       -- ＯＰＭ品目
@@ -1979,13 +2029,23 @@ AS
       AND   xshi.order_source_ref = NVL( gr_param.request_no, xshi.order_source_ref )
 -- add start ver1.1
       -- パラメータ条件．入庫先
-      AND   xshi.ship_to_location = NVL( gr_param.ship_to_locat_code, xshi.party_site_code )
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+--      AND   xshi.ship_to_location = NVL( gr_param.ship_to_locat_code, xshi.party_site_code )
+      AND   xshi.ship_to_location = NVL( gr_param.ship_to_locat_code, xshi.ship_to_location )
+-- 2008/07/09 A.Shiina v1.5 ADD End
       -- パラメータ条件．指示部署
       AND   xshi.report_post_code = NVL( gr_param.dept_code, xshi.report_post_code )
 -- add end ver1.1
       -- パラメータ条件．出庫日FromTo
       AND   xshi.shipped_date     BETWEEN gr_param.date_from
                                   AND     NVL( gr_param.date_to, xshi.shipped_date )
+-- 2008/07/09 A.Shiina v1.5 ADD Start
+      AND   xshi.freight_carrier_code         =   xcv.party_number
+      AND   ((xcv.start_date_active IS NULL)
+        OR    (xcv.start_date_active         <=  xshi.shipped_date))
+      AND   ((xcv.end_date_active IS NULL)
+        OR    (xcv.end_date_active           >=  xshi.shipped_date))
+-- 2008/07/09 A.Shiina v1.5 ADD End
     ;
 --
 --##### 固定ローカル変数宣言部 START #################################
@@ -2018,6 +2078,10 @@ AS
         lr_get_data.location_name    := re_main.location_name ;     -- 出庫倉庫名称
         lr_get_data.ship_date        := re_main.ship_date ;         -- 出庫日
         lr_get_data.arvl_date        := re_main.arvl_date ;         -- 入庫日
+-- 2008/07/09 A.Shiina v1.5 Update Start
+        lr_get_data.freight_charge_code   := re_main.freight_charge_code ;    -- 運賃区分
+        lr_get_data.complusion_output_kbn := re_main.complusion_output_kbn ;  -- 強制出力区分
+-- 2008/07/09 A.Shiina v1.5 Update End
         lr_get_data.career_id        := re_main.career_id ;         -- 検索条件：運送業者
         lr_get_data.ship_method_code := re_main.ship_method_code ;  -- 検索条件：配送区分
         lr_get_data.delivery_no      := re_main.delivery_no ;       -- 配送Ｎｏ
@@ -2118,6 +2182,10 @@ AS
         lr_get_data.location_name    := re_main.location_name ;     -- 出庫倉庫名称
         lr_get_data.ship_date        := re_main.ship_date ;         -- 出庫日
         lr_get_data.arvl_date        := re_main.arvl_date ;         -- 入庫日
+-- 2008/07/09 A.Shiina v1.5 Update Start
+        lr_get_data.freight_charge_code   := re_main.freight_charge_code ;    -- 運賃区分
+        lr_get_data.complusion_output_kbn := re_main.complusion_output_kbn ;  -- 強制出力区分
+-- 2008/07/09 A.Shiina v1.5 Update End
         lr_get_data.career_id        := re_main.career_id ;         -- 検索条件：運送業者
         lr_get_data.ship_method_code := re_main.ship_method_code ;  -- 検索条件：配送区分
         lr_get_data.delivery_no      := re_main.delivery_no ;       -- 配送Ｎｏ
