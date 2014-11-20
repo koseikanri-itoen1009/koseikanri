@@ -34,6 +34,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/02/03    1.0   SCS Okuyama      新規作成
  *  2009/02/27    1.1   Yutaka.Kuboshima 顧客ステータス更新処理を変更
+ *  2009/05/27    1.2   Yutaka.Kuboshima 障害T1_0816,T1_0863の対応
  *
  *****************************************************************************************/
 --
@@ -153,6 +154,10 @@ AS
   cv_rpt_dec_flg_dec        CONSTANT VARCHAR2(1)  := '1';                           -- 速報確定フラグ（確定）
   cv_crt_flg_correction     CONSTANT VARCHAR2(1)  := '1';                           -- 振戻フラグ（振り戻し情報）
   cv_crt_flg_others         CONSTANT VARCHAR2(1)  := '0';                           -- 振戻フラグ（振り戻し情報以外）
+-- 2009/05/27 Ver1.2 障害T1_0863 add start by Yutaka.Kuboshima
+  cv_gyotai_sho_vd24        CONSTANT VARCHAR2(2)  := '24';                          -- 業態小分類（フルサービス（消化）ＶＤ）
+  cv_gyotai_sho_vd25        CONSTANT VARCHAR2(2)  := '25';                          -- 業態小分類（フルサービスＶＤ）
+-- 2009/05/27 Ver1.2 障害T1_0863 add end by Yutaka.Kuboshima
   --
   cv_para01_name            CONSTANT VARCHAR2(12) := '処理日(FROM)';                -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名01
   cv_para02_name            CONSTANT VARCHAR2(12) := '処理日(TO)  ';                -- ｺﾝｶﾚﾝﾄ･ﾊﾟﾗﾒｰﾀ名02
@@ -188,20 +193,34 @@ AS
       fidt.cust_code              AS  cust_code,              -- 顧客コード
       hzpt.duns_number_c          AS  cust_status,            -- 顧客ステータス
       fidt.new_tran_date          AS  new_tran_date,          -- 最新取引日
-      fidt.past_deli_date         AS  past_deli_date,         -- 前月最新取引日
+-- 2009/05/27 Ver1.2 障害T1_0816,T1_0863 modify start by Yutaka.Kuboshima
+--      fidt.past_deli_date         AS  past_deli_date,         -- 前月最新取引日
+      xcac.final_tran_date        AS  final_tran_date,        -- 最終取引日
+-- 2009/05/27 Ver1.2 障害T1_0816,T1_0863 modify end by Yutaka.Kuboshima
       xcac.past_final_tran_date   AS  past_final_tran_date,   -- 前月最終取引日
       fidt.past_deli_date         AS  past_new_fnl_trn_dt,    -- 前月最新取引日
-      xcac.final_call_date        AS  final_call_date,        -- 最終訪問日
+-- 2009/05/27 Ver1.2 delete start by Yutaka.Kuboshima
+--      xcac.final_call_date        AS  final_call_date,        -- 最終訪問日
+-- 2009/05/27 Ver1.2 delete end by Yutaka.Kuboshima
       xcac.cnvs_date              AS  cnvs_date,              -- 顧客獲得日
       xcac.start_tran_date        AS  start_tran_date,        -- 初回取引日
-      gyti.business_mid_type      AS  business_mid_type,      -- 業態中分類
+-- 2009/05/27 Ver1.2 delete start by Yutaka.Kuboshima
+--      gyti.business_mid_type      AS  business_mid_type,      -- 業態中分類
+-- 2009/05/27 Ver1.2 delete end by Yutaka.Kuboshima
       hzpt.ROWID                  AS  hzpt_rowid,             -- レコードID（パーティ）
-      xcac.ROWID                  AS  xcac_rowid              -- レコードID（顧客追加情報）
+      xcac.ROWID                  AS  xcac_rowid,             -- レコードID（顧客追加情報）
+-- 2009/05/27 Ver.12 障害T1_0816,T1_0863 add start by Yutaka.Kuboshima
+      fidt.old_tran_date          AS  old_tran_date,          -- 最前取引日
+      xcac.business_low_type      AS  business_low_type       -- 業態小分類
+-- 2009/05/27 Ver.12 障害T1_0816,T1_0863 add end by Yutaka.Kuboshima
     FROM
       (
         SELECT
           xfid.cust_code              AS  cust_code,
           MAX(xfid.new_tran_date)     AS  new_tran_date,
+-- 2009/05/27 Ver1.3 障害T1_0863 add start by Yutaka.Kuboshima
+          MIN(xfid.new_tran_date)     AS  old_tran_date,
+-- 2009/05/27 Ver1.3 障害T1_0863 add end by Yutaka.Kuboshima
           MAX(xfid.past_deli_date)    AS  past_deli_date
         FROM
           (
@@ -249,7 +268,7 @@ AS
                   EXISTS(
                     SELECT
                       'X'
-                    FROM
+                    FROM	
                       xxcok_selling_to_info     xsto              -- 売上振替先情報
                     WHERE
                           xsto.start_month            <=  TO_CHAR(xsti.registration_date, cv_month_fmt)
@@ -262,30 +281,34 @@ AS
       )                     fidt,   -- 販売実績＆実績振替
       hz_cust_accounts      hzca,   -- 顧客マスタ
       hz_parties            hzpt,   -- パーティ
-      xxcmm_cust_accounts   xcac,   -- 顧客追加情報
-      (
-        SELECT
-          lkch.lookup_code      AS  business_mid_type,  -- 業態中分類区分
-          lkch.meaning          AS  business_mid_name,  -- 業態中分類区分名
-          lksh.lookup_code      AS  business_low_type,  -- 業態小分類区分
-          lksh.meaning          AS  business_low_name   -- 業態小分類区分名
-        FROM
-          fnd_lookup_values     lkch,   -- LOOKUP(業態中分類)
-          fnd_lookup_values     lksh    -- LOOKUP(業態小分類)
-        WHERE
-              lksh.attribute1     =   lkch.lookup_code
-          AND lksh.lookup_type    =   cv_lkup_type_gyotai_sho
-          AND lksh.enabled_flag   =   cv_flag_yes
-          AND lksh.language       =   cv_lang_ja
-          AND lkch.lookup_type    =   cv_lkup_type_gyotai_chu
-          AND lkch.enabled_flag   =   cv_flag_yes
-          AND lkch.language       =   cv_lang_ja
-      )                     gyti    -- 業態分類
+      xxcmm_cust_accounts   xcac    -- 顧客追加情報
+-- 2009/05/27 Ver1.2 障害T1_0863 delete start by Yutaka.Kuboshima
+--      (
+--        SELECT
+--          lkch.lookup_code      AS  business_mid_type,  -- 業態中分類区分
+--          lkch.meaning          AS  business_mid_name,  -- 業態中分類区分名
+--          lksh.lookup_code      AS  business_low_type,  -- 業態小分類区分
+--          lksh.meaning          AS  business_low_name   -- 業態小分類区分名
+--        FROM
+--          fnd_lookup_values     lkch,   -- LOOKUP(業態中分類)
+--          fnd_lookup_values     lksh    -- LOOKUP(業態小分類)
+--        WHERE
+--              lksh.attribute1     =   lkch.lookup_code
+--          AND lksh.lookup_type    =   cv_lkup_type_gyotai_sho
+--          AND lksh.enabled_flag   =   cv_flag_yes
+--          AND lksh.language       =   cv_lang_ja
+--          AND lkch.lookup_type    =   cv_lkup_type_gyotai_chu
+--          AND lkch.enabled_flag   =   cv_flag_yes
+--          AND lkch.language       =   cv_lang_ja
+--      )                     gyti    -- 業態分類
+-- 2009/05/27 Ver1.2 障害T1_0863 delete end by Yutaka.Kuboshima
     WHERE
           fidt.cust_code              = hzca.account_number
       AND hzca.cust_account_id        = xcac.customer_id
       AND hzca.party_id               = hzpt.party_id
-      AND xcac.business_low_type      = gyti.business_low_type(+)
+-- 2009/05/27 Ver1.2 障害T1_0863 delete start by Yutaka.Kuboshima
+--      AND xcac.business_low_type      = gyti.business_low_type(+)
+-- 2009/05/27 Ver1.2 障害T1_0863 delete end by Yutaka.Kuboshima
     FOR UPDATE OF xcac.customer_id, hzpt.party_id NOWAIT
   ;
 --
@@ -458,9 +481,14 @@ AS
     -- *** ローカル変数 ***
     lv_step                   VARCHAR2(10);                                   -- ステップ
     ld_past_final_tran_date   xxcmm_cust_accounts.past_final_tran_date%TYPE;  -- 前月最終取引日
-    ld_final_call_date        xxcmm_cust_accounts.final_call_date%TYPE;       -- 最終訪問日
+-- 2009/05/25 Ver1.2 delete start by Yutaka.Kuboshima
+--    ld_final_call_date        xxcmm_cust_accounts.final_call_date%TYPE;       -- 最終訪問日
+-- 2009/05/25 Ver1.2 delete end by Yutaka.Kuboshima
     ld_cnvs_date              xxcmm_cust_accounts.cnvs_date%TYPE;             -- 顧客獲得日
     ld_start_tran_date        xxcmm_cust_accounts.start_tran_date%TYPE;       -- 初回取引日
+-- 2009/05/27 Ver1.2 障害T1_0816 add start by Yutaka.Kuboshima
+    ld_final_tran_date        xxcmm_cust_accounts.final_tran_date%TYPE;       -- 最終取引日
+-- 2009/05/27 Ver1.2 障害T1_0816 add end by Yutaka.Kuboshima
 --
     -- *** ローカル・カーソル ***
 --
@@ -481,35 +509,61 @@ AS
     --
     -- 更新項目編集
     --
-    -- 前月最終取引日
+-- 2009/05/27 Ver1.2 障害T1_0816 add start by Yutaka.Kuboshima
+    -- 最終取引日
     lv_step := 'A-4.1';
+    IF (iv_rec.final_tran_date > iv_rec.new_tran_date) 
+      OR (iv_rec.new_tran_date IS NULL)
+    THEN
+      ld_final_tran_date := iv_rec.final_tran_date;
+    ELSE
+      ld_final_tran_date := iv_rec.new_tran_date;
+    END IF;
+-- 2009/05/27 Ver1.2 障害T1_0816 add end by Yutaka.Kuboshima
+    -- 前月最終取引日
+-- 2009/05/27 Ver1.2 障害T1_0816 modify start by Yutaka.Kuboshima
+--    lv_step := 'A-4.1';
+    lv_step := 'A-4.2';
+-- 2009/05/27 Ver1.2 障害T1_0816 modify start by Yutaka.Kuboshima
     IF (gv_prev_month_cls_status = cv_cal_status_close) THEN
       ld_past_final_tran_date :=  iv_rec.past_final_tran_date;
     ELSE
       ld_past_final_tran_date :=  iv_rec.past_new_fnl_trn_dt;
     END IF;
     -- 最終訪問日
-    lv_step := 'A-4.2';
-    IF ((iv_rec.cust_status = cv_cust_status_admit) AND (iv_rec.new_tran_date > iv_rec.final_call_date)) THEN
-      ld_final_call_date  :=  iv_rec.new_tran_date;
-    ELSE
-      ld_final_call_date  :=  iv_rec.final_call_date;
-    END IF;
+-- 2009/05/27 Ver1.2 delete start by Yutaka.Kuboshima
+--    lv_step := 'A-4.2';
+--    IF ((iv_rec.cust_status = cv_cust_status_admit) AND (iv_rec.new_tran_date > iv_rec.final_call_date)) THEN
+--      ld_final_call_date  :=  iv_rec.new_tran_date;
+--    ELSE
+--      ld_final_call_date  :=  iv_rec.final_call_date;
+--    END IF;
+-- 2009/05/27 Ver1.2 delete end by Yutaka.Kuboshima
     -- 顧客獲得日
     lv_step := 'A-4.3';
-    IF ((iv_rec.business_mid_type = cv_gyotai_chu_vd) AND (iv_rec.cnvs_date IS NULL)) THEN
-      ld_cnvs_date  :=  iv_rec.new_tran_date;
+-- 2009/05/27 Ver1.2 障害T1_0811,T1_0863 modify start by Yutaka.Kuboshima
+--    IF ((iv_rec.business_mid_type = cv_gyotai_chu_vd) AND (iv_rec.cnvs_date IS NULL)) THEN
+--      ld_cnvs_date  :=  iv_rec.new_tran_date;
+--    ELSE
+--      IF (iv_rec.cust_status = cv_cust_status_admit) THEN
+--        IF (iv_rec.new_tran_date > iv_rec.final_call_date) THEN
+--          ld_cnvs_date  :=  iv_rec.new_tran_date;
+--        ELSE
+--          ld_cnvs_date  :=  iv_rec.final_call_date;
+--        END IF;
+--      ELSE
+--        ld_cnvs_date  :=  iv_rec.cnvs_date;
+--      END IF;
+--    END IF;
+    IF (iv_rec.cnvs_date IS NULL)
+      AND (iv_rec.cust_status = cv_cust_status_admit)
+        AND (iv_rec.business_low_type NOT IN (cv_gyotai_sho_vd24, cv_gyotai_sho_vd25))
+    THEN
+      ld_cnvs_date := iv_rec.old_tran_date;
     ELSE
-      IF (iv_rec.cust_status = cv_cust_status_admit) THEN
-        IF (iv_rec.new_tran_date > iv_rec.final_call_date) THEN
-          ld_cnvs_date  :=  iv_rec.new_tran_date;
-        ELSE
-          ld_cnvs_date  :=  iv_rec.final_call_date;
-        END IF;
-      ELSE
-        ld_cnvs_date  :=  iv_rec.cnvs_date;
-      END IF;
+      ld_cnvs_date := iv_rec.cnvs_date;
     END IF;
+-- 2009/05/27 Ver1.2 障害T1_0811,T1_0863 modify end by Yutaka.Kuboshima
     -- 初回取引日
     lv_step := 'A-4.4';
     IF (iv_rec.start_tran_date IS NULL) THEN
@@ -526,9 +580,14 @@ AS
       -- 顧客追加情報
       xxcmm_cust_accounts         xcac
     SET
-      xcac.final_tran_date        = iv_rec.new_tran_date,         -- 最終取引日
+-- 2009/05/27 Ver1.2 障害T1_0816 modify start by Yutaka.Kuboshima
+--      xcac.final_tran_date        = iv_rec.new_tran_date,         -- 最終取引日
+      xcac.final_tran_date        = ld_final_tran_date,           -- 最終取引日
+-- 2009/05/27 Ver1.2 障害T1_0816 modify end by Yutaka.Kuboshima
       xcac.past_final_tran_date   = ld_past_final_tran_date,      -- 前月最終取引日
-      xcac.final_call_date        = ld_final_call_date,           -- 最終訪問日
+-- 2009/05/27 Ver1.2 delete start by Yutaka.Kuboshima
+--      xcac.final_call_date        = ld_final_call_date,           -- 最終訪問日
+-- 2009/05/27 Ver1.2 delete start by Yutaka.Kuboshima
       xcac.cnvs_date              = ld_cnvs_date,                 -- 顧客獲得日
       xcac.start_tran_date        = ld_start_tran_date,           -- 初回取引日
       -- WHO
