@@ -42,6 +42,9 @@ AS
  *  2009-01-10    1.0   Seirin.Kin        新規作成
  *  2009-03-03    1.1   Kazuyo.Hosoi      SVF起動API埋め込み
  *  2009-03-13    1.1   Kazuyo.Hosoi      【障害対応047・057】顧客区分、ステータス抽出条件変更
+ *  2009-04-27    1.2   Daisuke.Abe       【売上計画出力対応】T1_0689,T1_0692,T1_0694,T1_0695
+ *  2009-04-27    1.2   Daisuke.Abe       【売上計画出力対応】T1_0734,T1_0739,T1_0744,T1_0745
+ *  2009-04-27    1.2   Daisuke.Abe       【売上計画出力対応】T1_0751
  *
  *****************************************************************************************/
 --
@@ -1478,11 +1481,17 @@ DO_ERROR('A-2-3');
       lv_report_id   := cv_pkg_name;
     ELSIF(gv_report_type = cv_report_4) THEN
       lv_report_name := '≪'|| SUBSTR(gv_year_month,1,4) ||'年' ||
-      SUBSTR(gv_year_month,5,2) || '月' || '売上訪問計画管理表（地区営業部/部別）' || '≫';
+      /* 20090427_abe_売上計画出力対応 START*/
+      SUBSTR(gv_year_month,5,2) || '月' || '売上訪問計画管理表（地区/部別）' || '≫';
+      --SUBSTR(gv_year_month,5,2) || '月' || '売上訪問計画管理表（地区営業部/部別）' || '≫';
+      /* 20090427_abe_売上計画出力対応 END*/
       lv_report_id   := cv_pkg_name;
     ELSIF(gv_report_type = cv_report_5) THEN
       lv_report_name := '≪'|| SUBSTR(gv_year_month,1,4) ||'年' ||
-      SUBSTR(gv_year_month,5,2) || '月' || '売上訪問計画管理表（地域営業本部別）' || '≫';
+      /* 20090427_abe_売上計画出力対応 START*/
+      SUBSTR(gv_year_month,5,2) || '月' || '売上訪問計画管理表（営業本部別）' || '≫';
+      --SUBSTR(gv_year_month,5,2) || '月' || '売上訪問計画管理表（地域営業本部別）' || '≫';
+      /* 20090427_abe_売上計画出力対応 END*/
       lv_report_id   := cv_pkg_name;
     END IF;
     -- DEBUGメッセージ
@@ -3334,7 +3343,7 @@ DO_ERROR('A-X-4-3');
                   THEN cv_gvm_v                             -- 自販機
                 ELSE
                        cv_gvm_g                             -- 一般
-                END
+              END
               )                     gvm_type,               -- 一般／自販機／ＭＣ
               xcav.business_low_type business_low_type,     -- 業態（小分類）
               xcav.account_number   account_number,         -- 顧客コード
@@ -3476,7 +3485,7 @@ DO_ERROR('A-X-4-3');
               )  = gv_base_code
         AND   ( gv_is_groupleader = cv_false
                 OR
-                ( gv_is_groupleader = cv_true
+               ( gv_is_groupleader = cv_true
                   AND
                   ( CASE 
                       WHEN xrrv.issue_date <= gv_online_sysdate
@@ -3493,10 +3502,23 @@ DO_ERROR('A-X-4-3');
                   xrrv.employee_number = gt_employee_number
                 )
               )
-        AND   xrrv.employee_number = xrcv.employee_number
-        AND   xrcv.account_number  = xcav.account_number
+        /* 20090427_abe_売上計画出力対応 START*/
+        AND   xrrv.employee_number = xrcv.employee_number(+)
+        AND   xrcv.account_number  = xcav.account_number(+)
         AND   xcav.account_number  = xcrv.account_number(+)
-        AND   ((( xcav.customer_class_code IS NULL  -- 顧客区分
+        AND  (
+              EXISTS (SELECT  COUNT(1)
+                        FROM  xxcso_cust_accounts_v  xcav1
+                       WHERE  xcav.account_number = xcav1.account_number(+)
+                     )
+             OR
+              ((
+        --AND   xrrv.employee_number = xrcv.employee_number
+        --AND   xrcv.account_number  = xcav.account_number
+        --AND   xcav.account_number  = xcrv.account_number(+)
+        --AND   ((
+        /* 20090427_abe_売上計画出力対応 END*/
+                ( xcav.customer_class_code IS NULL  -- 顧客区分
                 )
                 AND
                 ( xcav.customer_status IN ( cv_cust_status7, cv_cust_status4 )  -- 顧客ステータス
@@ -3505,12 +3527,16 @@ DO_ERROR('A-X-4-3');
            OR  (( xcav.customer_class_code = cv_cust_class_cd3 -- 顧客区分
                 )
                 AND
-                ( xcav.customer_status IN ( cv_cust_status5
-                                           ,cv_cust_status6
-                                           ,cv_cust_status8
-                                           ,cv_cust_status9
-                                          )  -- 顧客ステータス
+                /* 20090427_abe_売上計画出力対応 START*/
+                --( xcav.customer_status IN ( cv_cust_status5
+                --                           ,cv_cust_status6
+                --                           ,cv_cust_status8
+                --                           ,cv_cust_status9
+                --                          )  -- 顧客ステータス
+                --)
+                ( xcav.customer_status IN ( cv_cust_status7, cv_cust_status4 )  -- 顧客ステータス
                 )
+                /* 20090427_abe_売上計画出力対応 END*/
                )
            OR  (( xcav.customer_class_code = cv_cust_class_cd4 -- 顧客区分
                 )
@@ -3536,11 +3562,17 @@ DO_ERROR('A-X-4-3');
                 )
                )
               )
-        AND   xcav.account_number  = xsvsr.sum_org_code
-        AND   xsvsr.sum_org_type   = cv_sum_org_type1
-        AND   xsvsr.month_date_div = cv_month_date_div2
-        AND   xsvsr.sales_date
+        /* 20090427_abe_売上計画出力対応 START*/
+             )
+        AND   xcav.account_number  = xsvsr.sum_org_code(+)
+        AND   xsvsr.sum_org_type(+)   = cv_sum_org_type1
+        AND   xsvsr.month_date_div(+) = cv_month_date_div2
+        AND   xsvsr.sales_date(+)
                 BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        --AND   xcav.account_number  = xsvsr.sum_org_code
+        --AND   xsvsr.sum_org_type   = cv_sum_org_type1
+        --AND   xsvsr.month_date_div = cv_month_date_div2
+        /* 20090427_abe_売上計画出力対応 END*/
         AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
         AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
         AND   xsvsry.month_date_div(+)= cv_month_date_div1
@@ -3782,110 +3814,126 @@ DO_ERROR('A-3-2-2');
             l_month_square_rec.cust_new_num       := l_cur_rec.cust_new_num;
             -- 新規VD件数
             l_month_square_rec.cust_vd_new_num    := l_cur_rec.cust_vd_new_num;
-            BEGIN
-              IF (l_cur_rec.business_low_type IS NOT NULL) THEN
-                --業態（小分類）から業態コードと業態名を取得
-                SELECT dai.lookup_code lookup_code                      -- 業態コード
-                ,      dai.meaning     meaning                          -- 業態名
-                INTO   l_month_square_rec.business_high_type
-                ,      l_month_square_rec.business_high_name
-                FROM   fnd_lookup_values_vl dai
-                ,      fnd_lookup_values_vl chu
-                ,      fnd_lookup_values_vl syo
-                WHERE  syo.lookup_type = cv_lookup_type_syo
-                AND    chu.lookup_type = cv_lookup_type_chu
-                AND    dai.lookup_type = cv_lookup_type_dai
-                AND    syo.lookup_code = l_cur_rec.business_low_type    --業態（小分類）
-                AND    chu.lookup_code = syo.attribute1
-                AND    dai.lookup_code = chu.attribute1
-                AND    syo.enabled_flag   = cv_flg_y
-                AND    chu.enabled_flag   = cv_flg_y
-                AND    dai.enabled_flag   = cv_flg_y
-                AND    NVL(dai.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
-                AND    NVL(dai.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate)
-                AND    NVL(chu.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
-                AND    NVL(chu.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate)
-                AND    NVL(syo.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
-                AND    NVL(syo.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate);
-              ELSE
-                l_month_square_rec.business_high_type   := NULL;
-                l_month_square_rec.business_high_name   := cv_mc;
-              END IF;
-            EXCEPTION
-              WHEN OTHERS THEN
-                -- メッセージ出力
-                lv_errmsg := xxccp_common_pkg.get_msg(
-                                 iv_application  => cv_app_name              --アプリケーション短縮名
-                                ,iv_name         => cv_tkn_number_08         --メッセージコード
-                                ,iv_token_name1  => cv_tkn_table             --トークンコード1
-                                ,iv_token_value1 => '業態（小分類）：'||l_cur_rec.business_low_type||
-                                                    'から参照タイプ業態（大分類）'--トークン値1
-                                ,iv_token_name2  => cv_tkn_errmsg            --トークンコード２
-                                ,iv_token_value2 => SQLERRM                  --トークン値２
-                );
-                fnd_file.put_line(
-                      which  => FND_FILE.LOG,
-                      buff   => ''      || cv_lf ||     -- 空行の挿入
-                              lv_errmsg || cv_lf || 
-                               ''                         -- 空行の挿入
-                );
-                l_month_square_rec.business_high_type   := NULL;
-                l_month_square_rec.business_high_name   := cv_mc;
-            END;
+
+            /* 20090427_abe_売上計画出力対応 START*/
+            IF (l_cur_rec.account_number IS NOT NULL) THEN
+            /* 20090427_abe_売上計画出力対応 END*/
+              BEGIN
+                IF (l_cur_rec.business_low_type IS NOT NULL) THEN
+                  --業態（小分類）から業態コードと業態名を取得
+                  SELECT dai.lookup_code lookup_code                      -- 業態コード
+                  ,      dai.meaning     meaning                          -- 業態名
+                  INTO   l_month_square_rec.business_high_type
+                  ,      l_month_square_rec.business_high_name
+                  FROM   fnd_lookup_values_vl dai
+                  ,      fnd_lookup_values_vl chu
+                  ,      fnd_lookup_values_vl syo
+                  WHERE  syo.lookup_type = cv_lookup_type_syo
+                  AND    chu.lookup_type = cv_lookup_type_chu
+                  AND    dai.lookup_type = cv_lookup_type_dai
+                  AND    syo.lookup_code = l_cur_rec.business_low_type    --業態（小分類）
+                  AND    chu.lookup_code = syo.attribute1
+                  AND    dai.lookup_code = chu.attribute1
+                  AND    syo.enabled_flag   = cv_flg_y
+                  AND    chu.enabled_flag   = cv_flg_y
+                  AND    dai.enabled_flag   = cv_flg_y
+                  AND    NVL(dai.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
+                  AND    NVL(dai.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate)
+                  AND    NVL(chu.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
+                  AND    NVL(chu.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate)
+                  AND    NVL(syo.start_date_active, TRUNC(gd_online_sysdate)) <= TRUNC(gd_online_sysdate)
+                  AND    NVL(syo.end_date_active,   TRUNC(gd_online_sysdate)) >= TRUNC(gd_online_sysdate);
+                ELSE
+                  l_month_square_rec.business_high_type   := NULL;
+                  l_month_square_rec.business_high_name   := cv_mc;
+                END IF;
+              EXCEPTION
+                WHEN OTHERS THEN
+                  -- メッセージ出力
+                  lv_errmsg := xxccp_common_pkg.get_msg(
+                                   iv_application  => cv_app_name              --アプリケーション短縮名
+                                  ,iv_name         => cv_tkn_number_08         --メッセージコード
+                                  ,iv_token_name1  => cv_tkn_table             --トークンコード1
+                                  ,iv_token_value1 => '業態（小分類）：'||l_cur_rec.business_low_type||
+                                                      'から参照タイプ業態（大分類）'--トークン値1
+                                  ,iv_token_name2  => cv_tkn_errmsg            --トークンコード２
+                                  ,iv_token_value2 => SQLERRM                  --トークン値２
+                  );
+                  fnd_file.put_line(
+                        which  => FND_FILE.LOG,
+                        buff   => ''      || cv_lf ||     -- 空行の挿入
+                                lv_errmsg || cv_lf || 
+                                 ''                         -- 空行の挿入
+                  );
+                  l_month_square_rec.business_high_type   := NULL;
+                  l_month_square_rec.business_high_name   := cv_mc;
+              END;
+            /* 20090427_abe_売上計画出力対応 START*/
+            ELSE
+              l_month_square_rec.business_high_type   := NULL;
+              l_month_square_rec.business_high_name   := NULL;
+            END IF;
+            /* 20090427_abe_売上計画出力対応 END*/
           END IF;
-          -- 日付を取得
-          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
-          -- DEBUGメッセージ
-          -- 初期処理の場合
-          debug(
-             buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
-                       '日付けのナンバー型:'     || TO_CHAR(ln_date)
-          );
-          -- 売上計画
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_amt          := l_cur_rec.tgt_amt;
-          -- 売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt         := l_cur_rec.rslt_amt;
-          -- 内他拠点＿売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt  := l_cur_rec.rslt_center_amt;
-          -- 訪問計画
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num      := l_cur_rec.tgt_vis_num;
-          -- 訪問実績
-          l_month_square_rec.l_one_day_tab(ln_date).vis_num          := l_cur_rec.vis_num;
-          -- 有効軒数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num    := l_cur_rec.vis_sales_num;
-          -- 訪問実績（新規)
-          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num      := l_cur_rec.vis_new_num;
-          -- 訪問実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num   := l_cur_rec.vis_vd_new_num;
-          -- 結合訪問記号
-          l_month_square_rec.l_one_day_tab(ln_date).visit_sign       := SUBSTR(l_cur_rec.visit_sign, 1, 20);
-          -- 訪問A0Z件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          /* 20090427_abe_売上計画出力対応 START*/
+          IF (l_cur_rec.sales_date IS NOT NULL) THEN 
+          /* 20090427_abe_売上計画出力対応 END*/
+            -- 日付を取得
+            ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+            -- DEBUGメッセージ
+            -- 初期処理の場合
+            debug(
+               buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
+                         '日付けのナンバー型:'     || TO_CHAR(ln_date)
+            );
+            -- 売上計画
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_amt          := l_cur_rec.tgt_amt;
+            -- 売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_amt         := l_cur_rec.rslt_amt;
+            -- 内他拠点＿売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt  := l_cur_rec.rslt_center_amt;
+            -- 訪問計画
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num      := l_cur_rec.tgt_vis_num;
+            -- 訪問実績
+            l_month_square_rec.l_one_day_tab(ln_date).vis_num          := l_cur_rec.vis_num;
+            -- 有効軒数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num    := l_cur_rec.vis_sales_num;
+            -- 訪問実績（新規)
+            l_month_square_rec.l_one_day_tab(ln_date).vis_new_num      := l_cur_rec.vis_new_num;
+            -- 訪問実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num   := l_cur_rec.vis_vd_new_num;
+            -- 結合訪問記号
+            l_month_square_rec.l_one_day_tab(ln_date).visit_sign       := SUBSTR(l_cur_rec.visit_sign, 1, 20);
+            -- 訪問A0Z件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          /* 20090427_abe_売上計画出力対応 START*/
+          END IF;
+          /* 20090427_abe_売上計画出力対応 END*/
           -- 最初のレコードの場合
           IF(lb_boolean) THEN
             lb_boolean              := FALSE;                  -- 初期処理のフラグをオフする。
@@ -4284,7 +4332,45 @@ DO_ERROR('A-3-2-2');
                 ELSE xrrv.group_number_old
               END 
               ) group_number,                                     -- 営業グループ番号
-              (xrrv.last_name || 'グループ') group_name,          -- 営業グループ名
+              /* 20090427_abe_売上計画出力対応 START*/
+             -- (xev.last_name || 'グループ') group_name,           -- 営業グループ名
+              (SELECT (xev.last_name || 'グループ')
+               FROM  xxcso_employees_v           xev 
+               WHERE xev.employee_number = (SELECT MIN(xrrv2.employee_number)
+                                            FROM   xxcso_resource_relations_v2 xrrv2 -- リソース関連マスタ(最新)VIEW
+                                            WHERE  (CASE
+                                                      WHEN TO_DATE(xrrv2.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                                                        THEN xrrv2.work_base_code_new
+                                                      ELSE xrrv2.work_base_code_old
+                                                    END
+                                                   )  =
+                                                   (CASE
+                                                      WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                                                        THEN xrrv.work_base_code_new
+                                                      ELSE xrrv.work_base_code_old
+                                                    END
+                                                   )
+                                            AND    (CASE 
+                                                       WHEN xrrv2.issue_date <= gv_online_sysdate
+                                                         THEN NVL(xrrv2.group_number_new,' ')
+                                                       ELSE NVL(xrrv2.group_number_old,' ')
+                                                     END
+                                                   ) = (CASE
+                                                          WHEN TO_DATE(xrrv.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                                                            THEN NVL(xrrv.group_number_new,' ')
+                                                          ELSE NVL(xrrv.group_number_old,' ')
+                                                        END
+                                                       )
+                                            AND    (CASE
+                                                      WHEN xrrv2.issue_date <= gv_online_sysdate
+                                                        THEN xrrv2.group_leader_flag_new
+                                                      ELSE xrrv2.group_leader_flag_old
+                                                    END
+                                                   ) = cv_flg_y
+                                           )
+                ) group_name ,  -- 営業グループ名
+              --(xrrv.last_name || 'グループ') group_name,          -- 営業グループ名
+              /* 20090427_abe_売上計画出力対応 END*/
               xrrv.employee_number           employee_number,     -- 従業員番号
               xrrv.full_name              name,                   -- 従業員名
               xsvsr.sales_date            sales_date,             -- 販売年月日
@@ -4367,11 +4453,18 @@ DO_ERROR('A-3-2-2');
                 ( gv_is_groupleader = cv_true
                   AND
                   ( CASE 
+                      /* 20090427_abe_売上計画出力対応 START*/
                       WHEN xrrv.issue_date IS NULL
-                        THEN xrrv.group_number_new
+                        THEN NVL(xrrv.group_number_new,' ')
                       WHEN xrrv.issue_date <= gv_online_sysdate
-                        THEN xrrv.group_number_new
-                      ELSE xrrv.group_number_old
+                        THEN NVL(xrrv.group_number_new,' ')
+                      ELSE  NVL(xrrv.group_number_old,' ')
+                      --WHEN xrrv.issue_date IS NULL
+                      --  THEN xrrv.group_number_new
+                      --WHEN xrrv.issue_date <= gv_online_sysdate
+                      --  THEN xrrv.group_number_new
+                      --ELSE  xrrv.group_number_old
+                      /* 20090427_abe_売上計画出力対応 END*/
                     END
                   ) = gt_group_number
                 )
@@ -4381,11 +4474,18 @@ DO_ERROR('A-3-2-2');
                   1 = 1
                 )
               )
-        AND   xrrv.employee_number = xsvsr.sum_org_code
-        AND   xsvsr.sum_org_type   = cv_sum_org_type2
-        AND   xsvsr.month_date_div = cv_month_date_div2
-        AND   xsvsr.sales_date
+        /* 20090427_abe_売上計画出力対応 START*/
+        AND   xrrv.employee_number = xsvsr.sum_org_code(+)
+        AND   xsvsr.sum_org_type(+)   = cv_sum_org_type2
+        AND   xsvsr.month_date_div(+) = cv_month_date_div2
+        AND   xsvsr.sales_date(+)
                 BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        --AND   xrrv.employee_number = xsvsr.sum_org_code
+        --AND   xsvsr.sum_org_type   = cv_sum_org_type2
+        --AND   xsvsr.month_date_div = cv_month_date_div2
+        --AND   xsvsr.sales_date
+        --        BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        /* 20090427_abe_売上計画出力対応 END*/
         AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
         AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
         AND   xsvsry.month_date_div(+)= cv_month_date_div1
@@ -4426,6 +4526,8 @@ DO_ERROR('A-3-2-2');
       BEGIN
         --カーソルオープン
         OPEN ticket_data_cur;
+
+
 --
 DO_ERROR('A-4-2-1');
         debug(
@@ -4516,13 +4618,20 @@ DO_ERROR('A-4-2-2');
                       TO_CHAR(l_cur_rec.tgt_sales_prsn_total_amt) ||','||
                      cv_lf 
           );
+
+          fnd_file.put_line(
+                which  => FND_FILE.LOG,
+                buff   => 'gv_is_groupleader:'      || gv_is_groupleader
+          );
+
+
           -- 対象件数がO件の場合
           EXIT WHEN ticket_data_cur%NOTFOUND
             OR  ticket_data_cur%ROWCOUNT = 0;
 --
           -- 前回レコードと営業グループが同じで営業員番号が違う場合、明細部配列と本体部配列を更新。
           IF(lb_boolean=FALSE) THEN
-            IF((lv_bf_group_number = l_cur_rec.group_number)AND(lv_bf_employee_number <> l_cur_rec.employee_number))
+            IF((lv_bf_group_number = l_cur_rec.group_number  OR (lv_bf_group_number IS NULL AND  l_cur_rec.group_number IS NULL))AND(lv_bf_employee_number <> l_cur_rec.employee_number))
               THEN
               -- DEBUGメッセージ
               debug(
@@ -4550,7 +4659,7 @@ DO_ERROR('A-4-2-2');
                 init_month_square_rec2(l_month_square_rec);
                 ln_m_cnt          := ln_m_cnt + 1;       -- 明細部配列を＋１する。
                 lb_boolean        := TRUE;               -- 初期処理のフラグオンする。
-            ELSIF(lv_bf_group_number <> l_cur_rec.group_number)THEN
+            ELSIF(lv_bf_group_number <> l_cur_rec.group_number) OR (lv_bf_group_number IS NOT NULL AND l_cur_rec.group_number IS NULL) THEN
               -- =================================================
               -- A-4-3.PLSQL表の更新
               -- =================================================
@@ -4574,7 +4683,7 @@ DO_ERROR('A-4-2-2');
           END IF;
           -- 営業グループ番号が前回取得した営業グループ番号と違う場合ワークテーブルに出力します。
           IF ((ln_cnt > 0) AND
-              (lv_bf_group_number <> l_cur_rec.group_number)) THEN
+              ((lv_bf_group_number <> l_cur_rec.group_number) OR (lv_bf_group_number IS NOT NULL AND l_cur_rec.group_number IS NULL ))) THEN
             debug(
                buff   => '営業員グループ番号が違います。 :' ||'前回： '|| lv_bf_group_number || ''||
                           '今回：' || l_cur_rec.group_number
@@ -4648,96 +4757,102 @@ DO_ERROR('A-4-2-2');
             );
           END IF;
           -- 日付を取得
-          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
-          -- DEBUGメッセージ
-          -- 初期処理の場合
-          debug(
-             buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
-                       '日付けのナンバー型:'     || TO_CHAR(ln_date)
-          );
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_amt               
-            := l_cur_rec.tgt_amt;              -- 売上計画
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_new_amt           
-            := l_cur_rec.tgt_new_amt;          -- 売上計画（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_new_amt        
-            := l_cur_rec.tgt_vd_new_amt;       -- 売上計画（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_amt            
-            := l_cur_rec.tgt_vd_amt;           -- 売上計画（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_other_new_amt     
-            := l_cur_rec.tgt_other_new_amt;    -- 売上計画（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_other_amt         
-            := l_cur_rec.tgt_other_amt;        -- 売上計画（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
-            := l_cur_rec.rslt_amt;             -- 売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
-            := l_cur_rec.rslt_new_amt;         -- 売上実績（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
-            := l_cur_rec.rslt_vd_new_amt;      -- 売上実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
-            := l_cur_rec.rslt_vd_amt;          -- 売上実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
-            := l_cur_rec.rslt_other_new_amt;   -- 売上実績（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
-            := l_cur_rec.rslt_other_amt;       -- 売上実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
-            := l_cur_rec.rslt_center_amt;      -- 内他拠点＿売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num           
-            := l_cur_rec.tgt_vis_num;          -- 訪問計画
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_new_num       
-            := l_cur_rec.tgt_vis_new_num;      -- 訪問計画（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_new_num    
-            := l_cur_rec.tgt_vis_vd_new_num;   -- 訪問計画（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_num        
-            := l_cur_rec.tgt_vis_vd_num;       -- 訪問計画（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_new_num 
-            := l_cur_rec.tgt_vis_other_new_num;-- 訪問計画（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_num     
-            := l_cur_rec.tgt_vis_other_num;    -- 訪問計画（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_mc_num     
-            := l_cur_rec.tgt_vis_mc_num;        -- 訪問計画（MC）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_num               
-            := l_cur_rec.vis_num;               -- 訪問実績
-          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
-            := l_cur_rec.vis_new_num;           -- 訪問実績（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
-            := l_cur_rec.vis_vd_new_num;        -- 訪問実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
-            := l_cur_rec.vis_vd_num;            -- 訪問実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
-            := l_cur_rec.vis_other_new_num;     -- 訪問実績（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
-            := l_cur_rec.vis_other_num;         -- 訪問実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
-            := l_cur_rec.vis_mc_num;            -- 訪問実績（MC）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
-            := l_cur_rec.vis_sales_num;         -- 有効軒数
-          -- A0Z訪問件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          /* 20090427_abe_売上計画出力対応 START*/
+          IF (l_cur_rec.sales_date IS NOT NULL) THEN
+          /* 20090427_abe_売上計画出力対応 END*/
+            ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+            -- DEBUGメッセージ
+            -- 初期処理の場合
+            debug(
+               buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
+                         '日付けのナンバー型:'     || TO_CHAR(ln_date)
+            );
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_amt               
+              := l_cur_rec.tgt_amt;              -- 売上計画
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_new_amt           
+              := l_cur_rec.tgt_new_amt;          -- 売上計画（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_new_amt        
+              := l_cur_rec.tgt_vd_new_amt;       -- 売上計画（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_amt            
+              := l_cur_rec.tgt_vd_amt;           -- 売上計画（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_other_new_amt     
+              := l_cur_rec.tgt_other_new_amt;    -- 売上計画（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_other_amt         
+              := l_cur_rec.tgt_other_amt;        -- 売上計画（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
+              := l_cur_rec.rslt_amt;             -- 売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
+              := l_cur_rec.rslt_new_amt;         -- 売上実績（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
+              := l_cur_rec.rslt_vd_new_amt;      -- 売上実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
+              := l_cur_rec.rslt_vd_amt;          -- 売上実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
+              := l_cur_rec.rslt_other_new_amt;   -- 売上実績（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
+              := l_cur_rec.rslt_other_amt;       -- 売上実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
+              := l_cur_rec.rslt_center_amt;      -- 内他拠点＿売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num           
+              := l_cur_rec.tgt_vis_num;          -- 訪問計画
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_new_num       
+              := l_cur_rec.tgt_vis_new_num;      -- 訪問計画（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_new_num    
+              := l_cur_rec.tgt_vis_vd_new_num;   -- 訪問計画（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_num        
+              := l_cur_rec.tgt_vis_vd_num;       -- 訪問計画（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_new_num 
+              := l_cur_rec.tgt_vis_other_new_num;-- 訪問計画（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_num     
+              := l_cur_rec.tgt_vis_other_num;    -- 訪問計画（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_mc_num     
+              := l_cur_rec.tgt_vis_mc_num;        -- 訪問計画（MC）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_num               
+              := l_cur_rec.vis_num;               -- 訪問実績
+            l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
+              := l_cur_rec.vis_new_num;           -- 訪問実績（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
+              := l_cur_rec.vis_vd_new_num;        -- 訪問実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
+              := l_cur_rec.vis_vd_num;            -- 訪問実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
+              := l_cur_rec.vis_other_new_num;     -- 訪問実績（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
+              := l_cur_rec.vis_other_num;         -- 訪問実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
+              := l_cur_rec.vis_mc_num;            -- 訪問実績（MC）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
+              := l_cur_rec.vis_sales_num;         -- 有効軒数
+            -- A0Z訪問件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          /* 20090427_abe_売上計画出力対応 START*/
+          END IF;
+          /* 20090427_abe_売上計画出力対応 END*/
           -- 最初のレコードの場合
           IF(lb_boolean) THEN
             lb_boolean              := FALSE;                  -- 初期処理のフラグをオフする。
@@ -5120,31 +5235,57 @@ DO_ERROR('A-4-2-2');
               gnv.gnv_work_base_code      work_base_code,         -- 勤務地拠点コード
               xabv.base_name              base_name,              -- 勤務地拠点名
               gnv.gnv_group_number        group_number,           -- 営業グループ番号
-              (SELECT
-                 (last_name || 'グループ')       
-               FROM
-                 xxcso_resource_relations_v2
-               WHERE
-                    (CASE
-                       WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
-                         THEN work_base_code_new
-                       ELSE work_base_code_old
-                    END 
-                    ) = gnv.gnv_work_base_code
-               AND  (CASE
-                       WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
-                         THEN group_number_new
-                       ELSE group_number_old
-                    END 
-                    ) = gnv.gnv_group_number
-               AND  (CASE
-                       WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
-                         THEN group_leader_flag_new
-                       ELSE group_leader_flag_old
-                    END 
-                    ) = cv_flg_y
-               AND  ROWNUM = 1
-              )     group_name,                                   -- グループ名
+              /* 20090427_abe_売上計画出力対応 START*/
+              --(SELECT
+              --   (last_name || 'グループ')       
+              -- FROM
+              --   xxcso_resource_relations_v2
+              -- WHERE
+              --      (CASE
+              --         WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+              --           THEN work_base_code_new
+              --         ELSE work_base_code_old
+              --      END 
+              --      ) = gnv.gnv_work_base_code
+              -- AND  (CASE
+              --         WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+              --           THEN group_number_new
+              --         ELSE group_number_old
+              --      END 
+              --      ) = gnv.gnv_group_number
+              -- AND  (CASE
+              --         WHEN TO_DATE(issue_date,'YYYYMMDD') <= gd_online_sysdate
+              --           THEN group_leader_flag_new
+              --         ELSE group_leader_flag_old
+              --      END 
+              --     ) = cv_flg_y
+              -- AND  ROWNUM = 1
+              --)     group_name,                                   -- グループ名
+              (SELECT  (xev.last_name  || 'グループ')
+               FROM    xxcso_employees_v           xev                     -- 従業員マスタ（最新）ビュー
+               WHERE   xev.employee_number =   (SELECT MIN(xrrv2.employee_number)
+                                                FROM   xxcso_resource_relations_v2 xrrv2 -- リソース関連マスタ(最新)VIEW
+                                                WHERE  (CASE
+                                                          WHEN TO_DATE(xrrv2.issue_date,'YYYYMMDD') <= gd_online_sysdate
+                                                            THEN xrrv2.work_base_code_new
+                                                          ELSE xrrv2.work_base_code_old
+                                                        END
+                                                       )  = gnv.gnv_work_base_code
+                                                AND    (CASE 
+                                                           WHEN xrrv2.issue_date <= gv_online_sysdate
+                                                             THEN xrrv2.group_number_new
+                                                           ELSE xrrv2.group_number_old
+                                                         END
+                                                       ) = gnv.gnv_group_number
+                                                AND    (CASE
+                                                          WHEN xrrv2.issue_date <= gv_online_sysdate
+                                                            THEN xrrv2.group_leader_flag_new
+                                                          ELSE xrrv2.group_leader_flag_old
+                                                        END
+                                                       ) = cv_flg_y
+                                               )
+              )      group_name,    -- グループ名
+              /* 20090427_abe_売上計画出力対応 END*/
               xsvsr.sales_date            sales_date,             -- 販売年月日
               xsvsr.tgt_amt               tgt_amt,                -- 売上計画
               xsvsr.tgt_new_amt           tgt_new_amt,            -- 売上計画（新規）
@@ -5237,13 +5378,22 @@ DO_ERROR('A-4-2-2');
                         END 
                         )  = gv_base_code)       gnv               -- グループ番号ビュー
              ,xxcso_aff_base_v2                  xabv              -- AFF部門マスタ（最新）ビュー
-      WHERE   xsvsr.group_base_code = gv_base_code
-        AND   xsvsr.sum_org_code    = gnv.gnv_group_number
-        AND   xabv.base_code        = gnv.gnv_work_base_code
-        AND   xsvsr.sum_org_type =cv_sum_org_type3
-        AND   xsvsr.month_date_div = cv_month_date_div2
-        AND   xsvsr.sales_date
+      /* 20090427_abe_売上計画出力対応 START*/
+      WHERE   xsvsr.group_base_code(+) = gv_base_code
+        AND   xsvsr.sum_org_code(+)    = gnv.gnv_group_number
+        AND   xabv.base_code(+)        = gnv.gnv_work_base_code
+        AND   xsvsr.sum_org_type(+) =cv_sum_org_type3
+        AND   xsvsr.month_date_div(+) = cv_month_date_div2
+        AND   xsvsr.sales_date(+)
                 BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+      --WHERE   xsvsr.group_base_code = gv_base_code
+        --AND   xsvsr.sum_org_code    = gnv.gnv_group_number
+        --AND   xabv.base_code        = gnv.gnv_work_base_code
+        --AND   xsvsr.sum_org_type =cv_sum_org_type3
+        --AND   xsvsr.month_date_div = cv_month_date_div2
+        --AND   xsvsr.sales_date
+        --        BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+      /* 20090427_abe_売上計画出力対応 END*/
         AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
         AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
         AND   xsvsry.month_date_div(+)= cv_month_date_div1
@@ -5372,9 +5522,13 @@ DO_ERROR('A-5-2-2');
                       TO_CHAR(l_cur_rec.tgt_sales_prsn_total_amt) ||','||
                      cv_lf 
           );
+
           -- 前回レコードと拠点コードが同じでグループ番号が違う場合、明細部配列と本体部配列を更新。
           IF(lb_boolean=FALSE) THEN
-            IF((lv_bf_work_base_code = l_cur_rec.work_base_code)AND(lv_bf_group_number <> l_cur_rec.group_number))
+            /* 20090427_abe_売上計画出力対応 START*/
+            --IF((lv_bf_work_base_code = l_cur_rec.work_base_code)AND(lv_bf_group_number <> l_cur_rec.group_number))
+            IF((lv_bf_work_base_code = l_cur_rec.work_base_code)AND((lv_bf_group_number <> l_cur_rec.group_number) OR l_cur_rec.group_number IS NULL))
+            /* 20090427_abe_売上計画出力対応 END*/
               THEN
               -- DEBUGメッセージ
               debug(
@@ -5495,101 +5649,105 @@ DO_ERROR('A-5-2-2');
                buff   => '初期処理フラグ:' || 'FALSE'
             );
           END IF;
-          -- 日付を取得
-          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
-          -- DEBUGメッセージ
-          -- 初期処理の場合
-          debug(
-             buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
-                       '日付けのナンバー型:'     || TO_CHAR(ln_date)
-          );
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_amt               
-            := l_cur_rec.tgt_amt;               -- 売上計画
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_new_amt           
-            := l_cur_rec.tgt_new_amt;           -- 売上計画（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_new_amt        
-            := l_cur_rec.tgt_vd_new_amt;        -- 売上計画（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_amt            
-            := l_cur_rec.tgt_vd_amt;            -- 売上計画（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_other_new_amt     
-            := l_cur_rec.tgt_other_new_amt;     -- 売上計画（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_other_amt         
-            := l_cur_rec.tgt_other_amt;         -- 売上計画（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
-            := l_cur_rec.rslt_amt;               -- 売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
-            := l_cur_rec.rslt_new_amt;          -- 売上実績（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
-            := l_cur_rec.rslt_vd_new_amt;       -- 売上実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
-            := l_cur_rec.rslt_vd_amt;           -- 売上実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
-            := l_cur_rec.rslt_other_new_amt;    -- 売上実績（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
-            := l_cur_rec.rslt_other_amt;        -- 売上実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
-            := l_cur_rec.rslt_center_amt;       -- 内他拠点＿売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt       
-            := l_cur_rec.rslt_center_vd_amt;    -- 内他拠点＿売上実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt       
-            := l_cur_rec.rslt_center_other_amt; -- 内他拠点＿売上実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num           
-            := l_cur_rec.tgt_vis_num;           -- 訪問計画
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_new_num       
-            := l_cur_rec.tgt_vis_new_num;       -- 訪問計画（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_new_num    
-            := l_cur_rec.tgt_vis_vd_new_num;    -- 訪問計画（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_num        
-            := l_cur_rec.tgt_vis_vd_num;        -- 訪問計画（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_new_num 
-            := l_cur_rec.tgt_vis_other_new_num;-- 訪問計画（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_num     
-            := l_cur_rec.tgt_vis_other_num;     -- 訪問計画（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_mc_num     
-            := l_cur_rec.tgt_vis_mc_num;        -- 訪問計画（MC）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_num               
-            := l_cur_rec.vis_num;               -- 訪問実績
-          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
-            := l_cur_rec.vis_new_num;           -- 訪問実績（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
-            := l_cur_rec.vis_vd_new_num;        -- 訪問実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
-            := l_cur_rec.vis_vd_num;            -- 訪問実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
-            := l_cur_rec.vis_other_new_num;     -- 訪問実績（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
-            := l_cur_rec.vis_other_num;         -- 訪問実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
-            := l_cur_rec.vis_mc_num;            -- 訪問実績（MC）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
-            := l_cur_rec.vis_sales_num;         -- 有効軒数
-          -- A0Z訪問件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          /* 20090427_abe_売上計画出力対応 START*/
+          IF (l_cur_rec.sales_date IS NOT NULL) THEN
+            -- 日付を取得
+            ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+            -- DEBUGメッセージ
+            -- 初期処理の場合
+            debug(
+               buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
+                         '日付けのナンバー型:'     || TO_CHAR(ln_date)
+            );
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_amt               
+              := l_cur_rec.tgt_amt;               -- 売上計画
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_new_amt           
+              := l_cur_rec.tgt_new_amt;           -- 売上計画（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_new_amt        
+              := l_cur_rec.tgt_vd_new_amt;        -- 売上計画（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vd_amt            
+              := l_cur_rec.tgt_vd_amt;            -- 売上計画（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_other_new_amt     
+              := l_cur_rec.tgt_other_new_amt;     -- 売上計画（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_other_amt         
+              := l_cur_rec.tgt_other_amt;         -- 売上計画（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
+              := l_cur_rec.rslt_amt;               -- 売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
+              := l_cur_rec.rslt_new_amt;          -- 売上実績（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
+              := l_cur_rec.rslt_vd_new_amt;       -- 売上実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
+              := l_cur_rec.rslt_vd_amt;           -- 売上実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
+              := l_cur_rec.rslt_other_new_amt;    -- 売上実績（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
+              := l_cur_rec.rslt_other_amt;        -- 売上実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
+              := l_cur_rec.rslt_center_amt;       -- 内他拠点＿売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt       
+              := l_cur_rec.rslt_center_vd_amt;    -- 内他拠点＿売上実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt       
+              := l_cur_rec.rslt_center_other_amt; -- 内他拠点＿売上実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_num           
+              := l_cur_rec.tgt_vis_num;           -- 訪問計画
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_new_num       
+              := l_cur_rec.tgt_vis_new_num;       -- 訪問計画（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_new_num    
+              := l_cur_rec.tgt_vis_vd_new_num;    -- 訪問計画（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_vd_num        
+              := l_cur_rec.tgt_vis_vd_num;        -- 訪問計画（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_new_num 
+              := l_cur_rec.tgt_vis_other_new_num;-- 訪問計画（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_other_num     
+              := l_cur_rec.tgt_vis_other_num;     -- 訪問計画（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).tgt_vis_mc_num     
+              := l_cur_rec.tgt_vis_mc_num;        -- 訪問計画（MC）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_num               
+              := l_cur_rec.vis_num;               -- 訪問実績
+            l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
+              := l_cur_rec.vis_new_num;           -- 訪問実績（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
+              := l_cur_rec.vis_vd_new_num;        -- 訪問実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
+              := l_cur_rec.vis_vd_num;            -- 訪問実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
+              := l_cur_rec.vis_other_new_num;     -- 訪問実績（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
+              := l_cur_rec.vis_other_num;         -- 訪問実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
+              := l_cur_rec.vis_mc_num;            -- 訪問実績（MC）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
+              := l_cur_rec.vis_sales_num;         -- 有効軒数
+            -- A0Z訪問件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          END IF;
+          /* 20090427_abe_売上計画出力対応 END*/
           -- 最初のレコードの場合
           IF(lb_boolean) THEN
             lb_boolean              := FALSE;                  -- 初期処理のフラグをオフする。
@@ -6017,13 +6175,22 @@ DO_ERROR('A-5-2-2');
              ,xxcso_sum_visit_sale_rep    xsvsrm        -- 訪問売上計画管理表サマリ先月
              ,xxcso_sum_visit_sale_rep    xsvsrn        -- 訪問売上計画管理表サマリ当月
       WHERE   xablv.base_code = gv_base_code
-        AND   xablv.child_base_code = xsvsr.sum_org_code
-        AND   xablv.base_code = xabvpar.base_code
-        AND   xablv.child_base_code = xabvchi.base_code
-        AND   xsvsr.sum_org_type = cv_sum_org_type4
-        AND   xsvsr.month_date_div = cv_month_date_div2
-        AND   xsvsr.sales_date
+        /* 20090427_abe_売上計画出力対応 START*/
+        AND   xablv.child_base_code = xsvsr.sum_org_code(+)
+        AND   xablv.base_code = xabvpar.base_code(+)
+        AND   xablv.child_base_code = xabvchi.base_code(+)
+        AND   xsvsr.sum_org_type(+) = cv_sum_org_type4
+        AND   xsvsr.month_date_div(+) = cv_month_date_div2
+        AND   xsvsr.sales_date(+)
                 BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        --AND   xablv.child_base_code = xsvsr.sum_org_code
+        --AND   xablv.base_code = xabvpar.base_code
+        --AND   xablv.child_base_code = xabvchi.base_code
+        --AND   xsvsr.sum_org_type = cv_sum_org_type4
+        --AND   xsvsr.month_date_div = cv_month_date_div2
+        --AND   xsvsr.sales_date
+        --        BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        /* 20090427_abe_売上計画出力対応 END*/
         AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
         AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
         AND   xsvsry.month_date_div(+)= cv_month_date_div1
@@ -6036,7 +6203,10 @@ DO_ERROR('A-5-2-2');
         AND   xsvsr.sum_org_code   = xsvsrn.sum_org_code(+)
         AND   xsvsrn.month_date_div(+)= cv_month_date_div1
         AND   xsvsrn.sales_date(+) = gv_year_month
-      ORDER BY  base_code_chi     ASC;
+      /* 20090427_abe_売上計画出力対応 START*/
+      ORDER BY  xabvchi.row_order   ASC;
+      --ORDER BY  base_code_chi     ASC;
+      /* 20090427_abe_売上計画出力対応 END*/
     -- ローカルレコード
     l_cur_rec                  ticket_data_cur%ROWTYPE;
     l_month_square_rec         g_month_rtype4;
@@ -6261,75 +6431,79 @@ DO_ERROR('A-6-2-2');
                buff   => '初期処理フラグ:' || 'FALSE'
             );
           END IF;
-          -- 日付を取得
-          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
-          -- DEBUGメッセージ
-          -- 初期処理の場合
-          debug(
-             buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
-                       '日付けのナンバー型:'     || TO_CHAR(ln_date)
-          );
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt
-            := l_cur_rec.rslt_amt;              -- 売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt
-            := l_cur_rec.rslt_new_amt;          -- 売上実績（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt
-            := l_cur_rec.rslt_vd_new_amt;       -- 売上実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt
-            := l_cur_rec.rslt_vd_amt;           -- 売上実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt
-            := l_cur_rec.rslt_other_new_amt;    -- 売上実績（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt
-            := l_cur_rec.rslt_other_amt;        -- 売上実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt
-            := l_cur_rec.rslt_center_amt;       -- 内他拠点＿売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt
-            := l_cur_rec.rslt_center_vd_amt;    -- 内他拠点＿売上実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt
-            := l_cur_rec.rslt_center_other_amt; -- 内他拠点＿売上実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_num
-            := l_cur_rec.vis_num;               -- 訪問実績
-          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num
-            := l_cur_rec.vis_new_num;           -- 訪問実績（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num
-            := l_cur_rec.vis_vd_new_num;        -- 訪問実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num
-            := l_cur_rec.vis_vd_num;            -- 訪問実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num
-            := l_cur_rec.vis_other_new_num;     -- 訪問実績（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_other_num
-            := l_cur_rec.vis_other_num;         -- 訪問実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num
-            := l_cur_rec.vis_mc_num;            -- 訪問実績（MC
-          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num
-            := l_cur_rec.vis_sales_num;         -- 有効軒数
-          -- A0Z訪問件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          /* 20090427_abe_売上計画出力対応 START*/
+          IF (l_cur_rec.sales_date IS NOT NULL) THEN
+            -- 日付を取得
+            ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+            -- DEBUGメッセージ
+            -- 初期処理の場合
+            debug(
+               buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
+                         '日付けのナンバー型:'     || TO_CHAR(ln_date)
+            );
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_amt
+              := l_cur_rec.rslt_amt;              -- 売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt
+              := l_cur_rec.rslt_new_amt;          -- 売上実績（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt
+              := l_cur_rec.rslt_vd_new_amt;       -- 売上実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt
+              := l_cur_rec.rslt_vd_amt;           -- 売上実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt
+              := l_cur_rec.rslt_other_new_amt;    -- 売上実績（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt
+              := l_cur_rec.rslt_other_amt;        -- 売上実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt
+              := l_cur_rec.rslt_center_amt;       -- 内他拠点＿売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt
+              := l_cur_rec.rslt_center_vd_amt;    -- 内他拠点＿売上実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt
+              := l_cur_rec.rslt_center_other_amt; -- 内他拠点＿売上実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_num
+              := l_cur_rec.vis_num;               -- 訪問実績
+            l_month_square_rec.l_one_day_tab(ln_date).vis_new_num
+              := l_cur_rec.vis_new_num;           -- 訪問実績（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num
+              := l_cur_rec.vis_vd_new_num;        -- 訪問実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num
+              := l_cur_rec.vis_vd_num;            -- 訪問実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num
+              := l_cur_rec.vis_other_new_num;     -- 訪問実績（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_other_num
+              := l_cur_rec.vis_other_num;         -- 訪問実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num
+              := l_cur_rec.vis_mc_num;            -- 訪問実績（MC
+            l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num
+              := l_cur_rec.vis_sales_num;         -- 有効軒数
+            -- A0Z訪問件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          END IF;
+          /* 20090427_abe_売上計画出力対応 END*/
           -- 最初のレコードの場合
           IF(lb_boolean) THEN
             lb_boolean              := FALSE;                  -- 初期処理のフラグをオフする。
@@ -6759,13 +6933,22 @@ DO_ERROR('A-6-2-2');
              ,xxcso_sum_visit_sale_rep    xsvsrm        -- 訪問売上計画管理表サマリ先月
              ,xxcso_sum_visit_sale_rep    xsvsrn        -- 訪問売上計画管理表サマリ当月
       WHERE   xablv.base_code = gv_base_code
-        AND   xablv.child_base_code = xsvsr.sum_org_code
-        AND   xablv.base_code = xabvpar.base_code
-        AND   xablv.child_base_code = xabvchi.base_code
-        AND   xsvsr.sum_org_type = cv_sum_org_type5
-        AND   xsvsr.month_date_div = cv_month_date_div2
-        AND   xsvsr.sales_date
+        /* 20090427_abe_売上計画出力対応 START*/
+        AND   xablv.child_base_code = xsvsr.sum_org_code(+)
+        AND   xablv.base_code = xabvpar.base_code(+)
+        AND   xablv.child_base_code = xabvchi.base_code(+)
+        AND   xsvsr.sum_org_type(+) = cv_sum_org_type5
+        AND   xsvsr.month_date_div(+) = cv_month_date_div2
+        AND   xsvsr.sales_date(+)
                 BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        --AND   xablv.child_base_code = xsvsr.sum_org_code
+        --AND   xablv.base_code = xabvpar.base_code
+        --AND   xablv.child_base_code = xabvchi.base_code
+        --AND   xsvsr.sum_org_type = cv_sum_org_type5
+        --AND   xsvsr.month_date_div = cv_month_date_div2
+        --AND   xsvsr.sales_date
+        --        BETWEEN TO_CHAR(gd_year_month_day,'YYYYMMDD') AND TO_CHAR(gd_year_month_lastday,'YYYYMMDD')
+        /* 20090427_abe_売上計画出力対応 END*/
         AND   xsvsr.sum_org_type   = xsvsry.sum_org_type(+)
         AND   xsvsr.sum_org_code   = xsvsry.sum_org_code(+)
         AND   xsvsry.month_date_div(+)= cv_month_date_div1
@@ -6778,7 +6961,10 @@ DO_ERROR('A-6-2-2');
         AND   xsvsr.sum_org_code   = xsvsrn.sum_org_code(+)
         AND   xsvsrn.month_date_div(+)= cv_month_date_div1
         AND   xsvsrn.sales_date(+) = gv_year_month
-      ORDER BY  base_code_chi     ASC;
+      /* 20090427_abe_売上計画出力対応 START*/
+      ORDER BY  xabvchi.row_order   ASC;
+      --ORDER BY  base_code_chi     ASC;
+      /* 20090427_abe_売上計画出力対応 END*/
     -- ローカルレコード
     -- 帳票変数格納用
     l_cur_rec                  ticket_data_cur%ROWTYPE;
@@ -7004,75 +7190,79 @@ DO_ERROR('A-7-2-2');
                buff   => '初期処理フラグ:' || 'FALSE'
             );
           END IF;
-          -- 日付を取得
-          ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
-          -- DEBUGメッセージ
-          -- 初期処理の場合
-          debug(
-             buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
-                       '日付けのナンバー型:'     || TO_CHAR(ln_date)
-          );
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
-            := l_cur_rec.rslt_amt;              -- 売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
-            := l_cur_rec.rslt_new_amt;          -- 売上実績（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
-            := l_cur_rec.rslt_vd_new_amt;       -- 売上実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
-            := l_cur_rec.rslt_vd_amt;           -- 売上実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
-            := l_cur_rec.rslt_other_new_amt;    -- 売上実績（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
-            := l_cur_rec.rslt_other_amt;        -- 売上実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
-            := l_cur_rec.rslt_center_amt;       -- 内他拠点＿売上実績
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt       
-            := l_cur_rec.rslt_center_vd_amt;    -- 内他拠点＿売上実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt       
-            := l_cur_rec.rslt_center_other_amt; -- 内他拠点＿売上実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_num               
-            := l_cur_rec.vis_num;               -- 訪問実績
-          l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
-            := l_cur_rec.vis_new_num;           -- 訪問実績（新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
-            := l_cur_rec.vis_vd_new_num;        -- 訪問実績（VD：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
-            := l_cur_rec.vis_vd_num;            -- 訪問実績（VD）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
-            := l_cur_rec.vis_other_new_num;     -- 訪問実績（VD以外：新規）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
-            := l_cur_rec.vis_other_num;         -- 訪問実績（VD以外）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
-            := l_cur_rec.vis_mc_num;            -- 訪問実績（MC）
-          l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
-            := l_cur_rec.vis_sales_num;         -- 有効軒数
-          -- A0Z訪問件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
-          l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          /* 20090427_abe_売上計画出力対応 START*/
+          IF (l_cur_rec.sales_date IS NOT NULL) THEN
+            -- 日付を取得
+            ln_date := TO_NUMBER(SUBSTR(l_cur_rec.sales_date,7,2));
+            -- DEBUGメッセージ
+            -- 初期処理の場合
+            debug(
+               buff   => '日付:' || l_cur_rec.sales_date || cv_lf ||
+                         '日付けのナンバー型:'     || TO_CHAR(ln_date)
+            );
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_amt              
+              := l_cur_rec.rslt_amt;              -- 売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_new_amt          
+              := l_cur_rec.rslt_new_amt;          -- 売上実績（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_new_amt       
+              := l_cur_rec.rslt_vd_new_amt;       -- 売上実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_vd_amt           
+              := l_cur_rec.rslt_vd_amt;           -- 売上実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_other_new_amt    
+              := l_cur_rec.rslt_other_new_amt;    -- 売上実績（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_other_amt        
+              := l_cur_rec.rslt_other_amt;        -- 売上実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_amt       
+              := l_cur_rec.rslt_center_amt;       -- 内他拠点＿売上実績
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_vd_amt       
+              := l_cur_rec.rslt_center_vd_amt;    -- 内他拠点＿売上実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).rslt_center_other_amt       
+              := l_cur_rec.rslt_center_other_amt; -- 内他拠点＿売上実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_num               
+              := l_cur_rec.vis_num;               -- 訪問実績
+            l_month_square_rec.l_one_day_tab(ln_date).vis_new_num           
+              := l_cur_rec.vis_new_num;           -- 訪問実績（新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_new_num        
+              := l_cur_rec.vis_vd_new_num;        -- 訪問実績（VD：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_vd_num            
+              := l_cur_rec.vis_vd_num;            -- 訪問実績（VD）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_other_new_num     
+              := l_cur_rec.vis_other_new_num;     -- 訪問実績（VD以外：新規）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_other_num         
+              := l_cur_rec.vis_other_num;         -- 訪問実績（VD以外）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_mc_num         
+              := l_cur_rec.vis_mc_num;            -- 訪問実績（MC）
+            l_month_square_rec.l_one_day_tab(ln_date).vis_sales_num         
+              := l_cur_rec.vis_sales_num;         -- 有効軒数
+            -- A0Z訪問件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_a_num := nvl(l_cur_rec.vis_a_num,0);  -- 訪問A件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_b_num := nvl(l_cur_rec.vis_b_num,0);  -- 訪問B件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_c_num := nvl(l_cur_rec.vis_c_num,0);  -- 訪問C件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_d_num := nvl(l_cur_rec.vis_d_num,0);  -- 訪問D件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_e_num := nvl(l_cur_rec.vis_e_num,0);  -- 訪問E件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_f_num := nvl(l_cur_rec.vis_f_num,0);  -- 訪問F件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_g_num := nvl(l_cur_rec.vis_g_num,0);  -- 訪問G件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_h_num := nvl(l_cur_rec.vis_h_num,0);  -- 訪問H件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_i_num := nvl(l_cur_rec.vis_i_num,0);  -- 訪問I件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_j_num := nvl(l_cur_rec.vis_j_num,0);  -- 訪問J件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_k_num := nvl(l_cur_rec.vis_k_num,0);  -- 訪問K件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_l_num := nvl(l_cur_rec.vis_l_num,0);  -- 訪問L件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_m_num := nvl(l_cur_rec.vis_m_num,0);  -- 訪問M件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_n_num := nvl(l_cur_rec.vis_n_num,0);  -- 訪問N件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_o_num := nvl(l_cur_rec.vis_o_num,0);  -- 訪問O件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_p_num := nvl(l_cur_rec.vis_p_num,0);  -- 訪問P件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_q_num := nvl(l_cur_rec.vis_q_num,0);  -- 訪問Q件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_r_num := nvl(l_cur_rec.vis_r_num,0);  -- 訪問R件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_s_num := nvl(l_cur_rec.vis_s_num,0);  -- 訪問S件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_t_num := nvl(l_cur_rec.vis_t_num,0);  -- 訪問T件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_u_num := nvl(l_cur_rec.vis_u_num,0);  -- 訪問U件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_v_num := nvl(l_cur_rec.vis_v_num,0);  -- 訪問V件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_w_num := nvl(l_cur_rec.vis_w_num,0);  -- 訪問W件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_x_num := nvl(l_cur_rec.vis_x_num,0);  -- 訪問X件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_y_num := nvl(l_cur_rec.vis_y_num,0);  -- 訪問Y件数
+            l_month_square_rec.l_one_day_tab(ln_date).vis_z_num := nvl(l_cur_rec.vis_z_num,0);  -- 訪問Z件数
+          END IF;
+          /* 20090427_abe_売上計画出力対応 END*/
           -- 最初のレコードの場合
           IF(lb_boolean) THEN
             lb_boolean              := FALSE;                  -- 初期処理のフラグをオフする。
