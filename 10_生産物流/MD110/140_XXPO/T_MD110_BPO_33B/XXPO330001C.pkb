@@ -7,7 +7,7 @@ AS
  * Description      : 仕入・有償支給（仕入先返品）
  * MD.050/070       : 仕入・有償支給（仕入先返品）Issue2.0  (T_MD050_BPO_330)
  *                    返品指示書                            (T_MD070_BPO_33B)
- * Version          : 1.0
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/05/01    1.2   Yasuhisa Yamamoto TE080不具合対応(330_8)
  *  2008/05/02    1.3   Yasuhisa Yamamoto TE080不具合対応(330_10)
  *  2008/05/02    1.4   Yasuhisa Yamamoto TE080不具合対応(330_11)
+ *  2008/06/30    1.5   Yohei  Takayama   ST不具合#92対応
  *
  *****************************************************************************************/
 --
@@ -731,7 +732,9 @@ AS
     lv_sql_body := lv_sql_body || ' AND xrcart.txns_date >= xvsv1.start_date_active';
     lv_sql_body := lv_sql_body || ' AND xrcart.txns_date <= NVL(xvsv1.end_date_active, xrcart.txns_date )';
     -- 配送先名称取得結合
-    lv_sql_body := lv_sql_body || ' AND xvsv2.vendor_id(+) = xrcart.vendor_id';
+-- 08/06/30 Y.Takayama Del v1.5 Start
+    --lv_sql_body := lv_sql_body || ' AND xvsv2.vendor_id(+) = xrcart.vendor_id';
+-- 08/06/30 Y.Takayama Del v1.5 End
     lv_sql_body := lv_sql_body || ' AND xvsv2.vendor_site_code(+) = xrcart.delivery_code';
     lv_sql_body := lv_sql_body || ' AND xrcart.txns_date >= xvsv2.start_date_active(+)';
     lv_sql_body := lv_sql_body || ' AND xrcart.txns_date <= NVL(xvsv2.end_date_active(+), xrcart.txns_date)';
