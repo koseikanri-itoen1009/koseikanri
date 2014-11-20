@@ -7,7 +7,7 @@ AS
  * Description      : 帳合問屋用見積入力画面から、見積番号、版毎に見積書を	
  *                    帳票に出力します。
  * MD.050           : MD050_CSO_017_A04_見積書（帳合問屋用）PDF出力
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009-03-03    1.1   Kazuyo.Hosoi     SVF起動API埋め込み
  *  2009-03-05    1.1   Kazuyo.Hosoi     帳票レイアウトレビュー指摘対応
  *                                       (郵便番号の取得、JANコードの編集)
+ *  2009-04-03    1.2   Kazuo.Satomura   ＳＴ障害対応(T1_0294,0301)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -315,7 +316,10 @@ AS
     cv_lkup_tp_tx_dvsn       CONSTANT VARCHAR2(30) := 'XXCSO1_TAX_DIVISION';
     cv_lkup_tp_unt_prc_dvsn  CONSTANT VARCHAR2(30) := 'XXCSO1_UNIT_PRICE_DIVISION';
     cv_lkup_tp_qte_dvsn      CONSTANT VARCHAR2(30) := 'XXCSO1_QUOTE_DIVISION';
-    cv_lkup_tp_itm_nt_um_cd  CONSTANT VARCHAR2(30) := 'XXINV_ITM_NET_UOM_CODE';
+    /* 2009.04.03 K.Satomura T1_0294対応 START */
+    --cv_lkup_tp_itm_nt_um_cd  CONSTANT VARCHAR2(30) := 'XXINV_ITM_NET_UOM_CODE';
+    cv_lkup_tp_itm_nt_um_cd  CONSTANT VARCHAR2(30) := 'XXCMM_ITM_NET_UOM_CODE';
+    /* 2009.04.03 K.Satomura T1_0294対応 END */
     --
     cv_yes                   CONSTANT VARCHAR2(1)  := 'Y';
     cv_zero                  CONSTANT VARCHAR2(1)  := '0';
@@ -406,7 +410,16 @@ AS
       FROM   xxcso_cust_accounts_v  xcav  -- 顧客マスタビュー
             ,xxcso_quote_headers    xqh   -- 見積ヘッダーテーブル
       WHERE  xqh.quote_number   = io_rp_qte_lst_dt_rec.reference_quote_number
-        AND  xqh.account_number = xcav.account_number;
+        AND  xqh.account_number = xcav.account_number
+        /* 2009.04.03 K.Satomura T_0301対応 START */
+        AND  xqh.quote_revision_number =
+        (
+          SELECT MAX(xqh2.quote_revision_number)
+          FROM   xxcso_quote_headers xqh2
+          WHERE  xqh2.quote_number   = io_rp_qte_lst_dt_rec.reference_quote_number
+        )
+        /* 2009.04.03 K.Satomura T_0301対応 END */
+        ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         lv_msg := xxccp_common_pkg.get_msg(
@@ -583,7 +596,16 @@ AS
         AND  NVL(flvv.start_date_active, ld_sysdate) <= ld_sysdate
         AND  NVL(flvv.end_date_active, ld_sysdate)   >= ld_sysdate
         AND  xqh.quote_number   = io_rp_qte_lst_dt_rec.reference_quote_number
-        AND  xqh.unit_type      = flvv.lookup_code;
+        AND  xqh.unit_type      = flvv.lookup_code
+        /* 2009.04.03 K.Satomura T_0301対応 START */
+        AND  xqh.quote_revision_number =
+        (
+          SELECT MAX(xqh2.quote_revision_number)
+          FROM   xxcso_quote_headers xqh2
+          WHERE  xqh2.quote_number   = io_rp_qte_lst_dt_rec.reference_quote_number
+        )
+        /* 2009.04.03 K.Satomura T_0301対応 END */
+        ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         lv_msg := xxccp_common_pkg.get_msg(
