@@ -103,6 +103,12 @@ WHERE xqh.quote_type = :1
                     )
                   )
                 )
+-- 2012/09/04 E_本稼動_09945 Add Start
+                OR
+                (
+                  fnd_profile.value('XXCSO1_QUOTE_STANDARD') = '3'
+                )
+-- 2012/09/04 E_本稼動_09945 Add End
               )
       )
   AND xqh.account_number = xcav.account_number
@@ -187,6 +193,12 @@ WHERE xqh.quote_type = :1
             )
           )
         )
+-- 2012/09/04 E_本稼動_09945 Add Start
+        OR
+        (
+          fnd_profile.value('XXCSO1_QUOTE_STANDARD') = '3'
+        )
+-- 2012/09/04 E_本稼動_09945 Add End
       )
    ]]></SQLQuery>
    <DesignTime>

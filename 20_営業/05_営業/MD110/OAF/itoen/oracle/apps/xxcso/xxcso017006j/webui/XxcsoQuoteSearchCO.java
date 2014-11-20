@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteSearchCO
 * 概要説明   : 見積検索コントローラクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-12-22 1.0  SCS張吉    新規作成
+* 2008-12-22 1.0  SCS張吉      新規作成
+* 2012-09-10 1.1  SCSK穆宏旭  【E_本稼動_09945】見積書の照会方法の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017006j.webui;
@@ -78,6 +79,12 @@ public class XxcsoQuoteSearchCO extends OAControllerImpl
     XxcsoUtils.debug(pageContext, "[START]");
     
     OAApplicationModule am = pageContext.getApplicationModule(webBean);
+    // 2012-09-10 Ver1.1 [E_本稼動_09945] Add Start
+    // プロファイル(XXCSO:見積検索基準)値を取得
+    String profileSearchStandard = pageContext.getProfile(
+      XxcsoQuoteSearchConstants.XXCSO1_QUOTE_STANDARD);
+    // 2012-09-10 Ver1.1 [E_本稼動_09945] Add End
+
     if ( am == null )
     {
       OADialogPage dialogPage = new OADialogPage(STATE_LOSS_ERROR);
@@ -88,7 +95,11 @@ public class XxcsoQuoteSearchCO extends OAControllerImpl
     if ( pageContext.getParameter("SearchButton") != null )
     {
       XxcsoUtils.debug(pageContext, "[SearchButton]");
-      HashMap retMap = (HashMap)am.invokeMethod("executeSearch");
+      // 2012-09-10 Ver1.1 [E_本稼動_09945] Mod Start
+      //HashMap retMap = (HashMap)am.invokeMethod("executeSearch");
+      String[] params = {profileSearchStandard};
+      HashMap retMap = (HashMap)am.invokeMethod("executeSearch", params);
+      // 2012-09-10 Ver1.1 [E_本稼動_09945] Mod End
       XxcsoUtils.debug(pageContext, 
         "QuoteHeaderID : " + retMap.get(XxcsoConstants.TRANSACTION_KEY1));
 

@@ -1,12 +1,13 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteSearchAMImpl
 * 概要説明   : 見積検索アプリケーション・モジュールクラス
-* バージョン : 1.0
+* バージョン : 1.1
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-12-22 1.0  SCS張吉    新規作成
+* 2008-12-22 1.0  SCS張吉      新規作成
+* 2012-09-10 1.1  SCSK穆宏旭  【E_本稼動_09945】見積書の照会方法の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017006j.server;
@@ -82,7 +83,10 @@ public class XxcsoQuoteSearchAMImpl extends OAApplicationModuleImpl
    * @throw  OAException
    *****************************************************************************
    */
-  public HashMap executeSearch()
+  // 2012-09-10 Ver1.1 [E_本稼動_09945] Mod Start
+  //public HashMap executeSearch()
+    public HashMap executeSearch(String searchStandard)
+  // 2012-09-10 Ver1.1 [E_本稼動_09945] Mod End
   {
     OADBTransaction txn = getOADBTransaction();
 
@@ -158,11 +162,31 @@ public class XxcsoQuoteSearchAMImpl extends OAApplicationModuleImpl
         XxcsoConstants.TRANSACTION_KEY1,
         searchRow1.getQuoteHeaderId()
       );
+      // 2012-09-10 Ver1.1 [E_本稼動_09945] Mod Start
       // 実行区分
-      retMap.put(
-        XxcsoConstants.EXECUTE_MODE,
-        XxcsoQuoteSearchConstants.EXECUTE_MODE_UPDATE
-      );
+      //retMap.put(
+      //    XxcsoConstants.EXECUTE_MODE,
+      //    XxcsoQuoteSearchConstants.EXECUTE_MODE_UPDATE
+      //);
+      //上記取得したプロファイル値が3の場合、実行区分にREAD_ONLYを設定
+      //上記取得したプロファイル値が3以外の場合、実行区分にUPDATEを設定
+      // 実行区分
+      if ( null != searchStandard && 
+           !"".equals(searchStandard) && 
+           searchStandard.equals(
+           XxcsoQuoteSearchConstants.XXCSO1_QUOTE_STANDARD_VALUE_3))
+      {
+        retMap.put(
+          XxcsoConstants.EXECUTE_MODE,
+          XxcsoQuoteSearchConstants.EXECUTE_MODE_READ_ONLY
+        );
+      } else {
+        retMap.put(
+          XxcsoConstants.EXECUTE_MODE,
+          XxcsoQuoteSearchConstants.EXECUTE_MODE_UPDATE
+        );
+      }
+      // 2012-09-10 Ver1.1 [E_本稼動_09945] Mod End
     }
     else
     {
@@ -201,11 +225,30 @@ public class XxcsoQuoteSearchAMImpl extends OAApplicationModuleImpl
         XxcsoConstants.TRANSACTION_KEY1,
         searchRow2.getQuoteHeaderId()
       );
+      // 2012-09-10 Ver1.1 [E_本稼動_09945] Mod Start
       // 実行区分
-      retMap.put(
-        XxcsoConstants.EXECUTE_MODE,
-        XxcsoQuoteSearchConstants.EXECUTE_MODE_UPDATE
-      );      
+      //retMap.put(
+      //  XxcsoConstants.EXECUTE_MODE,
+      //  XxcsoQuoteSearchConstants.EXECUTE_MODE_UPDATE
+      //);
+      //上記取得したプロファイル値が3の場合、実行区分にREAD_ONLYを設定
+      //上記取得したプロファイル値が3以外の場合、実行区分にUPDATEを設定
+      if ( null != searchStandard && 
+           !"".equals(searchStandard) &&
+           searchStandard.equals(
+           XxcsoQuoteSearchConstants.XXCSO1_QUOTE_STANDARD_VALUE_3))
+      {
+        retMap.put(
+          XxcsoConstants.EXECUTE_MODE,
+          XxcsoQuoteSearchConstants.EXECUTE_MODE_READ_ONLY
+        );
+      } else {
+        retMap.put(
+          XxcsoConstants.EXECUTE_MODE,
+          XxcsoQuoteSearchConstants.EXECUTE_MODE_UPDATE
+        );      
+      }
+      // 2012-09-10 Ver1.1 [E_本稼動_09945] Mod End
     }
 
     return retMap;

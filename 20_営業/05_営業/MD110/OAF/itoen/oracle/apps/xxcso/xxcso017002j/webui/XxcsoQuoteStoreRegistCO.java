@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteStoreRegistCO
 * 概要説明   : 帳合問屋用見積入力画面コントローラクラス
-* バージョン : 1.3
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-07-23 1.1  SCS阿部大輔 【0000806】マージン額／マージン率の計算対象変更
 * 2009-09-10 1.2  SCS阿部大輔  【0001331】マージン額の計算時にページ遷移を指定
 * 2011-04-18 1.3  SCS吉元強樹  【E_本稼動_01373】通常NET価格自動導出対応
+* 2012-09-10 1.4  SCSK穆宏旭   【E_本稼動_09945】見積書の照会方法の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017002j.webui;
@@ -28,6 +29,12 @@ import oracle.apps.fnd.framework.webui.OADialogPage;
 import itoen.oracle.apps.xxcso.xxcso017002j.util.XxcsoQuoteConstants;
 import itoen.oracle.apps.xxcso.common.util.XxcsoUtils;
 import itoen.oracle.apps.xxcso.common.util.XxcsoConstants;
+import oracle.apps.fnd.framework.webui.beans.form.OASubmitButtonBean;
+import oracle.apps.fnd.framework.webui.beans.message.OAMessageTextInputBean;
+import oracle.cabo.ui.beans.form.TextInputBean;
+import oracle.apps.fnd.framework.webui.beans.message.OAMessageLovInputBean;
+import oracle.apps.fnd.framework.webui.beans.message.OAMessageChoiceBean;
+import oracle.apps.fnd.framework.webui.beans.table.OAMultipleSelectionBean;
 /*******************************************************************************
  * 帳合問屋用見積入力画面のコントローラクラス
  * @author  SCS及川領
@@ -132,6 +139,14 @@ public class XxcsoQuoteStoreRegistCO extends OAControllerImpl
       setErrorMode(pageContext, webBean);
     }
 
+    // 2012-09-10 Ver1.4 [E_本稼動_09945] Add Start
+    // 取消ボタン以外のボタンを表示しない、入力項目を無効に設定
+    if ( XxcsoQuoteConstants.TRANDIV_READ_ONLY.equals(tranDiv) )
+    {
+      setItemsDisabled(webBean);
+    }
+    // 2012-09-10 Ver1.4 [E_本稼動_09945] Add End
+
     XxcsoUtils.debug(pageContext, "[END]");
   }
 
@@ -177,7 +192,11 @@ public class XxcsoQuoteStoreRegistCO extends OAControllerImpl
        );
      }
      // 見積検索画面
-     else if ( XxcsoQuoteConstants.TRANDIV_UPDATE.equals(tranDiv) )
+     // 2012-09-10 Ver1.4 [E_本稼動_09945] Mod Start
+     //else if ( XxcsoQuoteConstants.TRANDIV_UPDATE.equals(tranDiv) )
+       else if ( XxcsoQuoteConstants.TRANDIV_UPDATE.equals(tranDiv) ||
+                  XxcsoQuoteConstants.TRANDIV_READ_ONLY.equals(tranDiv ))
+     // 2012-09-10 Ver1.4 [E_本稼動_09945] Mod End
      {
        pageContext.putParameter(
          XxcsoConstants.TRANSACTION_KEY3,
@@ -509,4 +528,156 @@ public class XxcsoQuoteStoreRegistCO extends OAControllerImpl
     webBean.findChildRecursive("CsvCreateButton").setRendered(false);
     webBean.findChildRecursive("MainSlRN").setRendered(false);
   }
+  // 2012-09-10 Ver1.4 [E_本稼動_09945] Add Start
+  /*****************************************************************************
+   * 取消ボタン以外のボタンを表示しない、入力項目を無効に設定。
+   * @param webBean     画面情報
+   *****************************************************************************
+   */
+  private void setItemsDisabled(OAWebBean webBean)
+  {
+    //コピーの作成ボタン
+    if (null != webBean.findChildRecursive("CopyCreateButton"))
+    {
+      webBean.findChildRecursive("CopyCreateButton").setRendered(false);
+    }
+    //無効にするボタン
+    if (null != webBean.findChildRecursive("InvalidityButton"))
+    {
+      webBean.findChildRecursive("InvalidityButton").setRendered(false);
+    }
+    //適用ボタン
+    if (null != webBean.findChildRecursive("ApplicableButton"))
+    {
+      webBean.findChildRecursive("ApplicableButton").setRendered(false);
+    }
+    //版の改訂ボタン
+    if (null != webBean.findChildRecursive("RevisionButton"))
+    {
+      webBean.findChildRecursive("RevisionButton").setRendered(false);
+    }
+    //確定ボタン
+    if (null != webBean.findChildRecursive("FixedButton"))
+    {
+      webBean.findChildRecursive("FixedButton").setRendered(false);
+    }
+    //見積書印刷
+    if (null != webBean.findChildRecursive("QuoteSheetPrintButton"))
+    {
+      webBean.findChildRecursive("QuoteSheetPrintButton").setRendered(false);
+    }
+    //CSV作成
+    if (null != webBean.findChildRecursive("CsvCreateButton"))
+    {
+      webBean.findChildRecursive("CsvCreateButton").setRendered(false);
+    }
+    //参照用見積番号
+    if (null != webBean.findChildRecursive("ReferenceQuoteNumber"))
+    {
+      ((OAMessageLovInputBean)webBean.findChildRecursive(
+        "ReferenceQuoteNumber")).setDisabled(true);
+    }
+    //発行日
+    if (null != webBean.findChildRecursive("PublishDate"))
+    {
+      ((TextInputBean)webBean.findChildRecursive(
+        "PublishDate")).setDisabled(true);
+    }
+    //顧客コード
+    if (null != webBean.findChildRecursive("AccountNumber"))
+    {
+      ((OAMessageLovInputBean)webBean.findChildRecursive(
+        "AccountNumber")).setDisabled(true);
+    }
+    //納入場所
+    if (null != webBean.findChildRecursive("DelivPlace"))
+    {
+      ((OAMessageTextInputBean)webBean.findChildRecursive(
+        "DelivPlace")).setDisabled(true);
+    }
+    //支払条件
+    if (null != webBean.findChildRecursive("PaymentCondition"))
+    {
+      ((OAMessageTextInputBean)webBean.findChildRecursive(
+        "PaymentCondition")).setDisabled(true);
+    }
+    //見積書提出先名
+    if (null != webBean.findChildRecursive("QuoteSubmitName"))
+    {
+      ((OAMessageTextInputBean)webBean.findChildRecursive(
+        "QuoteSubmitName")).setDisabled(true);
+    }
+    //税区分
+    if (null != webBean.findChildRecursive("DelivPriceTaxType"))
+    {
+    ((OAMessageChoiceBean)webBean.findChildRecursive(
+      "DelivPriceTaxType")).setDisabled(true);
+    }
+    //問屋単価区分
+    if (null != webBean.findChildRecursive("UnitType"))
+    {
+      ((OAMessageChoiceBean)webBean.findChildRecursive(
+        "UnitType")).setDisabled(true);
+    }
+    //特記事項
+    if (null != webBean.findChildRecursive("SpecialNote"))
+    {
+      ((OAMessageTextInputBean)webBean.findChildRecursive(
+        "SpecialNote")).setDisabled(true);
+    }
+    //選択
+    if (null != webBean.findChildRecursive("QuoteSelection"))
+    {
+      ((OAMultipleSelectionBean)webBean.findChildRecursive(
+        "QuoteSelection")).setDisabled(true);
+    }
+    //建値
+    if (null != webBean.findChildRecursive("QuotationPrice"))
+    {
+      ((OAMessageTextInputBean)webBean.findChildRecursive(
+        "QuotationPrice")).setDisabled(true);
+    }
+    //売上値引
+    if (null != webBean.findChildRecursive("SalesDiscountPrice"))
+    {
+    ((OAMessageTextInputBean)webBean.findChildRecursive(
+      "SalesDiscountPrice")).setDisabled(true);
+    }
+    //通常NET価格
+    if (null != webBean.findChildRecursive("UsuallNetPrice"))
+    {
+    ((OAMessageTextInputBean)webBean.findChildRecursive(
+      "UsuallNetPrice")).setDisabled(true);
+    }
+    //今回NET価格
+    if (null != webBean.findChildRecursive("ThisTimeNetPrice"))
+    {
+      ((OAMessageTextInputBean)webBean.findChildRecursive(
+        "ThisTimeNetPrice")).setDisabled(true);
+    }
+    //期間（開始）
+    if (null != webBean.findChildRecursive("QuoteStartDate"))
+    {
+      ((TextInputBean)webBean.findChildRecursive(
+        "QuoteStartDate")).setDisabled(true);
+    }
+    //並び順
+    if (null != webBean.findChildRecursive("LineOrder"))
+    {
+    ((OAMessageTextInputBean)webBean.findChildRecursive(
+      "LineOrder")).setDisabled(true);
+    }
+    //備考
+    if (null != webBean.findChildRecursive("Remarks"))
+    {
+      ((OAMessageTextInputBean)webBean.findChildRecursive(
+        "Remarks")).setDisabled(true);
+    }
+    //通常NET価格導出ボタン
+    if (null != webBean.findChildRecursive("UsuallNetPriceButton"))
+    {
+      webBean.findChildRecursive("UsuallNetPriceButton").setRendered(false);
+    }
+  }
+  // 2012-09-10 Ver1.4 [E_本稼動_09945] Add End
 }
