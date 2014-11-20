@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,9 @@ AS
  *  2009/07/10    1.10  N.Maeda          [000063]情報区分によるデータ作成対象の制御追加
  *                                       [000064]受注DFF項目追加に伴う、連携項目追加
  *  2009/07/13    1.10  N.Maeda          [T1_1359]レビュー指摘事項対応
+ *  2009/07/21    1.11  K.Kiriu          [0000644]原価金額の端数処理対応
+ *  2009/07/24    1.11  K.Kiriu          [T1_1359]レビュー指摘事項対応
+ *  2009/08/10    1.11  K.Kiriu          [0000438]指摘事項対応
  *
  *****************************************************************************************/
 --
@@ -1070,7 +1073,11 @@ AS
           ,(SELECT ore1.reason_code             reason_code
                   ,ore1.entity_id               entity_id
             FROM   oe_reasons                   ore1
-                  ,(SELECT ore2.entity_id           entity_id
+/* 2009/08/10 Ver1.11 Mod Start */
+--                  ,(SELECT ore2.entity_id           entity_id
+                  ,(SELECT /*+ INDEX( ore2 xxcos_oe_reasons_n04 ) */
+                           ore2.entity_id           entity_id
+/* 2009/08/10 Ver1.11 Mod Start */
                           ,MAX(ore2.creation_date)  creation_date
                     FROM   oe_reasons               ore2
                     WHERE  ore2.reason_type = cv_reason_type
@@ -3790,8 +3797,11 @@ AS
       gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)             := gt_edi_order_tab(ln_loop_cnt).sum_shipping_qty;             -- 出荷数量(合計､ﾊﾞﾗ)
 --
       xxcos_common2_pkg.convert_quantity(
-               iv_uom_code             => gt_data_tab(ln_data_cnt)(cv_uom_code)               --IN :単位コード
-              ,in_case_qty             => gt_data_tab(ln_data_cnt)(cv_num_of_cases)          --IN :ケース入数
+/* 2009/07/24 Ver1.11 Mod Start */
+--               iv_uom_code             => gt_data_tab(ln_data_cnt)(cv_uom_code)               --IN :単位コード
+               iv_uom_code             => gt_edi_order_tab(ln_loop_cnt).order_quantity_uom --IN :単位コード
+/* 2009/07/24 Ver1.11 Mod End   */
+              ,in_case_qty             => gt_data_tab(ln_data_cnt)(cv_num_of_cases)        --IN :ケース入数
               ,in_ball_qty             => NVL( gt_edi_order_tab(ln_loop_cnt).num_of_ball
                                               ,gt_edi_order_tab(ln_loop_cnt).bowl_inc_num
                                              )                                             --IN :ボール入数
@@ -3866,8 +3876,12 @@ AS
 --                                                           * gt_data_tab(ln_data_cnt)(cv_ship_unit_price);               -- 原価金額(出荷)
 --    gt_data_tab(ln_data_cnt)(cv_stkout_cost_amt)          := gt_data_tab(ln_data_cnt)(cv_order_cost_amt)
 --                                                           - gt_data_tab(ln_data_cnt)(cv_ship_cost_amt);                 -- 原価金額(欠品)
-      gt_data_tab(ln_data_cnt)(cv_ship_cost_amt)            := NVL(gt_data_tab(ln_data_cnt)(cv_sum_ship_qty), 0)
-                                                             * NVL(gt_data_tab(ln_data_cnt)(cv_ship_unit_price), 0);       -- 原価金額(出荷)
+/* 2009/07/21 Ver1.11 Mod Start */
+--      gt_data_tab(ln_data_cnt)(cv_ship_cost_amt)            := NVL(gt_data_tab(ln_data_cnt)(cv_sum_ship_qty), 0)
+--                                                             * NVL(gt_data_tab(ln_data_cnt)(cv_ship_unit_price), 0);       -- 原価金額(出荷)
+      gt_data_tab(ln_data_cnt)(cv_ship_cost_amt)            := TRUNC(NVL(gt_data_tab(ln_data_cnt)(cv_sum_ship_qty), 0)
+                                                             * NVL(gt_data_tab(ln_data_cnt)(cv_ship_unit_price), 0));      -- 原価金額(出荷)
+/* 2009/07/21 Ver1.11 Mod End   */
 /* 2009/02/27 Ver1.5 Mod Start */
       -- 「媒体区分」が、'手入力'の場合
       IF ( gt_edi_order_tab(ln_loop_cnt).medium_class = cv_medium_class_mnl ) THEN
