@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  count_valid            実有効実績件数情報集計＆登録処理(B-13)
  *  count_new_customer     新規軒数情報集計＆登録処理(B-14)
  *  count_point            新規獲得・資格ポイント情報集計＆登録処理(B-15)
+ *  count_base_code_cust   拠点計顧客軒数情報集計＆登録処理(B-18)
  *  count_delete_invalidity期限切れ集計データ削除処理(B-16)
  *  control_count          各種件数取得制御(B-7)
  *  submain                メイン処理プロシージャ
@@ -54,6 +55,7 @@ AS
  *  2009/11/18    1.10  T.Nishikawa      [E_本番_00220]性能劣化に伴うヒント句追加
  *  2009/11/24    1.11  K.Atsushiba      [E_本番_00347]PT対応
  *  2010/01/19    1.12  T.Nakano         [E_本稼動_01039]対応 新規ポイント情報追加
+ *  2010/04/16    1.13  D.Abe            [E_本稼動_02270]対応 拠点計顧客軒数を追加
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -414,6 +416,10 @@ AS
   ct_counter_cls_mc_visit       CONSTANT  xxcos_rep_bus_count_sum.counter_class%TYPE := '10';
   --  資格ポイント
   ct_counter_cls_qualifi_point  CONSTANT  xxcos_rep_bus_count_sum.counter_class%TYPE := '11';
+/* 2010/04/16 Ver1.13 Add Start */
+  --  拠点計顧客軒数
+  ct_counter_cls_base_code_cust CONSTANT  xxcos_rep_bus_count_sum.counter_class%TYPE := '12';
+/* 2010/04/16 Ver1.13 Add End   */
 --
   --  AR会計情報格納用配列インデックス
   --  前月
@@ -3586,7 +3592,10 @@ AS
               work.base_code                            AS  base_code,
               work.employee_num                         AS  employee_num,
               NULL                                      AS  business_low_type,
-              work.total_visit                          AS  total_visit,
+/* 2010/04/16 Ver1.13 Mod Start */
+--              work.total_visit                          AS  total_visit,
+              work.total_visit - work.total_mc_visit    AS  total_visit,
+/* 2010/04/16 Ver1.13 Mod End   */
               work.total_valid                          AS  total_valid,
               work.total_mc_visit                       AS  total_mc_visit,
               cn_created_by                             AS  created_by,
@@ -4498,6 +4507,189 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END count_point;
+/* 2010/04/16 Ver1.13 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : count_base_code_cust
+   * Description      : 拠点計顧客軒数情報集計＆登録処理(B-18)
+   ***********************************************************************************/
+  PROCEDURE count_base_code_cust(
+    it_account_info     IN  g_account_info_rec,   --  1.会計情報
+    it_account_idx      IN  PLS_INTEGER,          --  2.会計情報配列インデックス
+    ov_errbuf           OUT VARCHAR2,             --  エラー・メッセージ           --# 固定 #
+    ov_retcode          OUT VARCHAR2,             --  リターン・コード             --# 固定 #
+    ov_errmsg           OUT VARCHAR2)             --  ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'count_base_code_cust'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lt_table_name                         dba_tab_comments.comments%TYPE;
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    --==================================
+    -- 1.拠点計顧客軒数情報集計＆登録処理(B-18)
+    --==================================
+    BEGIN
+      INSERT
+      INTO    xxcos_rep_bus_count_sum
+              (
+              record_id,
+              target_date,
+              regist_bus_date,
+              base_code,
+              employee_num,
+              counter_class,
+              business_low_type,
+              counter,
+              created_by,
+              creation_date,
+              last_updated_by,
+              last_update_date,
+              last_update_login,
+              request_id,
+              program_application_id,
+              program_id,
+              program_update_date
+              )
+      SELECT
+              xxcos_rep_bus_counter_sum_s01.nextval + ct_counter_cls_base_code_cust
+                                                        AS  record_id,
+              it_account_info.base_years                AS  target_date,
+              gd_process_date                           AS  regist_bus_date,
+              work.base_code                            AS  base_code,
+              NULL                                      AS  employee_num,
+              ct_counter_cls_base_code_cust             AS  counter_class,
+              work.business_low_type                    AS  business_low_type,
+              work.counter_customer                     AS  counter,
+              cn_created_by                             AS  created_by,
+              cd_creation_date                          AS  creation_date,
+              cn_last_updated_by                        AS  last_updated_by,
+              cd_last_update_date                       AS  last_update_date,
+              cn_last_update_login                      AS  last_update_login,
+              cn_request_id                             AS  request_id,
+              cn_program_application_id                 AS  program_application_id,
+              cn_program_id                             AS  program_id,
+              cd_program_update_date                    AS  program_update_date
+      FROM    (
+              SELECT
+                      xcac.sale_base_code                       AS  base_code,
+                      xbco.d_lookup_code                        AS  business_low_type,
+                      COUNT(hzca.cust_account_id)               AS  counter_customer
+              FROM    hz_parties                  hzpt,
+                      hz_cust_accounts            hzca,
+                      xxcmm_cust_accounts         xcac,
+                      xxcos_lookup_values_v       xlva,
+                      xxcos_business_conditions_v xbco
+              WHERE   hzpt.party_id               =       hzca.party_id
+              AND     xcac.customer_id            =       hzca.cust_account_id
+              AND     xcac.cnvs_date              <=      it_account_info.base_date
+              AND     xlva.lookup_type            =       ct_qct_customer_count_type
+              AND     xlva.attribute1             =       hzca.customer_class_code
+              AND     xlva.attribute2             =       NVL( xcac.vist_target_div, ct_vist_target_div_yes )
+              AND     xlva.attribute3             =       NVL( xcac.selling_transfer_div, ct_selling_transfer_div_no )
+              AND     xlva.attribute4             =
+                                                  DECODE(it_account_idx,  cn_this_month,  hzpt.duns_number_c
+                                                                                       ,  xcac.past_customer_status)
+              AND     xlva.attribute5             =       cv_yes
+              AND     xbco.s_lookup_code          =       xcac.business_low_type
+              AND     it_account_info.base_date   BETWEEN xbco.s_start_date_active
+                                                  AND     xbco.s_end_date_active
+              AND     it_account_info.base_date   BETWEEN xbco.c_start_date_active
+                                                  AND     xbco.c_end_date_active
+              AND     it_account_info.base_date   BETWEEN xbco.d_start_date_active
+                                                  AND     xbco.d_end_date_active
+              GROUP BY
+                      xcac.sale_base_code,
+                      xbco.d_lookup_code
+              )                                   work
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_cust_counter_tbl
+          );
+        ov_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_insert_data_err,
+          iv_token_name1 => cv_tkn_table_name,
+          iv_token_value1=> lv_errmsg,
+          iv_token_name2 => cv_tkn_key_data,
+          iv_token_value2=> NULL
+          );
+        --  後続データの処理は中止となる為、当箇所でのエラー発生時は常に１件
+        gn_error_cnt := 1;
+        lv_errbuf := SQLERRM;
+        RAISE global_insert_data_expt;
+    END;--
+--
+    --  登録件数カウント
+    g_counter_tab(cn_counter_count_sum).insert_counter
+      := g_counter_tab(cn_counter_count_sum).insert_counter + SQL%ROWCOUNT;
+    gn_target_cnt :=  gn_target_cnt + SQL%ROWCOUNT;
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    --*** データ登録例外ハンドラ ***
+    WHEN global_insert_data_expt THEN
+      ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END count_base_code_cust;
+--
+/* 2010/04/16 Ver1.13 Add End   */
   /**********************************************************************************
    * Procedure Name   : count_delete_invalidity
    * Description      : 期限切れ集計データ削除処理(B-16)
@@ -5049,6 +5241,21 @@ AS
           RAISE global_process_expt;
         END IF;
 --
+/* 2010/04/16 Ver1.13 Add Start */
+        --  拠点計顧客軒数情報集計＆登録処理(B-18)
+        count_base_code_cust (
+          g_account_info_tab(lp_idx),
+          lp_idx,
+          lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+          lv_retcode,        -- リターン・コード             --# 固定 #
+          lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+        --  処理ステータス判定
+        IF ( lv_retcode = cv_status_error ) THEN
+          --  (エラー処理)
+          RAISE global_process_expt;
+        END IF;
+--
+/* 2010/04/16 Ver1.13 Add End   */
         --  処理件数メッセージ編集（営業成績表 実績集計処理件数）
         lv_errmsg := xxccp_common_pkg.get_msg(
           iv_application => ct_xxcos_appl_short_name,

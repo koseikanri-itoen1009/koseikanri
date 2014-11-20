@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A031R(body)
  * Description      : 営業成績表
  * MD.050           : 営業成績表 MD050_COS_002_A03
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2009/06/22    1.6   K.Kiriu          [T1_1437]データパージ不具合対応
  *  2009/07/07    1.7   K.Kiriu          [0000418]削除件数取得不具合対応
  *  2009/09/03    1.8   K.Kiriu          [0000866]PT対応
+ *  2010/04/16    1.9   D.Abe            [E_本稼動_02251,02270]カレンダ,拠点計顧客軒数対応
  *
  *****************************************************************************************/
 --
@@ -197,9 +198,14 @@ AS
   --  XXCOS:ダミー営業グループコード
   ct_prof_dummy_sales_group
     CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_DUMMY_SALES_GROUP_CODE';
-  --  XXCOI:在庫組織コード
-  ct_prof_organization_code
-    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOI1_ORGANIZATION_CODE';
+/* 2010/04/16 Ver1.9 Mod Start */
+--  --  XXCOI:在庫組織コード
+--  ct_prof_organization_code
+--    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOI1_ORGANIZATION_CODE';
+  --  XXCOS:カレンダコード
+  ct_prof_business_calendar_code
+    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_BUSINESS_CALENDAR_CODE';
+/* 2010/04/16 Ver1.9 Mod End   */
 --
   --＠クイックコード
   --  クイックコード（政策群コード）
@@ -361,6 +367,10 @@ AS
   ct_counter_cls_mc_visit       CONSTANT  xxcos_rep_bus_count_sum.counter_class%TYPE := '10';
   --  資格ポイント
   ct_counter_cls_qualifi_point  CONSTANT  xxcos_rep_bus_count_sum.counter_class%TYPE := '11';
+/* 2010/04/16 Ver1.9 Add Start */
+  --  拠点計顧客軒数
+  ct_counter_cls_base_code_cust CONSTANT  xxcos_rep_bus_count_sum.counter_class%TYPE := '12';
+/* 2010/04/16 Ver1.9 Add End   */
 --
   --＠limit
   --  拠点名称
@@ -403,8 +413,12 @@ AS
   --＠プロファイル格納用
   --  XXCOS:ダミー営業グループコード
   gt_prof_dummy_sales_group               fnd_profile_option_values.profile_option_value%TYPE;
-  --  XXCOI:在庫組織コード
-  gt_prof_organization_code               fnd_profile_option_values.profile_option_value%TYPE;
+/* 2010/04/16 Ver1.9 Mod Start */
+--  --  XXCOI:在庫組織コード
+--  gt_prof_organization_code               fnd_profile_option_values.profile_option_value%TYPE;
+  --  XXCOS:カレンダコード
+  gt_prof_business_calendar_code          fnd_profile_option_values.profile_option_value%TYPE;
+/* 2010/04/16 Ver1.9 Mod End   */
 --
   --＠共通データ格納用
   --  共通データ．抽出基準日(date型)
@@ -565,20 +579,36 @@ AS
       RAISE global_get_profile_expt;
     END IF;
 --
-    --  XXCOI:在庫組織コード
-    gt_prof_organization_code := FND_PROFILE.VALUE( ct_prof_organization_code );
+/* 2010/04/16 Ver1.9 Mod Start */
+--    --  XXCOI:在庫組織コード
+--    gt_prof_organization_code := FND_PROFILE.VALUE( ct_prof_organization_code );
+----
+--    -- プロファイルが取得できない場合はエラー
+--    IF ( gt_prof_organization_code IS NULL ) THEN
+--      --プロファイル名文字列取得
+--      lv_profile_name := xxccp_common_pkg.get_msg(
+--        iv_application        => ct_xxcos_appl_short_name,
+--        iv_name               => ct_msg_organization_code
+--        );
+----
+--      lv_profile_name :=  NVL(lv_profile_name, ct_prof_organization_code);
+--      RAISE global_get_profile_expt;
+--    END IF;
+    --  XXCOS:カレンダコード
+    gt_prof_business_calendar_code := FND_PROFILE.VALUE( ct_prof_business_calendar_code );
 --
     -- プロファイルが取得できない場合はエラー
-    IF ( gt_prof_organization_code IS NULL ) THEN
+    IF ( gt_prof_business_calendar_code IS NULL ) THEN
       --プロファイル名文字列取得
       lv_profile_name := xxccp_common_pkg.get_msg(
         iv_application        => ct_xxcos_appl_short_name,
-        iv_name               => ct_msg_organization_code
+        iv_name               => ct_prof_business_calendar_code
         );
 --
-      lv_profile_name :=  NVL(lv_profile_name, ct_prof_organization_code);
+      lv_profile_name :=  NVL(lv_profile_name, ct_prof_business_calendar_code);
       RAISE global_get_profile_expt;
     END IF;
+/* 2010/04/16 Ver1.9 Mod End   */
 --
     --==================================
     -- 4.基準日付取得
@@ -603,10 +633,14 @@ AS
                 END)                    AS  lapsed_days
     INTO    gn_common_operating_days,
             gn_common_lapsed_days
-    FROM    mtl_parameters      par,
-            bom_calendar_dates  cal
-    WHERE   par.organization_code   =       gt_prof_organization_code
-    AND     cal.calendar_code       =       par.calendar_code
+/* 2010/04/16 Ver1.9 Mod Start */
+--    FROM    mtl_parameters      par,
+--            bom_calendar_dates  cal
+--    WHERE   par.organization_code   =       gt_prof_organization_code
+--    AND     cal.calendar_code       =       par.calendar_code
+    FROM    bom_calendar_dates  cal
+    WHERE   cal.calendar_code       =       gt_prof_business_calendar_code
+/* 2010/04/16 Ver1.9 Mod End   */
     AND     cal.calendar_date       BETWEEN gd_common_first_date
                                     AND     gd_common_last_date
     ;
@@ -2899,7 +2933,10 @@ AS
               work.discount_shop_total                                              AS  discount_shop_total,
               work.sup_sam_shop_date_total                                          AS  sup_sam_shop_date_total,
               work.sup_sam_shop_total                                               AS  sup_sam_shop_total,
-              work.keep_shop_quantity                                               AS  keep_shop_quantity,
+/* 2010/04/16 Ver1.9 Mod Start */
+--              work.keep_shop_quantity                                               AS  keep_shop_quantity,
+              NULL                                                                  AS  keep_shop_quantity,
+/* 2010/04/16 Ver1.9 Mod End   */
               work.sale_cvs_date_total                                              AS  sale_cvs_date_total,
               work.sale_cvs_total                                                   AS  sale_cvs_total,
               work.rtn_cvs_date_total                                               AS  rtn_cvs_date_total,
@@ -2908,7 +2945,10 @@ AS
               work.discount_cvs_total                                               AS  discount_cvs_total,
               work.sup_sam_cvs_date_total                                           AS  sup_sam_cvs_date_total,
               work.sup_sam_cvs_total                                                AS  sup_sam_cvs_total,
-              work.keep_shop_cvs                                                    AS  keep_shop_cvs,
+/* 2010/04/16 Ver1.9 Mod Start */
+--              work.keep_shop_cvs                                                    AS  keep_shop_cvs,
+              NULL                                                                  AS  keep_shop_cvs,
+/* 2010/04/16 Ver1.9 Mod End   */
               work.sale_wholesale_date_total                                        AS  sale_wholesale_date_total,
               work.sale_wholesale_total                                             AS  sale_wholesale_total,
               work.rtn_wholesale_date_total                                         AS  rtn_wholesale_date_total,
@@ -2917,7 +2957,10 @@ AS
               work.discount_whol_total                                              AS  discount_whol_total,
               work.sup_sam_whol_date_total                                          AS  sup_sam_whol_date_total,
               work.sup_sam_whol_total                                               AS  sup_sam_whol_total,
-              work.keep_shop_wholesale                                              AS  keep_shop_wholesale,
+/* 2010/04/16 Ver1.9 Mod Start */
+--              work.keep_shop_wholesale                                              AS  keep_shop_wholesale,
+              NULL                                                                  AS  keep_shop_wholesale,
+/* 2010/04/16 Ver1.9 Mod End   */
               work.sale_others_date_total                                           AS  sale_others_date_total,
               work.sale_others_total                                                AS  sale_others_total,
               work.rtn_others_date_total                                            AS  rtn_others_date_total,
@@ -2926,7 +2969,10 @@ AS
               work.discount_others_total                                            AS  discount_others_total,
               work.sup_sam_others_date_total                                        AS  sup_sam_others_date_total,
               work.sup_sam_others_total                                             AS  sup_sam_others_total,
-              work.keep_shop_others                                                 AS  keep_shop_others,
+/* 2010/04/16 Ver1.9 Mod Start */
+--              work.keep_shop_others                                                 AS  keep_shop_others,
+              NULL                                                                  AS  keep_shop_others,
+/* 2010/04/16 Ver1.9 Mod End   */
               work.sale_vd_date_total                                               AS  sale_vd_date_total,
               work.sale_vd_total                                                    AS  sale_vd_total,
               work.rtn_vd_date_total                                                AS  rtn_vd_date_total,
@@ -2935,7 +2981,10 @@ AS
               work.discount_vd_total                                                AS  discount_vd_total,
               work.sup_sam_vd_date_total                                            AS  sup_sam_vd_date_total,
               work.sup_sam_vd_total                                                 AS  sup_sam_vd_total,
-              work.keep_shop_vd                                                     AS  keep_shop_vd,
+/* 2010/04/16 Ver1.9 Mod Start */
+--              work.keep_shop_vd                                                     AS  keep_shop_vd,
+              NULL                                                                  AS  keep_shop_vd,
+/* 2010/04/16 Ver1.9 Mod End   */
               work.sale_business_car                                                AS  sale_business_car,
               work.rtn_business_car                                                 AS  rtn_business_car,
               work.discount_business_car                                            AS  discount_business_car,
@@ -3128,11 +3177,88 @@ AS
     --  登録件数カウント
     g_counter_rec.insert_base_total := SQL%ROWCOUNT;
 --
+/* 2010/04/16 Ver1.9 Add Start */
+    --==================================
+    -- 3.データ更新  （拠点集計情報）
+    --==================================
+    BEGIN
+      UPDATE  xxcos_rep_bus_perf  xrbp
+      SET     (
+              keep_shop_quantity,
+              keep_shop_cvs,
+              keep_shop_wholesale,
+              keep_shop_others,
+              keep_shop_vd
+              )
+              =
+              (
+              SELECT
+                      SUM(CASE
+                            WHEN  rbcs.business_low_type      = ct_biz_shop
+                            THEN  rbcs.counter
+                            ELSE  0
+                          END)                                                      AS  keep_shop_quantity,
+                      SUM(CASE
+                            WHEN  rbcs.business_low_type      = ct_biz_cvs
+                            THEN  rbcs.counter
+                            ELSE  0
+                          END)                                                      AS  keep_shop_cvs,
+                      SUM(CASE
+                            WHEN  rbcs.business_low_type      = ct_biz_wholesale
+                            THEN  rbcs.counter
+                            ELSE  0
+                          END)                                                      AS  keep_shop_wholesale,
+                      SUM(CASE
+                            WHEN  rbcs.business_low_type      = ct_biz_others
+                            THEN  rbcs.counter
+                            ELSE  0
+                          END)                                                      AS  keep_shop_others,
+                      SUM(CASE
+                            WHEN  rbcs.business_low_type      = ct_biz_vd
+                            THEN  rbcs.counter
+                            ELSE  0
+                          END)                                                      AS  keep_shop_vd
+              FROM    xxcos_rep_bus_count_sum     rbcs
+              WHERE   rbcs.base_code              =       xrbp.base_code
+              AND     rbcs.target_date            =       gv_common_base_years
+              AND     rbcs.counter_class          =       ct_counter_cls_base_code_cust
+              )
+      WHERE   xrbp.request_id                     =       cn_request_id
+      AND     xrbp.sum_data_class                 =       ct_sum_data_cls_base
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lt_table_name := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_rpt_wrk_tbl
+          );
+        ov_errmsg := xxccp_common_pkg.get_msg(
+          iv_application => ct_xxcos_appl_short_name,
+          iv_name        => ct_msg_update_data_err,
+          iv_token_name1 => cv_tkn_table_name,
+          iv_token_value1=> lt_table_name,
+          iv_token_name2 => cv_tkn_key_data,
+          iv_token_value2=> NULL
+          );
+        --  後続データの処理は中止となる為、当箇所でのエラー発生時は常に１件
+        gn_error_cnt := 1;
+        lv_errbuf := SQLERRM;
+        RAISE global_update_data_expt;
+    END;
+--
+/* 2010/04/16 Ver1.9 Add End   */
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
 --
   EXCEPTION
+/* 2010/04/16 Ver1.9 Add Start */
+    --*** データ更新例外ハンドラ ***
+    WHEN global_update_data_expt THEN
+      ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+/* 2010/04/16 Ver1.9 Add End   */
     --*** データ登録例外ハンドラ ***
     WHEN global_insert_data_expt THEN
       ov_errbuf := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
