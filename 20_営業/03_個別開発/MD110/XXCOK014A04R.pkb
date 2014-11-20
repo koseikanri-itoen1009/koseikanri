@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *                                       [障害E_本稼動_10411]   パラメータ「支払先コード」「支払ステータス」追加
  *                                                              変動電気代未入力マーク出力、ソート順変更
  *  2013/05/24    1.19  SCSK S.Niki      [障害E_本稼動_10411再] 支払ステータスソート順変更
+ *  2013/05/28    1.20  SCSK S.Niki      [障害E_本稼動_10411再] エラーフラグ更新条件変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -1323,6 +1324,9 @@ AS
       AND     EXISTS ( SELECT 'X'
                        FROM   xxcok_rep_bm_balance  xrbb2
                        WHERE  xrbb1.payment_code = xrbb2.payment_code
+-- Ver.1.20 [障害E_本稼動_10411再] SCSK S.Niki ADD START
+                       AND    xrbb2.request_id   = cn_request_id
+-- Ver.1.20 [障害E_本稼動_10411再] SCSK S.Niki ADD END
                        AND  ( ( xrbb2.warnning_mark    IS NOT NULL )   -- 警告マーク
                          OR   ( xrbb2.unpaid_elec_mark IS NOT NULL ) ) -- 変動電気代未払マーク
                      )
