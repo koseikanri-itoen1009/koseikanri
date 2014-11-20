@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF_COMMON3_PKG(body)
  * Description      : リース物件関連共通関数
  * MD.050           : なし
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * --------------------      ---- ----- --------------------------------------------------
@@ -34,6 +34,9 @@ AS
  *                                           自販機リース物件の修正履歴作成時、更新前リース物件の情報を引継ぐように修正。
  *  2011-12-19   1.5    SCSK 中村 健一   [障害E_本稼動_08123] create_contract_assの中途解約日をパラメータでセットするように修正。
  *                                                            不要なcreate_contract_ass、create_pay_planningをコメントアウト。
+ *  2012-10-23   1.6    SCSK 杉浦 尚武   [障害E_本稼動_10112] create_contract_assのリース契約明細履歴登録処理において、
+ *                                                            登録対象であるリース契約明細履歴のすべての列を記述。
+ *                                                            また、更新事由、会計期間をNULLで登録するように修正。
  *
  *****************************************************************************************/
 --
@@ -792,6 +795,61 @@ AS
     -- ***************************************************
     --
     INSERT INTO xxcff_contract_histories  -- 契約明細履歴テーブル
+-- == 2012-10-23 V1.6 Added START ===================================================================================
+            (
+              contract_header_id           -- 契約内部ID
+            , contract_line_id             -- 契約明細内部ID
+            , history_num                  -- 変更履歴NO
+            , contract_status              -- 契約ステータス
+            , first_charge                 -- 初回月額リース料_リース料
+            , first_tax_charge             -- 初回消費税額_リース料
+            , first_total_charge           -- 初回計_リース料
+            , second_charge                -- 2回目以降月額リース料_リース料
+            , second_tax_charge            -- 2回目以降消費税額_リース料
+            , second_total_charge          -- 2回目以降計_リース料
+            , first_deduction              -- 初回月額リース料_控除額
+            , first_tax_deduction          -- 初回月額消費税額_控除額
+            , first_total_deduction        -- 初回計_控除額
+            , second_deduction             -- 2回目以降月額リース料_控除額
+            , second_tax_deduction         -- 2回目以降消費税額_控除額
+            , second_total_deduction       -- 2回目以降計_控除額
+            , gross_charge                 -- 総額リース料_リース料
+            , gross_tax_charge             -- 総額消費税_リース料
+            , gross_total_charge           -- 総額計_リース料
+            , gross_deduction              -- 総額リース料_控除額
+            , gross_tax_deduction          -- 総額消費税_控除額
+            , gross_total_deduction        -- 総額計_控除額
+            , lease_kind                   -- リース種類
+            , estimated_cash_price         -- 見積現金購入価額
+            , present_value_discount_rate  -- 現在価値割引率
+            , present_value                -- 現在価値
+            , life_in_months               -- 法定耐用年数
+            , original_cost                -- 取得価額
+            , calc_interested_rate         -- 計算利子率
+            , object_header_id             -- 物件内部ID
+            , asset_category               -- 資産種類
+            , expiration_date              -- 満了日
+            , cancellation_date            -- 中途解約日
+            , vd_if_date                   -- リース契約情報連携日
+            , info_sys_if_date             -- リース管理情報連携日
+            , first_installation_address   -- 初回設置場所
+            , first_installation_place     -- 初回設置先
+            , accounting_date              -- 計上日
+            , accounting_if_flag           -- 会計ＩＦフラグ
+            , description                  -- 摘要
+            , update_reason                -- 更新事由
+            , period_name                  -- 会計期間
+            , created_by                   -- 作成者
+            , creation_date                -- 作成日
+            , last_updated_by              -- 最終更新者
+            , last_update_date             -- 最終更新日
+            , last_update_login            -- 最終更新ログイン
+            , request_id                   -- 要求ID
+            , program_application_id       -- コンカレント・プログラム・アプリケーションID
+            , program_id                   -- コンカレント・プログラムID
+            , program_update_date          -- プログラム更新日
+            )
+-- == 2012-10-23 V1.6 Added END ===================================================================================
     SELECT    xcl.contract_header_id              -- 契約内部ID
             , xcl.contract_line_id                -- 契約明細内部ID
             , xxcff_contract_histories_s1.NEXTVAL -- 変更履歴NO
@@ -832,6 +890,10 @@ AS
             , xxccp_common_pkg2.get_process_date  -- 計上日
             , cv_if_flag_no_send                  -- 会計ＩＦフラグ
             , NULL                                -- 摘要
+-- == 2012-10-23 V1.6 Added START ===================================================================================
+            , NULL                                -- 更新事由
+            , NULL                                -- 会計期間
+-- == 2012-10-23 V1.6 Added END ===================================================================================
             , xcl.created_by                      -- 作成者
             , xcl.creation_date                   -- 作成日
             , in_last_updated_by                  -- 最終更新者
