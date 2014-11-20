@@ -26,6 +26,7 @@ AS
  *  2009/03/09    1.1   Takuya Kaihara   プロファイル値共通化
  *  2009/04/07    1.2   Yutaka.Kuboshima 障害T1_0320の対応
  *  2009/12/08    1.3   Yutaka.Kuboshima 障害E_本稼動_00382の対応
+ *  2010/01/05    1.4   Yutaka.Kuboshima 障害E_本稼動_00069の対応
  *
  *****************************************************************************************/
 --
@@ -634,6 +635,11 @@ AS
 --    cv_lookup_cd_syo      CONSTANT VARCHAR2(2)      := '11';                     --業態小分類：問屋帳合
     cv_lookup_cd_syo      CONSTANT VARCHAR2(2)      := '12';                     --業態小分類：帳合問屋
 -- 2009/04/07 Ver1.2 modify end by Yutaka.Kuboshima
+--
+-- 2010/01/05 Ver1.4 E_本稼動_00069 add start by Yutaka.Kuboshima
+    cv_tonya_wholesaler   CONSTANT VARCHAR2(1)      := '2';                      --取引形態：問屋帳合
+-- 2010/01/05 Ver1.4 E_本稼動_00069 add end by Yutaka.Kuboshima
+--
     cv_fset_name          CONSTANT VARCHAR2(15)     := 'XX03_PARTNER';           --値セット名
 --
     cv_err_cust_code_msg  CONSTANT VARCHAR2(20)     := '顧客コード';             --CSV出力エラー文字列
@@ -664,13 +670,24 @@ AS
       FROM   hz_cust_accounts     hca,                  --顧客マスタ
              xxcmm_cust_accounts  xca                   --顧客追加情報マスタ
       WHERE  hca.cust_account_id  = xca.customer_id
-      AND    xca.business_low_type IN (SELECT flvs.lookup_code
+-- 2010/01/05 Ver1.4 E_本稼動_00069 modify start by Yutaka.Kuboshima
+--      AND    xca.business_low_type IN (SELECT flvs.lookup_code
+--                                       FROM   fnd_lookup_values flvs
+--                                       WHERE  flvs.language     = cv_language_ja
+--                                       AND    flvs.lookup_type  = cv_gyotai_syo
+--                                       AND    flvs.enabled_flag = cv_enabled_flag
+--                                       AND    (flvs.attribute1  = cv_par_lookup_cd
+--                                       OR     flvs.lookup_code  = cv_lookup_cd_syo ))
+-- 抽出対象条件を業態(中分類)が'11'(VD)または、取引形態が'2'(問屋帳合)に変更
+      AND   (xca.business_low_type IN (SELECT flvs.lookup_code
                                        FROM   fnd_lookup_values flvs
                                        WHERE  flvs.language     = cv_language_ja
                                        AND    flvs.lookup_type  = cv_gyotai_syo
                                        AND    flvs.enabled_flag = cv_enabled_flag
-                                       AND    (flvs.attribute1  = cv_par_lookup_cd
-                                       OR     flvs.lookup_code  = cv_lookup_cd_syo ))
+                                       AND    flvs.attribute1   = cv_par_lookup_cd)
+        OR   xca.torihiki_form = cv_tonya_wholesaler)
+-- 2010/01/05 Ver1.4 E_本稼動_00069 modify end by Yutaka.Kuboshima
+--
 -- 2009/12/08 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
 --      AND    (TO_DATE(TO_CHAR(hca.last_update_date, cv_fnd_slash_date), cv_fnd_slash_date)
 --             BETWEEN TO_DATE(iv_proc_date_from, cv_fnd_slash_date) AND TO_DATE(iv_proc_date_to, cv_fnd_slash_date))
@@ -725,13 +742,24 @@ AS
     FROM   hz_cust_accounts     hca,                  --顧客マスタ
            xxcmm_cust_accounts  xca                   --顧客追加情報マスタ
     WHERE  hca.cust_account_id  = xca.customer_id
-    AND    xca.business_low_type IN (SELECT flvs.lookup_code
-                                     FROM   fnd_lookup_values flvs
-                                     WHERE  flvs.language     = cv_language_ja
-                                     AND    flvs.lookup_type  = cv_gyotai_syo
-                                     AND    flvs.enabled_flag = cv_enabled_flag
-                                     AND    (flvs.attribute1  = cv_par_lookup_cd
-                                     OR     flvs.lookup_code  = cv_lookup_cd_syo ))
+-- 2010/01/05 Ver1.4 E_本稼動_00069 modify start by Yutaka.Kuboshima
+--    AND    xca.business_low_type IN (SELECT flvs.lookup_code
+--                                     FROM   fnd_lookup_values flvs
+--                                     WHERE  flvs.language     = cv_language_ja
+--                                     AND    flvs.lookup_type  = cv_gyotai_syo
+--                                     AND    flvs.enabled_flag = cv_enabled_flag
+--                                     AND    (flvs.attribute1  = cv_par_lookup_cd
+--                                     OR     flvs.lookup_code  = cv_lookup_cd_syo ))
+-- 抽出対象条件を業態(中分類)が'11'(VD)または、取引形態が'2'(問屋帳合)に変更
+      AND   (xca.business_low_type IN (SELECT flvs.lookup_code
+                                       FROM   fnd_lookup_values flvs
+                                       WHERE  flvs.language     = cv_language_ja
+                                       AND    flvs.lookup_type  = cv_gyotai_syo
+                                       AND    flvs.enabled_flag = cv_enabled_flag
+                                       AND    flvs.attribute1   = cv_par_lookup_cd)
+        OR   xca.torihiki_form = cv_tonya_wholesaler)
+-- 2010/01/05 Ver1.4 E_本稼動_00069 modify end by Yutaka.Kuboshima
+--
 -- 2009/12/08 Ver1.3 E_本稼動_00382 modify start by Yutaka.Kuboshima
 --    AND    (TO_DATE(TO_CHAR(hca.last_update_date, cv_fnd_slash_date), cv_fnd_slash_date)
 --           BETWEEN TO_DATE(iv_proc_date_from, cv_fnd_slash_date) AND TO_DATE(iv_proc_date_to, cv_fnd_slash_date))
