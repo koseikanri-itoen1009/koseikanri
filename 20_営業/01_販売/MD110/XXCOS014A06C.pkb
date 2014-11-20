@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *                                       [0001306] 伝票計集約条件、売上区分チェック条件修正
  *  2009/10/06    1.14  N.Maeda          [0001464] 受注明細分割による影響対応
  *  2009/12/09    1.15  K.Nakamura       [本稼動_00171] 伝票計の計算を伝票単位へ変更
+ *  2010/03/10    1.16  S.Karikomi       [E_本稼働_01637] 売単価、売価金額修正
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -4446,9 +4447,14 @@ AS
 --                     END                                                                shipping_cost_amt             --原価金額（出荷）
 -- ******************** 2009/07/22 1.11 N.Maeda MOD  END  ************************* --
                     ,NULL                                                               stockout_cost_amt             --原価金額（欠品）
-                    ,NULL                                                               selling_price                 --売単価
-                    ,NULL                                                               order_price_amt               --売価金額（発注）
-                    ,NULL                                                               shipping_price_amt            --売価金額（出荷）
+-- ******************** 2010/03/10 1.16 S.Karikomi MOD START ************************* --
+--                    ,NULL                                                               selling_price                 --売単価
+--                    ,NULL                                                               order_price_amt               --売価金額（発注）
+--                    ,NULL                                                               shipping_price_amt            --売価金額（出荷）
+                    ,TO_CHAR(oola.attribute10)                                          selling_price                 --売単価
+                    ,TO_CHAR(oola.attribute10 * oola.ordered_quantity)                  order_price_amt               --売価金額（発注）
+                    ,TO_CHAR(oola.attribute10 * oola.ordered_quantity)                  shipping_price_amt            --売価金額（出荷）
+-- ******************** 2010/03/10 1.16 S.Karikomi MOD  END  ************************* --
                     ,NULL                                                               stockout_price_amt            --売価金額（欠品）
                     ,NULL                                                               a_column_department           --Ａ欄（百貨店）
                     ,NULL                                                               d_column_department           --Ｄ欄（百貨店）
@@ -5573,6 +5579,10 @@ out_line(buff => 'i:' || i);
           lt_tbl(i)('INVOICE_ORDER_PRICE_AMT')      := lt_invoice_order_price_amt;          --売価金額（発注）
           lt_tbl(i)('INVOICE_SHIPPING_PRICE_AMT')   := lt_invoice_shipping_price_amt;       --売価金額（出荷）
           lt_tbl(i)('INVOICE_STOCKOUT_PRICE_AMT')   := lt_invoice_stockout_price_amt;       --売価金額（欠品）
+-- ******************** 2010/03/10 1.16 S.Karikomi ADD START ************************* --
+          lt_tbl(i)('TOTAL_ORDER_PRICE_AMT')        := lt_invoice_order_price_amt;          --（総合計）売価金額（発注）
+          lt_tbl(i)('TOTAL_SHIPPING_PRICE_AMT')     := lt_invoice_shipping_price_amt;       --（総合計）売価金額（出荷）
+-- ******************** 2010/03/10 1.16 S.Karikomi ADD  END  ************************* --
         --データレコード作成処理
           proc_out_data_record(
             lt_header_id
@@ -5732,6 +5742,10 @@ out_line(buff => 'i:' || i);
           lt_tbl(i)('INVOICE_ORDER_PRICE_AMT')      := lt_invoice_order_price_amt;          --売価金額（発注）
           lt_tbl(i)('INVOICE_SHIPPING_PRICE_AMT')   := lt_invoice_shipping_price_amt;       --売価金額（出荷）
           lt_tbl(i)('INVOICE_STOCKOUT_PRICE_AMT')   := lt_invoice_stockout_price_amt;       --売価金額（欠品）
+-- ******************** 2010/03/10 1.16 S.Karikomi ADD START ************************* --
+          lt_tbl(i)('TOTAL_ORDER_PRICE_AMT')        := lt_invoice_order_price_amt;          --（総合計）売価金額（発注）
+          lt_tbl(i)('TOTAL_SHIPPING_PRICE_AMT')     := lt_invoice_shipping_price_amt;       --（総合計）売価金額（出荷）
+-- ******************** 2010/03/10 1.16 S.Karikomi ADD  END  ************************* --
         --データレコード作成処理
           proc_out_data_record(
             lt_header_id
