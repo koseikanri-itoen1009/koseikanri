@@ -26,13 +26,13 @@
    <attributeSet docName="SpDecisionNumber" prompt="参照SP専決書番号"/>
    <attributeSet docName="ContractInfoHdrRN" text="&lt;契約者(甲)情報>"/>
    <attributeSet docName="ContractorNumber" prompt="契約者"/>
-   <attributeSet docName="ContractName" prompt="契約者名"/>
-   <attributeSet docName="DelegateName" prompt="代表者名"/>
-   <attributeSet docName="ContractPostalCode" prompt="契約者住所(郵便番号)"/>
-   <attributeSet docName="ContractState" prompt="契約者住所(都道府県)"/>
-   <attributeSet docName="ContractCity" prompt="契約者住所(市・区)"/>
-   <attributeSet docName="ContractAddress1" prompt="契約者住所(住所1)"/>
-   <attributeSet docName="ContractAddress2" prompt="契約者住所(住所2)"/>
+   <attributeSet docName="ContractName" prompt="契約者名(全角)"/>
+   <attributeSet docName="DelegateName" prompt="代表者名(全角)"/>
+   <attributeSet docName="ContractPostalCode" prompt="契約者住所　郵便番号(0000000)"/>
+   <attributeSet docName="ContractState" prompt="契約者住所　都道府県(全角)"/>
+   <attributeSet docName="ContractCity" prompt="契約者住所　市・区(全角)"/>
+   <attributeSet docName="ContractAddress1" prompt="契約者住所　住所１(全角)"/>
+   <attributeSet docName="ContractAddress2" prompt="契約者住所　住所２(全角)"/>
    <attributeSet docName="ContractEffectDate" prompt="契約書発効日"/>
    <attributeSet docName="PayCondInfoHdrRN" text="&lt;第3条：販売手数料の支払い>"/>
    <attributeSet docName="SalesCondLabel" prompt="売価別条件"/>
@@ -84,20 +84,20 @@
    <attributeSet docName="TransferDayCode" shortDesc="振込日"/>
    <attributeSet docName="CancellationOfferCode" shortDesc="契約解除申し出"/>
    <attributeSet docName="Bm1DestHdrRN" text="&lt;BM1情報>"/>
-   <attributeSet docName="Bm1PaymentName" prompt="BM1送付先名"/>
-   <attributeSet docName="Bm1PaymentNameAlt" prompt="BM1送付先名カナ"/>
+   <attributeSet docName="Bm1PaymentName" prompt="BM1送付先名(全角)"/>
+   <attributeSet docName="Bm1PaymentNameAlt" prompt="BM1送付先名カナ(半角)"/>
    <attributeSet docName="Bm1BankTransferFeeDiv" shortDesc="BM1振込手数料負担"/>
    <attributeSet docName="Bm1BellingDetailsDivLayout" prompt="BM1支払方法、明細書"/>
    <attributeSet docName="Bm1InqueryChargeHubCd" shortDesc="BM1問合せ担当拠点"/>
    <attributeSet docName="Bm1BellingDetailsDiv" shortDesc="BM1支払方法、明細書"/>
    <attributeSet docName="Bm1InqueryBaseLayout" prompt="BM1問合せ担当拠点"/>
    <attributeSet docName="Bm1InqueryChargeHubName" shortDesc="問合せ担当拠点名"/>
-   <attributeSet docName="Bm1PostalCode" prompt="BM1送付先住所(郵便番号)"/>
-   <attributeSet docName="Bm1State" prompt="BM1送付先住所(都道府県)"/>
-   <attributeSet docName="Bm1City" prompt="BM1送付先住所(市・区)"/>
-   <attributeSet docName="Bm1Address1" prompt="BM1送付先住所(住所1)"/>
-   <attributeSet docName="Bm1Address2" prompt="BM1送付先住所(住所2)"/>
-   <attributeSet docName="Bm1AddressLinesPhonetic" prompt="BM1送付先電話番号"/>
+   <attributeSet docName="Bm1PostalCode" prompt="BM1送付先住所　郵便番号(0000000)"/>
+   <attributeSet docName="Bm1State" prompt="BM1送付先住所　都道府県(全角)"/>
+   <attributeSet docName="Bm1City" prompt="BM1送付先住所　市・区(全角)"/>
+   <attributeSet docName="Bm1Address1" prompt="BM1送付先住所　住所１(全角)"/>
+   <attributeSet docName="Bm1Address2" prompt="BM1送付先住所　住所２(全角)"/>
+   <attributeSet docName="Bm1AddressLinesPhonetic" prompt="BM1送付先電話番号(00-0000-0000)"/>
    <attributeSet docName="Bm1ExistFlag" prompt="BM1指定"/>
    <attributeSet docName="Bm1BankNameLayout" prompt="BM1金融機関名"/>
    <attributeSet docName="Bm1BankNumber" shortDesc="BM1金融機関番号"/>
@@ -106,24 +106,24 @@
    <attributeSet docName="Bm1BranchNumber" shortDesc="BM1支店番号"/>
    <attributeSet docName="Bm1BranchName" shortDesc="BM1支店名"/>
    <attributeSet docName="Bm1BankAccountType" shortDesc="BM1口座種別"/>
-   <attributeSet docName="Bm1BankAccountNumber" prompt="BM1口座番号"/>
-   <attributeSet docName="Bm1BankAccountNameKana" prompt="BM1口座名義カナ"/>
-   <attributeSet docName="Bm1BankAccountNameKanji" prompt="BM1口座名義漢字"/>
+   <attributeSet docName="Bm1BankAccountNumber" prompt="BM1口座番号(半角)"/>
+   <attributeSet docName="Bm1BankAccountNameKana" prompt="BM1口座名義カナ(半角)"/>
+   <attributeSet docName="Bm1BankAccountNameKanji" prompt="BM1口座名義漢字(全角)"/>
    <attributeSet docName="Bm2DestHdrRN" text="&lt;BM2／寄付金情報>"/>
-   <attributeSet docName="Bm2PaymentName" prompt="BM2送付先名"/>
-   <attributeSet docName="Bm2PaymentNameAlt" prompt="BM2送付先名カナ"/>
+   <attributeSet docName="Bm2PaymentName" prompt="BM2送付先名(全角)"/>
+   <attributeSet docName="Bm2PaymentNameAlt" prompt="BM2送付先名カナ(半角)"/>
    <attributeSet docName="Bm2BankTransferFeeDiv" shortDesc="BM2振込手数料負担"/>
    <attributeSet docName="Bm2BellingDetailsDivLayout" prompt="BM2支払方法、明細書"/>
    <attributeSet docName="Bm2InqueryChargeHubCd" shortDesc="BM2問合せ担当拠点"/>
    <attributeSet docName="Bm2BellingDetailsDiv" shortDesc="BM2支払方法、明細書"/>
    <attributeSet docName="Bm2InqueryBaseLayout" prompt="BM2問合せ担当拠点"/>
    <attributeSet docName="Bm2InqueryChargeHubName" shortDesc="問合せ担当拠点名"/>
-   <attributeSet docName="Bm2PostalCode" prompt="BM2送付先住所(郵便番号)"/>
-   <attributeSet docName="Bm2State" prompt="BM2送付先住所(都道府県)"/>
-   <attributeSet docName="Bm2City" prompt="BM2送付先住所(市・区)"/>
-   <attributeSet docName="Bm2Address1" prompt="BM2送付先住所(住所1)"/>
-   <attributeSet docName="Bm2Address2" prompt="BM2送付先住所(住所2)"/>
-   <attributeSet docName="Bm2AddressLinesPhonetic" prompt="BM2送付先電話番号"/>
+   <attributeSet docName="Bm2PostalCode" prompt="BM2送付先住所　郵便番号(0000000)"/>
+   <attributeSet docName="Bm2State" prompt="BM2送付先住所　都道府県(全角)"/>
+   <attributeSet docName="Bm2City" prompt="BM2送付先住所　市・区(全角)"/>
+   <attributeSet docName="Bm2Address1" prompt="BM2送付先住所　住所１(全角)"/>
+   <attributeSet docName="Bm2Address2" prompt="BM2送付先住所　住所２(全角)"/>
+   <attributeSet docName="Bm2AddressLinesPhonetic" prompt="BM2送付先電話番号(00-0000-0000)"/>
    <attributeSet docName="Bm2ExistFlag" prompt="BM2指定"/>
    <attributeSet docName="Bm2BankNameLayout" prompt="BM2金融機関名"/>
    <attributeSet docName="Bm2BankNumber" shortDesc="BM2金融機関番号"/>
@@ -132,24 +132,24 @@
    <attributeSet docName="Bm2BranchNumber" shortDesc="BM2支店番号"/>
    <attributeSet docName="Bm2BranchName" shortDesc="BM2支店名"/>
    <attributeSet docName="Bm2BankAccountType" shortDesc="BM2口座種別"/>
-   <attributeSet docName="Bm2BankAccountNumber" prompt="BM2口座番号"/>
-   <attributeSet docName="Bm2BankAccountNameKana" prompt="BM2口座名義カナ"/>
-   <attributeSet docName="Bm2BankAccountNameKanji" prompt="BM2口座名義漢字"/>
+   <attributeSet docName="Bm2BankAccountNumber" prompt="BM2口座番号(半角)"/>
+   <attributeSet docName="Bm2BankAccountNameKana" prompt="BM2口座名義カナ(半角)"/>
+   <attributeSet docName="Bm2BankAccountNameKanji" prompt="BM2口座名義漢字(全角)"/>
    <attributeSet docName="Bm3DestHdrRN" text="&lt;BM3情報>"/>
-   <attributeSet docName="Bm3PaymentName" prompt="BM3送付先名"/>
-   <attributeSet docName="Bm3PaymentNameAlt" prompt="BM3送付先名カナ"/>
+   <attributeSet docName="Bm3PaymentName" prompt="BM3送付先名(全角)"/>
+   <attributeSet docName="Bm3PaymentNameAlt" prompt="BM3送付先名カナ(半角)"/>
    <attributeSet docName="Bm3BankTransferFeeDiv" shortDesc="BM3振込手数料負担"/>
    <attributeSet docName="Bm3BellingDetailsDivLayout" prompt="BM3支払方法、明細書"/>
    <attributeSet docName="Bm3InqueryChargeHubCd" shortDesc="BM3問合せ担当拠点"/>
    <attributeSet docName="Bm3BellingDetailsDiv" shortDesc="BM3支払方法、明細書"/>
    <attributeSet docName="Bm3InqueryBaseLayout" prompt="BM3問合せ担当拠点"/>
    <attributeSet docName="Bm3InqueryChargeHubName" shortDesc="問合せ担当拠点名"/>
-   <attributeSet docName="Bm3PostalCode" prompt="BM3送付先住所(郵便番号)"/>
-   <attributeSet docName="Bm3State" prompt="BM3送付先住所(都道府県)"/>
-   <attributeSet docName="Bm3City" prompt="BM3送付先住所(市・区)"/>
-   <attributeSet docName="Bm3Address1" prompt="BM3送付先住所(住所1)"/>
-   <attributeSet docName="Bm3Address2" prompt="BM3送付先住所(住所2)"/>
-   <attributeSet docName="Bm3AddressLinesPhonetic" prompt="BM3送付先電話番号"/>
+   <attributeSet docName="Bm3PostalCode" prompt="BM3送付先住所　郵便番号(0000000)"/>
+   <attributeSet docName="Bm3State" prompt="BM3送付先住所　都道府県(全角)"/>
+   <attributeSet docName="Bm3City" prompt="BM3送付先住所　市・区(全角)"/>
+   <attributeSet docName="Bm3Address1" prompt="BM3送付先住所　住所１(全角)"/>
+   <attributeSet docName="Bm3Address2" prompt="BM3送付先住所　住所２(全角)"/>
+   <attributeSet docName="Bm3AddressLinesPhonetic" prompt="BM3送付先電話番号(00-0000-0000)"/>
    <attributeSet docName="Bm3ExistFlag" prompt="BM3指定"/>
    <attributeSet docName="Bm3BankNameLayout" prompt="BM3金融機関名"/>
    <attributeSet docName="Bm3BankNumber" shortDesc="BM3金融機関番号"/>
@@ -158,17 +158,17 @@
    <attributeSet docName="Bm3BranchNumber" shortDesc="BM3支店番号"/>
    <attributeSet docName="Bm3BranchName" shortDesc="BM3支店名"/>
    <attributeSet docName="Bm3BankAccountType" shortDesc="BM3口座種別"/>
-   <attributeSet docName="Bm3BankAccountNumber" prompt="BM3口座番号"/>
-   <attributeSet docName="Bm3BankAccountNameKana" prompt="BM3口座名義カナ"/>
-   <attributeSet docName="Bm3BankAccountNameKanji" prompt="BM3口座名義漢字"/>
+   <attributeSet docName="Bm3BankAccountNumber" prompt="BM3口座番号(半角)"/>
+   <attributeSet docName="Bm3BankAccountNameKana" prompt="BM3口座名義カナ(半角)"/>
+   <attributeSet docName="Bm3BankAccountNameKanji" prompt="BM3口座名義漢字(全角)"/>
    <attributeSet docName="InstallInfoHdrRN" text="設置先情報"/>
    <attributeSet docName="InstallAccountNumber" prompt="顧客コード"/>
-   <attributeSet docName="InstallPartyName" prompt="設置先名"/>
-   <attributeSet docName="InstallPostalCode" prompt="設置先住所(郵便番号)"/>
-   <attributeSet docName="InstallState" prompt="設置先住所(都道府県)"/>
-   <attributeSet docName="InstallCity" prompt="設置先住所(市・区)"/>
-   <attributeSet docName="InstallAddress1" prompt="設置先住所(住所1)"/>
-   <attributeSet docName="InstallAddress2" prompt="設置先住所(住所2)"/>
+   <attributeSet docName="InstallPartyName" prompt="設置先名(全角)"/>
+   <attributeSet docName="InstallPostalCode" prompt="設置先住所　郵便番号(0000000)"/>
+   <attributeSet docName="InstallState" prompt="設置先住所　都道府県(全角)"/>
+   <attributeSet docName="InstallCity" prompt="設置先住所　市・区(全角)"/>
+   <attributeSet docName="InstallAddress1" prompt="設置先住所　住所１(全角)"/>
+   <attributeSet docName="InstallAddress2" prompt="設置先住所　住所２(全角)"/>
    <attributeSet docName="InstallDate" prompt="設置日"/>
    <attributeSet docName="OwnerChangeLayout" prompt="オーナー変更"/>
    <attributeSet docName="OwnerChangeFlag" shortDesc="オーナー変更"/>
