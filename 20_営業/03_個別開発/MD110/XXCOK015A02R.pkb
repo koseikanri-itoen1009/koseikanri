@@ -7,7 +7,7 @@ AS
  * Description      : 手数料を現金支払する際の支払案内書（領収書付き）を
  *                    各売上計上拠点で印刷します。
  * MD.050           : 支払案内書印刷（領収書付き） MD050_COK_015_A02
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/20    1.0   K.Yamaguchi      新規作成
  *  2009/02/18    1.1   K.Suenaga        [障害COK_044]最新の仕入先サイト情報を取得・更新する
+ *  2009/05/29    1.2   K.Yamaguchi      [障害T1_1261]販手残高テーブル更新項目追加
  *
  *****************************************************************************************/
   --==================================================
@@ -102,6 +103,10 @@ AS
   -- 入力パラメータ・支払確定
   cv_param_fix_flag_y              CONSTANT VARCHAR2(5)     := 'Yes';
   cv_param_fix_flag_n              CONSTANT VARCHAR2(5)     := 'No';
+-- 2009/05/29 Ver.1.2 [障害T1_1261] SCS K.Yamaguchi ADD START
+  -- 連携ステータス
+  cv_if_status_processed           CONSTANT VARCHAR2(1)     := '1';
+-- 2009/05/29 Ver.1.2 [障害T1_1261] SCS K.Yamaguchi ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -209,9 +214,18 @@ AS
       --==================================================
       FORALL i IN 1 .. l_lock_xbb_tab.COUNT
       UPDATE xxcok_backmargin_balance     xbb  -- 販手残高テーブル
-      SET payment_amt_tax            = expect_payment_amt_tax
-        , expect_payment_amt_tax     = 0
-        , publication_date           = gd_process_date
+      SET payment_amt_tax            = expect_payment_amt_tax    -- 支払額（税込）
+        , expect_payment_amt_tax     = 0                         -- 支払予定額（税込）
+        , publication_date           = gd_process_date           -- 案内書発効日
+-- 2009/05/29 Ver.1.2 [障害T1_1261] SCS K.Yamaguchi ADD START
+        , fb_interface_status        = cv_if_status_processed    -- 連携ステータス（本振用FB）
+        , fb_interface_date          = gd_process_date           -- 連携日（本振用FB）
+        , edi_interface_status       = cv_if_status_processed    -- 連携ステータス（EDI支払案内書）
+        , edi_interface_date         = gd_process_date           -- 連携日（EDI支払案内書）
+        , gl_interface_status        = cv_if_status_processed    -- 連携ステータス（GL）
+        , gl_interface_date          = gd_process_date           -- 連携日（GL）
+        , balance_cancel_date        = gd_process_date           -- 残高取消日
+-- 2009/05/29 Ver.1.2 [障害T1_1261] SCS K.Yamaguchi ADD END
         , last_updated_by            = cn_last_updated_by
         , last_update_date           = SYSDATE
         , last_update_login          = cn_last_update_login
