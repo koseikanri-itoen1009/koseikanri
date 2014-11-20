@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2009/10/30    1.17  M.Sano           [0001373]参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
  *  2009/11/25    1.18  N.Maeda          [E_本稼動_00053] H/Cの整合性チェック削除
  *  2009/12/01    1.19  M.Sano           [E_本稼動_00234] 成績者、納品者の妥当性チェック修正
+ *  2009/12/10    1.20  M.Sano           [E_本稼動_00108] 共通関数＜会計期間情報取得＞異常終了時の処理修正
  *
  *****************************************************************************************/
 --
@@ -2977,14 +2978,17 @@ AS
        ,lv_retcode          -- リターン・コード
        ,lv_errmsg           -- ユーザー・エラー・メッセージ
         );
+--****************************** 2009/12/10 1.20 M.Sano MOD START *******************************--
+----
+--      --エラーチェック
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        RAISE global_api_expt;
+--      END IF;
 --
-      --エラーチェック
-      IF ( lv_retcode = cv_status_error ) THEN
-        RAISE global_api_expt;
-      END IF;
---
-      -- AR会計期間範囲外の場合
-      IF ( lv_status != cv_open ) THEN
+--      -- AR会計期間範囲外の場合
+--      IF ( lv_status != cv_open ) THEN
+      IF ( lv_status != cv_open OR lv_retcode = cv_status_error ) THEN
+--****************************** 2009/12/10 1.20 M.Sano MOD  END  *******************************--
         -- ログ出力
         lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_period );
         FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
