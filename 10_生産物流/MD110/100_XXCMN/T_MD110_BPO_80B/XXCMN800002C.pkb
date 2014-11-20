@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -89,6 +89,7 @@ AS
  *  2009/01/28    1.20  Oracle 椎名 昭圭 本番#1090対応
  *  2009/02/18    1.21  Oracle 丸下 博宣 本番#1090対応
  *  2009/04/27    1.22  Oracle 丸下 博宣 本番#1345対応
+ *  2009/05/27    1.23  Oracle 丸下 博宣 本番#1502対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5809,9 +5810,13 @@ AS
     lr_item_rec.item_no     := ir_masters_rec.item_code;           -- 品名コード
     lr_item_rec.item_desc1  := ir_masters_rec.item_name;           -- 品名・正式名
     lr_item_rec.item_um     := lv_uom_code;
--- 2008/12/22 v1.18 ADD START
-   IF (SUBSTRB(ir_masters_rec.item_code, 1, 1) = '5') THEN
+-- 2009/05/27 MOD START
+   IF (SUBSTRB(ir_masters_rec.item_code, 1, 1) IN ('5','6')) THEN
     lr_item_rec.lot_ctl     := gv_lot_ctl_off;
+---- 2008/12/22 v1.18 ADD START
+--   IF (SUBSTRB(ir_masters_rec.item_code, 1, 1) = '5') THEN
+--    lr_item_rec.lot_ctl     := gv_lot_ctl_off;
+-- 2009/05/27 MOD END
    ELSE
 -- 2008/12/22 v1.18 ADD END
     lr_item_rec.lot_ctl     := gv_lot_ctl_on;
