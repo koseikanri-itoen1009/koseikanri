@@ -7,7 +7,7 @@ AS
  * Description      : ŒÚ‹qƒCƒ“ƒ^ƒtƒF[ƒX
  * MD.050           : ƒ}ƒXƒ^ƒCƒ“ƒ^ƒtƒF[ƒX T_MD050_BPO_800
  * MD.070           : ŒÚ‹qƒCƒ“ƒ^ƒtƒF[ƒX   T_MD070_BPO_80A
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -86,6 +86,7 @@ AS
  *  2008/08/19    1.8   Oracle Rª ˆê_ T_TE110_BPO_130-002 w“E216‘Î‰
  *  2008/08/25    1.9   Oracle Rª ˆê_ T_S_442,T_S_548‘Î‰
  *  2008/10/01    1.10  Oracle ’Å–¼ ºŒ\ “‡áŠQ#291‘Î‰
+ *  2008/10/07    1.11  Oracle ’Å–¼ ºŒ\ T_S_550‘Î‰
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -7516,8 +7517,10 @@ AS
       lr_cust_account_rec.attribute6        := ir_masters_rec.warehouse_code;
       -- ‘®«‚V
       lr_cust_account_rec.attribute7        := ir_masters_rec.terminal_code;
-      -- ‘®«‚P‚R
-      lr_cust_account_rec.attribute13       := ir_masters_rec.district_code;
+-- 2008/10/07 v1.11 DELETE START
+--      -- ‘®«‚P‚R
+--      lr_cust_account_rec.attribute13       := ir_masters_rec.district_code;
+-- 2008/10/07 v1.11 DELETE END
 --
     ELSE
 --
@@ -7530,8 +7533,10 @@ AS
       lr_cust_account_rec.attribute12       := ir_masters_rec.cal_cust_app_flg;
       -- ‘®«‚P‚T
       lr_cust_account_rec.attribute15       := ir_masters_rec.direct_ship_code;
-      -- ‘®«‚P‚U
-      lr_cust_account_rec.attribute16       := ir_masters_rec.direct_ship_code;
+-- 2008/10/07 v1.11 DELETE START
+--      -- ‘®«‚P‚U
+--      lr_cust_account_rec.attribute16       := ir_masters_rec.direct_ship_code;
+-- 2008/10/07 v1.11 DELETE END
       -- ‘®«‚P‚V
       lr_cust_account_rec.attribute17       := ir_masters_rec.sale_base_code;
       -- ‘®«‚P‚W
@@ -7913,8 +7918,10 @@ AS
       lr_cust_account_rec.attribute6 := ir_masters_rec.warehouse_code;
       -- ‘®«‚V
       lr_cust_account_rec.attribute7 := ir_masters_rec.terminal_code;
-      -- ‘®«‚P‚R
-      lr_cust_account_rec.attribute13 := ir_masters_rec.district_code;
+--2008/10/07 v1.11 DELETE START
+--      -- ‘®«‚P‚R
+--      lr_cust_account_rec.attribute13 := ir_masters_rec.district_code;
+--2008/10/07 v1.11 DELETE END
 --
     ELSIF (in_kbn = gn_kbn_upd_cust) THEN
       ln_object_version_number        := ir_masters_rec.obj_cust_number;
@@ -7922,8 +7929,10 @@ AS
       lr_cust_account_rec.attribute12 := ir_masters_rec.cal_cust_app_flg;
       -- ‘®«‚P‚T
       lr_cust_account_rec.attribute15 := ir_masters_rec.direct_ship_code;
-      -- ‘®«‚P‚U
-      lr_cust_account_rec.attribute16 := ir_masters_rec.direct_ship_code;
+--2008/10/07 v1.11 DELETE START
+--      -- ‘®«‚P‚U
+--      lr_cust_account_rec.attribute16 := ir_masters_rec.direct_ship_code;
+--2008/10/07 v1.11 DELETE END
       -- ‘®«‚P‚V
       lr_cust_account_rec.attribute17 := ir_masters_rec.sale_base_code;
       -- ‘®«‚P‚W
