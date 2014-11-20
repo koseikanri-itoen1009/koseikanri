@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI007A01C(body)
  * Description      : 資材配賦情報の差額仕訳※の生成。※原価差額(標準原価-営業原価)
  * MD.050           : 調整仕訳自動生成 MD050_COI_007_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/01/14    1.0   T.Kojima        新規作成
  *  2009/03/26    1.1   H.Sasaki        [障害T1_0120]
  *  2009/05/11    1.2   T.Nakamura      [障害T1_0933]
+ *  2009/05/11    1.3   T.Nakamura      [T1_1327]営業原価更新時の調整仕分け処理を追加
  *
  *****************************************************************************************/
 --
@@ -99,30 +100,36 @@ AS
   cv_normal_record           CONSTANT VARCHAR2(1)   := 'Y';                -- 通常レコード
   cv_error_record            CONSTANT VARCHAR2(1)   := 'N';                -- エラーレコード
   -- メッセージ
-  cv_msg_no_prm              CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008'; -- コンカレント入力パラメータなし
-  cv_msg_profile_get_err     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00032'; -- プロファイル値取得エラー
-  cv_msg_group_id_get_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10320'; -- グループID取得エラー
-  cv_msg_gl_batch_id_get_err CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10063'; -- GLバッチID取得エラーメッセージ
-  cv_msg_no_data             CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008'; -- 対象データ無しメッセージ
-  cv_msg_acct_tbl_chk_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10123'; -- 勘定科目テーブルチェックエラーメッセージ
-  cv_msg_std_cost_get_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10124'; -- 標準原価取得エラーメッセージ
-  cv_msg_oprtn_cost_get_err  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10125'; -- 営業原価取得エラーメッセージ
-  cv_msg_acctg_period_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10319'; -- 会計期間エラーメッセージ
-  cv_msg_lock_err            CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10064'; -- ロックエラーメッセージ原価差額ワークテーブル
-  cv_msg_unit_mtl_txn_acct   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10339'; -- 資材配賦情報単位件数メッセージ
-  cv_msg_unit_cost_sum       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10340'; -- 原価差額集約単位件数メッセージ
+  cv_msg_no_prm              CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90008';    -- コンカレント入力パラメータなし
+  cv_msg_profile_get_err     CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00032';    -- プロファイル値取得エラー
+  cv_msg_group_id_get_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10320';    -- グループID取得エラー
+  cv_msg_gl_batch_id_get_err CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10063';    -- GLバッチID取得エラーメッセージ
+  cv_msg_no_data             CONSTANT VARCHAR2(100) := 'APP-XXCOI1-00008';    -- 対象データ無しメッセージ
+  cv_msg_acct_tbl_chk_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10123';    -- 勘定科目テーブルチェックエラーメッセージ
+  cv_msg_std_cost_get_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10124';    -- 標準原価取得エラーメッセージ
+  cv_msg_oprtn_cost_get_err  CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10125';    -- 営業原価取得エラーメッセージ
+  cv_msg_acctg_period_err    CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10319';    -- 会計期間エラーメッセージ
+  cv_msg_lock_err            CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10064';    -- ロックエラーメッセージ原価差額ワークテーブル
+  cv_msg_unit_mtl_txn_acct   CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10339';    -- 資材配賦情報単位件数メッセージ
+  cv_msg_unit_cost_sum       CONSTANT VARCHAR2(100) := 'APP-XXCOI1-10340';    -- 原価差額集約単位件数メッセージ
+-- == 2009/06/04 V1.3 Added START ===============================================================
+  cv_msg_code_xxcoi_10256    CONSTANT VARCHAR2(30)  :=  'APP-XXCOI1-10256';   -- 取引タイプID取得エラーメッセージ
+-- == 2009/06/04 V1.3 Added END   ===============================================================
 --
   -- トークン
-  cv_tkn_profile             CONSTANT VARCHAR2(25)  := 'PRO_TOK';           -- プロファイル名
-  cv_tkn_source              CONSTANT VARCHAR2(25)  := 'SOURCE';            -- 仕訳ソース名
-  cv_tkn_account_id          CONSTANT VARCHAR2(25)  := 'ACCOUNT_ID';        -- 勘定科目ID
-  cv_tkn_account             CONSTANT VARCHAR2(25)  := 'ACCOUNT';           -- 勘定科目
-  cv_tkn_item_code           CONSTANT VARCHAR2(25)  := 'ITEM_CODE';         -- 品目コード
-  cv_tkn_dept                CONSTANT VARCHAR2(25)  := 'DEPT';              -- 部門
-  cv_tkn_period              CONSTANT VARCHAR2(25)  := 'PERIOD';            -- 会計期間
+  cv_tkn_profile             CONSTANT VARCHAR2(25)  := 'PRO_TOK';                 -- プロファイル名
+  cv_tkn_source              CONSTANT VARCHAR2(25)  := 'SOURCE';                  -- 仕訳ソース名
+  cv_tkn_account_id          CONSTANT VARCHAR2(25)  := 'ACCOUNT_ID';              -- 勘定科目ID
+  cv_tkn_account             CONSTANT VARCHAR2(25)  := 'ACCOUNT';                 -- 勘定科目
+  cv_tkn_item_code           CONSTANT VARCHAR2(25)  := 'ITEM_CODE';               -- 品目コード
+  cv_tkn_dept                CONSTANT VARCHAR2(25)  := 'DEPT';                    -- 部門
+  cv_tkn_period              CONSTANT VARCHAR2(25)  := 'PERIOD';                  -- 会計期間
 -- == 2009/03/26 V1.1 Added START ===============================================================
-  cv_tkn_subacct             CONSTANT VARCHAR2(25)  := 'SUBACCT';           -- 補助科目コード
+  cv_tkn_subacct             CONSTANT VARCHAR2(25)  := 'SUBACCT';                 -- 補助科目コード
 -- == 2009/03/26 V1.1 Added END   ===============================================================
+-- == 2009/06/04 V1.3 Added START ===============================================================
+  cv_tkn_transaction_type    CONSTANT VARCHAR2(30)  := 'TRANSACTION_TYPE_TOK';    -- 取引タイプ
+-- == 2009/06/04 V1.3 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -146,6 +153,9 @@ AS
     , mta_base_transaction_value mtl_transaction_accounts.base_transaction_value%TYPE -- 12.基準単位金額
     , mta_organization_id        mtl_transaction_accounts.organization_id%TYPE        -- 13.組織ID
     , mta_gl_batch_id            mtl_transaction_accounts.gl_batch_id%TYPE            -- 14.GLバッチID
+-- == 2009/06/04 V1.3 Added Start ===============================================================
+    , transaction_type_id        mtl_material_transactions.transaction_type_id%TYPE   -- 15.取引タイプID
+-- == 2009/06/04 V1.3 Added END   ===============================================================
   );
   TYPE g_mtl_txn_acct_ttype IS TABLE OF g_mtl_txn_acct_rtype INDEX BY BINARY_INTEGER;
 --
@@ -179,6 +189,9 @@ AS
   gt_pre_retcode_discrete_cost   VARCHAR2(1);                                         -- 前回情報：営業原価取得リターン・コード
   g_mtl_txn_acct_tab             g_mtl_txn_acct_ttype;                                -- PL/SQL表：資材配賦情報格納用
   gn_mtl_txn_acct_cnt            NUMBER;                                              -- PL/SQL表インデックス
+-- == 2009/06/04 V1.3 Added START ===============================================================
+  gt_trans_type_std_cost_upd     mtl_transaction_types.transaction_type_id%TYPE;      -- 取引タイプID（標準原価更新）
+-- == 2009/06/04 V1.3 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -220,9 +233,15 @@ AS
     cv_prf_gl_category_inv_cost        CONSTANT VARCHAR2(50) := 'XXCOI1_GL_CATEGORY_INV_COST';      -- XXCOI:仕訳カテゴリ_在庫原価振替
     cv_prf_gl_source_inv_cost          CONSTANT VARCHAR2(50) := 'XXCOI1_GL_SOURCE_INV_COST';        -- XXCOI:仕訳ソース_在庫原価振替
     cv_prf_sales_calendar              CONSTANT VARCHAR2(50) := 'XXCOI1_SALES_CALENDAR';            -- XXCOI:会計カレンダ
+-- == 2009/06/04 V1.3 Added START ===============================================================
+    cv_prf_trans_type_std_cost_upd     CONSTANT VARCHAR2(50) := 'XXCOI1_TRANS_TYPE_STD_COST_UPD';   -- XXCOI:取引タイプ名_標準原価更新
+-- == 2009/06/04 V1.3 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
     lv_tkn_profile   VARCHAR2(50);  -- トークン：プロファイル
+-- == 2009/06/04 V1.3 Added START ===============================================================
+    lt_std_cost_upd  mtl_transaction_types.transaction_type_name%TYPE;                              -- 取引タイプ名（標準原価更新）
+-- == 2009/06/04 V1.3 Added END   ===============================================================
 --
   BEGIN
 --
@@ -387,6 +406,23 @@ AS
       RAISE NO_DATA_FOUND;
     END IF;
 --
+    -- ==============================================================
+    -- 標準原価更新の取引タイプID取得
+    -- ==============================================================
+-- == 2009/06/04 V1.3 Added START ===============================================================
+    lt_std_cost_upd :=  fnd_profile.value(cv_prf_trans_type_std_cost_upd);
+    --
+    IF (lt_std_cost_upd IS NULL) THEN
+      lv_tkn_profile := cv_prf_trans_type_std_cost_upd;
+      RAISE profile_expt;
+    END IF;
+    --
+    SELECT  mtt.transaction_type_id
+    INTO    gt_trans_type_std_cost_upd
+    FROM    mtl_transaction_types       mtt
+    WHERE   mtt.transaction_type_name   =   lt_std_cost_upd
+    AND     TRUNC(SYSDATE)             <=   TRUNC(NVL(mtt.disable_date, SYSDATE));
+-- == 2009/06/04 V1.3 Added END   ===============================================================
   EXCEPTION
     -- *** プロファイル値取得例外 ***
     WHEN profile_expt THEN
@@ -411,6 +447,16 @@ AS
                        , iv_token_value1 => gt_je_source_name_inv_cost
                      );
       END IF;
+-- == 2009/06/04 V1.3 Added START ===============================================================
+      IF( gt_trans_type_std_cost_upd IS NULL ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_short_name_xxcoi
+                       , iv_name         => cv_msg_code_xxcoi_10256
+                       , iv_token_name1  => cv_tkn_transaction_type
+                       , iv_token_value1 => lt_std_cost_upd
+                     );
+      END IF;
+-- == 2009/06/04 V1.3 Added END   ===============================================================
       lv_errbuf  := lv_errmsg;
       ov_errmsg  := lv_errmsg;                                                  --# 任意 #
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
@@ -483,13 +529,22 @@ AS
            , mta.base_transaction_value  AS mta_base_transaction_value   -- 12.基準単位金額
            , mta.organization_id         AS mta_organization_id          -- 13.組織ID
            , mta.gl_batch_id             AS mta_gl_batch_id              -- 14.GLバッチID
+-- == 2009/06/04 V1.3 Added START ===============================================================
+           , mmt.transaction_type_id     AS transaction_type_id          -- 15.取引タイプID
+-- == 2009/06/04 V1.3 Added END   ===============================================================
       FROM   mtl_transaction_accounts    mta                             -- 資材配賦テーブル
            , gl_code_combinations        gcc                             -- 勘定科目テーブル
            , mtl_system_items_b          msib                            -- Disc品目マスタ
+-- == 2009/06/04 V1.3 Added START ===============================================================
+           ,mtl_material_transactions    mmt                             -- 資材取引
+-- == 2009/06/04 V1.3 Added END   ===============================================================
       WHERE  mta.reference_account       = gcc.code_combination_id       -- CCID
       AND    mta.gl_batch_id             > gt_last_gl_batch_id           -- GLバッチID > 前回GLバッチID
       AND    msib.inventory_item_id      = mta.inventory_item_id         -- 品目ID
       AND    msib.organization_id        = mta.organization_id           -- 組織ID
+-- == 2009/06/04 V1.3 Added START ===============================================================
+      AND    mta.transaction_id          = mmt.transaction_id            -- 取引ID
+-- == 2009/06/04 V1.3 Added END   ===============================================================
       ORDER BY mta.inventory_item_id                                     -- 品目ID
              , mta.transaction_date;                                     -- 取引日
 --
@@ -795,9 +850,19 @@ AS
       -- ===============================
       -- 原価差額算出
       -- ===============================
-      -- 原価差額 = 取引数量 * ( 標準原価 － 営業原価 ) 
-      ln_cost_variance := g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_primary_quantity 
-                            * ( ln_standard_cost - ln_operation_cost );
+-- == 2009/06/04 V1.3 Modified START ===============================================================
+--      ln_cost_variance := g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_primary_quantity 
+--                            * ( ln_standard_cost - ln_operation_cost );
+--
+      IF (g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).transaction_type_id = gt_trans_type_std_cost_upd) THEN
+        -- 原価差額 = 基準単位金額 * (-1)
+        ln_cost_variance  :=  ROUND(g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_base_transaction_value * (-1));
+      ELSE
+        -- 原価差額 = 取引数量 * ( 標準原価 － 営業原価 ) （小数点以下四捨五入）
+        ln_cost_variance := ROUND(g_mtl_txn_acct_tab( gn_mtl_txn_acct_cnt ).mta_primary_quantity 
+                                    * ( ln_standard_cost - ln_operation_cost ), 0);
+      END IF;
+-- == 2009/06/04 V1.3 Modified END   ===============================================================
     ELSE
       ln_cost_variance := 0;
     END IF;
@@ -1320,6 +1385,7 @@ AS
       -- 初期化
       gn_mtl_txn_acct_cnt := i;                -- PL/SQL表インデックス
       lv_status           := cv_normal_record; -- ステータス：正常
+--
       -- ===============================
       -- 原価情報取得処理 (A-4)
       -- ===============================
