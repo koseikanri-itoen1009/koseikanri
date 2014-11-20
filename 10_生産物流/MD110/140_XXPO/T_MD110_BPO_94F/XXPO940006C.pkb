@@ -7,7 +7,7 @@ AS
  * Description      : 支給依頼取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : 支給依頼取込処理 T_MD070_BPO_94F
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/07/08    1.2   Oracle 山根一浩  I_S_192対応
  *  2008/07/17    1.3   Oracle 椎名      MD050指摘事項#13対応
  *  2008/07/24    1.4   Oracle 椎名      内部課題#32,内部変更#166･#173対応
+ *  2008/07/29    1.5   Oracle 椎名      ST不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1276,7 +1277,10 @@ AS
    ***********************************************************************************/
   PROCEDURE get_header_proc(
     iv_data_class     IN         VARCHAR2,      -- 1.データ種別
-    iv_trans_type     IN         VARCHAR2,      -- 2.発生区分
+-- 2008/07/29 v1.5 Start
+--    iv_trans_type     IN         VARCHAR2,      -- 2.発生区分
+    in_trans_type     IN         NUMBER,        -- 2.発生区分
+-- 2008/07/29 v1.5 End
     iv_req_dept       IN         VARCHAR2,      -- 3.依頼部署
     iv_vendor         IN         VARCHAR2,      -- 4.取引先
     iv_ship_to        IN         VARCHAR2,      -- 5.配送先
@@ -1403,7 +1407,10 @@ AS
 -- 2008/07/17 v1.3 End
     FROM    xxpo_supply_req_headers_if    srhi
     WHERE   srhi.data_class                 =   iv_data_class
-    AND     srhi.trans_type                 =   iv_trans_type
+-- 2008/07/29 v1.5 Start
+--    AND     srhi.trans_type                 =   iv_trans_type
+    AND     srhi.trans_type                 =   in_trans_type
+-- 2008/07/29 v1.5 End
     AND     srhi.requested_department_code  =   NVL(iv_req_dept,srhi.requested_department_code)
     AND     srhi.vendor_code                =   iv_vendor
     AND     srhi.ship_to_code               =   NVL(iv_ship_to,srhi.ship_to_code)
@@ -1490,7 +1497,10 @@ AS
    ***********************************************************************************/
   PROCEDURE get_line_proc(
     iv_data_class     IN         VARCHAR2,      -- 1.データ種別
-    iv_trans_type     IN         VARCHAR2,      -- 2.発生区分
+-- 2008/07/29 v1.5 Start
+--    iv_trans_type     IN         VARCHAR2,      -- 2.発生区分
+    in_trans_type     IN         NUMBER,        -- 2.発生区分
+-- 2008/07/29 v1.5 End
     iv_req_dept       IN         VARCHAR2,      -- 3.依頼部署
     iv_vendor         IN         VARCHAR2,      -- 4.取引先
     iv_ship_to        IN         VARCHAR2,      -- 5.配送先
@@ -1574,7 +1584,10 @@ AS
             xxpo_supply_req_lines_if    srli
     WHERE   srhi.supply_req_headers_if_id   =   srli.supply_req_headers_if_id
     AND     srhi.data_class                 =   iv_data_class
-    AND     srhi.trans_type                 =   iv_trans_type
+-- 2008/07/29 v1.5 Start
+--    AND     srhi.trans_type                 =   iv_trans_type
+    AND     srhi.trans_type                 =   in_trans_type
+-- 2008/07/29 v1.5 End
     AND     srhi.requested_department_code  =   NVL(iv_req_dept,srhi.requested_department_code)
     AND     srhi.vendor_code                =   iv_vendor
     AND     srhi.ship_to_code               =   NVL(iv_ship_to,srhi.ship_to_code)
@@ -1655,12 +1668,13 @@ AS
 --
   END get_line_proc;
 --
--- 2008/07/17 v1.3 Start
+-- 2008/07/29 v1.5 Start
+---- 2008/07/17 v1.3 Start
   /**********************************************************************************
    * Procedure Name   : chk_essent_proc
    * Description      : 必須チェック処理 (F-4)
    ***********************************************************************************/
-/*  PROCEDURE chk_essent_proc(
+  PROCEDURE chk_essent_proc(
     iv_header_line_kbn  IN         VARCHAR2,      --   ヘッダ明細区分
     ov_errbuf           OUT NOCOPY VARCHAR2,      --   エラー・メッセージ           --# 固定 #
     ov_retcode          OUT NOCOPY VARCHAR2,      --   リターン・コード             --# 固定 #
@@ -1703,6 +1717,7 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+/*
     -- ヘッダ項目
     IF (iv_header_line_kbn = gv_header) THEN
       -- 下記項目がNULLの場合、エラー
@@ -1720,12 +1735,23 @@ AS
                (gt_freight_carrier_code_tbl(gn_i) IS NULL)         -- ヘッダ｢運送業者コード｣
            )
          ) THEN
+*/
+    -- ヘッダ項目
+    IF (iv_header_line_kbn = gv_header) THEN
+      -- 下記項目がNULLの場合、エラー
+      IF (
+           -- 運賃区分が｢対象｣の場合
+           (gt_freight_charge_class_tbl(gn_i) = gv_object) AND
+             (gt_freight_carrier_code_tbl(gn_i) IS NULL)         -- ヘッダ｢運送業者コード｣
+         ) THEN
         lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_xxpo,
                                               gv_msg_essent);
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
       END IF;
+
 --
+/*
     -- 明細項目
     ELSIF (iv_header_line_kbn = gv_line) THEN
       -- 下記項目がNULLの場合、エラー
@@ -1739,6 +1765,7 @@ AS
         RAISE global_api_expt;
       END IF;
 --
+*/
     END IF;
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
@@ -1765,8 +1792,9 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END chk_essent_proc;
-*/--
--- 2008/07/17 v1.3 End
+--
+---- 2008/07/17 v1.3 End
+-- 2008/07/29 v1.5 End
   /**********************************************************************************
    * Procedure Name   : chk_exist_mst_proc
    * Description      : マスタ存在チェック処理 (F-5)
@@ -3120,7 +3148,7 @@ AS
                           gv_msg_kbn_xxpo            -- モジュール名略称:XXPO
                           ,gv_msg_common             -- メッセージ:APP-XXPO-10237 共通関数エラー
                           ,gv_tkn_common_name        -- トークンNG_NAME
-                          ,gv_tkn_calc_load_ef_ca)   -- 積載効率チェック(積載効率算出:重量)
+                          ,gv_tkn_calc_load_ef_ca)   -- 積載効率チェック(積載効率算出:容積)
                           ,1,5000);
         lv_errbuf := lv_errmsg;
         RAISE global_api_expt;
@@ -3208,7 +3236,7 @@ AS
                         gv_msg_kbn_xxpo            -- モジュール名略称:XXPO
                         ,gv_msg_common             -- メッセージ:APP-XXPO-10237 共通関数エラー
                         ,gv_tkn_common_name        -- トークンNG_NAME
-                        ,gv_tkn_calc_load_ef_ca)   -- 積載効率チェック(積載効率算出:重量)
+                        ,gv_tkn_calc_load_ef_ca)   -- 積載効率チェック(積載効率算出:容積)
                         ,1,5000);
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
@@ -3927,6 +3955,9 @@ AS
 --
     -- *** ローカル変数 ***
     ln_line_number  NUMBER; -- 明細番号
+-- 2008/07/29 v1.5 Start
+    ln_trans_type   NUMBER; -- 発生区分
+-- 2008/07/29 v1.5 End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -3955,6 +3986,10 @@ AS
     gn_l_cnt        := 0;
 --
 -- 2008/07/17 v1.3 End
+-- 2008/07/29 v1.5 Start
+    -- パラメータ発生区分を明示変換
+    ln_trans_type   := TO_NUMBER(iv_trans_type);
+-- 2008/07/29 v1.5 End
     --*********************************************
     --***      MD.050のフロー図を表す           ***
     --***      分岐と処理部の呼び出しを行う     ***
@@ -4049,7 +4084,10 @@ AS
     -- ===============================
     get_header_proc(
       iv_data_class,      -- 1.データ種別
-      iv_trans_type,      -- 2.発生区分
+-- 2008/07/29 v1.5 Start
+--      iv_trans_type,      -- 2.発生区分
+      ln_trans_type,      -- 2.発生区分
+-- 2008/07/29 v1.5 End
       iv_req_dept,        -- 3.依頼部署
       iv_vendor,          -- 4.取引先
       iv_ship_to,         -- 5.配送先
@@ -4082,7 +4120,10 @@ AS
     -- ===============================
     get_line_proc(
       iv_data_class,      -- 1.データ種別
-      iv_trans_type,      -- 2.発生区分
+-- 2008/07/29 v1.5 Start
+--      iv_trans_type,      -- 2.発生区分
+      ln_trans_type,      -- 2.発生区分
+-- 2008/07/29 v1.5 End
       iv_req_dept,        -- 3.依頼部署
       iv_vendor,          -- 4.取引先
       iv_ship_to,         -- 5.配送先
@@ -4118,8 +4159,9 @@ AS
       -- 適用日設定
       gd_standard_date  := NVL(gt_ship_date_tbl(gn_i), gt_arvl_date_tbl(gn_i));
 --
--- 2008/07/17 v1.3 Start
-/*      -- ===============================
+-- 2008/07/29 v1.5 Start
+---- 2008/07/17 v1.3 Start
+      -- ===============================
       -- 必須チェック処理 (F-4)(ヘッダ)
       -- ===============================
       chk_essent_proc(
@@ -4131,8 +4173,9 @@ AS
       IF (lv_retcode = gv_status_error) THEN
         RAISE proc_err_expt;
       END IF;
-*/--
--- 2008/07/17 v1.3 End
+--
+---- 2008/07/17 v1.3 End
+-- 2008/07/29 v1.5 End
       -- ===============================
       -- マスタ存在チェック処理 (F-5)(ヘッダ)
       -- ===============================
@@ -4259,6 +4302,10 @@ AS
 --      -- カウント変数を初期化
 --      gn_j := 1;
 --
+-- 2008/07/29 v1.5 Start
+     -- 運賃区分が｢対象｣の場合
+     IF (gt_freight_charge_class_tbl(gn_i) = gv_object) THEN
+-- 2008/07/29 v1.5 End
       -- ===============================
       -- 積載効率算出
       -- ===============================
@@ -4271,6 +4318,14 @@ AS
         RAISE proc_err_expt;
       END IF;
 --
+-- 2008/07/29 v1.5 Start
+     ELSE
+       gt_load_efficiency_we_tbl(gn_i) := NULL;             -- 重量積載効率
+       gt_load_efficiency_ca_tbl(gn_i) := NULL;             -- 容積積載効率
+--
+     END IF;
+--
+-- 2008/07/29 v1.5 End
       -- ===============================
       -- 登録データ設定処理 (ヘッダ)
       -- ===============================

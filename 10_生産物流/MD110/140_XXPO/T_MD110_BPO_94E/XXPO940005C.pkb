@@ -7,7 +7,7 @@ AS
  * Description      : 支給依頼アップロード処理
  * MD.050           : 取引先オンライン   T_MD050_BPO_940
  * MD.070           : 支給依頼アップロード処理 T_MD070_BPO_94E
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/06/09    1.0   Oracle 椎名       初回作成
  *  2008/07/08    1.1   Oracle 山根一浩   I_S_192対応
  *  2008/07/17    1.2   Oracle 椎名       MD050指摘事項#13対応
+ *  2008/07/29    1.3   Oracle 椎名       ST不具合対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1068,7 +1069,10 @@ AS
                                               fdata_tbl(ln_index).freight_carrier_code,
                                               gn_c_freight_carrier_code,
                                               NULL,
-                                              xxcmn_common3_pkg.gv_null_ng,
+-- 2008/07/29 v1.3 Update Start
+--                                              xxcmn_common3_pkg.gv_null_ng,
+                                              xxcmn_common3_pkg.gv_null_ok,
+-- 2008/07/29 v1.3 Update End
                                               xxcmn_common3_pkg.gv_attr_vc2,
                                               lv_errbuf,
                                               lv_retcode,
@@ -1137,10 +1141,10 @@ AS
                                               fdata_tbl(ln_index).freight_charge_class,
                                               gn_c_freight_charge_class,
                                               NULL,
--- 2008/07/17 v1.6 Update Start
+-- 2008/07/17 v1.2 Update Start
 --                                              xxcmn_common3_pkg.gv_null_ok,
                                               xxcmn_common3_pkg.gv_null_ng,
--- 2008/07/17 v1.6 Update End
+-- 2008/07/17 v1.2 Update End
                                               xxcmn_common3_pkg.gv_attr_vc2,
                                               lv_errbuf,
                                               lv_retcode,

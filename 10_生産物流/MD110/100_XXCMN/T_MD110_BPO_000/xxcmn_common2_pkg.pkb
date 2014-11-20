@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : 共通関数2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_引当可能数算出（補足資料）.doc
- * Version                : 1.5
+ * Version                : 1.6
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -62,6 +62,7 @@ AS
  *  2008/06/24   1.4   oracle 竹本     結合テスト不具合対応(I5,I6 引数設定の変数(品目コード)変更)
  *  2008/06/24   1.4   oracle 新藤     システムテスト不具合対応#75(D5)
  *  2008/07/16   1.5   oracle 北寒寺   変更要求#93対応
+ *  2008/07/25   1.6   oracle 北寒寺   結合テスト不具合対応
  *
  *****************************************************************************************/
 --
@@ -4195,6 +4196,12 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'get_can_enc_qty'; --プログラム名
+-- Ver1.6 M.Hokkanji Start
+    cv_xxcmn                CONSTANT VARCHAR2(10)  := 'XXCMN';
+    cv_dummy_frequent_whse  CONSTANT VARCHAR2(100) := 'XXCMN_DUMMY_FREQUENT_WHSE';
+    cv_error_10002          CONSTANT VARCHAR2(30)  := 'APP-XXCMN-10002'; --プロファイル取得エラー
+    cv_tkn_ng_profile       CONSTANT VARCHAR2(30)  := 'NG_PROFILE'; --トークン
+-- Ver1.6 M.Hokkanji End
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
@@ -4218,12 +4225,21 @@ AS
     ln_ref_all_enc_qty      NUMBER; -- 対象親や子の総引当可能数
     ln_ref_in_time_enc_qty  NUMBER; -- 対象親や子の有効日ベース引当可能数
     lt_inventory_location_id mtl_item_locations.inventory_location_id%TYPE; -- 保管倉庫ID
+-- Ver1.6 M.Hokkanji Start
+    lt_dummy_frequent_whse  mtl_item_locations.segment1%TYPE; --ダミー代表倉庫
+-- Ver1.6 M.Hokkanji End
 --
     -- ===============================
     -- ユーザー定義例外
     -- ===============================
     process_exp               EXCEPTION;     -- 各処理でエラーが発生した場合
+-- Ver1.6 M.Hokkanji Start
+    profile_exp               EXCEPTION;     -- プロファイル取得失敗
+-- Ver1.6 M.Hokkanji End
     PRAGMA EXCEPTION_INIT(process_exp, -20001);
+-- Ver1.6 M.Hokkanji Start
+    PRAGMA EXCEPTION_INIT(profile_exp, -20002);
+-- Ver1.6 M.Hokkanji End
 --
   BEGIN
 --
@@ -4300,32 +4316,14 @@ AS
 --
     -- 代表倉庫（子）の場合
     ELSE
-      -- 代表倉庫存在チェック
-      BEGIN
-        -- 代表倉庫（親）を取得
-        SELECT  xilv.inventory_location_id
-        INTO    lt_inventory_location_id
-        FROM    xxcmn_item_locations2_v xilv-- 保管場所
-        WHERE   xilv.segment1 = lv_rep_whse -- 代表倉庫
-        AND     xilv.segment1 = xilv.frequent_whse -- 代表倉庫の場合は保管場所と代表倉庫が等しい
-        AND     in_active_date BETWEEN xilv.date_from
-                                   AND NVL(xilv.date_to,in_active_date);
-        -- 代表倉庫（親）を取得
-        SELECT  NVL(SUM(get_can_enc_in_time_qty(mil.inventory_location_id,
-                                                in_item_id,
-                                                in_lot_id)),0),
-                NVL(SUM(get_can_enc_in_time_qty(mil.inventory_location_id,
-                                                in_item_id,
-                                                in_lot_id,
-                                                in_active_date)),0)
-        INTO    ln_ref_all_enc_qty,
-                ln_ref_in_time_enc_qty
-        FROM    mtl_item_locations  mil    -- 保管場所
-        WHERE   mil.attribute5            = lv_rep_whse -- 代表倉庫
-        AND     mil.segment1              = mil.attribute5;
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          -- 代表倉庫取得に失敗した場合は倉庫-品目単位の代表管理のため
+      -- ダミー代表倉庫を取得
+      lt_dummy_frequent_whse := FND_PROFILE.VALUE(cv_dummy_frequent_whse);
+      -- 取得に失敗した場合
+      IF (lt_dummy_frequent_whse IS NULL) THEN
+        RAISE profile_exp ;
+      END IF ;
+      IF (lv_rep_whse = lt_dummy_frequent_whse) THEN
+        BEGIN
           -- 倉庫品目マスタを参照
           SELECT  NVL(SUM(get_can_enc_in_time_qty(xfil.frq_item_location_id,
                                                   in_item_id,
@@ -4339,8 +4337,32 @@ AS
           FROM    xxwsh_frq_item_locations xfil
           WHERE   xfil.item_location_code = lv_whse_code         -- 元倉庫
           AND     xfil.item_id = in_item_id;                     -- OPM品目ID
-      END;
---
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_ref_all_enc_qty := 0;
+            ln_ref_in_time_enc_qty := 0;
+        END;
+      ELSE
+        BEGIN
+          -- 代表倉庫（親）を取得
+          SELECT  NVL(SUM(get_can_enc_in_time_qty(mil.inventory_location_id,
+                                                  in_item_id,
+                                                  in_lot_id)),0),
+                  NVL(SUM(get_can_enc_in_time_qty(mil.inventory_location_id,
+                                                  in_item_id,
+                                                  in_lot_id,
+                                                  in_active_date)),0)
+          INTO    ln_ref_all_enc_qty,
+                  ln_ref_in_time_enc_qty
+          FROM    mtl_item_locations  mil    -- 保管場所
+          WHERE   mil.attribute5            = lv_rep_whse -- 代表倉庫
+          AND     mil.segment1              = mil.attribute5;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_ref_all_enc_qty := 0;
+            ln_ref_in_time_enc_qty := 0;
+        END;
+      END IF;
       -- 親単体の引当可能数がマイナスの場合のみ足し込む
       IF (ln_ref_all_enc_qty < 0) THEN
         ln_all_enc_qty      := ln_all_enc_qty     + ln_ref_all_enc_qty;
@@ -4361,6 +4383,16 @@ AS
     RETURN ln_enc_qty;
 --
   EXCEPTION
+-- Ver1.6 M.Hokkanji Start
+    WHEN profile_exp THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg( cv_xxcmn
+                                            ,cv_error_10002
+                                            ,cv_tkn_ng_profile
+                                            ,cv_dummy_frequent_whse
+                                           ) ;
+      RAISE_APPLICATION_ERROR
+        (-20001,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errmsg,1,5000),TRUE);
+-- Ver1.6 M.Hokkanji End
     WHEN process_exp THEN
       RAISE_APPLICATION_ERROR
         (-20001,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);

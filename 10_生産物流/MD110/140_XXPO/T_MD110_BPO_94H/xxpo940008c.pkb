@@ -7,7 +7,7 @@ AS
  * Description      : ロット引当情報取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : ロット引当情報取込処理 T_MD070_BPO_94H
- * Version          : 1.1
+ * Version          : 1.2
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -34,6 +34,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/06/19    1.0  Oracle 吉田夏樹   初回作成
  *  2008/07/22    1.1  Oracle 吉田夏樹   内部課題#32、#66、内部変更#166対応
+ *  2008/07/29    1.2  Oracle 吉田夏樹   ST不具合対応(採番なし)
  *
  *****************************************************************************************/
 --
@@ -195,6 +196,11 @@ AS
   -- 商品区分
   gv_prod_class_code_leaf    CONSTANT VARCHAR2(1) := '1'; -- 商品区分:リーフ
   gv_prod_class_code_drink   CONSTANT VARCHAR2(1) := '2'; -- 商品区分:ドリンク
+-- ST不具合対応 modify 2008/07/29 start
+  -- 運賃区分
+  gv_freight_charge_class_on      CONSTANT VARCHAR2(1) := '1'; -- 運賃区分:対象
+  gv_freight_charge_class_off     CONSTANT VARCHAR2(1) := '0'; -- 運賃区分:対象外
+-- ST不具合対応 modify 2008/07/29 end
 --
   -- APIリターン・コード
   gv_api_ret_cd_normal       CONSTANT VARCHAR2(1) := 'S'; -- APIリターン・コード:正常終了
@@ -238,7 +244,7 @@ AS
   -- 最大配送区分
   TYPE gt_ship_method_tbl_type   IS TABLE OF VARCHAR2(10) INDEX BY BINARY_INTEGER;
   -- 小口区分
-  TYPE gt_small_amount_class_tbl_type   IS TABLE OF VARCHAR2(10) INDEX BY BINARY_INTEGER;
+  --TYPE gt_small_amount_class_tbl_type   IS TABLE OF VARCHAR2(10) INDEX BY BINARY_INTEGER;
 --
   ---------------------------------------------
   -- ロット引当情報インタフェース取得       --
@@ -314,6 +320,11 @@ AS
   -- 配送区分
   TYPE lr_shipping_method_code_tbl IS TABLE OF
     xxwsh_order_headers_all.shipping_method_code%TYPE INDEX BY BINARY_INTEGER;
+-- ST不具合対応 modify 2008/07/29 start
+  -- 運賃区分
+  TYPE lr_freight_charge_class_tbl IS TABLE OF
+    xxwsh_order_headers_all.freight_charge_class%TYPE INDEX BY BINARY_INTEGER;
+-- ST不具合対応 modify 2008/07/29 end
 --
   ---------------------------------------------
   -- 移動ロット詳細アドオン取得              --
@@ -494,6 +505,9 @@ AS
   gt_lr_we_ca_class_tbl               lr_we_ca_class_tbl;
   gt_lr_data_dump_tbl                 lr_data_dump_tbl;
   gt_lr_shipping_method_code_tbl      lr_shipping_method_code_tbl;
+-- ST不具合対応 modify 2008/07/29 start
+  gt_lr_freight_charge_class_tbl      lr_freight_charge_class_tbl;
+-- ST不具合対応 modify 2008/07/29 end
 --
   -- 移動ロット詳細取得用
   gt_mr_mov_lot_dtl_id_tbl            mr_mov_lot_dtl_id_tbl;
@@ -550,7 +564,7 @@ AS
   gt_pl_up_flg                gt_pl_up_flg_type;
   gt_ph_up_flg                gt_ph_up_flg_type;
   gt_ship_method_tbl          gt_ship_method_tbl_type;
-  gt_small_amount_class_tbl   gt_small_amount_class_tbl_type;
+  --gt_small_amount_class_tbl   gt_small_amount_class_tbl_type;
 --
   -- データダンプ用PL/SQL表
   warn_dump_tab          msg_ttype; -- 警告
@@ -1119,6 +1133,9 @@ AS
           ,xoha.vendor_site_code             -- 配送先コード
           ,xoha.weight_capacity_class        -- 重量容積区分
           ,xoha.shipping_method_code         -- 配送区分
+-- ST不具合対応 modify 2008/07/29 start
+          ,xoha.freight_charge_class         -- 運賃区分
+-- ST不具合対応 modify 2008/07/29 end
           ,xlri.corporation_name                || gv_msg_comma ||
            xlri.data_class                      || gv_msg_comma ||
            xlri.transfer_branch_no              || gv_msg_comma ||
@@ -1151,6 +1168,9 @@ AS
             gt_lr_deliver_to_tbl,
             gt_lr_we_ca_class_tbl,
             gt_lr_shipping_method_code_tbl,
+-- ST不具合対応 modify 2008/07/29 start
+            gt_lr_freight_charge_class_tbl,
+-- ST不具合対応 modify 2008/07/29 end
             gt_lr_data_dump_tbl
     FROM   xxpo_lot_reserve_if         xlri                  -- ロット引当情報インタフェース
           ,xxwsh_order_headers_all     xoha                  -- 受注ヘッダアドオン
@@ -1601,38 +1621,44 @@ AS
 
 --
     IF (iv_type = gv_header) THEN
-      ---------------------------------------------
-      -- 最大配送区分取得                        --
-      ---------------------------------------------
-      -- 共通関数「最大配送区分算出関数」呼び出し
-      ln_result := xxwsh_common_pkg.get_max_ship_method
-                             (cv_wh,                                      -- 倉庫'4'
-                              gt_lr_deliver_from_tbl(gn_i),               -- 入力倉庫コード
-                              cv_sup,                                     -- 支給先'11'
-                              gt_lr_deliver_to_tbl(gn_i),                 -- 配送先コード
-                              gv_item_div_prf,                            -- 商品区分
-                              gt_lr_we_ca_class_tbl(gn_i),                -- 重量容積区分
-                              NULL,                                       -- 自動配車対象区分
-                              gt_lr_shipped_date_tbl(gn_i),               -- 出庫予定日
-                              gt_ship_method_tbl(gn_k),                   -- 最大配送区分
-                              ln_drink_deadweight_tbl,                    -- ドリンク積載重量
-                              ln_leaf_deadweight_tbl,                     -- リーフ積載重量
-                              ln_drink_loading_capacity_tbl,              -- ドリンク積載容積
-                              ln_leaf_loading_capacity_tbl,               -- リーフ積載容積
-                              ln_palette_max_qty                          -- パレット最大枚数
-                             );
+      -- ST不具合 modify 2008/07/29 start
+      -- 運賃区分がONの場合のみ、取得。
+      IF (gt_lr_freight_charge_class_tbl(gn_i) = gv_freight_charge_class_on) THEN
+        ---------------------------------------------
+        -- 最大配送区分取得                        --
+        ---------------------------------------------
+        -- 共通関数「最大配送区分算出関数」呼び出し
+        ln_result := xxwsh_common_pkg.get_max_ship_method
+                               (cv_wh,                                      -- 倉庫'4'
+                                gt_lr_deliver_from_tbl(gn_i),               -- 入力倉庫コード
+                                cv_sup,                                     -- 支給先'11'
+                                gt_lr_deliver_to_tbl(gn_i),                 -- 配送先コード
+                                gv_item_div_prf,                            -- 商品区分
+                                gt_lr_we_ca_class_tbl(gn_i),                -- 重量容積区分
+                                NULL,                                       -- 自動配車対象区分
+                                gt_lr_shipped_date_tbl(gn_i),               -- 出庫予定日
+                                gt_ship_method_tbl(gn_k),                   -- 最大配送区分
+                                ln_drink_deadweight_tbl,                    -- ドリンク積載重量
+                                ln_leaf_deadweight_tbl,                     -- リーフ積載重量
+                                ln_drink_loading_capacity_tbl,              -- ドリンク積載容積
+                                ln_leaf_loading_capacity_tbl,               -- リーフ積載容積
+                                ln_palette_max_qty                          -- パレット最大枚数
+                               );
 --
-      -- 共通関数でエラーの場合
-      IF (ln_result = 1) THEN
-        lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxpo,
-                                              gv_msg_xxpo10237,
-                                              gv_tkn_common_name,
-                                              gv_max_ship);
-        lv_errbuf := lv_errmsg;
-        RAISE global_api_expt;
+        -- 共通関数でエラーの場合
+        IF (ln_result = 1) THEN
+          lv_errmsg := xxcmn_common_pkg.get_msg(gv_xxpo,
+                                                gv_msg_xxpo10237,
+                                                gv_tkn_common_name,
+                                                gv_max_ship);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        END IF;
+--
       END IF;
-      
-      -- 小口区分の設定
+--
+      -- 不要の為、削除
+      /*-- 小口区分の設定
       BEGIN
         SELECT attribute6
         INTO   lv_small_amount_class
@@ -1651,7 +1677,8 @@ AS
 --
       END;
 --
-      gt_small_amount_class_tbl(gn_k) := lv_small_amount_class;
+      gt_small_amount_class_tbl(gn_k) := lv_small_amount_class;*/
+-- ST不具合対応 modify 2008/07/29 end
 --
       -- 変数の初期化(内部ロジック用)
       gt_ph_sum_weight_tbl(gn_k)        := NULL;
@@ -1786,103 +1813,169 @@ AS
            (gt_lr_order_header_id_tbl(gn_i) <> gt_lr_order_header_id_tbl(gn_i + 1))
          ) THEN
 --
-        ---------------------------------------------
-        -- 積載効率算出                            --
-        ---------------------------------------------
-        -- 積載重量合計
-        ln_sum_weight := gt_ph_sum_weight_tbl(gn_k);
-        -- 積載容積合計
-        ln_sum_capacity := gt_ph_sum_capacity_tbl(gn_k);
+        -- ST不具合 modify 2008/07/29 start
+        -- 運賃区分がONの場合のみ、取得。
+        IF (gt_lr_freight_charge_class_tbl(gn_i) = gv_freight_charge_class_on) THEN
+          ---------------------------------------------
+          -- 積載効率算出                            --
+          ---------------------------------------------
+          -- 積載重量合計
+          ln_sum_weight := gt_ph_sum_weight_tbl(gn_k);
+          -- 積載容積合計
+          ln_sum_capacity := gt_ph_sum_capacity_tbl(gn_k);
 --
-      -- 内部変更#166 2008/07/22 modify start
-        -- 重量の積載効率を取得する
-        IF (gt_lr_we_ca_class_tbl(gn_i) = gv_we) THEN
+        -- 内部変更#166 2008/07/22 modify start
+          -- 重量の積載効率を取得する
+          IF (gt_lr_we_ca_class_tbl(gn_i) = gv_we) THEN
+--
+            -- 「積載効率チェック(積載効率算出)」呼び出し
+            xxwsh_common910_pkg.calc_load_efficiency
+                                (
+                                  ln_sum_weight,                          -- 合計重量
+                                  NULL,                                   -- 合計容積
+                                  cv_wh,                                  -- 倉庫'4'
+                                  gt_lr_deliver_from_tbl(gn_i),           -- 出庫倉庫コード
+                                  cv_sup,                                 -- 支給先'11'
+                                  gt_lr_deliver_to_tbl(gn_i),             -- 配送先コード
+                                  gt_ship_method_tbl(gn_k),               -- 配送区分
+                                  gv_item_div_prf,                        -- 商品区分
+                                  NULL,                                   -- 自動配車対象区分
+                                  TRUNC(SYSDATE),                         -- 基準日
+                                  lv_retcode,                             -- リターンコード
+                                  lv_errmsg_code,                         -- エラーメッセージコード
+                                  lv_errmsg,                              -- エラーメッセージ
+                                  lv_loading_over_class,                  -- 積載オーバー区分
+                                  lv_ship_methods,                        -- 出荷方法
+                                  lv_load_efficiency_we,                  -- 重量積載効率
+                                  lv_load_efficiency_ca,                  -- 容積積載効率
+                                  lv_mixed_ship_method                    -- 混載配送区分
+                                );
+--
+            -- 共通関数でエラーの場合
+            IF (lv_retcode = '1') THEN
+               -- エラーログ出力
+               xxcmn_common_pkg.put_api_log(
+                 lv_errbuf     -- エラー・メッセージ
+                ,lv_retcode    -- リターン・コード
+                ,lv_errmsg);   -- ユーザー・エラー・メッセージ
+--
+              -- エラーメッセージ取得
+              lv_errmsg  := SUBSTRB(
+                              xxcmn_common_pkg.get_msg(
+                                gv_xxpo                   -- モジュール名略称:XXPO
+                               ,gv_msg_xxpo10237          -- メッセージ:APP-XXPO-10237 共通関数エラー
+                               ,gv_tkn_common_name        -- トークンNG_NAME
+                               ,gv_tkn_calc_load_ef_we)   -- 積載効率チェック(積載効率算出:重量)
+                               ,1,5000);
+              lv_errbuf := lv_errmsg;
+              RAISE global_api_expt;
+            END IF;
+--
+            -- 積載オーバーの場合
+            IF (lv_loading_over_class = gv_flg_on) THEN
+              -- エラーログ出力
+              xxcmn_common_pkg.put_api_log(
+               ov_errbuf     => lv_errbuf     -- エラー・メッセージ
+              ,ov_retcode    => lv_retcode    -- リターン・コード
+              ,ov_errmsg     => lv_errmsg);   -- ユーザー・エラー・メッセージ
+--
+              -- エラーメッセージ取得
+              lv_errmsg  := SUBSTRB(
+                             xxcmn_common_pkg.get_msg(
+                               gv_xxpo               -- モジュール名略称:XXPO
+                              ,gv_msg_xxpo10120)     -- メッセージ:APP-XXPO-10120 積載効率チェックエラー
+                              ,1,5000);
+              lv_errbuf := lv_errmsg;
+              RAISE global_api_expt;
+            END IF;
+--
+          -- 容積の積載効率を取得する
+          ELSIF (gt_lr_we_ca_class_tbl(gn_i) = gv_ca) THEN
+--
+            -- 「積載効率チェック(積載効率算出)」呼び出し
+            xxwsh_common910_pkg.calc_load_efficiency
+                                (
+                                  NULL,                                   -- 合計重量
+                                  ln_sum_capacity,                        -- 合計容積
+                                  cv_wh,                                  -- 倉庫'4'
+                                  gt_lr_deliver_from_tbl(gn_i),           -- 出庫倉庫コード
+                                  cv_sup,                                 -- 支給先'11'
+                                  gt_lr_deliver_to_tbl(gn_i),             -- 配送先コード
+                                  gt_ship_method_tbl(gn_k),               -- 配送区分
+                                  gv_item_div_prf,                        -- 商品区分
+                                  NULL,                                   -- 自動配車対象区分
+                                  TRUNC(SYSDATE),                         -- 基準日
+                                  lv_retcode,                             -- リターンコード
+                                  lv_errmsg_code,                         -- エラーメッセージコード
+                                  lv_errmsg,                              -- エラーメッセージ
+                                  lv_loading_over_class,                  -- 積載オーバー区分
+                                  lv_ship_methods,                        -- 出荷方法
+                                  lv_load_efficiency_we,                  -- 重量積載効率
+                                  lv_load_efficiency_ca,                  -- 容積積載効率
+                                  lv_mixed_ship_method                    -- 混載配送区分
+                                );
+--
+            -- 共通関数でエラーの場合
+            IF (lv_retcode = '1') THEN
+              -- エラーログ出力
+              xxcmn_common_pkg.put_api_log(
+                lv_errbuf     -- エラー・メッセージ
+               ,lv_retcode    -- リターン・コード
+               ,lv_errmsg);   -- ユーザー・エラー・メッセージ
+--
+              -- エラーメッセージ取得
+              lv_errmsg  := SUBSTRB(
+                              xxcmn_common_pkg.get_msg(
+                                gv_xxpo                   -- モジュール名略称:XXPO
+                               ,gv_msg_xxpo10237          -- メッセージ::APP-XXPO-10237 共通関数エラー
+                               ,gv_tkn_common_name        -- トークンNG_NAME
+                               ,gv_tkn_calc_load_ef_ca)   -- 積載効率チェック(積載効率算出:容積)
+                               ,1,5000);
+              lv_errbuf := lv_errmsg;
+              RAISE global_api_expt;
+            END IF;
+--
+            -- 積載オーバーの場合
+            IF (lv_loading_over_class = gv_flg_on) THEN
+              -- エラーログ出力
+              xxcmn_common_pkg.put_api_log(
+               ov_errbuf     => lv_errbuf     -- エラー・メッセージ
+              ,ov_retcode    => lv_retcode    -- リターン・コード
+              ,ov_errmsg     => lv_errmsg);   -- ユーザー・エラー・メッセージ
+--
+              -- エラーメッセージ取得
+              lv_errmsg  := SUBSTRB(
+                             xxcmn_common_pkg.get_msg(
+                               gv_xxpo               -- モジュール名略称:XXPO
+                              ,gv_msg_xxpo10120)     -- メッセージ:APP-XXPO-10120 積載効率チェックエラー
+                              ,1,5000);
+              lv_errbuf := lv_errmsg;
+              RAISE global_api_expt;
+            END IF;
+--
+          END IF;
 --
           -- 「積載効率チェック(積載効率算出)」呼び出し
           xxwsh_common910_pkg.calc_load_efficiency
                               (
-                                ln_sum_weight,                          -- 合計重量
-                                NULL,                                   -- 合計容積
-                                cv_wh,                                  -- 倉庫'4'
-                                gt_lr_deliver_from_tbl(gn_i),           -- 出庫倉庫コード
-                                cv_sup,                                 -- 支給先'11'
-                                gt_lr_deliver_to_tbl(gn_i),             -- 配送先コード
-                                gt_ship_method_tbl(gn_k),               -- 配送区分
-                                gv_item_div_prf,                        -- 商品区分
-                                NULL,                                   -- 自動配車対象区分
-                                TRUNC(SYSDATE),                         -- 基準日
-                                lv_retcode,                             -- リターンコード
-                                lv_errmsg_code,                         -- エラーメッセージコード
-                                lv_errmsg,                              -- エラーメッセージ
-                                lv_loading_over_class,                  -- 積載オーバー区分
-                                lv_ship_methods,                        -- 出荷方法
-                                lv_load_efficiency_we,                  -- 重量積載効率
-                                lv_load_efficiency_ca,                  -- 容積積載効率
-                                lv_mixed_ship_method                    -- 混載配送区分
-                              );
---
-          -- 共通関数でエラーの場合
-          IF (lv_retcode = '1') THEN
-             -- エラーログ出力
-             xxcmn_common_pkg.put_api_log(
-               lv_errbuf     -- エラー・メッセージ
-              ,lv_retcode    -- リターン・コード
-              ,lv_errmsg);   -- ユーザー・エラー・メッセージ
---
-            -- エラーメッセージ取得
-            lv_errmsg  := SUBSTRB(
-                            xxcmn_common_pkg.get_msg(
-                              gv_xxpo                   -- モジュール名略称:XXPO
-                             ,gv_msg_xxpo10237          -- メッセージ:APP-XXPO-10237 共通関数エラー
-                             ,gv_tkn_common_name        -- トークンNG_NAME
-                             ,gv_tkn_calc_load_ef_we)   -- 積載効率チェック(積載効率算出:重量)
-                             ,1,5000);
-            lv_errbuf := lv_errmsg;
-            RAISE global_api_expt;
-          END IF;
---
-          -- 積載オーバーの場合
-          IF (lv_loading_over_class = gv_flg_on) THEN
-            -- エラーログ出力
-            xxcmn_common_pkg.put_api_log(
-             ov_errbuf     => lv_errbuf     -- エラー・メッセージ
-            ,ov_retcode    => lv_retcode    -- リターン・コード
-            ,ov_errmsg     => lv_errmsg);   -- ユーザー・エラー・メッセージ
---
-            -- エラーメッセージ取得
-            lv_errmsg  := SUBSTRB(
-                           xxcmn_common_pkg.get_msg(
-                             gv_xxpo               -- モジュール名略称:XXPO
-                            ,gv_msg_xxpo10120)     -- メッセージ:APP-XXPO-10120 積載効率チェックエラー
-                            ,1,5000);
-            lv_errbuf := lv_errmsg;
-            RAISE global_api_expt;
-          END IF;
---
-        -- 容積の積載効率を取得する
-        ELSIF (gt_lr_we_ca_class_tbl(gn_i) = gv_ca) THEN
---
-          -- 「積載効率チェック(積載効率算出)」呼び出し
-          xxwsh_common910_pkg.calc_load_efficiency
-                              (
-                                NULL,                                   -- 合計重量
-                                ln_sum_capacity,                        -- 合計容積
-                                cv_wh,                                  -- 倉庫'4'
-                                gt_lr_deliver_from_tbl(gn_i),           -- 出庫倉庫コード
-                                cv_sup,                                 -- 支給先'11'
-                                gt_lr_deliver_to_tbl(gn_i),             -- 配送先コード
-                                gt_ship_method_tbl(gn_k),               -- 配送区分
-                                gv_item_div_prf,                        -- 商品区分
-                                NULL,                                   -- 自動配車対象区分
-                                TRUNC(SYSDATE),                         -- 基準日
-                                lv_retcode,                             -- リターンコード
-                                lv_errmsg_code,                         -- エラーメッセージコード
-                                lv_errmsg,                              -- エラーメッセージ
-                                lv_loading_over_class,                  -- 積載オーバー区分
-                                lv_ship_methods,                        -- 出荷方法
-                                lv_load_efficiency_we,                  -- 重量積載効率
-                                lv_load_efficiency_ca,                  -- 容積積載効率
-                                lv_mixed_ship_method                    -- 混載配送区分
+                                ln_sum_weight,                        -- 合計重量
+                                NULL,                                 -- 合計容積
+                                cv_wh,                                -- 倉庫'4'
+                                gt_lr_deliver_from_tbl(gn_i),         -- 出庫倉庫コード
+                                cv_sup,                               -- 支給先'11'
+                                gt_lr_deliver_to_tbl(gn_i),           -- 配送先コード
+                                gt_lr_shipping_method_code_tbl(gn_i), -- 配送区分
+                                gv_item_div_prf,                      -- 商品区分
+                                NULL,                                 -- 自動配車対象区分
+                                TRUNC(SYSDATE),                       -- 基準日
+                                lv_retcode,                           -- リターンコード
+                                lv_errmsg_code,                       -- エラーメッセージコード
+                                lv_errmsg,                            -- エラーメッセージ
+                                lv_loading_over_class,                -- 積載オーバー区分
+                                lv_ship_methods,                      -- 出荷方法
+                                gt_ph_load_efficiency_we_tbl(gn_k),   -- 重量積載効率
+                                lv_load_efficiency_ca,                -- 容積積載効率
+                                lv_mixed_ship_method                  -- 混載配送区分
                               );
 --
           -- 共通関数でエラーの場合
@@ -1899,118 +1992,63 @@ AS
                               gv_xxpo                   -- モジュール名略称:XXPO
                              ,gv_msg_xxpo10237          -- メッセージ::APP-XXPO-10237 共通関数エラー
                              ,gv_tkn_common_name        -- トークンNG_NAME
-                             ,gv_tkn_calc_load_ef_ca)   -- 積載効率チェック(積載効率算出:容積)
+                             ,gv_tkn_calc_load_ef_we)   -- 積載効率チェック(積載効率算出:重量)
                              ,1,5000);
             lv_errbuf := lv_errmsg;
             RAISE global_api_expt;
           END IF;
 --
-          -- 積載オーバーの場合
-          IF (lv_loading_over_class = gv_flg_on) THEN
+          -- 「積載効率チェック(積載効率算出)」呼び出し
+          xxwsh_common910_pkg.calc_load_efficiency
+                              (
+                                NULL,                                 -- 合計重量
+                                ln_sum_capacity,                      -- 合計容積
+                                cv_wh,                                -- 倉庫'4'
+                                gt_lr_deliver_from_tbl(gn_i),         -- 出庫倉庫コード
+                                cv_sup,                               -- 支給先'11'
+                                gt_lr_deliver_to_tbl(gn_i),           -- 配送先コード
+                                gt_lr_shipping_method_code_tbl(gn_i), -- 配送区分
+                                gv_item_div_prf,                      -- 商品区分
+                                NULL,                                 -- 自動配車対象区分
+                                TRUNC(SYSDATE),                       -- 基準日
+                                lv_retcode,                           -- リターンコード
+                                lv_errmsg_code,                       -- エラーメッセージコード
+                                lv_errmsg,                            -- エラーメッセージ
+                                lv_loading_over_class,                -- 積載オーバー区分
+                                lv_ship_methods,                      -- 出荷方法
+                                lv_load_efficiency_we,                -- 重量積載効率
+                                gt_ph_load_efficiency_ca_tbl(gn_k),   -- 容積積載効率
+                                lv_mixed_ship_method                  -- 混載配送区分
+                              );
+--
+          -- 共通関数でエラーの場合
+          IF (lv_retcode = '1') THEN
             -- エラーログ出力
             xxcmn_common_pkg.put_api_log(
-             ov_errbuf     => lv_errbuf     -- エラー・メッセージ
-            ,ov_retcode    => lv_retcode    -- リターン・コード
-            ,ov_errmsg     => lv_errmsg);   -- ユーザー・エラー・メッセージ
+              lv_errbuf     -- エラー・メッセージ
+             ,lv_retcode    -- リターン・コード
+             ,lv_errmsg);   -- ユーザー・エラー・メッセージ
 --
             -- エラーメッセージ取得
             lv_errmsg  := SUBSTRB(
-                           xxcmn_common_pkg.get_msg(
-                             gv_xxpo               -- モジュール名略称:XXPO
-                            ,gv_msg_xxpo10120)     -- メッセージ:APP-XXPO-10120 積載効率チェックエラー
-                            ,1,5000);
+                            xxcmn_common_pkg.get_msg(
+                              gv_xxpo                   -- モジュール名略称:XXPO
+                             ,gv_msg_xxpo10237          -- メッセージ:APP-XXPO-10237 共通関数エラー
+                             ,gv_tkn_common_name        -- トークンNG_NAME
+                             ,gv_tkn_calc_load_ef_ca)   -- 積載効率チェック(積載効率算出:容積)
+                             ,1,5000);
             lv_errbuf := lv_errmsg;
             RAISE global_api_expt;
           END IF;
+        -- 内部変更#166 2008/07/22 modify end
+--
+        ELSE
+          -- 運賃区分OFFの場合、積載効率にNULLを設定する。
+          gt_ph_load_efficiency_we_tbl(gn_k) := NULL;
+          gt_ph_load_efficiency_ca_tbl(gn_k) := NULL;
 --
         END IF;
---
-        -- 「積載効率チェック(積載効率算出)」呼び出し
-        xxwsh_common910_pkg.calc_load_efficiency
-                            (
-                              ln_sum_weight,                        -- 合計重量
-                              NULL,                                 -- 合計容積
-                              cv_wh,                                -- 倉庫'4'
-                              gt_lr_deliver_from_tbl(gn_i),         -- 出庫倉庫コード
-                              cv_sup,                               -- 支給先'11'
-                              gt_lr_deliver_to_tbl(gn_i),           -- 配送先コード
-                              gt_lr_shipping_method_code_tbl(gn_i), -- 配送区分
-                              gv_item_div_prf,                      -- 商品区分
-                              NULL,                                 -- 自動配車対象区分
-                              TRUNC(SYSDATE),                       -- 基準日
-                              lv_retcode,                           -- リターンコード
-                              lv_errmsg_code,                       -- エラーメッセージコード
-                              lv_errmsg,                            -- エラーメッセージ
-                              lv_loading_over_class,                -- 積載オーバー区分
-                              lv_ship_methods,                      -- 出荷方法
-                              gt_ph_load_efficiency_we_tbl(gn_k),   -- 重量積載効率
-                              lv_load_efficiency_ca,                -- 容積積載効率
-                              lv_mixed_ship_method                  -- 混載配送区分
-                            );
---
-        -- 共通関数でエラーの場合
-        IF (lv_retcode = '1') THEN
-          -- エラーログ出力
-          xxcmn_common_pkg.put_api_log(
-            lv_errbuf     -- エラー・メッセージ
-           ,lv_retcode    -- リターン・コード
-           ,lv_errmsg);   -- ユーザー・エラー・メッセージ
---
-          -- エラーメッセージ取得
-          lv_errmsg  := SUBSTRB(
-                          xxcmn_common_pkg.get_msg(
-                            gv_xxpo                   -- モジュール名略称:XXPO
-                           ,gv_msg_xxpo10237          -- メッセージ::APP-XXPO-10237 共通関数エラー
-                           ,gv_tkn_common_name        -- トークンNG_NAME
-                           ,gv_tkn_calc_load_ef_we)   -- 積載効率チェック(積載効率算出:重量)
-                           ,1,5000);
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;
---
-        -- 「積載効率チェック(積載効率算出)」呼び出し
-        xxwsh_common910_pkg.calc_load_efficiency
-                            (
-                              NULL,                                 -- 合計重量
-                              ln_sum_capacity,                      -- 合計容積
-                              cv_wh,                                -- 倉庫'4'
-                              gt_lr_deliver_from_tbl(gn_i),         -- 出庫倉庫コード
-                              cv_sup,                               -- 支給先'11'
-                              gt_lr_deliver_to_tbl(gn_i),           -- 配送先コード
-                              gt_lr_shipping_method_code_tbl(gn_i), -- 配送区分
-                              gv_item_div_prf,                      -- 商品区分
-                              NULL,                                 -- 自動配車対象区分
-                              TRUNC(SYSDATE),                       -- 基準日
-                              lv_retcode,                           -- リターンコード
-                              lv_errmsg_code,                       -- エラーメッセージコード
-                              lv_errmsg,                            -- エラーメッセージ
-                              lv_loading_over_class,                -- 積載オーバー区分
-                              lv_ship_methods,                      -- 出荷方法
-                              lv_load_efficiency_we,                -- 重量積載効率
-                              gt_ph_load_efficiency_ca_tbl(gn_k),   -- 容積積載効率
-                              lv_mixed_ship_method                  -- 混載配送区分
-                            );
---
-        -- 共通関数でエラーの場合
-        IF (lv_retcode = '1') THEN
-          -- エラーログ出力
-          xxcmn_common_pkg.put_api_log(
-            lv_errbuf     -- エラー・メッセージ
-           ,lv_retcode    -- リターン・コード
-           ,lv_errmsg);   -- ユーザー・エラー・メッセージ
---
-          -- エラーメッセージ取得
-          lv_errmsg  := SUBSTRB(
-                          xxcmn_common_pkg.get_msg(
-                            gv_xxpo                   -- モジュール名略称:XXPO
-                           ,gv_msg_xxpo10237          -- メッセージ:APP-XXPO-10237 共通関数エラー
-                           ,gv_tkn_common_name        -- トークンNG_NAME
-                           ,gv_tkn_calc_load_ef_ca)   -- 積載効率チェック(積載効率算出:容積)
-                           ,1,5000);
-          lv_errbuf := lv_errmsg;
-          RAISE global_api_expt;
-        END IF;
-      -- 内部変更#166 2008/07/22 modify end
+        -- ST不具合 modify 2008/07/29 end
 --
       END IF;
 --
@@ -3437,3 +3475,4 @@ AS
 --###########################  固定部 END   #######################################################
 --
 END xxpo940008c;
+/

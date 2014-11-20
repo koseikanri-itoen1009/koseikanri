@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/06/12   1.6   Oracle 北寒寺 正夫 結合テスト不具合対応
  *  2008/07/15   1.7   Oracle 北寒寺 正夫 ST#449対応
  *  2008/06/23   1.8   Oracle 北寒寺 正夫 変更要求#93対応
+ *  2008/07/25   1.9   Oracle 北寒寺 正夫 結合テスト不具合修正
  *
  *****************************************************************************************/
 --
@@ -111,6 +112,9 @@ AS
   gv_msg_92a_007       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12854';    -- ロット逆転エラー
   gv_msg_92a_008       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-12855';    -- 鮮度不備エラー
   gv_msg_92a_009       CONSTANT VARCHAR2(15)  := 'APP-XXWSH-11222';    -- パラメータ書式
+-- Ver1.9 M.Hokkanji Start
+  gv_msg_92a_010       CONSTANT VARCHAR2(15)  := 'APP-XXCMN-10604';    -- ケース入数エラー
+-- Ver1.9 M.Hokkanji End
   --定数
   gv_cons_m_org_id     CONSTANT VARCHAR2(100) := 'XXCMN_MASTER_ORG_ID';-- マスタ組織ID
   gv_cons_msg_kbn_wsh  CONSTANT VARCHAR2(5)   := 'XXWSH';              -- メッセージ区分XXWSH
@@ -157,6 +161,10 @@ AS
   gv_tkn_ship_type     CONSTANT VARCHAR2(15)  := 'SHIP_TYPE';          -- 配送先
   gv_tkn_item          CONSTANT VARCHAR2(15)  := 'ITEM';               -- 品目
   gv_tkn_lot           CONSTANT VARCHAR2(15)  := 'LOT';                -- ロットNo
+-- Ver1.9 M.Hokkanji Start
+  gv_tkn_request_no    CONSTANT VARCHAR2(15)  := 'REQUEST_NO';         -- 依頼No
+  gv_tkn_item_no       CONSTANT VARCHAR2(15)  := 'ITEM_NO';            -- 品目コード
+-- Ver1.9 M.Hokkanji End
   gv_tkn_reverse_date  CONSTANT VARCHAR2(15)  := 'REVDATE';            -- 逆転日付
   gv_tkn_arrival_date  CONSTANT VARCHAR2(15)  := 'ARRIVAL_DATE';       -- 着荷日付
   gv_tkn_ship_to       CONSTANT VARCHAR2(15)  := 'SHIP_TO';            -- 配送先
@@ -1068,6 +1076,12 @@ AS
     -- 固定ローカル定数
     -- ===============================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'get_can_enc_qty2'; --プログラム名
+-- Ver1.9 M.Hokkanji Start
+    cv_xxcmn                CONSTANT VARCHAR2(10)  := 'XXCMN';
+    cv_dummy_frequent_whse  CONSTANT VARCHAR2(100) := 'XXCMN_DUMMY_FREQUENT_WHSE';
+    cv_error_10002          CONSTANT VARCHAR2(30)  := 'APP-XXCMN-10002'; --プロファイル取得エラー
+    cv_tkn_ng_profile       CONSTANT VARCHAR2(30)  := 'NG_PROFILE'; --トークン
+-- Ver1.9 M.Hokkanji End
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
@@ -1092,6 +1106,9 @@ AS
     ln_ref_in_time_enc_qty  NUMBER; -- 対象親や子の有効日ベース引当可能数
 --
     ln_inventory_location_id       mtl_item_locations.inventory_location_id%TYPE;
+-- Ver1.9 M.Hokkanji Start
+    lt_dummy_frequent_whse  mtl_item_locations.segment1%TYPE; --ダミー代表倉庫
+-- Ver1.9 M.Hokkanji End
 --
     -- *** ローカル・カーソル ***
     CURSOR lc_child_cur  -- 子倉庫の合計を算出する為、共通関数に渡す子倉庫を抽出する
@@ -1113,7 +1130,13 @@ AS
     -- ユーザー定義例外
     -- ===============================
     process_exp               EXCEPTION;     -- 各処理でエラーが発生した場合
+-- Ver1.6 M.Hokkanji Start
+    profile_exp               EXCEPTION;     -- プロファイル取得失敗
+-- Ver1.6 M.Hokkanji End
     PRAGMA EXCEPTION_INIT(process_exp, -20001);
+-- Ver1.6 M.Hokkanji Start
+    PRAGMA EXCEPTION_INIT(profile_exp, -20002);
+-- Ver1.6 M.Hokkanji End
 --
   BEGIN
 --
@@ -1188,47 +1211,56 @@ AS
 --
     -- 代表倉庫（子）の場合
     ELSE
-      -- 代表倉庫（親）を取得
-      BEGIN
-        SELECT  mil.inventory_location_id
-        INTO    ln_inventory_location_id
-        FROM    mtl_item_locations  mil    -- 保管場所
-        WHERE   mil.attribute5           = lv_rep_whse -- 代表倉庫
-        AND     mil.segment1             = mil.attribute5;
+-- Ver1.9 M.Hokkanji Start
+      -- ダミー代表倉庫を取得
+      lt_dummy_frequent_whse := FND_PROFILE.VALUE(cv_dummy_frequent_whse);
+      -- 取得に失敗した場合
+      IF (lt_dummy_frequent_whse IS NULL) THEN
+        RAISE profile_exp ;
+      END IF ;
+      IF (lv_rep_whse = lt_dummy_frequent_whse) THEN
+        BEGIN
+          SELECT  xfil.frq_item_location_id
+          INTO    ln_inventory_location_id
+          FROM    xxwsh_frq_item_locations xfil
+          WHERE   xfil.item_location_code = lv_whse_code         -- 元倉庫
+          AND     xfil.item_id = in_item_id;                     -- OPM品目ID
 --
-        ln_ref_all_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
-                                                           in_item_id,
-                                                           in_lot_id),0);
-        ln_ref_in_time_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
-                                                               in_item_id,
-                                                               in_lot_id,
-                                                               in_active_date),0);
+          ln_ref_all_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
+                                                             in_item_id,
+                                                             in_lot_id),0);
+          ln_ref_in_time_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
+                                                                 in_item_id,
+                                                                 in_lot_id,
+                                                                 in_active_date),0);
 --
-      EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-          -- 代表倉庫取得に失敗した場合は倉庫-品目単位の代表管理のため
-          -- 倉庫品目マスタを参照
-          BEGIN
-            SELECT  xfil.frq_item_location_id
-            INTO    ln_inventory_location_id
-            FROM    xxwsh_frq_item_locations xfil
-            WHERE   xfil.item_location_code = lv_whse_code         -- 元倉庫
-            AND     xfil.item_id = in_item_id;                     -- OPM品目ID
---
-            ln_ref_all_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
-                                                               in_item_id,
-                                                               in_lot_id),0);
-            ln_ref_in_time_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
-                                                                   in_item_id,
-                                                                   in_lot_id,
-                                                                   in_active_date),0);
---
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              ln_ref_all_enc_qty     := 0;
-              ln_ref_in_time_enc_qty := 0;
-          END;
-      END;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_ref_all_enc_qty     := 0;
+            ln_ref_in_time_enc_qty := 0;
+        END;
+      ELSE
+        BEGIN
+          SELECT  mil.inventory_location_id
+          INTO    ln_inventory_location_id
+          FROM    mtl_item_locations  mil    -- 保管場所
+          WHERE   mil.attribute5           = lv_rep_whse -- 代表倉庫
+          AND     mil.segment1             = mil.attribute5;
+  --
+          ln_ref_all_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
+                                                             in_item_id,
+                                                             in_lot_id),0);
+          ln_ref_in_time_enc_qty := NVL(get_can_enc_in_time_qty2(ln_inventory_location_id,
+                                                                 in_item_id,
+                                                                 in_lot_id,
+                                                                 in_active_date),0);
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            ln_ref_all_enc_qty := 0;
+            ln_ref_in_time_enc_qty := 0;
+        END;
+-- Ver1.9 M.Hokkanji End
+      END IF;
 --
       -- 親単体の引当可能数がマイナスの場合のみ足し込む
       IF (ln_ref_all_enc_qty < 0) THEN
@@ -1250,6 +1282,16 @@ AS
     RETURN ln_enc_qty;
 --
   EXCEPTION
+-- Ver1.9 M.Hokkanji Start
+    WHEN profile_exp THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg( cv_xxcmn
+                                            ,cv_error_10002
+                                            ,cv_tkn_ng_profile
+                                            ,cv_dummy_frequent_whse
+                                           ) ;
+      RAISE_APPLICATION_ERROR
+        (-20001,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errmsg,1,5000),TRUE);
+-- Ver1.9 M.Hokkanji End
     WHEN process_exp THEN
       RAISE_APPLICATION_ERROR
         (-20001,SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM,1,5000),TRUE);
@@ -1491,10 +1533,16 @@ AS
                           'xxwsh_order_headers_all       oh, ' || -- 受注ヘッダアドオン
                           'xxcmn_parties2_v              p,  ';
                                                         -- パーティアドオンマスタ , パーティマスタ
+-- Ver1.9 M.Hokkanji Start
+--    lv_fwd_sql6 :=        'xxwsh_oe_transaction_types2_v tt, ' || -- 受注タイプ
+--                          'xxwsh_order_lines_all         ol, ' || -- 受注明細アドオン
+--                          'xxcmn_item_mst2_v             im, ' || -- OPM品目マスタ
+--                          'xxcmn_item_categories4_v      ic ';
     lv_fwd_sql6 :=        'xxwsh_oe_transaction_types2_v tt, ' || -- 受注タイプ
                           'xxwsh_order_lines_all         ol, ' || -- 受注明細アドオン
                           'xxcmn_item_mst2_v             im, ' || -- OPM品目マスタ
-                          'xxcmn_item_categories4_v      ic ';
+                          'xxcmn_item_categories5_v      ic ';
+-- Ver1.9 M.Hokkanji End
           -- 品目カテゴリセット , 品目カテゴリマスタ , OPM品目カテゴリ割当 , OPM品目カテゴリマスタ
 -- 2008/05/30 START
 --    lv_fwd_sql7 := 'WHERE  il.inventory_location_id = oh.deliver_from ' ||
@@ -1713,9 +1761,14 @@ AS
                           'im.conv_unit '                   || -- 入出庫換算単位
                    'FROM   xxcmn_item_locations2_v       il, ' || -- OPM保管場所マスタ
                           'xxinv_mov_req_instr_headers   ih, ';   -- 移動依頼/指示ヘッダアドオン
+-- Ver1.9 M.Hokkanji Start
+--    lv_mov_sql6 :=        'xxinv_mov_req_instr_lines     ml, ' || -- 移動依頼/指示明細アドオン
+--                          'xxcmn_item_mst2_v             im, ' || -- OPM品目マスタ
+--                          'xxcmn_item_categories4_v      ic ';
     lv_mov_sql6 :=        'xxinv_mov_req_instr_lines     ml, ' || -- 移動依頼/指示明細アドオン
                           'xxcmn_item_mst2_v             im, ' || -- OPM品目マスタ
-                          'xxcmn_item_categories4_v      ic ';
+                          'xxcmn_item_categories5_v      ic ';
+-- Ver1.9 M.Hokkanji End
           -- 品目カテゴリセット , 品目カテゴリマスタ , OPM品目カテゴリ割当 , OPM品目カテゴリマスタ
 -- 2008/05/30 START
 --    lv_mov_sql7 := 'WHERE  il.inventory_location_id = ih.shipped_locat_code ' ||
@@ -3538,6 +3591,29 @@ AS
     gn_target_cnt_total := gn_target_cnt_deliv + gn_target_cnt_move;
     <<demand_inf_loop>>
     FOR ln_d_cnt IN 1..gn_target_cnt_total LOOP
+-- Ver1.9 M.Hokkanji Start
+      -- ケース入数チェック以下の条件を全て満たしている場合はエラー
+      -- 入出庫換算単位が設定されている
+      -- 出荷依頼もしくは移動指示で商品区分がドリンク
+      -- ケース入数が0もしくはNULL
+      IF ((gr_demand_tbl(ln_d_cnt).conv_unit IS NOT NULL )
+        AND ((gr_demand_tbl(ln_d_cnt).document_type_code = gv_cons_biz_t_deliv) -- 出荷依頼
+             OR
+             ((gr_demand_tbl(ln_d_cnt).document_type_code = gv_cons_biz_t_move) -- 移動指示
+               AND (gv_item_class = gv_cons_id_drink) ))
+        AND (NVL(gr_demand_tbl(ln_d_cnt).num_of_cases,0) = 0)) THEN
+        -- ケース入数エラーを出力
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_cmn  -- 'XXCMN'
+                                                      ,gv_msg_92a_010       -- ケース入数エラー
+                                                      ,gv_tkn_request_no    -- トークン'REQUEST_NO'
+                                                      ,gr_demand_tbl(ln_d_cnt).request_no
+                                                      ,gv_tkn_item_no       -- トークン'ITEM_NO'
+                                                      ,gr_demand_tbl(ln_d_cnt).shipping_item_code) -- 依頼NO/移動番号
+                                                      ,1
+                                                      ,5000);
+        RAISE global_process_expt;
+      END IF;
+-- Ver1.9 M.Hokkanji End
       -- 品目コード、出庫予定日、入庫予定日、ブロック、出庫元のどれかが異なったら
       -- 供給情報を検索する
       IF ( (gr_demand_tbl(ln_d_cnt).shipping_item_code    <> lv_item_code)   -- 品目コード
@@ -3586,15 +3662,15 @@ AS
       gr_check_tbl(1).warnning_date := NULL;
       gr_check_tbl(1).lot_no := NULL;
 -- 2008/05/30 END
+-- M.Hokkanji Ver1.6 START フラグをONにしないと処理件数に追加されないため
+-- 対象となった明細は常に更新するように修正
+        lv_no_meisai_flg := gv_cons_flg_yes;
+-- M.Hokkanji Ver1.6 END
       -- 供給情報ループ
       <<supply_inf_loop>>
       FOR ln_s_cnt IN 1..ln_s_max LOOP
         -- チェックなしフラグの初期化
         lv_no_check_flg := gv_cons_flg_no;
--- M.Hokkanji Ver1.6 START フラグをONにしないと処理件数に追加されないため
--- 対象となった明細は常に更新するように修正
-        lv_no_meisai_flg := gv_cons_flg_yes;
--- M.Hokkanji Ver1.6 END
         -- ===============================================
         -- A-6  ロット引当チェック check_lot_allot
         -- ===============================================
