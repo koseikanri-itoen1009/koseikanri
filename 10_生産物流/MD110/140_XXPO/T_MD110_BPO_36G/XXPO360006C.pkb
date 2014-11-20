@@ -7,7 +7,7 @@ AS
  * Description      : d“üæˆø–¾×•\
  * MD.050           : —Lx‹‹’ •[Issue1.0(T_MD050_BPO_360)
  * MD.070           : —Lx‹‹’ •[Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009/03/30    1.22  A.Shiina         –{”ÔáŠQ#1346‘Î‰
  *  2009/04/02    1.23  A.Shiina         –{”ÔáŠQ#1370‘Î‰
  *  2009/04/03    1.24  A.Shiina         –{”ÔáŠQ#1379‘Î‰(v1.22‘Î‰æÁ)
+ *  2009/04/23    1.25  A.Shiina         –{”ÔáŠQ#1429‘Î‰
  *
  *****************************************************************************************/
 --
@@ -1105,8 +1106,12 @@ AS
 -- 2008/12/05 v1.19 UPDATE END
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
         || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   siire_tax '
-        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.kousen_rate_or_unit_price '
-        ||                          ','|| cv_type_hen  || ', xrart.kousen_rate_or_unit_price '
+-- 2009/04/23 v1.25 UPDATE START
+--        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.kousen_rate_or_unit_price '
+--        ||                          ','|| cv_type_hen  || ', xrart.kousen_rate_or_unit_price '
+        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.kousen_price * -1'
+        ||                          ','|| cv_type_hen  || ', xrart.kousen_price * -1'
+-- 2009/04/23 v1.25 UPDATE END
         ||       ' , pll.attribute5) * '
         || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
         || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   kousen_tax '
