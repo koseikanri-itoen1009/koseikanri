@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-09 1.0  SCS–ö•½’¼l  V‹Kì¬
+* 2009-04-24 1.1  SCS–ö•½’¼l  [STáŠQT1_626]createIDÌ”Ô•s³‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -91,23 +92,43 @@ public class XxcsoPvSortColumnDefEOImpl extends OAPlsqlEntityImpl
 
     Iterator lineEoIt = lineEntityDef.getAllEntityInstancesIterator(txn);
 
-    int lineCount = 0;
+// 2009/04/24 [STáŠQT1_626] Mod Start
+//    int lineCount = 0;
+//
+//    while( lineEoIt.hasNext() )
+//    {
+//      XxcsoPvSortColumnDefEOImpl lineEo
+//        = (XxcsoPvSortColumnDefEOImpl)lineEoIt.next();
+//      if ( lineEo.getEntityState() == OAPlsqlEntityImpl.STATUS_NEW )
+//      {
+//        lineCount--;
+//      }
+//    }
+//
+//    lineCount--;
+    int minValue = 0;
 
     while( lineEoIt.hasNext() )
     {
       XxcsoPvSortColumnDefEOImpl lineEo
         = (XxcsoPvSortColumnDefEOImpl)lineEoIt.next();
-      if ( lineEo.getEntityState() == OAPlsqlEntityImpl.STATUS_NEW )
+      int sortColumnDefId = lineEo.getSortColumnDefId().intValue();
+
+      if ( minValue > sortColumnDefId )
       {
-        lineCount--;
+        minValue = sortColumnDefId;
       }
     }
-
-    lineCount--;
+    minValue--;
+    XxcsoUtils.debug(txn, "new sortColumnDefId:" + minValue);
+// 2009/04/24 [STáŠQT1_626] Mod End
 
     // ‰¼‚Ì’l‚ğİ’è‚µ‚Ü‚·B
     // PK‚È‚Ì‚Å”í‚ç‚È‚¢‚æ‚¤‚Éİ’è‚µ‚Ü‚·B
-    setSortColumnDefId(new Number(lineCount));
+// 2009/04/24 [STáŠQT1_626] Mod Start
+//    setSortColumnDefId(new Number(lineCount));
+    setSortColumnDefId(new Number(minValue));
+// 2009/04/24 [STáŠQT1_626] Mod End
 
     XxcsoUtils.debug(txn, "[END]");
 

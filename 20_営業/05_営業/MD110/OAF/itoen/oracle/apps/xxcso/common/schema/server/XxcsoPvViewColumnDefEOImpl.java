@@ -7,6 +7,7 @@
 * ì˙ït       Ver. íSìñé“       èCê≥ì‡óe
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-09 1.0  SCSñˆïΩíºêl  êVãKçÏê¨
+* 2009-04-24 1.1  SCSñˆïΩíºêl  [STè·äQT1_626]createéûIDçÃî‘ïsê≥ëŒâû
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -91,23 +92,44 @@ public class XxcsoPvViewColumnDefEOImpl extends OAPlsqlEntityImpl
 
     Iterator lineEoIt = lineEntityDef.getAllEntityInstancesIterator(txn);
 
-    int lineCount = 0;
+// 2009/04/24 [STè·äQT1_626] Mod Start
+//    int lineCount = 0;
+//
+//    while( lineEoIt.hasNext() )
+//    {
+//      XxcsoPvViewColumnDefEOImpl lineEo
+//        = (XxcsoPvViewColumnDefEOImpl)lineEoIt.next();
+//      if ( lineEo.getEntityState() == OAPlsqlEntityImpl.STATUS_NEW )
+//      {
+//        lineCount--;
+//      }
+//    }
+//
+//    lineCount--;
+    int minValue = 0;
 
     while( lineEoIt.hasNext() )
     {
       XxcsoPvViewColumnDefEOImpl lineEo
         = (XxcsoPvViewColumnDefEOImpl)lineEoIt.next();
-      if ( lineEo.getEntityState() == OAPlsqlEntityImpl.STATUS_NEW )
+      int viewColumnDefId = lineEo.getViewColumnDefId().intValue();
+
+      if ( minValue > viewColumnDefId )
       {
-        lineCount--;
+        minValue = viewColumnDefId;
       }
     }
+    minValue--;
 
-    lineCount--;
+    XxcsoUtils.debug(txn, "new viewColumnDefId:" + minValue);
+// 2009/04/24 [STè·äQT1_626] Mod End
 
     // âºÇÃílÇê›íËÇµÇ‹Ç∑ÅB
     // PKÇ»ÇÃÇ≈îÌÇÁÇ»Ç¢ÇÊÇ§Ç…ê›íËÇµÇ‹Ç∑ÅB
-    setViewColumnDefId(new Number(lineCount));
+// 2009/04/24 [STè·äQT1_626] Mod Start
+//    setViewColumnDefId(new Number(lineCount));
+    setViewColumnDefId(new Number(minValue));
+// 2009/04/24 [STè·äQT1_626] Mod End
   }
 
   /*****************************************************************************

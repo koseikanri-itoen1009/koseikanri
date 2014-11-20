@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-09 1.0  SCS–ö•½’¼l  V‹Kì¬
+* 2009-04-24 1.1  SCS–ö•½’¼l  [STáŠQT1_626]createIDÌ”Ô•s³‘Î‰
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -104,23 +105,42 @@ public class XxcsoPvExtractTermDefVEOImpl extends OAPlsqlEntityImpl
 
     Iterator lineEoIt = lineEntityDef.getAllEntityInstancesIterator(txn);
 
-    int lineCount = 0;
+// 2009/04/24 [STáŠQT1_626] Mod Start
+//    int lineCount = 0;
+//
+//    while( lineEoIt.hasNext() )
+//    {
+//      XxcsoPvExtractTermDefVEOImpl lineEo
+//        = (XxcsoPvExtractTermDefVEOImpl)lineEoIt.next();
+//      if ( lineEo.getEntityState() == OAPlsqlEntityImpl.STATUS_NEW )
+//      {
+//        lineCount--;
+//      }
+//    }
+//    lineCount--;
+    int minValue = 0;
 
     while( lineEoIt.hasNext() )
     {
       XxcsoPvExtractTermDefVEOImpl lineEo
         = (XxcsoPvExtractTermDefVEOImpl)lineEoIt.next();
-      if ( lineEo.getEntityState() == OAPlsqlEntityImpl.STATUS_NEW )
+      int extractTermDefId = lineEo.getExtractTermDefId().intValue();
+
+      if ( minValue > extractTermDefId )
       {
-        lineCount--;
+        minValue = extractTermDefId;
       }
     }
-
-    lineCount--;
+    minValue--;
+    XxcsoUtils.debug(txn, "new extractTermDefId:" + minValue);
+// 2009/04/24 [STáŠQT1_626] Mod End
 
     // ‰¼‚Ì’l‚ğİ’è‚µ‚Ü‚·B
     // PK‚È‚Ì‚Å”í‚ç‚È‚¢‚æ‚¤‚Éİ’è‚µ‚Ü‚·B
-    setExtractTermDefId(new Number(lineCount));
+// 2009/04/24 [STáŠQT1_626] Mod Start
+//    setExtractTermDefId(new Number(lineCount));
+    setExtractTermDefId(new Number(minValue));
+// 2009/04/24 [STáŠQT1_626] Mod End
 
     XxcsoUtils.debug(txn, "[END]");
   }
