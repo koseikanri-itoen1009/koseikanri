@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI004A04R(body)
  * Description      : VD機内在庫表
  * MD.050           : MD050_COI_004_A04
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ------------------------ --------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *                                       [0001033]在庫組織コードをプロファイルから取得するよう変更
  *  2009/09/08    1.6   N.Abe            [0001266]OPM品目アドオンの取得方法修正
  *  2009/10/21    1.7   N.Abe            [E_最終移行リハ_00502]物件マスタの機器区分を参照する修正
+ *  2009/12/25    1.8   N.Abe            [E_本稼動_00222]顧客名称取得方法修正
  *
  *****************************************************************************************/
 --
@@ -1820,7 +1821,10 @@ AS
             ,cv_1 ,xca1.past_sale_base_code) AS base_code                          --  2.拠点コード
           ,hca2.account_name                 AS base_name                          --  3.拠点名
           ,hca1.account_number               AS customer_code                      --  4.顧客コード
-          ,hca1.account_name                 AS customer_name                      --  5.顧客名
+-- == 2009/12/25 V1.8 Modified START ===============================================================
+--          ,hca1.account_name                 AS customer_name                      --  5.顧客名
+          ,hp1.party_name                    AS customer_name                      --  5.顧客名
+-- == 2009/12/25 V1.8 Modified END   ===============================================================
 -- == 2009/08/13 V1.5 Modified START ===============================================================
 --          ,punv.un_number                    AS model_code                         --  6.機種コード
 --          ,TO_NUMBER(punv.attribute8)        AS sele_quantity                      --  7.セレ数
@@ -2037,7 +2041,10 @@ AS
      ,base_code                   xxcmm_cust_accounts.sale_base_code%TYPE
      ,base_name                   hz_cust_accounts.account_name%TYPE
      ,customer_code               hz_cust_accounts.account_number%TYPE
-     ,customer_name               hz_cust_accounts.account_name%TYPE
+-- == 2009/12/25 V1.8 Modified START ===============================================================
+--     ,customer_name               hz_cust_accounts.account_name%TYPE
+     ,customer_name               hz_parties.party_name%TYPE
+-- == 2009/12/25 V1.8 Modified END   ===============================================================
      ,model_code                  po_un_numbers_vl.un_number%TYPE
      ,sele_quantity               NUMBER
      ,rack_quantity               xxcoi_mst_vd_column.rack_quantity%TYPE

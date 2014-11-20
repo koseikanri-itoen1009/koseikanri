@@ -8,7 +8,7 @@ AS
  * Description      : 倉庫毎に日次または月中、月末の受払残高情報を受払残高表に出力します。
  *                    預け先毎に月末の受払残高情報を受払残高表に出力します。
  * MD.050           : 受払残高表(倉庫・預け先)    MD050_COI_006_A15
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/09/11    1.8   N.Abe            [0001293]管轄拠点からの取得方法修正
  *                                       [0001266]OPM品目アドオンの取得方法修正
  *  2009/09/15    1.9   H.Sasaki         [0001346]PT対応
+ *  2009/12/22    1.10  N.Abe            [E_本稼動_00222]顧客名称取得方法修正(月次のみ)
  *
  *****************************************************************************************/
 --
@@ -169,7 +170,10 @@ AS
   gv_inv_kbn                  VARCHAR2(99);                 -- 棚卸区分
 -- == 2009/08/10 V1.6 Modified START ===============================================================
 --  gv_warehouse                VARCHAR2(99);                 -- 倉庫/預け先名称
-  gv_warehouse                VARCHAR2(240);                -- 倉庫/預け先名称
+-- == 2009/12/22 V1.10 Modified START ===============================================================
+--  gv_warehouse                VARCHAR2(240);                -- 倉庫/預け先名称
+  gv_warehouse                VARCHAR2(360);                -- 倉庫/預け先名称
+-- == 2009/12/22 V1.10 Modified END   ===============================================================
 -- == 2009/08/10 V1.6 Modified END   ===============================================================
 --
   /**********************************************************************************
@@ -979,7 +983,10 @@ AS
        ,msi_warehouse_name            mtl_secondary_inventories.description%TYPE                    -- 倉庫名称
 -- == 2009/08/10 V1.6 Modified START ===============================================================
 --       ,hca_left_base_name            hz_cust_accounts.account_name%TYPE                            -- 預け先名称
-       ,hca_left_base_name            VARCHAR2(240)                                                 -- 預け先名称
+-- == 2009/12/22 V1.10 Modified START ===============================================================
+--       ,hca_left_base_name            VARCHAR2(240)                                                 -- 預け先名称
+       ,hca_left_base_name            VARCHAR2(360)                                                 -- 預け先名称
+-- == 2009/12/22 V1.10 Modified END   ===============================================================
 -- == 2009/08/10 V1.6 Modified END   ===============================================================
        ,iib_gun_code                  ic_item_mst_b.attribute1%TYPE                                 -- 群コード
        ,iib_item_no                   ic_item_mst_b.item_no%TYPE                                    -- 商品コード
@@ -1356,7 +1363,10 @@ AS
                     ||  ')  msi_left_base_code '
                     ||  ',msi.description  msi_warehouse_name '
                     ||  ',DECODE(msi.attribute13, :bind_variables_2, msi.description '
-                    ||  ', hca.account_name '
+-- == 2009/12/22 V1.10 Modified START ===============================================================
+--                    ||  ', hca.account_name '
+                    ||  ', hp.party_name '
+-- == 2009/12/22 V1.10 Modified END   ===============================================================
                     ||  ')  hca_left_base_name '
                     ||  ',SUBSTR((CASE WHEN (TO_DATE(iib.attribute3, :bind_variables_3)) > TRUNC(:bind_variables_4) '
                     ||  'THEN iib.attribute1 '
@@ -1416,6 +1426,9 @@ AS
                     ||  ',mtl_system_items_b  sib '
                     ||  ',xxcmn_item_mst_b  imb '
                     ||  ',ic_item_mst_b  iib '
+-- == 2009/12/22 V1.10 Added START ===============================================================
+                    ||  ',hz_parties  hp '
+-- == 2009/12/22 V1.10 Added END   ===============================================================
                     -- WHERE句
                     ||  'WHERE msi.attribute7 = :bind_variables_5 '
                     ||  'AND   msi.organization_id = :bind_variables_6 '
@@ -1428,7 +1441,11 @@ AS
                     ||  'AND   sib.segment1 = iib.item_no '
                     ||  'AND   iib.item_id = imb.item_id '
                     ||  'AND   TRUNC(:bind_variables_7) BETWEEN TRUNC(imb.start_date_active) AND TRUNC(imb.end_date_active) '
-                    ||  'AND   msi.attribute4 = hca.account_number(+) ';
+-- == 2009/12/22 V1.10 Modified START ===============================================================
+--                    ||  'AND   msi.attribute4 = hca.account_number(+) ';
+                    ||  'AND   msi.attribute4 = hca.account_number(+) '
+                    ||  'AND   hca.party_id = hp.party_id(+) ';
+-- == 2009/12/22 V1.10 Modified END   ===============================================================
       --
       IF (iv_inventory_kbn = cv_inv_kbn2) THEN
         -- 月中の場合
@@ -1806,13 +1823,24 @@ AS
   --        INTO   gv_warehouse
   --        FROM   hz_cust_accounts     hca           -- 顧客マスタ
   --        WHERE  hca.account_number = iv_left_base;
-          SELECT DECODE(msi.attribute13, cv_subinv_7, msi.description, hca.account_name)
+-- == 2009/12/22 V1.10 Modified START ===============================================================
+--          SELECT DECODE(msi.attribute13, cv_subinv_7, msi.description, hca.account_name)
+--          INTO   gv_warehouse
+--          FROM   mtl_secondary_inventories msi
+--                ,hz_cust_accounts          hca
+--          WHERE  msi.attribute4 = hca.account_number(+)
+--          AND    DECODE(msi.attribute13, cv_subinv_7, msi.secondary_inventory_name
+--                                                    , hca.account_number) = iv_left_base;
+          SELECT DECODE(msi.attribute13, cv_subinv_7, msi.description, hp.party_name)
           INTO   gv_warehouse
           FROM   mtl_secondary_inventories msi
                 ,hz_cust_accounts          hca
+                ,hz_parties                hp
           WHERE  msi.attribute4 = hca.account_number(+)
+          AND    hca.party_id   = hp.party_id(+)
           AND    DECODE(msi.attribute13, cv_subinv_7, msi.secondary_inventory_name
                                                     , hca.account_number) = iv_left_base;
+-- == 2009/12/22 V1.10 Modified END   ===============================================================
   -- == 2009/08/10 V1.6 Modified END   ===============================================================
         END IF;
       EXCEPTION

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2009/07/10    1.6   H.Sasaki         [0000459]入出庫逆転データの出力条件を変更
  *  2009/09/08    1.7   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *  2009/12/15    1.8   H.Sasaki         [E_本稼動_00256]起動パラメータの年月日From-Toを設定
+ *  2009/12/25    1.9   N.Abe            [E_本稼動_00222]顧客名称取得方法修正
+ *                                       [E_本稼動_00610]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -266,17 +268,19 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
-    -- ワークテーブルロック
-    CURSOR del_xrj_tbl_cur
-    IS
-      SELECT 'X'
-      FROM   xxcoi_rep_shipstore_jour_list xrj     -- 入出庫ジャーナルチェックリスト帳票ワークテーブル
-      WHERE  xrj.request_id = cn_request_id        -- 要求ID
-      FOR UPDATE OF xrj.request_id NOWAIT
-    ;
---
-    -- *** ローカル・レコード ***
-    del_xrj_tbl_rec  del_xrj_tbl_cur%ROWTYPE;
+-- == 2009/12/25 V1.9 Deleted START ===============================================================
+--    -- ワークテーブルロック
+--    CURSOR del_xrj_tbl_cur
+--    IS
+--      SELECT 'X'
+--      FROM   xxcoi_rep_shipstore_jour_list xrj     -- 入出庫ジャーナルチェックリスト帳票ワークテーブル
+--      WHERE  xrj.request_id = cn_request_id        -- 要求ID
+--      FOR UPDATE OF xrj.request_id NOWAIT
+--    ;
+----
+--    -- *** ローカル・レコード ***
+--    del_xrj_tbl_rec  del_xrj_tbl_cur%ROWTYPE;
+-- == 2009/12/25 V1.9 Deleted END   ===============================================================
 --
   BEGIN
 --
@@ -291,71 +295,83 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- カーソルオープン
-    OPEN del_xrj_tbl_cur;
+-- == 2009/12/25 V1.9 Deleted START ===============================================================
+--    -- カーソルオープン
+--    OPEN del_xrj_tbl_cur;
+----
+--    <<del_xrj_tbl_cur_loop>>
+--    LOOP
+--      -- レコード読込
+--      FETCH del_xrj_tbl_cur INTO del_xrj_tbl_rec;
+--      EXIT WHEN del_xrj_tbl_cur%NOTFOUND;
 --
-    <<del_xrj_tbl_cur_loop>>
-    LOOP
-      -- レコード読込
-      FETCH del_xrj_tbl_cur INTO del_xrj_tbl_rec;
-      EXIT WHEN del_xrj_tbl_cur%NOTFOUND;
---
+-- == 2009/12/25 V1.9 Deleted END   ===============================================================
       -- 入出庫ジャーナルチェックリスト帳票ワークテーブルの削除
       DELETE
       FROM   xxcoi_rep_shipstore_jour_list xrj        -- 入出庫ジャーナルチェックリスト帳票ワークテーブル
       WHERE  xrj.request_id = cn_request_id           -- 要求ID
       ;
---
-    END LOOP del_xrj_tbl_cur_loop;
---
-    -- カーソルクローズ
-    CLOSE del_xrj_tbl_cur;
+-- == 2009/12/25 V1.9 Deleted START ===============================================================
+----
+--    END LOOP del_xrj_tbl_cur_loop;
+----
+--    -- カーソルクローズ
+--    CLOSE del_xrj_tbl_cur;
+-- == 2009/12/25 V1.9 Deleted END   ===============================================================
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
 --
   EXCEPTION
-    -- ロック取得エラー
-    WHEN lock_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xrj_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xrj_tbl_cur;
-      END IF;
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                      , iv_name         => cv_msg_xxcoi10005
-                    );
-      lv_errbuf  := lv_errmsg;
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- == 2009/12/25 V1.9 Deleted START ===============================================================
+--    -- ロック取得エラー
+--    WHEN lock_expt THEN
+--      -- カーソルがOPENしている場合
+--      IF ( del_xrj_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xrj_tbl_cur;
+--      END IF;
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_app_name
+--                      , iv_name         => cv_msg_xxcoi10005
+--                    );
+--      lv_errbuf  := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--      ov_retcode := cv_status_error;
+-- == 2009/12/25 V1.9 Deleted END   ===============================================================
 --
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xrj_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xrj_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.9 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xrj_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xrj_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.9 Deleted END   ===============================================================
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xrj_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xrj_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.9 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xrj_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xrj_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.9 Deleted END   ===============================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xrj_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xrj_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.9 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xrj_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xrj_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.9 Deleted END   ===============================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -833,11 +849,20 @@ AS
         AND     msi.organization_id           =   gn_organization_id;
         --
       ELSE
-        SELECT  SUBSTRB(hca.account_name, 1, 50)
+-- == 2009/12/25 V1.9 Modified START ===============================================================
+--        SELECT  SUBSTRB(hca.account_name, 1, 50)
+--        INTO    lv_outside_name
+--        FROM    hz_cust_accounts    hca
+--        WHERE   hca.account_number      =   gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_cust_code
+--        AND     hca.customer_class_code =   cv_10;
+        SELECT  SUBSTRB(hp.party_name, 1, 50)
         INTO    lv_outside_name
         FROM    hz_cust_accounts    hca
+               ,hz_parties          hp
         WHERE   hca.account_number      =   gt_hht_info_tab( gn_hht_info_loop_cnt ).outside_cust_code
-        AND     hca.customer_class_code =   cv_10;
+        AND     hca.customer_class_code =   cv_10
+        AND     hca.party_id            =   hp.party_id;
+-- == 2009/12/25 V1.9 Modified END   ===============================================================
         --
       END IF;
     EXCEPTION
@@ -855,11 +880,20 @@ AS
         AND     msi.organization_id           =   gn_organization_id;
         --
       ELSE
-        SELECT  SUBSTRB(hca.account_name, 1, 50)
+-- == 2009/12/25 V1.9 Modified START ===============================================================
+--        SELECT  SUBSTRB(hca.account_name, 1, 50)
+--        INTO    lv_inside_name
+--        FROM    hz_cust_accounts    hca
+--        WHERE   hca.account_number      =   gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_cust_code
+--        AND     hca.customer_class_code =   cv_10;
+        SELECT  SUBSTRB(hp.party_name, 1, 50)
         INTO    lv_inside_name
         FROM    hz_cust_accounts    hca
+               ,hz_parties          hp
         WHERE   hca.account_number      =   gt_hht_info_tab( gn_hht_info_loop_cnt ).inside_cust_code
-        AND     hca.customer_class_code =   cv_10;
+        AND     hca.customer_class_code =   cv_10
+        AND     hca.party_id            =   hp.party_id;
+-- == 2009/12/25 V1.9 Modified END   ===============================================================
         --
       END IF;
     EXCEPTION

@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI003A05R(body)
  * Description      : 入庫差異確認リスト
  * MD.050           : 入庫差異確認リスト MD050_COI_003_A05
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *  2009/01/20    1.0   SCS.Tsuboi       新規作成
  *  2009/08/06    1.1   N.Abe            [0000945]パフォーマンス改善
  *  2009/08/18    1.2   N.Abe            [0001090]出力桁数の修正
+ *  2009/12/25    1.3   N.Abe            [E_本稼動_00222]顧客名称取得方法修正
+ *                                       [E_本稼動_00610]パフォーマンス改善
  *
  *****************************************************************************************/
 --
@@ -84,11 +86,15 @@ AS
   -- ===============================
   get_name_expt             EXCEPTION;    -- 名称取得エラー
   get_output_standard_expt  EXCEPTION;    -- 出力基準取得Iエラー
-  lock_expt                 EXCEPTION;    -- ロック取得エラー
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--  lock_expt                 EXCEPTION;    -- ロック取得エラー
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
   get_no_data_expt          EXCEPTION;    -- 取得データ0件
   svf_request_err_expt      EXCEPTION;    -- SVF起動APIエラー
 --
-  PRAGMA EXCEPTION_INIT(lock_expt, -54);  -- ロック取得例外
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--  PRAGMA EXCEPTION_INIT(lock_expt, -54);  -- ロック取得例外
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -109,7 +115,9 @@ AS
   cv_msg_xxcoi_00006  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00006';   -- 在庫組織ID取得エラー
   cv_msg_xxcoi_00009  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00009';   -- 拠点名取得エラー
   cv_msg_xxcoi_00010  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-00010';   -- APIエラーメッセージ
-  cv_msg_xxcoi_10007  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10007';   -- ロック取得エラー(入庫差異確認リスト)
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--  cv_msg_xxcoi_10007  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10007';   -- ロック取得エラー(入庫差異確認リスト)
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
   cv_msg_xxcoi_10021  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10021';   -- 出力基準名取得エラー
   cv_msg_xxcoi_10317  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10317';   -- 出力条件名取得エラー
   cv_msg_xxcoi_10158  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10158';   -- パラメータ.拠点メッセージ
@@ -145,7 +153,10 @@ AS
     , outside_location_code     VARCHAR2(13)                                     -- 出庫側コード
 -- == 2009/08/18 V1.2 Modified START ===============================================================
 --    , outside_location_name     VARCHAR2(40)                                     -- 出庫場所名
-    , outside_location_name     VARCHAR2(240)                                    -- 出庫場所名
+-- == 2009/12/25 V1.3 Modified START ===============================================================
+--    , outside_location_name     VARCHAR2(240)                                    -- 出庫場所名
+    , outside_location_name     VARCHAR2(360)                                    -- 出庫場所名
+-- == 2009/12/25 V1.3 Modified END   ===============================================================
 -- == 2009/08/18 V1.2 Modified END   ===============================================================
     , invoice_date               xxcoi_hht_inv_transactions.invoice_date%TYPE    -- 伝票日付
     , item_code                  xxcoi_hht_inv_transactions.item_code%TYPE       -- 商品コード
@@ -156,7 +167,10 @@ AS
     , inside_location_code       VARCHAR2(13)                                    -- 入庫側コード
 -- == 2009/08/18 V1.2 Modified START ===============================================================
 --    , inside_location_name       VARCHAR2(40)                                    -- 入庫場所名
-    , inside_location_name       VARCHAR2(240)                                    -- 入庫場所名
+-- == 2009/12/25 V1.3 Modified START ===============================================================
+--    , inside_location_name       VARCHAR2(240)                                    -- 入庫場所名
+    , inside_location_name       VARCHAR2(360)                                    -- 入庫場所名
+-- == 2009/12/25 V1.3 Modified END   ===============================================================
 -- == 2009/08/18 V1.2 Modified END   ===============================================================
   );
 --
@@ -212,17 +226,19 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
-    -- ワークテーブルロック
-    CURSOR del_xsbl_tbl_cur
-    IS
-      SELECT 'X'
-      FROM   xxcoi_rep_stock_balance_list xsbl        -- 入庫差異確認リスト帳票ワークテーブル
-      WHERE  xsbl.request_id = cn_request_id      -- 要求ID
-      FOR UPDATE OF xsbl.request_id NOWAIT
-    ;
---
-    -- *** ローカル・レコード ***
-    del_xsbl_tbl_rec  del_xsbl_tbl_cur%ROWTYPE;
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--    -- ワークテーブルロック
+--    CURSOR del_xsbl_tbl_cur
+--    IS
+--      SELECT 'X'
+--      FROM   xxcoi_rep_stock_balance_list xsbl        -- 入庫差異確認リスト帳票ワークテーブル
+--      WHERE  xsbl.request_id = cn_request_id      -- 要求ID
+--      FOR UPDATE OF xsbl.request_id NOWAIT
+--    ;
+----
+--    -- *** ローカル・レコード ***
+--    del_xsbl_tbl_rec  del_xsbl_tbl_cur%ROWTYPE;
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
 --
   BEGIN
 --
@@ -237,14 +253,16 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
 --
-    -- カーソルオープン
-    OPEN del_xsbl_tbl_cur;
---
-    <<del_xsbl_tbl_cur_loop>>
-    LOOP
-      -- レコード読込
-      FETCH del_xsbl_tbl_cur INTO del_xsbl_tbl_rec;
-      EXIT WHEN del_xsbl_tbl_cur%NOTFOUND;
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--    -- カーソルオープン
+--    OPEN del_xsbl_tbl_cur;
+----
+--    <<del_xsbl_tbl_cur_loop>>
+--    LOOP
+--      -- レコード読込
+--      FETCH del_xsbl_tbl_cur INTO del_xsbl_tbl_rec;
+--      EXIT WHEN del_xsbl_tbl_cur%NOTFOUND;
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
 --
       -- 入庫差異確認リスト帳票ワークテーブルの削除
       DELETE
@@ -252,56 +270,66 @@ AS
       WHERE  xsbl.request_id = cn_request_id      -- 要求ID
       ;
 --
-    END LOOP del_xrj_tbl_cur_loop;
---
-    -- カーソルクローズ
-    CLOSE del_xsbl_tbl_cur;
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--    END LOOP del_xrj_tbl_cur_loop;
+----
+--    -- カーソルクローズ
+--    CLOSE del_xsbl_tbl_cur;
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
 --
   EXCEPTION
-    -- ロック取得エラー
-    WHEN lock_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xsbl_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xsbl_tbl_cur;
-      END IF;
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_app_name
-                      , iv_name         => cv_msg_xxcoi_10007
-                    );
-      lv_errbuf  := lv_errmsg;
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--    -- ロック取得エラー
+--    WHEN lock_expt THEN
+--      -- カーソルがOPENしている場合
+--      IF ( del_xsbl_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xsbl_tbl_cur;
+--      END IF;
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_app_name
+--                      , iv_name         => cv_msg_xxcoi_10007
+--                    );
+--      lv_errbuf  := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--      ov_retcode := cv_status_error;
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
 --
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xsbl_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xsbl_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xsbl_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xsbl_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xsbl_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xsbl_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xsbl_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xsbl_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xsbl_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xsbl_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.3 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xsbl_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xsbl_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.3 Deleted END   ===============================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -754,7 +782,10 @@ AS
             END AS outside_code
         ,CASE hht.outside_subinv_code_conv_div
             WHEN cv_subinv_a THEN  msi1.description
-            ELSE hca1.account_name
+-- == 2009/12/25 V1.3 Modified START ===============================================================
+--            ELSE hca1.account_name
+            ELSE hp1.party_name
+-- == 2009/12/25 V1.3 Modified END   ===============================================================
             END AS outside_name
         ,hht.invoice_date                                        AS invoice_date
         ,hht.item_code                                           AS item_code
@@ -768,7 +799,10 @@ AS
            END AS inside_code
         ,CASE hht.inside_subinv_code_conv_div
            WHEN cv_subinv_a THEN  msi2.description
-           ELSE hca2.account_name
+-- == 2009/12/25 V1.3 Modified START ===============================================================
+--           ELSE hca2.account_name
+           ELSE hp2.party_name
+-- == 2009/12/25 V1.3 Modified END   ===============================================================
            END AS inside_name
       FROM
         (
@@ -864,6 +898,10 @@ AS
       ,mtl_secondary_inventories  msi2                               -- 入庫側保管場所マスタ
       ,hz_cust_accounts           hca1                               -- 出庫側顧客アカウント
       ,hz_cust_accounts           hca2                               -- 入庫側顧客アカウント
+-- == 2009/12/25 V1.3 Added START ===============================================================
+      ,hz_parties                 hp1                                -- 入庫側パーティマスタ
+      ,hz_parties                 hp2                                -- 出庫側パーティマスタ
+-- == 2009/12/25 V1.3 Added END   ===============================================================
     WHERE  
           hht.outside_subinv_code = msi1.secondary_inventory_name
       AND msi1.organization_id    = gn_organization_id
@@ -871,6 +909,10 @@ AS
       AND msi2.organization_id    = gn_organization_id
       AND hht.outside_cust_code   = hca1.account_number(+)
       AND hht.inside_cust_code    = hca2.account_number(+)
+-- == 2009/12/25 V1.3 Added START ===============================================================
+      AND hca1.party_id           = hp1.party_id(+)
+      AND hca2.party_id           = hp2.party_id(+)
+-- == 2009/12/25 V1.3 Added END   ===============================================================
       AND item_code               = iimb.item_no
       AND iimb.item_id            = ximb.item_id
       AND (hht.invoice_date BETWEEN ximb.start_date_active AND ximb.end_date_active)
@@ -1006,7 +1048,10 @@ AS
             END AS outside_code
         ,CASE outside.outside_subinv_code_conv_div
             WHEN cv_subinv_a THEN  msi1.description
-            ELSE hca1.account_name
+-- == 2009/12/25 V1.3 Modified START ===============================================================
+--            ELSE hca1.account_name
+            ELSE hp1.party_name
+-- == 2009/12/25 V1.3 Modified END   ===============================================================
             END AS outside_name
         ,outside.invoice_date                                    AS invoice_date
         ,outside.item_code                                       AS item_code
@@ -1020,7 +1065,10 @@ AS
             END AS inside_code
         ,CASE inside.inside_subinv_code_conv_div
             WHEN cv_subinv_a THEN  msi2.description
-            ELSE hca2.account_name
+-- == 2009/12/25 V1.3 Modified START ===============================================================
+--            ELSE hca2.account_name
+            ELSE hp2.party_name
+-- == 2009/12/25 V1.3 Modified END   ===============================================================
             END AS inside_name
       FROM
         (
@@ -1146,6 +1194,10 @@ AS
          ,mtl_secondary_inventories  msi2                             -- 入庫側保管場所マスタ
          ,hz_cust_accounts           hca1                             -- 出庫側顧客アカウント
          ,hz_cust_accounts           hca2                             -- 入庫側顧客アカウント
+-- == 2009/12/25 V1.3 Added START ===============================================================
+         ,hz_parties                 hp1                              -- 入庫側パーティマスタ
+         ,hz_parties                 hp2                              -- 出庫側パーティマスタ
+-- == 2009/12/25 V1.3 Added END   ===============================================================
       WHERE outside.outside_base_code            = inside.outside_base_code
         AND outside.outside_code                 = inside.outside_code
         AND outside.invoice_date                 = inside.invoice_date
@@ -1162,6 +1214,10 @@ AS
         AND inside.inside_subinv_code            = msi2.secondary_inventory_name
         AND msi2.organization_id                 = gn_organization_id
         AND inside.inside_cust_code              = hca2.account_number(+)
+-- == 2009/12/25 V1.3 Added START ===============================================================
+        AND hca1.party_id                        = hp1.party_id(+)
+        AND hca2.party_id                        = hp2.party_id(+)
+-- == 2009/12/25 V1.3 Added END   ===============================================================
       ORDER BY 
           DECODE(gr_param.output_standard,cv_standard,inside.inside_code,outside.outside_code)
          ,outside.invoice_date
@@ -1294,7 +1350,10 @@ AS
             END AS outside_code
         ,CASE hht.outside_subinv_code_conv_div
             WHEN cv_subinv_a THEN  msi1.description
-            ELSE hca1.account_name
+-- == 2009/12/25 V1.3 Modified START ===============================================================
+--            ELSE hca1.account_name
+            ELSE hp1.party_name
+-- == 2009/12/25 V1.3 Modified END   ===============================================================
             END AS outside_name
         ,hht.invoice_date                                        AS invoice_date
         ,hht.item_code                                           AS item_code
@@ -1308,7 +1367,10 @@ AS
            END AS inside_code
         ,CASE hht.inside_subinv_code_conv_div
            WHEN cv_subinv_a THEN  msi2.description
-           ELSE hca2.account_name
+-- == 2009/12/25 V1.3 Modified START ===============================================================
+--           ELSE hca2.account_name
+           ELSE hp2.party_name
+-- == 2009/12/25 V1.3 Modified END   ===============================================================
            END AS inside_name
       FROM
         (
@@ -1551,6 +1613,10 @@ AS
       ,mtl_secondary_inventories  msi2                               -- 入庫側保管場所マスタ
       ,hz_cust_accounts           hca1                               -- 出庫側顧客アカウント
       ,hz_cust_accounts           hca2                               -- 入庫側顧客アカウント
+-- == 2009/12/25 V1.3 Added START ===============================================================
+      ,hz_parties                 hp1                                -- 入庫側パーティマスタ
+      ,hz_parties                 hp2                                -- 出庫側パーティマスタ
+-- == 2009/12/25 V1.3 Added END   ===============================================================
     WHERE  
           hht.outside_subinv_code = msi1.secondary_inventory_name
       AND msi1.organization_id    = gn_organization_id
@@ -1558,6 +1624,10 @@ AS
       AND msi2.organization_id    = gn_organization_id
       AND hht.outside_cust_code   = hca1.account_number(+)
       AND hht.inside_cust_code    = hca2.account_number(+)
+-- == 2009/12/25 V1.3 Added START ===============================================================
+      AND hca1.party_id           = hp1.party_id(+)
+      AND hca2.party_id           = hp2.party_id(+)
+-- == 2009/12/25 V1.3 Added END   ===============================================================
       AND item_code               = iimb.item_no
       AND iimb.item_id            = ximb.item_id
       AND (hht.invoice_date BETWEEN ximb.start_date_active AND ximb.end_date_active)
