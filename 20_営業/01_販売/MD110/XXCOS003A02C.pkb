@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -14,6 +14,8 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                   A-0．初期処理
  *  proc_main_loop         A-1．データ抽出
+ *  proc_upd_n_target_line A-8. 販売実績明細対象外データ更新
+ *  proc_upd_skip_line     A-7. 販売実績明細スキップデータ更新
  *  proc_insert_upm_work   A-4．単価マスタワークテーブル登録
  *  proc_update_upm_work   A-3．単価マスタワークテーブル更新
  *  submain                メイン処理プロシージャ
@@ -31,6 +33,8 @@ AS
  *  2009/07/17   1.5    K.Shirasuna      [障害PT_00016]「単価マスタIF出力」処理の性能改善
  *  2009/08/04   1.6    M.Sano           [障害0000933] 『単価マスタIF出力』PTの考慮
  *  2009/08/17   1.7    M.Sano           [障害0001044] 「単価マスタIF出力」処理の性能改善
+ *  2009/08/25   1.8    K.Kiriu          [障害0001163] 「単価マスタIF出力」処理の性能改善
+ *                                       [障害0000451] 単価の桁あふれ対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -95,8 +99,18 @@ AS
   cv_appl_short_name      CONSTANT VARCHAR2(10) := 'XXCCP';        -- アドオン：共通・IF領域
   cv_tkn_table_name       CONSTANT VARCHAR2(20) := 'TABLE_NAME';
   cv_tkn_key_data         CONSTANT VARCHAR2(20) := 'KEY_DATA';
+/* 2009/08/25 Ver1.8 Add Start */
+  cv_tkn_cust             CONSTANT VARCHAR2(20) := 'CUST_CODE';
+  cv_tkn_item             CONSTANT VARCHAR2(20) := 'ITEM_CODE';
+  cv_tkn_dlv_date         CONSTANT VARCHAR2(20) := 'DLV_DATE';
+  cv_tkn_unit_price       CONSTANT VARCHAR2(20) := 'UNIT_PRICE';
+/* 2009/08/25 Ver1.8 Add End   */
   cv_flag_off             CONSTANT VARCHAR2(1)  := 'N';
   cv_flag_on              CONSTANT VARCHAR2(1)  := 'Y';
+/* 2009/08/25 Ver1.8 Add Start */
+  cv_flag_w               CONSTANT VARCHAR2(1)  := 'W';                   --スキップ
+  cv_flag_s               CONSTANT VARCHAR2(1)  := 'S';                   --対象外
+/* 2009/08/25 Ver1.8 Add End   */
   cv_correct              CONSTANT VARCHAR2(30) := '1';                   --取消訂正区分　=　1（訂正）
   cv_invoice_class_dliv   CONSTANT VARCHAR2(1)  := '1';                   --納品伝票区分 = 1(納品)
   cv_invoice_class_d_co   CONSTANT VARCHAR2(1)  := '3';                   --納品伝票区分 = 3(納品訂正)
@@ -120,6 +134,11 @@ AS
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
   cv_tkn_customer_err     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10705';    -- 顧客階層ビュー取得エラー
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
+/* 2009/08/25 Ver1.8 Add Start */
+  cv_tkn_exp_header_id    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10706';    -- 販売実績ヘッダID
+  cv_msg_n_target_upd_err CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10707';    -- 販売明細対象外データ更新エラー
+  cv_msg_edit_unit_price  CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10708';    -- 単価編集メッセージ
+/* 2009/08/25 Ver1.8 Add End   */
   cv_lookup_type_gyotai   CONSTANT VARCHAR2(30) := 'XXCOS1_GYOTAI_SHO_MST_003_A02'; --参照タイプ　業態小分類
   cv_lookup_type_no_inv   CONSTANT VARCHAR2(30) := 'XXCOS1_NO_INV_ITEM_CODE'; --参照タイプ　非在庫品目
   cv_lookup_type_sals_cls CONSTANT VARCHAR2(30) := 'XXCOS1_SALE_CLASS';   -- 参照タイプ　売上区分
@@ -131,6 +150,9 @@ AS
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
   cv_msg_comma            CONSTANT VARCHAR2(20) := ', ';                  -- カンマ
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
+/* 2009/08/25 Ver1.8 Add Start */
+  cv_fmt_date             CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';          -- 日付フォーマット
+/* 2009/08/25 Ver1.8 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -149,7 +171,9 @@ AS
   gv_customer_number          xxcos_unit_price_mst_work.customer_number%TYPE;
   gv_item_code                xxcos_unit_price_mst_work.item_code%TYPE;
   gv_tkn_lock_table           fnd_new_messages.message_text%TYPE   ;
-
+/* 2009/08/25 Ver1.8 Add Start */
+  gv_msg_tkn_exp_header_id    fnd_new_messages.message_text%TYPE   ;--'販売実績ヘッダID'
+/* 2009/08/25 Ver1.8 Add End   */
   gd_nml_prev_dlv_date        xxcos_unit_price_mst_work.nml_prev_dlv_date%TYPE;     --通常 前回 納品日
   gd_nml_bef_prev_dlv_date    xxcos_unit_price_mst_work.nml_bef_prev_dlv_date%TYPE; --通常 前々回 納品日
   gd_sls_prev_dlv_date        xxcos_unit_price_mst_work.sls_prev_dlv_date%TYPE;     --特売 前回 納品日
@@ -169,6 +193,10 @@ AS
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
   gv_language                 fnd_lookup_values.language%TYPE;
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
+/* 2009/08/25 Ver1.8 Add Start */
+  gv_edit_unit_price_flag     VARCHAR2(1);              --単価編集フラグ
+  gv_empty_line_flag          VARCHAR2(1) DEFAULT 'N';  --終了時の空白行制御フラグ
+/* 2009/08/25 Ver1.8 Add End   */
 --
 --カーソル
   CURSOR main_cur
@@ -220,7 +248,10 @@ AS
     AND     xseh.dlv_invoice_class = cv_invoice_class_dliv
     AND     xseh.sales_exp_header_id =  xsel.sales_exp_header_id
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
-    AND     xsel.unit_price_mst_flag = cv_flag_off
+/* 2009/08/25 Ver1.8 Mod Start */
+--    AND     xsel.unit_price_mst_flag = cv_flag_off
+    AND     xsel.unit_price_mst_flag IN ( cv_flag_off, cv_flag_w )
+/* 2009/08/25 Ver1.8 Mod End   */
     AND     NOT EXISTS
 --****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
 --            (SELECT NULL
@@ -316,7 +347,10 @@ AS
                      WHERE   xseh.cancel_correct_class = cv_correct
                      AND     xseh.digestion_ln_number  = 1
                      AND     xseh.dlv_invoice_class IN (cv_invoice_class_dliv,cv_invoice_class_d_co)
-                     AND     xsel.unit_price_mst_flag  = cv_flag_off
+/* 2009/08/25 Ver1.8 Mod Start */
+--                     AND     xsel.unit_price_mst_flag  = cv_flag_off
+                     AND     xsel.unit_price_mst_flag IN ( cv_flag_off, cv_flag_w )
+/* 2009/08/25 Ver1.8 Mod End   */
 --****************************** 2009/08/17 1.7  M.Sano MOD START ***********************************--
 --                     AND     NOT EXISTS(SELECT NULL
                      AND     NOT EXISTS(SELECT /*+ use_nl(flvl) */
@@ -380,11 +414,20 @@ AS
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
   TYPE gt_ship_account IS TABLE OF xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE
                           INDEX BY xxcos_cust_hierarchy_v.ship_account_number%TYPE; -- 税金-端数処理保持テーブル型
+/* 2009/08/25 Ver1.8 Add Start */
+  TYPE gt_upd_header   IS TABLE OF xxcos_sales_exp_headers.sales_exp_header_id%TYPE
+                          INDEX BY BINARY_INTEGER;                                  -- 更新用ヘッダID保持テーブル型
+  TYPE gt_upd_line     IS TABLE OF ROWID
+                          INDEX BY BINARY_INTEGER;                                  -- 更新用明細ID保持テーブル型
+/* 2009/08/25 Ver1.8 Add End   */
   -- ===============================
   -- ユーザー定義グローバル表
   -- ===============================
   gt_ship_account_tbl gt_ship_account;                                              -- 税金-端数処理保持テーブル
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
+/* 2009/08/25 Ver1.8 Add Start */
+  gt_upd_header_tab   gt_upd_header;                                                -- 更新用ヘッダID保持テーブル型
+/* 2009/08/25 Ver1.8 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -495,6 +538,11 @@ AS
     gv_msg_tkn_meaning          := xxccp_common_pkg.get_msg(iv_application  => cv_application
                                                            ,iv_name         => cv_tkn_meaning
                                                            );
+/* 2009/08/25 Ver1.8 Add Start */
+    gv_msg_tkn_exp_header_id    := xxccp_common_pkg.get_msg(iv_application  => cv_application
+                                                           ,iv_name         => cv_tkn_exp_header_id
+                                                           );
+/* 2009/08/25 Ver1.8 Add End   */
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
     --==============================================================
     -- 使用言語を取得
@@ -577,6 +625,278 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END init;
+--
+/* 2009/08/25 Ver1.8 Add Start */
+  /**********************************************************************************
+   * Procedure Name   : proc_upd_n_target_line
+   * Description      : A-8．販売実績明細対象外データ更新
+   ***********************************************************************************/
+  PROCEDURE proc_upd_n_target_line(
+    ov_errbuf             OUT VARCHAR2,       --   エラー・メッセージ           --# 固定 #
+    ov_retcode            OUT VARCHAR2,       --   リターン・コード             --# 固定 #
+    ov_errmsg             OUT VARCHAR2)       --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_upd_n_target_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル・テーブル ***
+    lt_upd_line_tab  gt_upd_line;  --明細更新用
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    BEGIN
+--
+      --販売実績明細ロック(対象外データ全て)
+      SELECT /*+ INDEX(xsel xxcos_sales_exp_lines_n02) */
+             xsel.ROWID row_id
+      BULK COLLECT INTO
+             lt_upd_line_tab
+      FROM   xxcos_sales_exp_lines xsel
+      WHERE  xsel.unit_price_mst_flag = cv_flag_off  --当処理終了後に"N"で残っているもの
+      FOR UPDATE OF
+             xsel.sales_exp_line_id
+      NOWAIT
+      ;
+--
+      --販売実績明細更新
+      FORALL i IN 1..lt_upd_line_tab.COUNT
+        UPDATE xxcos_sales_exp_lines xsel
+        SET    xsel.unit_price_mst_flag        = cv_flag_s                  --単価マスタ作成済フラグ(対象外)
+              ,xsel.last_updated_by            = cn_last_updated_by         --最終更新者
+              ,xsel.last_update_date           = cd_last_update_date        --最終更新日
+              ,xsel.last_update_login          = cn_last_update_login       --最終更新ログイン
+              ,xsel.request_id                 = cn_request_id              --要求ID
+              ,xsel.program_application_id     = cn_program_application_id  --コンカレント・プログラム・アプリケーションID
+              ,xsel.program_id                 = cn_program_id              --コンカレント・プログラムID
+              ,xsel.program_update_date        = cd_program_update_date     --プログラム更新日
+        WHERE  xsel.ROWID  = lt_upd_line_tab(i)
+        ;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+--
+        lv_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+        --ロックエラーの場合
+        IF ( SQLCODE = cn_lock_error_code ) THEN
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                           cv_application
+                          ,cv_msg_lock
+                          ,cv_tkn_lock
+                          ,gv_msg_tkn_exp_l_tbl
+                        );
+        --その他の場合
+        ELSE
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          cv_application
+                         ,cv_msg_n_target_upd_err
+                       );
+        END IF;
+        --出力
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.LOG
+          ,buff   => lv_errbuf --エラーメッセージ
+        );
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg --エラーメッセージ
+        );
+        ov_retcode := cv_status_warn;
+--
+    END;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END proc_upd_n_target_line;
+--
+  /**********************************************************************************
+   * Procedure Name   : proc_upd_skip_line
+   * Description      : A-7．販売実績明細スキップデータ更新
+   ***********************************************************************************/
+  PROCEDURE proc_upd_skip_line(
+    it_sales_header_tab   IN  gt_upd_header,  --   更新対象ヘッダID
+    ov_errbuf             OUT VARCHAR2,       --   エラー・メッセージ           --# 固定 #
+    ov_retcode            OUT VARCHAR2,       --   リターン・コード             --# 固定 #
+    ov_errmsg             OUT VARCHAR2)       --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'proc_upd_skip_line'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_buf     VARCHAR2(5000);      --エラー・メッセージ(キー情報編集用)
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+    -- *** ローカル・テーブル ***
+    lt_upd_line_tab   gt_upd_line;  --明細更新用(ヘッダ単位で保持)
+    lt_upd_line_tab_f gt_upd_line;  --初期化用
+--
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    FOR i IN 1..it_sales_header_tab.COUNT LOOP
+--
+      BEGIN
+--
+        --初期化
+        lt_upd_line_tab := lt_upd_line_tab_f;
+--
+        --販売実績明細ロック(ヘッダ単位)
+        SELECT xsel.ROWID row_id
+        BULK COLLECT INTO
+               lt_upd_line_tab
+        FROM   xxcos_sales_exp_lines xsel
+        WHERE  xsel.sales_exp_header_id = it_sales_header_tab(i)
+        FOR UPDATE OF
+               xsel.sales_exp_line_id
+        NOWAIT
+        ;
+--
+        --販売実績明細更新(ヘッダ単位)
+        FORALL j IN 1..lt_upd_line_tab.COUNT
+          UPDATE xxcos_sales_exp_lines xsel
+          SET    unit_price_mst_flag        = cv_flag_w                  --単価マスタ作成済フラグ(警告)
+                ,last_updated_by            = cn_last_updated_by         --最終更新者
+                ,last_update_date           = cd_last_update_date        --最終更新日
+                ,last_update_login          = cn_last_update_login       --最終更新ログイン
+                ,request_id                 = cn_request_id              --要求ID
+                ,program_application_id     = cn_program_application_id  --コンカレント・プログラム・アプリケーションID
+                ,program_id                 = cn_program_id              --コンカレント・プログラムID
+                ,program_update_date        = cd_program_update_date     --プログラム更新日
+          WHERE  xsel.ROWID  = lt_upd_line_tab(j)
+          ;
+--
+      EXCEPTION
+        WHEN OTHERS THEN
+--
+          lv_errbuf := SQLERRM;
+          --ロックエラーの場合
+          IF ( SQLCODE = cn_lock_error_code ) THEN
+            lv_errmsg  := xxccp_common_pkg.get_msg(
+                             cv_application
+                            ,cv_msg_lock
+                            ,cv_tkn_lock
+                            ,gv_msg_tkn_exp_l_tbl
+                          );
+          --その他の場合
+          ELSE
+            xxcos_common_pkg.makeup_key_info(
+               ov_errbuf      => lv_buf                     --エラー・メッセージ
+              ,ov_retcode     => lv_retcode                 --リターン・コード
+              ,ov_errmsg      => lv_errmsg                  --ユーザー・エラー・メッセージ
+              ,ov_key_info    => gv_key_info                --キー情報
+              ,iv_item_name1  => gv_msg_tkn_exp_header_id   --項目名称1
+              ,iv_data_value1 => it_sales_header_tab(i)     --データの値1
+            );
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            cv_application
+                           ,cv_msg_update_err
+                           ,cv_tkn_table_name
+                           ,gv_msg_tkn_exp_l_tbl
+                           ,cv_tkn_key_data
+                           ,gv_key_info
+                         );
+          END IF;
+--
+          --警告データを全てエラー件数とする
+          gn_error_cnt := gn_warn_cnt;
+--
+          RAISE global_api_expt;
+--
+      END;
+--
+    END LOOP;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END proc_upd_skip_line;
+/* 2009/08/25 Ver1.8 Add End   */
 --
   /**********************************************************************************
    * Procedure Name   : proc_insert_upm_work
@@ -700,6 +1020,9 @@ AS
                 ,cd_program_update_date
                );
           END CASE;
+/* 2009/08/25 Ver1.8 Add Start */
+          gv_edit_unit_price_flag := cv_flag_on; --単価編集フラグ'Y'
+/* 2009/08/25 Ver1.8 Add End   */
         EXCEPTION
           WHEN OTHERS THEN
             ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
@@ -1065,6 +1388,9 @@ AS
           WHERE  customer_number            = gv_customer_number
           AND    item_code                  = gv_item_code
           ;
+/* 2009/08/25 Ver1.8 Add Start */
+          gv_edit_unit_price_flag := cv_flag_on; --単価編集フラグ'Y'
+/* 2009/08/25 Ver1.8 Add End   */
         WHEN ln_update_pattern = 2 THEN
           UPDATE xxcos_unit_price_mst_work
           SET    nml_bef_prev_dlv_date      = main_rec.delivery_date                --通常　前々回　納品年月日
@@ -1101,6 +1427,9 @@ AS
           WHERE  customer_number            = gv_customer_number
           AND    item_code                  = gv_item_code
           ;
+/* 2009/08/25 Ver1.8 Add Start */
+          gv_edit_unit_price_flag := cv_flag_on; --単価編集フラグ'Y'
+/* 2009/08/25 Ver1.8 Add End   */
         WHEN ln_update_pattern = 4 THEN
           UPDATE xxcos_unit_price_mst_work
           SET    sls_bef_prev_dlv_date      = main_rec.delivery_date                --特売　前々回　納品年月日
@@ -1207,6 +1536,11 @@ AS
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD START ******************************--
     lv_tax_round_rule        xxcos_cust_hierarchy_v.bill_tax_round_rule%TYPE; --税金-端数処理ルール
 --****************************** 2009/07/17 1.5  K.Shirasuna ADD END ********************************--
+/* 2009/08/25 Ver1.8 Add Start */
+    ln_skip_seq              PLS_INTEGER := 0;  --スキップデータテーブルの添字
+    ln_unit_price_length     NUMBER;            --単価の整数部の長さ取得変数
+    ln_unit_price_org        NUMBER;            --メッセージ用編集前単価
+/* 2009/08/25 Ver1.8 Add End   */
 --
   BEGIN
 --
@@ -1233,11 +1567,21 @@ AS
         gn_warn_tran_count     := gn_warn_tran_count + gn_new_warn_count;
         --1ループ内エラー初期化
         gn_new_warn_count := 0;
+/* 2009/08/25 Ver1.8 Add Start */
+        gv_edit_unit_price_flag := cv_flag_off; --単価編集フラグ初期化
+        ln_unit_price_length    := NULL;        --単価の整数部の長さ取得変数の初期化
+        ln_unit_price_org       := NULL;        --メッセージ用編集前単価の初期化
+/* 2009/08/25 Ver1.8 Add End   */
 
         IF (main_rec.sales_exp_header_id <> gv_bf_sales_exp_header_id) THEN
           IF (gn_warn_tran_count > 0) THEN
             ROLLBACK;
             gn_warn_cnt := gn_warn_cnt + gn_tran_count;
+/* 2009/08/25 Ver1.8 Add Start */
+            --警告になった販売実績ヘッダID編集
+            ln_skip_seq                    := ln_skip_seq + 1;
+            gt_upd_header_tab(ln_skip_seq) := gv_bf_sales_exp_header_id;
+/* 2009/08/25 Ver1.8 Add End   */
           ELSE
             COMMIT;
             gn_normal_cnt := gn_normal_cnt + gn_tran_count;
@@ -1311,7 +1655,19 @@ AS
         ELSE
           gn_unit_price := main_rec.standard_unit_price;
         END IF;
-
+/* 2009/08/25 Ver1.8 Add Start */
+--
+        --単価の整数部の長さを取得
+        ln_unit_price_length :=  LENGTHB( TO_CHAR( TRUNC(gn_unit_price) ) );
+        --単価の整数部が4桁を超える場合
+        IF ( ln_unit_price_length > 4 ) THEN
+          --編集前の単価を退避
+          ln_unit_price_org := gn_unit_price;
+          --整数部が下4桁になるように編集(小数部はそのまま)
+          gn_unit_price     := TO_NUMBER( SUBSTRB( TO_CHAR(gn_unit_price), ln_unit_price_length -3 ) );
+        END IF;
+--
+/* 2009/08/25 Ver1.8 Add End   */
         -- ===============================
         -- A-2．単価マスタワークテーブルレコードロック
         -- ===============================
@@ -1368,6 +1724,37 @@ AS
               RAISE upm_work_exp;
             END IF;
         END;
+/* 2009/08/25 Ver1.8 Add Start */
+        --単価を設定(更新)するパターン、かつ、単価が編集されている場合
+        IF ( ln_unit_price_length > 4 )
+          AND
+           ( gv_edit_unit_price_flag = cv_flag_on )
+        THEN
+          --単価編集メッセージを表示する
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          cv_application
+                         ,cv_msg_edit_unit_price
+                         ,cv_tkn_cust
+                         ,main_rec.ship_to_customer_code
+                         ,cv_tkn_item
+                         ,main_rec.item_code
+                         ,cv_tkn_dlv_date
+                         ,TO_CHAR(main_rec.delivery_date, cv_fmt_date)
+                         ,cv_tkn_unit_price
+                         ,TO_CHAR(ln_unit_price_org)
+                       );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.OUTPUT
+            ,buff   => lv_errmsg
+          );
+          FND_FILE.PUT_LINE(
+             which  => FND_FILE.LOG
+            ,buff   => lv_errmsg
+          );
+          --終了メッセージの空行制御用にフラグを立てる
+          gv_empty_line_flag := cv_flag_on;
+        END IF;
+/* 2009/08/25 Ver1.8 Add End   */
         BEGIN
           -- ===============================
           --A-5．販売実績明細テーブルレコードロック
@@ -1514,11 +1901,43 @@ AS
       gn_warn_cnt := gn_warn_cnt + gn_tran_count;
       ov_errmsg := NULL;
       ov_errbuf := NULL;
+/* 2009/08/25 Ver1.8 Add Start */
+      --警告になった販売実績ヘッダID編集
+      ln_skip_seq                    := ln_skip_seq + 1;
+      gt_upd_header_tab(ln_skip_seq) := gv_bf_sales_exp_header_id;
+/* 2009/08/25 Ver1.8 Add End   */
     ELSE
       COMMIT;
       gn_normal_cnt := gn_normal_cnt + gn_tran_count;
     END IF;
 --
+/* 2009/08/25 Ver1.8 Add Start */
+    -- ==================================
+    --A-7．販売実績明細スキップデータ更新
+    -- ==================================
+    proc_upd_skip_line(
+       gt_upd_header_tab  --更新対象ヘッダIDテーブル型
+      ,lv_errbuf
+      ,lv_retcode
+      ,lv_errmsg
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+    -- ================================
+    --A-8．販売実績明細対象外データ更新
+    -- ================================
+    proc_upd_n_target_line(
+       lv_errbuf
+      ,lv_retcode
+      ,lv_errmsg
+    );
+    IF ( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+--
+/* 2009/08/25 Ver1.8 Add End   */
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
@@ -1756,6 +2175,15 @@ AS
          which  => FND_FILE.OUTPUT
         ,buff   => ''
       );
+/* 2009/08/25 Ver1.8 Mod Start */
+    --正常終了でメッセージを出力した場合
+    ELSIF ( gv_empty_line_flag = cv_flag_on ) THEN
+      --空行挿入
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => ''
+      );
+/* 2009/08/25 Ver1.8 Mod End   */
     END IF;
 -- 2009/02/24 T.Nakamura Ver.1.2 mod end
     --対象件数出力
