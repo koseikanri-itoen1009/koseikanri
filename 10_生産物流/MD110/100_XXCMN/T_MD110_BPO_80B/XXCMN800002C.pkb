@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2008/10/10    1.14  Oracle 椎名 昭圭 T_S_442対応にあわせ原価内訳取得方法統一
  *  2008/10/21    1.15  Oracle 丸下 博宣 I_S_431対応
  *  2008/11/13    1.16  Oracle 伊藤ひとみ 統合テスト指摘538,641対応
+ *  2008/11/24    1.17  Oracle 大橋孝郎  本番環境問合せ_障害管理表#221対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5984,6 +5985,15 @@ AS
       UPDATE ic_item_mst_b
       SET    autolot_active_indicator = gv_autolot_on
             ,lot_suffix               = gv_lot_suffix_on
+-- add start ver1.17
+            ,last_updated_by        = gn_user_id
+            ,last_update_date       = gd_sysdate
+            ,last_update_login      = gn_login_id
+            ,request_id             = gn_request_id
+            ,program_application_id = gn_appl_id
+            ,program_id             = gn_program_id
+            ,program_update_date    = gd_sysdate
+-- add end ver1.17
       WHERE  item_id = ir_masters_rec.item_id;
 --
     EXCEPTION

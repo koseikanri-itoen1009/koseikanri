@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタ更新(日次)
  * MD.050           : 品目マスタ T_MD050_BPO_810
  * MD.070           : 品目マスタ更新(日次)(81B) T_MD070_BPO_81B
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/09/11    1.3   Oracle 山根一浩  指摘115対応
  *  2008/09/24    1.4   Oracle 山根一浩  T_S_421対応
  *  2008/09/29    1.5   Oracle 山根一浩  T_S_546,T_S_547対応
+ *  2008/11/24    1.6   Oracle 大橋孝郎  本番環境問合せ_障害管理表220対応
  *
  *****************************************************************************************/
 --
@@ -1467,7 +1468,10 @@ AS
           iimt.last_update_date       = gd_last_update_date,
           iimt.last_update_login      = TO_NUMBER(gv_last_update_login)
       WHERE iimt.item_id = gt_im_item_id(item_cnt)
-      AND   iimt.language = USERENV('LANG');
+-- mod start ver1.6
+--      AND   iimt.language = USERENV('LANG');
+      AND   iimt.source_lang = USERENV('LANG');
+-- mod end ver1.6
 --
 --#################################  固定例外処理部 START   ####################################
 --
