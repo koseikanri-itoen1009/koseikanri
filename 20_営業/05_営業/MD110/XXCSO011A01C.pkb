@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -74,6 +74,7 @@ AS
  *  2009-11-25    1.18  K.Satomura       【E_本稼動_00027】MC、MC候補をエラーとするよう修正
  *  2009-11-30    1.19  K.Satomura       【E_本稼動_00204】作業希望日のチェックを一時的に外す
  *  2009-11-30    1.20  T.Maruyama       【E_本稼動_00119】チェック強化対応
+ *  2009-12-07    1.21  K.Satomura       【E_本稼動_00336】E_本稼動_00204の対応を元に戻す
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1443,6 +1444,26 @@ AS
       --  --
       --END IF;
       /* 2009.11.30 K.Satomura E_本稼動_00204対応 END */
+      /* 2009.12.07 K.Satomura E_本稼動_00336対応 START */
+      -- 依頼日 ＞ 作業希望日（作業希望年||作業希望月||作業希望日）の場合
+      IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
+            > i_requisition_rec.work_hope_year
+               || i_requisition_rec.work_hope_month
+               || i_requisition_rec.work_hope_day ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_46          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_req_date           -- トークンコード1
+                        , iv_token_value1 => TO_CHAR( i_requisition_rec.request_date, cv_date_fmt2 )  -- トークン値1
+                      );
+        --
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      /* 2009.12.07 K.Satomura E_本稼動_00336対応 END */
 /*20090413_yabuki_ST170 END*/
       --
 /*20090413_yabuki_ST171 START*/
@@ -1806,6 +1827,25 @@ AS
       --  --
       --END IF;
       /* 2009.11.30 K.Satomura E_本稼動_00204対応 END */
+      /* 2009.12.07 K.Satomura E_本稼動_00336対応 START */
+      IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
+            > i_requisition_rec.work_hope_year
+               || i_requisition_rec.work_hope_month
+               || i_requisition_rec.work_hope_day ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_46          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_req_date           -- トークンコード1
+                        , iv_token_value1 => TO_CHAR( i_requisition_rec.request_date, cv_date_fmt2 )  -- トークン値1
+                      );
+        --
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      /* 2009.12.07 K.Satomura E_本稼動_00336対応 END */
       --
       -- 設置場所区分が「屋外」の場合
       IF ( SUBSTRB( i_requisition_rec.install_place_type, 1, 1 ) = cv_inst_place_type_exterior ) THEN
