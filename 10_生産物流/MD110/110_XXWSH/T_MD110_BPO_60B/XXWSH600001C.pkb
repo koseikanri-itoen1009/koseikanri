@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2008/08/04    1.5  Oracle M.Hokkanji 結合再テスト不具合対応(400TE080_159原因2)ST#513対応
  *  2008/08/06    1.6  Oracle M.Hokkanji ST不具合493対応
  *  2008/08/08    1.7  Oracle M.Hokkanji ST不具合510対応、内部変更173対応
+ *  2008/09/05    1.8  Oracle A.Shiina   PT 6-1_27 指摘41-2 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -9039,6 +9040,8 @@ debug_log(FND_FILE.LOG,'B15_1.2 移動更新件数：'||to_char(lt_upd_req_no_move_tab.
 --                WHERE xcst.delivery_no IS NOT NULL
 --                AND NOT EXISTS (
 -- Ver1.6 M.Hokkanji End
+-- Ver1.8 A.Shiina START
+/*
                       SELECT xoh.delivery_no delivery_no
                         FROM xxwsh_order_headers_all xoh
 -- Ver1.6 M.Hokkanji Start
@@ -9051,6 +9054,26 @@ debug_log(FND_FILE.LOG,'B15_1.2 移動更新件数：'||to_char(lt_upd_req_no_move_tab.
                         FROM xxinv_mov_req_instr_headers xmrih
                        WHERE xmrih.delivery_no = xcst.delivery_no
                ));
+*/
+                    SELECT xoh.delivery_no delivery_no
+                    FROM   xxwsh_order_headers_all xoh
+                    WHERE  xoh.delivery_no IS NOT NULL
+                    AND    xoh.delivery_no = NVL ( xcst.delivery_no , xcst.mixed_no )
+                    AND    xoh.latest_external_flag = 'Y'
+                    AND    ROWNUM <= 1
+                    UNION ALL
+                    SELECT xoh.delivery_no delivery_no
+                    FROM   xxwsh_order_headers_all xoh
+                    WHERE  xoh.delivery_no IS NULL
+                    AND    xoh.mixed_no = NVL ( xcst.delivery_no , xcst.mixed_no )
+                    AND    xoh.latest_external_flag = 'Y'
+                    AND    ROWNUM <= 1)
+                  AND NOT EXISTS (
+                    SELECT xmrih.delivery_no delivery_no
+                    FROM   xxinv_mov_req_instr_headers xmrih
+                    WHERE  xmrih.delivery_no = xcst.delivery_no
+                    AND    ROWNUM <= 1) ) ;
+-- Ver1.8 A.Shiina END
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
         NULL; -- 対象件数が0件の場合はエラーとしない。
