@@ -71,6 +71,8 @@ AS
  *                                                                   パレ段数,容器区分,単位区分,棚卸区分,トレース区分
  *  2009/10/14    1.16  Y.Kuboshima      障害0001370 以下項目0以下の場合、エラーとするように修正
  *                                                   ケース入数、ケース換算入数、NET、重量/体積、内容量、内訳入数、配数、段数
+ *  2009/12/07    1.17  Y.Kuboshima      E_本稼動_00358 本社商品区分が「1：リーフ」の場合は0を許容するように修正
+ *                                                      本社商品区分が「2：ドリンク」の場合は0を許容しないように修正
  *
  *****************************************************************************************/
 --
@@ -2982,6 +2984,10 @@ AS
         -- ※配数のNULLチェックは後続で行うため、ここではNULLチェックは行わない
         IF    ( i_wk_item_rec.palette_max_cs_qty  IS NOT NULL)
           AND ( i_wk_item_rec.palette_max_cs_qty < 1 )
+-- 2009/12/07 Ver1.17 E_本稼動_00358 add start by Y.Kuboshima
+          -- 本社商品区分が「2：ドリンク」の場合の条件追加
+          AND ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink)
+-- 2009/12/07 Ver1.17 E_本稼動_00358 add end by Y.Kuboshima
         THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
                          iv_application  => cv_appl_name_xxcmm               -- アプリケーション短縮名
@@ -3010,6 +3016,10 @@ AS
         -- ※段数のNULLチェックは後続で行うため、ここではNULLチェックは行わない
         IF    ( i_wk_item_rec.palette_max_step_qty  IS NOT NULL)
           AND ( i_wk_item_rec.palette_max_step_qty < 1 )
+-- 2009/12/07 Ver1.17 E_本稼動_00358 add start by Y.Kuboshima
+          -- 本社商品区分が「2：ドリンク」の場合の条件追加
+          AND ( i_wk_item_rec.hon_product_class = cn_hon_prod_drink)
+-- 2009/12/07 Ver1.17 E_本稼動_00358 add end by Y.Kuboshima
         THEN
           lv_errmsg := xxccp_common_pkg.get_msg(
                          iv_application  => cv_appl_name_xxcmm                 -- アプリケーション短縮名
