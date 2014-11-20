@@ -7,7 +7,7 @@ AS
  * Description      : ïWèÄå¥âøì‡ñÛï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/12/11    1.18  A.Shiina         ñ{î‘#580ëŒâû
  *  2008/12/13    1.19  T.Ohashi         ñ{î‘#580ëŒâû
  *  2008/12/14    1.20  N.Yoshida        ñ{î‘è·äQ669ëŒâû
+ *  2008/12/15    1.21  N.Yoshida        ñ{î‘è·äQ727ëŒâû
  *
  *****************************************************************************************/
 --
@@ -624,6 +625,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -711,6 +715,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -798,6 +805,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '  AND    ooha.header_id            = wdd.source_header_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -884,6 +894,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format|| '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format|| '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '  AND    ooha.header_id            = wdd.source_header_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -977,6 +990,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -1067,6 +1083,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -1162,6 +1181,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '  AND    ooha.header_id            = wdd.source_header_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -1251,6 +1273,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '  AND    ooha.header_id            = wdd.source_header_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -1347,6 +1372,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -1432,6 +1460,9 @@ AS
 --    || '      AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '      AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '      AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '      AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '      AND    ooha.header_id            = wdd.source_header_id'
     || '      AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -1537,6 +1568,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -1642,6 +1676,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '  AND    ooha.header_id            = wdd.source_header_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -1744,6 +1781,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -1844,6 +1884,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '  AND    ooha.header_id            = wdd.source_header_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -1952,6 +1995,9 @@ AS
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -2043,6 +2089,9 @@ AS
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
     || '  AND    ((otta.attribute4           <> ''2'')'
@@ -2146,6 +2195,9 @@ AS
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -2242,6 +2294,9 @@ AS
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
     || '  AND    ((otta.attribute4           <> ''2'')'
@@ -2341,6 +2396,9 @@ AS
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -2434,6 +2492,9 @@ AS
     || '  AND    itp.completed_ind         = ''' || cv_completed_ind || ''''
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
     || '  AND    ((otta.attribute4           <> ''2'')'
@@ -2652,6 +2713,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -2732,6 +2796,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date           >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '  AND    ooha.header_id            = wdd.source_header_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
@@ -3527,6 +3594,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.doc_id                = rsl.shipment_header_id'
     || '  AND    itp.doc_line              = rsl.line_num'
 --    || '  AND    ooha.header_id            = rsl.oe_order_header_id'
@@ -3607,6 +3677,9 @@ AS
 --    || '  AND    itp.trans_date           <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
     || '  AND    xoha.arrival_date        >= FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_from || gc_first_date || ''',''' || gc_char_format || ''')'
     || '  AND    xoha.arrival_date        <= LAST_DAY(FND_DATE.STRING_TO_DATE(''' || ir_param.exec_date_to || gc_first_date || ''',''' || gc_char_format || '''))'
+-- 2008/12/15 v1.21 N.Yoshida add start
+    || '  AND    xoha.latest_external_flag = ''Y'''
+-- 2008/12/15 v1.21 N.Yoshida add end
     || '  AND    itp.line_detail_id        = wdd.delivery_detail_id'
 --    || '  AND    ooha.header_id            = wdd.source_header_id'
     || '  AND    otta.transaction_type_id  = ooha.order_type_id'
