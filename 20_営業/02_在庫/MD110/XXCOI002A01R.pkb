@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A01R(body)
  * Description      : 倉替伝票
  * MD.050           : 倉替伝票 MD050_COI_002_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/11/12    1.0   K.Nakamura       新規作成
  *  2009/05/13    1.1   H.Sasaki         [T1_0774]伝票番号の桁数を修正
  *  2009/07/30    1.2   N.Abe            [0000638]数量の取得項目修正
+ *  2009/12/14    1.3   N.Abe            [E_本稼動_00385]倉替抽出方法修正
  *
  *****************************************************************************************/
 --
@@ -834,6 +835,9 @@ AS
       AND    TRUNC( mmt.transaction_date ) BETWEEN TRUNC( xim.start_date_active )           -- 適用開始日
       AND    TRUNC( NVL( xim.end_date_active, mmt.transaction_date ) )                      -- 終了日
       AND    xim.active_flag                = cv_flag                                       -- 使用可能フラグ
+-- == 2009/12/14 V1.3 Added START ===============================================================
+      AND    mmt.primary_quantity           < 0                                             -- 数量マイナス(出庫)
+-- == 2009/12/14 V1.3 Added END   ===============================================================
       GROUP BY
              mmt.transaction_date                                                           -- 伝票日付
            , mmt.attribute1                                                                 -- 伝票No(拠点間倉替)
