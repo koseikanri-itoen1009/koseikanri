@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -23,6 +23,7 @@ AS
  *  2008/10/07   1.1   D.Nihei          統合障害#123対応（PT 6-2_31）
  *  2008/10/22   1.2   D.Nihei          統合障害#123対応（PT 6-2_31）(ロットステータスVIEW箇所修正)
  *  2008/10/29   1.3   D.Nihei          統合障害#481対応（ORDER BY句編集) 
+ *  2008/11/19   1.4   D.Nihei          統合障害#681対応（条件追加) 
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -553,6 +554,9 @@ AS
         wk_sql1 := wk_sql1 || '       AND     grb.attribute9         = enable_lot.storehouse_code ';
         wk_sql1 := wk_sql1 || '       AND     mld.document_type_code = ''40'' ';
         wk_sql1 := wk_sql1 || '       AND     mld.record_type_code   = ''10'' ';
+-- 2008/11/19 v1.4 D.Nihei ADD START 統合障害#681
+        wk_sql1 := wk_sql1 || '       AND     itp.doc_type           = ''PROD'' ';
+-- 2008/11/19 v1.4 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '       AND     itp.line_id            = gmd.material_detail_id  ';
         wk_sql1 := wk_sql1 || '       AND     itp.item_id            = gmd.item_id ';
         wk_sql1 := wk_sql1 || '       AND     itp.lot_id             = mld.lot_id ';
@@ -1071,6 +1075,9 @@ AS
         wk_sql2 := wk_sql2 || '                 AND     grb.attribute9         = mil.segment1  ';
         wk_sql2 := wk_sql2 || '                 AND     mld.document_type_code = ''40'' ';
         wk_sql2 := wk_sql2 || '                 AND     mld.record_type_code   = ''10'' ';
+-- 2008/11/19 v1.4 D.Nihei ADD START 統合障害#681
+        wk_sql2 := wk_sql2 || '                 AND     itp.doc_type           = ''PROD'' ';
+-- 2008/11/19 v1.4 D.Nihei ADD END
         wk_sql2 := wk_sql2 || '                 AND     itp.line_id            = gmd.material_detail_id  ';
         wk_sql2 := wk_sql2 || '                 AND     itp.item_id            = gmd.item_id ';
         wk_sql2 := wk_sql2 || '                 AND     itp.lot_id             = mld.lot_id ';
