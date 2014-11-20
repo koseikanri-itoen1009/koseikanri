@@ -1,0 +1,7 @@
+ALTER TABLE xxcok.xxcok_backmargin_balance
+ADD (
+  ORG_SLIP_NUMBER VARCHAR2(50)
+)
+/
+COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.ORG_SLIP_NUMBER        IS 'å≥ì`ï[î‘çÜ'
+/
