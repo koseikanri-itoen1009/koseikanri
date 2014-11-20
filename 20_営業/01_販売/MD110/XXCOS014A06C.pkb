@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS014A06C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS014A06C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2009/07/23          N.Maeda          [T1_1359] レビュー指摘対応
  *  2009/08/18    1.12  N.Maeda          [0000888] 特売区分取得値修正(EDI受注時)
  *  2009/08/20          N.Maeda          [0000888] 抽出条件修正(EDI受注時)
+ *  2009/08/27    1.13  N.Maeda          [0000443] PT対応
+ *                                       [0001306] 伝票計集約条件、売上区分チェック条件修正
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -168,6 +170,10 @@ AS
   ct_msg_stockout_cancel_err      CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00163';                    --事由コードエラー
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
   ct_msg_mo_org_id                CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00047';                    --メッセージ用文字列.MO:営業単位
+-- ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
+  cv_msg_category_err             CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12954';     --カテゴリセットID取得エラーメッセージ
+  cv_msg_item_div_h               CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-12955';     --本社商品区分
+-- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
 -- 2009/02/16 T.Nakamura Ver.1.3 add end
 --
   --トークン
@@ -231,6 +237,10 @@ AS
   cv_xxcos1_report_data_type_21   CONSTANT VARCHAR2(30)   := 'XXCOS1_REPORT_DATA_TYPE_21';
   cv_reason_code_00               CONSTANT VARCHAR2(2)    := '00';
 -- ************************** 2009/07/07 N.Maeda 1.11 ADD  END  ******************************* --
+-- ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
+  ct_user_lang                    CONSTANT mtl_category_sets_tl.language%TYPE := userenv('LANG'); --LANG
+  ct_item_div_h                   CONSTANT fnd_profile_options.profile_option_name%TYPE := 'XXCOS1_ITEM_DIV_H';
+-- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -331,6 +341,9 @@ AS
 -- ********************* 2009/07/03 1.11 N.Maeda ADD START *********************** --
   gt_base_name_kana          hz_parties.organization_name_phonetic%TYPE;         -- 拠点名称(カナ)
 -- ********************* 2009/07/03 1.11 N.Maeda ADD  END  *********************** --
+-- ********************* 2009/08/27 1.13 N.Maeda ADD START *********************** --
+  gt_category_set_id         mtl_category_sets_tl.category_set_id%TYPE;           -- カテゴリセットID
+-- ********************* 2009/08/27 1.13 N.Maeda ADD  END  *********************** --
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -551,6 +564,9 @@ AS
     -- *** ローカル変数 ***
     lb_error                                 BOOLEAN;                                               --エラー有りフラグ
     lt_tkn                                   fnd_new_messages.message_text%TYPE;                    --メッセージ用文字列
+-- ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
+    lt_item_div_h                            fnd_profile_option_values.profile_option_value%TYPE;
+-- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
 -- 2009/02/19 T.Nakamura Ver.1.6 add start
     lv_errbuf_all                            VARCHAR2(32767);                                       --ログ出力メッセージ格納変数
 -- 2009/02/19 T.Nakamura Ver.1.6 add end
@@ -942,6 +958,54 @@ AS
 -- 2009/02/19 T.Nakamura Ver.1.6 add end
     END IF;
 --
+-- ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
+    --プロファイル値:「XXCOS:本社商品区分」取得
+    lt_item_div_h  := FND_PROFILE.VALUE(ct_item_div_h);
+--
+    --プロファイル値:「XXCOS:本社商品区分」取得エラー
+    IF ( lt_item_div_h IS NULL ) THEN
+      lb_error := TRUE;
+      lt_tkn := xxccp_common_pkg.get_msg(cv_apl_name,cv_msg_item_div_h );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     cv_apl_name
+                    ,ct_msg_prf
+                    ,cv_tkn_prf
+                    ,lt_tkn
+                   );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_errmsg
+      );
+      lv_errbuf_all := lv_errbuf_all || lv_errmsg;
+--
+    ELSE
+--
+    -- =============================================================
+    -- カテゴリセットID取得
+    -- =============================================================
+      BEGIN
+        SELECT  mcst.category_set_id   category_set_id
+        INTO    gt_category_set_id
+        FROM    mtl_category_sets_tl   mcst
+        WHERE   mcst.category_set_name = lt_item_div_h
+        AND     mcst.language          = ct_user_lang;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lb_error := TRUE;
+          lv_errmsg  :=  xxccp_common_pkg.get_msg(
+                           iv_application  =>  cv_apl_name,
+                           iv_name         =>  cv_msg_category_err
+                           );
+          FND_FILE.PUT_LINE(
+            which  => FND_FILE.OUTPUT
+           ,buff   => lv_errmsg
+           );
+        lv_errbuf_all := lv_errbuf_all || lv_errmsg;
+      END;
+    END IF;
+--
+-- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
+
     IF (lb_error) THEN
       lv_errmsg := NULL;
       RAISE global_api_expt;
@@ -1466,7 +1530,10 @@ AS
     lt_line_number                     oe_order_lines_all.line_number%TYPE;       --受注明細（明細番号）
     lt_bargain_class                   fnd_lookup_values.attribute8%TYPE;         --定番特売区分
     lt_last_bargain_class              fnd_lookup_values.attribute8%TYPE;         --前回定番特売区分
-    lt_last_invoice_number             xxcos_edi_headers.invoice_number%TYPE;     --前回伝票番号
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+--    lt_last_invoice_number             xxcos_edi_headers.invoice_number%TYPE;     --前回伝票番号
+    lt_last_header_id                  oe_order_headers_all.header_id%TYPE;       --前回ヘッダID
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
     lt_outbound_flag                   fnd_lookup_values.attribute10%TYPE;        --OUTBOUND可否
     ln_reason_id                       NUMBER;                                    --事由ID
     lt_stockout_cancel_flag            fnd_lookup_values.attribute1%TYPE;         --欠品事由取消フラグ
@@ -2198,7 +2265,18 @@ AS
 --              AND xca.delivery_base_code        = cdm.account_number(+)
 ----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
 ---- 2009/02/16 T.Nakamura Ver.1.3 add end
-              SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
+--
+              SELECT
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                    /*+
+                      LEADING ( XEH )
+                      USE_NL  ( XLVV_T.FLV )
+                      USE_NL  ( ORE )
+                      USE_NL  ( OTTT_H )
+                      INDEX   ( OOHA OE_ORDER_HEADERS_N7 )
+                    */
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
+                    TO_CHAR(ooha.header_id)                                             header_id                     --ヘッダID(更新キー)
                     ,ooha.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
                     ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
                     ,xlvv.attribute10                                                   outbound_flag                 --OUTBOUND可否
@@ -2503,9 +2581,15 @@ AS
                     ,xeh.chain_peculiar_area_header                                     chain_peculiar_area_header    --チェーン店固有エリア（ヘッダー）
                     ,xeh.order_connection_number                                        order_connection_number       --受注関連番号（仮）
                     ------------------------------------------------明細情報------------------------------------------------
-                    ,TO_CHAR(xel.line_no)                                               line_no                       --行Ｎｏ
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,TO_CHAR(xeh.line_no)                                               line_no                       --行Ｎｏ
+--                    ,TO_CHAR(xel.line_no)                                               line_no                       --行Ｎｏ
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ,CASE
-                       WHEN xel.sum_order_qty 
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                       WHEN xeh.sum_order_qty 
+--                       WHEN xel.sum_order_qty 
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                           - oola.ordered_quantity = 0 THEN
                          cv_number00
                        ELSE
@@ -2514,50 +2598,120 @@ AS
                                                  ,cv_err_reason_code)
                      END                                                                stockout_class                --欠品区分
                     ,NULL                                                               stockout_reason               --欠品理由
-                    ,xel.item_code                                                      item_code                     --商品コード（伊藤園）
-                    ,xel.product_code1                                                  product_code1                 --商品コード１
-                    ,xel.product_code2                                                  product_code2                 --商品コード２
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,xeh.item_code                                                      item_code                     --商品コード（伊藤園）
+                    ,xeh.product_code1                                                  product_code1                 --商品コード１
+                    ,xeh.product_code2                                                  product_code2                 --商品コード２
+--                    ,xel.item_code                                                      item_code                     --商品コード（伊藤園）
+--                    ,xel.product_code1                                                  product_code1                 --商品コード１
+--                    ,xel.product_code2                                                  product_code2                 --商品コード２
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ,CASE
-                       WHEN xel.line_uom = i_prf_rec.case_uom_code THEN
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                       WHEN xeh.line_uom = i_prf_rec.case_uom_code THEN
+--                       WHEN xel.line_uom = i_prf_rec.case_uom_code THEN
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                          xsib.case_jan_code
                        ELSE
                          iimb.attribute21
                      END                                                                jan_code                      --ＪＡＮコード
-                    ,NVL(xel.itf_code, iimb.attribute22)                                itf_code                      --ＩＴＦコード
-                    ,xel.extension_itf_code                                             extension_itf_code            --内箱ＩＴＦコード
-                    ,xel.case_product_code                                              case_product_code             --ケース商品コード
-                    ,xel.ball_product_code                                              ball_product_code             --ボール商品コード
-                    ,xel.product_code_item_type                                         product_code_item_type        --商品コード品種
-                    ,xhpc.item_div_h_code                                               prod_class                    --商品区分
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,NVL(xeh.itf_code, iimb.attribute22)                                itf_code                      --ＩＴＦコード
+                    ,xeh.extension_itf_code                                             extension_itf_code            --内箱ＩＴＦコード
+                    ,xeh.case_product_code                                              case_product_code             --ケース商品コード
+                    ,xeh.ball_product_code                                              ball_product_code             --ボール商品コード
+                    ,xeh.product_code_item_type                                         product_code_item_type        --商品コード品種
+                    ,(
+                     SELECT
+                       mcb.segment1
+                     FROM
+                       mtl_system_items_b  msib,
+                       mtl_item_categories mic,
+                       mtl_categories_b    mcb
+                     WHERE
+                         msib.segment1         = iimb.item_no
+                     AND msib.organization_id  = i_other_rec.organization_id
+                     AND mic.organization_id   = msib.organization_id
+                     AND mic.inventory_item_id = msib.inventory_item_id
+                     AND mic.category_set_id   = gt_category_set_id
+                     AND mic.category_id       = mcb.category_id
+                     AND ( mcb.disable_date IS NULL OR mcb.disable_date > i_other_rec.process_date )
+                     AND   mcb.enabled_flag                      = cv_enabled_flag      -- カテゴリ有効フラグ
+                     AND   i_other_rec.process_date
+                           BETWEEN NVL(mcb.start_date_active, i_other_rec.process_date)
+                               AND   NVL(mcb.end_date_active, i_other_rec.process_date)
+                     AND   msib.enabled_flag                     = cv_enabled_flag      -- 品目マスタ有効フラグ
+                     AND   i_other_rec.process_date
+                           BETWEEN NVL(msib.start_date_active, i_other_rec.process_date) 
+                               AND   NVL(msib.end_date_active, i_other_rec.process_date)
+                     )                                                                  prod_class                    --商品区分
+--                    ,NVL(xel.itf_code, iimb.attribute22)                                itf_code                      --ＩＴＦコード
+--                    ,xel.extension_itf_code                                             extension_itf_code            --内箱ＩＴＦコード
+--                    ,xel.case_product_code                                              case_product_code             --ケース商品コード
+--                    ,xel.ball_product_code                                              ball_product_code             --ボール商品コード
+--                    ,xel.product_code_item_type                                         product_code_item_type        --商品コード品種
+--                    ,xhpc.item_div_h_code                                               prod_class                    --商品区分
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ,NVL(ximb.item_name,i_msg_rec.item_notfound)                        product_name                  --商品名（漢字）
-                    ,xel.product_name1_alt                                              product_name1_alt             --商品名１（カナ）
-                    ,xel.product_name2_alt                                              product_name2_alt             --商品名２（カナ）
-                    ,xel.item_standard1                                                 item_standard1                --規格１
-                    ,xel.item_standard2                                                 item_standard2                --規格２
-                    ,TO_CHAR(xel.qty_in_case)                                           qty_in_case                   --入数
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,xeh.product_name1_alt                                              product_name1_alt             --商品名１（カナ）
+                    ,xeh.product_name2_alt                                              product_name2_alt             --商品名２（カナ）
+                    ,xeh.item_standard1                                                 item_standard1                --規格１
+                    ,xeh.item_standard2                                                 item_standard2                --規格２
+                    ,TO_CHAR(xeh.qty_in_case)                                           qty_in_case                   --入数
+--                    ,xel.product_name1_alt                                              product_name1_alt             --商品名１（カナ）
+--                    ,xel.product_name2_alt                                              product_name2_alt             --商品名２（カナ）
+--                    ,xel.item_standard1                                                 item_standard1                --規格１
+--                    ,xel.item_standard2                                                 item_standard2                --規格２
+--                    ,TO_CHAR(xel.qty_in_case)                                           qty_in_case                   --入数
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ,iimb.attribute11                                                   num_of_cases                  --ケース入数
-                    ,TO_CHAR(NVL(xel.num_of_ball,xsib.bowl_inc_num))                    num_of_ball                   --ボール入数
-                    ,xel.item_color                                                     item_color                    --色
-                    ,xel.item_size                                                      item_size                     --サイズ
-                    ,TO_CHAR(xel.expiration_date,cv_date_fmt)                           expiration_date               --賞味期限日
-                    ,TO_CHAR(xel.product_date,cv_date_fmt)                              product_date                  --製造日
-                    ,TO_CHAR(xel.order_uom_qty)                                         order_uom_qty                 --発注単位数
-                    ,TO_CHAR(xel.shipping_uom_qty)                                      shipping_uom_qty              --出荷単位数
-                    ,TO_CHAR(xel.packing_uom_qty)                                       packing_uom_qty               --梱包単位数
-                    ,xel.deal_code                                                      deal_code                     --引合
-                    ,xel.deal_class                                                     deal_class                    --引合区分
-                    ,xel.collation_code                                                 collation_code                --照合
-                    ,xel.uom_code                                                       uom_code                      --単位
-                    ,xel.unit_price_class                                               unit_price_class              --単価区分
-                    ,xel.parent_packing_number                                          parent_packing_number         --親梱包番号
-                    ,xel.packing_number                                                 packing_number                --梱包番号
-                    ,xel.product_group_code                                             product_group_code            --商品群コード
-                    ,xel.case_dismantle_flag                                            case_dismantle_flag           --ケース解体不可フラグ
-                    ,xel.case_class                                                     case_class                    --ケース区分
-                    ,TO_CHAR(xel.indv_order_qty)                                        indv_order_qty                --発注数量（バラ）
-                    ,TO_CHAR(xel.case_order_qty)                                        case_order_qty                --発注数量（ケース）
-                    ,TO_CHAR(xel.ball_order_qty)                                        ball_order_qty                --発注数量（ボール）
-                    ,TO_CHAR(xel.sum_order_qty)                                         sum_order_qty                 --発注数量（合計、バラ）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,TO_CHAR(NVL(xeh.num_of_ball,xsib.bowl_inc_num))                    num_of_ball                   --ボール入数
+                    ,xeh.item_color                                                     item_color                    --色
+                    ,xeh.item_size                                                      item_size                     --サイズ
+                    ,TO_CHAR(xeh.expiration_date,cv_date_fmt)                           expiration_date               --賞味期限日
+                    ,TO_CHAR(xeh.product_date,cv_date_fmt)                              product_date                  --製造日
+                    ,TO_CHAR(xeh.order_uom_qty)                                         order_uom_qty                 --発注単位数
+                    ,TO_CHAR(xeh.shipping_uom_qty)                                      shipping_uom_qty              --出荷単位数
+                    ,TO_CHAR(xeh.packing_uom_qty)                                       packing_uom_qty               --梱包単位数
+                    ,xeh.deal_code                                                      deal_code                     --引合
+                    ,xeh.deal_class                                                     deal_class                    --引合区分
+                    ,xeh.collation_code                                                 collation_code                --照合
+                    ,xeh.uom_code                                                       uom_code                      --単位
+                    ,xeh.unit_price_class                                               unit_price_class              --単価区分
+                    ,xeh.parent_packing_number                                          parent_packing_number         --親梱包番号
+                    ,xeh.packing_number                                                 packing_number                --梱包番号
+                    ,xeh.product_group_code                                             product_group_code            --商品群コード
+                    ,xeh.case_dismantle_flag                                            case_dismantle_flag           --ケース解体不可フラグ
+                    ,xeh.case_class                                                     case_class                    --ケース区分
+                    ,TO_CHAR(xeh.indv_order_qty)                                        indv_order_qty                --発注数量（バラ）
+                    ,TO_CHAR(xeh.case_order_qty)                                        case_order_qty                --発注数量（ケース）
+                    ,TO_CHAR(xeh.ball_order_qty)                                        ball_order_qty                --発注数量（ボール）
+                    ,TO_CHAR(xeh.sum_order_qty)                                         sum_order_qty                 --発注数量（合計、バラ）
+--                    ,TO_CHAR(NVL(xel.num_of_ball,xsib.bowl_inc_num))                    num_of_ball                   --ボール入数
+--                    ,xel.item_color                                                     item_color                    --色
+--                    ,xel.item_size                                                      item_size                     --サイズ
+--                    ,TO_CHAR(xel.expiration_date,cv_date_fmt)                           expiration_date               --賞味期限日
+--                    ,TO_CHAR(xel.product_date,cv_date_fmt)                              product_date                  --製造日
+--                    ,TO_CHAR(xel.order_uom_qty)                                         order_uom_qty                 --発注単位数
+--                    ,TO_CHAR(xel.shipping_uom_qty)                                      shipping_uom_qty              --出荷単位数
+--                    ,TO_CHAR(xel.packing_uom_qty)                                       packing_uom_qty               --梱包単位数
+--                    ,xel.deal_code                                                      deal_code                     --引合
+--                    ,xel.deal_class                                                     deal_class                    --引合区分
+--                    ,xel.collation_code                                                 collation_code                --照合
+--                    ,xel.uom_code                                                       uom_code                      --単位
+--                    ,xel.unit_price_class                                               unit_price_class              --単価区分
+--                    ,xel.parent_packing_number                                          parent_packing_number         --親梱包番号
+--                    ,xel.packing_number                                                 packing_number                --梱包番号
+--                    ,xel.product_group_code                                             product_group_code            --商品群コード
+--                    ,xel.case_dismantle_flag                                            case_dismantle_flag           --ケース解体不可フラグ
+--                    ,xel.case_class                                                     case_class                    --ケース区分
+--                    ,TO_CHAR(xel.indv_order_qty)                                        indv_order_qty                --発注数量（バラ）
+--                    ,TO_CHAR(xel.case_order_qty)                                        case_order_qty                --発注数量（ケース）
+--                    ,TO_CHAR(xel.ball_order_qty)                                        ball_order_qty                --発注数量（ボール）
+--                    ,TO_CHAR(xel.sum_order_qty)                                         sum_order_qty                 --発注数量（合計、バラ）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ,CASE
                        WHEN oola.order_quantity_uom != i_prf_rec.case_uom_code
                         AND oola.order_quantity_uom != i_prf_rec.bowl_uom_code THEN
@@ -2577,59 +2731,111 @@ AS
                        ELSE
                          cv_number0
                      END                                                                ball_shipping_qty             --出荷数量（ボール）
-                    ,TO_CHAR(xel.pallet_shipping_qty)                                   pallet_shipping_qty           --出荷数量（パレット）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,TO_CHAR(xeh.pallet_shipping_qty)                                   pallet_shipping_qty           --出荷数量（パレット）
+--                    ,TO_CHAR(xel.pallet_shipping_qty)                                   pallet_shipping_qty           --出荷数量（パレット）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ,TO_CHAR(oola.ordered_quantity)                                     sum_shipping_qty              --出荷数量（合計、バラ）
-                    ,TO_CHAR(xel.indv_order_qty 
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,TO_CHAR(xeh.indv_order_qty 
                            - oola.ordered_quantity)                                     indv_stockout_qty             --欠品数量（バラ）
-                    ,TO_CHAR(xel.case_order_qty
+                    ,TO_CHAR(xeh.case_order_qty
                            - oola.ordered_quantity)                                     case_stockout_qty             --欠品数量（ケース）
-                    ,TO_CHAR(xel.ball_order_qty 
+                    ,TO_CHAR(xeh.ball_order_qty 
                            - oola.ordered_quantity)                                     ball_stockout_qty             --欠品数量（ボール）
-                    ,TO_CHAR(xel.sum_order_qty
+                    ,TO_CHAR(xeh.sum_order_qty
                            - oola.ordered_quantity)                                     sum_stockout_qty              --欠品数量（合計、バラ）
-                    ,TO_CHAR(xel.case_qty)                                              case_qty                      --ケース個口数
-                    ,TO_CHAR(xel.fold_container_indv_qty)                               fold_container_indv_qty       --オリコン（バラ）個口数
-                    ,TO_CHAR(xel.order_unit_price)                                      order_unit_price              --原単価（発注）
+                    ,TO_CHAR(xeh.case_qty)                                              case_qty                      --ケース個口数
+                    ,TO_CHAR(xeh.fold_container_indv_qty)                               fold_container_indv_qty       --オリコン（バラ）個口数
+                    ,TO_CHAR(xeh.order_unit_price)                                      order_unit_price              --原単価（発注）
+--                    ,TO_CHAR(xel.indv_order_qty 
+--                           - oola.ordered_quantity)                                     indv_stockout_qty             --欠品数量（バラ）
+--                    ,TO_CHAR(xel.case_order_qty
+--                           - oola.ordered_quantity)                                     case_stockout_qty             --欠品数量（ケース）
+--                    ,TO_CHAR(xel.ball_order_qty 
+--                           - oola.ordered_quantity)                                     ball_stockout_qty             --欠品数量（ボール）
+--                    ,TO_CHAR(xel.sum_order_qty
+--                           - oola.ordered_quantity)                                     sum_stockout_qty              --欠品数量（合計、バラ）
+--                    ,TO_CHAR(xel.case_qty)                                              case_qty                      --ケース個口数
+--                    ,TO_CHAR(xel.fold_container_indv_qty)                               fold_container_indv_qty       --オリコン（バラ）個口数
+--                    ,TO_CHAR(xel.order_unit_price)                                      order_unit_price              --原単価（発注）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ,TO_CHAR(oola.unit_selling_price)                                   shipping_unit_price           --原単価（出荷）
-                    ,TO_CHAR(xel.order_cost_amt)                                        order_cost_amt                --原価金額（発注）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,TO_CHAR(xeh.order_cost_amt)                                        order_cost_amt                --原価金額（発注）
+--                    ,TO_CHAR(xel.order_cost_amt)                                        order_cost_amt                --原価金額（発注）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
 -- ******************** 2009/07/22 1.11 N.Maeda MOD START ************************* --
                     ,TO_CHAR( TRUNC( oola.unit_selling_price
                                        * oola.ordered_quantity) )                       shipping_cost_amt             --原価金額（出荷）
 --                    ,TO_CHAR(oola.unit_selling_price
 --                           * oola.ordered_quantity)                                     shipping_cost_amt             --原価金額（出荷）
 -- ******************** 2009/07/22 1.11 N.Maeda MOD  END  ************************* --
-                    ,TO_CHAR(xel.stockout_cost_amt)                                     stockout_cost_amt             --原価金額（欠品）
-                    ,TO_CHAR(xel.selling_price)                                         selling_price                 --売単価
-                    ,TO_CHAR(xel.order_price_amt)                                       order_price_amt               --売価金額（発注）
-                    ,TO_CHAR(xel.shipping_price_amt)                                    shipping_price_amt            --売価金額（出荷）
-                    ,TO_CHAR(xel.stockout_price_amt)                                    stockout_price_amt            --売価金額（欠品）
-                    ,TO_CHAR(xel.a_column_department)                                   a_column_department           --Ａ欄（百貨店）
-                    ,TO_CHAR(xel.d_column_department)                                   d_column_department           --Ｄ欄（百貨店）
-                    ,TO_CHAR(xel.standard_info_depth)                                   standard_info_depth           --規格情報・奥行き
-                    ,TO_CHAR(xel.standard_info_height)                                  standard_info_height          --規格情報・高さ
-                    ,TO_CHAR(xel.standard_info_width)                                   standard_info_width           --規格情報・幅
-                    ,TO_CHAR(xel.standard_info_weight)                                  standard_info_weight          --規格情報・重量
-                    ,xel.general_succeeded_item1                                        general_succeeded_item1       --汎用引継ぎ項目１
-                    ,xel.general_succeeded_item2                                        general_succeeded_item2       --汎用引継ぎ項目２
-                    ,xel.general_succeeded_item3                                        general_succeeded_item3       --汎用引継ぎ項目３
-                    ,xel.general_succeeded_item4                                        general_succeeded_item4       --汎用引継ぎ項目４
-                    ,xel.general_succeeded_item5                                        general_succeeded_item5       --汎用引継ぎ項目５
-                    ,xel.general_succeeded_item6                                        general_succeeded_item6       --汎用引継ぎ項目６
-                    ,xel.general_succeeded_item7                                        general_succeeded_item7       --汎用引継ぎ項目７
-                    ,xel.general_succeeded_item8                                        general_succeeded_item8       --汎用引継ぎ項目８
-                    ,xel.general_succeeded_item9                                        general_succeeded_item9       --汎用引継ぎ項目９
-                    ,xel.general_succeeded_item10                                       general_succeeded_item10      --汎用引継ぎ項目１０
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,TO_CHAR(xeh.stockout_cost_amt)                                     stockout_cost_amt             --原価金額（欠品）
+                    ,TO_CHAR(xeh.selling_price)                                         selling_price                 --売単価
+                    ,TO_CHAR(xeh.order_price_amt)                                       order_price_amt               --売価金額（発注）
+                    ,TO_CHAR(xeh.shipping_price_amt)                                    shipping_price_amt            --売価金額（出荷）
+                    ,TO_CHAR(xeh.stockout_price_amt)                                    stockout_price_amt            --売価金額（欠品）
+                    ,TO_CHAR(xeh.a_column_department)                                   a_column_department           --Ａ欄（百貨店）
+                    ,TO_CHAR(xeh.d_column_department)                                   d_column_department           --Ｄ欄（百貨店）
+                    ,TO_CHAR(xeh.standard_info_depth)                                   standard_info_depth           --規格情報・奥行き
+                    ,TO_CHAR(xeh.standard_info_height)                                  standard_info_height          --規格情報・高さ
+                    ,TO_CHAR(xeh.standard_info_width)                                   standard_info_width           --規格情報・幅
+                    ,TO_CHAR(xeh.standard_info_weight)                                  standard_info_weight          --規格情報・重量
+                    ,xeh.general_succeeded_item1                                        general_succeeded_item1       --汎用引継ぎ項目１
+                    ,xeh.general_succeeded_item2                                        general_succeeded_item2       --汎用引継ぎ項目２
+                    ,xeh.general_succeeded_item3                                        general_succeeded_item3       --汎用引継ぎ項目３
+                    ,xeh.general_succeeded_item4                                        general_succeeded_item4       --汎用引継ぎ項目４
+                    ,xeh.general_succeeded_item5                                        general_succeeded_item5       --汎用引継ぎ項目５
+                    ,xeh.general_succeeded_item6                                        general_succeeded_item6       --汎用引継ぎ項目６
+                    ,xeh.general_succeeded_item7                                        general_succeeded_item7       --汎用引継ぎ項目７
+                    ,xeh.general_succeeded_item8                                        general_succeeded_item8       --汎用引継ぎ項目８
+                    ,xeh.general_succeeded_item9                                        general_succeeded_item9       --汎用引継ぎ項目９
+                    ,xeh.general_succeeded_item10                                       general_succeeded_item10      --汎用引継ぎ項目１０
+--                    ,TO_CHAR(xel.stockout_cost_amt)                                     stockout_cost_amt             --原価金額（欠品）
+--                    ,TO_CHAR(xel.selling_price)                                         selling_price                 --売単価
+--                    ,TO_CHAR(xel.order_price_amt)                                       order_price_amt               --売価金額（発注）
+--                    ,TO_CHAR(xel.shipping_price_amt)                                    shipping_price_amt            --売価金額（出荷）
+--                    ,TO_CHAR(xel.stockout_price_amt)                                    stockout_price_amt            --売価金額（欠品）
+--                    ,TO_CHAR(xel.a_column_department)                                   a_column_department           --Ａ欄（百貨店）
+--                    ,TO_CHAR(xel.d_column_department)                                   d_column_department           --Ｄ欄（百貨店）
+--                    ,TO_CHAR(xel.standard_info_depth)                                   standard_info_depth           --規格情報・奥行き
+--                    ,TO_CHAR(xel.standard_info_height)                                  standard_info_height          --規格情報・高さ
+--                    ,TO_CHAR(xel.standard_info_width)                                   standard_info_width           --規格情報・幅
+--                    ,TO_CHAR(xel.standard_info_weight)                                  standard_info_weight          --規格情報・重量
+--                    ,xel.general_succeeded_item1                                        general_succeeded_item1       --汎用引継ぎ項目１
+--                    ,xel.general_succeeded_item2                                        general_succeeded_item2       --汎用引継ぎ項目２
+--                    ,xel.general_succeeded_item3                                        general_succeeded_item3       --汎用引継ぎ項目３
+--                    ,xel.general_succeeded_item4                                        general_succeeded_item4       --汎用引継ぎ項目４
+--                    ,xel.general_succeeded_item5                                        general_succeeded_item5       --汎用引継ぎ項目５
+--                    ,xel.general_succeeded_item6                                        general_succeeded_item6       --汎用引継ぎ項目６
+--                    ,xel.general_succeeded_item7                                        general_succeeded_item7       --汎用引継ぎ項目７
+--                    ,xel.general_succeeded_item8                                        general_succeeded_item8       --汎用引継ぎ項目８
+--                    ,xel.general_succeeded_item9                                        general_succeeded_item9       --汎用引継ぎ項目９
+--                    ,xel.general_succeeded_item10                                       general_succeeded_item10      --汎用引継ぎ項目１０
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ,TO_CHAR(xeh.tax_rate)                                              general_add_item1             --汎用付加項目１(税率)
                     ,SUBSTRB(cdm.phone_number, 1, 10)                                   general_add_item2             --汎用付加項目２
                     ,SUBSTRB(cdm.phone_number, 11, 10)                                  general_add_item3             --汎用付加項目３
-                    ,xel.general_add_item4                                              general_add_item4             --汎用付加項目４
-                    ,xel.general_add_item5                                              general_add_item5             --汎用付加項目５
-                    ,xel.general_add_item6                                              general_add_item6             --汎用付加項目６
-                    ,xel.general_add_item7                                              general_add_item7             --汎用付加項目７
-                    ,xel.general_add_item8                                              general_add_item8             --汎用付加項目８
-                    ,xel.general_add_item9                                              general_add_item9             --汎用付加項目９
-                    ,xel.general_add_item10                                             general_add_item10            --汎用付加項目１０
-                    ,xel.chain_peculiar_area_line                                       chain_peculiar_area_line      --チェーン店固有エリア（明細）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                    ,xeh.general_add_item4                                              general_add_item4             --汎用付加項目４
+                    ,xeh.general_add_item5                                              general_add_item5             --汎用付加項目５
+                    ,xeh.general_add_item6                                              general_add_item6             --汎用付加項目６
+                    ,xeh.general_add_item7                                              general_add_item7             --汎用付加項目７
+                    ,xeh.general_add_item8                                              general_add_item8             --汎用付加項目８
+                    ,xeh.general_add_item9                                              general_add_item9             --汎用付加項目９
+                    ,xeh.general_add_item10                                             general_add_item10            --汎用付加項目１０
+                    ,xeh.chain_peculiar_area_line                                       chain_peculiar_area_line      --チェーン店固有エリア（明細）
+--                    ,xel.general_add_item4                                              general_add_item4             --汎用付加項目４
+--                    ,xel.general_add_item5                                              general_add_item5             --汎用付加項目５
+--                    ,xel.general_add_item6                                              general_add_item6             --汎用付加項目６
+--                    ,xel.general_add_item7                                              general_add_item7             --汎用付加項目７
+--                    ,xel.general_add_item8                                              general_add_item8             --汎用付加項目８
+--                    ,xel.general_add_item9                                              general_add_item9             --汎用付加項目９
+--                    ,xel.general_add_item10                                             general_add_item10            --汎用付加項目１０
+--                    ,xel.chain_peculiar_area_line                                       chain_peculiar_area_line      --チェーン店固有エリア（明細）
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                     ------------------------------------------------フッタ情報------------------------------------------------
                     ,NULL                                                               invoice_indv_order_qty        --（伝票計）発注数量（バラ）
                     ,NULL                                                               invoice_case_order_qty        --（伝票計）発注数量（ケース）
@@ -2918,6 +3124,80 @@ AS
 -- ************************* 2009/08/18 1.12 N.Maeda MOD START ************************************* --
                             ,xeh.ar_sale_class                                           ar_sale_class                 --特売区分
 -- ************************* 2009/08/18 1.12 N.Maeda MOD  MOD  ************************************* --
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                            ,xel.line_no                                                 line_no                       -- 行Ｎｏ
+                            ,xel.sum_order_qty                                           sum_order_qty                 -- 発注数量（合計、バラ）
+                            ,xel.item_code                                               item_code                     -- 品目コード
+                            ,xel.product_code1                                           product_code1                 -- 商品コード１
+                            ,xel.product_code2                                           product_code2                 -- 商品コード２
+                            ,xel.line_uom                                                line_uom                      -- 明細単位
+                            ,xel.itf_code                                                itf_code                      -- ＩＴＦコード
+                            ,xel.extension_itf_code                                      extension_itf_code            -- 内箱ＩＴＦコード
+                            ,xel.case_product_code                                       case_product_code             -- ケース商品コード
+                            ,xel.ball_product_code                                       ball_product_code             -- ボール商品コード
+                            ,xel.product_code_item_type                                  product_code_item_type        -- 商品コード品種
+                            ,xel.product_name1_alt                                       product_name1_alt             -- 商品名１（カナ）
+                            ,xel.product_name2_alt                                       product_name2_alt             -- 商品名２（カナ）
+                            ,xel.item_standard1                                          item_standard1                -- 規格１
+                            ,xel.item_standard2                                          item_standard2                -- 規格２
+                            ,xel.qty_in_case                                             qty_in_case                   -- 入数
+                            ,xel.num_of_ball                                             num_of_ball                   -- ボール入数
+                            ,xel.item_color                                              item_color                    -- 色
+                            ,xel.item_size                                               item_size                     -- サイズ
+                            ,xel.expiration_date                                         expiration_date               -- 賞味期限日
+                            ,xel.product_date                                            product_date                  -- 製造日
+                            ,xel.order_uom_qty                                           order_uom_qty                 -- 発注単位数
+                            ,xel.shipping_uom_qty                                        shipping_uom_qty              -- 出荷単位数
+                            ,xel.packing_uom_qty                                         packing_uom_qty               -- 梱包単位数
+                            ,xel.deal_code                                               deal_code                     -- 引合
+                            ,xel.deal_class                                              deal_class                    -- 引合区分
+                            ,xel.collation_code                                          collation_code                -- 照合
+                            ,xel.uom_code                                                uom_code                      -- 単位
+                            ,xel.unit_price_class                                        unit_price_class              -- 単価区分
+                            ,xel.parent_packing_number                                   parent_packing_number         -- 親梱包番号
+                            ,xel.packing_number                                          packing_number                -- 梱包番号
+                            ,xel.product_group_code                                      product_group_code            -- 商品群コード
+                            ,xel.case_dismantle_flag                                     case_dismantle_flag           -- ケース解体不可フラグ
+                            ,xel.case_class                                              case_class                    -- ケース区分
+                            ,xel.indv_order_qty                                          indv_order_qty                -- 発注数量（バラ）
+                            ,xel.case_order_qty                                          case_order_qty                -- 発注数量（ケース）
+                            ,xel.ball_order_qty                                          ball_order_qty                -- 発注数量（ボール）
+                            ,xel.pallet_shipping_qty                                     pallet_shipping_qty           -- 出荷数量（パレット）
+                            ,xel.case_qty                                                case_qty                      -- ケース個口数
+                            ,xel.fold_container_indv_qty                                 fold_container_indv_qty       -- オリコン（バラ）個口数
+                            ,xel.order_unit_price                                        order_unit_price              -- 原単価（発注）
+                            ,xel.order_cost_amt                                          order_cost_amt                -- 原価金額（発注）
+                            ,xel.stockout_cost_amt                                       stockout_cost_amt             -- 原価金額（欠品）
+                            ,xel.selling_price                                           selling_price                 -- 売単価
+                            ,xel.order_price_amt                                         order_price_amt               -- 売価金額（発注）
+                            ,xel.shipping_price_amt                                      shipping_price_amt            -- 売価金額（出荷）
+                            ,xel.stockout_price_amt                                      stockout_price_amt            -- 売価金額（欠品）
+                            ,xel.a_column_department                                     a_column_department           -- Ａ欄（百貨店）
+                            ,xel.d_column_department                                     d_column_department           -- Ｄ欄（百貨店）
+                            ,xel.standard_info_depth                                     standard_info_depth           -- 規格情報・奥行き
+                            ,xel.standard_info_height                                    standard_info_height          -- 規格情報・高さ
+                            ,xel.standard_info_width                                     standard_info_width           -- 規格情報・幅
+                            ,xel.standard_info_weight                                    standard_info_weight          -- 規格情報・重量
+                            ,xel.general_succeeded_item1                                 general_succeeded_item1       -- 汎用引継ぎ項目１
+                            ,xel.general_succeeded_item2                                 general_succeeded_item2       -- 汎用引継ぎ項目２
+                            ,xel.general_succeeded_item3                                 general_succeeded_item3       -- 汎用引継ぎ項目３
+                            ,xel.general_succeeded_item4                                 general_succeeded_item4       -- 汎用引継ぎ項目４
+                            ,xel.general_succeeded_item5                                 general_succeeded_item5       -- 汎用引継ぎ項目５
+                            ,xel.general_succeeded_item6                                 general_succeeded_item6       -- 汎用引継ぎ項目６
+                            ,xel.general_succeeded_item7                                 general_succeeded_item7       -- 汎用引継ぎ項目７
+                            ,xel.general_succeeded_item8                                 general_succeeded_item8       -- 汎用引継ぎ項目８
+                            ,xel.general_succeeded_item9                                 general_succeeded_item9       -- 汎用引継ぎ項目９
+                            ,xel.general_succeeded_item10                                general_succeeded_item10      -- 汎用引継ぎ項目１０
+                            ,xel.general_add_item4                                       general_add_item4             -- 汎用付加項目４
+                            ,xel.general_add_item5                                       general_add_item5             -- 汎用付加項目５
+                            ,xel.general_add_item6                                       general_add_item6             -- 汎用付加項目６
+                            ,xel.general_add_item7                                       general_add_item7             -- 汎用付加項目７
+                            ,xel.general_add_item8                                       general_add_item8             -- 汎用付加項目８
+                            ,xel.general_add_item9                                       general_add_item9             -- 汎用付加項目９
+                            ,xel.general_add_item10                                      general_add_item10            -- 汎用付加項目１０
+                            ,xel.chain_peculiar_area_line                                chain_peculiar_area_line      -- チェーン店固有エリア（明細）
+                            ,xel.order_connection_line_number                            order_connection_line_number  -- 受注関連明細番号
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
                       FROM   xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
                             ,xxcmm_cust_accounts                                         xca                           --顧客マスタアドオン
                             ,hz_cust_accounts                                            hca                           --顧客マスタ
@@ -2925,13 +3205,23 @@ AS
                             ,xxcos_chain_store_security_v                                xcss                          --チェーン店店舗セキュリティビュー
                             ,xxcos_lookup_values_v                                       xlvv2                         --税コードマスタ
                             ,ar_vat_tax_all_b                                            avtab                         --税率マスタ
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                            ,xxcos_edi_lines                                             xel                           --EDI明細情報テーブル
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
                       WHERE  xeh.data_type_code         = cv_data_type_edi_order                                              --データ種コード
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                      AND    xeh.edi_header_info_id     = xel.edi_header_info_id
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
                       AND (
                              i_input_rec.info_div       IS NULL                                                               --情報区分
                         OR   i_input_rec.info_div       IS NOT NULL AND xeh.info_class = i_input_rec.info_div
                       )
                       AND    xeh.edi_chain_code         = i_input_rec.chain_code                                              --EDIチェーン店コード
-                      AND    xeh.shop_code              = NVL( i_input_rec.store_code, xeh.shop_code)                         --店舗コード
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                      AND    ( ( i_input_rec.store_code IS NULL )
+                       OR      (i_input_rec.store_code IS NOT NULL AND xeh.shop_code = i_input_rec.store_code ) )                         --店舗コード
+--                      AND    xeh.shop_code              = NVL( i_input_rec.store_code, xeh.shop_code)                         --店舗コード
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                       AND    NVL(TRUNC(xeh.shop_delivery_date)
                                 ,NVL(TRUNC(xeh.center_delivery_date)
                                     ,NVL(TRUNC(xeh.order_date)
@@ -3231,8 +3521,88 @@ AS
 -- ************************* 2009/08/18 1.12 N.Maeda MOD START ************************************* --
                             ,xeh.ar_sale_class                                           ar_sale_class                 --特売区分
 -- ************************* 2009/08/18 1.12 N.Maeda MOD  MOD  ************************************* --
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                            ,xel.line_no                                                 line_no                       -- 行Ｎｏ
+                            ,xel.sum_order_qty                                           sum_order_qty                 -- 発注数量（合計、バラ）
+                            ,xel.item_code                                               item_code                     -- 品目コード
+                            ,xel.product_code1                                           product_code1                 -- 商品コード１
+                            ,xel.product_code2                                           product_code2                 -- 商品コード２
+                            ,xel.line_uom                                                line_uom                      -- 明細単位
+                            ,xel.itf_code                                                itf_code                      -- ＩＴＦコード
+                            ,xel.extension_itf_code                                      extension_itf_code            -- 内箱ＩＴＦコード
+                            ,xel.case_product_code                                       case_product_code             -- ケース商品コード
+                            ,xel.ball_product_code                                       ball_product_code             -- ボール商品コード
+                            ,xel.product_code_item_type                                  product_code_item_type        -- 商品コード品種
+                            ,xel.product_name1_alt                                       product_name1_alt             -- 商品名１（カナ）
+                            ,xel.product_name2_alt                                       product_name2_alt             -- 商品名２（カナ）
+                            ,xel.item_standard1                                          item_standard1                -- 規格１
+                            ,xel.item_standard2                                          item_standard2                -- 規格２
+                            ,xel.qty_in_case                                             qty_in_case                   -- 入数
+                            ,xel.num_of_ball                                             num_of_ball                   -- ボール入数
+                            ,xel.item_color                                              item_color                    -- 色
+                            ,xel.item_size                                               item_size                     -- サイズ
+                            ,xel.expiration_date                                         expiration_date               -- 賞味期限日
+                            ,xel.product_date                                            product_date                  -- 製造日
+                            ,xel.order_uom_qty                                           order_uom_qty                 -- 発注単位数
+                            ,xel.shipping_uom_qty                                        shipping_uom_qty              -- 出荷単位数
+                            ,xel.packing_uom_qty                                         packing_uom_qty               -- 梱包単位数
+                            ,xel.deal_code                                               deal_code                     -- 引合
+                            ,xel.deal_class                                              deal_class                    -- 引合区分
+                            ,xel.collation_code                                          collation_code                -- 照合
+                            ,xel.uom_code                                                uom_code                      -- 単位
+                            ,xel.unit_price_class                                        unit_price_class              -- 単価区分
+                            ,xel.parent_packing_number                                   parent_packing_number         -- 親梱包番号
+                            ,xel.packing_number                                          packing_number                -- 梱包番号
+                            ,xel.product_group_code                                      product_group_code            -- 商品群コード
+                            ,xel.case_dismantle_flag                                     case_dismantle_flag           -- ケース解体不可フラグ
+                            ,xel.case_class                                              case_class                    -- ケース区分
+                            ,xel.indv_order_qty                                          indv_order_qty                -- 発注数量（バラ）
+                            ,xel.case_order_qty                                          case_order_qty                -- 発注数量（ケース）
+                            ,xel.ball_order_qty                                          ball_order_qty                -- 発注数量（ボール）
+                            ,xel.pallet_shipping_qty                                     pallet_shipping_qty           -- 出荷数量（パレット）
+                            ,xel.case_qty                                                case_qty                      -- ケース個口数
+                            ,xel.fold_container_indv_qty                                 fold_container_indv_qty       -- オリコン（バラ）個口数
+                            ,xel.order_unit_price                                        order_unit_price              -- 原単価（発注）
+                            ,xel.order_cost_amt                                          order_cost_amt                -- 原価金額（発注）
+                            ,xel.stockout_cost_amt                                       stockout_cost_amt             -- 原価金額（欠品）
+                            ,xel.selling_price                                           selling_price                 -- 売単価
+                            ,xel.order_price_amt                                         order_price_amt               -- 売価金額（発注）
+                            ,xel.shipping_price_amt                                      shipping_price_amt            -- 売価金額（出荷）
+                            ,xel.stockout_price_amt                                      stockout_price_amt            -- 売価金額（欠品）
+                            ,xel.a_column_department                                     a_column_department           -- Ａ欄（百貨店）
+                            ,xel.d_column_department                                     d_column_department           -- Ｄ欄（百貨店）
+                            ,xel.standard_info_depth                                     standard_info_depth           -- 規格情報・奥行き
+                            ,xel.standard_info_height                                    standard_info_height          -- 規格情報・高さ
+                            ,xel.standard_info_width                                     standard_info_width           -- 規格情報・幅
+                            ,xel.standard_info_weight                                    standard_info_weight          -- 規格情報・重量
+                            ,xel.general_succeeded_item1                                 general_succeeded_item1       -- 汎用引継ぎ項目１
+                            ,xel.general_succeeded_item2                                 general_succeeded_item2       -- 汎用引継ぎ項目２
+                            ,xel.general_succeeded_item3                                 general_succeeded_item3       -- 汎用引継ぎ項目３
+                            ,xel.general_succeeded_item4                                 general_succeeded_item4       -- 汎用引継ぎ項目４
+                            ,xel.general_succeeded_item5                                 general_succeeded_item5       -- 汎用引継ぎ項目５
+                            ,xel.general_succeeded_item6                                 general_succeeded_item6       -- 汎用引継ぎ項目６
+                            ,xel.general_succeeded_item7                                 general_succeeded_item7       -- 汎用引継ぎ項目７
+                            ,xel.general_succeeded_item8                                 general_succeeded_item8       -- 汎用引継ぎ項目８
+                            ,xel.general_succeeded_item9                                 general_succeeded_item9       -- 汎用引継ぎ項目９
+                            ,xel.general_succeeded_item10                                general_succeeded_item10      -- 汎用引継ぎ項目１０
+                            ,xel.general_add_item4                                       general_add_item4             -- 汎用付加項目４
+                            ,xel.general_add_item5                                       general_add_item5             -- 汎用付加項目５
+                            ,xel.general_add_item6                                       general_add_item6             -- 汎用付加項目６
+                            ,xel.general_add_item7                                       general_add_item7             -- 汎用付加項目７
+                            ,xel.general_add_item8                                       general_add_item8             -- 汎用付加項目８
+                            ,xel.general_add_item9                                       general_add_item9             -- 汎用付加項目９
+                            ,xel.general_add_item10                                      general_add_item10            -- 汎用付加項目１０
+                            ,xel.chain_peculiar_area_line                                chain_peculiar_area_line      -- チェーン店固有エリア（明細）
+                            ,xel.order_connection_line_number                            order_connection_line_number  -- 受注関連明細番号
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
                       FROM   xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                             ,xxcos_edi_lines                                            xel
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
                       WHERE  xeh.data_type_code         = cv_data_type_edi_order                                              --データ種コード
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                      AND    xeh.edi_header_info_id     = xel.edi_header_info_id
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
                       AND (
                              i_input_rec.info_div       IS NULL                                                               --情報区分
                         OR   i_input_rec.info_div       IS NOT NULL AND xeh.info_class = i_input_rec.info_div
@@ -3262,14 +3632,30 @@ AS
                       )
                       AND    xeh.conv_customer_code IS NULL
                      )                                                                  xeh
-                    ,xxcos_edi_lines                                                    xel                           --EDI明細情報テーブル
+--******************************************* 2009/08/27 1.13 N.Maeda DEL START *************************************
+--                    ,xxcos_edi_lines                                                    xel                           --EDI明細情報テーブル
+--******************************************* 2009/08/27 1.13 N.Maeda DEL  END  *************************************
                     ,oe_order_headers_all                                               ooha                          --受注ヘッダ情報テーブル
                     ,oe_order_lines_all                                                 oola                          --受注明細情報テーブル
-                    ,(SELECT ore.reason_id                                              reason_id
+                    ,(SELECT
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                             /*+
+                               INDEX ( ORE XXCOS_OE_REASONS_N05 )
+                               USE_NL ( ORE_MAX )
+                             */
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
+                             ore.reason_id                                              reason_id
                             ,ore.reason_code                                            reason_code
                             ,ore.entity_id                                              entity_id
                       FROM oe_reasons                                         ore
-                          ,(SELECT entity_id,MAX(creation_date) creation_date
+                          ,(SELECT 
+--******************************************* 2009/08/27 1.13 N.Maeda ADD START *************************************
+                                   /*+
+                                     INDEX ( OE_REASONS XXCOS_OE_REASONS_N04 )
+                                   */
+--******************************************* 2009/08/27 1.13 N.Maeda ADD  END  *************************************
+                                   entity_id
+                                  ,MAX(creation_date) creation_date
                             FROM   oe_reasons
                             WHERE  reason_type = cv_reason_type
                             AND    entity_code = cv_entity_code_line
@@ -3284,7 +3670,9 @@ AS
                     ,xxcmn_item_mst_b                                                   ximb                          --OPM品目マスタアドオン
                     ,mtl_system_items_b                                                 msib                          --DISC品目マスタ
                     ,xxcmm_system_items_b                                               xsib                          --DISC品目マスタアドオン
-                    ,xxcos_head_prod_class_v                                            xhpc                          --本社商品区分ビュー
+--******************************************* 2009/08/27 1.13 N.Maeda DEL START *************************************
+--                    ,xxcos_head_prod_class_v                                            xhpc                          --本社商品区分ビュー
+--******************************************* 2009/08/27 1.13 N.Maeda DEL  END  *************************************
                     ,xxcos_lookup_values_v                                              xlvv                          --売上区分マスタ
                     ,oe_transaction_types_tl                                            ottt_l                        --受注タイプ(明細)
                     ,oe_transaction_types_tl                                            ottt_h                        --受注タイプ(ヘッダ)
@@ -3317,25 +3705,44 @@ AS
                      ,xxcos_lookup_values_v                                     xlvv_t                         -- プルーフ帳票情報マスタ
 -- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
               --EDI明細情報テーブル抽出条件
-              WHERE  xel.edi_header_info_id     = xeh.edi_header_info_id
+              WHERE
+--******************************************* 2009/08/27 1.13 N.Maeda DEL START *************************************
+--                     xel.edi_header_info_id     = xeh.edi_header_info_id
+--******************************************* 2009/08/27 1.13 N.Maeda DEL  END  *************************************
               --受注ソーステーブル抽出条件
-              AND    oos.description            = i_msg_rec.order_source                                              --受注ソース
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                     oos.description            = i_msg_rec.order_source                                              --受注ソース
+--              AND    oos.description            = i_msg_rec.order_source                                              --受注ソース
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
               AND    oos.enabled_flag           = cv_enabled_flag                                                     --有効フラグ
               --受注タイプ(ヘッダ)抽出条件
-              AND    ottt_h.language            = USERENV('LANG')
-              AND    ottt_h.source_lang         = USERENV('LANG')
-              AND    ottt_h.description         = i_msg_rec.header_type
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+              AND    ottt_h.language            = ct_user_lang
+              AND    ottt_h.source_lang         = ct_user_lang
+              AND    ottt_h.name                = i_msg_rec.header_type
+--              AND    ottt_h.language            = USERENV('LANG')
+--              AND    ottt_h.source_lang         = USERENV('LANG')
+--              AND    ottt_h.description         = i_msg_rec.header_type
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
               --受注タイプ(明細)抽出条件
-              AND    ottt_l.language            = USERENV('LANG')
-              AND    ottt_l.source_lang         = USERENV('LANG')
-              AND    ottt_l.description         = i_msg_rec.line_type10
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+              AND    ottt_l.language            = ct_user_lang
+              AND    ottt_l.source_lang         = ct_user_lang
+              AND    ottt_l.name                = i_msg_rec.line_type10
+--              AND    ottt_l.language            = USERENV('LANG')
+--              AND    ottt_l.source_lang         = USERENV('LANG')
+--              AND    ottt_l.description         = i_msg_rec.line_type10
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
               --受注ヘッダテーブル抽出条件
               AND    ooha.orig_sys_document_ref = xeh.order_connection_number                                         --外部システム受注番号 = 受注関連番号
               AND    ooha.order_source_id       = oos.order_source_id                                                 --受注ソースID
               AND    ooha.order_type_id         = ottt_h.transaction_type_id                                          --受注ヘッダタイプ
               --受注明細情報テーブル抽出条件
               AND    oola.header_id             = ooha.header_id                                                      --ヘッダID
-              AND    oola.orig_sys_line_ref     = xel.order_connection_line_number                                    --外部ｼｽﾃﾑ受注明細番号 = 受注関連明細番号
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+              AND    oola.orig_sys_line_ref     = xeh.order_connection_line_number                                    --外部ｼｽﾃﾑ受注明細番号 = 受注関連明細番号
+--              AND    oola.orig_sys_line_ref     = xel.order_connection_line_number                                    --外部ｼｽﾃﾑ受注明細番号 = 受注関連明細番号
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
               AND    oola.line_type_id          = ottt_l.transaction_type_id                                          --受注明細タイプ
               --受注理由ビュー抽出条件
               AND    ore.entity_id(+)           = oola.line_id
@@ -3346,7 +3753,10 @@ AS
                 BETWEEN NVL(xlvv3.start_date_active,i_other_rec.process_date)
                 AND     NVL(xlvv3.end_date_active  ,i_other_rec.process_date)
               --OPM品目マスタ抽出条件
-              AND    iimb.item_no(+)            = xel.item_code                                                       --品目コード
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+              AND    iimb.item_no(+)            = xeh.item_code                                                       --品目コード
+--              AND    iimb.item_no(+)            = xel.item_code                                                       --品目コード
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
               --OPM品目マスタアドオン抽出条件
               AND    ximb.item_id(+)            = iimb.item_id                                                        --品目ID
               AND    NVL(xeh.shop_delivery_date
@@ -3364,12 +3774,17 @@ AS
                                    ,NVL(xeh.order_date
                                        ,xeh.data_creation_date_edi_data))))
               --DISC品目マスタ抽出条件
-              AND    msib.segment1(+)           = xel.item_code                                                       --品目コード
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+              AND    msib.segment1(+)           = xeh.item_code                                                       --品目コード
+--              AND    msib.segment1(+)           = xel.item_code                                                       --品目コード
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
               AND    msib.organization_id(+)    = i_other_rec.organization_id                                         --在庫組織ID
               --DISC品目アドオン抽出条件
               AND    xsib.item_code(+)          = msib.segment1                                                       --INV品目ID
-              --本社商品区分ビュー抽出条件
-              AND    xhpc.segment1(+)           = iimb.item_no                                                        --品目コード
+--******************************************* 2009/08/27 1.13 N.Maeda DEL START *************************************
+--              --本社商品区分ビュー抽出条件
+--              AND    xhpc.segment1(+)           = iimb.item_no                                                        --品目コード
+--******************************************* 2009/08/27 1.13 N.Maeda DEL  END  *************************************
               --売上区分マスタ抽出条件
               AND    xlvv.lookup_type(+)        = ct_qc_sale_class                                                    --参照タイプ＝売上区分
               AND    xlvv.lookup_code(+)        = oola.attribute5                                                     --参照コード＝売上区分
@@ -3398,13 +3813,19 @@ AS
               AND   i_msg_rec.header_type = xlvv_t.attribute1
                 -- 値引帳票出力条件
               AND   ( ( ( xlvv_t.attribute2 = 'Y' AND xlvv_t.attribute3 = 'N' )
-                      AND xel.order_unit_price > oola.unit_selling_price )
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                      AND xeh.order_unit_price > oola.unit_selling_price )
+--                      AND xel.order_unit_price > oola.unit_selling_price )
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                 -- 欠品帳票出力条件
                 OR  ( ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'Y' )
                       AND ( ore.reason_code <> cv_reason_code_00 AND xeh.edi_delivery_schedule_flag = 'N' ) )
                 -- 値引欠品帳票出力条件
                 OR  ( ( xlvv_t.attribute2 = 'Y' AND xlvv_t.attribute3 = 'Y' )
-                      AND ( xel.order_unit_price > oola.unit_selling_price
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+                      AND ( xeh.order_unit_price > oola.unit_selling_price
+--                      AND ( xel.order_unit_price > oola.unit_selling_price
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
                         AND ( ore.reason_code <> cv_reason_code_00 AND xeh.edi_delivery_schedule_flag = 'N' ) ) )
                 -- フラグ無
                 OR  ( xlvv_t.attribute2 = 'N' AND xlvv_t.attribute3 = 'N' )
@@ -3679,7 +4100,10 @@ AS
                        WHEN i_chain_rec.edi_item_code_div = cv_edi_item_code_div02 THEN
                          CASE
                            WHEN oola.order_quantity_uom = i_prf_rec.case_uom_code THEN
-                             disc.case_jan_code
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+                             xsib.case_jan_code
+--                             disc.case_jan_code
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                            ELSE
                              opm.attribute21
                          END
@@ -3688,7 +4112,10 @@ AS
                      END                                                                product_code2                 --商品コード２
                     ,CASE
                        WHEN oola.order_quantity_uom = i_prf_rec.case_uom_code THEN
-                         disc.case_jan_code
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+                         xsib.case_jan_code
+--                         disc.case_jan_code
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                        ELSE
                          opm.attribute21
                      END                                                                jan_code                      --ＪＡＮコード
@@ -3697,7 +4124,25 @@ AS
                     ,NULL                                                               case_product_code             --ケース商品コード
                     ,NULL                                                               ball_product_code             --ボール商品コード
                     ,NULL                                                               product_code_item_type        --商品コード品種
-                    ,xhpc.item_div_h_code                                               prod_class                    --商品区分
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+                    ,(
+                       SELECT
+                         mcb.segment1
+                       FROM
+                         mtl_item_categories mic,
+                         mtl_categories_b    mcb
+                       WHERE
+                           mic.inventory_item_id = oola.inventory_item_id
+                       AND mic.organization_id   = i_other_rec.organization_id
+                       AND mic.category_set_id   = gt_category_set_id                 --****--
+                       AND mic.category_id       = mcb.category_id
+                       AND ( mcb.disable_date IS NULL OR mcb.disable_date > i_other_rec.process_date )
+                       AND   mcb.enabled_flag                      = cv_enabled_flag    -- カテゴリ有効フラグ
+                       AND   i_other_rec.process_date BETWEEN NVL(mcb.start_date_active, i_other_rec.process_date )
+                                                      AND     NVL(mcb.end_date_active,   i_other_rec.process_date )
+                     )                                                                  prod_class                    --商品区分
+--                    ,xhpc.item_div_h_code                                               prod_class                    --商品区分
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                     ,NVL(opm.item_name,i_msg_rec.item_notfound)                         product_name                  --商品名（漢字）
                     ,NULL                                                               product_name1_alt             --商品名１（カナ）
                     ,SUBSTRB(opm.item_name_alt,1,15)                                    product_name2_alt             --商品名２（カナ）
@@ -3705,7 +4150,10 @@ AS
                     ,SUBSTRB(opm.item_name_alt,16)                                      item_standard2                --規格２
                     ,NULL                                                               qty_in_case                   --入数
                     ,opm.attribute11                                                    num_of_cases                  --ケース入数
-                    ,TO_CHAR(disc.bowl_inc_num)                                         num_of_ball                   --ボール入数
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+                    ,TO_CHAR(xsib.bowl_inc_num)                                         num_of_ball                   --ボール入数
+--                    ,TO_CHAR(disc.bowl_inc_num)                                         num_of_ball                   --ボール入数
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                     ,NULL                                                               item_color                    --色
                     ,NULL                                                               item_size                     --サイズ
                     ,NULL                                                               expiration_date               --賞味期限日
@@ -3789,7 +4237,10 @@ AS
                      END                                                                ball_shipping_qty             --出荷数量（ボール）
                     ,NULL                                                               pallet_shipping_qty           --出荷数量（パレット）
                     ,CASE
-                       WHEN ottt_l.description        = i_msg_rec.line_type30 THEN --値引の場合
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+                       WHEN ottt_l.name        = i_msg_rec.line_type30 THEN --値引の場合
+--                       WHEN ottt_l.description        = i_msg_rec.line_type30 THEN --値引の場合
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                          TO_CHAR( 0 )
                        ELSE
                          TO_CHAR( oola.ordered_quantity )
@@ -3802,7 +4253,10 @@ AS
                     ,NULL                                                               fold_container_indv_qty       --オリコン（バラ）個口数
                     ,NULL                                                               order_unit_price              --原単価（発注）
                     ,CASE
-                       WHEN ottt_l.description        = i_msg_rec.line_type30 THEN --値引の場合
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+                       WHEN ottt_l.name        = i_msg_rec.line_type30 THEN --値引の場合
+--                       WHEN ottt_l.description        = i_msg_rec.line_type30 THEN --値引の場合
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                          TO_CHAR( 0 )
                        ELSE
                          TO_CHAR( oola.unit_selling_price )
@@ -3810,7 +4264,10 @@ AS
                     ,NULL                                                               order_cost_amt                --原価金額（発注）
 -- ******************** 2009/07/22 1.11 N.Maeda MOD START ************************* --
                     ,CASE
-                       WHEN ottt_l.description        = i_msg_rec.line_type30 THEN --値引の場合
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+                       WHEN ottt_l.name        = i_msg_rec.line_type30 THEN --値引の場合
+--                       WHEN ottt_l.description        = i_msg_rec.line_type30 THEN --値引の場合
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                          TO_CHAR(  TRUNC( oola.unit_selling_price 
                                    *  oola.ordered_quantity 
                                    * -1 ) )
@@ -3970,25 +4427,34 @@ AS
                            ,ximb.end_date_active                                        end_date_active
                     FROM    ic_item_mst_b                                               iimb                          --OPM品目マスタ
                            ,xxcmn_item_mst_b                                            ximb                          --OPM品目マスタアドオン
-                    WHERE   ximb.item_id(+)         = iimb.item_id
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+                    WHERE   ximb.item_id         = iimb.item_id
+--                    WHERE   ximb.item_id(+)         = iimb.item_id
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                    )                                                                    opm
-                    --DISC品目情報インラインビュー
-                  ,(SELECT  msib.inventory_item_id                                      inventory_item_id
-                           ,xsib.case_jan_code                                          case_jan_code
-                           ,xsib.bowl_inc_num                                           bowl_inc_num
-                    FROM    mtl_system_items_b                                          msib                          --DISC品目マスタ
-                           ,xxcmm_system_items_b                                        xsib                          --DISC品目マスタアドオン
--- 2009/02/24 T.Nakamura Ver.1.8 mod start
---                    WHERE   msib.organization_id    = 1165
-                    WHERE   msib.organization_id    = i_other_rec.organization_id
--- 2009/02/24 T.Nakamura Ver.1.8 mod end
-                    AND     xsib.item_code(+)       = msib.segment1
-                  )                                                                     disc
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+--                    --DISC品目情報インラインビュー
+--                  ,(SELECT  msib.inventory_item_id                                      inventory_item_id
+--                           ,xsib.case_jan_code                                          case_jan_code
+--                           ,xsib.bowl_inc_num                                           bowl_inc_num
+--                    FROM    mtl_system_items_b                                          msib                          --DISC品目マスタ
+--                           ,xxcmm_system_items_b                                        xsib                          --DISC品目マスタアドオン
+---- 2009/02/24 T.Nakamura Ver.1.8 mod start
+----                    WHERE   msib.organization_id    = 1165
+--                    WHERE   msib.organization_id    = i_other_rec.organization_id
+---- 2009/02/24 T.Nakamura Ver.1.8 mod end
+--                    AND     xsib.item_code(+)       = msib.segment1
+--                  )                                                                     disc
+                  ,mtl_system_items_b                                                   msib                          --DISC品目マスタ
+                  ,xxcmm_system_items_b                                                 xsib                          --DISC品目アドオン
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
                   ,oe_order_lines_all                                                   oola                          --受注明細情報テーブル
                   ,oe_transaction_types_tl                                              ottt_h                        --受注タイプ(ヘッダ)
                   ,oe_transaction_types_tl                                              ottt_l                        --受注タイプ(明細)
                   ,hz_parties                                                           hp                            --パーティマスタ
-                  ,xxcos_head_prod_class_v                                              xhpc                          --本社商品区分ビュー
+-- ************ 2009/08/27 N.Maeda 1.13 DEL START ***************** --
+--                  ,xxcos_head_prod_class_v                                              xhpc                          --本社商品区分ビュー
+-- ************ 2009/08/27 N.Maeda 1.13 DEL  END  ***************** --
                   ,xxcos_customer_items_v                                               xciv                          --顧客品目ビュー
                   ,xxcos_lookup_values_v                                                xlvv                          --売上区分マスタ
                   ,xxcos_lookup_values_v                                                xlvv2                         --税コードマスタ
@@ -4025,11 +4491,25 @@ AS
                   ,mtl_units_of_measure_tl                                              muom                          -- 単位マスタ
 -- 2009/04/27 K.Kiriu Ver.1.10 mod end
 -- ********************* 2009/07/07 1.11 N.Maeda ADD START *********************** --
-                  ,(SELECT ore.reason_id                                              reason_id
+                  ,(SELECT 
+-- ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
+                           /*+
+                             INDEX ( ORE XXCOS_OE_REASONS_N05 )
+                             USE_NL ( ORE_MAX )
+                           */
+-- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
+                           ore.reason_id                                              reason_id
                           ,ore.reason_code                                            reason_code
                           ,ore.entity_id                                              entity_id
                     FROM oe_reasons                                         ore
-                        ,(SELECT entity_id,MAX(creation_date) creation_date
+                        ,(SELECT 
+-- ************ 2009/08/27 N.Maeda 1.13 ADD START ***************** --
+                                 /*+
+                                   INDEX ( OE_REASONS XXCOS_OE_REASONS_N04 )
+                                 */
+-- ************ 2009/08/27 N.Maeda 1.13 ADD  END  ***************** --
+                                 entity_id
+                                 ,MAX(creation_date) creation_date
                           FROM   oe_reasons
                           WHERE  reason_type = cv_reason_type
                           AND    entity_code = cv_entity_code_line
@@ -4041,23 +4521,36 @@ AS
                   ,xxcos_lookup_values_v                                    xlvv_t                         -- プルーフ帳票情報マスタ
 -- ********************* 2009/07/07 1.11 N.Maeda ADD  END  *********************** --
               --受注タイプ(ヘッダ)抽出条件
-              WHERE ottt_h.language                 = USERENV('LANG')
-              AND   ottt_h.source_lang              = USERENV('LANG')
--- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
-              AND   ottt_h.description              = xlvv_t.attribute1
---              AND   ottt_h.description              = i_msg_rec.header_type
--- ********************* 2009/07/07 1.11 N.Maeda MOD  END  *********************** --
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+              WHERE ottt_h.language                 = ct_user_lang
+              AND   ottt_h.source_lang              = ct_user_lang
+              AND   ottt_h.name              = xlvv_t.attribute1
+--              WHERE ottt_h.language                 = USERENV('LANG')
+--              AND   ottt_h.source_lang              = USERENV('LANG')
+---- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
+--              AND   ottt_h.description              = xlvv_t.attribute1
+----              AND   ottt_h.description              = i_msg_rec.header_type
+---- ********************* 2009/07/07 1.11 N.Maeda MOD  END  *********************** --
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
               --受注タイプ(明細)抽出条件
-              AND   ottt_l.language                 = USERENV('LANG')
-              AND   ottt_l.source_lang              = USERENV('LANG')
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+              AND   ottt_l.language                 = ct_user_lang
+              AND   ottt_l.source_lang              = ct_user_lang
 -- ********************* 2009/07/07 1.11 N.Maeda MOD START *********************** --
               AND ( ( xlvv_t.attribute1 = i_msg_rec.header_type
-                    AND( ottt_l.description = i_msg_rec.line_type10
-                    OR  ottt_l.description = i_msg_rec.line_type20
-                    OR  ottt_l.description =  i_msg_rec.line_type30 ) )
+                    AND( ottt_l.name = i_msg_rec.line_type10
+                    OR  ottt_l.name  = i_msg_rec.line_type20
+                    OR  ottt_l.name  =  i_msg_rec.line_type30 ) )
                 OR ( xlvv_t.attribute1 <> i_msg_rec.header_type ) )
---              AND   ottt_l.description              IN (i_msg_rec.line_type10, i_msg_rec.line_type20, i_msg_rec.line_type30)
--- ********************* 2009/07/07 1.11 N.Maeda MOD  END  *********************** --
+--              AND ( ( xlvv_t.attribute1 = i_msg_rec.header_type
+--                    AND( ottt_l.description = i_msg_rec.line_type10
+--                    OR  ottt_l.description = i_msg_rec.line_type20
+--                    OR  ottt_l.description =  i_msg_rec.line_type30 ) )
+---- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
+--                OR ( xlvv_t.attribute1 <> i_msg_rec.header_type ) )
+----              AND   ottt_l.description              IN (i_msg_rec.line_type10, i_msg_rec.line_type20, i_msg_rec.line_type30)
+---- ********************* 2009/07/07 1.11 N.Maeda MOD  END  *********************** --
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
               --受注ヘッダ情報インラインビュー抽出条件
               AND   ooha.order_type_id              = ottt_h.transaction_type_id
               AND   TRUNC(ooha.request_date)                                                                          --店舗納品日
@@ -4074,10 +4567,18 @@ AS
               AND   oola.request_date
                 BETWEEN NVL(opm.start_date_active, oola.request_date)
                 AND     NVL(opm.end_date_active, oola.request_date)
-              --DISC品目情報インラインビュー抽出条件
-              AND   disc.inventory_item_id(+)       = oola.inventory_item_id
-              --本社商品区分ビュー抽出条件
-              AND   xhpc.inventory_item_id(+)       = oola.inventory_item_id
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+              --DISC品目情報抽出条件
+              AND msib.inventory_item_id(+) = oola.inventory_item_id
+              AND msib.organization_id(+)   = i_other_rec.organization_id
+              AND xsib.item_code            = msib.segment1
+--              --DISC品目情報インラインビュー抽出条件
+--              AND   disc.inventory_item_id(+)       = oola.inventory_item_id
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
+-- ************ 2009/08/27 N.Maeda 1.13 DEL START ***************** --
+--              --本社商品区分ビュー抽出条件
+--              AND   xhpc.inventory_item_id(+)       = oola.inventory_item_id
+-- ************ 2009/08/27 N.Maeda 1.13 DEL  END  ***************** --
               --顧客品目ビュー抽出条件
               AND   xciv.customer_id(+)             = i_chain_rec.customer_id
               AND   xciv.inventory_item_id(+)       = oola.inventory_item_id
@@ -4131,10 +4632,13 @@ AS
               AND   xcss.chain_code                 = i_input_rec.chain_code
 --******************************************* 2009/04/02 1.9 T.Kitajima MOD  END *************************************
 -- ********************* 2009/07/03 1.11 N.Maeda MOD  END  *********************** --
-              AND  (i_input_rec.info_div            IS NOT NULL
-                AND 1                               = 2
-                OR  i_input_rec.info_div            IS NULL
-              )
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+              AND  i_input_rec.info_div            IS NULL
+--              AND  (i_input_rec.info_div            IS NOT NULL
+--                AND 1                               = 2
+--                OR  i_input_rec.info_div            IS NULL
+--              )
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
               AND   avtab.org_id                    = i_prf_rec.org_id                                                 --MO:営業単位
               AND   avtab.enabled_flag              = cv_enabled_flag                                                  --使用可能フラグ
@@ -4168,10 +4672,16 @@ AS
 -- 2009/04/27 K.Kiriu Ver.1.10 mod start
               --単位マスタ抽出条件
               AND   oola.order_quantity_uom         = muom.uom_code
-              AND   muom.language                   = USERENV('LANG')
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+              AND   muom.language                   = ct_user_lang
+--              AND   muom.language                   = USERENV('LANG')
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
 -- 2009/04/27 K.Kiriu Ver.1.10 mod end
       )                                                                                 tbl01
-      ORDER BY tbl01.invoice_number,tbl01.line_no
+-- ************ 2009/08/27 N.Maeda 1.13 MOD START ***************** --
+      ORDER BY tbl01.invoice_number,tbl01.header_id ,tbl01.line_no
+--      ORDER BY tbl01.invoice_number,tbl01.line_no
+-- ************ 2009/08/27 N.Maeda 1.13 MOD  END  ***************** --
       ;
 --
     -- *** ローカル・レコード ***
@@ -4708,7 +5218,10 @@ out_line(buff => '1');
       --==============================================================
       --売上区分混在チェック
       --==============================================================
-      IF (lt_last_invoice_number = l_data_tab('INVOICE_NUMBER')) AND cur_data_record%ROWCOUNT > 1 THEN
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+      IF ( lt_last_header_id = lt_header_id ) AND cur_data_record%ROWCOUNT > 1 THEN
+--      IF (lt_last_invoice_number = l_data_tab('INVOICE_NUMBER')) AND cur_data_record%ROWCOUNT > 1 THEN
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
         --前回伝票番号＝今回伝票番号の場合
         IF (lt_last_bargain_class != lt_bargain_class AND lb_mix_error_order = FALSE) THEN
           --前回定番特売区分≠今回定番特売区分の場合
@@ -4730,7 +5243,10 @@ out_line(buff => '1');
         END IF;
       ELSE
         --前回伝票番号≠今回伝票番号の場合
-        lt_last_invoice_number  := l_data_tab('INVOICE_NUMBER');
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+        lt_last_header_id  := lt_header_id;
+--        lt_last_invoice_number  := l_data_tab('INVOICE_NUMBER');
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
         lt_last_bargain_class   := lt_bargain_class;
         lb_mix_error_order      := FALSE;
         lb_out_flag_error_order := FALSE;
@@ -4802,7 +5318,10 @@ out_line(buff => '1');
       --データレコード作成処理《伝票単位の編集》
       --==============================================================
 --
-      lv_break_key_new    :=  lt_cust_po_number;                                --ブレイクキー初期値設定：新
+--******************************************* 2009/08/27 1.13 N.Maeda MOD START *************************************
+      lv_break_key_new    :=  lt_header_id;                                --ブレイクキー初期値設定：新
+--      lv_break_key_new    :=  lt_cust_po_number;                                --ブレイクキー初期値設定：新
+--******************************************* 2009/08/27 1.13 N.Maeda MOD  END  *************************************
 --
       IF ( cur_data_record%ROWCOUNT = 1 ) THEN
         lv_break_key_old  :=  cv_init_cust_po_number;                           --ブレイクキー初期値設定
