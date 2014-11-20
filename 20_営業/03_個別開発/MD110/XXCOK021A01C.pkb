@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A01C(body)
  * Description      : 問屋販売条件請求書Excelアップロード
  * MD.050           : 問屋販売条件請求書Excelアップロード MD050_COK_021_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2010/01/05    1.10  K.Yamaguchi      [E_本稼動_00069] 顧客マスタ・問屋の判定条件変更
  *  2012/03/14    1.11  S.Niki           [E_本稼動_08315] 支払予定日として定義された日以外の場合にはエラーとする
  *                                       [E_本稼動_08316] 請求および支払金額の妥当性チェック追加
+ *  2012/11/22    1.12  M.Nagai          [E_本稼動_09766] チェック追加：勘定科目転記可否、AP会計期間内、顧客マスタ関連
  *
  *****************************************************************************************/
 --
@@ -110,6 +111,13 @@ AS
   cv_err_msg_10492           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10492';   --請求金額チェックエラーメッセージ
   cv_err_msg_10493           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10493';   --支払金額チェックエラーメッセージ
 -- 2012/03/14 Ver.1.11 [障害E_本稼動_08316] SCSK S.Niki ADD END
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+  cv_err_msg_00034           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00034';   --勘定科目取得エラーメッセージ
+  cv_err_msg_10503           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10503';   --科目／補助科目組合せ転記不可エラーメッセージ
+  cv_err_msg_10504           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10504';   --AP会計期間未オープンエラーメッセージ
+  cv_err_msg_10505           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10505';   --問屋管理コード未設定エラーメッセージ
+  cv_err_msg_10506           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10506';   --銀行口座情報設定エラーメッセージ
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
   cv_err_msg_00061           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00061';   --IF表ロック取得エラー
   cv_err_msg_00041           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00041';   --BLOBデータ変換エラー
   cv_err_msg_00039           CONSTANT VARCHAR2(500) := 'APP-XXCOK1-00039';   --空ファイルエラー
@@ -130,6 +138,15 @@ AS
   --プロファイル
   cv_dept_code_p             CONSTANT VARCHAR2(100) := 'XXCOK1_AFF2_DEPT_ACT';   --業務管理部の部門コード
   cv_org_id_p                CONSTANT VARCHAR2(100) := 'ORG_ID';                 --営業単位ID
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+  cv_prof_books_id           CONSTANT VARCHAR2(40)  := 'GL_SET_OF_BKS_ID';               -- 会計帳簿ID
+  cv_prof_company_code       CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF1_COMPANY_CODE';       -- 会社コード
+  cv_prof_customer_dummy     CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF5_CUSTOMER_DUMMY';     -- 顧客コード_ダミー値
+  cv_prof_company_dummy      CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF6_COMPANY_DUMMY';      -- 企業コード_ダミー値
+  cv_prof_pre1_dummy         CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY'; -- 予備1_ダミー値
+  cv_prof_pre2_dummy         CONSTANT VARCHAR2(40)  := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY'; -- 予備2_ダミー値
+  cv_date_format_yyyymmdd    CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';                     -- 日付フォーマット
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD START
   cv_organization_code       CONSTANT VARCHAR2(100) := 'XXCOK1_ORG_CODE_SALES';  --在庫組織
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
@@ -151,10 +168,14 @@ AS
   cv_token_profile           CONSTANT VARCHAR2(10)  := 'PROFILE';         --トークン名(PROFILE)
   cv_token_emp               CONSTANT VARCHAR2(10)  := 'EMP_CODE';        --トークン名(EMP_CODE)
   cv_token_count             CONSTANT VARCHAR2(5)   := 'COUNT';           --トークン名(COUNT)
+  cv_token_supplier_code     CONSTANT VARCHAR2(30)  := 'SUPPLIER_CODE';   --トークン名(SUPPLIER_CODE)
 -- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
   -- 参照タイプ名
   cv_lookup_payment_date     CONSTANT VARCHAR2(30)  := 'XXCOK1_EXPECT_PAYMENT_DATE';  --問屋請求支払予定日
 -- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+  cv_lookup_koza_type        CONSTANT VARCHAR2(30)  := 'XXCSO1_KOZA_TYPE';            --口座種別
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
   --フォーマット
   cv_date_format1            CONSTANT VARCHAR2(10)  := 'FXYYYYMMDD';   --支払予定日のフォーマット
   cv_date_format2            CONSTANT VARCHAR2(8)   := 'FXYYYYMM';     --売上対象年月のフォーマット
@@ -182,6 +203,9 @@ AS
   --文字列
   cv_revise_flag             CONSTANT VARCHAR2(1)   := '0';    --業管訂正フラグ(0:未訂正)
   cv_base_code               CONSTANT VARCHAR2(1)   := '1';    --顧客区分(拠点コード)
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+  cv_cust_code               CONSTANT VARCHAR2(2)   := '10';   --納品先顧客
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
   cv_sales_wholesale         CONSTANT VARCHAR2(2)   := '12';   --帳合問屋
   cv_sales_outlets           CONSTANT VARCHAR2(2)   := '16';   --問屋帳合先
   cv_status_a                CONSTANT VARCHAR2(1)   := 'A';    --A:確定済
@@ -224,6 +248,14 @@ AS
 -- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD START
   gv_payment_date   VARCHAR2(5000) DEFAULT NULL;              --メッセージトークン格納用
 -- 2012/03/01 Ver.1.11 [障害E_本稼動_08315] SCSK S.Niki ADD END
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+  gn_set_of_bks_id            NUMBER;                             -- 会計帳簿ID
+  gt_aff1_company_code        gl_code_combinations.segment1%TYPE; -- 会社コード
+  gt_aff5_customer_dummy      gl_code_combinations.segment5%TYPE; -- 顧客コードダミー値
+  gt_aff6_company_dummy       gl_code_combinations.segment6%TYPE; -- 企業コードダミー値
+  gt_aff7_preliminary1_dummy  gl_code_combinations.segment7%TYPE; -- 予備1ダミー値
+  gt_aff8_preliminary2_dummy  gl_code_combinations.segment8%TYPE; -- 予備2ダミー値
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
   -- =============================================================================
   -- グローバル例外
   -- =============================================================================
@@ -774,6 +806,9 @@ AS
     -- ローカル定数
     -- =======================
     cv_prg_name   CONSTANT VARCHAR2(10) := 'chk_data';     --プログラム名
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+    cv_sqlap_appl_short_name CONSTANT VARCHAR2(10)  := 'SQLAP';            --APアプリ短縮名
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
     -- =======================
     -- ローカル変数
     -- =======================
@@ -807,6 +842,11 @@ AS
     ln_payment_qty          NUMBER;
     ln_payment_amt          NUMBER;
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+    lt_ccid                 gl_code_combinations.code_combination_id%TYPE;  --CCIDの戻り値
+    lb_period_chk           BOOLEAN;                                        --AP会計期間チェックの戻り値
+    ld_expect_payment_date2 DATE;
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
@@ -814,15 +854,15 @@ AS
     -- 1.必須項目チェック
     -- =============================================================================
         
-    IF (    ( iv_base_code          IS NULL )
-         OR ( iv_cust_code          IS NULL )
-         OR ( iv_supplier_code      IS NULL )
-         OR ( iv_bill_no            IS NULL )
-         OR ( iv_sales_outlets_code IS NULL )
-         OR ( iv_demand_qty         IS NULL )
-         OR ( iv_demand_unit_type   IS NULL )
-         OR ( iv_demand_unit_price  IS NULL )
-         OR ( iv_selling_month      IS NULL )
+    IF (    ( iv_base_code           IS NULL )
+         OR ( iv_cust_code           IS NULL )
+         OR ( iv_supplier_code       IS NULL )
+         OR ( iv_bill_no             IS NULL )
+         OR ( iv_sales_outlets_code  IS NULL )
+         OR ( iv_demand_qty          IS NULL )
+         OR ( iv_demand_unit_type    IS NULL )
+         OR ( iv_demand_unit_price   IS NULL )
+         OR ( iv_selling_month       IS NULL )
          OR ( iv_expect_payment_date IS NULL )
        ) THEN
       -- *** 項目がNULLの場合、例外処理 ***
@@ -1537,6 +1577,9 @@ AS
          , xxcmm_cust_accounts xca
     WHERE  hca.cust_account_id   = xca.customer_id
     AND    hca.account_number    = iv_cust_code
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+    AND    hca.customer_class_code = cv_cust_code -- 納品先顧客
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
 -- 2010/01/05 Ver.1.10 [E_本稼動_00069] SCS K.Yamaguchi REPAIR START
 --    AND    xca.business_low_type = cv_sales_wholesale
     AND    xca.torihiki_form     = '2' -- 問屋帳合
@@ -1928,6 +1971,178 @@ AS
       END IF;
     END IF;
 -- 2012/03/14 Ver.1.11 [障害E_本稼動_08316] SCSK S.Niki ADD END
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+    -- =============================================================================
+    -- 19.科目／補助科目組合せ転記可否チェック
+    -- =============================================================================
+    ld_expect_payment_date2 := TO_DATE( iv_expect_payment_date, cv_date_format_yyyymmdd );
+--
+    --科目の入力がある場合のみチェック実施
+    IF ( iv_acct_code IS NOT NULL ) THEN
+--
+      --CCID取得
+      lt_ccid := xxcok_common_pkg.get_code_combination_id_f( 
+                 ld_expect_payment_date2     -- 処理日             -> 支払予定日
+               , gt_aff1_company_code        -- 会社コード         -> プロファイルから取得の会社コード
+               , iv_base_code                -- 部門コード         -> 拠点コード
+               , iv_acct_code                -- 勘定科目コード     -> 勘定科目コード
+               , iv_sub_acct_code            -- 補助科目コード     -> 補助科目コード
+               , gt_aff5_customer_dummy      -- 顧客コードダミー値 -> プロファイルから取得の顧客コードダミー値
+               , gt_aff6_company_dummy       -- 企業コードダミー値 -> プロファイルから取得の企業コードダミー値
+               , gt_aff7_preliminary1_dummy  -- 予備1ダミー値      -> プロファイルから取得の予備1ダミー値
+               , gt_aff8_preliminary2_dummy  -- 予備2ダミー値      -> プロファイルから取得の予備2ダミー値
+               );
+--
+      IF ( lt_ccid IS NULL ) THEN
+        --CCID取得失敗時は転記可否チェックを中止
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_err_msg_00034
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        ov_retcode := cv_status_continue;
+      ELSE
+        -- CCIDが取得できた場合、チェック続行
+        -- 転記許可フラグの確認
+        SELECT  COUNT('X') AS cnt
+        INTO    ln_count
+        FROM    gl_code_combinations gcc                     --勘定科目組合せマスタ
+        WHERE   gcc.code_combination_id         = lt_ccid
+        AND     gcc.detail_posting_allowed_flag = cv_flag_y  --'Y'
+        ;
+--
+        -- *** 値が取得できなかった場合、例外処理 ***
+        IF ( ln_count = cn_0 ) THEN
+          lv_msg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10503
+                    , iv_token_name1  => cv_token_account_code
+                    , iv_token_value1 => iv_acct_code
+                    , iv_token_name2  => cv_token_row_num
+                    , iv_token_value2 => TO_CHAR( in_loop_cnt )
+                    );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which    => FND_FILE.OUTPUT   --出力区分
+                        , iv_message  => lv_msg            --メッセージ
+                        , in_new_line => 0                 --改行
+                        );
+          ov_retcode := cv_status_continue;
+        END IF;
+      END IF;
+    END IF;
+--
+    -- =============================================================================
+    -- 20.支払予定日がAP会計期間内であることのチェック
+    -- =============================================================================
+    lb_period_chk := xxcok_common_pkg.check_acctg_period_f(
+                       in_set_of_books_id         => gn_set_of_bks_id                -- 会計帳簿ID
+                     , id_proc_date               => ld_expect_payment_date2         -- 支払予定日
+                     , iv_application_short_name  => cv_sqlap_appl_short_name        -- アプリケーション短縮名
+                     );
+    -- オープン(戻り値がTRUE)以外の場合、エラー終了する。
+    IF ( lb_period_chk = FALSE ) THEN
+      lv_msg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcok_appl_name
+                    , iv_name         => cv_err_msg_10504
+                    , iv_token_name1  => cv_token_row_num
+                    , iv_token_value1 => TO_CHAR( in_loop_cnt )
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT   --出力区分
+                    , iv_message  => lv_msg            --メッセージ
+                    , in_new_line => 0                 --改行
+                    );
+      ov_retcode := cv_status_continue;
+    END IF;
+    -- =============================================================================
+    -- 21.問屋管理コード設定チェック
+    -- =============================================================================
+    --問屋管理コードが設定されているかチェックを行う
+    SELECT COUNT('X') AS cnt
+    INTO   ln_count
+    FROM   hz_cust_accounts         hca      -- 顧客マスタ（顧客）
+         , xxcmm_cust_accounts      xca      -- 顧客追加情報（顧客）
+    WHERE  hca.cust_account_id   = xca.customer_id
+    AND    xca.wholesale_ctrl_code IS NOT NULL
+    AND    hca.account_number    = iv_cust_code
+    ;
+--
+    -- *** 値が取得できなかった場合、例外処理 ***
+    IF ( ln_count = cn_0 ) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_10505
+                , iv_token_name1  => cv_token_customer_code
+                , iv_token_value1 => iv_cust_code
+                , iv_token_name2  => cv_token_row_num
+                , iv_token_value2 => TO_CHAR( in_loop_cnt )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT    --出力区分
+                    , iv_message  => lv_msg             --メッセージ
+                    , in_new_line => 0                  --改行
+                    );
+      ov_retcode := cv_status_continue;
+    END IF;
+    -- =============================================================================
+    -- 22.銀行口座有効チェック
+    -- =============================================================================
+    --銀行口座の有効チェックを行う
+    SELECT COUNT('X') AS cnt
+    INTO   ln_count
+    FROM   po_vendors                pv     -- 仕入先マスタ
+         , po_vendor_sites_all       pvsa   -- 仕入先サイトマスタ
+         , ap_bank_account_uses_all  abaua  -- 銀行口座使用情報
+         , ap_bank_accounts_all      abaa   -- 銀行口座マスタ
+         , ap_bank_branches          abb    -- 銀行支店マスタ
+         , fnd_lookup_values         flv    -- クイックコード（口座種別）
+    WHERE  pv.segment1                    = iv_supplier_code
+    AND    pv.vendor_id                   = pvsa.vendor_id
+    AND    pvsa.vendor_id                 = abaua.vendor_id
+    AND    pvsa.vendor_site_id            = abaua.vendor_site_id
+    AND    abaua.external_bank_account_id = abaa.bank_account_id
+    AND    abaa.bank_branch_id            = abb.bank_branch_id
+    AND    abaa.bank_account_type         = flv.lookup_code
+    AND    abaua.primary_flag             = cv_flag_y
+    AND    (   ( abaua.start_date <= gd_prdate )
+            OR ( abaua.start_date IS NULL      )
+           )
+    AND    (   ( abaua.end_date >= gd_prdate   )
+            OR ( abaua.end_date IS NULL        )
+           )
+    AND    flv.lookup_type                = cv_lookup_koza_type
+    AND    flv.enabled_flag               = cv_flag_y             --Y:有効
+    AND    flv.language                   = cv_lang               --言語
+    AND    pvsa.org_id                    = abaua.org_id
+    AND    pvsa.org_id                    = abaa.org_id
+    AND    pvsa.org_id                    = gn_org_id
+    AND    (   ( pvsa.inactive_date > gd_prdate )
+            OR ( pvsa.inactive_date IS NULL     )
+           )
+    ;
+--
+    --有効な銀行口座が取得できない場合はエラー
+    IF ( ln_count = cn_0 ) THEN
+      lv_msg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcok_appl_name
+                , iv_name         => cv_err_msg_10506
+                , iv_token_name1  => cv_token_supplier_code
+                , iv_token_value1 => iv_supplier_code
+                , iv_token_name2  => cv_token_row_num
+                , iv_token_value2 => TO_CHAR( in_loop_cnt )
+                );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which    => FND_FILE.OUTPUT    --出力区分
+                    , iv_message  => lv_msg             --メッセージ
+                    , in_new_line => 0                  --改行
+                    );
+      ov_retcode := cv_status_continue;
+    END IF;
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
     -- =============================================================================
     -- 問屋請求書テーブルデータチェック(A-5)
     -- 問屋請求書ヘッダーテーブル、問屋請求書明細テーブルの既存データチェックを行う
@@ -2570,6 +2785,62 @@ AS
       RAISE get_profile_expt;
     END IF;
 -- 2009/12/18 Ver.1.6 [E_本稼動_00539] SCS K.Yamaguchi ADD END
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD START
+    --==================================================
+    -- プロファイル：会計帳簿ID
+    --==================================================
+    gn_set_of_bks_id  := TO_NUMBER ( FND_PROFILE.VALUE( cv_prof_books_id ) );
+    IF ( gn_set_of_bks_id IS NULL ) THEN
+      lv_profile_code := cv_prof_books_id;
+      RAISE get_profile_expt;
+    END IF;
+--
+    --==================================================
+    -- プロファイル：会社コード
+    --==================================================
+    gt_aff1_company_code  := FND_PROFILE.VALUE( cv_prof_company_code );
+    IF ( gt_aff1_company_code IS NULL ) THEN
+      lv_profile_code := cv_prof_company_code;
+      RAISE get_profile_expt;
+    END IF;
+--
+    --==================================================
+    -- プロファイル：顧客コード_ダミー値
+    --==================================================
+    gt_aff5_customer_dummy  := FND_PROFILE.VALUE( cv_prof_customer_dummy );
+    IF ( gt_aff5_customer_dummy IS NULL ) THEN
+      lv_profile_code := cv_prof_customer_dummy;
+      RAISE get_profile_expt;
+    END IF;
+--
+    --==================================================
+    -- プロファイル：企業コード_ダミー値
+    --==================================================
+    gt_aff6_company_dummy  := FND_PROFILE.VALUE( cv_prof_company_dummy );
+    IF ( gt_aff6_company_dummy IS NULL ) THEN
+      lv_profile_code := cv_prof_company_dummy;
+      RAISE get_profile_expt;
+    END IF;
+--
+    --==================================================
+    -- プロファイル：予備1_ダミー値
+    --==================================================
+    gt_aff7_preliminary1_dummy  := FND_PROFILE.VALUE( cv_prof_pre1_dummy );
+    IF ( gt_aff7_preliminary1_dummy IS NULL ) THEN
+      lv_profile_code := cv_prof_pre1_dummy;
+      RAISE get_profile_expt;
+    END IF;
+--
+    --==================================================
+    -- プロファイル：予備2_ダミー値
+    --==================================================
+    gt_aff8_preliminary2_dummy  := FND_PROFILE.VALUE( cv_prof_pre2_dummy );
+    IF ( gt_aff8_preliminary2_dummy IS NULL ) THEN
+      lv_profile_code := cv_prof_pre2_dummy;
+      RAISE get_profile_expt;
+    END IF;
+--
+-- 2012/11/22 Ver.1.12 [障害E_本稼動_09766] SCSK M.Nagai ADD END
     -- =============================================================================
     -- 3.ユーザの所属部門を取得
     -- =============================================================================
