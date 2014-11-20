@@ -7,7 +7,7 @@ AS
  * Description      : 積込指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 積込指示書 T_MD070_BPO_62J
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *                                         禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/15    1.4   Masayoshi Uehara   入数の小数部を切り捨てて、整数で表示
  *  2008/10/27    1.5   Yuko Kawano        統合指摘#133、課題#32,#62、内部変更#183対応
+ *  2009/01/19    1.6   Yasuhisa Yamamoto  本番障害#1039対応
  *
  *****************************************************************************************/
 --
@@ -770,6 +771,10 @@ AS
       AND       xoha.latest_external_flag         =   'Y'
       AND       fu.user_id                        =   FND_GLOBAL.USER_ID
       AND       papf.person_id                    =   fu.employee_id
+-- 2009/01/19 Y.Yamamoto #1039 add start
+      AND       TRUNC( SYSDATE )            BETWEEN   papf.effective_start_date 
+                                            AND       NVL(papf.effective_end_date,TRUNC( SYSDATE ))
+-- 2009/01/19 Y.Yamamoto #1039 add end
       AND       (
       -------------------------------------------------------------------------------
       -- 内部倉庫の場合
@@ -1047,8 +1052,11 @@ AS
       -- 移動依頼/指示ヘッダ(アドオン)
       -------------------------------------------------------------------------------
       WHERE
-                xmrih.mov_type                    <> lc_mov_type_sekisou_nashi  -- 積送無し
-      AND       xmrih.status                      >= lc_status_irai_zumi        -- 依頼済以上
+-- 2009/01/19 Y.Yamamoto #1039 update start
+--                xmrih.mov_type                    <> lc_mov_type_sekisou_nashi  -- 積送無し
+--      AND       xmrih.status                      >= lc_status_irai_zumi        -- 依頼済以上
+                xmrih.status                      >= lc_status_irai_zumi        -- 依頼済以上
+-- 2009/01/19 Y.Yamamoto #1039 update end
       AND       xmrih.status                      <> lc_status_torikeshi        -- 取消を含まない
 -- 2008/10/27 Y.Kawano Add Start #62
       AND     ((xmrih.no_instr_actual_class       IS NULL)
@@ -1085,6 +1093,10 @@ AS
       -------------------------------------------------------------------------------
       AND       fu.user_id                        =   FND_GLOBAL.USER_ID
       AND       papf.person_id                    =   fu.employee_id
+-- 2009/01/19 Y.Yamamoto #1039 add start
+      AND       TRUNC( SYSDATE )            BETWEEN   papf.effective_start_date 
+                                            AND       NVL(papf.effective_end_date,TRUNC( SYSDATE ))
+-- 2009/01/19 Y.Yamamoto #1039 add end
       AND       (
       -------------------------------------------------------------------------------
       -- 内部倉庫の場合
