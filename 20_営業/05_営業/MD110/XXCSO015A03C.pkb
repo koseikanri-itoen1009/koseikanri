@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2010-01-06    1.23  K.Hosoi          E_本稼動_00825 リース区分に関わらず物件情報履歴データ
  *                                       を作成するよう変更。（後で自社リースに変更するケースを考慮）
  *  2010-01-13    1.24  K.Hosoi          E_本稼動_00443対応
+ *  2010-01-19    1.25  K.Hosoi          E_本稼動_00818,01177対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -161,6 +162,9 @@ AS
 /*20090507_mori_T1_0439 START*/
   cv_tkn_number_33        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00569';  -- 設置用物件コード不正エラー
 /*20090507_mori_T1_0439 END*/
+  /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+  cv_tkn_number_34        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00590';  -- 有効顧客抽出失敗エラーメッセージ
+  /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
 --
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MSG';
@@ -390,6 +394,9 @@ AS
      /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
      ,ib_un_number                VARCHAR2(14)    -- インストールベース機種
      /* 2009.11.29 T.Maruyama E_本稼動_00120対応 END */
+     /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+     ,actual_work_time1           VARCHAR2(4)     -- 実作業時間１
+     /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
   );
 --
   -- 工場返品倉替先コードレコード定義
@@ -2784,6 +2791,14 @@ AS
     cv_flg_n                 CONSTANT VARCHAR2(1) := 'N';  -- 新古台フラグ
     cv_flg_y                 CONSTANT VARCHAR2(1) := 'Y';  -- 新古台フラグ
     cv_csi_item_instances    CONSTANT VARCHAR2(100) := 'インストールベースマスタ';  
+    /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+    cv_cust_mst_info         CONSTANT VARCHAR2(100) := '顧客マスタ情報';
+    --
+    cv_zero                  CONSTANT VARCHAR2(1) := '0';
+    cn_cmplt                 CONSTANT NUMBER(1)   := 1;
+    cb_true                  CONSTANT BOOLEAN     := TRUE;
+    cb_false                 CONSTANT BOOLEAN     := FALSE;
+    /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
 --
     -- *** ローカル変数 ***
     ln_job_kbn               NUMBER;                    -- 作業区分
@@ -2798,9 +2813,20 @@ AS
     ln_seq_no                NUMBER;                    -- シーケンス番号
     ln_slip_no               NUMBER;                    -- 伝票No.
     /* 2009.12.16 K.Hosoi E_本稼動_00502対応 END*/
+    /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+    lt_actual_work_date      xxcso_in_work_data.actual_work_date%TYPE;
+    lt_actual_work_time1     xxcso_in_work_data.actual_work_time1%TYPE;
+    lt_acct_num              xxcso_cust_acct_sites_v.account_number%TYPE;
+    lb_chk_flg               BOOLEAN DEFAULT FALSE;
+    /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
 --
     -- *** ローカル例外 ***
     skip_process_expt       EXCEPTION;
+    /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+    skip_process_expt_2     EXCEPTION;
+    call_gb_prcss_expt      EXCEPTION;
+    call_skp_prcss_expt     EXCEPTION;
+    /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
     /* 2009.05.18 K.Satomura T1_1066対応 START */
     --/*20090507_mori_T1_0530 START*/
     --shindai_chk_expt       EXCEPTION;
@@ -2868,9 +2894,46 @@ AS
       --  RAISE shindai_chk_expt;
       --END IF;
 --
-      IF (ln_job_kbn IN (cn_jon_kbn_1, cn_jon_kbn_2, cn_jon_kbn_3, cn_jon_kbn_4, cn_jon_kbn_5, cn_jon_kbn_6)) THEN
-      -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
-        IF (lv_po_req_number < lv_last_po_req_number) THEN
+      /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+      -- 最終発注依頼番号がNULLまたは'0'の場合
+      IF (( lv_last_po_req_number IS NULL )
+        OR ( lv_last_po_req_number = cv_zero )) THEN
+--
+        NULL;
+      -- 最終発注依頼番号がNOT NULLで且つ'0'でない場合
+      ELSE
+        lb_chk_flg := cb_true;
+        -- 当該物件データの前回実作業日、実作業時間１を取得
+        BEGIN
+          SELECT   xiwd1.actual_work_date    actual_work_date  -- 実作業日
+                  ,xiwd1.actual_work_time1   actual_work_time1 -- 実作業時間１
+          INTO     lt_actual_work_date
+                  ,lt_actual_work_time1
+          FROM     xxcso_in_work_data xiwd1                    -- 作業データテーブル(1)
+          WHERE    xiwd1.seq_no           =  ( SELECT   MAX(xiwd2.seq_no)
+                                               FROM     xxcso_in_work_data xiwd2    -- 作業データテーブル(2)
+                                               WHERE    xiwd2.po_req_number    =  TO_NUMBER(lv_last_po_req_number)
+                                                 AND    xiwd2.completion_kbn   =  cn_cmplt
+                                             )
+          ;
+--
+        EXCEPTION
+          WHEN OTHERS THEN
+           -- 取得できない場合は、スキップのチェックはしない
+           lb_chk_flg := cb_false;
+        END;
+      END IF;
+--
+      IF (lb_chk_flg = cb_true) THEN
+      --IF (ln_job_kbn IN (cn_jon_kbn_1, cn_jon_kbn_2, cn_jon_kbn_3, cn_jon_kbn_4, cn_jon_kbn_5, cn_jon_kbn_6)) THEN
+      ---- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動の場合
+      --  IF (lv_po_req_number < lv_last_po_req_number) THEN
+--
+        -- 当該処理作業データの実作業日 || 実作業時間１ ＜ 最終発注依頼番号より取得した前回実作業日 || 実作業時間１
+        -- の場合、作業データ取込処理をスキップします。
+        IF (( TO_CHAR(io_inst_base_data_rec.actual_work_date) || io_inst_base_data_rec.actual_work_time1 )
+               < ( TO_CHAR(lt_actual_work_date) || lt_actual_work_time1 )) THEN
+      /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
           /* 2009.06.01 K.Satomura T1_1107対応 START */
           update_in_work_data(
              io_inst_base_data_rec => io_inst_base_data_rec -- (IN)物件マスタ情報
@@ -2893,8 +2956,79 @@ AS
         --
       END IF;
       /* 2009.05.18 K.Satomura T1_0959,T1_1066対応 END */
-      
-      
+      /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+--
+      IF (ln_job_kbn NOT IN (cn_jon_kbn_1, cn_jon_kbn_2, cn_jon_kbn_3, cn_jon_kbn_4, cn_jon_kbn_5, cn_jon_kbn_6)) THEN
+      -- 作業区分が１：新台設置、２：旧台設置、３：新台代替、４：旧台代替、５：引揚、６：店内移動 以外の場合
+--
+        -- ============================
+        -- 顧客情報存在チェック
+        -- ============================
+        BEGIN
+          SELECT casv.account_number                                 -- 顧客コード
+          INTO   lt_acct_num
+          FROM   xxcso_cust_acct_sites_v casv                               -- 顧客マスタサイトビュー
+                ,csi_item_instances      ciis                               -- インストールベースマスタ
+          WHERE  ciis.external_reference     = lv_install_code
+            AND  ciis.owner_party_account_id = casv.cust_account_id
+            AND  casv.account_status         = cv_active
+            AND  casv.acct_site_status       = cv_active
+            AND  casv.party_status           = cv_active
+            AND  casv.party_site_status      = cv_active
+          ;
+--
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            -- データが存在しない場合
+--
+            update_in_work_data(
+               io_inst_base_data_rec => io_inst_base_data_rec -- (IN)物件マスタ情報
+              ,id_process_date       => id_process_date       -- 業務処理日付
+              ,iv_skip_flag          => cv_flg_y              -- スキップフラグ
+              ,ov_errbuf             => lv_errbuf             -- エラー・メッセージ            --# 固定 #
+              ,ov_retcode            => lv_retcode            -- リターン・コード              --# 固定 #
+              ,ov_errmsg             => lv_errmsg             -- ユーザー・エラー・メッセージ  --# 固定 #
+            );
+--
+            IF (lv_retcode = cv_status_error) THEN
+              RAISE call_gb_prcss_expt;
+            ELSIF (lv_retcode = cv_status_warn) THEN
+              RAISE call_skp_prcss_expt;
+            END IF;
+--
+            RAISE skip_process_expt_2;
+            -- 抽出に失敗した場合
+          WHEN OTHERS THEN
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_app_name                                     -- アプリケーション短縮名
+                           ,iv_name         => cv_tkn_number_24                                -- メッセージコード
+                           ,iv_token_name1  => cv_tkn_task_nm                                  -- トークンコード1
+                           ,iv_token_value1 => cv_cust_mst_info                                -- トークン値1
+                           ,iv_token_name2  => cv_tkn_seq_no                                   -- トークンコード2
+                           ,iv_token_value2 => TO_CHAR(ln_seq_no)                              -- トークン値2
+                           ,iv_token_name3  => cv_tkn_slip_num                                 -- トークンコード3
+                           ,iv_token_value3 => TO_CHAR(ln_slip_no)                             -- トークン値3
+                           ,iv_token_name4  => cv_tkn_slip_branch_num                          -- トークンコード4
+                           ,iv_token_value4 => TO_CHAR(io_inst_base_data_rec.slip_branch_no)   -- トークン値4
+                           ,iv_token_name5  => cv_tkn_line_num                                 -- トークンコード5
+                           ,iv_token_value5 => TO_CHAR(io_inst_base_data_rec.line_number)      -- トークン値5
+                           ,iv_token_name6  => cv_tkn_bukken1                                  -- トークンコード6
+                           ,iv_token_value6 => io_inst_base_data_rec.install_code1             -- トークン値6
+                           ,iv_token_name7  => cv_tkn_bukken2                                  -- トークンコード7
+                           ,iv_token_value7 => io_inst_base_data_rec.install_code2             -- トークン値7
+                           ,iv_token_name8  => cv_tkn_account_num1                             -- トークンコード8
+                           ,iv_token_value8 => io_inst_base_data_rec.account_number1           -- トークン値8
+                           ,iv_token_name9  => cv_tkn_account_num2                             -- トークンコード9
+                           ,iv_token_value9 => io_inst_base_data_rec.account_number2           -- トークン値9
+                           ,iv_token_name10 => cv_tkn_errmsg                                   -- トークンコード10
+                           ,iv_token_value10=> SQLERRM                                         -- トークン値10
+                         );
+            lv_errbuf := lv_errmsg;
+            RAISE call_skp_prcss_expt;
+        END;
+--
+      END IF;
+      /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
       /* 2009.11.29 T.Maruyama E_本稼動_00120対応 START */
       -----------------------------------------------------
       --機種CDの設定
@@ -2989,6 +3123,30 @@ AS
                      );
         lv_errbuf := lv_errmsg;
         RAISE skip_process_expt;
+      /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+      WHEN call_gb_prcss_expt THEN
+        RAISE global_process_expt;
+--
+      WHEN skip_process_expt_2 THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_34             -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_seq_no                -- トークンコード1
+                       ,iv_token_value1 => TO_CHAR(ln_seq_no)           -- トークン値1
+                       ,iv_token_name2  => cv_tkn_slip_num              -- トークンコード2
+                       ,iv_token_value2 => TO_CHAR(ln_slip_no)          -- トークン値2
+                       ,iv_token_name3  => cv_tkn_work_kbn              -- トークンコード3
+                       ,iv_token_value3 => TO_CHAR(ln_job_kbn)          -- トークン値3
+                       ,iv_token_name4  => cv_tkn_bukken                -- トークンコード3
+                       ,iv_token_value4 => lv_install_code              -- トークン値3
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+--
+      WHEN call_skp_prcss_expt THEN
+        RAISE skip_process_expt;
+--
+      /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
       -- 抽出に失敗した場合
       WHEN OTHERS THEN
         lv_errmsg := xxccp_common_pkg.get_msg(
@@ -7610,6 +7768,9 @@ AS
               ,xciwd.po_req_number                  po_req_number               -- 発注依頼番号
               ,xciwd.line_num                       line_num                    -- 発注依頼明細番号
               ,xciwd.actual_work_date               actual_work_date            -- 実作業日
+              /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+              ,xciwd.actual_work_time1              actual_work_time1           -- 実作業時間１
+              /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
       FROM     xxcso_in_work_data    xciwd
               ,xxcso_in_item_data    xciid
       /* 2009.06.15 K.Satomura T1_1239対応 START */
@@ -7779,6 +7940,9 @@ AS
         /* 2009.06.15 K.Satomura T1_1239対応 START */
         l_g_get_data_rec.completion_kbn            := l_inst_base_data_rec.completion_kbn;
         /* 2009.06.15 K.Satomura T1_1239対応 END */
+        /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 START */
+        l_g_get_data_rec.actual_work_time1         := l_inst_base_data_rec.actual_work_time1;
+        /* 2010.01.19 K.Hosoi E_本稼動_00818,01177対応 END */
 --
         -- メッセージ格納用
         ln_seq_no                     := l_inst_base_data_rec.seq_no;
