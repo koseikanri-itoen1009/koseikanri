@@ -7,7 +7,7 @@ AS
  * Description      : ロット引当情報取込処理
  * MD.050           : 取引先オンライン T_MD050_BPO_940
  * MD.070           : ロット引当情報取込処理 T_MD070_BPO_94H
- * Version          : 1.5
+ * Version          : 1.6
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -37,7 +37,8 @@ AS
  *  2008/07/29    1.2  Oracle 吉田夏樹   ST不具合対応(採番なし)
  *  2008/08/22    1.3  Oracle 山根一浩   T_TE080_BPO_940 指摘4,指摘5,指摘17対応
  *  2008/10/08    1.4  Oracle 伊藤ひとみ 統合テスト指摘240対応
- *  2009/02/09    1.5  Oracle 吉田 夏樹  本番#15対応
+ *  2009/02/09    1.5  Oracle 吉田 夏樹  本番#15、1121対応
+ *  2009/02/25    1.6  Oracle 吉田 夏樹  本番#1121対応、863対応再対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -831,13 +832,17 @@ AS
                    ,xxwsh_order_headers_all    xoha                  -- 受注ヘッダアドオン
                    ,xxwsh_order_lines_all      xola                  -- 受注明細アドオン
                    ,xxcmn_item_locations2_v    xilv                  -- OPM保管場所情報VIEW2
-                   ,xxcmn_item_locations2_v    xilv2                 -- OPM保管場所情報VIEW2
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--                   ,xxcmn_item_locations2_v    xilv2                 -- OPM保管場所情報VIEW2
+-- 2009/02/25 v1.6 N.Yoshida Mod End
                    ,xxcmn_item_mst2_v          ximv                  -- OPM品目情報VIEW2
              WHERE  xlri.request_no            = xola.request_no(+)
              AND    xlri.item_code             = xola.shipping_item_code(+)
              AND    xola.order_header_id       = xoha.order_header_id
              AND    xoha.deliver_from          = xilv.segment1
-             AND    xilv.frequent_whse         = xilv2.segment1(+)
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--             AND    xilv.frequent_whse         = xilv2.segment1(+)
+-- 2009/02/25 v1.6 N.Yoshida Mod End
              AND    xlri.data_class            = iv_data_class
              AND    xola.shipping_inventory_item_id = ximv.inventory_item_id
              AND    ximv.start_date_active    <= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
@@ -846,10 +851,12 @@ AS
              AND    (xilv.date_to             >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
                OR   xilv.date_to IS NULL)
              AND    xilv.disable_date IS NULL
-             AND    xilv2.date_from           <= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
-             AND    (xilv2.date_to            >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
-               OR   xilv2.date_to IS NULL)
-             AND    xilv2.disable_date IS NULL
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--             AND    xilv2.date_from           <= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
+--             AND    (xilv2.date_to            >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
+--               OR   xilv2.date_to IS NULL)
+--             AND    xilv2.disable_date IS NULL
+-- 2009/02/25 v1.6 N.Yoshida Mod End
              AND    xola.delete_flag           = gv_flg_n
              AND    xoha.latest_external_flag  = gv_flg_y
              AND    xilv.segment1              = iv_deliver_from
@@ -946,7 +953,9 @@ AS
                 ,xxwsh_order_headers_all    xoha                  -- 受注ヘッダアドオン
                 ,xxwsh_order_lines_all      xola                  -- 受注明細アドオン
                 ,xxcmn_item_locations2_v    xilv                  -- OPM保管場所情報VIEW2
-                ,xxcmn_item_locations2_v    xilv2                 -- OPM保管場所情報VIEW2
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--                ,xxcmn_item_locations2_v    xilv2                 -- OPM保管場所情報VIEW2
+-- 2009/02/25 v1.6 N.Yoshida Mod End
                 ,xxcmn_item_mst2_v          ximv                  -- OPM品目情報VIEW2
                 ,xxinv_mov_lot_details      xmld                  -- 移動ロット詳細アドオン
           WHERE  xlri.request_no            = xola.request_no(+)
@@ -954,7 +963,9 @@ AS
           AND    xola.order_line_id         = xmld.mov_line_id
           AND    xola.order_header_id       = xoha.order_header_id
           AND    xoha.deliver_from          = xilv.segment1
-          AND    xilv.frequent_whse         = xilv2.segment1(+)
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--          AND    xilv.frequent_whse         = xilv2.segment1(+)
+-- 2009/02/25 v1.6 N.Yoshida Mod End
           AND    xlri.data_class            = iv_data_class
           AND    xlri.item_code             = lv_item_no
           AND    xlri.lot_no                = lv_lot_no
@@ -968,10 +979,12 @@ AS
           AND    (xilv.date_to             >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
             OR   xilv.date_to IS NULL)
           AND    xilv.disable_date IS NULL
-          AND    xilv2.date_from           <= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
-          AND    (xilv2.date_to            >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
-            OR   xilv2.date_to IS NULL)
-          AND    xilv2.disable_date IS NULL
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--          AND    xilv2.date_from           <= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
+--          AND    (xilv2.date_to            >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
+--            OR   xilv2.date_to IS NULL)
+--          AND    xilv2.disable_date IS NULL
+-- 2009/02/25 v1.6 N.Yoshida Mod End
           AND    xola.delete_flag           = gv_flg_n
           AND    xoha.latest_external_flag  = gv_flg_y
           AND    xilv.segment1              = iv_deliver_from
@@ -1147,7 +1160,15 @@ AS
           ,xlri.reserved_quantity            -- 引当数量
           ,xola.order_line_id                -- 明細ID
           ,xola.quantity                     -- 引当数量合計
-          ,ilm.lot_id                        -- ロットID
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--          ,ilm.lot_id                        -- ロットID
+          ,CASE WHEN EXISTS(SELECT 1 FROM ic_lots_mst ilm2
+                       WHERE xlri.lot_no = ilm2.lot_no
+                       AND   ximv.item_id = ilm2.item_id)
+                THEN ilm.lot_id
+                ELSE NULL
+           END lot_id                        -- ロットID
+-- 2009/02/25 v1.6 N.Yoshida Mod End
           ,ximv.item_id                      -- 品目ID
           ,ximv.conv_unit                    -- 入出庫換算単位
           ,ximv.num_of_cases                 -- ケース入り数
@@ -1214,7 +1235,9 @@ AS
           ,xxcmn_item_mst2_v           ximv2                 -- OPM品目情報VIEW2
           ,xxcmn_item_categories4_v    xicv                  -- OPM品目カテゴリ割当情報VIEW4
           ,xxcmn_item_locations2_v     xilv                  -- OPM保管場所情報VIEW2
-          ,xxcmn_item_locations2_v     xilv2                 -- OPM保管場所情報VIEW2
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--          ,xxcmn_item_locations2_v     xilv2                 -- OPM保管場所情報VIEW2
+-- 2009/02/25 v1.6 N.Yoshida Mod End
           ,ic_lots_mst                 ilm                   -- OPMロットマスタ
 -- 2008/08/22 Mod ↓
 /*
@@ -1292,15 +1315,19 @@ AS
     AND    xlri.item_code             = ximv.item_no(+)
     AND    xola.order_header_id       = xoha.order_header_id(+)
     AND    xoha.deliver_from          = xilv.segment1(+)
-    AND    xilv.frequent_whse         = xilv2.segment1(+)
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--    AND    xilv.frequent_whse         = xilv2.segment1(+)
+-- 2009/02/25 v1.6 N.Yoshida Mod End
     AND    xola.shipping_inventory_item_id = ximv2.inventory_item_id(+)
     AND    ximv.item_id               = xicv.item_id(+)
 -- 2009/02/10 v1.5 N.Yoshida Mod Start
 --    AND    xlri.lot_no                = ilm.lot_no
 --    AND    ilm.item_id                = ximv.item_id
     AND    xlri.lot_no                = ilm.lot_no(+)
-    AND   ((ximv.item_id IS NULL OR ilm.item_id IS NULL)
-     OR    (ximv.item_id IS NOT NULL AND ilm.item_id IS NOT NULL AND ximv.item_id = ilm.item_id))
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--    AND   ((ximv.item_id IS NULL OR ilm.item_id IS NULL)
+--     OR    (ximv.item_id IS NOT NULL AND ilm.item_id IS NOT NULL AND ximv.item_id = ilm.item_id))
+-- 2009/02/25 v1.6 N.Yoshida Mod End
 -- 2009/02/10 v1.5 N.Yoshida Mod End
     AND   (xola.request_no IS NULL
      OR    (ximv.start_date_active    <= NVL(xoha.shipped_date, xoha.schedule_ship_date)
@@ -1313,11 +1340,13 @@ AS
     AND     (xilv.date_to             >= NVL(xoha.shipped_date, xoha.schedule_ship_date)
       OR    xilv.date_to IS NULL)
     AND     xilv.disable_date IS NULL))
-    AND   (xola.request_no IS NULL
-     OR    (xilv2.date_from           <= NVL(xoha.shipped_date, xoha.schedule_ship_date)
-    AND     (xilv2.date_to            >= NVL(xoha.shipped_date, xoha.schedule_ship_date)
-      OR    xilv2.date_to IS NULL)
-    AND     xilv2.disable_date IS NULL))
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--    AND   (xola.request_no IS NULL
+--    OR    (xilv2.date_from           <= NVL(xoha.shipped_date, xoha.schedule_ship_date)
+--    AND     (xilv2.date_to            >= NVL(xoha.shipped_date, xoha.schedule_ship_date)
+--      OR    xilv2.date_to IS NULL)
+--    AND     xilv2.disable_date IS NULL))
+-- 2009/02/25 v1.6 N.Yoshida Mod End
     -- ** 抽出条件 ** --
     AND   (xola.request_no IS NULL
      OR    xola.delete_flag           = gv_flg_n)
@@ -1397,7 +1426,9 @@ AS
           ,xxcmn_item_mst2_v           ximv2                 -- OPM品目情報VIEW2
           ,xxcmn_item_categories4_v    xicv                  -- OPM品目カテゴリ割当情報VIEW4
           ,xxcmn_item_locations2_v     xilv                  -- OPM保管場所情報VIEW2
-          ,xxcmn_item_locations2_v     xilv2                 -- OPM保管場所情報VIEW2
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--          ,xxcmn_item_locations2_v     xilv2                 -- OPM保管場所情報VIEW2
+-- 2009/02/25 v1.6 N.Yoshida Mod End
           ,ic_lots_mst                 ilm                   -- OPMロットマスタ
           ,xxinv_mov_lot_details       xmld                  -- 移動ロット詳細アドオン
     WHERE
@@ -1406,7 +1437,9 @@ AS
     AND    xlri.item_code             = ximv.item_no(+)
     AND    xola.order_header_id       = xoha.order_header_id
     AND    xoha.deliver_from          = xilv.segment1
-    AND    xilv.frequent_whse         = xilv2.segment1(+)
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--    AND    xilv.frequent_whse         = xilv2.segment1(+)
+-- 2009/02/25 v1.6 N.Yoshida Mod End
     AND    xola.shipping_inventory_item_id = ximv2.inventory_item_id
     AND    ximv.item_id               = xicv.item_id
     AND    xlri.lot_no                = ilm.lot_no
@@ -1419,10 +1452,12 @@ AS
     AND    (xilv.date_to             >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
       OR   xilv.date_to IS NULL)
     AND    xilv.disable_date IS NULL
-    AND    xilv2.date_from           <= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
-    AND    (xilv2.date_to            >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
-      OR   xilv2.date_to IS NULL)
-    AND    xilv2.disable_date IS NULL
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+--    AND    xilv2.date_from           <= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
+--    AND    (xilv2.date_to            >= NVL(xoha.shipped_date, (xoha.schedule_ship_date))
+--      OR   xilv2.date_to IS NULL)
+--    AND    xilv2.disable_date IS NULL
+-- 2009/02/25 v1.6 N.Yoshida Mod End
     AND    xola.delete_flag           = gv_flg_n
     AND    xoha.latest_external_flag  = gv_flg_y
     AND    xlri.data_class            = iv_data_class
@@ -2616,6 +2651,29 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+    -- 配車解除処理と受注ヘッダ更新処理の順序入れ替え
+    ---------------------------------------------
+    -- 受注ヘッダ更新処理                      --
+    ---------------------------------------------
+    FORALL ln_ph_cont IN gt_ph_order_header_id_tbl.FIRST .. gt_ph_order_header_id_tbl.LAST
+      UPDATE xxwsh_order_headers_all
+      SET    sum_quantity                = gt_ph_sum_quantity_tbl(ln_ph_cont),
+             small_quantity              = gt_ph_small_quantity_tbl(ln_ph_cont),
+             label_quantity              = gt_ph_label_quantity_tbl(ln_ph_cont),
+             loading_efficiency_weight   = gt_ph_load_efficiency_we_tbl(ln_ph_cont),
+             loading_efficiency_capacity = gt_ph_load_efficiency_ca_tbl(ln_ph_cont),
+             sum_weight                  = gt_ph_sum_weight_tbl(ln_ph_cont),
+             sum_capacity                = gt_ph_sum_capacity_tbl(ln_ph_cont),
+             last_updated_by             = gt_ph_last_updated_by_tbl(ln_ph_cont),
+             last_update_date            = gt_ph_last_update_date_tbl(ln_ph_cont),
+             last_update_login           = gt_ph_last_update_login_tbl(ln_ph_cont)
+      WHERE  order_header_id = gt_ph_order_header_id_tbl(ln_ph_cont)
+      AND    gt_ph_up_flg(ln_ph_cont) = gv_flg_on;
+--
+      -- 成功件数(受注ヘッダ)カウント
+      gn_h_normal_cnt := gt_ph_order_header_id_tbl.COUNT;
+--
     ---------------------------------------------
     -- 配車解除処理                            --
     ---------------------------------------------
@@ -2628,6 +2686,9 @@ AS
                                    (
                                     gv_supply,                -- 業務種別("支給")
                                     gt_ph_request_no_tbl(i),  -- 依頼No.
+-- 2009/02/25 v1.6 N.Yoshida Mod Start
+                                    '2',                      -- 配車解除フラグ
+-- 2009/02/25 v1.6 N.Yoshida Mod End
                                     lv_errmsg                 -- エラーメッセージ
                                    );
 --
@@ -2653,26 +2714,7 @@ AS
       END IF;
     END LOOP data_loop;
 --
-    ---------------------------------------------
-    -- 受注ヘッダ更新処理                      --
-    ---------------------------------------------
-    FORALL ln_ph_cont IN gt_ph_order_header_id_tbl.FIRST .. gt_ph_order_header_id_tbl.LAST
-      UPDATE xxwsh_order_headers_all
-      SET    sum_quantity                = gt_ph_sum_quantity_tbl(ln_ph_cont),
-             small_quantity              = gt_ph_small_quantity_tbl(ln_ph_cont),
-             label_quantity              = gt_ph_label_quantity_tbl(ln_ph_cont),
-             loading_efficiency_weight   = gt_ph_load_efficiency_we_tbl(ln_ph_cont),
-             loading_efficiency_capacity = gt_ph_load_efficiency_ca_tbl(ln_ph_cont),
-             sum_weight                  = gt_ph_sum_weight_tbl(ln_ph_cont),
-             sum_capacity                = gt_ph_sum_capacity_tbl(ln_ph_cont),
-             last_updated_by             = gt_ph_last_updated_by_tbl(ln_ph_cont),
-             last_update_date            = gt_ph_last_update_date_tbl(ln_ph_cont),
-             last_update_login           = gt_ph_last_update_login_tbl(ln_ph_cont)
-      WHERE  order_header_id = gt_ph_order_header_id_tbl(ln_ph_cont)
-      AND    gt_ph_up_flg(ln_ph_cont) = gv_flg_on;
---
-      -- 成功件数(受注ヘッダ)カウント
-      gn_h_normal_cnt := gt_ph_order_header_id_tbl.COUNT;
+-- 2009/02/25 v1.6 N.Yoshida Mod End
 --
   EXCEPTION
 --
