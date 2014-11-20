@@ -8,7 +8,7 @@ AS
  *
  * MD.050           : MD050_CSO_016_A05_情報系-EBSインターフェース：(OUT)什器マスタ
  *
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009-05-18    1.6   K.Satomura       ＳＴ障害対応(T1_1049)
  *  2009-05-25    1.7   M.Maruyama       ＳＴ障害対応(T1_1154)
  *  2009-06-09    1.8   K.Hosoi          ＳＴ障害対応(T1_1154) 再修正
+ *  2009-07-09    1.9   K.Hosoi          SCS障害管理番号(0000518) 対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -228,7 +229,10 @@ AS
   cv_debug_msg30          CONSTANT VARCHAR2(200) := '拠点(部門)          = ';
   cv_debug_msg31          CONSTANT VARCHAR2(200) := '<< 業務処理年月取得処理 >>';
   cv_debug_msg32          CONSTANT VARCHAR2(200) := '業務処理年月        = ';
-
+  /*20090709_hosoi_0000518 START*/
+  cv_debug_msg33          CONSTANT VARCHAR2(200) := 'lv_attribute_level  = ';
+  /*20090709_hosoi_0000518 END*/
+--
   cv_debug_msg_fnm        CONSTANT VARCHAR2(200) := 'filename = ';
   cv_debug_msg_fcls       CONSTANT VARCHAR2(200) := '<< 例外処理内でCSVファイルをクローズしました >>';
   cv_debug_msg_copn       CONSTANT VARCHAR2(200) := '<< カーソルをオープンしました >>';
@@ -462,6 +466,9 @@ AS
     ov_file_dir             OUT NOCOPY VARCHAR2,        -- CSVファイル出力先
     ov_file_name            OUT NOCOPY VARCHAR2,        -- CSVファイル名
     ov_company_cd           OUT NOCOPY VARCHAR2,        -- 会社コード(固定値001)
+    /*20090709_hosoi_0000518 START*/
+    ov_attribute_level      OUT NOCOPY VARCHAR2,        -- IB拡張属性テンプレートアクセスレベル
+    /*20090709_hosoi_0000518 END*/
     ov_errbuf               OUT NOCOPY VARCHAR2,        -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,        -- リターン・コード             --# 固定 #
     ov_errmsg               OUT NOCOPY VARCHAR2         -- ユーザー・エラー・メッセージ --# 固定 #
@@ -477,6 +484,9 @@ AS
     cv_file_dir         CONSTANT VARCHAR2(100)  := 'XXCSO1_INFO_OUT_CSV_DIR';     -- CSVファイル出力先
     cv_file_name        CONSTANT VARCHAR2(100)  := 'XXCSO1_INFO_OUT_CSV_IB';      -- CSVファイル名
     cv_company_cd       CONSTANT VARCHAR2(100)  := 'XXCSO1_INFO_OUT_COMPANY_CD';  -- 会社コード(固定値001)
+    /*20090709_hosoi_0000518 START*/
+    cv_attribute_level  CONSTANT VARCHAR2(30)   := 'XXCSO1_IB_ATTRIBUTE_LEVEL';   -- IB拡張属性テンプレートアクセスレベル
+    /*20090709_hosoi_0000518 END*/
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -494,6 +504,9 @@ AS
     lv_file_name      VARCHAR2(2000);             -- CSVファイル名
     lv_company_cd     VARCHAR2(2000);             -- 会社コード(固定値001)
     lv_msg_set        VARCHAR2(1000);             -- メッセージ格納
+    /*20090709_hosoi_0000518 START*/
+    lv_attribute_level  VARCHAR2(15);
+    /*20090709_hosoi_0000518 END*/
 --
   BEGIN
 --
@@ -522,6 +535,13 @@ AS
                   cv_company_cd
                  ,lv_company_cd
     );
+    /*20090709_hosoi_0000518 START*/
+    -- IB拡張属性テンプレートアクセスレベル
+    FND_PROFILE.GET(
+                  cv_attribute_level
+                 ,lv_attribute_level
+    );
+    /*20090709_hosoi_0000518 END*/
     -- *** DEBUG_LOG ***
     -- 取得したプロファイル値をログ出力
     fnd_file.put_line(
@@ -530,6 +550,9 @@ AS
                  cv_debug_msg4 || lv_file_dir    || CHR(10) ||
                  cv_debug_msg5 || lv_file_name   || CHR(10) ||
                  cv_debug_msg6 || lv_company_cd  || CHR(10) ||
+                 /*20090709_hosoi_0000518 START*/
+                 cv_debug_msg33|| lv_attribute_level || CHR(10) ||
+                 /*20090709_hosoi_0000518 EMD*/
                  ''
     );
     --インターフェースファイル名メッセージ出力
@@ -582,6 +605,9 @@ AS
     ov_file_dir   := lv_file_dir;       -- CSVファイル出力先
     ov_file_name  := lv_file_name;      -- CSVファイル名
     ov_company_cd := lv_company_cd;     -- 会社コード(固定値001)
+    /*20090709_hosoi_0000518 START*/
+    ov_attribute_level := lv_attribute_level;  -- IB拡張属性テンプレートアクセスレベル
+    /*20090709_hosoi_0000518 END*/
 --
   EXCEPTION
 --
@@ -1976,11 +2002,66 @@ AS
 ---- *** ローカル定数 ***
     cv_sep_com              CONSTANT VARCHAR2(3)     := ',';
     cv_sep_wquot            CONSTANT VARCHAR2(3)     := '"';
-    cv_install_cd_tkn       CONSTANT VARCHAR2(100)   := '物件マスタビュー';
+    /*20090709_hosoi_0000518 START*/
+--    cv_install_cd_tkn       CONSTANT VARCHAR2(100)   := '物件マスタビュー';
+    cv_install_cd_tkn       CONSTANT VARCHAR2(100)   := '物件マスタ';
+    /*20090709_hosoi_0000518 END*/
     cv_fist_install_dt_tkn  CONSTANT VARCHAR2(100)   := '初回設置日';
     cv_nyuko_date_tkn       CONSTANT VARCHAR2(100)   := '入庫日';
     cv_lst_yr_mnth_tkn      CONSTANT VARCHAR2(100)   := '先月末年月';
     cn_lst_yr_mnth_num      CONSTANT NUMBER(1)       := 6;
+    /*20090709_hosoi_0000518 START*/
+    cv_count_no             CONSTANT VARCHAR2(100)   := 'COUNT_NO';
+    cv_chiku_cd             CONSTANT VARCHAR2(100)   := 'CHIKU_CD';
+    cv_sagyougaisya_cd      CONSTANT VARCHAR2(100)   := 'SAGYOUGAISYA_CD';
+    cv_jigyousyo_cd         CONSTANT VARCHAR2(100)   := 'JIGYOUSYO_CD';
+    cv_den_no               CONSTANT VARCHAR2(100)   := 'DEN_NO';
+    cv_job_kbn              CONSTANT VARCHAR2(100)   := 'JOB_KBN';
+    cv_sintyoku_kbn         CONSTANT VARCHAR2(100)   := 'SINTYOKU_KBN';
+    cv_yotei_dt             CONSTANT VARCHAR2(100)   := 'YOTEI_DT';
+    cv_kanryo_dt            CONSTANT VARCHAR2(100)   := 'KANRYO_DT';
+    cv_sagyo_level          CONSTANT VARCHAR2(100)   := 'SAGYO_LEVEL';
+    cv_den_no2              CONSTANT VARCHAR2(100)   := 'DEN_NO2';
+    cv_job_kbn2             CONSTANT VARCHAR2(100)   := 'JOB_KBN2';
+    cv_sintyoku_kbn2        CONSTANT VARCHAR2(100)   := 'SINTYOKU_KBN2';
+    cv_jotai_kbn1           CONSTANT VARCHAR2(100)   := 'JOTAI_KBN1';
+    cv_jotai_kbn2           CONSTANT VARCHAR2(100)   := 'JOTAI_KBN2';
+    cv_jotai_kbn3           CONSTANT VARCHAR2(100)   := 'JOTAI_KBN3';
+    cv_nyuko_dt             CONSTANT VARCHAR2(100)   := 'NYUKO_DT';
+    cv_hikisakigaisya_cd    CONSTANT VARCHAR2(100)   := 'HIKISAKIGAISYA_CD';
+    cv_hikisakijigyosyo_cd  CONSTANT VARCHAR2(100)   := 'HIKISAKIJIGYOSYO_CD';
+    cv_setti_tanto          CONSTANT VARCHAR2(100)   := 'SETTI_TANTO';
+    cv_setti_tel1           CONSTANT VARCHAR2(100)   := 'SETTI_TEL1';
+    cv_setti_tel2           CONSTANT VARCHAR2(100)   := 'SETTI_TEL2';
+    cv_setti_tel3           CONSTANT VARCHAR2(100)   := 'SETTI_TEL3';
+    cv_haikikessai_dt       CONSTANT VARCHAR2(100)   := 'HAIKIKESSAI_DT';
+    cv_tenhai_tanto         CONSTANT VARCHAR2(100)   := 'TENHAI_TANTO';
+    cv_tenhai_den_no        CONSTANT VARCHAR2(100)   := 'TENHAI_DEN_NO';
+    cv_syoyu_cd             CONSTANT VARCHAR2(100)   := 'SYOYU_CD';
+    cv_tenhai_flg           CONSTANT VARCHAR2(100)   := 'TENHAI_FLG';
+    cv_kanryo_kbn           CONSTANT VARCHAR2(100)   := 'KANRYO_KBN';
+    cv_sakujo_flg           CONSTANT VARCHAR2(100)   := 'SAKUJO_FLG';
+    cv_ven_kyaku_last       CONSTANT VARCHAR2(100)   := 'VEN_KYAKU_LAST';
+    cv_ven_tasya_cd01       CONSTANT VARCHAR2(100)   := 'VEN_TASYA_CD01';
+    cv_ven_tasya_daisu01    CONSTANT VARCHAR2(100)   := 'VEN_TASYA_DAISU01';
+    cv_ven_tasya_cd02       CONSTANT VARCHAR2(100)   := 'VEN_TASYA_CD02';
+    cv_ven_tasya_daisu02    CONSTANT VARCHAR2(100)   := 'VEN_TASYA_DAISU02';
+    cv_ven_tasya_cd03       CONSTANT VARCHAR2(100)   := 'VEN_TASYA_CD03';
+    cv_ven_tasya_daisu03    CONSTANT VARCHAR2(100)   := 'VEN_TASYA_DAISU03';
+    cv_ven_tasya_cd04       CONSTANT VARCHAR2(100)   := 'VEN_TASYA_CD04';
+    cv_ven_tasya_daisu04    CONSTANT VARCHAR2(100)   := 'VEN_TASYA_DAISU04';
+    cv_ven_tasya_cd05       CONSTANT VARCHAR2(100)   := 'VEN_TASYA_CD05';
+    cv_ven_tasya_daisu05    CONSTANT VARCHAR2(100)   := 'VEN_TASYA_DAISU05';
+    cv_ven_haiki_flg        CONSTANT VARCHAR2(100)   := 'VEN_HAIKI_FLG';
+    cv_ven_sisan_kbn        CONSTANT VARCHAR2(100)   := 'VEN_SISAN_KBN';
+    cv_ven_kobai_ymd        CONSTANT VARCHAR2(100)   := 'VEN_KOBAI_YMD';
+    cv_ven_kobai_kg         CONSTANT VARCHAR2(100)   := 'VEN_KOBAI_KG';
+    cv_safty_level          CONSTANT VARCHAR2(100)   := 'SAFTY_LEVEL';
+    cv_lease_kbn            CONSTANT VARCHAR2(100)   := 'LEASE_KBN';
+    cv_last_inst_cust_code  CONSTANT VARCHAR2(100)   := 'LAST_INST_CUST_CODE';
+    cv_last_jotai_kbn       CONSTANT VARCHAR2(100)   := 'LAST_JOTAI_KBN';
+    cv_last_year_month      CONSTANT VARCHAR2(100)   := 'LAST_YEAR_MONTH';
+    /*20090709_hosoi_0000518 END*/
     -- *** ローカル変数 ***
     lv_sub_retcode         VARCHAR2(1);                -- サブメイン用リターン・コード
     lv_sub_msg             VARCHAR2(5000);             -- 警告用メッセージ
@@ -1995,79 +2076,607 @@ AS
     lb_fopn_retcd   BOOLEAN;
     -- メッセージ出力用
     lv_msg          VARCHAR2(2000);
+    /*20090709_hosoi_0000518 START*/
+    lv_attribute_level     VARCHAR2(15);               -- IB拡張属性テンプレートアクセスレベル格納用
+    ld_date                DATE;                       -- TRUNC(SYSDATE)格納用
+    /*20090709_hosoi_0000518 END*/
     -- *** ローカル・カーソル ***
-    CURSOR xibv_data_cur
+    /*20090709_hosoi_0000518 START*/
+--    CURSOR xibv_data_cur
+--    IS
+--      SELECT xibv.install_code           install_code             -- 外部参照
+--            ,xibv.instance_type_code     instance_type_code       -- インスタンスタイプ
+--            ,xibv.instance_status_id     instance_status_id       -- ステータスID
+--            ,xibv.install_date           install_date             -- 導入日
+--            ,xibv.instance_number        instance_number          -- インスタンス番号
+--            ,xibv.quantity               quantity                 -- 数量
+--            ,xibv.accounting_class_code  accounting_class_code    -- 会計分類
+--            ,xibv.active_start_date      active_start_date        -- 開始日
+--            ,xibv.inventory_item_id      inventory_item_id        -- 品名コード
+--            ,xibv.install_party_id       install_party_id         -- 使用者パーティID
+--            ,xibv.install_account_id     install_account_id       -- 使用者アカウントID
+--            ,xibv.vendor_model           vendor_model             -- 機種(DFF1)
+--            ,xibv.vendor_number          vendor_number            -- 機番(DFF2)
+--            ,xibv.first_install_date     first_install_date       -- 初回設置日(DFF3)
+--            ,xibv.op_request_flag        op_request_flag          -- 作業依頼中フラグ(DFF4)
+--            ,xibv.ven_kyaku_last         ven_kyaku_last           -- 最終顧客コード
+--            ,xibv.ven_tasya_cd01         ven_tasya_cd01           -- 他社コード１
+--            ,xibv.ven_tasya_daisu01      ven_tasya_daisu01        -- 他社台数１
+--            ,xibv.ven_tasya_cd02         ven_tasya_cd02           -- 他社コード２
+--            ,xibv.ven_tasya_daisu02      ven_tasya_daisu02        -- 他社台数２
+--            ,xibv.ven_tasya_cd03         ven_tasya_cd03           -- 他社コード３
+--            ,xibv.ven_tasya_daisu03      ven_tasya_daisu03        -- 他社台数３
+--            ,xibv.ven_tasya_cd04         ven_tasya_cd04           -- 他社コード４
+--            ,xibv.ven_tasya_daisu04      ven_tasya_daisu04        -- 他社台数４
+--            ,xibv.ven_tasya_cd05         ven_tasya_cd05           -- 他社コード５
+--            ,xibv.ven_tasya_daisu05      ven_tasya_daisu05        -- 他社台数５
+--            ,xibv.ven_haiki_flg          ven_haiki_flg            -- 廃棄フラグ
+--            ,xibv.haikikessai_dt         haikikessai_dt           -- 廃棄決裁日
+--            ,xibv.ven_sisan_kbn          ven_sisan_kbn            -- 資産区分
+--            ,xibv.ven_kobai_ymd          ven_kobai_ymd            -- 購買日付
+--            ,xibv.ven_kobai_kg           ven_kobai_kg             -- 購買金額
+--            ,xibv.count_no               count_no                 -- カウンターNo.
+--            ,xibv.chiku_cd               chiku_cd                 -- 地区コード
+--            ,xibv.sagyougaisya_cd        sagyougaisya_cd          -- 作業会社コード
+--            ,xibv.jigyousyo_cd           jigyousyo_cd             -- 事業所コード
+--            ,xibv.den_no                 den_no                   -- 最終作業伝票No.
+--            ,xibv.job_kbn                job_kbn                  -- 最終作業区分
+--            ,xibv.sintyoku_kbn           sintyoku_kbn             -- 最終作業進捗
+--            ,xibv.yotei_dt               yotei_dt                 -- 最終作業完了予定日
+--            ,xibv.kanryo_dt              kanryo_dt                -- 最終作業完了日
+--            ,xibv.sagyo_level            sagyo_level              -- 最終整備内容
+--            ,xibv.den_no2                den_no2                  -- 最終設置伝票No.
+--            ,xibv.job_kbn2               job_kbn2                 -- 最終設置区分
+--            ,xibv.sintyoku_kbn2          sintyoku_kbn2            -- 最終設置進捗
+--            ,xibv.jotai_kbn1             jotai_kbn1               -- 機器状態1（稼動状態）
+--            ,xibv.jotai_kbn2             jotai_kbn2               -- 機器状態2（状態詳細）
+--            ,xibv.jotai_kbn3             jotai_kbn3               -- 機器状態3（廃棄情報）
+--            ,xibv.nyuko_dt               nyuko_dt                 -- 入庫日
+--            ,xibv.hikisakigaisya_cd      hikisakigaisya_cd        -- 引揚会社コード
+--            ,xibv.hikisakijigyosyo_cd    hikisakijigyosyo_cd      -- 引揚事業所コード
+--            ,xibv.setti_tanto            setti_tanto              -- 設置先担当者名
+--            ,xibv.setti_tel1             setti_tel1               -- 設置先TEL(連結)１
+--            ,xibv.setti_tel2             setti_tel2               -- 設置先TEL(連結)２
+--            ,xibv.setti_tel3             setti_tel3               -- 設置先TEL(連結)３
+--            ,xibv.tenhai_tanto           tenhai_tanto             -- 転売廃棄業者
+--            ,xibv.tenhai_den_no          tenhai_den_no            -- 転売廃棄伝票№
+--            ,xibv.syoyu_cd               syoyu_cd                 -- 所有者
+--            ,xibv.tenhai_flg             tenhai_flg               -- 転売廃棄状況フラグ
+--            ,xibv.kanryo_kbn             kanryo_kbn               -- 転売完了区分
+--            ,xibv.sakujo_flg             sakujo_flg               -- 削除フラグ
+--            ,xibv.safty_level            safty_level              -- 安全設置基準
+--            ,xibv.lease_kbn              lease_kbn                -- リース区分
+--            ,xibv.new_old_flag           new_old_flag             -- 新古台フラグ
+--            ,xibv.last_inst_cust_code    last_inst_cust_code      -- 先月末設置先顧客コード
+--            ,xibv.last_jotai_kbn         last_jotai_kbn           -- 先月末機器状態
+--            ,xibv.last_year_month        last_year_month          -- 先月末年月
+--      /*20090415_maruyama_T1_0550 START*/
+--      FROM   xxcso_install_base_v xibv;
+----      where instance_id IN(104039,90043,90045);                           -- 物件マスタビュー
+--      /*20090415_maruyama_T1_0550 END*/
+    CURSOR xibv_data_cur(
+              iv_attribute_level IN VARCHAR2      -- IB拡張属性テンプレートアクセスレベル
+             ,id_date            IN DATE          -- SYSDATE(yyyymmdd)
+           )
     IS
-      SELECT xibv.install_code           install_code             -- 外部参照
-            ,xibv.instance_type_code     instance_type_code       -- インスタンスタイプ
-            ,xibv.instance_status_id     instance_status_id       -- ステータスID
-            ,xibv.install_date           install_date             -- 導入日
-            ,xibv.instance_number        instance_number          -- インスタンス番号
-            ,xibv.quantity               quantity                 -- 数量
-            ,xibv.accounting_class_code  accounting_class_code    -- 会計分類
-            ,xibv.active_start_date      active_start_date        -- 開始日
-            ,xibv.inventory_item_id      inventory_item_id        -- 品名コード
-            ,xibv.install_party_id       install_party_id         -- 使用者パーティID
-            ,xibv.install_account_id     install_account_id       -- 使用者アカウントID
-            ,xibv.vendor_model           vendor_model             -- 機種(DFF1)
-            ,xibv.vendor_number          vendor_number            -- 機番(DFF2)
-            ,xibv.first_install_date     first_install_date       -- 初回設置日(DFF3)
-            ,xibv.op_request_flag        op_request_flag          -- 作業依頼中フラグ(DFF4)
-            ,xibv.ven_kyaku_last         ven_kyaku_last           -- 最終顧客コード
-            ,xibv.ven_tasya_cd01         ven_tasya_cd01           -- 他社コード１
-            ,xibv.ven_tasya_daisu01      ven_tasya_daisu01        -- 他社台数１
-            ,xibv.ven_tasya_cd02         ven_tasya_cd02           -- 他社コード２
-            ,xibv.ven_tasya_daisu02      ven_tasya_daisu02        -- 他社台数２
-            ,xibv.ven_tasya_cd03         ven_tasya_cd03           -- 他社コード３
-            ,xibv.ven_tasya_daisu03      ven_tasya_daisu03        -- 他社台数３
-            ,xibv.ven_tasya_cd04         ven_tasya_cd04           -- 他社コード４
-            ,xibv.ven_tasya_daisu04      ven_tasya_daisu04        -- 他社台数４
-            ,xibv.ven_tasya_cd05         ven_tasya_cd05           -- 他社コード５
-            ,xibv.ven_tasya_daisu05      ven_tasya_daisu05        -- 他社台数５
-            ,xibv.ven_haiki_flg          ven_haiki_flg            -- 廃棄フラグ
-            ,xibv.haikikessai_dt         haikikessai_dt           -- 廃棄決裁日
-            ,xibv.ven_sisan_kbn          ven_sisan_kbn            -- 資産区分
-            ,xibv.ven_kobai_ymd          ven_kobai_ymd            -- 購買日付
-            ,xibv.ven_kobai_kg           ven_kobai_kg             -- 購買金額
-            ,xibv.count_no               count_no                 -- カウンターNo.
-            ,xibv.chiku_cd               chiku_cd                 -- 地区コード
-            ,xibv.sagyougaisya_cd        sagyougaisya_cd          -- 作業会社コード
-            ,xibv.jigyousyo_cd           jigyousyo_cd             -- 事業所コード
-            ,xibv.den_no                 den_no                   -- 最終作業伝票No.
-            ,xibv.job_kbn                job_kbn                  -- 最終作業区分
-            ,xibv.sintyoku_kbn           sintyoku_kbn             -- 最終作業進捗
-            ,xibv.yotei_dt               yotei_dt                 -- 最終作業完了予定日
-            ,xibv.kanryo_dt              kanryo_dt                -- 最終作業完了日
-            ,xibv.sagyo_level            sagyo_level              -- 最終整備内容
-            ,xibv.den_no2                den_no2                  -- 最終設置伝票No.
-            ,xibv.job_kbn2               job_kbn2                 -- 最終設置区分
-            ,xibv.sintyoku_kbn2          sintyoku_kbn2            -- 最終設置進捗
-            ,xibv.jotai_kbn1             jotai_kbn1               -- 機器状態1（稼動状態）
-            ,xibv.jotai_kbn2             jotai_kbn2               -- 機器状態2（状態詳細）
-            ,xibv.jotai_kbn3             jotai_kbn3               -- 機器状態3（廃棄情報）
-            ,xibv.nyuko_dt               nyuko_dt                 -- 入庫日
-            ,xibv.hikisakigaisya_cd      hikisakigaisya_cd        -- 引揚会社コード
-            ,xibv.hikisakijigyosyo_cd    hikisakijigyosyo_cd      -- 引揚事業所コード
-            ,xibv.setti_tanto            setti_tanto              -- 設置先担当者名
-            ,xibv.setti_tel1             setti_tel1               -- 設置先TEL(連結)１
-            ,xibv.setti_tel2             setti_tel2               -- 設置先TEL(連結)２
-            ,xibv.setti_tel3             setti_tel3               -- 設置先TEL(連結)３
-            ,xibv.tenhai_tanto           tenhai_tanto             -- 転売廃棄業者
-            ,xibv.tenhai_den_no          tenhai_den_no            -- 転売廃棄伝票№
-            ,xibv.syoyu_cd               syoyu_cd                 -- 所有者
-            ,xibv.tenhai_flg             tenhai_flg               -- 転売廃棄状況フラグ
-            ,xibv.kanryo_kbn             kanryo_kbn               -- 転売完了区分
-            ,xibv.sakujo_flg             sakujo_flg               -- 削除フラグ
-            ,xibv.safty_level            safty_level              -- 安全設置基準
-            ,xibv.lease_kbn              lease_kbn                -- リース区分
-            ,xibv.new_old_flag           new_old_flag             -- 新古台フラグ
-            ,xibv.last_inst_cust_code    last_inst_cust_code      -- 先月末設置先顧客コード
-            ,xibv.last_jotai_kbn         last_jotai_kbn           -- 先月末機器状態
-            ,xibv.last_year_month        last_year_month          -- 先月末年月
-      /*20090415_maruyama_T1_0550 START*/
-      FROM   xxcso_install_base_v xibv;
---      where instance_id IN(104039,90043,90045);                           -- 物件マスタビュー
-      /*20090415_maruyama_T1_0550 END*/
+      SELECT cii.EXTERNAL_REFERENCE           install_code             -- 外部参照
+            ,cii.INSTANCE_TYPE_CODE           instance_type_code       -- インスタンスタイプ
+            ,cii.INSTANCE_STATUS_ID           instance_status_id       -- ステータスID
+            ,cii.INSTALL_DATE                 install_date             -- 導入日
+            ,cii.INSTANCE_NUMBER              instance_number          -- インスタンス番号
+            ,cii.QUANTITY                     quantity                 -- 数量
+            ,cii.ACCOUNTING_CLASS_CODE        accounting_class_code    -- 会計分類
+            ,cii.ACTIVE_START_DATE            active_start_date        -- 開始日
+            ,cii.INVENTORY_ITEM_ID            inventory_item_id        -- 品名コード
+            ,cii.OWNER_PARTY_ID               install_party_id         -- 使用者パーティID
+            ,cii.OWNER_PARTY_ACCOUNT_ID       install_account_id       -- 使用者アカウントID
+            ,cii.ATTRIBUTE1                   vendor_model             -- 機種(DFF1)
+            ,cii.ATTRIBUTE2                   vendor_number            -- 機番(DFF2)
+            ,cii.ATTRIBUTE3                   first_install_date       -- 初回設置日(DFF3)
+            ,cii.ATTRIBUTE4                   op_request_flag          -- 作業依頼中フラグ(DFF4)
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_kyaku_last
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_kyaku_last           -- 最終顧客コード
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_cd01
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_cd01           -- 他社コード１
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_daisu01
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_daisu01        -- 他社台数１
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_cd02
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_cd02           -- 他社コード２
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_daisu02
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_daisu02        -- 他社台数２
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_cd03
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_cd03           -- 他社コード３
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_daisu03
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_daisu03        -- 他社台数３
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_cd04
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_cd04           -- 他社コード４
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_daisu04
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_daisu04        -- 他社台数４
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_cd05
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_cd05           -- 他社コード５
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_tasya_daisu05
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_tasya_daisu05        -- 他社台数５
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_haiki_flg
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_haiki_flg            -- 廃棄フラグ
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_haikikessai_dt
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                haikikessai_dt           -- 廃棄決裁日
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_sisan_kbn
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_sisan_kbn            -- 資産区分
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_kobai_ymd
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_kobai_ymd            -- 購買日付
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_ven_kobai_kg
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                ven_kobai_kg             -- 購買金額
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_count_no
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                count_no                 -- カウンターNo.
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_chiku_cd
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                chiku_cd                 -- 地区コード
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_sagyougaisya_cd
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                sagyougaisya_cd          -- 作業会社コード
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_jigyousyo_cd
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                jigyousyo_cd             -- 事業所コード
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_den_no
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                den_no                   -- 最終作業伝票No.
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_job_kbn
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                job_kbn                  -- 最終作業区分
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_sintyoku_kbn
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                sintyoku_kbn             -- 最終作業進捗
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_yotei_dt
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                yotei_dt                 -- 最終作業完了予定日
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_kanryo_dt
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                kanryo_dt                -- 最終作業完了日
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_sagyo_level
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                sagyo_level              -- 最終整備内容
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_den_no2
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                den_no2                  -- 最終設置伝票No.
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_job_kbn2
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                job_kbn2                 -- 最終設置区分
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_sintyoku_kbn2
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                sintyoku_kbn2            -- 最終設置進捗
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_jotai_kbn1
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                jotai_kbn1               -- 機器状態1（稼動状態）
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_jotai_kbn2
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                jotai_kbn2               -- 機器状態2（状態詳細）
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_jotai_kbn3
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                jotai_kbn3               -- 機器状態3（廃棄情報）
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_nyuko_dt
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                nyuko_dt                 -- 入庫日
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_hikisakigaisya_cd
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                hikisakigaisya_cd        -- 引揚会社コード
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_hikisakijigyosyo_cd
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                hikisakijigyosyo_cd      -- 引揚事業所コード
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_setti_tanto
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                setti_tanto              -- 設置先担当者名
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_setti_tel1
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                setti_tel1               -- 設置先TEL(連結)１
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_setti_tel2
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                setti_tel2               -- 設置先TEL(連結)２
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_setti_tel3
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                setti_tel3               -- 設置先TEL(連結)３
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_tenhai_tanto
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                tenhai_tanto             -- 転売廃棄業者
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_tenhai_den_no
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                tenhai_den_no            -- 転売廃棄伝票№
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_syoyu_cd
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                syoyu_cd                 -- 所有者
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_tenhai_flg
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                tenhai_flg               -- 転売廃棄状況フラグ
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_kanryo_kbn
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                kanryo_kbn               -- 転売完了区分
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_sakujo_flg
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                sakujo_flg               -- 削除フラグ
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_safty_level
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                safty_level              -- 安全設置基準
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_lease_kbn
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                lease_kbn                -- リース区分
+            ,cii.ATTRIBUTE5                   new_old_flag             -- 新古台フラグ
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_last_inst_cust_code
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                last_inst_cust_code      -- 先月末設置先顧客コード
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_last_jotai_kbn
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                last_jotai_kbn           -- 先月末機器状態
+            ,( SELECT  civ.attribute_value       attribute_value
+               FROM    csi_i_extended_attribs    ciea  -- 設置機器拡張属性定義情報テーブル
+                     , csi_iea_values            civ   -- 設置機器拡張属性値情報テーブル
+               WHERE   ciea.attribute_level = iv_attribute_level
+                 AND   ciea.attribute_code  = cv_last_year_month
+                 AND   civ.instance_id      = cii.instance_id
+                 AND   ciea.attribute_id    = civ.attribute_id
+                 AND   NVL( ciea.active_start_date, id_date ) <= id_date
+                 AND   NVL( ciea.active_end_date, id_date )   >= id_date
+             )                                last_year_month          -- 先月末年月
+      FROM   csi_item_instances cii;
+    /*20090709_hosoi_0000518 END*/
     -- *** ローカル・レコード ***
     l_xibv_data_rec        xibv_data_cur%ROWTYPE;
     l_get_rec              g_value_rtype;                        -- 什器マスタデータ
@@ -2112,6 +2721,9 @@ AS
        ov_file_dir    => lv_file_dir    -- CSVファイル出力先
       ,ov_file_name   => lv_file_name   -- CSVファイル名
       ,ov_company_cd  => lv_company_cd  -- 会社コード(固定値001)
+      /*20090709_hosoi_0000518 START*/
+      ,ov_attribute_level => lv_attribute_level  -- IB拡張属性テンプレートアクセスレベル
+      /*20090709_hosoi_0000518 END*/
       ,ov_errbuf      => lv_errbuf      -- エラー・メッセージ            --# 固定 #
       ,ov_retcode     => lv_retcode     -- リターン・コード              --# 固定 #
       ,ov_errmsg      => lv_errmsg      -- ユーザー・エラー・メッセージ  --# 固定 #
@@ -2142,8 +2754,18 @@ AS
     -- A-4.物件データ抽出処理
     -- =================================================
 --
+    /*20090709_hosoi_0000518 START*/
+    -- システム日付取得（時分秒は切り捨て）
+    ld_date := TRUNC(SYSDATE);
+    /*20090709_hosoi_0000518 END*/
+    /*20090709_hosoi_0000518 START*/
     -- カーソルオープン
-    OPEN xibv_data_cur;
+--    OPEN xibv_data_cur;
+    OPEN xibv_data_cur(
+            iv_attribute_level =>  lv_attribute_level  -- IB拡張属性テンプレートアクセスレベル
+           ,id_date            =>  ld_date             -- SYSDATE(yyyymmdd)
+         );
+    /*20090709_hosoi_0000518 END*/
     -- *** DEBUG_LOG ***
     -- カーソルオープンしたことをログ出力
     fnd_file.put_line(
