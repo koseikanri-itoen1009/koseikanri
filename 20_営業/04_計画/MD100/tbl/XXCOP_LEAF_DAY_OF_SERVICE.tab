@@ -3,13 +3,14 @@
  *
  * View Name       : XXCOP_LEAF_DAY_OF_SERVICE
  * Description     : リーフ便表
- * Version         : 1.0
+ * Version         : 1.1
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2008-10-30    1.0   SCS.Kikuchi     新規作成
+ *  2009-06-12    1.1   SCS.Kikuchi     PRIMARY KEY表領域指定（T1_0267）
  *
  ************************************************************************/
 CREATE TABLE XXCOP.XXCOP_LEAF_DAY_OF_SERVICE
@@ -28,8 +29,11 @@ CREATE TABLE XXCOP.XXCOP_LEAF_DAY_OF_SERVICE
   PROGRAM_ID               NUMBER(15,0),
   PROGRAM_UPDATE_DATE      DATE,
   CONSTRAINT XXCOP_LEAF_DAY_OF_SERVICE_PK PRIMARY KEY (WHSE_CODE, BASE_CODE, TARGET_MONTH, DAY_OF_SERVICE)
-  );
---
+--20090612_Ver1.1_T1_0267_SCS.Kikuchi_ADD_START
+  USING INDEX TABLESPACE xxidx2)
+ PCTFREE 10 PCTUSED 50 INITRANS 8
+ ;
+--20090612_Ver1.1_T1_0267_SCS.Kikuchi_ADD_END
 COMMENT ON COLUMN XXCOP.XXCOP_LEAF_DAY_OF_SERVICE.WHSE_CODE                IS '出庫倉庫';
 COMMENT ON COLUMN XXCOP.XXCOP_LEAF_DAY_OF_SERVICE.BASE_CODE                IS '拠点';
 COMMENT ON COLUMN XXCOP.XXCOP_LEAF_DAY_OF_SERVICE.TARGET_MONTH             IS '対象年月';

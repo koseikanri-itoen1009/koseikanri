@@ -1,6 +1,4 @@
--- 障害対応CT_036 商品コード(ITEM_NO)NOT NULL制約削除
--- 障害対応CT_039 掛率(credit_rate)サイズ変更
-CREATE TABLE xxcsm.xxcsm_item_plan_lines (
+CREATE TABLE xxcsm_item_plan_lines (
      item_plan_header_id            NUMBER(15,0)  NOT NULL
     ,item_plan_lines_id             NUMBER(15,0)  NOT NULL
     ,year_month                     NUMBER(6,0)
@@ -23,52 +21,53 @@ CREATE TABLE xxcsm.xxcsm_item_plan_lines (
     ,program_application_id         NUMBER(15)
     ,program_id                     NUMBER(15)
     ,program_update_date            DATE
-  ,CONSTRAINT xxcsm_item_plan_lines_pk PRIMARY KEY (item_plan_lines_id))
+  ,CONSTRAINT xxcsm_item_plan_lines_pk PRIMARY KEY (item_plan_lines_id)
+  USING INDEX TABLESPACE xxidx2)
  PCTFREE 10 PCTUSED 40 INITRANS 10 STORAGE ( INITIAL 2M)
 /
-COMMENT ON TABLE  xxcsm.xxcsm_item_plan_lines                                          IS '商品計画明細テーブル'
+COMMENT ON TABLE xxcsm_item_plan_lines IS '商品計画明細テーブル'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.item_plan_header_id                      IS '商品計画ヘッダID'
+COMMENT ON COLUMN xxcsm_item_plan_lines.item_plan_header_id                      IS '商品計画ヘッダID'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.item_plan_lines_id                       IS '商品計画明細ID'
+COMMENT ON COLUMN xxcsm_item_plan_lines.item_plan_lines_id                       IS '商品計画明細ID'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.year_month                               IS '年月'
+COMMENT ON COLUMN xxcsm_item_plan_lines.year_month                               IS '年月'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.month_no                                 IS '月'
+COMMENT ON COLUMN xxcsm_item_plan_lines.month_no                                 IS '月'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.year_bdgt_kbn                            IS '年間群予算区分'
+COMMENT ON COLUMN xxcsm_item_plan_lines.year_bdgt_kbn                            IS '年間群予算区分'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.item_kbn                                 IS '商品区分'
+COMMENT ON COLUMN xxcsm_item_plan_lines.item_kbn                                 IS '商品区分'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.item_no                                  IS '商品コード'
+COMMENT ON COLUMN xxcsm_item_plan_lines.item_no                                  IS '商品コード'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.item_group_no                            IS '商品群コード'
+COMMENT ON COLUMN xxcsm_item_plan_lines.item_group_no                            IS '商品群コード'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.amount                                   IS '数量'
+COMMENT ON COLUMN xxcsm_item_plan_lines.amount                                   IS '数量'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.sales_budget                             IS '売上金額'
+COMMENT ON COLUMN xxcsm_item_plan_lines.sales_budget                             IS '売上金額'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.amount_gross_margin                      IS '粗利益(新)'
+COMMENT ON COLUMN xxcsm_item_plan_lines.amount_gross_margin                      IS '粗利益(新)'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.credit_rate                              IS '掛率'
+COMMENT ON COLUMN xxcsm_item_plan_lines.credit_rate                              IS '掛率'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.margin_rate                              IS '粗利益率(新)'
+COMMENT ON COLUMN xxcsm_item_plan_lines.margin_rate                              IS '粗利益率(新)'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.created_by                               IS '作成者'
+COMMENT ON COLUMN xxcsm_item_plan_lines.created_by                               IS '作成者'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.creation_date                            IS '作成日'
+COMMENT ON COLUMN xxcsm_item_plan_lines.creation_date                            IS '作成日'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.last_updated_by                          IS '最終更新者'
+COMMENT ON COLUMN xxcsm_item_plan_lines.last_updated_by                          IS '最終更新者'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.last_update_date                         IS '最終更新日'
+COMMENT ON COLUMN xxcsm_item_plan_lines.last_update_date                         IS '最終更新日'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.last_update_login                        IS '最終更新ログイン'
+COMMENT ON COLUMN xxcsm_item_plan_lines.last_update_login                        IS '最終更新ログイン'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.request_id                               IS '要求ID'
+COMMENT ON COLUMN xxcsm_item_plan_lines.request_id                               IS '要求ID'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
+COMMENT ON COLUMN xxcsm_item_plan_lines.program_application_id                   IS 'コンカレント・プログラム・アプリケーションID'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.program_id                               IS 'コンカレント・プログラムID'
+COMMENT ON COLUMN xxcsm_item_plan_lines.program_id                               IS 'コンカレント・プログラムID'
 /
-COMMENT ON COLUMN xxcsm.xxcsm_item_plan_lines.program_update_date                      IS 'プログラム更新日'
+COMMENT ON COLUMN xxcsm_item_plan_lines.program_update_date                      IS 'プログラム更新日'
 /
