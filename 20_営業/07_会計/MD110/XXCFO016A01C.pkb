@@ -7,7 +7,7 @@ AS
  * Description     : 標準発注書出力処理
  * MD.050          : MD050_CFO_016_A01_標準発注書出力処理
  * MD.070          : MD050_CFO_016_A01_標準発注書出力処理
- * Version         : 1.9
+ * Version         : 1.10
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009-07-03    1.7  SCS 嵐田勇人  [障害0000131]発注担当者郵便番号ハイフン対応
  *  2009-12-24    1.8  SCS 寺内真紀  [障害E_本稼動_00592]仕入先敬称追加・納品場所変更対応
  *  2010-01-19    1.9  SCS 寺内真紀  [障害E_本稼動_01183]従業員マスタ抽出条件変更対応
+ *  2013-08-21    1.10 SCSK 仁木重人 [障害E_本稼動_11001]GV帳票フォーマット対応
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -100,6 +101,12 @@ AS
   gv_msg_kbn_cfo           CONSTANT VARCHAR2(5)   := 'XXCFO';
   gv_flag_y                CONSTANT VARCHAR2(1)   := 'Y';                 -- フラグ（Y）
   gv_flag_n                CONSTANT VARCHAR2(1)   := 'N';                 -- フラグ（N）
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+  gv_format_gv             CONSTANT VARCHAR2(1)   := '2';                 -- GVフォーマット
+  gv_hyphen                CONSTANT VARCHAR2(1)   := '-';                 -- ハイフン
+  gn_length_0              CONSTANT NUMBER        := 0;                   -- 桁数：0桁
+  gn_length_8              CONSTANT NUMBER        := 8;                   -- 桁数：8桁
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
   gv_approved              CONSTANT VARCHAR2(10)  := 'APPROVED';          -- 承認済
   gv_standard              CONSTANT VARCHAR2(10)  := 'STANDARD';          -- 標準発注
   gv_reissue_flag_0        CONSTANT VARCHAR2(1)   := '0';                 -- 新規
@@ -143,6 +150,10 @@ AS
 --ADD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
   gv_msg_cfo_00001   CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00001'; --プロファイル取得エラーメッセージ
 --ADD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+  gv_msg_cfo_00047   CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00047'; --GV拠点情報の取得失敗エラーメッセージ
+  gv_msg_cfo_00048   CONSTANT VARCHAR2(20) := 'APP-XXCFO1-00048'; --GV拠点情報の複数件取得エラーメッセージ
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
 --
   -- トークン
   gv_tkn_param_name_from CONSTANT VARCHAR2(15) := 'PARAM_NAME_FROM';  -- 大小チェックFrom 文字用
@@ -167,6 +178,9 @@ AS
   gv_org_id          CONSTANT VARCHAR2(30) := 'ORG_ID';           -- 組織ID
   gv_conc_request_id CONSTANT VARCHAR2(30) := 'CONC_REQUEST_ID';  -- 要求ID
   gv_lookup_type     CONSTANT VARCHAR2(100) := 'XXCFO1_SEARCH_LONG_TEXT';  -- 長い文書検索文字列
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+  gv_lookup_type_gv  CONSTANT VARCHAR2(30) := 'XXCFO1_SECURITY_GV';  -- GVセキュリティ
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
 --ADD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
   cv_report_title    CONSTANT VARCHAR2(30) := 'XXCFO1_REPORT_TITLE'; --XXCFO:帳票用敬称
 --ADD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
@@ -190,6 +204,13 @@ AS
 --ADD_Ver.1.8_2009/12/24_START----------------------------------------------------------------------------
   gv_report_title              VARCHAR2(10);                               -- XXCFO:帳票用敬称取得
 --ADD_Ver.1.8_2009/12/24_END------------------------------------------------------------------------------
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+  gt_po_location_name          xxcmn_locations_all.location_name%TYPE;     -- GV拠点情報_所属部署名
+  gt_po_zip                    xxcmn_locations_all.zip%TYPE;               -- GV拠点情報_郵便番号
+  gt_po_address_line1          xxcmn_locations_all.address_line1%TYPE;     -- GV拠点情報_住所
+  gt_po_phone                  xxcmn_locations_all.phone%TYPE;             -- GV拠点情報_電話番号
+  gt_po_fax                    xxcmn_locations_all.fax%TYPE;               -- GV拠点情報_FAX
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
 --
   --===============================================================
   -- グローバルテーブルタイプ
@@ -411,6 +432,9 @@ AS
    ***********************************************************************************/
   PROCEDURE init(
     iv_po_dept_code            IN         VARCHAR2,     --   発注作成部署
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    iv_rep_format              IN         VARCHAR2,     --   フォーマット
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
     iv_po_agent_code           IN         VARCHAR2,     --   発注作成者
     iv_vender_code             IN         VARCHAR2,     --   仕入先
     iv_po_num                  IN         VARCHAR2,     --   発注番号
@@ -457,15 +481,27 @@ AS
 --
     xxcfr_common_pkg.put_log_param(
        iv_which        => gv_file_type_log             -- ログ出力
+--MOD_Ver.1.10_START------------------------------------------------------------------------------
       ,iv_conc_param1  => iv_po_dept_code              -- 発注作成部署
-      ,iv_conc_param2  => iv_po_agent_code             -- 発注作成者
-      ,iv_conc_param3  => iv_vender_code               -- 仕入先
-      ,iv_conc_param4  => iv_po_num                    -- 発注番号
-      ,iv_conc_param5  => iv_po_creation_date_from     -- 発注作成日From
-      ,iv_conc_param6  => iv_po_creation_date_to       -- 発注作成日To
-      ,iv_conc_param7  => iv_po_approved_date_from     -- 発注承認日From
-      ,iv_conc_param8  => iv_po_approved_date_to       -- 発注承認日To
-      ,iv_conc_param9  => iv_reissue_flag              -- 再発行フラグ
+--      ,iv_conc_param2  => iv_po_agent_code             -- 発注作成者
+--      ,iv_conc_param3  => iv_vender_code               -- 仕入先
+--      ,iv_conc_param4  => iv_po_num                    -- 発注番号
+--      ,iv_conc_param5  => iv_po_creation_date_from     -- 発注作成日From
+--      ,iv_conc_param6  => iv_po_creation_date_to       -- 発注作成日To
+--      ,iv_conc_param7  => iv_po_approved_date_from     -- 発注承認日From
+--      ,iv_conc_param8  => iv_po_approved_date_to       -- 発注承認日To
+--      ,iv_conc_param9  => iv_reissue_flag              -- 再発行フラグ
+      ,iv_conc_param2  => iv_rep_format                -- フォーマット
+      ,iv_conc_param3  => iv_po_agent_code             -- 発注作成者
+      ,iv_conc_param4  => iv_vender_code               -- 仕入先
+      ,iv_conc_param5  => iv_po_num                    -- 発注番号
+      ,iv_conc_param6  => iv_po_creation_date_from     -- 発注作成日From
+      ,iv_conc_param7  => iv_po_creation_date_to       -- 発注作成日To
+      ,iv_conc_param8  => iv_po_approved_date_from     -- 発注承認日From
+      ,iv_conc_param9  => iv_po_approved_date_to       -- 発注承認日To
+      ,iv_conc_param10 => iv_reissue_flag              -- 再発行フラグ
+--MOD_Ver.1.10_END------------------------------------------------------------------------------
+
       ,ov_errbuf       => lv_errbuf                    -- エラー・メッセージ           --# 固定 #
       ,ov_retcode      => lv_retcode                   -- リターン・コード             --# 固定 #
       ,ov_errmsg       => lv_errmsg);                  -- ユーザー・エラー・メッセージ --# 固定 #
@@ -498,6 +534,9 @@ AS
    * Description      : 初期処理(A-2)
    ***********************************************************************************/
   PROCEDURE get_profile_lookup_val(
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    iv_rep_format            IN         VARCHAR2,   -- フォーマット
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
     iv_po_creation_date_from IN         VARCHAR2,   -- 発注作成日From
     iv_po_creation_date_to   IN         VARCHAR2,   -- 発注作成日To
     iv_po_approved_date_from IN         VARCHAR2,   -- 発注承認日From
@@ -657,6 +696,63 @@ AS
     IF po_data_cur%ISOPEN THEN
       CLOSE long_text_cur;
     END IF;
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+--
+    -- 入力パラメータ.フォーマットがGVの場合、GV拠点情報を取得
+    IF ( iv_rep_format = gv_format_gv ) THEN
+--
+      BEGIN
+        -- GV拠点情報の取得
+        SELECT xla.location_name       po_location_name  -- 正式名
+              ,xla.zip                 po_zip            -- 郵便番号
+              ,xla.address_line1       po_address_line1  -- 住所
+              ,xla.phone               po_phone          -- 電話番号
+              ,xla.fax                 po_fax            -- FAX番号
+         INTO  gt_po_location_name
+              ,gt_po_zip
+              ,gt_po_address_line1
+              ,gt_po_phone
+              ,gt_po_fax
+          FROM hr_locations            hl   -- 事業所マスタ
+              ,xxcmn_locations_all     xla  -- 事業所アドオンマスタ
+              ,fnd_lookup_values       flv  -- クイックコード
+         WHERE hl.location_id             = xla.location_id
+           AND TRUNC( SYSDATE ) BETWEEN TRUNC( xla.start_date_active )
+                                    AND TRUNC( NVL( xla.end_date_active, SYSDATE ) )
+           AND flv.lookup_type            = gv_lookup_type_gv  -- GVセキュリティ
+           AND flv.language               = USERENV('LANG')
+           AND flv.enabled_flag           = gv_flag_y
+           AND ( flv.start_date_active   IS NULL
+             OR  flv.start_date_active   <= TRUNC( SYSDATE ) )
+           AND ( flv.end_date_active     IS NULL
+             OR  flv.end_date_active     >= TRUNC( SYSDATE ) )
+           AND flv.lookup_code            = hl.location_code
+           AND flv.attribute1             = gv_flag_y
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- GV拠点情報が取得できない場合はエラー
+          lv_errmsg  := SUBSTRB( xxccp_common_pkg.get_msg( gv_msg_kbn_cfo      -- 'XXCFO'
+                                                          ,gv_msg_cfo_00047    -- GV拠点情報の取得失敗エラー
+                                                         )
+                                ,1
+                                ,5000);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+        WHEN TOO_MANY_ROWS THEN
+          -- GV拠点情報を複数件取得した場合はエラー
+          lv_errmsg  := SUBSTRB( xxccp_common_pkg.get_msg( gv_msg_kbn_cfo      -- 'XXCFO'
+                                                          ,gv_msg_cfo_00048    -- GV拠点情報の複数件取得エラー
+                                                         )
+                                ,1
+                                ,5000);
+          lv_errbuf := lv_errmsg;
+          RAISE global_api_expt;
+      END;
+--
+    END IF;
+--
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
 --
   EXCEPTION
 --
@@ -1044,6 +1140,9 @@ AS
    * Description      : ワークテーブルデータ登録 (A-8)
    ***********************************************************************************/
   PROCEDURE insert_rep_standard_po(
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    iv_rep_format IN         VARCHAR2,     --   フォーマット
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1071,6 +1170,12 @@ AS
 --ADD_Ver.1.7_2009/07/03_START------------------------------------------------------------------------------
     lt_po_zip                g_xxcfo_po_data_rec.po_zip%TYPE;   -- 発注担当者_郵便番号編集用
 --ADD_Ver.1.7_2009/07/03_END--------------------------------------------------------------------------------
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    lt_po_location_name      g_xxcfo_po_data_rec.po_location_name%TYPE;  -- 発注担当者_所属部署名編集用
+    lt_po_address_line1      g_xxcfo_po_data_rec.po_address_line1%TYPE;  -- 発注担当者_住所編集用
+    lt_po_phone              g_xxcfo_po_data_rec.po_phone%TYPE;          -- 発注担当者_電話番号編集用
+    lt_po_fax                g_xxcfo_po_data_rec.po_fax%TYPE;            -- 発注担当者_FAX編集用
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
 --
     -- *** ローカル・カーソル ***
 --
@@ -1084,16 +1189,41 @@ AS
 --
 --###########################  固定部 END   ############################
 --
---ADD_Ver.1.7_2009/07/03_START------------------------------------------------------------------------------
-    -- 郵便番号が未設定か8桁設定されていた場合
-    IF NVL( LENGTHB( g_xxcfo_po_data_rec.po_zip ) ,0 ) IN ( '0' ,'8' ) THEN
-      lt_po_zip := g_xxcfo_po_data_rec.po_zip;
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    IF ( iv_rep_format = gv_format_gv ) THEN
+      -- 入力パラメータ.フォーマットがGVの場合、A-2で取得したGV拠点情報を設定
+      lt_po_location_name  := gt_po_location_name;
+      lt_po_zip            := gt_po_zip;
+      lt_po_address_line1  := gt_po_address_line1;
+      lt_po_phone          := gt_po_phone;
+      lt_po_fax            := gt_po_fax;
     ELSE
-      lt_po_zip := SUBSTRB( g_xxcfo_po_data_rec.po_zip ,1 ,3 ) ||
-                   '-' ||
-                   SUBSTRB( g_xxcfo_po_data_rec.po_zip ,4 ,4 );
+      -- 上記以外の場合、A-3で取得した発注部門情報を設定
+      lt_po_location_name  := g_xxcfo_po_data_rec.po_location_name;
+      lt_po_zip            := g_xxcfo_po_data_rec.po_zip;
+      lt_po_address_line1  := g_xxcfo_po_data_rec.po_address_line1;
+      lt_po_phone          := g_xxcfo_po_data_rec.po_phone;
+      lt_po_fax            := g_xxcfo_po_data_rec.po_fax;
     END IF;
---ADD_Ver.1.7_2009/07/03_END--------------------------------------------------------------------------------
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
+--MOD_Ver.1.10_START------------------------------------------------------------------------------
+----ADD_Ver.1.7_2009/07/03_START------------------------------------------------------------------------------
+--    -- 郵便番号が未設定か8桁設定されていた場合
+--    IF NVL( LENGTHB( g_xxcfo_po_data_rec.po_zip ) ,0 ) IN ( '0' ,'8' ) THEN
+--      lt_po_zip := g_xxcfo_po_data_rec.po_zip;
+--    ELSE
+--      lt_po_zip := SUBSTRB( g_xxcfo_po_data_rec.po_zip ,1 ,3 ) ||
+--                   '-' ||
+--                   SUBSTRB( g_xxcfo_po_data_rec.po_zip ,4 ,4 );
+--    END IF;
+----ADD_Ver.1.7_2009/07/03_END--------------------------------------------------------------------------------
+    -- 郵便番号が未設定または、8桁設定されていた場合
+    IF NVL( LENGTHB( lt_po_zip ) ,0 ) IN ( gn_length_0 ,gn_length_8 ) THEN
+      lt_po_zip := lt_po_zip;
+    ELSE
+      lt_po_zip := SUBSTRB( lt_po_zip ,1 ,3 ) || gv_hyphen || SUBSTRB( lt_po_zip ,4 ,4 );
+    END IF;
+--MOD_Ver.1.10_END------------------------------------------------------------------------------
     -- =====================================================
     --  ワークテーブルデータ登録 (A-8)
     -- =====================================================
@@ -1145,14 +1275,22 @@ AS
       ,g_xxcfo_po_data_rec.fax_area_code
       ,g_xxcfo_po_data_rec.po_num
       ,g_xxcfo_po_data_rec.revision_num
-      ,g_xxcfo_po_data_rec.po_location_name
-      ,g_xxcfo_po_data_rec.po_address_line1
+--MOD_Ver.1.10_START------------------------------------------------------------------------------
+--      ,g_xxcfo_po_data_rec.po_location_name
+--      ,g_xxcfo_po_data_rec.po_address_line1
+      ,lt_po_location_name               -- 発注担当者_所属部署名
+      ,lt_po_address_line1               -- 発注担当者_住所
+--MOD_Ver.1.10_END------------------------------------------------------------------------------
 --MOD_Ver.1.7_2009/07/03_START------------------------------------------------------------------------------
 --      ,g_xxcfo_po_data_rec.po_zip
       ,lt_po_zip
 --MOD_Ver.1.7_2009/07/03_END--------------------------------------------------------------------------------
-      ,g_xxcfo_po_data_rec.po_phone
-      ,g_xxcfo_po_data_rec.po_fax
+--MOD_Ver.1.10_START------------------------------------------------------------------------------
+--      ,g_xxcfo_po_data_rec.po_phone
+--      ,g_xxcfo_po_data_rec.po_fax
+      ,lt_po_phone                       -- 発注担当者_電話番号
+      ,lt_po_fax                         -- 発注担当者_FAX
+--MOD_Ver.1.10_END------------------------------------------------------------------------------
       ,g_xxcfo_po_data_rec.apply_location_short_name
       ,DECODE(g_xxcfo_po_data_rec.attache_judge_code, gv_judge_code_10
                                                   , SUBSTRB( gt_party_name ,1 ,240 )            -- 納品場所名
@@ -1599,6 +1737,9 @@ AS
    * Description      : SVF起動処理 (A-12)
    ***********************************************************************************/
   PROCEDURE act_svf(
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    iv_rep_format IN         VARCHAR2,     --   フォーマット
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1623,6 +1764,10 @@ AS
     -- *** ローカル定数 ***
     cv_svf_form_name  CONSTANT  VARCHAR2(20) := 'XXCFO016A01S.xml';  -- フォーム様式ファイル名
     cv_svf_query_name CONSTANT  VARCHAR2(20) := 'XXCFO016A01S.vrq';  -- クエリー様式ファイル名
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    cv_svf_form_name1  CONSTANT VARCHAR2(20) := 'XXCFO016A01S1.xml'; -- フォーム様式ファイル名(GV)
+    cv_svf_query_name1 CONSTANT VARCHAR2(20) := 'XXCFO016A01S1.vrq'; -- クエリー様式ファイル名(GV)
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
     cv_language_ja    CONSTANT  fnd_concurrent_programs_tl.language%TYPE := 'JA' ;
     cv_extension_pdf  CONSTANT  VARCHAR2(4)  := '.pdf';  -- 拡張子（pdf）
 --
@@ -1631,6 +1776,10 @@ AS
 --    lv_svf_file_name   VARCHAR2(30);
     lv_svf_file_name   VARCHAR2(100);
 --MOD_Ver.1.6_2009/04/14_END------------------------------------------------------------------------------
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    lv_svf_form_name   VARCHAR2(20);    -- フォーム様式ファイル名
+    lv_svf_query_name  VARCHAR2(20);    -- クエリー様式ファイル名
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
     lv_file_id         VARCHAR2(30)  := NULL;
     lv_conc_name       VARCHAR2(30)  := NULL;
     lv_user_name       VARCHAR2(240) := NULL;
@@ -1660,6 +1809,17 @@ AS
 --
     -- ファイル名の設定
       lv_file_id := gv_pkg_name;
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    -- 入力パラメータ.フォーマットがGVの場合、GV帳票フォーマットで出力
+    IF ( iv_rep_format = gv_format_gv ) THEN
+      lv_svf_form_name  := cv_svf_form_name1;
+      lv_svf_query_name := cv_svf_query_name1;
+    -- 上記以外の場合、伊藤園帳票フォーマットで出力
+    ELSE
+      lv_svf_form_name  := cv_svf_form_name;
+      lv_svf_query_name := cv_svf_query_name;
+    END IF;
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
 --
     xxccp_svfcommon_pkg.submit_svf_request(
      ov_errbuf       => lv_errbuf            -- エラー・メッセージ           --# 固定 #
@@ -1669,8 +1829,12 @@ AS
     ,iv_file_name    => lv_svf_file_name     -- 出力ファイル名
     ,iv_file_id      => lv_file_id           -- 帳票ID
     ,iv_output_mode  => cv_output_mode       -- 出力区分(=1：PDF出力）
-    ,iv_frm_file     => cv_svf_form_name     -- フォーム様式ファイル名
-    ,iv_vrq_file     => cv_svf_query_name    -- クエリー様式ファイル名
+--MOD_Ver.1.10_START------------------------------------------------------------------------------
+--    ,iv_frm_file     => cv_svf_form_name     -- フォーム様式ファイル名
+--    ,iv_vrq_file     => cv_svf_query_name    -- クエリー様式ファイル名
+    ,iv_frm_file     => lv_svf_form_name     -- フォーム様式ファイル名
+    ,iv_vrq_file     => lv_svf_query_name    -- クエリー様式ファイル名
+--MOD_Ver.1.10_END------------------------------------------------------------------------------
     ,iv_org_id       => gn_org_id            -- ORG_ID
     ,iv_user_name    => lv_user_name         -- ログイン・ユーザ名
     ,iv_resp_name    => lv_resp_name         -- ログイン・ユーザの職責名
@@ -2032,6 +2196,9 @@ AS
    **********************************************************************************/
   PROCEDURE submain(
     iv_po_dept_code            IN         VARCHAR2,     --   発注作成部署
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    iv_rep_format              IN         VARCHAR2,     --   フォーマット
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
     iv_po_agent_code           IN         VARCHAR2,     --   発注作成者
     iv_vender_code             IN         VARCHAR2,     --   仕入先
     iv_po_num                  IN         VARCHAR2,     --   発注番号
@@ -2103,6 +2270,9 @@ AS
     -- =====================================================
     init(
        iv_po_dept_code                    -- 発注作成部署
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+      ,iv_rep_format                      -- フォーマット
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
       ,iv_po_agent_code                   -- 発注作成者
       ,iv_vender_code                     -- 仕入先
       ,iv_po_num                          -- 発注番号
@@ -2124,7 +2294,11 @@ AS
     --  初期処理(A-2)
     -- =====================================================
     get_profile_lookup_val(
-       iv_po_creation_date_from      -- 発注作成日From
+--MOD_Ver.1.10_START------------------------------------------------------------------------------
+--       iv_po_creation_date_from      -- 発注作成日From
+       iv_rep_format                 -- フォーマット
+      ,iv_po_creation_date_from      -- 発注作成日From
+--MOD_Ver.1.10_END------------------------------------------------------------------------------
       ,iv_po_creation_date_to        -- 発注作成日To
       ,iv_po_approved_date_from      -- 発注承認日From
       ,iv_po_approved_date_to        -- 発注承認日To
@@ -2223,7 +2397,11 @@ AS
         --  ワークテーブルデータ登録(A-8)
         -- =====================================================
         insert_rep_standard_po(
-           lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+--           lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+           iv_rep_format                       -- フォーマット
+          ,lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
           ,lv_retcode                          -- リターン・コード             --# 固定 #
           ,lv_errmsg);                         -- ユーザー・エラー・メッセージ --# 固定 #
 --
@@ -2305,7 +2483,11 @@ AS
         --  SVF起動処理(A-12)
         -- =====================================================
         act_svf(
-           lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+--MOD_Ver.1.10_START------------------------------------------------------------------------------
+--           lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+           iv_rep_format                       -- フォーマット
+          ,lv_errbuf                           -- エラー・メッセージ           --# 固定 #
+--MOD_Ver.1.10_END------------------------------------------------------------------------------
           ,lv_retcode                          -- リターン・コード             --# 固定 #
           ,lv_errmsg);                         -- ユーザー・エラー・メッセージ --# 固定 #
 --
@@ -2455,6 +2637,9 @@ AS
     errbuf                     OUT NOCOPY VARCHAR2,         --    エラー・メッセージ  --# 固定 #
     retcode                    OUT NOCOPY VARCHAR2,         --    エラーコード        --# 固定 #
     iv_po_dept_code            IN         VARCHAR2,         --    発注作成部署
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+    iv_rep_format              IN         VARCHAR2,         --    フォーマット
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
     iv_po_agent_code           IN         VARCHAR2,         --    発注作成者
     iv_vender_code             IN         VARCHAR2,         --    仕入先
     iv_po_num                  IN         VARCHAR2,         --    発注番号
@@ -2516,6 +2701,9 @@ AS
     -- ===============================================
     submain(
        iv_po_dept_code                    -- 発注作成部署
+--ADD_Ver.1.10_START------------------------------------------------------------------------------
+      ,iv_rep_format                      -- フォーマット
+--ADD_Ver.1.10_END------------------------------------------------------------------------------
       ,iv_po_agent_code                   -- 発注作成者
       ,iv_vender_code                     -- 仕入先
       ,iv_po_num                          -- 発注番号
