@@ -47,6 +47,7 @@ AS
  *                                                    chk_double_byte
  *                                                    chk_single_byte_kana
  *  2009-05-01    1.6   Tomoko.Mori      T1_0897対応
+ *  2009/05/07    1.7   N.Yanagitaira     [障害T1_0200]VDリース料、費用合計算出方法修正
  *****************************************************************************************/
 --
   -- ===============================
@@ -1486,8 +1487,12 @@ AS
                                    );
 --
     -- VDリース料
+-- 200900507_N.Yanagitaira T1_0200 Mod START
+--    ln_vd_lease_charge := ln_lease_charge_month * 12 + 
+--                          ln_construction_charge * ln_constraction_chg_rate * 12;
     ln_vd_lease_charge := ln_lease_charge_month * 12 + 
-                          ln_construction_charge * ln_constraction_chg_rate * 12;
+                          ln_construction_charge / ln_contract_year_date;
+-- 200900507_N.Yanagitaira T1_0200 Mod END
     ov_vd_lease_charge := TO_CHAR(ln_vd_lease_charge, 'FM999G999G999G999G990D90');
 --
     -- 電気代（年）
@@ -1506,6 +1511,9 @@ AS
     ln_total_cost := ln_vd_sales_charge +
                      ln_vd_lease_charge +
                      ln_electricity_amt_year +
+-- 200900507_N.Yanagitaira T1_0200 Add START
+                     ln_install_support_amt_year +
+-- 200900507_N.Yanagitaira T1_0200 Add END
                      ln_transportation_charge +
                      ln_labor_cost_other;
     ov_total_cost := TO_CHAR(ln_total_cost, 'FM999G999G999G999G990D90');
