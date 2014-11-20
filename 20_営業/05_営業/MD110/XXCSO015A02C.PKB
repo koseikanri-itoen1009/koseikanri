@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *  2009-09-25    1.17  D.Abe            共通課題IE534
  *  2009-11-27    1.18  K.Satomura       E_本稼動_00121対応
  *  2009-12-01    1.19  K.Satomura       E_本稼動_00264対応 依頼日時を固定値で出力する暫定対応
+ *  2009-12-05    1.20  Daisuke.Abe      E_本稼動_00334対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3647,9 +3648,13 @@ AS
         /* 2009.11.27 E_本稼動_00264 START */
         --|| cv_sep_com || l_get_data_rec.reqst_date                                            -- 依頼日
         --|| cv_sep_com || cv_sep_wquot || l_get_data_rec.reqst_time            || cv_sep_wquot -- 依頼時間
-        || cv_sep_com || '20091120'                                                           -- 依頼日
-        || cv_sep_com || cv_sep_wquot || '0800'                               || cv_sep_wquot -- 依頼時間
+        /* 2009.12.05 D.Abe E_本稼動_00334 対応 START */
+        --|| cv_sep_com || '20091120'                                                           -- 依頼日
+        --|| cv_sep_com || cv_sep_wquot || '0800'                               || cv_sep_wquot -- 依頼時間
         /* 2009.11.27 E_本稼動_00264 END */
+        || cv_sep_com || l_get_data_rec.reqst_date                                            -- 依頼日
+        || cv_sep_com || cv_sep_wquot || l_get_data_rec.reqst_time            || cv_sep_wquot -- 依頼時間
+        /* 2009.12.05 D.Abe E_本稼動_00334 対応 END */
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.work_company_code     || cv_sep_wquot -- 作業会社コード
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.work_location_code    || cv_sep_wquot -- 事業所コード
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.work_locatn_tel1      || cv_sep_wquot -- 事業所電話１
