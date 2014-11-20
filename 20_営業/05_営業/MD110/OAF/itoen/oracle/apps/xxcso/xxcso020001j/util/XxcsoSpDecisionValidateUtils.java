@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,7 @@
 * 2009-08-06 1.7  SCS小川浩    [SCS障害0000887]回送先チェック対応
 * 2009-10-14 1.8  SCS阿部大輔  [共通課題IE554,IE573]住所対応
 * 2009-11-29 1.9  SCS阿部大輔  [E_本稼動_00106]アカウント複数対応
+* 2009-12-17 1.10 SCS阿部大輔  [E_本稼動_00514]郵便番号対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -108,11 +109,12 @@ public class XxcsoSpDecisionValidateUtils
     /////////////////////////////////////
     // 設置先：顧客コード
     /////////////////////////////////////
+    // 提出、承認、確認ボタンの場合
     if (
-OperationMode==XxcsoSpDecisionConstants.OPERATION_SUBMIT ||
-OperationMode==XxcsoSpDecisionConstants.OPERATION_CONFIRM ||
-OperationMode==XxcsoSpDecisionConstants.OPERATION_APPROVE
-    )
+        OperationMode==XxcsoSpDecisionConstants.OPERATION_SUBMIT ||
+        OperationMode==XxcsoSpDecisionConstants.OPERATION_CONFIRM ||
+        OperationMode==XxcsoSpDecisionConstants.OPERATION_APPROVE
+       )
     {
       String AccountNumber;
       AccountNumber = validateAccount(txn,installRow.getInstallAccountNumber());
@@ -5300,7 +5302,10 @@ OperationMode==XxcsoSpDecisionConstants.OPERATION_APPROVE
        ,4
        ,4
        ,true
-       ,true
+       // 2009-12-17 [E_本稼動_00514] Add Start
+       //,true
+       ,false
+       // 2009-12-17 [E_本稼動_00514] Add End
        ,false
        ,0
       );
@@ -5332,7 +5337,10 @@ OperationMode==XxcsoSpDecisionConstants.OPERATION_APPROVE
        ,5
        ,5
        ,true
-       ,true
+       // 2009-12-17 [E_本稼動_00514] Add Start
+       //,true
+       ,false
+       // 2009-12-17 [E_本稼動_00514] Add End
        ,false
        ,0
       );
