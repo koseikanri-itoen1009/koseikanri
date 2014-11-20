@@ -6,7 +6,7 @@ AS
  * Package Name           : XXCOS_COMMON2_PKG(spec)
  * Description            : 
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -29,7 +29,8 @@ AS
  *  2008/11/27    1.0  SCS              新規作成
  *  2009/02/24    1.1  H.Fujimoto       結合不具合No.129
  *  2009/03/11    1.2  K.Kumamoto       I_E_048(百貨店送り状)単体テスト障害対応 (SPEC修正)
- *  2009/03/31    1.3  T.Kitajima       [T1_0113]makeup_data_recordのNUMBER,DATE編集変更
+ *  2009/03/31    1.3  T.Kitajima       [T1_0026]makeup_data_recordのNUMBER,DATE編集変更
+ *  2009/04/16    1.4  T.Kitajima       [T1_0543]conv_edi_item_code ケースJAN、JANコードNULL対応
  *
  *****************************************************************************************/
 --

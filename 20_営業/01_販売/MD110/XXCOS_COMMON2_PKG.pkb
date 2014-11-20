@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcos_common2_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_COS_共通関数
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  --------------------          ---- ----- --------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/02/24    1.1  H.Fujimoto       結合不具合No.129
  *  2009/03/11    1.2  K.Kumamoto       I_E_048(百貨店送り状)単体テスト障害対応 (SPEC修正)
  *  2009/03/31    1.3  T.Kitajima       [T1_0113]makeup_data_recordのNUMBER,DATE編集変更
+ *  2009/04/16    1.4  T.Kitajima       [T1_0543]conv_edi_item_code ケースJAN、JANコードNULL対応
  *
  *****************************************************************************************/
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -123,7 +124,13 @@ AS
                                                         := 'APP-XXCOS1-13586';              -- JANコード検索エラー
   ct_msg_in_uom_code                          CONSTANT  fnd_new_messages.message_name%TYPE
                                                         := 'APP-XXCOS1-13587';              -- 入力パラメータ単位コード不正
-  -- トークン
+--****************************** 2009/04/16 1.4 T.Kitajima ADD START ******************************--
+  ct_msg_jan_null_err                         CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-13590';              -- JANコードNULLエラー
+  ct_msg_case_jan_null_err                    CONSTANT  fnd_new_messages.message_name%TYPE
+                                                        := 'APP-XXCOS1-13591';              -- ケースJANコードNULLエラー
+--****************************** 2009/04/16 1.4 T.Kitajima ADD  ENd  ******************************--
+ -- トークン
   gv_token_name_layout                        CONSTANT VARCHAR2(6)  := 'LAYOUT';
   gv_token_name_in_param                      CONSTANT VARCHAR2(8)  := 'IN_PARAM';
   --
@@ -131,6 +138,9 @@ AS
   cv_tkn_edi_item_code_div                    CONSTANT  VARCHAR2(100) := 'EDI_ITEM_CODE_DIV';   -- EDI連携品目コード区分
   cv_tkn_uom_code                             CONSTANT  VARCHAR2(100) := 'UOM_CODE';            -- 単位コード
   cv_tkn_jan_code                             CONSTANT  VARCHAR2(100) := 'JAN_CODE';            -- JANコード
+--****************************** 2009/04/16 1.4 T.Kitajima ADD START ******************************--
+  cv_tkn_item_code                            CONSTANT  VARCHAR2(100) := 'ITEM_CODE';           -- 品目コード
+--****************************** 2009/04/16 1.4 T.Kitajima ADD  ENd  ******************************--
   --
   --プロファイルID
   ct_prof_case_uom_code                       CONSTANT  fnd_profile_options.profile_option_name%TYPE
@@ -628,27 +638,61 @@ AS
             RAISE lv_err_expt;
         END;
         --
+--****************************** 2009/04/16 1.4 T.Kitajima MOD START ******************************--
+--        -- 入力パラメータ「単位コード」により、商品コード２にセットする値を変えます
+--        IF ( iv_uom_code = lv_case_uom_code ) THEN
+--          -- 単位「CS」の場合
+--          ov_product_code2 := ov_case_jan_code;
+--        ELSIF ( lv_uom_code = lv_uom_code ) THEN
+--          -- 単位が品目マスタの単位と同じ場合
+--          ov_product_code2 := ov_jan_code;
+--        ELSE
+--          -- 上記以外の場合->エラー
+--          lv_message1 := xxccp_common_pkg.get_msg(
+--                           iv_application        => ct_xxcos_appl_short_name,
+--                           iv_name               => ct_msg_in_uom_code,
+--                           iv_token_name1        => cv_tkn_edi_chain_code,
+--                           iv_token_value1       => iv_edi_chain_code,
+--                           iv_token_name2        => cv_tkn_jan_code,
+--                           iv_token_value2       => ov_jan_code,
+--                           iv_token_name3        => cv_tkn_uom_code,
+--                           iv_token_value3       => iv_uom_code
+--                         );
+--          RAISE lv_err_expt;
+--        END IF;
+--
         -- 入力パラメータ「単位コード」により、商品コード２にセットする値を変えます
         IF ( iv_uom_code = lv_case_uom_code ) THEN
           -- 単位「CS」の場合
+          --ケースJANコードがNULLの場合エラー
+          IF ( ov_case_jan_code IS NULL ) THEN
+            lv_message1 := xxccp_common_pkg.get_msg(
+                             iv_application        => ct_xxcos_appl_short_name,
+                             iv_name               => ct_msg_case_jan_null_err,
+                             iv_token_name1        => cv_tkn_edi_chain_code,
+                             iv_token_value1       => iv_edi_chain_code,
+                             iv_token_name2        => cv_tkn_item_code,
+                             iv_token_value2       => iv_item_code
+                           );
+            RAISE lv_err_expt;
+          END IF;
           ov_product_code2 := ov_case_jan_code;
-        ELSIF ( lv_uom_code = lv_uom_code ) THEN
+        ELSE 
           -- 単位が品目マスタの単位と同じ場合
+          IF ( ov_jan_code IS NULL ) THEN
+            lv_message1 := xxccp_common_pkg.get_msg(
+                             iv_application        => ct_xxcos_appl_short_name,
+                             iv_name               => ct_msg_jan_null_err,
+                             iv_token_name1        => cv_tkn_edi_chain_code,
+                             iv_token_value1       => iv_edi_chain_code,
+                             iv_token_name2        => cv_tkn_item_code,
+                             iv_token_value2       => iv_item_code
+                           );
+            RAISE lv_err_expt;
+          END IF;
           ov_product_code2 := ov_jan_code;
-        ELSE
-          -- 上記以外の場合->エラー
-          lv_message1 := xxccp_common_pkg.get_msg(
-                           iv_application        => ct_xxcos_appl_short_name,
-                           iv_name               => ct_msg_in_uom_code,
-                           iv_token_name1        => cv_tkn_edi_chain_code,
-                           iv_token_value1       => iv_edi_chain_code,
-                           iv_token_name2        => cv_tkn_jan_code,
-                           iv_token_value2       => ov_jan_code,
-                           iv_token_name3        => cv_tkn_uom_code,
-                           iv_token_value3       => iv_uom_code
-                         );
-          RAISE lv_err_expt;
         END IF;
+--****************************** 2009/04/16 1.4 T.Kitajima MOD  END  ******************************--
       ELSE
         -- EDI連携品目コード区分の不正
         lv_message1 := xxccp_common_pkg.get_msg(
