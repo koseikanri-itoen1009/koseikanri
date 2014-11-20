@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-01-10 1.0  伊藤ひとみ   新規作成
+* 2008-06-11 1.1  吉元強樹     ST不具合ログ#72を対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -6000,6 +6001,9 @@ public class XxpoUtility
     String lotNo        = (String)params.get("LotNo");                              // 発注明細.ロットNo
     String quantity     = (String)params.get("RcvRtnQuantity");                     // 訂正数量
     Number interfaceTransactionId  = (Number)params.get("InterfaceTransactionId");  // INTERFACE_TRANSACTION_ID
+// 20080611 yoshimoto add Start ST不具合#72
+    Number opmItemId    = (Number)params.get("OpmItemId");                          // 発注明細.OPM品目ID
+// 20080611 yoshimoto add End ST不具合#72
 
     // OUTパラメータ用
     String retFlag = XxcmnConstants.RETURN_NOT_EXE;    
@@ -6016,7 +6020,10 @@ public class XxpoUtility
     sb.append("   SELECT ilm.expire_date ");
     sb.append("   INTO lt_expire_date ");
     sb.append("   FROM ic_lots_mst ilm ");
-    sb.append("   WHERE ilm.lot_no = :1; ");
+    sb.append("   WHERE ilm.lot_no = :1 ");     // 発注明細.ロットNo
+// 20080611 yoshimoto add Start
+    sb.append("   AND   ilm.item_id = :2; ");   // 発注明細.OPM品目ID
+// 20080611 yoshimoto add End
   
     sb.append("   INSERT INTO mtl_transaction_lots_interface mtli ( ");
     sb.append("      mtli.transaction_interface_id ");
@@ -6041,6 +6048,8 @@ public class XxpoUtility
     sb.append("     ,SYSDATE ");
     sb.append("     ,FND_GLOBAL.USER_ID ");
     sb.append("     ,FND_GLOBAL.LOGIN_ID ");
+// 20080611 yoshimoto mod Start ST不具合#72
+/*
     sb.append("     ,:2 ");                                // 発注明細.ロットNo
     sb.append("     ,lt_expire_date ");
     sb.append("     ,ABS(:3) ");                           // 訂正数量の絶対値
@@ -6050,6 +6059,17 @@ public class XxpoUtility
     sb.append("     ,:5 ");                                // INTERFACE_TRANSACTION_ID
     sb.append("   ); ");
     sb.append("   :6 := '1'; ");
+*/
+    sb.append("     ,:3 ");                                // 発注明細.ロットNo
+    sb.append("     ,lt_expire_date ");
+    sb.append("     ,ABS(:4) ");                           // 訂正数量の絶対値
+    sb.append("     ,ABS(:5) ");                           // 訂正数量の絶対値
+    sb.append("     ,'1' ");
+    sb.append("     ,'RCV' ");
+    sb.append("     ,:6 ");                                // INTERFACE_TRANSACTION_ID
+    sb.append("   ); ");
+    sb.append("   :7 := '1'; ");
+// 20080611 yoshimoto mod End ST不具合#72
     sb.append(" END; ");
 
     //PL/SQLの設定を行います
@@ -6061,6 +6081,8 @@ public class XxpoUtility
     {
       // パラメータ設定(INパラメータ)
       cstmt.setString(1, lotNo);   // ロットNo
+// 20080611 yoshimoto mod Start ST不具合#72
+/*
       cstmt.setString(2, lotNo);   // ロットNo
       cstmt.setDouble(3, Double.parseDouble(quantity));   // 訂正数量
       cstmt.setDouble(4, Double.parseDouble(quantity));   // 訂正数量
@@ -6074,6 +6096,22 @@ public class XxpoUtility
 
       // 戻り値取得
       retFlag = cstmt.getString(6); // リターンコード
+*/
+      cstmt.setInt(2, XxcmnUtility.intValue(opmItemId));      // 発注明細.OPM品目ID
+      cstmt.setString(3, lotNo);                              // ロットNo
+      cstmt.setDouble(4, Double.parseDouble(quantity));       // 訂正数量
+      cstmt.setDouble(5, Double.parseDouble(quantity));       // 訂正数量
+      cstmt.setInt(6, XxcmnUtility.intValue(interfaceTransactionId));  // INTERFACE_TRANSACTION_ID
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(7, Types.VARCHAR);   // リターンコード
+
+      //PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値取得
+      retFlag = cstmt.getString(7); // リターンコード
+// 20080611 yoshimoto mod End ST不具合#72
 
       // 正常終了の場合
       if (XxcmnConstants.RETURN_SUCCESS.equals(retFlag)) 
@@ -6143,6 +6181,9 @@ public class XxpoUtility
     Number txnsId       = (Number)params.get("TxnsId");                             // 取引ID
     String quantity     = (String)params.get("RcvRtnQuantity");                     // 訂正数量
     Number interfaceTransactionId  = (Number)params.get("InterfaceTransactionId");  // INTERFACE_TRANSACTION_ID
+// 20080611 yoshimoto add Start ST不具合#72
+    Number opmItemId    = (Number)params.get("OpmItemId");                          // 発注明細.OPM品目ID
+// 20080611 yoshimoto add End ST不具合#72
 
     // OUTパラメータ用
     String retFlag = XxcmnConstants.RETURN_NOT_EXE;    
@@ -6161,7 +6202,10 @@ public class XxpoUtility
     sb.append("   SELECT ilm.expire_date ");
     sb.append("   INTO lt_expire_date ");
     sb.append("   FROM ic_lots_mst ilm ");
-    sb.append("   WHERE ilm.lot_no = :1; ");
+    sb.append("   WHERE ilm.lot_no = :1 ");      // 発注明細.ロットNo
+// 20080611 yoshimoto add Start ST不具合#72
+    sb.append("   AND   ilm.item_id = :2; ");    // 発注明細.OPM品目ID
+// 20080611 yoshimoto add End ST不具合#72
 
     sb.append("   SELECT ");
     sb.append("      rsl.item_id ");
@@ -6176,6 +6220,8 @@ public class XxpoUtility
     sb.append("     AND rt.destination_type_code = 'RECEIVING' ");
     sb.append("     AND rt.destination_context   = 'RECEIVING' ");
     sb.append("     AND rt.shipment_line_id      = rsl.shipment_line_id ");
+// 20080611 yoshimoto add Start ST不具合#72
+/*
     sb.append("     AND rt.po_header_id          = :2 ");                      // 発注ヘッダID
     sb.append("     AND rt.po_line_id            = :3 ");                      // 発注明細ID
     sb.append("     AND rsl.attribute1           = :4; " );                    // 受入明細.取引ID
@@ -6211,6 +6257,44 @@ public class XxpoUtility
     sb.append("   ); ");
 
     sb.append("   :9 := '1'; ");
+*/
+    sb.append("     AND rt.po_header_id          = :3 ");                      // 発注ヘッダID
+    sb.append("     AND rt.po_line_id            = :4 ");                      // 発注明細ID
+    sb.append("     AND rsl.attribute1           = :5; " );                    // 受入明細.取引ID
+
+    sb.append("   INSERT INTO rcv_lots_interface rli ( ");
+    sb.append("      rli.interface_transaction_id ");
+    sb.append("     ,rli.last_update_date ");
+    sb.append("     ,rli.last_updated_by ");
+    sb.append("     ,rli.creation_date ");
+    sb.append("     ,rli.created_by ");
+    sb.append("     ,rli.last_update_login ");
+    sb.append("     ,rli.lot_num ");
+    sb.append("     ,rli.quantity ");
+    sb.append("     ,rli.transaction_date ");
+    sb.append("     ,rli.expiration_date ");
+    sb.append("     ,rli.primary_quantity ");
+    sb.append("     ,rli.item_id ");
+    sb.append("     ,rli.shipment_line_id) ");
+    sb.append("   VALUES( ");
+    sb.append("     :6 ");                                 // INTERFACE_TRANSACTION_ID
+    sb.append("     ,SYSDATE ");
+    sb.append("     ,FND_GLOBAL.USER_ID ");
+    sb.append("     ,SYSDATE ");
+    sb.append("     ,FND_GLOBAL.USER_ID ");
+    sb.append("     ,FND_GLOBAL.LOGIN_ID ");
+    sb.append("     ,:7 ");                                // 発注明細.ロットNo
+    sb.append("     ,ABS(:8) ");                           // 訂正数量の絶対値
+    sb.append("     ,SYSDATE ");
+    sb.append("     ,lt_expire_date ");
+    sb.append("     ,ABS(:9) ");                           // 訂正数量の絶対値
+    sb.append("     ,l_item_id ");
+    sb.append("     ,l_shipment_line_id ");
+    sb.append("   ); ");
+
+    sb.append("   :10 := '1'; ");
+// 20080611 yoshimoto add End ST不具合#72
+
     sb.append(" END; ");
     
     //PL/SQLの設定を行います
@@ -6223,6 +6307,8 @@ public class XxpoUtility
 
       // パラメータ設定(INパラメータ)
       cstmt.setString(1, lotNo);                                       // ロットNo
+// 20080611 yoshimoto mod Start ST不具合#72
+/*
       cstmt.setInt(2,    XxcmnUtility.intValue(headerId));             // 発注ヘッダID
       cstmt.setInt(3,    XxcmnUtility.intValue(lineId));               // 発注明細ID
       cstmt.setString(4, XxcmnUtility.stringValue(txnsId));            // 受入明細.取引ID
@@ -6239,6 +6325,25 @@ public class XxpoUtility
 
       // 戻り値取得
       retFlag = cstmt.getString(9); // リターンコード
+*/
+      cstmt.setInt(2,    XxcmnUtility.intValue(opmItemId));            // 発注明細.OPM品目ID
+      cstmt.setInt(3,    XxcmnUtility.intValue(headerId));             // 発注ヘッダID
+      cstmt.setInt(4,    XxcmnUtility.intValue(lineId));               // 発注明細ID
+      cstmt.setString(5, XxcmnUtility.stringValue(txnsId));            // 受入明細.取引ID
+      cstmt.setInt(6, XxcmnUtility.intValue(interfaceTransactionId));  // INTERFACE_TRANSACTION_ID
+      cstmt.setString(7, lotNo);                                       // ロットNo
+      cstmt.setDouble(8, Double.parseDouble(quantity));                // 訂正数量
+      cstmt.setDouble(9, Double.parseDouble(quantity));                // 訂正数量
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(10, Types.VARCHAR);   // リターンコード
+      
+      //PL/SQL実行
+      cstmt.execute();
+
+      // 戻り値取得
+      retFlag = cstmt.getString(10);                  // リターンコード
+// 20080611 yoshimoto mod End ST不具合#72
 
       // 正常終了の場合
       if (XxcmnConstants.RETURN_SUCCESS.equals(retFlag)) 
