@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A05R(body)
  * Description      : 受注エラーリスト
  * MD.050           : 受注エラーリスト MD050_COS_010_A05
- * Version          : 1.2
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,9 @@ AS
  *  2008/12/17    1.0   K.Kumamoto       新規作成
  *  2009/02/13    1.1   M.Yamaki         [COS_072]エラーリスト種別コードの対応
  *  2009/02/24    1.2   T.Nakamura       [COS_133]メッセージ出力、ログ出力への出力内容の追加・修正
+ *  2009/06/19    1.3   N.Nishimura      [T1_1437]データパージ不具合対応
+ *  2009/07/23    1.4   N.Maeda          [0000300]ロック処理修正
+ *  2009/08/03    1.5   M.Sano           [0000902]受注エラーリストの終了ステータス変更
  *
  *****************************************************************************************/
 --
@@ -114,6 +117,10 @@ AS
   ct_msg_svf_api                  CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00041'; --文字列.SVF起動API
   ct_msg_nodata                   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00018'; --明細0件用メッセージ
   ct_msg_resource_busy_err        CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00001'; --ロックエラーメッセージ
+-- ******************** 2009/07/23 N.Maeda 1.4 ADD START ******************************* --
+  ct_msg_Processed_other          CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12104'; --他処理出力済みメッセージ
+-- ******************** 2009/07/23 N.Maeda 1.4 ADD  END  ******************************* --
+
 --
   --トークン
   cv_tkn_param1                   CONSTANT VARCHAR2(6) := 'PARAM1';
@@ -194,6 +201,9 @@ AS
   g_input_rec_init      g_input_rtype;
   g_edi_err_tab         g_edi_err_ttype;
   g_process_date        DATE;
+-- ****************** 2009/07/23 N.Maeda 1.4 ADD START ******************************* --
+  gn_lock_flg           NUMBER := 0;                     -- ロックフラグ
+-- ****************** 2009/07/23 N.Maeda 1.4 ADD  END  ******************************* --
 --
   /**********************************************************************************
    * Procedure Name   : out_line
@@ -969,62 +979,56 @@ AS
             ,xxcmn_item_mst_b                                    ximb                  --OPM品目マスタアドオン
             --チェーン店情報
             ,(
-              SELECT
-               xca.chain_store_code                              chain_store_code      --チェーン店コード(EDI)
-              ,hp.party_name                                     party_name            --顧客名称
-              FROM
-               xxcmm_cust_accounts                               xca                   --顧客マスタアドオン
-              ,hz_cust_accounts                                  hca                   --顧客マスタ
-              ,hz_parties                                        hp                    --パーティマスタ
-              WHERE hca.cust_account_id = xca.customer_id
-              AND hca.customer_class_code = cv_cust_class_chain
-              AND hp.party_id = hca.party_id
+              SELECT  xca.chain_store_code                       chain_store_code      --チェーン店コード(EDI)
+                      ,hp.party_name                             party_name            --顧客名称
+              FROM    xxcmm_cust_accounts                        xca                   --顧客マスタアドオン
+                      ,hz_cust_accounts                          hca                   --顧客マスタ
+                      ,hz_parties                                hp                    --パーティマスタ
+              WHERE   hca.cust_account_id = xca.customer_id
+              AND     hca.customer_class_code = cv_cust_class_chain
+              AND     hp.party_id = hca.party_id
              )                                                   chain                 --チェーン店情報
             --店舗情報
             ,(
-              SELECT
-               xca.chain_store_code                              chain_store_code      --チェーン店コード(EDI)
-              ,xca.store_code                                    store_code            --店舗コード
-              ,hca.account_number                                account_number        --顧客コード
-              ,xca.cust_store_name                               cust_store_name       --顧客店舗名称
-              ,xca.delivery_base_code                            delivery_base_code    --納品拠点コード
-              FROM
-               xxcmm_cust_accounts                               xca                   --顧客マスタアドオン
-              ,hz_cust_accounts                                  hca                   --顧客マスタ
-              WHERE hca.cust_account_id = xca.customer_id
-              AND hca.customer_class_code = cv_cust_class_store
+              SELECT  xca.chain_store_code                       chain_store_code      --チェーン店コード(EDI)
+                      ,xca.store_code                            store_code            --店舗コード
+                      ,hca.account_number                        account_number        --顧客コード
+                      ,xca.cust_store_name                       cust_store_name       --顧客店舗名称
+                      ,xca.delivery_base_code                    delivery_base_code    --納品拠点コード
+              FROM    xxcmm_cust_accounts                        xca                   --顧客マスタアドオン
+                      ,hz_cust_accounts                          hca                   --顧客マスタ
+              WHERE   hca.cust_account_id = xca.customer_id
+              AND     hca.customer_class_code = cv_cust_class_store
              )                                                   store                 --店舗情報
             --拠点情報
             ,(
-              SELECT
-               hca.account_number                                account_number        --顧客コード
-              ,hp.party_name                                     party_name            --顧客名称
-              FROM
-               hz_cust_accounts                                  hca                   --顧客マスタ
-              ,hz_parties                                        hp                    --パーティマスタ
-              WHERE hca.customer_class_code = cv_cust_class_base
-              AND hp.party_id = hca.party_id
+              SELECT  hca.account_number                         account_number        --顧客コード
+                      ,hp.party_name                             party_name            --顧客名称
+              FROM    hz_cust_accounts                           hca                   --顧客マスタ
+                      ,hz_parties                                hp                    --パーティマスタ
+              WHERE   hca.customer_class_code = cv_cust_class_base
+              AND     hp.party_id = hca.party_id
              )                                                   base                  --拠点情報
             --
-            WHERE xee.edi_create_class = i_input_rec.err_list_type
-            AND   store.chain_store_code(+) = xee.chain_code
-            AND   store.store_code(+) = xee.shop_code
-            AND   chain.chain_store_code(+) = xee.chain_code
-            AND   base.account_number(+) = store.delivery_base_code
-            AND   iimb.item_no(+) = xee.item_code
-            AND   ximb.item_id(+) = iimb.item_id
-            AND   g_process_date
-              BETWEEN NVL(TRUNC(ximb.start_date_active),g_process_date)
-              AND     NVL(TRUNC(ximb.end_date_active),g_process_date)
-            ORDER BY base.account_number
-                    ,xee.chain_code
-                    ,xee.dlv_date
-                    ,xee.invoice_number
-                    ,xee.shop_code
-                    ,xee.line_no
-                    ,xee.edi_item_code
-            FOR UPDATE OF xee.edi_err_id NOWAIT
-            ;
+      WHERE xee.edi_create_class = i_input_rec.err_list_type
+      AND   store.chain_store_code(+) = xee.chain_code
+      AND   store.store_code(+) = xee.shop_code
+      AND   chain.chain_store_code(+) = xee.chain_code
+      AND   base.account_number(+) = store.delivery_base_code
+      AND   iimb.item_no(+) = xee.item_code
+      AND   ximb.item_id(+) = iimb.item_id
+      AND   g_process_date
+        BETWEEN NVL(TRUNC(ximb.start_date_active),g_process_date)
+        AND     NVL(TRUNC(ximb.end_date_active),g_process_date)
+      ORDER BY base.account_number
+              ,xee.chain_code
+              ,xee.dlv_date
+              ,xee.invoice_number
+              ,xee.shop_code
+              ,xee.line_no
+              ,xee.edi_item_code
+      FOR UPDATE OF xee.edi_err_id NOWAIT
+      ;
 --
     -- *** ローカル・レコード ***
 --
@@ -1051,16 +1055,19 @@ AS
 --
     -- *** ロックエラーハンドラ ***
     WHEN resource_busy_expt THEN
-      lt_tkn := xxccp_common_pkg.get_msg(ct_apl_name, ct_msg_edi_err_tab);
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                     ct_apl_name
-                    ,ct_msg_resource_busy_err
-                    ,cv_tkn_table
-                    ,lt_tkn
-                   );
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
-      ov_retcode := cv_status_error;
+-- ******************** 2009/07/23 N.Maeda 1.4 MOD START ******************************* --
+      gn_lock_flg := 1; -- ロック中
+--      lt_tkn := xxccp_common_pkg.get_msg(ct_apl_name, ct_msg_edi_err_tab);
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                     ct_apl_name
+--                    ,ct_msg_resource_busy_err
+--                    ,cv_tkn_table
+--                    ,lt_tkn
+--                   );
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+--      ov_retcode := cv_status_error;
+-- ******************** 2009/07/23 N.Maeda 1.4 MOD  END  ******************************* --
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1206,6 +1213,11 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+--2009/06/19  Ver1.3 T1_1437  Add start
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+--2009/06/19  Ver1.3 T1_1437  Add end
 --
     -- ===============================
     -- ローカル・カーソル
@@ -1270,65 +1282,103 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    IF (gn_target_cnt > 0) THEN
+-- ******************** 2009/07/23 N.Maeda 1.4 ADD START ******************************* --
+    -- ロック中で無い場合
+    IF ( gn_lock_flg = 0 ) THEN 
+-- ******************** 2009/07/23 N.Maeda 1.4 ADD  END  ******************************* --
+      IF (gn_target_cnt > 0) THEN
+        -- ===============================================
+        -- A-4.帳票ワークテーブル登録処理
+        -- ===============================================
+        insert_report_work(
+          lv_errbuf                   -- エラー・メッセージ
+         ,lv_retcode                  -- リターン・コード
+         ,lv_errmsg                   -- ユーザー・エラー・メッセージ
+        );
+--
+        IF (lv_retcode != cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ===============================================
+        -- A-5.EDIテーブル削除
+        -- ===============================================
+        delete_edi(
+          lv_errbuf                   -- エラー・メッセージ
+         ,lv_retcode                  -- リターン・コード
+         ,lv_errmsg                   -- ユーザー・エラー・メッセージ
+        );
+--
+        IF (lv_retcode != cv_status_normal) THEN
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+--
       -- ===============================================
-      -- A-4.帳票ワークテーブル登録処理
+      -- A-6.SVF起動
       -- ===============================================
-      insert_report_work(
+      execute_svf(
         lv_errbuf                   -- エラー・メッセージ
        ,lv_retcode                  -- リターン・コード
        ,lv_errmsg                   -- ユーザー・エラー・メッセージ
       );
+--
+-- 2009/06/19  Ver1.3 T1_1437  Mod start
+--    --エラーでもワークテーブルを削除する為、エラー情報を保持
+--    IF (lv_retcode != cv_status_normal) THEN
+--      RAISE global_process_expt;
+--    END IF;
+      --
+      --エラーでもワークテーブルを削除する為、エラー情報を保持
+      lv_errbuf_svf  := lv_errbuf;
+      lv_retcode_svf := lv_retcode;
+      lv_errmsg_svf  := lv_errmsg;
+-- 2009/06/19  Ver1.3 T1_1437  Mod End
+--
+      -- ===============================================
+      -- A-7.帳票ワークテーブル削除
+      -- ===============================================
+      IF (gn_target_cnt > 0) THEN
+        delete_report_work(
+          lv_errbuf                   -- エラー・メッセージ
+         ,lv_retcode                  -- リターン・コード
+         ,lv_errmsg                   -- ユーザー・エラー・メッセージ
+        );
+      END IF;
 --
       IF (lv_retcode != cv_status_normal) THEN
         RAISE global_process_expt;
       END IF;
 --
-      -- ===============================================
-      -- A-5.EDIテーブル削除
-      -- ===============================================
-      delete_edi(
-        lv_errbuf                   -- エラー・メッセージ
-       ,lv_retcode                  -- リターン・コード
-       ,lv_errmsg                   -- ユーザー・エラー・メッセージ
-      );
+-- 2009/06/19  Ver1.3 T1_1437  Add start
+      --エラーの場合、ロールバックするのでここでコミット
+      COMMIT;
 --
-      IF (lv_retcode != cv_status_normal) THEN
+      --SVF実行結果確認
+      IF ( lv_retcode_svf = cv_status_error ) THEN
+        lv_errbuf  := lv_errbuf_svf;
+        lv_retcode := lv_retcode_svf;
+        lv_errmsg  := lv_errmsg_svf;
         RAISE global_process_expt;
       END IF;
+-- 2009/06/19  Ver1.3 T1_1437  Add End
+-- 
+-- 2009/08/03  Ver1.5 0000902  Mod Start
+--      IF (gn_target_cnt = 0) THEN
+--        ov_retcode := cv_status_warn;
+--      END IF;
+      IF ( gn_target_cnt > 0 ) THEN
+        ov_retcode := cv_status_warn;
+      END IF;
+-- 2009/08/03  Ver1.5 0000902  Mod End
+-- ******************** 2009/07/23 N.Maeda 1.4 ADD START ******************************* --
+    -- ロック中の場合
+    ELSE
+      lv_errmsg := xxccp_common_pkg.get_msg( ct_apl_name , ct_msg_Processed_other );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := lv_errmsg;
     END IF;
---
-    -- ===============================================
-    -- A-6.SVF起動
-    -- ===============================================
-    execute_svf(
-      lv_errbuf                   -- エラー・メッセージ
-     ,lv_retcode                  -- リターン・コード
-     ,lv_errmsg                   -- ユーザー・エラー・メッセージ
-    );
---
-    IF (lv_retcode != cv_status_normal) THEN
-      RAISE global_process_expt;
-    END IF;
---
-    -- ===============================================
-    -- A-7.帳票ワークテーブル削除
-    -- ===============================================
-    IF (gn_target_cnt > 0) THEN
-      delete_report_work(
-        lv_errbuf                   -- エラー・メッセージ
-       ,lv_retcode                  -- リターン・コード
-       ,lv_errmsg                   -- ユーザー・エラー・メッセージ
-      );
-    END IF;
---
-    IF (lv_retcode != cv_status_normal) THEN
-      RAISE global_process_expt;
-    END IF;
---
-    IF (gn_target_cnt = 0) THEN
-      ov_retcode := cv_status_warn;
-    END IF;
+-- ******************** 2009/07/23 N.Maeda 1.4 ADD  END  ******************************* --
 --
     out_line(buff => cv_prg_name || ' end');
   EXCEPTION
@@ -1422,6 +1472,21 @@ AS
      ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
+-- ******************** 2009/07/23 N.Maeda 1.4 MOD START ******************************* --
+    IF ( gn_lock_flg <> 0 ) THEN
+--
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+      );
+      --空行挿入
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => ''
+      );
+--
+    END IF;
+-- ******************** 2009/07/23 N.Maeda 1.4 MOD  END  ******************************* --
     --エラー出力
     IF (lv_retcode = cv_status_error) THEN
       gn_error_cnt := gn_target_cnt;
