@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/09/19    1.18  Yasuhisa Yamamoto  T_TE080_BPO_550 #32#33,T_S_466,変更#171
  *  2008/09/22    1.19  Yasuhisa Yamamoto  PT 2_1_12 #63 再改修
  *  2008/10/02    1.20  Yasuhisa Yamamoto  PT 2-1_12 #85
+ *  2008/10/22    1.21  Yasuhisa Yamamoto  仕様不備障害 T_S_492
  *
  *****************************************************************************************/
 --
@@ -1122,7 +1123,9 @@ AS
                     AND    xrpm6v.reason_code                = itc_adji.reason_code
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm6v.rcv_pay_div                = SIGN( itc_adji.trans_qty )
-                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 Start
+--                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 End
 -- 08/05/07 Y.Yamamoto Update v1.1 End
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 文書タイプ"TRNI"（積送なし移動）の抽出
@@ -1184,7 +1187,9 @@ AS
                     AND    xrpm9v.reason_code               = itc_trni.reason_code
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itc_trni.trans_qty )
-                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itc_trni.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 Start
+--                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itc_trni.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 End
 -- 08/05/07 Y.Yamamoto Update v1.1 End
 -- 08/09/22 Y.Yamamoto Update v1.19 Start
 --                    AND    itc_trni_cnt.whse_code           = itc_trni.whse_code
@@ -1259,7 +1264,9 @@ AS
                     AND    xrpm9v.reason_code               = itp_xfer.reason_code
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
-                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itp_xfer.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 Start
+--                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itp_xfer.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 End
 -- 08/05/07 Y.Yamamoto Update v1.1 End
 -- 08/09/22 Y.Yamamoto Update v1.19 Start
 --                    AND    itp_xfer_cnt.whse_code           = itp_xfer.whse_code
@@ -1986,7 +1993,9 @@ AS
                     AND    xrpm6v.reason_code                = itc_adji.reason_code
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm6v.rcv_pay_div                = SIGN( itc_adji.trans_qty )
-                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 Start
+--                    AND    xrpm6v.rcv_pay_div                = TO_CHAR( SIGN( itc_adji.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 End
 -- 08/05/07 Y.Yamamoto Update v1.1 End
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 文書タイプ"TRNI"（積送なし移動）の抽出
@@ -2048,7 +2057,9 @@ AS
                     AND    xrpm9v.reason_code               = itc_trni.reason_code
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itc_trni.trans_qty )
-                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itc_trni.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 Start
+--                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itc_trni.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 End
 -- 08/05/07 Y.Yamamoto Update v1.1 End
 -- 08/09/22 Y.Yamamoto Update v1.19 Start
 --                    AND    itc_trni_cnt.whse_code           = itc_trni.whse_code
@@ -2123,7 +2134,9 @@ AS
                     AND    xrpm9v.reason_code               = itp_xfer.reason_code
 -- 08/05/07 Y.Yamamoto Update v1.1 Start
 --                    AND    xrpm9v.rcv_pay_div               = SIGN( itp_xfer.trans_qty )
-                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itp_xfer.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 Start
+--                    AND    xrpm9v.rcv_pay_div               = TO_CHAR( SIGN( itp_xfer.trans_qty ) )
+-- 08/10/22 Y.Yamamoto delete v1.21 End
 -- 08/05/07 Y.Yamamoto Update v1.1 End
 -- 08/09/22 Y.Yamamoto Update v1.19 Start
 --                    AND    itp_xfer_cnt.whse_code           = itp_xfer.whse_code
