@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,8 @@ AS
  *  2009-09-04    1.15  D.Abe            SCS障害対応(0001281対応)
  *  2009-09-15    1.16  D.Abe            SCS障害対応(0001358対応)
  *  2009-09-25    1.17  D.Abe            共通課題IE534
+ *  2009-11-27    1.18  K.Satomura       E_本稼動_00121対応
+ *                                       依頼日時を固定値で出力する暫定対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -188,6 +190,9 @@ AS
   cv_debug_msg_err5       CONSTANT VARCHAR2(200) := 'no_data_expt';
   cv_debug_msg_err6       CONSTANT VARCHAR2(200) := 'global_process_expt';
 --
+  /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+  cv_phone_num            CONSTANT VARCHAR2(6)   := '999999';
+  /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -223,7 +228,10 @@ AS
     ,work_hope_day           xxcso_requisition_lines_v.work_hope_day%TYPE              -- 作業希望日
     ,work_hope_time_type     xxcso_requisition_lines_v.work_hope_time_type%TYPE        -- 作業希望時間区分
     ,work_hope_time          VARCHAR2(4)                                               -- 作業希望時間
-    ,cur_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE   -- 現設置先名
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    --,cur_organization_name   xxcso_cust_acct_sites_v.cur_organization_name%TYPE        -- 現設置先名
+    ,cur_organization_name   xxcso_cust_acct_sites_v.party_name%TYPE                   -- 現設置先名
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     ,cur_full_name           VARCHAR2(100)                                             -- 現設置先担当者氏名
     /* 2009.04.10 K.Satomura T1_0492対応 START */
     --,cur_phone_number1       VARCHAR2(6)                                               -- 現設置先電話１
@@ -239,7 +247,10 @@ AS
     ,cur_est_site_adress3    xxcso_cust_acct_sites_v.address1%TYPE                     -- 現設置先住所３
     ,cur_est_site_adress4    xxcso_cust_acct_sites_v.address2%TYPE                     -- 現設置先住所４
     ,cur_est_site_adress5    VARCHAR2(20)                                              -- 現設置先住所５
-    ,new_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE   -- 新設置先名
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    --,new_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE   -- 新設置先名
+    ,new_organization_name   xxcso_cust_acct_sites_v.party_name%TYPE                   -- 新設置先名
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     ,new_full_name           VARCHAR2(100)                                             -- 新設置先担当者氏名
     /* 2009.04.10 K.Satomura T1_0492対応 START */
     --,new_phone_number1       VARCHAR2(6)                                               -- 新設置先電話１
@@ -805,7 +816,10 @@ AS
     lv_work_locatn_tel1        VARCHAR2(6);                                             -- 事業所電話１
     lv_work_locatn_tel2        VARCHAR2(6);                                             -- 事業所電話２
     lv_work_locatn_tel3        VARCHAR2(6);                                             -- 事業所電話３
-    lv_cur_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE; -- 現設置先名
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    --lv_cur_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE; -- 現設置先名
+    lv_cur_organization_name   xxcso_cust_acct_sites_v.party_name%TYPE;                 -- 現設置先名
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     lv_cur_full_name           VARCHAR2(100);                                           -- 現設置先担当者氏名
     /* 2009.04.10 K.Satomura T1_0492対応 START */
     --lv_cur_phone_number1       VARCHAR2(6);                                             -- 現設置先電話１
@@ -820,7 +834,10 @@ AS
     lv_cur_est_site_adress2    xxcso_cust_acct_sites_v.city%TYPE;                       -- 現設置先住所２
     lv_cur_est_site_adress3    xxcso_cust_acct_sites_v.address1%TYPE;                   -- 現設置先住所３
     lv_cur_est_site_adress4    xxcso_cust_acct_sites_v.address2%TYPE;                   -- 現設置先住所４
-    lv_new_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE; -- 新設置先名
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    --lv_new_organization_name   xxcso_cust_acct_sites_v.organization_name_phonetic%TYPE; -- 新設置先名
+    lv_new_organization_name   xxcso_cust_acct_sites_v.party_name%TYPE;                 -- 新設置先名
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     lv_new_full_name           VARCHAR2(100);                                           -- 新設置先担当者氏名
     /* 2009.04.10 K.Satomura T1_0492対応 START */
     --lv_new_phone_number1       VARCHAR2(6);                                             -- 新設置先電話１
@@ -1090,7 +1107,10 @@ AS
       BEGIN
         SELECT casv.sale_base_code
               ,casv.sale_base_code
-              ,casv.organization_name_phonetic
+              /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+              --,casv.organization_name_phonetic
+              ,casv.party_name
+              /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
               /* 2009.08.10 K.Satomura 0000662対応 START */
               --,empv.last_name || cv_zenspace || empv.first_name
               /* 2009.08.10 K.Satomura 0000662対応 END */
@@ -1186,6 +1206,78 @@ AS
           lv_errbuf := lv_errmsg;
           RAISE global_process_expt;
       END;
+      /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+      -- 依頼部署の格納      
+      BEGIN
+        SELECT (
+                 CASE
+                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd') <= ld_date THEN
+                     xev.work_base_code_new  -- 勤務地拠点コード(新)
+                   WHEN TO_DATE(xev.issue_date, 'yyyy/mm/dd')  > ld_date THEN
+                     xev.work_base_code_old  -- 勤務地拠点コード(旧)
+                   WHEN xev.issue_date IS NULL THEN
+                     xev.work_base_code_old  -- 勤務地拠点コード(旧)
+                 END
+               ) base_code
+        INTO   lv_reqst_base_code
+        FROM   xxcso_employees_v xev
+        WHERE  xev.user_id = ln_created_by
+        AND    ld_date BETWEEN TRUNC(NVL(xev.start_date, ld_date))
+                           AND TRUNC(NVL(xev.end_date, ld_date))
+        AND    ld_date BETWEEN TRUNC(NVL(xev.employee_start_date, ld_date))
+                           AND TRUNC(NVL(xev.employee_end_date, ld_date))
+        AND    ld_date BETWEEN TRUNC(NVL(xev.assign_start_date, ld_date))
+                           AND TRUNC(NVL(xev.assign_end_date, ld_date))
+        ;
+        --
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- データが存在しない場合
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name           -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_06      -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                         ,iv_token_value1 => cv_emplbase_info      -- トークン値1
+                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                       );
+          --
+          lv_errbuf := lv_errmsg;
+          RAISE global_skip_expt;
+          --
+          -- 抽出に失敗した場合
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name           -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_07      -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_task_nm        -- トークンコード1
+                         ,iv_token_value1 => cv_emplbase_info      -- トークン値1
+                         ,iv_token_name2  => cv_tkn_po_num         -- トークンコード2
+                         ,iv_token_value2 => lv_log_po_head_num    -- トークン値2
+                         ,iv_token_name3  => cv_tkn_po_line_num    -- トークンコード3
+                         ,iv_token_value3 => lv_log_po_line_num    -- トークン値3
+                         ,iv_token_name4  => cv_tkn_po_distr_num   -- トークンコード4
+                         ,iv_token_value4 => lv_log_po_dist_num    -- トークン値4
+                         ,iv_token_name5  => cv_tkn_reqst_num      -- トークンコード5
+                         ,iv_token_value5 => lv_log_rq_head_num    -- トークン値5
+                         ,iv_token_name6  => cv_tkn_reqst_line_num -- トークンコード6
+                         ,iv_token_value6 => lv_log_rq_line_num    -- トークン値6
+                         ,iv_token_name7  => cv_tkn_errmsg         -- トークンコード7
+                         ,iv_token_value7 => SQLERRM               -- トークン値7
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+          --
+      END;
+      /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
       /* 2009.08.10 K.Satomura 0000662対応 START */
       -- ==================
       -- 新設置先営業員情報
@@ -1315,7 +1407,10 @@ AS
 --
       -- 現設置先顧客情報
       BEGIN
-        SELECT casv.organization_name_phonetic
+        /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+        --SELECT casv.organization_name_phonetic
+        SELECT casv.party_name
+        /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
               /* 2009.08.10 K.Satomura 0000662対応 START */
               --,empv.last_name || cv_zenspace || empv.first_name
               /* 2009.08.10 K.Satomura 0000662対応 END */
@@ -1548,7 +1643,10 @@ AS
       -- 作業区分が引揚ではない場合
       IF (ln_job_kbn <> cn_work_kbn5) THEN
         BEGIN
-          SELECT casv.organization_name_phonetic
+          /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+          --SELECT casv.organization_name_phonetic
+          SELECT casv.party_name
+          /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
                 /* 2009.08.10 K.Satomura 0000662対応 START */
                 --,empv.last_name || cv_zenspace || empv.first_name
                 /* 2009.08.10 K.Satomura 0000662対応 END */
@@ -1794,7 +1892,10 @@ AS
       -- 現設置先顧客情報
       -- ================
       BEGIN
-        SELECT casv.organization_name_phonetic
+        /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+        --SELECT casv.organization_name_phonetic
+        SELECT casv.party_name
+        /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
               /* 2009.08.10 K.Satomura 0000662対応 START */
               --,empv.last_name || cv_zenspace || empv.first_name
               /* 2009.08.10 K.Satomura 0000662対応 END */
@@ -2311,6 +2412,12 @@ AS
       --END IF;
       /* 2009.05.19 K.Satomura T1_1048対応 END */
     /* 2009.04.06 D.Abe T1_0306対応 START */
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    ELSE
+      lv_cur_phone_number1 := NULL;
+      lv_cur_phone_number2 := NULL;
+      lv_cur_phone_number3 := NULL;
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     END IF;
     /* 2009.04.06 D.Abe T1_0306対応 END */
 --
@@ -2427,12 +2534,20 @@ AS
     io_get_data_rec.sale_base_code         := lv_sale_base_code;
     -- 依頼部署
     io_get_data_rec.reqst_base_code        := lv_reqst_base_code;
-    -- 事業所電話１
-    io_get_data_rec.work_locatn_tel1       := lv_work_locatn_tel1;
-    -- 事業所電話２
-    io_get_data_rec.work_locatn_tel2       := lv_work_locatn_tel2;
-    -- 事業所電話３
-    io_get_data_rec.work_locatn_tel3       := lv_work_locatn_tel3;
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    ---- 事業所電話１
+--    io_get_data_rec.work_locatn_tel1       := lv_work_locatn_tel1;
+    ---- 事業所電話２
+--    io_get_data_rec.work_locatn_tel2       := lv_work_locatn_tel2;
+    ---- 事業所電話３
+--    io_get_data_rec.work_locatn_tel3       := lv_work_locatn_tel3;    
+    ---- 事業所電話１
+    io_get_data_rec.work_locatn_tel1       := NVL(lv_work_locatn_tel1,cv_phone_num);
+    ---- 事業所電話２
+    io_get_data_rec.work_locatn_tel2       := NVL(lv_work_locatn_tel2,cv_phone_num);
+    ---- 事業所電話３
+    io_get_data_rec.work_locatn_tel3       := NVL(lv_work_locatn_tel3,cv_phone_num);
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     /* 2009.05.21 M.Maruyama T1_1093対応 START */
     -- -- 現設置先名
     --io_get_data_rec.cur_organization_name  := lv_cur_organization_name;
@@ -2442,14 +2557,42 @@ AS
     /* 2009.05.21 M.Maruyama T1_1093対応 END */
     -- 現設置先担当者氏名
     io_get_data_rec.cur_full_name          := lv_cur_full_name;
+    
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    ----------------------
+    --現設置先電話
+    ----------------------
     -- 現設置先電話１
-    io_get_data_rec.cur_phone_number1      := lv_cur_phone_number1;
+--    io_get_data_rec.cur_phone_number1      := lv_cur_phone_number1;
     -- 現設置先電話２
-    io_get_data_rec.cur_phone_number2      := lv_cur_phone_number2;
+--    io_get_data_rec.cur_phone_number2      := lv_cur_phone_number2;
     -- 現設置先電話３
-    io_get_data_rec.cur_phone_number3      := lv_cur_phone_number3;
+--    io_get_data_rec.cur_phone_number3      := lv_cur_phone_number3;
+    IF ((ln_job_kbn = cn_work_kbn3) or (ln_job_kbn = cn_work_kbn4) 
+       or (ln_job_kbn = cn_work_kbn5) or (ln_job_kbn = cn_work_kbn6)) THEN
+      --作業区分が新台代替／旧台代替／引揚／店内移動の場合
+      --電話番号分割後、それぞれNULLになる場合は固定値で埋める
+      -- 現設置先電話１
+      io_get_data_rec.cur_phone_number1      := NVL(lv_cur_phone_number1,cv_phone_num);
+      -- 現設置先電話２
+      io_get_data_rec.cur_phone_number2      := NVL(lv_cur_phone_number2,cv_phone_num);
+      -- 現設置先電話３
+      io_get_data_rec.cur_phone_number3      := NVL(lv_cur_phone_number3,cv_phone_num);
+    ELSE
+      -- 現設置先電話１
+      io_get_data_rec.cur_phone_number1      := NULL;
+      -- 現設置先電話２
+      io_get_data_rec.cur_phone_number2      := NULL;
+      -- 現設置先電話３
+      io_get_data_rec.cur_phone_number3      := NULL;
+    END IF;    
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */ 
+    
     -- 現設置先郵便番号
-    io_get_data_rec.cur_postal_code        := lv_cur_postal_code;
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    --io_get_data_rec.cur_postal_code        := lv_cur_postal_code;
+    io_get_data_rec.cur_postal_code        := SUBSTRB(lv_cur_postal_code, 1, 7);
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     -- 現設置先住所１
     io_get_data_rec.cur_est_site_adress1   := lv_cur_est_site_adress1;
     -- 現設置先住所２
@@ -2472,14 +2615,45 @@ AS
     /* 2009.05.21 M.Maruyama T1_1093対応 END */
     -- 新設置先担当者氏名
     io_get_data_rec.new_full_name          := lv_new_full_name;
+    
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    ----------------------
+    --新設置先電話
+    ----------------------
     -- 新設置先電話１
-    io_get_data_rec.new_phone_number1      := lv_new_phone_number1;
+--    io_get_data_rec.new_phone_number1      := lv_new_phone_number1;
     -- 新設置先電話２
-    io_get_data_rec.new_phone_number2      := lv_new_phone_number2;
+--    io_get_data_rec.new_phone_number2      := lv_new_phone_number2;
     -- 新設置先電話３
-    io_get_data_rec.new_phone_number3      := lv_new_phone_number3;
+--    io_get_data_rec.new_phone_number3      := lv_new_phone_number3;
+
+    IF ((ln_job_kbn = cn_work_kbn1) or (ln_job_kbn = cn_work_kbn2) 
+       or (ln_job_kbn = cn_work_kbn3) or (ln_job_kbn = cn_work_kbn4)
+       or (ln_job_kbn = cn_work_kbn6)) THEN
+      --作業区分が新台設置／新台代替／旧台設置／旧台代替／店内移動の場合
+      --電話番号分割後、それぞれNULLになる場合は固定値で埋める
+      -- 新設置先電話１
+      io_get_data_rec.new_phone_number1      := NVL(lv_new_phone_number1,cv_phone_num);
+      -- 新設置先電話２
+      io_get_data_rec.new_phone_number2      := NVL(lv_new_phone_number2,cv_phone_num);
+      -- 新設置先電話３
+      io_get_data_rec.new_phone_number3      := NVL(lv_new_phone_number3,cv_phone_num);
+    ELSE
+      -- 新設置先電話１
+      io_get_data_rec.new_phone_number1      := NULL;
+      -- 新設置先電話２
+      io_get_data_rec.new_phone_number2      := NULL;
+      -- 新設置先電話３
+      io_get_data_rec.new_phone_number3      := NULL;              
+    END IF;
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
+    
+    
     -- 新設置先郵便番号
-    io_get_data_rec.new_postal_code        := lv_new_postal_code;
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    --io_get_data_rec.new_postal_code        := lv_new_postal_code;
+    io_get_data_rec.new_postal_code        := SUBSTRB(lv_new_postal_code, 1, 7);
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     -- 新設置先住所１
     io_get_data_rec.new_est_site_adress1   := lv_new_est_site_adress1;
     -- 新設置先住所２
@@ -3470,8 +3644,12 @@ AS
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.sale_base_code        || cv_sep_wquot -- 売上拠点コード
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.reqst_base_code       || cv_sep_wquot -- 依頼部署
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.employee_number       || cv_sep_wquot -- 担当営業員コード
-        || cv_sep_com || l_get_data_rec.reqst_date                                            -- 依頼日
-        || cv_sep_com || cv_sep_wquot || l_get_data_rec.reqst_time            || cv_sep_wquot -- 依頼時間
+        /* 2009.11.27 E_本稼動_00121 START */
+        --|| cv_sep_com || l_get_data_rec.reqst_date                                            -- 依頼日
+        --|| cv_sep_com || cv_sep_wquot || l_get_data_rec.reqst_time            || cv_sep_wquot -- 依頼時間
+        || cv_sep_com || '20091130'                                                           -- 依頼日
+        || cv_sep_com || cv_sep_wquot || '0800'                               || cv_sep_wquot -- 依頼時間
+        /* 2009.11.27 E_本稼動_00121 END */
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.work_company_code     || cv_sep_wquot -- 作業会社コード
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.work_location_code    || cv_sep_wquot -- 事業所コード
         || cv_sep_com || cv_sep_wquot || l_get_data_rec.work_locatn_tel1      || cv_sep_wquot -- 事業所電話１
@@ -4014,13 +4192,21 @@ AS
     cn_1                      CONSTANT NUMBER       :=  1;
     -- 依頼ルート
     cn_rout_no                CONSTANT NUMBER       :=  2;
+    
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    cv_remarks_byte           CONSTANT NUMBER       :=  240;
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
  --
 /* 20090709_abe_0000465 START*/
     cv_concrete_board         CONSTANT VARCHAR2(30) :=  'コンクリート板要';
 /* 20090709_abe_0000465 END*/
-
-
-
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+    cv_log_po_header_num      CONSTANT VARCHAR2(100) := '発注番号：';
+    cv_log_req_line_num       CONSTANT VARCHAR2(100) := '発注依頼番号：';
+    cv_log_cust_code          CONSTANT VARCHAR2(100) := '顧客コード：';
+    cv_log_inst_code1         CONSTANT VARCHAR2(100) := '物件コード1：';
+    cv_log_inst_code2         CONSTANT VARCHAR2(100) := '物件コード2：';
+    /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     ld_sysdate                DATE;           -- システム日付
@@ -4644,8 +4830,19 @@ AS
 --
         -- レコード変数初期化
         l_get_data_rec    := NULL;
-
-
+        /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+        -- 取得したデータキーをログ出力
+        fnd_file.put_line(
+           which  => fnd_file.log
+          ,buff   => CHR(10) || '抽出データ　' ||
+                     cv_log_po_header_num || l_get_ipro_po_data_rec.po_header_num            || ' ' || -- 発注番号
+                     cv_log_req_line_num  || l_get_ipro_po_data_rec.req_header_num           || ' ' || -- 発注依頼明細番号
+                     cv_log_cust_code     || l_get_ipro_po_data_rec.install_at_customer_code || ' ' || -- 顧客コード
+                     cv_log_inst_code1    || l_get_ipro_po_data_rec.install_code1            || ' ' || -- 物件コード1
+                     cv_log_inst_code2    || l_get_ipro_po_data_rec.install_code2            || ' ' || -- 物件コード2
+                     ''
+        );
+        /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         -- 発注依頼明細ID
         ln_rqstn_line_id  := l_get_ipro_po_data_rec.requisition_line_id;
 --
@@ -4763,37 +4960,64 @@ AS
           IF(lv_remarks IS NOT NULL) THEN
             lv_remarks := lv_remarks || cv_zenspace;
           END IF;
-          lv_remarks := lv_remarks 
+          /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+--          lv_remarks := lv_remarks 
+--                          || l_get_ipro_po_data_rec.extension_code_type 
+--                          || cv_zenspace 
+--                          || l_get_ipro_po_data_rec.extension_code_meter;
+          lv_remarks := substrb(lv_remarks 
                           || l_get_ipro_po_data_rec.extension_code_type 
                           || cv_zenspace 
-                          || l_get_ipro_po_data_rec.extension_code_meter;
+                          || l_get_ipro_po_data_rec.extension_code_meter,cv_remarks_byte);
+           /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         END IF;
 --        
         -- 備考１
         IF(l_get_ipro_po_data_rec.remarks1 IS NOT NULL) THEN
           IF(lv_remarks IS NOT NULL) THEN
-            lv_remarks := lv_remarks || cv_zenspace;
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+--            lv_remarks := lv_remarks || cv_zenspace;
+            lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
           END IF;
-          lv_remarks := lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks1;
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+--          lv_remarks := lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks1;
+          lv_remarks := substrb(lv_remarks 
+                          || l_get_ipro_po_data_rec.remarks1,cv_remarks_byte);
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         END IF;
 --        
         -- 備考２
         IF(l_get_ipro_po_data_rec.remarks2 IS NOT NULL) THEN
           IF(lv_remarks IS NOT NULL) THEN
-            lv_remarks := lv_remarks || cv_zenspace;
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+--            lv_remarks := lv_remarks || cv_zenspace;
+            lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
           END IF;
-          lv_remarks := lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks2;
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */          
+--          lv_remarks := lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks2;
+          lv_remarks := substrb(lv_remarks 
+                          || l_get_ipro_po_data_rec.remarks2,cv_remarks_byte);
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         END IF;
 --        
         -- 備考３
         IF(l_get_ipro_po_data_rec.remarks3 IS NOT NULL) THEN
           IF(lv_remarks IS NOT NULL) THEN
-            lv_remarks := lv_remarks || cv_zenspace;
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
+--            lv_remarks := lv_remarks || cv_zenspace;
+            lv_remarks := substrb(lv_remarks || cv_zenspace,cv_remarks_byte);
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
           END IF;
-          lv_remarks := lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks3;
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */ 
+--          lv_remarks := lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks3;
+          lv_remarks := substrb(lv_remarks 
+                          || l_get_ipro_po_data_rec.remarks3,cv_remarks_byte);
+            /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */ 
         END IF;
 --        
         l_get_data_rec.remarks                 := lv_remarks;
