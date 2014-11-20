@@ -39,7 +39,8 @@ AS
  *  2009/02/20    1.4   N.Maeda          パラメータのログファイル出力対応
  *  2009/03/18    1.5   T.Kitajima       [T1_0066] HHT納品データの販売実績連携時における設定項目の不備
  *                                       [T1_0078] 金額の端数計算が正しく行われていない
- *  2009/03/23    1.6   N.Maeda          [T1_0078]金額の端数発生時処理の修正
+ *  2009/03/23    1.6   N.Maeda          [T1_0078] 金額の端数発生時処理の修正
+ *  2009/04/03    1.7   N.Maeda          [T1_0256] HHT百貨店保管場所抽出条件を修正
  *
  *****************************************************************************************/
 --
@@ -2434,7 +2435,8 @@ AS
           FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
           WHERE  msi.attribute7 = lt_base_code
           AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4 = lt_customer_number;
+          AND    msi.attribute4  = lt_keep_in_code;
+--          AND    msi.attribute4 = lt_customer_number;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -3021,7 +3023,8 @@ AS
             FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
             WHERE  msi.attribute7 = lt_base_code
             AND    msi.attribute13 = lt_depart_location_type_code
-            AND    msi.attribute4 = lt_customer_number;
+            AND    msi.attribute4  = lt_keep_in_code;
+--            AND    msi.attribute4 = lt_customer_number;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力          
@@ -4175,7 +4178,8 @@ AS
           FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
           WHERE  msi.attribute7 = lt_base_code
           AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4 = lt_customer_number;
+          AND    msi.attribute4  = lt_keep_in_code;
+--          AND    msi.attribute4 = lt_customer_number;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -4726,7 +4730,8 @@ AS
             FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
             WHERE  msi.attribute7 = lt_base_code
             AND    msi.attribute13 = lt_depart_location_type_code
-            AND    msi.attribute4 = lt_customer_number;
+            AND    msi.attribute4  = lt_keep_in_code;
+--            AND    msi.attribute4 = lt_customer_number;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力
@@ -5803,6 +5808,7 @@ AS
           RAISE no_data_extract;
         END;
 --
+
         --保管場所マスタデータ取得
         BEGIN
           SELECT msi.secondary_inventory_name     -- 保管場所コード
@@ -5810,7 +5816,8 @@ AS
           FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
           WHERE  msi.attribute7 = lt_base_code
           AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4 = lt_customer_number;
+          AND    msi.attribute4  = lt_keep_in_code;
+--          AND    msi.attribute4 = lt_customer_number;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力          
@@ -6361,7 +6368,8 @@ AS
             FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
             WHERE  msi.attribute7 = lt_base_code
             AND    msi.attribute13 = lt_depart_location_type_code
-            AND    msi.attribute4 = lt_customer_number;
+            AND    msi.attribute4  = lt_keep_in_code;
+--            AND    msi.attribute4 = lt_customer_number;
           EXCEPTION
             WHEN NO_DATA_FOUND THEN
               -- ログ出力
