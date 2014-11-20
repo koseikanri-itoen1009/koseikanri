@@ -1,0 +1,3 @@
+f60gen module=$XXAU_TOP/forms/JA/XXWSH400001F.fmb userid=apps/apps output_file=$XXWSH_TOP/forms/JA/XXWSH400001F.fmx
+f60gen module=$XXAU_TOP/forms/JA/XXWSH430001F.fmb userid=apps/apps output_file=$XXWSH_TOP/forms/JA/XXWSH430001F.fmx
+f60gen module=$XXAU_TOP/forms/JA/XXWSH600001F.fmb userid=apps/apps output_file=$XXWSH_TOP/forms/JA/XXWSH600001F.fmx
