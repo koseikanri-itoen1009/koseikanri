@@ -118,6 +118,14 @@ WITH
                  AND   ppf.employee_number       = xspmp.employee_number
                GROUP BY ppf.person_id, ppf.employee_number
              )
+       AND   xev.assign_start_date  =
+             (
+               SELECT  MAX(paf.effective_start_date)
+               FROM    per_assignments_f paf
+               WHERE   paf.effective_start_date <= TRUNC(xxcso_util_common_pkg.get_online_sysdate)
+                 AND   paf.person_id       = xev.person_id
+               GROUP BY paf.person_id
+             )
   ),
   get_ym_view AS
   (
