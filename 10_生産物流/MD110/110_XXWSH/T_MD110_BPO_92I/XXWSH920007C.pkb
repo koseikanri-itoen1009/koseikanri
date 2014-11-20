@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO92A
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,8 @@ AS
  *  2009/04/17   1.12  SCS 野村          本番障害#1367（1321）リトライ対応
  *  2009/05/01   1.13  SCS 野村          本番障害#1367（1321）子除外対応
  *  2009/05/19   1.14  SCS 伊藤          本番障害#1447対応
+ *  2010/01/18   1.15  SCS 北寒寺        本番稼働障害#701対応 品目0005000はプロト版を
+ *                                       実行するように修正
  *
  *****************************************************************************************/
 --
@@ -1406,6 +1408,11 @@ AS
     ld_loop_date     DATE;             -- 処理対象日
     ln_loop_cnt      NUMBER := 0;      -- ループカウント
 -- Ver1.3 M.Hokkanji End
+-- Ver1.15 M.Hokkanji Start
+    lv_child_pgm         VARCHAR2(20);     --子PGM名 ex)'XXWSH920008C'
+    cv_child_pgm_origin  CONSTANT VARCHAR2(20) := 'XXWSH920008C';     --子PGM名 自動引当（品目）通常
+    cv_child_pgm_trace   CONSTANT VARCHAR2(20) := 'XXWSH920008C_2';   --子PGM名 自動引当（品目）Trace用
+-- Ver1.15 M.Hokkanji End
     i                INTEGER := 0;
     TYPE reqid_tab IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;
     reqid_rec reqid_tab;
@@ -1512,9 +1519,20 @@ AS
       FOR ln_d_cnt IN 1..gn_total_cnt LOOP
         i := i + 1;
         gn_target_cnt := gn_target_cnt + 1;
+-- Ver1.15 M.Hokkanji Start
+--トレース取得対応 品目が'0005000'０９Ｐお～い５００の場合はTrace用コンカレントを呼び出す
+        IF gr_demand_tbl(ln_d_cnt).item_code != '0005000' THEN
+          lv_child_pgm := cv_child_pgm_origin ; --09P500以外の場合、通常
+        ELSE
+          lv_child_pgm := cv_child_pgm_trace  ; --Trace用
+        END IF;
+-- Ver1.15 M.Hokkanji End
         reqid_rec(i) := FND_REQUEST.SUBMIT_REQUEST(
                            application       => 'XXWSH'                           -- アプリケーション短縮名
-                         , program           => 'XXWSH920008C'                    -- プログラム名
+-- Ver1.15 M.Hokkanji Start
+--                         , program           => 'XXWSH920008C'                    -- プログラム名
+                         , program           => lv_child_pgm                    -- プログラム名
+-- Ver1.15 M.Hokkanji End
                          , argument1         => iv_item_class                     -- 商品区分
                          , argument2         => iv_action_type                    -- 処理種別
                          , argument3         => iv_block1                         -- ブロック１
