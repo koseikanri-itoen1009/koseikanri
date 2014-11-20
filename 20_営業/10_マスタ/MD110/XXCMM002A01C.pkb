@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A01C(body)
  * Description      : 社員データ取込処理
  * MD.050           : MD050_CMM_002_A01_社員データ取込
- * Version          : 3.7
+ * Version          : 3.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,7 +17,6 @@ AS
  *  get_ccid               CCID取得プロシージャ
  *  init_get_profile       プロファイル取得プロシージャ
  *  init_file_lock         ファイルロック処理プロシージャ
- *  init                   初期処理を行うプロシージャ(A-2)
  *  check_aff_bumon        AFF部門マスタ存在チェック処理プロシージャ
  *  get_location_id        ユーザーIDを取得し存在チェックを行うプロシージャ
  *  in_if_check_emp        データ連携対象チェック処理プロシージャ
@@ -30,9 +29,9 @@ AS
  *  check_update           社員データ更新分チェック処理プロシージャ(A-6)
  *  add_report             社員データエラー情報格納処理(A-11)
  *  disp_report            レポート用データを出力するプロシージャ
- *  insert_resp_all        ユーザー職責マスタの登録処理を行うプロシージャ
  *  update_resp_all        ユーザー職責マスタの更新処理を行うプロシージャ
  *  delete_resp_all        ユーザー職責マスタのデータを無効化するプロシージャ
+ *  insert_resp_all        ユーザー職責マスタの登録処理を行うプロシージャ
  *  get_service_id         サービス期間IDの取得を行うプロシージャ
  *  get_person_type        パーソンタイプの取得を行うプロシージャ
  *  changes_proc           異動処理を行うプロシージャ
@@ -42,6 +41,7 @@ AS
  *  insert_proc            新規社員の登録を行うプロシージャ
  *  update_proc            既存社員の更新を行うプロシージャ
  *  delete_proc            退職者の再雇用を行うプロシージャ
+ *  init                   初期処理を行うプロシージャ(A-2)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
@@ -62,6 +62,7 @@ AS
  *  2009/06/23    1.6   SCS 吉川 博章    障害No.T1_1389 対応
  *                                       (アサイメント管理者の抽出方法・場所を変更)
  *  2009/06/25    1.7   SCS 吉川 博章    障害No.0000161 対応
+ *  2009/07/06    1.8   SCS 伊藤 和之    障害No.0000412 対応(PT対応)
  *
  *****************************************************************************************/
 --
@@ -300,50 +301,50 @@ AS
     location_id_kbn            VARCHAR2(1),     -- 事業所変更区分('Y':変更する)
     row_err_message            VARCHAR2(1000),  -- 警告メッセージ
     -- 社員取込インタフェース
-    employee_number            xxcmm_in_people_if.employee_number%type,              -- 社員番号
-    hire_date                  xxcmm_in_people_if.hire_date%type,                    -- 入社年月日
-    actual_termination_date    xxcmm_in_people_if.actual_termination_date%type,      -- 退職年月日
-    last_name_kanji            xxcmm_in_people_if.last_name_kanji%type,              -- 漢字姓
-    first_name_kanji           xxcmm_in_people_if.first_name_kanji%type,             -- 漢字名
-    last_name                  xxcmm_in_people_if.last_name%type,                    -- カナ姓
-    first_name                 xxcmm_in_people_if.first_name%type,                   -- カナ名
-    sex                        xxcmm_in_people_if.sex%type,                          -- 性別
-    employee_division          xxcmm_in_people_if.employee_division%type,            -- 社員・外部委託区分
-    location_code              xxcmm_in_people_if.location_code%type,                -- 所属コード（新）
-    change_code                xxcmm_in_people_if.change_code%type,                  -- 異動事由コード
-    announce_date              xxcmm_in_people_if.announce_date%type,                -- 発令日
-    office_location_code       xxcmm_in_people_if.office_location_code%type,         -- 勤務地拠点コード（新）
-    license_code               xxcmm_in_people_if.license_code%type,                 -- 資格コード（新）
-    license_name               xxcmm_in_people_if.license_name%type,                 -- 資格名（新）
-    job_post                   xxcmm_in_people_if.job_post%type,                     -- 職位コード（新）
-    job_post_name              xxcmm_in_people_if.job_post_name%type,                -- 職位名（新）
-    job_duty                   xxcmm_in_people_if.job_duty%type,                     -- 職務コード（新）
-    job_duty_name              xxcmm_in_people_if.job_duty_name%type,                -- 職務名（新）
-    job_type                   xxcmm_in_people_if.job_type%type,                     -- 職種コード（新）
-    job_type_name              xxcmm_in_people_if.job_type_name%type,                -- 職種名（新）
-    job_system                 xxcmm_in_people_if.job_system%type,                   -- 適用労働時間制コード（新）
-    job_system_name            xxcmm_in_people_if.job_system_name%type,              -- 適用労働名（新）
-    job_post_order             xxcmm_in_people_if.job_post_order%type,               -- 職位並順コード（新）
-    consent_division           xxcmm_in_people_if.consent_division%type,             -- 承認区分（新）
-    agent_division             xxcmm_in_people_if.agent_division%type,               -- 代行区分（新）
-    office_location_code_old   xxcmm_in_people_if.office_location_code_old%type,     -- 勤務地拠点コード（旧）
-    location_code_old          xxcmm_in_people_if.location_code_old%type,            -- 所属コード（旧）
-    license_code_old           xxcmm_in_people_if.license_code_old%type,             -- 資格コード（旧）
-    license_code_name_old      xxcmm_in_people_if.license_code_name_old%type,        -- 資格名（旧）
-    job_post_old               xxcmm_in_people_if.job_post_old%type,                 -- 職位コード（旧）
-    job_post_name_old          xxcmm_in_people_if.job_post_name_old%type,            -- 職位名（旧）
-    job_duty_old               xxcmm_in_people_if.job_duty_old%type,                 -- 職務コード（旧）
-    job_duty_name_old          xxcmm_in_people_if.job_duty_name_old%type,            -- 職務名（旧）
-    job_type_old               xxcmm_in_people_if.job_type_old%type,                 -- 職種コード（旧）
-    job_type_name_old          xxcmm_in_people_if.job_type_name_old%type,            -- 職種名（旧）
-    job_system_old             xxcmm_in_people_if.job_system_old%type,               -- 適用労働時間制コード（旧）
-    job_system_name_old        xxcmm_in_people_if.job_system_name_old%type,          -- 適用労働名（旧）
-    job_post_order_old         xxcmm_in_people_if.job_post_order_old%type,           -- 職位並順コード（旧）
-    consent_division_old       xxcmm_in_people_if.consent_division_old%type,         -- 承認区分（旧）
-    agent_division_old         xxcmm_in_people_if.agent_division_old%type,           -- 代行区分（旧）
+    employee_number            xxcmm_in_people_if.employee_number%TYPE,              -- 社員番号
+    hire_date                  xxcmm_in_people_if.hire_date%TYPE,                    -- 入社年月日
+    actual_termination_date    xxcmm_in_people_if.actual_termination_date%TYPE,      -- 退職年月日
+    last_name_kanji            xxcmm_in_people_if.last_name_kanji%TYPE,              -- 漢字姓
+    first_name_kanji           xxcmm_in_people_if.first_name_kanji%TYPE,             -- 漢字名
+    last_name                  xxcmm_in_people_if.last_name%TYPE,                    -- カナ姓
+    first_name                 xxcmm_in_people_if.first_name%TYPE,                   -- カナ名
+    sex                        xxcmm_in_people_if.sex%TYPE,                          -- 性別
+    employee_division          xxcmm_in_people_if.employee_division%TYPE,            -- 社員・外部委託区分
+    location_code              xxcmm_in_people_if.location_code%TYPE,                -- 所属コード（新）
+    change_code                xxcmm_in_people_if.change_code%TYPE,                  -- 異動事由コード
+    announce_date              xxcmm_in_people_if.announce_date%TYPE,                -- 発令日
+    office_location_code       xxcmm_in_people_if.office_location_code%TYPE,         -- 勤務地拠点コード（新）
+    license_code               xxcmm_in_people_if.license_code%TYPE,                 -- 資格コード（新）
+    license_name               xxcmm_in_people_if.license_name%TYPE,                 -- 資格名（新）
+    job_post                   xxcmm_in_people_if.job_post%TYPE,                     -- 職位コード（新）
+    job_post_name              xxcmm_in_people_if.job_post_name%TYPE,                -- 職位名（新）
+    job_duty                   xxcmm_in_people_if.job_duty%TYPE,                     -- 職務コード（新）
+    job_duty_name              xxcmm_in_people_if.job_duty_name%TYPE,                -- 職務名（新）
+    job_type                   xxcmm_in_people_if.job_type%TYPE,                     -- 職種コード（新）
+    job_type_name              xxcmm_in_people_if.job_type_name%TYPE,                -- 職種名（新）
+    job_system                 xxcmm_in_people_if.job_system%TYPE,                   -- 適用労働時間制コード（新）
+    job_system_name            xxcmm_in_people_if.job_system_name%TYPE,              -- 適用労働名（新）
+    job_post_order             xxcmm_in_people_if.job_post_order%TYPE,               -- 職位並順コード（新）
+    consent_division           xxcmm_in_people_if.consent_division%TYPE,             -- 承認区分（新）
+    agent_division             xxcmm_in_people_if.agent_division%TYPE,               -- 代行区分（新）
+    office_location_code_old   xxcmm_in_people_if.office_location_code_old%TYPE,     -- 勤務地拠点コード（旧）
+    location_code_old          xxcmm_in_people_if.location_code_old%TYPE,            -- 所属コード（旧）
+    license_code_old           xxcmm_in_people_if.license_code_old%TYPE,             -- 資格コード（旧）
+    license_code_name_old      xxcmm_in_people_if.license_code_name_old%TYPE,        -- 資格名（旧）
+    job_post_old               xxcmm_in_people_if.job_post_old%TYPE,                 -- 職位コード（旧）
+    job_post_name_old          xxcmm_in_people_if.job_post_name_old%TYPE,            -- 職位名（旧）
+    job_duty_old               xxcmm_in_people_if.job_duty_old%TYPE,                 -- 職務コード（旧）
+    job_duty_name_old          xxcmm_in_people_if.job_duty_name_old%TYPE,            -- 職務名（旧）
+    job_type_old               xxcmm_in_people_if.job_type_old%TYPE,                 -- 職種コード（旧）
+    job_type_name_old          xxcmm_in_people_if.job_type_name_old%TYPE,            -- 職種名（旧）
+    job_system_old             xxcmm_in_people_if.job_system_old%TYPE,               -- 適用労働時間制コード（旧）
+    job_system_name_old        xxcmm_in_people_if.job_system_name_old%TYPE,          -- 適用労働名（旧）
+    job_post_order_old         xxcmm_in_people_if.job_post_order_old%TYPE,           -- 職位並順コード（旧）
+    consent_division_old       xxcmm_in_people_if.consent_division_old%TYPE,         -- 承認区分（旧）
+    agent_division_old         xxcmm_in_people_if.agent_division_old%TYPE,           -- 代行区分（旧）
     -- 従業員マスタ
     person_id                  per_all_people_f.person_id%TYPE,                      -- 従業員ID
-    hire_date_old              per_all_people_f.effective_start_date%type,           -- 既存_入社年月日
+    hire_date_old              per_all_people_f.effective_start_date%TYPE,           -- 既存_入社年月日
     pap_version                per_all_people_f.object_version_number%TYPE,          -- バージョン番号
     -- アサインメントマスタ
     assignment_id              per_all_assignments_f.assignment_id%TYPE,             -- アサインメントID
@@ -369,64 +370,64 @@ AS
   -- 各マスタのデータを格納するレコード
   TYPE check_rec IS RECORD(
     -- 従業員マスタ
-    person_id                  per_all_people_f.person_id%type,                      -- 従業員ID
-    effective_start_date       per_all_people_f.effective_start_date%type,           -- 登録年月日
-    last_name                  per_all_people_f.last_name%type,                      -- カナ姓
-    employee_number            per_all_people_f.employee_number%type,                -- 従業員番号
-    first_name                 per_all_people_f.first_name%type,                     -- カナ名
-    sex                        per_all_people_f.sex%type,                            -- 性別
-    employee_division          per_all_people_f.attribute3%type,                     -- 従業員区分
-    license_code               per_all_people_f.attribute7%type,                     -- 資格コード（新）
-    license_name               per_all_people_f.attribute8%type,                     -- 資格名（新）
-    job_post                   per_all_people_f.attribute11%type,                    -- 職位コード（新）
-    job_post_name              per_all_people_f.attribute12%type,                    -- 職位名（新）
-    job_duty                   per_all_people_f.attribute15%type,                    -- 職務コード（新）
-    job_duty_name              per_all_people_f.attribute16%type,                    -- 職務名（新）
-    job_type                   per_all_people_f.attribute19%type,                    -- 職種コード（新）
-    job_type_name              per_all_people_f.attribute20%type,                    -- 職種名（新）
-    license_code_old           per_all_people_f.attribute9%type,                     -- 資格コード（旧）
-    license_code_name_old      per_all_people_f.attribute10%type,                    -- 資格名（旧）
-    job_post_old               per_all_people_f.attribute13%type,                    -- 職位コード（旧）
-    job_post_name_old          per_all_people_f.attribute14%type,                    -- 職位名（旧）
-    job_duty_old               per_all_people_f.attribute17%type,                    -- 職務コード（旧）
-    job_duty_name_old          per_all_people_f.attribute18%type,                    -- 務名（旧）
-    job_type_old               per_all_people_f.attribute21%type,                    -- 職種コード（旧）
-    job_type_name_old          per_all_people_f.attribute22%type,                    -- 職種名（旧）
-    pap_location_id            per_all_people_f.attribute28%type,                    -- 起票部門
-    last_name_kanji            per_all_people_f.per_information18%type,              -- 漢字姓
-    first_name_kanji           per_all_people_f.per_information19%type,              -- 漢字名
-    pap_version                per_all_people_f.object_version_number%type,          -- バージョン番号
+    person_id                  per_all_people_f.person_id%TYPE,                      -- 従業員ID
+    effective_start_date       per_all_people_f.effective_start_date%TYPE,           -- 登録年月日
+    last_name                  per_all_people_f.last_name%TYPE,                      -- カナ姓
+    employee_number            per_all_people_f.employee_number%TYPE,                -- 従業員番号
+    first_name                 per_all_people_f.first_name%TYPE,                     -- カナ名
+    sex                        per_all_people_f.sex%TYPE,                            -- 性別
+    employee_division          per_all_people_f.attribute3%TYPE,                     -- 従業員区分
+    license_code               per_all_people_f.attribute7%TYPE,                     -- 資格コード（新）
+    license_name               per_all_people_f.attribute8%TYPE,                     -- 資格名（新）
+    job_post                   per_all_people_f.attribute11%TYPE,                    -- 職位コード（新）
+    job_post_name              per_all_people_f.attribute12%TYPE,                    -- 職位名（新）
+    job_duty                   per_all_people_f.attribute15%TYPE,                    -- 職務コード（新）
+    job_duty_name              per_all_people_f.attribute16%TYPE,                    -- 職務名（新）
+    job_type                   per_all_people_f.attribute19%TYPE,                    -- 職種コード（新）
+    job_type_name              per_all_people_f.attribute20%TYPE,                    -- 職種名（新）
+    license_code_old           per_all_people_f.attribute9%TYPE,                     -- 資格コード（旧）
+    license_code_name_old      per_all_people_f.attribute10%TYPE,                    -- 資格名（旧）
+    job_post_old               per_all_people_f.attribute13%TYPE,                    -- 職位コード（旧）
+    job_post_name_old          per_all_people_f.attribute14%TYPE,                    -- 職位名（旧）
+    job_duty_old               per_all_people_f.attribute17%TYPE,                    -- 職務コード（旧）
+    job_duty_name_old          per_all_people_f.attribute18%TYPE,                    -- 務名（旧）
+    job_type_old               per_all_people_f.attribute21%TYPE,                    -- 職種コード（旧）
+    job_type_name_old          per_all_people_f.attribute22%TYPE,                    -- 職種名（旧）
+    pap_location_id            per_all_people_f.attribute28%TYPE,                    -- 起票部門
+    last_name_kanji            per_all_people_f.per_information18%TYPE,              -- 漢字姓
+    first_name_kanji           per_all_people_f.per_information19%TYPE,              -- 漢字名
+    pap_version                per_all_people_f.object_version_number%TYPE,          -- バージョン番号
     -- アサインメントマスタ
-    assignment_id              per_all_assignments_f.assignment_id%type,             -- アサインメントID
-    assignment_number          per_all_assignments_f.assignment_number%type,         -- アサインメント番号
-    paa_effective_start_date   per_all_assignments_f.effective_start_date%type,      -- 登録年月日
-    paa_effective_end_date     per_all_assignments_f.effective_end_date%type,        -- 登録期限年月日
-    location_id                per_all_assignments_f.location_id%type,               -- 事業所
-    supervisor_id              per_all_assignments_f.supervisor_id%type,             -- 管理者
-    change_code                per_all_assignments_f.ass_attribute1%type,            -- 異動事由コード
-    announce_date              per_all_assignments_f.ass_attribute2%type,            -- 発令日
-    office_location_code       per_all_assignments_f.ass_attribute3%type,            -- 勤務地拠点コード（新）
-    office_location_code_old   per_all_assignments_f.ass_attribute4%type,            -- 勤務地拠点コード（旧）
-    location_code              per_all_assignments_f.ass_attribute5%type,            -- 拠点コード（新）
-    location_code_old          per_all_assignments_f.ass_attribute6%type,            -- 拠点コード（旧）
-    job_system                 per_all_assignments_f.ass_attribute7%type,            -- 適用労働時間制コード（新）
-    job_system_name            per_all_assignments_f.ass_attribute8%type,            -- 適用労働名（新）
-    job_system_old             per_all_assignments_f.ass_attribute9%type,            -- 適用労働時間制コード（旧）
-    job_system_name_old        per_all_assignments_f.ass_attribute10%type,           -- 適用労働名（旧）
-    job_post_order             per_all_assignments_f.ass_attribute11%type,           -- 職位並順コード（新）
-    job_post_order_old         per_all_assignments_f.ass_attribute12%type,           -- 職位並順コード（旧）
-    consent_division           per_all_assignments_f.ass_attribute13%type,           -- 承認区分（新）
-    consent_division_old       per_all_assignments_f.ass_attribute14%type,           -- 承認区分（旧）
-    agent_division             per_all_assignments_f.ass_attribute15%type,           -- 代行区分（新）
-    agent_division_old         per_all_assignments_f.ass_attribute16%type,           -- 代行区分（旧）
-    paa_version                per_all_assignments_f.object_version_number%type,     -- バージョン番号(アサインメント)
+    assignment_id              per_all_assignments_f.assignment_id%TYPE,             -- アサインメントID
+    assignment_number          per_all_assignments_f.assignment_number%TYPE,         -- アサインメント番号
+    paa_effective_start_date   per_all_assignments_f.effective_start_date%TYPE,      -- 登録年月日
+    paa_effective_end_date     per_all_assignments_f.effective_end_date%TYPE,        -- 登録期限年月日
+    location_id                per_all_assignments_f.location_id%TYPE,               -- 事業所
+    supervisor_id              per_all_assignments_f.supervisor_id%TYPE,             -- 管理者
+    change_code                per_all_assignments_f.ass_attribute1%TYPE,            -- 異動事由コード
+    announce_date              per_all_assignments_f.ass_attribute2%TYPE,            -- 発令日
+    office_location_code       per_all_assignments_f.ass_attribute3%TYPE,            -- 勤務地拠点コード（新）
+    office_location_code_old   per_all_assignments_f.ass_attribute4%TYPE,            -- 勤務地拠点コード（旧）
+    location_code              per_all_assignments_f.ass_attribute5%TYPE,            -- 拠点コード（新）
+    location_code_old          per_all_assignments_f.ass_attribute6%TYPE,            -- 拠点コード（旧）
+    job_system                 per_all_assignments_f.ass_attribute7%TYPE,            -- 適用労働時間制コード（新）
+    job_system_name            per_all_assignments_f.ass_attribute8%TYPE,            -- 適用労働名（新）
+    job_system_old             per_all_assignments_f.ass_attribute9%TYPE,            -- 適用労働時間制コード（旧）
+    job_system_name_old        per_all_assignments_f.ass_attribute10%TYPE,           -- 適用労働名（旧）
+    job_post_order             per_all_assignments_f.ass_attribute11%TYPE,           -- 職位並順コード（新）
+    job_post_order_old         per_all_assignments_f.ass_attribute12%TYPE,           -- 職位並順コード（旧）
+    consent_division           per_all_assignments_f.ass_attribute13%TYPE,           -- 承認区分（新）
+    consent_division_old       per_all_assignments_f.ass_attribute14%TYPE,           -- 承認区分（旧）
+    agent_division             per_all_assignments_f.ass_attribute15%TYPE,           -- 代行区分（新）
+    agent_division_old         per_all_assignments_f.ass_attribute16%TYPE,           -- 代行区分（旧）
+    paa_version                per_all_assignments_f.object_version_number%TYPE,     -- バージョン番号(アサインメント)
 -- Ver1.3 Add  2009/04/16  デフォルト費用勘定ＣＣＩＤを追加
     default_code_comb_id       per_all_assignments_f.default_code_comb_id%TYPE,      -- デフォルト費用勘定
 -- End Ver1.3
     -- 従業員サービス期間マスタ
-    period_of_service_id       per_periods_of_service.period_of_service_id%type,     -- サービスID
-    actual_termination_date    per_periods_of_service.actual_termination_date%type,  -- 退職年月日
-    ppos_version               per_periods_of_service.object_version_number%type
+    period_of_service_id       per_periods_of_service.period_of_service_id%TYPE,     -- サービスID
+    actual_termination_date    per_periods_of_service.actual_termination_date%TYPE,  -- 退職年月日
+    ppos_version               per_periods_of_service.object_version_number%TYPE
   );
   --
   lr_check_rec                 check_rec;  -- マスタ取得データ格納エリア
@@ -436,54 +437,54 @@ AS
     -- 区分(masterと同じ)
     proc_flg                   VARCHAR2(1),  -- 更新区分('U':処理対象,'E':更新不可能,'S':変更なし)
     -- 出力内容(社員インターフェースと同じ)
-    employee_number            xxcmm_in_people_if.employee_number%type,           -- 社員番号
-    hire_date                  xxcmm_in_people_if.hire_date%type,                 -- 入社年月日
-    actual_termination_date    xxcmm_in_people_if.actual_termination_date%type,   -- 退職年月日
-    last_name_kanji            xxcmm_in_people_if.last_name_kanji%type,           -- 漢字姓
-    first_name_kanji           xxcmm_in_people_if.first_name_kanji%type,          -- 漢字名
-    last_name                  xxcmm_in_people_if.last_name%type,                 -- カナ姓
-    first_name                 xxcmm_in_people_if.first_name%type,                -- カナ名
-    sex                        xxcmm_in_people_if.sex%type,                       -- 性別
-    employee_division          xxcmm_in_people_if.employee_division%type,         -- 社員・外部委託区分
-    location_code              xxcmm_in_people_if.location_code%type,             -- 所属コード（新）
-    change_code                xxcmm_in_people_if.change_code%type,               -- 異動事由コード
-    announce_date              xxcmm_in_people_if.announce_date%type,             -- 発令日
-    office_location_code       xxcmm_in_people_if.office_location_code%type,      -- 勤務地拠点コード（新）
-    license_code               xxcmm_in_people_if.license_code%type,              -- 資格コード（新）
-    license_name               xxcmm_in_people_if.license_name%type,              -- 資格名（新）
-    job_post                   xxcmm_in_people_if.job_post%type,                  -- 職位コード（新）
-    job_post_name              xxcmm_in_people_if.job_post_name%type,             -- 職位名（新）
-    job_duty                   xxcmm_in_people_if.job_duty%type,                  -- 職務コード（新）
-    job_duty_name              xxcmm_in_people_if.job_duty_name%type,             -- 職務名（新）
-    job_type                   xxcmm_in_people_if.job_type%type,                  -- 職種コード（新）
-    job_type_name              xxcmm_in_people_if.job_type_name%type,             -- 職種名（新）
-    job_system                 xxcmm_in_people_if.job_system%type,                -- 適用労働時間制コード（新）
-    job_system_name            xxcmm_in_people_if.job_system_name%type,           -- 適用労働名（新）
-    job_post_order             xxcmm_in_people_if.job_post_order%type,            -- 職位並順コード（新）
-    consent_division           xxcmm_in_people_if.consent_division%type,          -- 承認区分（新）
-    agent_division             xxcmm_in_people_if.agent_division%type,            -- 代行区分（新）
-    office_location_code_old   xxcmm_in_people_if.office_location_code_old%type,  -- 勤務地拠点コード（旧）
-    location_code_old          xxcmm_in_people_if.location_code_old%type,         -- 所属コード（旧）
-    license_code_old           xxcmm_in_people_if.license_code_old%type,          -- 資格コード（旧）
-    license_code_name_old      xxcmm_in_people_if.license_code_name_old%type,     -- 資格名（旧）
-    job_post_old               xxcmm_in_people_if.job_post_old%type,              -- 職位コード（旧）
-    job_post_name_old          xxcmm_in_people_if.job_post_name_old%type,         -- 職位名（旧）
-    job_duty_old               xxcmm_in_people_if.job_duty_old%type,              -- 職務コード（旧）
-    job_duty_name_old          xxcmm_in_people_if.job_duty_name_old%type,         -- 職務名（旧）
-    job_type_old               xxcmm_in_people_if.job_type_old%type,              -- 職種コード（旧）
-    job_type_name_old          xxcmm_in_people_if.job_type_name_old%type,         -- 職種名（旧）
-    job_system_old             xxcmm_in_people_if.job_system_old%type,            -- 適用労働時間制コード（旧）
-    job_system_name_old        xxcmm_in_people_if.job_system_name_old%type,       -- 適用労働名（旧）
-    job_post_order_old         xxcmm_in_people_if.job_post_order_old%type,        -- 職位並順コード（旧）
-    consent_division_old       xxcmm_in_people_if.consent_division_old%type,      -- 承認区分（旧）
-    agent_division_old         xxcmm_in_people_if.agent_division_old%type,        -- 代行区分（旧）
+    employee_number            xxcmm_in_people_if.employee_number%TYPE,           -- 社員番号
+    hire_date                  xxcmm_in_people_if.hire_date%TYPE,                 -- 入社年月日
+    actual_termination_date    xxcmm_in_people_if.actual_termination_date%TYPE,   -- 退職年月日
+    last_name_kanji            xxcmm_in_people_if.last_name_kanji%TYPE,           -- 漢字姓
+    first_name_kanji           xxcmm_in_people_if.first_name_kanji%TYPE,          -- 漢字名
+    last_name                  xxcmm_in_people_if.last_name%TYPE,                 -- カナ姓
+    first_name                 xxcmm_in_people_if.first_name%TYPE,                -- カナ名
+    sex                        xxcmm_in_people_if.sex%TYPE,                       -- 性別
+    employee_division          xxcmm_in_people_if.employee_division%TYPE,         -- 社員・外部委託区分
+    location_code              xxcmm_in_people_if.location_code%TYPE,             -- 所属コード（新）
+    change_code                xxcmm_in_people_if.change_code%TYPE,               -- 異動事由コード
+    announce_date              xxcmm_in_people_if.announce_date%TYPE,             -- 発令日
+    office_location_code       xxcmm_in_people_if.office_location_code%TYPE,      -- 勤務地拠点コード（新）
+    license_code               xxcmm_in_people_if.license_code%TYPE,              -- 資格コード（新）
+    license_name               xxcmm_in_people_if.license_name%TYPE,              -- 資格名（新）
+    job_post                   xxcmm_in_people_if.job_post%TYPE,                  -- 職位コード（新）
+    job_post_name              xxcmm_in_people_if.job_post_name%TYPE,             -- 職位名（新）
+    job_duty                   xxcmm_in_people_if.job_duty%TYPE,                  -- 職務コード（新）
+    job_duty_name              xxcmm_in_people_if.job_duty_name%TYPE,             -- 職務名（新）
+    job_type                   xxcmm_in_people_if.job_type%TYPE,                  -- 職種コード（新）
+    job_type_name              xxcmm_in_people_if.job_type_name%TYPE,             -- 職種名（新）
+    job_system                 xxcmm_in_people_if.job_system%TYPE,                -- 適用労働時間制コード（新）
+    job_system_name            xxcmm_in_people_if.job_system_name%TYPE,           -- 適用労働名（新）
+    job_post_order             xxcmm_in_people_if.job_post_order%TYPE,            -- 職位並順コード（新）
+    consent_division           xxcmm_in_people_if.consent_division%TYPE,          -- 承認区分（新）
+    agent_division             xxcmm_in_people_if.agent_division%TYPE,            -- 代行区分（新）
+    office_location_code_old   xxcmm_in_people_if.office_location_code_old%TYPE,  -- 勤務地拠点コード（旧）
+    location_code_old          xxcmm_in_people_if.location_code_old%TYPE,         -- 所属コード（旧）
+    license_code_old           xxcmm_in_people_if.license_code_old%TYPE,          -- 資格コード（旧）
+    license_code_name_old      xxcmm_in_people_if.license_code_name_old%TYPE,     -- 資格名（旧）
+    job_post_old               xxcmm_in_people_if.job_post_old%TYPE,              -- 職位コード（旧）
+    job_post_name_old          xxcmm_in_people_if.job_post_name_old%TYPE,         -- 職位名（旧）
+    job_duty_old               xxcmm_in_people_if.job_duty_old%TYPE,              -- 職務コード（旧）
+    job_duty_name_old          xxcmm_in_people_if.job_duty_name_old%TYPE,         -- 職務名（旧）
+    job_type_old               xxcmm_in_people_if.job_type_old%TYPE,              -- 職種コード（旧）
+    job_type_name_old          xxcmm_in_people_if.job_type_name_old%TYPE,         -- 職種名（旧）
+    job_system_old             xxcmm_in_people_if.job_system_old%TYPE,            -- 適用労働時間制コード（旧）
+    job_system_name_old        xxcmm_in_people_if.job_system_name_old%TYPE,       -- 適用労働名（旧）
+    job_post_order_old         xxcmm_in_people_if.job_post_order_old%TYPE,        -- 職位並順コード（旧）
+    consent_division_old       xxcmm_in_people_if.consent_division_old%TYPE,      -- 承認区分（旧）
+    agent_division_old         xxcmm_in_people_if.agent_division_old%TYPE,        -- 代行区分（旧）
     --
     message                    VARCHAR2(1000)
   );
   --
   -- 出力するレポートを格納する結合配列
-  TYPE report_normal_tbl IS TABLE OF report_rec INDEX BY BINARY_INTEGER;
-  TYPE report_warn_tbl IS TABLE OF report_rec INDEX BY BINARY_INTEGER;
+  TYPE report_normal_tbl  IS TABLE OF report_rec   INDEX BY BINARY_INTEGER;
+  TYPE report_warn_tbl    IS TABLE OF report_rec   INDEX BY BINARY_INTEGER;
   --
 -- Ver1.4 Add  2009/05/21  セキュリティ属性登録用配列用構造体を追加  T1_0966
   -- セキュリティ属性登録用配列用構造体
@@ -517,7 +518,7 @@ AS
   gv_file_name                 VARCHAR2(255);         -- プロファイル・ファイル名
   gv_supervisor                VARCHAR2(255);         -- プロファイル・管理者従業員番号
 -- Ver1.3 Del  2009/04/16  各セグメント毎にプロファイル定義し不要のため
---  gv_default                  VARCHAR2(255);         -- プロファイル・デフォルト費用勘定
+--  gv_default                  VARCHAR2(255);          -- プロファイル・デフォルト費用勘定
 -- End Ver1.3
   gv_password                  VARCHAR2(255);         -- プロファイル・初期パスワード
   gn_person_id                 NUMBER(10);            -- ﾌﾟﾛﾌｧｲﾙ管理者従業員番号をパーソンIDに変換
@@ -1494,14 +1495,22 @@ AS
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
     --
-    IF  iv_flg IS NULL THEN
+    IF iv_flg IS NULL THEN
       BEGIN
       -- AFF部門（部門階層ビュー）
-        SELECT xhd.cur_dpt_cd
+--Ver1.8 Mod  2009/07/06  0000412 START
+--        SELECT xhd.cur_dpt_cd
+--        INTO   lv_bumon
+--        FROM   xxcmm_hierarchy_dept_v xhd
+--        WHERE  xhd.cur_dpt_cd = iv_bumon   -- 最下層部門コードが同じ
+--        AND    ROWNUM = 1;
+        SELECT xwhd.cur_dpt_cd
         INTO   lv_bumon
-        FROM   xxcmm_hierarchy_dept_v xhd
-        WHERE  xhd.cur_dpt_cd = iv_bumon   -- 最下層部門コードが同じ
+        FROM   xxcmm_wk_hiera_dept xwhd
+        WHERE  xwhd.cur_dpt_cd  = iv_bumon   -- 最下層部門コードが同じ
+        AND    xwhd.process_kbn = '2'        -- 処理区分(1：全部門、2：部門)
         AND    ROWNUM = 1;
+--Ver1.8 Mod  2009/07/06  0000412 END
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           lv_bumon := NULL; -- 該当データなし
@@ -1511,11 +1520,19 @@ AS
     ELSE
       BEGIN
       -- AFF部門（全部門階層ビュー）
-        SELECT xhd.cur_dpt_cd
+--Ver1.8 Mod  2009/07/06  0000412 START
+--        SELECT xhd.cur_dpt_cd
+--        INTO   lv_bumon
+--        FROM   xxcmm_hierarchy_dept_all_v xhd
+--        WHERE  xhd.cur_dpt_cd = iv_bumon   -- 最下層部門コードが同じ
+--        AND    ROWNUM = 1;
+        SELECT xwhd.cur_dpt_cd
         INTO   lv_bumon
-        FROM   xxcmm_hierarchy_dept_all_v xhd
-        WHERE  xhd.cur_dpt_cd = iv_bumon   -- 最下層部門コードが同じ
+        FROM   xxcmm_wk_hiera_dept xwhd
+        WHERE  xwhd.cur_dpt_cd  = iv_bumon   -- 最下層部門コードが同じ
+        AND    xwhd.process_kbn = '1'        -- 処理区分(1：全部門、2：部門)
         AND    ROWNUM = 1;
+--Ver1.8 Mod  2009/07/06  0000412 END
       EXCEPTION
         WHEN NO_DATA_FOUND THEN
           lv_bumon := NULL; -- 該当データなし
@@ -1701,7 +1718,7 @@ AS
     -- *** ローカル・カーソル ***
     --
     -- 従業員マスタ/アサインメントマスタ/従業員サービス期間マスタ(※check_recと同じ並びにする）
-    CURSOR gc_per_cur(lv_emp in varchar2)
+    CURSOR gc_per_cur(lv_emp IN VARCHAR2)
     IS
       SELECT pap.person_id                   person_id,                   -- 従業員ID
              pap.effective_start_date        effective_start_date,        -- 登録年月日
@@ -3021,13 +3038,31 @@ AS
     --
     BEGIN
     -- AFF部門（部門階層ビュー）
-      SELECT xhd.cur_dpt_cd,        -- 最下層部門コード
-             xhd.dpt1_cd,           -- １階層目部門コード
-             xhd.dpt2_cd,           -- ２階層目部門コード
-             xhd.dpt3_cd,           -- ３階層目部門コード
-             xhd.dpt4_cd,           -- ４階層目部門コード
-             xhd.dpt5_cd,           -- ５階層目部門コード
-             xhd.dpt6_cd            -- ６階層目部門コード
+--Ver1.8 Mod  2009/07/06  0000412 START
+--      SELECT xhd.cur_dpt_cd,        -- 最下層部門コード
+--             xhd.dpt1_cd,           -- １階層目部門コード
+--             xhd.dpt2_cd,           -- ２階層目部門コード
+--             xhd.dpt3_cd,           -- ３階層目部門コード
+--             xhd.dpt4_cd,           -- ４階層目部門コード
+--             xhd.dpt5_cd,           -- ５階層目部門コード
+--             xhd.dpt6_cd            -- ６階層目部門コード
+--      INTO   lv_location_cd,
+--             lv_location_cd1,
+--             lv_location_cd2,
+--             lv_location_cd3,
+--             lv_location_cd4,
+--             lv_location_cd5,
+--             lv_location_cd6
+--      FROM   xxcmm_hierarchy_dept_v xhd
+--      WHERE  xhd.cur_dpt_cd = ir_masters_rec.location_code   -- 最下層部門コードが同じ
+--      AND    ROWNUM = 1;
+      SELECT xwhd.cur_dpt_cd,        -- 最下層部門コード
+             xwhd.dpt1_cd,           -- １階層目部門コード
+             xwhd.dpt2_cd,           -- ２階層目部門コード
+             xwhd.dpt3_cd,           -- ３階層目部門コード
+             xwhd.dpt4_cd,           -- ４階層目部門コード
+             xwhd.dpt5_cd,           -- ５階層目部門コード
+             xwhd.dpt6_cd            -- ６階層目部門コード
       INTO   lv_location_cd,
              lv_location_cd1,
              lv_location_cd2,
@@ -3035,9 +3070,11 @@ AS
              lv_location_cd4,
              lv_location_cd5,
              lv_location_cd6
-      FROM   xxcmm_hierarchy_dept_v xhd
-      WHERE  xhd.cur_dpt_cd = ir_masters_rec.location_code   -- 最下層部門コードが同じ
+      FROM   xxcmm_wk_hiera_dept xwhd
+      WHERE  xwhd.cur_dpt_cd  = ir_masters_rec.location_code  -- 最下層部門コードが同じ
+      AND    xwhd.process_kbn = '2'                           -- 処理区分(1：全部門、2：部門)
       AND    ROWNUM = 1;
+--Ver1.8 Mod  2009/07/06  0000412 END
     EXCEPTION
       WHEN OTHERS THEN
         RAISE global_api_others_expt;
@@ -4397,7 +4434,7 @@ AS
     INTO   ir_masters_rec.period_of_service_id,
            ir_masters_rec.ppos_version
     FROM   per_periods_of_service ppos,         -- サービス期間マスタ
-           per_all_people_f pap                   -- 従業員マスタ
+           per_all_people_f pap                 -- 従業員マスタ
     WHERE  ppos.person_id = ir_masters_rec.person_id
     AND    ppos.actual_termination_date IS NULL
     AND    ROWNUM = 1;
@@ -4562,13 +4599,13 @@ AS
     --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG
     lv_concatenated_segments    VARCHAR2(200);
-    ln_soft_coding_keyflex_id   per_all_assignments_f.soft_coding_keyflex_id%type;
+    ln_soft_coding_keyflex_id   per_all_assignments_f.soft_coding_keyflex_id%TYPE;
     lb_no_managers_warning      BOOLEAN;
     lb_other_manager_warning    BOOLEAN;
     --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA
-    ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id%type;
-    ln_people_group_id              per_all_assignments_f.people_group_id%type;
+    ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id%TYPE;
+    ln_people_group_id              per_all_assignments_f.people_group_id%TYPE;
     lv_group_name                   VARCHAR2(200);
     lb_org_now_no_manager_warning   BOOLEAN;
     lb_spp_delete_warning           BOOLEAN;
@@ -5142,7 +5179,7 @@ AS
       ;
     EXCEPTION
       WHEN OTHERS THEN
-          RAISE global_api_others_expt;
+        RAISE global_api_others_expt;
     END;
     --
     -- 従業員マスタの履歴レコードの待避
@@ -5202,7 +5239,7 @@ AS
         ;
       EXCEPTION
         WHEN OTHERS THEN
-            RAISE global_api_others_expt;
+          RAISE global_api_others_expt;
       END;
     END IF;
     --
@@ -5221,7 +5258,7 @@ AS
       AND    ppos.period_of_service_id = paa.period_of_service_id;  -- サービスID
     EXCEPTION
       WHEN OTHERS THEN
-          RAISE global_api_others_expt;
+        RAISE global_api_others_expt;
     END;
     --
     -- 再雇用処理後時は事業所の更新を行う
@@ -5290,14 +5327,14 @@ AS
     -- *** ローカル変数 ***
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG
     lv_concatenated_segments    VARCHAR2(200);
-    ln_soft_coding_keyflex_id   per_all_assignments_f.soft_coding_keyflex_id%type;
+    ln_soft_coding_keyflex_id   per_all_assignments_f.soft_coding_keyflex_id%TYPE;
     ln_comment_id               per_all_people_f.comment_id%TYPE;
     lb_no_managers_warning      BOOLEAN;
     lb_other_manager_warning    BOOLEAN;
     --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA
-    ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id%type;
-    ln_people_group_id              per_all_assignments_f.people_group_id%type;
+    ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id%TYPE;
+    ln_people_group_id              per_all_assignments_f.people_group_id%TYPE;
     lv_group_name                   VARCHAR2(200);
     lb_org_now_no_manager_warning   BOOLEAN;
     lb_spp_delete_warning           BOOLEAN;
@@ -5513,22 +5550,22 @@ AS
     -- *** ローカル変数 ***
     --
     -- HR_EMPLOYEE_API.CREATE_EMPLOYEE
-    lv_full_name                    per_all_people_f.full_name%type;  -- フルネーム
-    ln_per_comment_id               per_all_people_f.comment_id%type;
-    ln_assignment_sequence          per_all_assignments_f.assignment_sequence%type;
+    lv_full_name                    per_all_people_f.full_name%TYPE;  -- フルネーム
+    ln_per_comment_id               per_all_people_f.comment_id%TYPE;
+    ln_assignment_sequence          per_all_assignments_f.assignment_sequence%TYPE;
     lb_name_combination_warning     BOOLEAN;
     lb_assign_payroll_warning       BOOLEAN;
     lb_orig_hire_warning            BOOLEAN;
     --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG
     lv_concatenated_segments        VARCHAR2(200);
-    ln_soft_coding_keyflex_id       per_all_assignments_f.soft_coding_keyflex_id%type;
+    ln_soft_coding_keyflex_id       per_all_assignments_f.soft_coding_keyflex_id%TYPE;
     ln_comment_id                   per_all_people_f.comment_id%TYPE;
     lb_no_managers_warning          BOOLEAN;
     --
     -- HR_ASSIGNMENT_API.UPDATE_EMP_ASG_CRITERIA
-    ln_people_group_id              per_all_assignments_f.people_group_id%type;
-    ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id %type;
+    ln_people_group_id              per_all_assignments_f.people_group_id%TYPE;
+    ln_special_ceiling_step_id      per_all_assignments_f.special_ceiling_step_id%TYPE;
     lv_group_name                   VARCHAR2(200);
     lb_org_now_no_manager_warning   BOOLEAN;
     lb_other_manager_warning        BOOLEAN;
@@ -5911,7 +5948,7 @@ AS
       );
       --
       IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
+        RAISE global_api_expt;
       END IF;
       --
       -- 再雇用処理
@@ -5924,7 +5961,7 @@ AS
       );
       --
       IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
+        RAISE global_api_expt;
       END IF;
     END IF;
     --
@@ -5939,7 +5976,7 @@ AS
       );
       --
       IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
+        RAISE global_api_expt;
       END IF;
     -- 既存社員の情報変更なしの場合、再雇用情報引継ぎ処理を行う (連携区分 = NULL,入社日変更区分 = 'Y')
        -- 退職処理だけのデータは更新は行わない
@@ -5953,7 +5990,7 @@ AS
       );
       --
       IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
+        RAISE global_api_expt;
       END IF;
     END IF;
     --
@@ -6140,7 +6177,7 @@ AS
     );
     --
     IF (lv_retcode = cv_status_error) THEN
-        RAISE global_api_expt;
+      RAISE global_api_expt;
     END IF;
     --
     -- 既存社員の情報変更(連携区分 = 'Y'）
@@ -6154,7 +6191,7 @@ AS
       );
       --
       IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
+        RAISE global_api_expt;
       END IF;
     -- 既存社員の情報変更なしの場合、再雇用情報引継ぎ処理を行う(連携区分 = NULL）
     ELSE
@@ -6167,7 +6204,7 @@ AS
       );
       --
       IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
+        RAISE global_api_expt;
       END IF;
     END IF;
     --
@@ -6182,7 +6219,7 @@ AS
       );
       --
       IF (lv_retcode = cv_status_error) THEN
-          RAISE global_api_expt;
+        RAISE global_api_expt;
       END IF;
     --
     END IF;
@@ -6405,7 +6442,7 @@ AS
     -- ===============================
     -- 職責自動割当ワーク削除処理
     -- ===============================
-    DELETE xxcmm.xxcmm_wk_people_resp;
+    DELETE xxcmm_wk_people_resp;
     --
     -- ===============================
     -- 業務日付の取得
@@ -6515,6 +6552,32 @@ AS
     gn_program_application_id := FND_GLOBAL.PROG_APPL_ID;      -- プログラムアプリケーションID
     gn_program_id             := FND_GLOBAL.CONC_PROGRAM_ID;   -- プログラムID
     gd_program_update_date    := SYSDATE;                      -- プログラム更新日
+    --
+--Ver1.8 Mod  2009/07/06  0000412 START
+    -- INSERT処理(社員データ取込用_部門階層一時ワーク)
+    INSERT INTO xxcmm_wk_hiera_dept
+      SELECT  xhd.cur_dpt_cd,        -- 最下層部門コード
+              xhd.dpt1_cd,           -- １階層目部門コード
+              xhd.dpt2_cd,           -- ２階層目部門コード
+              xhd.dpt3_cd,           -- ３階層目部門コード
+              xhd.dpt4_cd,           -- ４階層目部門コード
+              xhd.dpt5_cd,           -- ５階層目部門コード
+              xhd.dpt6_cd,           -- ６階層目部門コード
+              '1'                    -- 処理区分(1：全部門、2：部門)
+      FROM    xxcmm_hierarchy_dept_all_v xhd
+    ;
+    INSERT INTO xxcmm_wk_hiera_dept
+      SELECT  xhd.cur_dpt_cd,        -- 最下層部門コード
+              xhd.dpt1_cd,           -- １階層目部門コード
+              xhd.dpt2_cd,           -- ２階層目部門コード
+              xhd.dpt3_cd,           -- ３階層目部門コード
+              xhd.dpt4_cd,           -- ４階層目部門コード
+              xhd.dpt5_cd,           -- ５階層目部門コード
+              xhd.dpt6_cd,           -- ６階層目部門コード
+              '2'                    -- 処理区分(1：全部門、2：部門)
+      FROM    xxcmm_hierarchy_dept_v xhd
+    ;
+--Ver1.8 Mod  2009/07/06  0000412 END
 --
   EXCEPTION
     --==============================================================
@@ -7664,7 +7727,7 @@ AS
     -- ===============================
     -- 職責自動割当ワーク削除処理
     -- ===============================
-    DELETE xxcmm.xxcmm_wk_people_resp;
+    DELETE xxcmm_wk_people_resp;
     --
     -- ===============================
     -- 社員インタフェース削除処理
