@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（仕入）
  * MD.050/070       : 生産物流（仕入）Issue1.0  (T_MD050_BPO_710)
  *                    荒茶製造表累計            (T_MD070_BPO_71C)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/05/20    1.1   Yohei    Takayama  結合テスト対応(710_11)
  *  2008/07/02    1.2   Satoshi  Yunba     禁則文字対応
  *  2008/10/17    1.3   Yuko     Kawano    統合指摘#216対応
+ *  2009/02/17    1.4   Akiyoshi Shiina    T_S_448対応
  *
  *****************************************************************************************/
 --
@@ -418,11 +419,20 @@ AS
                          + ROUND( NVL( xnpt.byproduct2_quantity, 0) * TO_NUMBER( NVL( ilm_by2.attribute7, '0') ) )
                          + ROUND( NVL( xnpt.byproduct3_quantity, 0) * TO_NUMBER( NVL( ilm_by3.attribute7, '0') ) ) )
                   WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
+-- 2009/02/17 v1.4 UPDATE START
+/*
                      SUM(  ROUND( NVL( xnpt.collect1_final_unit_price, 0) * NVL( xnpt.collect1_quantity, 0) )
                          + ROUND( NVL( xnpt.collect2_final_unit_price, 0) * NVL( xnpt.collect2_quantity, 0) )
                          + ROUND( NVL( xnpt.receive1_final_unit_price, 0) * NVL( xnpt.receive1_quantity, 0) )
                          + ROUND( NVL( xnpt.receive2_final_unit_price, 0) * NVL( xnpt.receive2_quantity, 0) )
                          - ROUND( NVL( xnpt.shipment_final_unit_price, 0) * NVL( xnpt.shipment_quantity, 0) ) )
+*/
+                     SUM(  ROUND( NVL( xnpt.collect1_final_price, 0) )
+                         + ROUND( NVL( xnpt.collect2_final_price, 0) )
+                         + ROUND( NVL( xnpt.receive1_final_price, 0) )
+                         + ROUND( NVL( xnpt.receive2_final_price, 0) )
+                         - ROUND( NVL( xnpt.shipment_final_price, 0) ) )
+-- 2009/02/17 v1.4 UPDATE END
                    - SUM(  ROUND( NVL( xnpt.byproduct1_quantity, 0) * TO_NUMBER( NVL( ilm_by1.attribute7, '0') ) )
                          + ROUND( NVL( xnpt.byproduct2_quantity, 0) * TO_NUMBER( NVL( ilm_by2.attribute7, '0') ) )
                          + ROUND( NVL( xnpt.byproduct3_quantity, 0) * TO_NUMBER( NVL( ilm_by3.attribute7, '0') ) ) )
@@ -434,8 +444,14 @@ AS
                      SUM(  ROUND( NVL( xnpt.collect1_temp_unit_price, 0) * NVL( xnpt.collect1_quantity, 0) )
                          + ROUND( NVL( xnpt.collect2_temp_unit_price, 0) * NVL( xnpt.collect2_quantity, 0) ) )
                   WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
+-- 2009/02/17 v1.4 UPDATE START
+/*
                      SUM(  ROUND( NVL( xnpt.collect1_final_unit_price, 0) * NVL( xnpt.collect1_quantity, 0) )
                          + ROUND( NVL( xnpt.collect2_final_unit_price, 0) * NVL( xnpt.collect2_quantity, 0) ) )
+*/
+                     SUM(  ROUND( NVL( xnpt.collect1_final_price, 0) )
+                         + ROUND( NVL( xnpt.collect2_final_price, 0) ) )
+-- 2009/02/17 v1.4 UPDATE END
                  END                                         collect_amount         -- 集荷金額
                 ,SUM( NVL( xnpt.receive1_quantity, 0) + NVL( xnpt.receive2_quantity, 0) )
                                                           AS receive_quantity       -- 受入数量
@@ -444,15 +460,24 @@ AS
                      SUM(  ROUND( NVL( xnpt.receive1_temp_unit_price, 0) * NVL( xnpt.receive1_quantity, 0) )
                          + ROUND( NVL( xnpt.receive2_temp_unit_price, 0) * NVL( xnpt.receive2_quantity, 0) ) )
                   WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
+-- 2009/02/17 v1.4 UPDATE START
+/*
                      SUM(  ROUND( NVL( xnpt.receive1_final_unit_price, 0) * NVL( xnpt.receive1_quantity, 0) )
                          + ROUND( NVL( xnpt.receive2_final_unit_price, 0) * NVL( xnpt.receive2_quantity, 0) ) )
+*/
+                     SUM(  ROUND( NVL( xnpt.receive1_final_price, 0) )
+                         + ROUND( NVL( xnpt.receive2_final_price, 0) ) )
+-- 2009/02/17 v1.4 UPDATE END
                  END                                         receive_amount         -- 受入金額
                 ,SUM( NVL( xnpt.shipment_quantity, 0) )   AS shipment_quantity      -- 出荷数量
                 ,CASE
                   WHEN ( in_report_type = gc_report_type_3 ) THEN                   -- 仮単価で算出
                      SUM( ROUND( NVL( xnpt.shipment_temp_unit_price, 0) * NVL( xnpt.shipment_quantity, 0) ) )
                   WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
-                     SUM( ROUND( NVL( xnpt.shipment_final_unit_price, 0) * NVL( xnpt.shipment_quantity, 0) ) )
+-- 2009/02/17 v1.4 UPDATE START
+--                     SUM( ROUND( NVL( xnpt.shipment_final_unit_price, 0) * NVL( xnpt.shipment_quantity, 0) ) )
+                     SUM( ROUND( NVL( xnpt.shipment_final_price, 0) ) )
+-- 2009/02/17 v1.4 UPDATE END
                  END                                         shipment_amount        -- 出荷金額
                 ,SUM(  NVL( xnpt.collect1_quantity, 0) + NVL( xnpt.collect2_quantity, 0)
                      + NVL( xnpt.receive1_quantity, 0) + NVL( xnpt.receive2_quantity, 0)
@@ -465,11 +490,20 @@ AS
                          + ROUND( NVL( xnpt.receive2_temp_unit_price, 0) * NVL( xnpt.receive2_quantity, 0) )
                          - ROUND( NVL( xnpt.shipment_temp_unit_price, 0) * NVL( xnpt.shipment_quantity, 0) ) )
                   WHEN ( in_report_type = gc_report_type_4 ) THEN                   -- 正単価で算出
+-- 2009/02/17 v1.4 UPDATE START
+/*
                      SUM(  ROUND( NVL( xnpt.collect1_final_unit_price, 0) * NVL( xnpt.collect1_quantity, 0) )
                          + ROUND( NVL( xnpt.collect2_final_unit_price, 0) * NVL( xnpt.collect2_quantity, 0) )
                          + ROUND( NVL( xnpt.receive1_final_unit_price, 0) * NVL( xnpt.receive1_quantity, 0) )
                          + ROUND( NVL( xnpt.receive2_final_unit_price, 0) * NVL( xnpt.receive2_quantity, 0) )
                          - ROUND( NVL( xnpt.shipment_final_unit_price, 0) * NVL( xnpt.shipment_quantity, 0) ) )
+*/
+                     SUM(  ROUND( NVL( xnpt.collect1_final_price, 0) )
+                         + ROUND( NVL( xnpt.collect2_final_price, 0) )
+                         + ROUND( NVL( xnpt.receive1_final_price, 0) )
+                         + ROUND( NVL( xnpt.receive2_final_price, 0) )
+                         - ROUND( NVL( xnpt.shipment_final_price, 0) ) )
+-- 2009/02/17 v1.4 UPDATE END
                  END                                         namaha_total_amount    -- 生葉合計金額
           FROM   xxpo_namaha_prod_txns    xnpt                                      -- 生葉実績（アドオン）
                 ,ic_lots_mst              ilm                                       -- OPMロットマスタ

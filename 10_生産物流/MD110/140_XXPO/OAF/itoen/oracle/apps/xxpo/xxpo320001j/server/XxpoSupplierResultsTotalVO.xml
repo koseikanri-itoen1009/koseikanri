@@ -14,6 +14,9 @@ SELECT TO_CHAR(SUM(pla.attribute11), 'FM999,999,990.000')                       
       ,TO_CHAR(SUM(NVL(pla.attribute6,pla.attribute11)), 'FM999,999,990.000') total_leaving_shed_amount
 FROM po_lines_all pla
 WHERE pla.po_header_id = :0
+-- 2009/02/19 D.Nihei Add Start
+  AND NVL(pla.cancel_flag, 'N') = 'N'
+-- 2009/02/19 D.Nihei Add End
 GROUP BY po_header_id
    ]]></SQLQuery>
    <DesignTime>

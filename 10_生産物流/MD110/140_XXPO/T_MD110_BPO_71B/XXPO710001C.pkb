@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（仕入）
  * MD.050/070       : 生産物流（仕入）Issue1.0  (T_MD050_BPO_710)
  *                    荒茶製造表                (T_MD070_BPO_71B)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/05/19    1.2   Masayuki Ikeda     内部変更要求#62対応
  *  2008/05/20    1.3   Yohei    Takayama  結合テスト障害対応(710_11)
  *  2008/07/02    1.4   Satoshi Yunba      禁則文字対応
+ *  2009/02/18    1.5   Akiyoshi Shiina    T_S_448対応
  *
  *****************************************************************************************/
 --
@@ -148,6 +149,13 @@ AS
     ,aracha_quantity        xxpo_namaha_prod_txns.aracha_quantity%TYPE           -- 荒茶原料合計：数量
     ,processing_unit_price  xxpo_namaha_prod_txns.processing_unit_price%TYPE     -- 加工単価
     ,syanai_unit_price      NUMBER                                               -- 社内単価
+-- 2009/02/18 v1.5 ADD START
+    ,collect1_final_price   xxpo_namaha_prod_txns.collect1_final_price%TYPE      -- 集荷1金額(正)
+    ,collect2_final_price   xxpo_namaha_prod_txns.collect2_final_price%TYPE      -- 集荷2金額(正)
+    ,receive1_final_price   xxpo_namaha_prod_txns.receive1_final_price%TYPE      -- 受入1金額(正)
+    ,receive2_final_price   xxpo_namaha_prod_txns.receive2_final_price%TYPE      -- 受入2金額(正)
+    ,shipment_final_price   xxpo_namaha_prod_txns.shipment_final_price%TYPE      -- 出荷金額(正)
+-- 2009/02/18 v1.5 ADD END
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -418,27 +426,47 @@ AS
             ,xnpt.collect1_quantity     AS collect1_quantity     -- 集荷１：数量
             ,CASE
               WHEN ( in_report_type = gc_report_type_1 ) THEN xnpt.collect1_temp_unit_price
-              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.collect1_final_unit_price
+-- 2009/02/18 v1.5 UPDATE START
+--              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.collect1_final_unit_price
+              WHEN (( in_report_type = gc_report_type_2 ) AND ( xnpt.collect1_quantity IS NOT NULL ))THEN
+                ROUND((NVL(xnpt.collect1_final_price, 1) / xnpt.collect1_quantity), 2)
+-- 2009/02/18 v1.5 UPDATE END
              END                           collect1_unit_price   -- 集荷１：単価
             ,xnpt.collect2_quantity     AS collect2_quantity     -- 集荷２：数量
             ,CASE
               WHEN ( in_report_type = gc_report_type_1 ) THEN xnpt.collect2_temp_unit_price
-              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.collect2_final_unit_price
+-- 2009/02/18 v1.5 UPDATE START
+--              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.collect2_final_unit_price
+              WHEN (( in_report_type = gc_report_type_2 ) AND ( xnpt.collect2_quantity IS NOT NULL )) THEN
+                ROUND((NVL(xnpt.collect2_final_price, 1) / xnpt.collect2_quantity), 2)
+-- 2009/02/18 v1.5 UPDATE END
              END                           collect2_unit_price   -- 集荷２：単価
             ,xnpt.receive1_quantity     AS receive1_quantity     -- 受入１：数量
             ,CASE
               WHEN ( in_report_type = gc_report_type_1 ) THEN xnpt.receive1_temp_unit_price
-              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.receive1_final_unit_price
+-- 2009/02/18 v1.5 UPDATE START
+--              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.receive1_final_unit_price
+              WHEN (( in_report_type = gc_report_type_2 ) AND ( xnpt.receive1_quantity IS NOT NULL ))THEN
+                ROUND((NVL(xnpt.receive1_final_price, 1) / xnpt.receive1_quantity), 2)
+-- 2009/02/18 v1.5 UPDATE END
              END                           receive1_unit_price   -- 受入１：単価
             ,xnpt.receive2_quantity     AS receive2_quantity     -- 受入２：数量
             ,CASE
               WHEN ( in_report_type = gc_report_type_1 ) THEN xnpt.receive2_temp_unit_price
-              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.receive2_final_unit_price
+-- 2009/02/18 v1.5 UPDATE START
+--              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.receive2_final_unit_price
+              WHEN (( in_report_type = gc_report_type_2 ) AND ( xnpt.receive2_quantity IS NOT NULL )) THEN
+                ROUND((NVL(xnpt.receive2_final_price, 1) / xnpt.receive2_quantity), 2)
+-- 2009/02/18 v1.5 UPDATE END
              END                           receive2_unit_price   -- 受入２：単価
             ,xnpt.shipment_quantity     AS shipment_quantity     -- 出荷：数量
             ,CASE
               WHEN ( in_report_type = gc_report_type_1 ) THEN xnpt.shipment_temp_unit_price
-              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.shipment_final_unit_price
+-- 2009/02/18 v1.5 UPDATE START
+--              WHEN ( in_report_type = gc_report_type_2 ) THEN xnpt.shipment_final_unit_price
+              WHEN (( in_report_type = gc_report_type_2 ) AND ( xnpt.shipment_quantity IS NOT NULL ))THEN
+                ROUND((NVL(xnpt.shipment_final_price, 1) / xnpt.shipment_quantity), 2)
+-- 2009/02/18 v1.5 UPDATE END
              END                           shipment_unit_price   -- 出荷：単価
             ,ximv_by1.item_no           AS byproduct1_item_code  -- 副産物１：品目コード
             ,ximv_by1.item_short_name   AS byproduct1_item_name  -- 副産物１：品目名
@@ -459,6 +487,13 @@ AS
             ,xnpt.processing_unit_price AS processing_unit_price -- 加工単価
             ,TO_NUMBER( NVL( ilm.attribute7, '0' ) )
                                         AS syanai_unit_price     -- 社内単価
+-- 2009/02/18 v1.5 UPDATE START
+            ,xnpt.collect1_final_price  AS collect1_final_price  -- 集荷1金額(正)
+            ,xnpt.collect2_final_price  AS collect2_final_price  -- 集荷2金額(正)
+            ,xnpt.receive1_final_price  AS receive1_final_price  -- 受入1金額(正)
+            ,xnpt.receive2_final_price  AS receive2_final_price  -- 受入2金額(正)
+            ,xnpt.shipment_final_price  AS shipment_final_price  -- 出荷金額(正)
+-- 2009/02/18 v1.5 UPDATE END
       FROM   xxpo_namaha_prod_txns      xnpt                     -- 生葉実績（アドオン）
             ,ic_lots_mst                ilm                      -- OPMロットマスタ
             ,xxcmn_item_mst2_v          ximv                     -- OPM品目情報VIEW2
@@ -709,6 +744,9 @@ AS
       -- 計算項目の算出
       -- -----------------------------------------------------
       -- 個別計算項目
+-- 2009/02/18 v1.5 ADD START
+     IF (ir_param.iv_report_type = gc_report_type_1) THEN
+-- 2009/02/18 v1.5 ADD END
 -- 08/05/02 Y.Yamamoto Update v1.1 Start 計算に使用する各項目について、NVLをかけるように修正する。
       ln_collect1_amount          := ROUND( NVL( gt_main_data(i).collect1_quantity, 0 ) 
                                             * NVL( gt_main_data(i).collect1_unit_price, 0 ) ) ;
@@ -720,6 +758,15 @@ AS
                                             * NVL( gt_main_data(i).receive2_unit_price, 0 ) ) ;
       ln_shipment_amount          := ROUND( NVL( gt_main_data(i).shipment_quantity, 0 ) 
                                             * NVL( gt_main_data(i).shipment_unit_price, 0 ) ) ;
+-- 2009/02/18 v1.5 ADD START
+     ELSIF (ir_param.iv_report_type = gc_report_type_2) THEN
+      ln_collect1_amount          := NVL(gt_main_data(i).collect1_final_price, 0);
+      ln_collect2_amount          := NVL(gt_main_data(i).collect2_final_price, 0);
+      ln_receive1_amount          := NVL(gt_main_data(i).receive1_final_price, 0);
+      ln_receive2_amount          := NVL(gt_main_data(i).receive2_final_price, 0);
+      ln_shipment_amount          := NVL(gt_main_data(i).shipment_final_price, 0);
+     END IF;
+-- 2009/02/18 v1.5 ADD END
 --
       ln_total_quantity           := ( NVL( gt_main_data(i).collect1_quantity, 0 ) 
                                        + NVL( gt_main_data(i).collect2_quantity, 0 ) ) 

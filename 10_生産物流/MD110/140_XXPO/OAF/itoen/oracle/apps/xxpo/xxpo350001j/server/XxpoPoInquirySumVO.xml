@@ -11,15 +11,16 @@
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT REPLACE(TO_CHAR(SUM(subsql.po_qty),      '999,999,990.000'),' ')  ttl_po_qty        -- 合計発注数
-      ,REPLACE(TO_CHAR(SUM(subsql.receive_qty), '999,999,990.000'),' ')  ttl_receive_qty   -- 合計受入数
-      ,REPLACE(TO_CHAR(
+     , REPLACE(TO_CHAR(SUM(subsql.receive_qty), '999,999,990.000'),' ')  ttl_receive_qty   -- 合計受入数
+     , REPLACE(TO_CHAR(
            SUM(TRUNC(subsql.konabiki_unit_price * subsql.qty))
          , '9,999,999,999,999'),' ') ttl_price             -- 合計金額
 FROM (
   SELECT TO_NUMBER(pla.attribute11) po_qty               -- 発注数量
-        ,TO_NUMBER(pla.attribute7)  receive_qty          -- 受入数量
-        ,pla.unit_price             konabiki_unit_price  -- 粉引後単価
-        ,CASE -- 数量
+       , TO_NUMBER(pla.attribute7)  receive_qty          -- 受入数量
+       , pla.unit_price             konabiki_unit_price  -- 粉引後単価
+-- 2009/02/19 D.Nihei MOD START 本番障害#1136対応
+/*     , CASE -- 数量
            -- 発注アドオンステータスが「25:受入あり」以降 かつ、入出庫換算単位に値ありの場合、受入数量 × ケース入数
            WHEN (('25' <= :0) AND (ximv.conv_unit IS NOT NULL)) THEN 
              TO_NUMBER(pla.attribute7) * ximv.num_of_cases
@@ -33,10 +34,32 @@ FROM (
            WHEN (('25' > :3) AND  (ximv.conv_unit IS NULL)) THEN 
              TO_NUMBER(pla.attribute11)
          END                        qty                  -- 数量
-  FROM  po_lines_all          pla                  -- 発注明細
-       ,xxcmn_item_mst_v       ximv                -- OPM品目情報V
-  WHERE pla.item_id       = ximv.inventory_item_id -- OPM品目情報2V結合条件(品目ID)
-  AND   pla.po_header_id = :4
+*/
+       , CASE -- 数量
+           -- 発注アドオンステータスが「25:受入あり」以降 かつ、ドリンク製品、入出庫換算単位に値ありの場合、受入数量 × ケース入数
+           WHEN (('25' <= :0) AND (ximv.conv_unit IS NOT NULL) AND (xicv.item_class_code = '5') AND (xicv.prod_class_code = '2')) THEN 
+             TO_NUMBER(pla.attribute7) * ximv.num_of_cases
+           -- 上記以外且つ、発注アドオンステータスが「25:受入あり」以降
+           WHEN  ('25' <= :1) THEN 
+             TO_NUMBER(pla.attribute7)
+           -- 発注アドオンステータスが「25:受入あり」未満 かつ、ドリンク製品、入出庫換算単位に値ありの場合、発注数量 × ケース入数
+           WHEN (('25' >  :2) AND (ximv.conv_unit IS NOT NULL) AND (xicv.item_class_code = '5') AND (xicv.prod_class_code = '2')) THEN 
+             TO_NUMBER(pla.attribute11) * ximv.num_of_cases
+           -- 上記以外且つ、発注アドオンステータスが「25:受入あり」未満
+           WHEN  ('25' >  :3) THEN 
+             TO_NUMBER(pla.attribute11)
+         END                          qty                  -- 数量
+-- 2009/02/19 D.Nihei MOD END
+  FROM   po_lines_all             pla                 -- 発注明細
+       , xxcmn_item_mst_v         ximv                -- 品目情報VIEW
+-- 2009/02/19 D.Nihei ADD START 本番障害#1136対応
+       , xxcmn_item_categories5_v xicv                -- 品目カテゴリ情報VIEW
+-- 2009/02/19 D.Nihei ADD END
+  WHERE  pla.item_id      = ximv.inventory_item_id
+-- 2009/02/19 D.Nihei ADD START 本番障害#1136対応
+  AND    ximv.item_id     = xicv.item_id
+-- 2009/02/19 D.Nihei ADD END
+  AND    pla.po_header_id = :4
 ) subsql
    ]]></SQLQuery>
    <DesignTime>

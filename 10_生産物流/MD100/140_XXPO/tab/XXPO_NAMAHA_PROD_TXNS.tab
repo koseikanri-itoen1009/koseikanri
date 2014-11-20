@@ -48,6 +48,11 @@ CREATE TABLE xxpo.xxpo_namaha_prod_txns (
      final_unit_price_entered_flg    VARCHAR2(1)   DEFAULT 'N'  NOT NULL ,
      department_code                 VARCHAR2(60)     ,
      company_final_unit_price        NUMBER(9,2),
+     collect1_final_price            NUMBER(13),
+     collect2_final_price            NUMBER(13),
+     receive1_final_price            NUMBER(13),
+     receive2_final_price            NUMBER(13),
+     shipment_final_price            NUMBER(13),
      created_by                      NUMBER(15)    NOT NULL ,
      creation_date                   DATE          NOT NULL ,
      last_updated_by                 NUMBER(15)    NOT NULL ,
@@ -112,6 +117,11 @@ COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_UOM IS '副産物3単位';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.FINAL_UNIT_PRICE_ENTERED_FLG IS '正単価入力完了フラグ';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.DEPARTMENT_CODE IS '部署コード';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COMPANY_FINAL_UNIT_PRICE IS '社内単価(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COLLECT1_FINAL_PRICE IS '集荷1金額(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COLLECT2_FINAL_PRICE IS '集荷2金額(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.RECEIVE1_FINAL_PRICE IS '受入1金額(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.RECEIVE2_FINAL_PRICE IS '受入2金額(正)';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.SHIPMENT_FINAL_PRICE IS '出荷金額(正)';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.CREATED_BY IS '作成者';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.CREATION_DATE IS '作成日';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.LAST_UPDATED_BY IS '最終更新者';
