@@ -64,6 +64,8 @@ AS
  *                                       障害対応(0001130) 在庫組織の修正(S01 -> Z99)
  *                                       障害対応(0001258) 品目カテゴリ割当(Disc)の対象カテゴリを追加
  *                                                         (品目区分,内外区分,商品区分,品質区分,工場群コード,経理部用群コード)
+ *  2009/10/16    1.13  Y.Kuboshima      障害対応(0001423) 子品目を本登録にする時、親品目が本登録以外の場合はエラーとするよう修正
+ *                                                         標準原価継承条件を変更
  *
  *****************************************************************************************/
 --
@@ -192,6 +194,11 @@ AS
 -- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
   cv_msg_xxcmm_00491           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00491';   -- 標準原価小数エラー
 -- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+--
+-- 2009/10/16 Ver1.13 障害0001423 add start by Y.Kuboshima
+  cv_msg_xxcmm_00492           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00492';   -- 親品目本登録ステータスチェックエラー
+-- 2009/10/16 Ver1.13 障害0001423 add start by Y.Kuboshima
+--
 -- 2009/09/11 Ver1.12 障害0001130 add start by Y.Kuboshima
   cv_msg_xxcmm_00002           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00002';   -- プロファイル取得エラー
 -- 2009/09/11 Ver1.12 障害0001130 add end by Y.Kuboshima
@@ -2140,83 +2147,150 @@ AS
         END IF;
         --
 -- Ver1.9  2009/07/07  Add  標準原価の継承は仮登録時に変更
+-- 2009/10/16 Ver1.13 modify start by Yutaka.Kuboshima
+-- ※子品目への継承条件を削除
+-- ⇒親品目の指定が仮登録時も可能になったため、親品目が仮登録時は標準原価を保持していないので、
+--   現状の仕様では標準原価が0円で継承されてしまう。さらに、継承タイミングが1度しかないため、
+--   子品目の標準原価が0円のままになってしまう恐れがあるため継承条件を削除。
         --
         -- 標準原価登録済み確認
-        lv_step := 'STEP-08210';
-        SELECT      COUNT( ccmd.ROWID )
-        INTO        ln_exsits_count
-        FROM        cm_cmpt_dtl    ccmd                          -- OPM標準原価
-        WHERE       ccmd.item_id = i_update_item_rec.item_id     -- 品目ID
-        AND         ROWNUM = 1;
-        --
-        -- 該当子品目に標準原価が登録されている場合、最新なので処理しない。
-        -- ただし、変更前ステータスがＤの場合、最新の保証がないため更新する
-        IF ( ln_exsits_count = 0
-          OR i_update_item_rec.b_item_status = cn_itm_status_no_use ) THEN
-          --
-          --==============================================================
-          --A-6.2-5 親品目の標準原価の取得
-          --==============================================================
-          -- 原価ヘッダ(カレンダコード、期間コード)の取得
-          lv_step := 'STEP-08220';
-          <<cnp_cost_hd_loop>>
-          FOR l_cnp_cost_hd_rec IN cnp_cost_hd_cur( i_update_item_rec.parent_item_id
-                                                   ,i_update_item_rec.apply_date ) LOOP
-            -----------------
-            -- 原価ヘッダ
-            -----------------
-            lv_step := 'STEP-08230';
-            -- カレンダコード
-            l_opm_cost_header_rec.calendar_code     := l_cnp_cost_hd_rec.calendar_code;
-            -- 期間コード
-            l_opm_cost_header_rec.period_code       := l_cnp_cost_hd_rec.period_code;
-            -- 品目ID
-            l_opm_cost_header_rec.item_id           := i_update_item_rec.item_id;
-            --
-            lv_step := 'STEP-08240';
-            ln_cmp_cost_index := 0;
-            <<cnp_cost_dt_loop>>
-            FOR l_cnp_cost_dt_rec IN cnp_cost_dt_cur( i_update_item_rec.parent_item_id
-                                                     ,i_update_item_rec.item_id
-                                                     ,l_cnp_cost_hd_rec.calendar_code
-                                                     ,l_cnp_cost_hd_rec.period_code ) LOOP
-              -----------------
-              -- 原価明細
-              -----------------
-              lv_step := 'STEP-08250';
-              ln_cmp_cost_index := ln_cmp_cost_index + 1;
-              --
-              -- 原価ID
-              l_opm_cost_dist_tab( ln_cmp_cost_index ).cmpntcost_id     := l_cnp_cost_dt_rec.cmpntcost_id;
-              -- 原価コンポーネントID
-              l_opm_cost_dist_tab( ln_cmp_cost_index ).cost_cmpntcls_id := l_cnp_cost_dt_rec.cost_cmpntcls_id;
-              -- 原価
-              l_opm_cost_dist_tab( ln_cmp_cost_index ).cmpnt_cost       := l_cnp_cost_dt_rec.cmpnt_cost;
-            --
-            END LOOP cnp_cost_dt_loop;
-            --
-            --==============================================================
-            --A-6.2-6 標準原価の登録・更新
-            --==============================================================
-            lv_step := 'STEP-08260';
-            xxcmm_004common_pkg.proc_opmcost_ref(
-              i_cost_header_rec  =>  l_opm_cost_header_rec  -- 原価ヘッダレコードタイプ
-             ,i_cost_dist_tab    =>  l_opm_cost_dist_tab    -- 原価明細テーブルタイプ
-             ,ov_errbuf          =>  lv_errbuf              -- エラー・メッセージ           --# 固定 #
-             ,ov_retcode         =>  lv_retcode             -- リターン・コード             --# 固定 #
-             ,ov_errmsg          =>  lv_errmsg              -- ユーザー・エラー・メッセージ --# 固定 #
-            );
-            --
-            IF ( lv_retcode = cv_status_error ) THEN
-              --
-              lv_msg_token := cv_tkn_val_opmcost;
-              RAISE item_common_ins_expt;
-            END IF;
-            --
-          END LOOP cnp_cost_hd_loop;
-          --
-        END IF;
+--        lv_step := 'STEP-08210';
+--
+--        SELECT      COUNT( ccmd.ROWID )
+--        INTO        ln_exsits_count
+--        FROM        cm_cmpt_dtl    ccmd                          -- OPM標準原価
+--        WHERE       ccmd.item_id = i_update_item_rec.item_id     -- 品目ID
+--        AND         ROWNUM = 1;
+--        --
+--        -- 該当子品目に標準原価が登録されている場合、最新なので処理しない。
+--        -- ただし、変更前ステータスがＤの場合、最新の保証がないため更新する
+--        IF ( ln_exsits_count = 0
+--          OR i_update_item_rec.b_item_status = cn_itm_status_no_use ) THEN
+--          --
+--          --==============================================================
+--          --A-6.2-5 親品目の標準原価の取得
+--          --==============================================================
+--          -- 原価ヘッダ(カレンダコード、期間コード)の取得
+--          lv_step := 'STEP-08220';
+--          <<cnp_cost_hd_loop>>
+--          FOR l_cnp_cost_hd_rec IN cnp_cost_hd_cur( i_update_item_rec.parent_item_id
+--                                                   ,i_update_item_rec.apply_date ) LOOP
+--            -----------------
+--            -- 原価ヘッダ
+--            -----------------
+--            lv_step := 'STEP-08230';
+--            -- カレンダコード
+--            l_opm_cost_header_rec.calendar_code     := l_cnp_cost_hd_rec.calendar_code;
+--            -- 期間コード
+--            l_opm_cost_header_rec.period_code       := l_cnp_cost_hd_rec.period_code;
+--            -- 品目ID
+--            l_opm_cost_header_rec.item_id           := i_update_item_rec.item_id;
+--            --
+--            lv_step := 'STEP-08240';
+--            ln_cmp_cost_index := 0;
+--            <<cnp_cost_dt_loop>>
+--            FOR l_cnp_cost_dt_rec IN cnp_cost_dt_cur( i_update_item_rec.parent_item_id
+--                                                     ,i_update_item_rec.item_id
+--                                                     ,l_cnp_cost_hd_rec.calendar_code
+--                                                     ,l_cnp_cost_hd_rec.period_code ) LOOP
+--              -----------------
+--              -- 原価明細
+--              -----------------
+--              lv_step := 'STEP-08250';
+--              ln_cmp_cost_index := ln_cmp_cost_index + 1;
+--              --
+--              -- 原価ID
+--              l_opm_cost_dist_tab( ln_cmp_cost_index ).cmpntcost_id     := l_cnp_cost_dt_rec.cmpntcost_id;
+--              -- 原価コンポーネントID
+--              l_opm_cost_dist_tab( ln_cmp_cost_index ).cost_cmpntcls_id := l_cnp_cost_dt_rec.cost_cmpntcls_id;
+--              -- 原価
+--              l_opm_cost_dist_tab( ln_cmp_cost_index ).cmpnt_cost       := l_cnp_cost_dt_rec.cmpnt_cost;
+--            --
+--            END LOOP cnp_cost_dt_loop;
+--            --
+--            --==============================================================
+--            --A-6.2-6 標準原価の登録・更新
+--            --==============================================================
+--            lv_step := 'STEP-08260';
+--            xxcmm_004common_pkg.proc_opmcost_ref(
+--              i_cost_header_rec  =>  l_opm_cost_header_rec  -- 原価ヘッダレコードタイプ
+--             ,i_cost_dist_tab    =>  l_opm_cost_dist_tab    -- 原価明細テーブルタイプ
+--             ,ov_errbuf          =>  lv_errbuf              -- エラー・メッセージ           --# 固定 #
+--             ,ov_retcode         =>  lv_retcode             -- リターン・コード             --# 固定 #
+--             ,ov_errmsg          =>  lv_errmsg              -- ユーザー・エラー・メッセージ --# 固定 #
+--            );
+--            --
+--            IF ( lv_retcode = cv_status_error ) THEN
+--              --
+--              lv_msg_token := cv_tkn_val_opmcost;
+--              RAISE item_common_ins_expt;
+--            END IF;
+--            --
+--          END LOOP cnp_cost_hd_loop;
+--          --
+--        END IF;
 -- End1.9
+        --==============================================================
+        --A-6.2-5 親品目の標準原価の取得
+        --==============================================================
+        -- 原価ヘッダ(カレンダコード、期間コード)の取得
+        lv_step := 'STEP-08210';
+        <<cnp_cost_hd_loop>>
+        FOR l_cnp_cost_hd_rec IN cnp_cost_hd_cur( i_update_item_rec.parent_item_id
+                                                 ,i_update_item_rec.apply_date ) LOOP
+          -----------------
+          -- 原価ヘッダ
+          -----------------
+          lv_step := 'STEP-08220';
+          -- カレンダコード
+          l_opm_cost_header_rec.calendar_code     := l_cnp_cost_hd_rec.calendar_code;
+          -- 期間コード
+          l_opm_cost_header_rec.period_code       := l_cnp_cost_hd_rec.period_code;
+          -- 品目ID
+          l_opm_cost_header_rec.item_id           := i_update_item_rec.item_id;
+          --
+          lv_step := 'STEP-08230';
+          ln_cmp_cost_index := 0;
+          <<cnp_cost_dt_loop>>
+          FOR l_cnp_cost_dt_rec IN cnp_cost_dt_cur( i_update_item_rec.parent_item_id
+                                                   ,i_update_item_rec.item_id
+                                                   ,l_cnp_cost_hd_rec.calendar_code
+                                                   ,l_cnp_cost_hd_rec.period_code ) LOOP
+            -----------------
+            -- 原価明細
+            -----------------
+            lv_step := 'STEP-08240';
+            ln_cmp_cost_index := ln_cmp_cost_index + 1;
+            --
+            -- 原価ID
+            l_opm_cost_dist_tab( ln_cmp_cost_index ).cmpntcost_id     := l_cnp_cost_dt_rec.cmpntcost_id;
+            -- 原価コンポーネントID
+            l_opm_cost_dist_tab( ln_cmp_cost_index ).cost_cmpntcls_id := l_cnp_cost_dt_rec.cost_cmpntcls_id;
+            -- 原価
+            l_opm_cost_dist_tab( ln_cmp_cost_index ).cmpnt_cost       := l_cnp_cost_dt_rec.cmpnt_cost;
+          --
+          END LOOP cnp_cost_dt_loop;
+          --
+          --==============================================================
+          --A-6.2-6 標準原価の登録・更新
+          --==============================================================
+          lv_step := 'STEP-08250';
+          xxcmm_004common_pkg.proc_opmcost_ref(
+            i_cost_header_rec  =>  l_opm_cost_header_rec  -- 原価ヘッダレコードタイプ
+           ,i_cost_dist_tab    =>  l_opm_cost_dist_tab    -- 原価明細テーブルタイプ
+           ,ov_errbuf          =>  lv_errbuf              -- エラー・メッセージ           --# 固定 #
+           ,ov_retcode         =>  lv_retcode             -- リターン・コード             --# 固定 #
+           ,ov_errmsg          =>  lv_errmsg              -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+          --
+          IF ( lv_retcode = cv_status_error ) THEN
+            --
+            lv_msg_token := cv_tkn_val_opmcost;
+            RAISE item_common_ins_expt;
+          END IF;
+          --
+        END LOOP cnp_cost_hd_loop;
+-- 2009/10/16 Ver1.13 modify end by Yutaka.Kuboshima
       END IF;
       --
       --==============================================================
@@ -2660,6 +2734,12 @@ AS
 -- Ver1.9  2009/07/06  Add  障害対応(0000364)
     ln_cmpnt_cost_sum          cm_cmpt_dtl.cmpnt_cost%TYPE;
 -- End1.9
+--
+-- 2009/10/16 Ver1.13 障害0001423 add start by Y.Kuboshima
+    lv_parent_code             ic_item_mst_b.item_no%TYPE;            -- 親品目コード
+    ln_parent_status           xxcmm_system_items_b.item_status%TYPE; -- 親品目ステータス
+    lv_parent_status_name      fnd_lookup_values.meaning%TYPE;        -- 親品目ステータス名
+-- 2009/10/16 Ver1.13 障害0001423 add end by Y.Kuboshima
     --
     -- ===============================
     -- ユーザー定義例外
@@ -2678,6 +2758,10 @@ AS
 -- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
     cost_decimal_chk_expt      EXCEPTION;    -- 標準原価小数エラー
 -- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+    --
+-- 2009/10/16 Ver1.13 障害0001423 add start by Y.Kuboshima
+    parent_st_regist_chk_expt  EXCEPTION;    -- 親品目本登録ステータスチェックエラー
+-- 2009/10/16 Ver1.13 障害0001423 add start by Y.Kuboshima
     --
   BEGIN
     --
@@ -2719,24 +2803,71 @@ AS
     AND   ( i_update_item_rec.item_status != cn_itm_status_no_use ) THEN
       --
       lv_step := 'STEP-07020';
-      -- 親品目のステータスチェック
-      SELECT      COUNT( xoiv.item_id )
-      INTO        ln_exists_cnt
-      FROM        xxcmm_opmmtl_items_v      xoiv                                -- 品目ビュー
-      WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id    -- 親品目
--- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
---      AND         xoiv.start_date_active <= TRUNC( SYSDATE )                    -- 適用開始日
---      AND         xoiv.end_date_active   >= TRUNC( SYSDATE )                    -- 適用終了日
-      AND         xoiv.start_date_active <= gd_process_date                     -- 適用開始日
-      AND         xoiv.end_date_active   >= gd_process_date                     -- 適用終了日
--- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
-      AND         xoiv.item_status        = cn_itm_status_no_use                -- Ｄ以外
-      AND         ROWNUM = 1;
-      --
-      IF ( ln_exists_cnt = 1 ) THEN
-        RAISE parent_status_chk_expt;
+-- 2009/10/16 Ver1.13 障害0001423 modify start by Y.Kuboshima
+--      -- 親品目のステータスチェック
+--      SELECT      COUNT( xoiv.item_id )
+--      INTO        ln_exists_cnt
+--      FROM        xxcmm_opmmtl_items_v      xoiv                                -- 品目ビュー
+--      WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id    -- 親品目
+---- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+----      AND         xoiv.start_date_active <= TRUNC( SYSDATE )                    -- 適用開始日
+----      AND         xoiv.end_date_active   >= TRUNC( SYSDATE )                    -- 適用終了日
+--      AND         xoiv.start_date_active <= gd_process_date                     -- 適用開始日
+--      AND         xoiv.end_date_active   >= gd_process_date                     -- 適用終了日
+---- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
+--      AND         xoiv.item_status        = cn_itm_status_no_use                -- Ｄ以外
+--      AND         ROWNUM = 1;
+--      --
+--      IF ( ln_exists_cnt = 1 ) THEN
+--        RAISE parent_status_chk_expt;
+--      END IF;
+      -- 本登録にステータス変更時、親品目のステータスが本登録以外の場合はエラー
+      IF (i_update_item_rec.item_status = cn_itm_status_regist ) THEN
+        BEGIN
+          -- 親品目コード、親品目ステータス取得
+          SELECT xoiv.item_no
+                ,xoiv.item_status
+                ,flvv.meaning
+          INTO   lv_parent_code
+                ,ln_parent_status
+                ,lv_parent_status_name
+          FROM   xxcmm_opmmtl_items_v xoiv
+                ,fnd_lookup_values_vl flvv
+          WHERE  TO_CHAR(xoiv.item_status) = flvv.lookup_code
+          AND    xoiv.item_id              = i_update_item_rec.parent_item_id    -- 親品目
+          AND    xoiv.start_date_active   <= gd_process_date                     -- 適用開始日
+          AND    xoiv.end_date_active     >= gd_process_date                     -- 適用終了日
+          AND    flvv.lookup_type          = cv_lookup_item_status
+          AND    ROWNUM = 1;
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_parent_code        := NULL;
+            ln_parent_status      := -1;
+            lv_parent_status_name := NULL;
+        END;
+        --
+        -- 親品目のステータスチェック
+        -- 本登録以外の場合はエラー
+        IF ( ln_parent_status <> cn_itm_status_regist ) THEN
+          RAISE parent_st_regist_chk_expt;
+        END IF;
+      -- 本登録以外にステータス変更時、親品目のステータスがＤの場合はエラー
+      ELSE
+        -- 親品目のステータスチェック
+        SELECT      COUNT( xoiv.item_id )
+        INTO        ln_exists_cnt
+        FROM        xxcmm_opmmtl_items_v      xoiv                                -- 品目ビュー
+        WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id    -- 親品目
+        AND         xoiv.start_date_active <= gd_process_date                     -- 適用開始日
+        AND         xoiv.end_date_active   >= gd_process_date                     -- 適用終了日
+        AND         xoiv.item_status        = cn_itm_status_no_use                -- Ｄ
+        AND         ROWNUM = 1;
+        --
+        IF ( ln_exists_cnt = 1 ) THEN
+          RAISE parent_status_chk_expt;
+        END IF;
       END IF;
-      --
+-- 2009/10/16 Ver1.13 障害0001423 modify end by Y.Kuboshima
     END IF;
 -- End
     --
@@ -3158,6 +3289,26 @@ AS
       ov_retcode := cv_status_error;
       --
 -- End
+--
+--
+-- 2009/10/16 Ver1.13 障害0001423 add start by Y.Kuboshima
+    -- *** 親品目本登録ステータスチェック例外ハンドラ ***
+    WHEN parent_st_regist_chk_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_00492                    -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item_code                      -- トークンコード1
+                     ,iv_token_value1 => i_update_item_rec.item_no             -- トークン値1
+                     ,iv_token_name2  => cv_tkn_parent_item                    -- トークンコード2
+                     ,iv_token_value2 => lv_parent_code                        -- トークン値2
+                     ,iv_token_name3  => cv_tkn_item_status                    -- トークンコード3
+                     ,iv_token_value3 => lv_parent_status_name                 -- トークン値3
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+-- 2009/10/16 Ver1.13 障害0001423 add end by Y.Kuboshima
 --
 -- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
     -- *** 標準原価小数チェック例外ハンドラ ***

@@ -69,6 +69,8 @@ AS
  *                                                   OPM品目アドオン 工場群,賞味期間区分,賞味期間,消費期間,納入期間,ケース重量容積,
  *                                                                   原料使用量,標準歩留,型種別,商品分類,商品種別,パレ配数,
  *                                                                   パレ段数,容器区分,単位区分,棚卸区分,トレース区分
+ *  2009/10/14    1.16  Y.Kuboshima      障害0001370 以下項目0以下の場合、エラーとするように修正
+ *                                                   ケース入数、ケース換算入数、NET、重量/体積、内容量、内訳入数、配数、段数
  *
  *****************************************************************************************/
 --
@@ -176,6 +178,10 @@ AS
 -- 2009/06/04 Ver1.8 障害T1_1319 Add start
   cv_msg_xxcmm_00474     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00474';                              -- 品名コード数値エラー
 -- 2009/06/04 Ver1.8 障害T1_1319 End
+--
+-- 2009/10/14 Ver1.13 障害0001370 add start by Y.Kuboshima
+  cv_msg_xxcmm_00493     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00493';                              -- 項目数値不正エラー
+-- 2009/10/14 Ver1.13 障害0001370 add end by Y.Kuboshima
 --
   -- トークン
   cv_tkn_value           CONSTANT VARCHAR2(20)  := 'VALUE';                                         --
@@ -337,6 +343,12 @@ AS
   cv_list_price          CONSTANT VARCHAR2(30)  := '定価';                                          --
   cv_standard_price      CONSTANT VARCHAR2(30)  := '標準原価';                                      --
   cv_business_price      CONSTANT VARCHAR2(30)  := '営業原価';                                      --
+-- 2009/10/14 障害0001370 add start by Y.Kuboshima
+  cv_case_conv_inc_num   CONSTANT VARCHAR2(30)  := 'ケース換算入数';                                --
+  cv_net                 CONSTANT VARCHAR2(30)  := 'ＮＥＴ';                                        --
+  cv_pale_max_cs_qty     CONSTANT VARCHAR2(30)  := '配数';                                          --
+  cv_pale_max_step_qty   CONSTANT VARCHAR2(30)  := '段数';                                          --
+-- 2009/10/14 障害0001370 add end by Y.Kuboshima
 --
   cv_yes                 CONSTANT VARCHAR2(1)   := 'Y';                                             --
   cv_no                  CONSTANT VARCHAR2(1)   := 'N';                                             --
@@ -2713,7 +2725,61 @@ AS
           ELSE
             lv_required_item := lv_required_item || cv_msg_comma_double || cv_case_inc_num;
           END IF;
+-- 2009/10/14 障害0001370 add start by Y.Kuboshima
+        -- ケース入数が0以下の場合
+        ELSIF ( i_wk_item_rec.case_inc_num < 1 ) THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm           -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_00493           -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                 -- トークンコード1
+                        ,iv_token_value1 => cv_case_inc_num              -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                 -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.case_inc_num   -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no         -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.line_no        -- トークン値3
+                        ,iv_token_name4  => cv_tkn_input_item_code       -- トークンコード4
+                        ,iv_token_value4 => i_wk_item_rec.item_code      -- トークン値4
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+-- 2009/10/14 障害0001370 add end by Y.Kuboshima
         END IF;
+        --
+-- 2009/10/14 障害0001370 add start by Y.Kuboshima
+        -- ケース換算入数
+        -- ケース換算入数がNOT NULLかつ、0以下の場合
+        -- ※ケース換算入数がNULLの場合は自動計算されるため、エラーチェックはNOT NULLの場合のみ
+        IF    ( i_wk_item_rec.case_conv_inc_num  IS NOT NULL)
+          AND ( i_wk_item_rec.case_conv_inc_num < 1 )
+        THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm              -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_00493              -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                    -- トークンコード1
+                        ,iv_token_value1 => cv_case_conv_inc_num            -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                    -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.case_conv_inc_num -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no            -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.line_no           -- トークン値3
+                        ,iv_token_name4  => cv_tkn_input_item_code          -- トークンコード4
+                        ,iv_token_value4 => i_wk_item_rec.item_code         -- トークン値4
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+        END IF;
+-- 2009/10/14 障害0001370 add end by Y.Kuboshima
         --
         -- 基準単位
         IF ( i_wk_item_rec.item_um IS NULL ) THEN
@@ -2749,6 +2815,30 @@ AS
           ELSE
             lv_required_item := lv_required_item || cv_msg_comma_double || cv_weight_volume;
           END IF;
+-- 2009/10/14 障害0001370 add start by Y.Kuboshima
+        -- 重量／体積が0以下の場合
+        ELSIF ( i_wk_item_rec.weight_volume < 1 ) THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm           -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_00493           -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                 -- トークンコード1
+                        ,iv_token_value1 => cv_weight_volume             -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                 -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.weight_volume  -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no         -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.line_no        -- トークン値3
+                        ,iv_token_name4  => cv_tkn_input_item_code       -- トークンコード4
+                        ,iv_token_value4 => i_wk_item_rec.item_code      -- トークン値4
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+-- 2009/10/14 障害0001370 add end by Y.Kuboshima
         END IF;
         --
         -- 内容量
@@ -2758,6 +2848,30 @@ AS
           ELSE
             lv_required_item := lv_required_item || cv_msg_comma_double || cv_nets;
           END IF;
+-- 2009/10/14 障害0001370 add start by Y.Kuboshima
+        -- 内容量が0以下の場合
+        ELSIF ( i_wk_item_rec.nets < 1 ) THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm           -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_00493           -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                 -- トークンコード1
+                        ,iv_token_value1 => cv_nets                      -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                 -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.nets           -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no         -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.line_no        -- トークン値3
+                        ,iv_token_name4  => cv_tkn_input_item_code       -- トークンコード4
+                        ,iv_token_value4 => i_wk_item_rec.item_code      -- トークン値4
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+-- 2009/10/14 障害0001370 add end by Y.Kuboshima
         END IF;
         --
         -- 内容量単位
@@ -2776,6 +2890,30 @@ AS
           ELSE
             lv_required_item := lv_required_item || cv_msg_comma_double || cv_inc_num;
           END IF;
+-- 2009/10/14 障害0001370 add start by Y.Kuboshima
+        -- 内訳入数が0以下の場合
+        ELSIF ( i_wk_item_rec.inc_num < 1 ) THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm           -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_00493           -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                 -- トークンコード1
+                        ,iv_token_value1 => cv_inc_num                   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                 -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.inc_num        -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no         -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.line_no        -- トークン値3
+                        ,iv_token_name4  => cv_tkn_input_item_code       -- トークンコード4
+                        ,iv_token_value4 => i_wk_item_rec.item_code      -- トークン値4
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+-- 2009/10/14 障害0001370 add end by Y.Kuboshima
         END IF;
         --
 -- Ver1.7  2009/04/10  Add  障害T1_0219 対応
@@ -2809,8 +2947,93 @@ AS
             );
             lv_check_flag := cv_status_error;
           END IF;
+-- 2009/10/14 障害0001370 add start by Y.Kuboshima
+        -- NETがNOT NULLかつ、0以下の場合
+        -- ※NETがNULLの場合は自動計算されるため、エラーチェックはNOT NULLの場合のみ
+        ELSIF ( i_wk_item_rec.net IS NOT NULL )
+          AND ( i_wk_item_rec.net < 1 )
+        THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm           -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_00493           -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                 -- トークンコード1
+                        ,iv_token_value1 => cv_net                       -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                 -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.net            -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no         -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.line_no        -- トークン値3
+                        ,iv_token_name4  => cv_tkn_input_item_code       -- トークンコード4
+                        ,iv_token_value4 => i_wk_item_rec.item_code      -- トークン値4
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+-- 2009/10/14 障害0001370 add end by Y.Kuboshima
         END IF;
 -- End
+-- 2009/10/14 障害0001370 add start by Y.Kuboshima
+        -- 配数
+        -- 配数がNOT NULLかつ、0以下の場合
+        -- ※配数のNULLチェックは後続で行うため、ここではNULLチェックは行わない
+        IF    ( i_wk_item_rec.palette_max_cs_qty  IS NOT NULL)
+          AND ( i_wk_item_rec.palette_max_cs_qty < 1 )
+        THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm               -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_00493               -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                     -- トークンコード1
+                        ,iv_token_value1 => cv_pale_max_cs_qty               -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                     -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.palette_max_cs_qty -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no             -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.line_no            -- トークン値3
+                        ,iv_token_name4  => cv_tkn_input_item_code           -- トークンコード4
+                        ,iv_token_value4 => i_wk_item_rec.item_code          -- トークン値4
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+        END IF;
+        --
+        -- 段数
+        -- 段数がNOT NULLかつ、0以下の場合
+        -- ※段数のNULLチェックは後続で行うため、ここではNULLチェックは行わない
+        IF    ( i_wk_item_rec.palette_max_step_qty  IS NOT NULL)
+          AND ( i_wk_item_rec.palette_max_step_qty < 1 )
+        THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_appl_name_xxcmm                 -- アプリケーション短縮名
+                        ,iv_name         => cv_msg_xxcmm_00493                 -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_input                       -- トークンコード1
+                        ,iv_token_value1 => cv_pale_max_step_qty               -- トークン値1
+                        ,iv_token_name2  => cv_tkn_value                       -- トークンコード2
+                        ,iv_token_value2 => i_wk_item_rec.palette_max_step_qty -- トークン値2
+                        ,iv_token_name3  => cv_tkn_input_line_no               -- トークンコード3
+                        ,iv_token_value3 => i_wk_item_rec.line_no              -- トークン値3
+                        ,iv_token_name4  => cv_tkn_input_item_code             -- トークンコード4
+                        ,iv_token_value4 => i_wk_item_rec.item_code            -- トークン値4
+                       );
+          -- メッセージ出力
+          xxcmm_004common_pkg.put_message(
+            iv_message_buff => lv_errmsg
+           ,ov_errbuf       => lv_errbuf
+           ,ov_retcode      => lv_retcode
+           ,ov_errmsg       => lv_errmsg
+          );
+          lv_check_flag := cv_status_error;
+        END IF;
+-- 2009/10/14 障害0001370 add end by Y.Kuboshima
+        --
         -- 本社商品区分
         IF ( i_wk_item_rec.hon_product_class IS NULL ) THEN
           IF ( lv_required_item IS NULL ) THEN
