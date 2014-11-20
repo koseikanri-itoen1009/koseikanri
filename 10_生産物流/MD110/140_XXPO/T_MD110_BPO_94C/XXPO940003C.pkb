@@ -1,4 +1,5 @@
-CREATE OR REPLACE PACKAGE BODY xxpo940003c
+create or replace
+PACKAGE BODY xxpo940003c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -7,7 +8,7 @@ AS
  * Description      : ロット在庫情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : ロット在庫情報抽出処理        T_MD070_BPO_94C
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,7 +28,8 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/06/18    1.0   Oracle 大橋 孝郎 初回作成
- *  2008/08/01    1.1   Oracle 吉田 夏樹 ST不具合対応&PT対応
+ *  2008/08/01    1.1   Oracle 吉田 夏樹 ST不具合対応
+ *  2008/08/04    1.2   Oracle 吉田 夏樹 PT対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -793,6 +795,9 @@ AS
 -- 2008/08/01 PT対応 1.1 modify end
 --
     -- *** ローカル・カーソル ***
+    
+-- 2008/08/03 PT対応 1.2 modify start
+/*
     CURSOR mst_data_cur
     IS
       SELECT  iiim.segment1                                            AS segment1          -- 保管倉庫コード
@@ -1067,6 +1072,264 @@ AS
                --TO_NUMBER(iiim.lot_id);
                TO_NUMBER(DECODE(iiim.lot_ctl, gv_lot_code0, '0', iiim.lot_no));
 -- 2008/08/01 PT対応 1.1 modify end
+*/
+    CURSOR mst_data_cur
+    IS
+      SELECT  iiim.segment1                                            AS segment1          -- 保管倉庫コード
+             ,iiim.inventory_location_id                               AS inventory_location_id -- 保管倉庫ID
+             ,NVL(ili.loct_onhand, cn_zero)                            AS loct_onhand       -- 手持数量
+             ,iiim.attribute8                                          AS vendor_code       -- 取引先(DFF8)
+             ,REPLACE(iiim.vendor_full_name,gv_sep_com)                AS vendor_full_name  -- 正式名(仕入先)
+             ,REPLACE(iiim.vendor_short_name,gv_sep_com)               AS vendor_short_name -- 略称(仕入先)
+             ,iiim.item_id                                             AS item_id           -- 品目ID
+             ,iiim.item_no                                             AS item_no           -- 品目コード
+             ,REPLACE(iiim.item_name,gv_sep_com)                       AS item_name         -- 品名・正式名
+             ,REPLACE(iiim.item_short_name,gv_sep_com)                 AS item_short_name   -- 品名・略称
+             ,iiim.lot_id                                              AS lot_id            -- ロットID
+             ,DECODE(iiim.lot_ctl, gv_lot_code0, NULL, iiim.lot_no)    AS lot_no            -- ロットNo
+             ,FND_DATE.STRING_TO_DATE(iiim.attribute1, gv_date_format) AS product_date      -- 製造年月日(DFF1)
+             ,FND_DATE.STRING_TO_DATE(iiim.attribute3, gv_date_format) AS use_by_date       -- 賞味期限(DFF3)
+             ,iiim.attribute2                                          AS original_char     -- 固有記号(DFF2)
+             ,iiim.attribute20                                         AS manu_factory      -- 製造工場(DFF20)
+             ,iiim.attribute21                                         AS manu_lot          -- 製造ロット(DFF21)
+             ,iiim.attribute12                                         AS home              -- 産地(DFF12)
+             ,iiim.attribute14                                         AS rank1             -- ランク1(DFF14)
+             ,iiim.attribute15                                         AS rank2             -- ランク2(DFF15)
+             ,REPLACE(iiim.attribute18,gv_sep_com)                     AS description       -- 摘要(DFF18)
+             ,iiim.attribute22                                         AS qt_inspect_req_no -- 検査依頼番号(DFF22)
+             ,FND_DATE.STRING_TO_DATE(iiim.inspect_due_date1, gv_date_format) AS inspect_due_date1 -- 検査予定日1
+             ,FND_DATE.STRING_TO_DATE(iiim.test_date1, gv_date_format)        AS test_date1        -- 検査日1
+             ,iiim.qt_effect1                                           AS qt_effect1        -- 結果1
+             ,FND_DATE.STRING_TO_DATE(iiim.inspect_due_date2, gv_date_format) AS inspect_due_date2 -- 検査予定日2
+             ,FND_DATE.STRING_TO_DATE(iiim.test_date2, gv_date_format)  AS test_date2        -- 検査日2
+             ,iiim.qt_effect2                                           AS qt_effect2        -- 結果2
+             ,FND_DATE.STRING_TO_DATE(iiim.inspect_due_date3, gv_date_format) AS inspect_due_date3 -- 検査予定日3
+             ,FND_DATE.STRING_TO_DATE(iiim.test_date3, gv_date_format)        AS test_date3        -- 検査日3
+             ,iiim.qt_effect3                                           AS qt_effect3        -- 結果3
+      FROM   (SELECT xilv.segment1,              -- 保管倉庫
+                     xilv.inventory_location_id, -- 保管倉庫ID
+                     xilv.mtl_organization_id,   -- 在庫組織ID
+                     xilv.frequent_whse,         -- 代表倉庫
+                     xilv.customer_stock_whse,   -- 倉庫名義
+                     ximv.item_id,               -- 品目ID
+                     ximv.item_name,             -- 品名・正式名
+                     ximv.item_short_name,       -- 品名・略称
+                     ximv.item_no,               -- 品目コード
+                     ximv.lot_ctl,               -- ロット管理区分
+                     ilm.lot_id,                 -- ロットID
+                     ilm.lot_no,                 -- ロットNo
+                     ilm.attribute1,
+                     ilm.attribute2,
+                     ilm.attribute3,
+                     ilm.attribute8,
+                     ilm.attribute12,
+                     ilm.attribute14,
+                     ilm.attribute15,
+                     ilm.attribute18,
+                     ilm.attribute20,
+                     ilm.attribute21,
+                     ilm.attribute22,
+                     xvv.vendor_full_name,       -- 正式名(仕入先)
+                     xvv.vendor_short_name,      -- 略称(仕入先)
+                     xqi.inspect_due_date1,      -- 検査予定日1
+                     xqi.test_date1,             -- 検査日1
+                     xqi.qt_effect1,             -- 結果1
+                     xqi.inspect_due_date2,      -- 検査予定日2
+                     xqi.test_date2,             -- 検査日2
+                     xqi.qt_effect2,             -- 結果2
+                     xqi.inspect_due_date3,      -- 検査予定日3
+                     xqi.test_date3,             -- 検査日3
+                     xqi.qt_effect3              -- 結果3
+              FROM   xxcmn_item_mst_v         ximv,    -- OPM品目マスタ情報VIEW
+                     ic_lots_mst              ilm,     -- OPMロットマスタ
+                     xxcmn_item_locations_v   xilv,    -- OPM保管場所情報VIEW
+                     xxcmn_item_categories5_v xicv,    -- OPM品目カテゴリ割当情報VIEW5
+                     xxwip_qt_inspection      xqi,     -- 品質検査依頼情報
+                     xxcmn_vendors_v          xvv      -- 仕入先情報
+              WHERE  ximv.item_id            = ilm.item_id
+              -- 品目区分(必須)
+              AND    xicv.item_class_code    = gv_item_class
+              -- 商品区分(必須)
+              AND    xicv.prod_class_code    = gv_prod_class
+              AND    xicv.item_id            = ximv.item_id
+              AND  ((ximv.lot_ctl            = gv_lot_code1
+                AND  ilm.lot_id             <> cn_zero)
+                OR   ximv.lot_ctl            = gv_lot_code0)
+              AND    ilm.attribute8          = xvv.segment1(+)
+              AND    TO_NUMBER(ilm.attribute22) = xqi.qt_inspect_req_no(+)
+              -- セキュリティ区分
+              AND    (
+                -- 伊藤園ユーザータイプ
+                   (gv_sec_class = gv_sec_class_home
+                     AND (
+                          (gv_whse IS NULL)
+                        OR (
+                             -- 検索条件：代表倉庫区分が'Y'
+                             (gv_frequent_whse_div = 'Y'
+                                AND ( EXISTS (SELECT '1'
+                                             FROM   xxcmn_item_locations_v xilv_fr1
+                                             WHERE  xilv.frequent_whse     = xilv_fr1.segment1
+                                             AND    xilv_fr1.frequent_whse = gv_whse)
+                                    OR( (xilv.frequent_whse     = lv_prof_xdfw)      -- ダミー代表倉庫
+                                      AND ( EXISTS (SELECT '1'
+                                                   FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                                        ,xxcmn_item_locations_v xilv_fr2
+                                                   WHERE xfil.item_location_code     = xilv.segment1
+                                                   AND   xfil.item_id                = ximv.item_id
+                                                   AND   xfil.frq_item_location_code = xilv_fr2.segment1
+                                                   AND   xilv_fr2.frequent_whse      = gv_whse)))))
+                                -- 検索条件：代表倉庫区分が'N'
+                                OR (gv_frequent_whse_div = 'N'
+                                   AND xilv.segment1 = gv_whse)
+                           )
+                         )
+                   )
+                -- 仕入先ユーザータイプ
+               OR  (gv_sec_class = gv_sec_class_vend
+                      AND ilm.attribute8 IN
+                        (SELECT papf.attribute4            -- 取引先コード(仕入先コード)
+                         FROM   fnd_user           fu      -- ユーザーマスタ
+                               ,per_all_people_f   papf    -- 従業員マスタ
+                         WHERE  fu.employee_id   = papf.person_id                   -- 従業員ID
+                         AND    papf.effective_start_date <= TRUNC(gd_sys_date)     -- 適用開始日
+                         AND    papf.effective_end_date   >= TRUNC(gd_sys_date)     -- 適用終了日
+                         AND    fu.start_date             <= TRUNC(gd_sys_date)     -- 適用開始日
+                         AND  ((fu.end_date               IS NULL)                  -- 適用終了日
+                           OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                         AND    fu.user_id                 = gn_user_id)            -- ユーザーID
+                      AND (
+                         -- 検索条件：倉庫が入力済
+                            (gv_whse IS NULL)
+                         OR (xilv.segment1 = gv_whse)
+                          )
+                   )
+                -- 外部倉庫ユーザータイプ
+               OR  (gv_sec_class = gv_sec_class_extn
+                      AND (
+                          xilv.segment1 IN
+                            (SELECT xilv2.segment1                     -- 保管倉庫コード
+                             FROM   fnd_user               fu          -- ユーザーマスタ
+                                   ,per_all_people_f       papf        -- 従業員マスタ
+                                   ,xxcmn_item_locations_v xilv2       -- OPM保管場所情報VIEW
+                             WHERE  fu.employee_id             = papf.person_id         -- 従業員ID
+                             AND    papf.effective_start_date <= TRUNC(gd_sys_date)     -- 適用開始日
+                             AND    papf.effective_end_date   >= TRUNC(gd_sys_date)     -- 適用終了日
+                             AND    fu.start_date             <= TRUNC(gd_sys_date)     -- 適用開始日
+                             AND  ((fu.end_date               IS NULL)                  -- 適用終了日
+                               OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                             AND    xilv.purchase_code         = papf.attribute4        -- 仕入先コード
+                             AND    fu.user_id                 = gn_user_id             -- ユーザーID
+                            )
+                        OR xilv.segment1 IN
+                            (SELECT xvs.vendor_stock_whse              -- 相手先在庫入庫先
+                             FROM   fnd_user               fu          -- ユーザーマスタ
+                                   ,per_all_people_f       papf        -- 従業員マスタ
+                                   ,xxcmn_vendor_sites_v   xvs         -- 仕入先サイト情報VIEW
+                             WHERE  fu.employee_id             = papf.person_id         -- 従業員ID
+                             AND    papf.effective_start_date <= TRUNC(gd_sys_date)     -- 適用開始日
+                             AND    papf.effective_end_date   >= TRUNC(gd_sys_date)     -- 適用終了日
+                             AND    fu.start_date             <= TRUNC(gd_sys_date)     -- 適用開始日
+                             AND  ((fu.end_date               IS NULL)                  -- 適用終了日
+                               OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                             AND    xvs.vendor_id              = papf.attribute4        -- 仕入先コード
+                             AND    xvs.vendor_site_code       = papf.attribute6        -- 仕入先サイト名
+                             AND    fu.user_id                 = gn_user_id             -- ユーザーID
+                            )
+                         )
+                      AND (
+                            -- 検索条件：倉庫が入力済
+                            (gv_whse IS NULL)
+                          OR (
+                               -- 検索条件：代表倉庫区分が'Y'
+                             (gv_frequent_whse_div = 'Y'
+                                AND ((EXISTS (SELECT '1'
+                                             FROM   xxcmn_item_locations_v xilv_fr3
+                                             WHERE  xilv.frequent_whse     = xilv_fr3.segment1
+                                             AND    xilv_fr3.frequent_whse = gv_whse))
+                                    OR(   (xilv.frequent_whse     = lv_prof_xdfw)      -- ダミー代表倉庫
+                                      AND ( EXISTS (SELECT '1'
+                                                   FROM  xxwsh_frq_item_locations xfil -- 品目別保管倉庫
+                                                        ,xxcmn_item_locations_v xilv_fr4
+                                                   WHERE xfil.item_location_code     = xilv.segment1
+                                                   AND   xfil.item_id                = ximv.item_id
+                                                   AND   xfil.frq_item_location_code = xilv_fr4.segment1
+                                                   AND   xilv_fr4.frequent_whse      = gv_whse)))))
+                             -- 検索条件：代表倉庫区分が'N'
+                             OR (gv_frequent_whse_div = 'N'
+                                AND xilv.segment1 = gv_whse)
+                            )
+                          )
+                   )
+                -- 東洋埠頭ユーザータイプ
+                   OR     (gv_sec_class = gv_sec_class_quay
+                     AND (
+                          ilm.attribute8 IN
+                            (SELECT papf.attribute4            -- 取引先コード(仕入先コード)
+                             FROM   fnd_user           fu      -- ユーザーマスタ
+                                   ,per_all_people_f   papf    -- 従業員マスタ
+                             WHERE  fu.employee_id   = papf.person_id                   -- 従業員ID
+                             AND    papf.effective_start_date <= TRUNC(gd_sys_date)     -- 適用開始日
+                             AND    papf.effective_end_date   >= TRUNC(gd_sys_date)     -- 適用終了日
+                             AND    fu.start_date             <= TRUNC(gd_sys_date)     -- 適用開始日
+                             AND  ((fu.end_date               IS NULL)                  -- 適用終了日
+                               OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                             AND    fu.user_id                 = gn_user_id             -- ユーザーID
+                            )
+                        OR ilm.attribute8 IN
+                            (SELECT xv.segment1                -- 取引先コード(仕入先コード)
+                             FROM   fnd_user           fu      -- ユーザーマスタ
+                                   ,per_all_people_f   papf    -- 従業員マスタ
+                                   ,xxcmn_vendors_v    xv      -- 仕入先情報VIEW
+                             WHERE  fu.employee_id   = papf.person_id                   -- 従業員ID
+                             AND    papf.effective_start_date <= TRUNC(gd_sys_date)     -- 適用開始日
+                             AND    papf.effective_end_date   >= TRUNC(gd_sys_date)     -- 適用終了日
+                             AND    fu.start_date             <= TRUNC(gd_sys_date)     -- 適用開始日
+                             AND  ((fu.end_date               IS NULL)                  -- 適用終了日
+                               OR  (fu.end_date               >= TRUNC(gd_sys_date)))
+                             AND    xv.spare3                  = papf.attribute4        -- 取引先コード(関連取引)
+                             AND    fu.user_id                 = gn_user_id             -- ユーザーID
+                            )
+                        )
+                    AND (
+                          -- 検索条件：倉庫が入力済
+                         ((gv_whse IS NULL)
+                      OR  (xilv.segment1 = gv_whse))
+                        )
+                   )
+             )) iiim,
+            ic_loct_inv              ili     -- OPM手持数量
+      -- 抽出条件(検索値)
+      WHERE  
+             iiim.item_id            = ili.item_id(+)
+      AND    iiim.segment1           = ili.location(+)
+      AND    iiim.lot_id             = ili.lot_id(+)
+      AND    NVL(ili.last_update_date, SYSDATE) >= ld_target_date
+      -- 取引先
+      AND   ((gv_vendor_id IS NULL) OR (iiim.attribute8 = gv_vendor_id))
+      -- 品目
+      AND   ((gv_item_no IS NULL) OR (iiim.item_no = gv_item_no))
+      -- ロット
+      AND   ((gv_lot_no IS NULL) OR (iiim.lot_no = gv_lot_no))
+      -- 製造日
+      AND   ((gv_manufacture_date IS NULL) OR (iiim.attribute1 = gv_manufacture_date))
+      -- 賞味期限
+      AND   ((gv_expiration_date IS NULL) OR (iiim.attribute3 = gv_expiration_date))
+      -- 固有記号
+      AND   ((gv_uniqe_sign IS NULL) OR (iiim.attribute2 = gv_uniqe_sign))
+      -- 製造工場
+      AND   ((gv_mf_factory IS NULL) OR (iiim.attribute20 = gv_mf_factory))
+      -- 製造ロット番号
+      AND   ((gv_mf_lot IS NULL) OR (iiim.attribute21 = gv_mf_lot))
+      -- 産地
+      AND   ((gv_home IS NULL) OR (iiim.attribute12 = gv_home))
+      -- R1
+      AND   ((gv_r1 IS NULL) OR (iiim.attribute14 = gv_r1))
+      -- R2
+      AND   ((gv_r2 IS NULL) OR (iiim.attribute15 = gv_r2))
+      ORDER BY TO_NUMBER(iiim.attribute8),
+               iiim.item_no,
+               TO_NUMBER(DECODE(iiim.lot_ctl, gv_lot_code0, '0', iiim.lot_no));
+-- 2008/08/03 PT対応 1.2 modify end
 --
     -- *** ローカル・レコード ***
     lr_mst_data_rec mst_data_cur%ROWTYPE;
