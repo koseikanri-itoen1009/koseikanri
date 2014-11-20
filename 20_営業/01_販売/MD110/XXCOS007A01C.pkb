@@ -7,7 +7,7 @@ AS
  * Description      : 納品予定日の到来した拠点出荷の受注に対して販売実績を作成し、
  *                    販売実績を作成した受注をクローズします。
  * MD.050           : 出荷確認（納品予定日）  MD050_COS_007_A01
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -62,6 +62,8 @@ AS
  *  2010/02/01    1.13  S.Karikomi       [E_T4_00195] カレンダのクローズの確認をINVカレンダに変更
  *  2010/03/08    1.14  N.Maeda          [E_本稼動_01725] 販売実績連携用売上拠点の判定条件修正
  *  2010/05/11    1.15  M.Sano           [E_本稼動_02628] A-4.の異常終了を警告スキップに変更
+ *  2010/05/18    1.16  M.Sano           [E_本稼動_02766] PT対応
+ *                                                        成績者の所属拠点チェックエラーに納品予定日追加
  *
  *****************************************************************************************/
 --
@@ -198,8 +200,12 @@ AS
                                        :=  'APP-XXCOS1-00193';   -- 成績計上者所属拠点不整合エラー
   cv_msg_err_param1_note    CONSTANT fnd_new_messages.message_name%TYPE
                                        :=  'APP-XXCOS1-00194';   -- 成績計上者所属拠点不整合エラー用パラメータ(売上拠点)
+-- 2010/05/18 Ver1.16 M.Sano Mod Start
+--  cv_msg_err_param2_note    CONSTANT fnd_new_messages.message_name%TYPE
+--                                       :=  'APP-XXCOS1-00195';   -- 成績計上者所属拠点不整合エラー用パラメータ(対象データ)
   cv_msg_err_param2_note    CONSTANT fnd_new_messages.message_name%TYPE
-                                       :=  'APP-XXCOS1-00195';   -- 成績計上者所属拠点不整合エラー用パラメータ(対象データ)
+                                       :=  'APP-XXCOS1-11537';   -- 成績者所属拠点不一致パラメータ(成績者データ)
+-- 2010/05/18 Ver1.16 M.Sano Mod End
 -- 2009/09/24 Ver.1.11 M.Sano Add End
 -- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
   cv_update_err_msg         CONSTANT fnd_new_messages.message_name%TYPE
@@ -243,6 +249,9 @@ AS
   cv_tkn_base_uom         CONSTANT  VARCHAR2(100)  :=  'BASE_UOM';          -- 基準単位
   cv_tkn_unit_price       CONSTANT  VARCHAR2(100)  :=  'UNIT_PRICE';        -- 販売単価
 -- 2010/05/11 Ver.1.15 M.Sano Add End
+-- 2010/05/18 Ver1.16 M.Sano Add Start
+  cv_tkn_dlv_date         CONSTANT  VARCHAR2(100)  :=  'DLV_DATE';          -- 納品日
+-- 2010/05/18 Ver1.16 M.Sano Add End
 --
   --メッセージ用文字列
   cv_str_profile_nm                CONSTANT VARCHAR2(100) := 'APP-XXCOS1-00047';  -- MO:営業単位
@@ -322,6 +331,10 @@ AS
 --
   --受注ヘッダカテゴリ
   ct_order_category             CONSTANT  oe_order_headers_all.order_category_code%TYPE := 'RETURN';  --返品
+-- 2010/05/18 Ver1.16 Add Start
+  ct_order_cate_order           CONSTANT  oe_order_headers_all.order_category_code%TYPE := 'ORDER';
+  ct_order_cate_mixed           CONSTANT  oe_order_headers_all.order_category_code%TYPE := 'MIXED';
+-- 2010/05/18 Ver1.16 Add End
 --
   --受注ヘッダステータス
   ct_hdr_status_booked          CONSTANT  oe_order_headers_all.flow_status_code%TYPE := 'BOOKED';   --記帳済
@@ -523,6 +536,9 @@ AS
     , ship_to_customer_code       xxcos_sales_exp_headers.ship_to_customer_code%type-- 顧客【納品先】
     , results_employee_code       xxcos_sales_exp_headers.results_employee_code%type-- 成績計上者コード
     , results_employee_base_code  per_all_assignments_f.ass_attribute5%TYPE         -- 所属拠点コード
+-- 2010/05/18 Ver1.16 M.Sano Add Start
+    , dlv_date                    xxcos_sales_exp_headers.delivery_date%type        -- 納品日
+-- 2010/05/18 Ver1.16 M.Sano Add End
     , output_flag                 VARCHAR2(1)                                       -- 出力フラグ
   );
 -- 2009/09/24 Ver.1.11 M.Sano Add End
@@ -1165,11 +1181,19 @@ AS
     SELECT
 /* 2009/09/14 Ver1.10 Add Start */
       /*+
-        LEADING(ooha)
+-- 2010/05/18 Ver1.16 Mod Start
+--        LEADING(ooha)
+        LEADING(ooha oola msi)
+        INDEX(oola xxcos_oe_order_lines_all_n23)
+-- 2010/05/18 Ver1.16 Mod End
         INDEX(ooha xxcos_oe_order_headers_all_n11)
         USE_NL(ooha oola xca ottth otttl ottth ottal msi)
-        INDEX(oola oe_order_lines_n1)
-        ORDERED
+-- 2010/05/18 Ver1.16 Mod Start
+--        INDEX(oola oe_order_lines_n1)
+--        ORDERED
+        LEADING(xchv.cust_hier.ship_hzca_2 xchv.cust_hier.bill_hcar_2 xchv.cust_hier.bill_hzca_2 )
+        USE_NL(xchv.cust_hier.ship_hasa_2)
+-- 2010/05/18 Ver1.16 Mod End
         USE_NL(ooha xchv)
         INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u1)
         INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u1)
@@ -1313,9 +1337,15 @@ AS
       AND otttl.language = gt_lang
 -- 2009/07/02 Ver.1.9 M.Sano Mod End
       AND ooha.flow_status_code = ct_hdr_status_booked                -- 受注ヘッダ.ステータス＝記帳済(BOOKED)
-      AND ooha.order_category_code != ct_order_category               -- 受注ヘッダ.受注カテゴリコード≠返品(RETURN)
-      -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
-      AND oola.flow_status_code NOT IN (ct_ln_status_closed, ct_ln_status_cancelled)
+-- 2010/05/18 Ver1.16 Mod Start
+--      AND ooha.order_category_code != ct_order_category               -- 受注ヘッダ.受注カテゴリコード≠返品(RETURN)
+--      -- 受注明細.ステータス≠ｸﾛｰｽﾞor取消
+--      AND oola.flow_status_code NOT IN (ct_ln_status_closed, ct_ln_status_cancelled)
+      AND ooha.order_category_code IN ( ct_order_cate_order           -- 受注ヘッダ.受注カテゴリコード
+                                      , ct_order_cate_mixed )         --     ＝受注(ORDER) or 混合(MIXED)
+      AND oola.flow_status_code     = ct_hdr_status_booked            -- 受注明細.ステータス＝記帳済(BOOKED)
+      AND oola.org_id = gn_org_id                                     -- 組織ID
+-- 2010/05/18 Ver1.16 Mod End
 -- ************ 2009/10/16 1.12 N.Maeda ADD START ************ --
       AND oola.global_attribute5 IS NULL                              -- 販売実績未連携
 -- ************ 2009/10/16 1.12 N.Maeda ADD  END  ************ --
@@ -2619,6 +2649,10 @@ AS
           l_base_err_order_tab(ln_idx).results_employee_code      := g_order_data_tab(i).results_employee_code;
           --[成績計上者の拠点コード]
           l_base_err_order_tab(ln_idx).results_employee_base_code := g_order_data_tab(i).results_employee_base_code;
+-- 2010/05/18 Ver1.16 M.Sano Add Start
+          --[納品予定日]
+          l_base_err_order_tab(ln_idx).dlv_date                   := g_order_data_tab(i).dlv_date;
+-- 2010/05/18 Ver1.16 M.Sano Add End
           --[出力フラグ]
           l_base_err_order_tab(ln_idx).output_flag                := ct_yes_flg;
           --・成績計上者所属拠点不整合エラーフラグを有効へ変更。
@@ -2699,6 +2733,10 @@ AS
                            , iv_token_value3=> l_base_err_order_tab(j).results_employee_code
                            , iv_token_name4 => cv_tkn_result_base_code
                            , iv_token_value4=> l_base_err_order_tab(j).results_employee_base_code
+-- 2010/05/18 Ver1.16 M.Sano Add Start
+                           , iv_token_name5 => cv_tkn_dlv_date
+                           , iv_token_value5=> TO_CHAR(l_base_err_order_tab(j).dlv_date, cv_fmt_date)
+-- 2010/05/18 Ver1.16 M.Sano Add End
                          );
             FND_FILE.PUT_LINE(
                which  => FND_FILE.OUTPUT
