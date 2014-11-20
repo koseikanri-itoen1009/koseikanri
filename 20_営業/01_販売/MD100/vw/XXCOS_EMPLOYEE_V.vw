@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_employee_v
  * Description     : 従業員ビュー
- * Version         : 1.0
+ * Version         : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/01    1.0   T.kitajima       新規作成
  *  2009/02/12    1.1   T.kitajima       [COS_059]旧拠点コードの発令日取得方法変更
  *  2009/02/26    1.2   T.kitajima       アサイメントの適用日項目を追加
+ *  2009/10/16    1.3   S.Miyakoshi      [0001397]グループの所属条件を追加
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOS_EMPLOYEE_V (
     employee_number
@@ -48,45 +49,48 @@ SELECT    pap.employee_number,
            bif.xla_end_date
       FROM per_all_people_f      pap,
            (
-            SELECT paa.person_id                                              as person_id,
-                   paa.ass_attribute5                                         as base_code,
-                   TO_DATE(paa.ass_attribute2,'YYYY/MM/DD')                   as paa_start_date,
-                   TO_DATE('9999/12/31', 'yyyy/mm/dd')                        as paa_end_date,
-                   paa.effective_start_date                                   as paa_effective_start_date,
-                   paa.effective_end_date                                     as paa_effective_end_date,
-                   substr(xla.division_code,1,2)                              as xla_division_code,
-                   substr(xla.division_code,1,3)                              as xla_area_code,
-                   xla.division_code                                          as xla_ori_division_code,
-                   xla.start_date_active                                      as xla_start_date,
-                   xla.end_date_active                                        as xla_end_date
+            SELECT paa.person_id                                              AS person_id,
+                   paa.ass_attribute5                                         AS base_code,
+                   TO_DATE(paa.ass_attribute2,'YYYY/MM/DD')                   AS paa_start_date,
+                   TO_DATE('9999/12/31', 'yyyy/mm/dd')                        AS paa_end_date,
+                   paa.effective_start_date                                   AS paa_effective_start_date,
+                   paa.effective_end_date                                     AS paa_effective_end_date,
+                   SUBSTR(xla.division_code,1,2)                              AS xla_division_code,
+                   SUBSTR(xla.division_code,1,3)                              AS xla_area_code,
+                   xla.division_code                                          AS xla_ori_division_code,
+                   xla.start_date_active                                      AS xla_start_date,
+                   xla.end_date_active                                        AS xla_end_date
               FROM per_all_assignments_f paa,
                    xxcmn_locations_all   xla
              WHERE paa.location_id = xla.location_id
                AND paa.ass_attribute5 IS NOT NULL
             UNION
-            SELECT paa.person_id                                              as person_id,
-                   paa.ass_attribute6                                         as base_code,
-                   TO_DATE('1900/01/01', 'yyyy/mm/dd')                        as paa_start_date,
-                   TO_DATE(paa.ass_attribute2,'YYYY/MM/DD') - 1               as paa_end_date,
-                   paa.effective_start_date                                   as ppa_effective_start_date,
-                   paa.effective_end_date                                     as ppa_effective_end_date,
-                   substr(xla.division_code,1,2)                              as xla_division_code,
-                   substr(xla.division_code,1,3)                              as xla_area_code,
-                   xla.division_code                                          as xla_ori_division_code,
-                   xla.start_date_active                                      as xla_start_date,
-                   xla.end_date_active                                        as xla_end_date
+            SELECT paa.person_id                                              AS person_id,
+                   paa.ass_attribute6                                         AS base_code,
+                   TO_DATE('1900/01/01', 'yyyy/mm/dd')                        AS paa_start_date,
+                   TO_DATE(paa.ass_attribute2,'YYYY/MM/DD') - 1               AS paa_end_date,
+                   paa.effective_start_date                                   AS ppa_effective_start_date,
+                   paa.effective_end_date                                     AS ppa_effective_end_date,
+                   SUBSTR(xla.division_code,1,2)                              AS xla_division_code,
+                   SUBSTR(xla.division_code,1,3)                              AS xla_area_code,
+                   xla.division_code                                          AS xla_ori_division_code,
+                   xla.start_date_active                                      AS xla_start_date,
+                   xla.end_date_active                                        AS xla_end_date
               FROM per_all_assignments_f paa,
                    xxcmn_locations_all   xla
              WHERE paa.location_id = xla.location_id
                AND paa.ass_attribute6 IS NOT NULL
            ) bif,
            jtf.jtf_rs_resource_extns jre,
-           jtf.jtf_rs_group_members  jrm
+           jtf.jtf_rs_group_members  jrm,
+           jtf.jtf_rs_groups_b       jrb
      WHERE pap.person_id   = bif.person_id
        AND pap.person_id   = jre.source_id(+)
        AND jre.resource_id = jrm.resource_id(+)
        AND jrm.delete_flag = 'N'
        AND pap.attribute3 IN ('1','2')
+       AND jrm.group_id    = jrb.group_id
+       AND jrb.attribute1  = bif.base_code
 ;
 COMMENT ON  COLUMN  xxcos_employee_v.employee_number        IS  '従業員コード';
 COMMENT ON  COLUMN  xxcos_employee_v.group_cd               IS  'グループコード';

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS016A03C(body)
  * Description      : 人事システム向け、販売実績賞与データ(I/F)作成処理
  * MD.050           : A03_人事システム向け販売実績データの作成（月次・賞与） COS_016_A03
- * Version          : 1.0
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/02/17    1.2   T.kitajima       get_msgのパッケージ名修正
  *  2009/02/24    1.3   T.kitajima       パラメータのログファイル出力対応
  *  2009/02/26    1.4   T.kitajima       従業員ビューの適用日条件設定
+ *  2009/10/16    1.5   S.Miyakoshi      [0001397]二重計上の対応
  *
  *****************************************************************************************/
 --
@@ -2803,12 +2804,16 @@ AS
     -- A-4 対象従業員取得処理
     CURSOR data_cur
     IS
-      SELECT division_code           as div_cd,             --本部コード
-             area_code               as area,               --地区コード
-             base_code               as base,               --拠点コード
-             group_cd                as group_cd,           --グループコード
-             employee_number         as code,               --従業員コード
-             ori_division_code       as ori_division_code   --オリジナル本部コード
+-- ************************ 2009/10/19 S.Miyakoshi Var1.5 MOD START ************************ --
+--      SELECT division_code           as div_cd,             --本部コード
+      SELECT DISTINCT
+             division_code           AS div_cd,             --本部コード
+-- ************************ 2009/10/19 S.Miyakoshi Var1.5 MOD  END  ************************ --
+             area_code               AS area,               --地区コード
+             base_code               AS base,               --拠点コード
+             group_cd                AS group_cd,           --グループコード
+             employee_number         AS code,               --従業員コード
+             ori_division_code       AS ori_division_code   --オリジナル本部コード
       FROM XXCOS_EMPLOYEE_V
       WHERE (announcement_start_day <= ld_month_next_date
         AND  announcement_end_day   >= ld_month_first_date)
