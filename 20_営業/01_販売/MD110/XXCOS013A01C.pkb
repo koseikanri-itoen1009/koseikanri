@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.18
+ * Version          : 1.19
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -47,6 +47,7 @@ AS
  *  2009/05/11    1.16  K.KIN            T1_0453、T1_0938
  *  2009/05/12    1.17  K.KIN            T1_0693
  *  2009/05/14    1.18  K.KIN            T1_0795
+ *  2009/05/15    1.19  K.KIN            T1_0776
  *
  *****************************************************************************************/
 --
@@ -1848,7 +1849,12 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_goods_item_code      xxcos_sales_exp_lines.item_code%TYPE;
     lt_item_code            xxcos_sales_exp_lines.item_code%TYPE;
     lt_prod_cls             xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
-    lt_delivery_date        xxcos_sales_exp_headers.delivery_date%TYPE;          -- 納品日
+    lt_inspect_date        xxcos_sales_exp_headers.inspect_date%TYPE;          -- 検収日
+    ln_key_dff4             VARCHAR2(100);              -- DFF4
+    ln_key_trx_number       VARCHAR2(20);               -- 取引No
+    ln_key_ship_customer_id NUMBER;                     -- 出荷先顧客ID
+    ln_start_index          NUMBER DEFAULT 1;           -- 取引No毎の開始位置
+    ln_ship_flg             NUMBER DEFAULT 0;           -- 出荷先顧客フラグ
 --
     -- *** ローカル例外 ***
 --
@@ -2083,7 +2089,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
         --エラーフラグOFF
         lv_err_flag := cv_n_flag;
-        lt_delivery_date := gt_sales_norm_tbl2( ln_trx_idx ).delivery_date;
+        lt_inspect_date := gt_sales_norm_tbl2( ln_trx_idx ).inspect_date;
         --=====================================================================
         -- １．支払条件IDの取得
         --=====================================================================
@@ -2097,21 +2103,21 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               FROM
                 ( --****支払条件１（当月）
                    SELECT rtv11.term_id
-                         ,CASE WHEN rtv11.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                         ,CASE WHEN rtv11.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date )  -- 納品月の末日
                                  ELSE  DECODE( rtv11.due_cutoff_day -1, 0
                                                 -- 月日付0日の場合、納品月の前月末日を取得
-                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                                   cn_min_day, cv_date_format_on_sep ) -1
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                          TO_NUMBER( rtv11.due_cutoff_day -1 ), cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv11                           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv11.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv11.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv11.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv11.end_date_active  , lt_inspect_date )
                      AND  rtv11.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv11.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- 顧客階層ビューの支払条件１
                      AND  ROWNUM = 1
@@ -2120,21 +2126,21 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                    --****支払条件１（翌月）
                    SELECT rtv12.term_id
-                         ,CASE WHEN rtv12.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 )  ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                         ,CASE WHEN rtv12.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 )  ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 ) ) -- 納品翌月の末日
                                  ELSE  DECODE( rtv12.due_cutoff_day -1 ,0
                                                 -- 月日付0日の場合、納品月の末日
-                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )
+                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date )
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 ),
                                                                   cv_date_format_yyyymm ) || TO_NUMBER( rtv12.due_cutoff_day -1 )
                                                                   , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv12           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv12.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv12.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv12.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv12.end_date_active  , lt_inspect_date )
                      AND  rtv12.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv12.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- 顧客階層ビューの支払条件１
                      AND  ROWNUM = 1
@@ -2143,22 +2149,22 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****支払条件２（当月）
                    SELECT rtv21.term_id
-                         ,CASE WHEN rtv21.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                         ,CASE WHEN rtv21.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date )  -- 納品月の末日
                                  ELSE  DECODE( rtv21.due_cutoff_day -1, 0
                                                 -- 月日付0日の場合、納品月の前月末日を取得
-                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                                   cn_min_day, cv_date_format_on_sep ) -1
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                          TO_NUMBER( rtv21.due_cutoff_day -1 )
                                                          , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv21           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv21.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv21.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv21.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv21.end_date_active  , lt_inspect_date )
                      AND  rtv21.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv21.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- 顧客階層ビューの支払条件２
                      AND  ROWNUM = 1
@@ -2167,21 +2173,21 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****支払条件２（翌月）
                    SELECT rtv22.term_id
-                         ,CASE WHEN rtv22.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 )  ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                         ,CASE WHEN rtv22.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 )  ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 ) ) -- 納品翌月の末日
                                  ELSE  DECODE( rtv22.due_cutoff_day -1 ,0
                                                 -- 月日付0日の場合、納品月の末日
-                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )
+                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date )
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 ),
                                                                   cv_date_format_yyyymm ) || TO_NUMBER( rtv22.due_cutoff_day -1 )
                                                                   , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv22           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv22.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv22.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv22.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv22.end_date_active  , lt_inspect_date )
                      AND  rtv22.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv22.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- 顧客階層ビューの支払条件２
                      AND  ROWNUM = 1
@@ -2190,22 +2196,22 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****支払条件３（当月）
                    SELECT rtv31.term_id
-                         ,CASE WHEN rtv31.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                         ,CASE WHEN rtv31.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date )  -- 納品月の末日
                                  ELSE  DECODE( rtv31.due_cutoff_day -1, 0
                                                 -- 月日付0日の場合、納品月の前月末日を取得
-                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                                   cn_min_day, cv_date_format_on_sep ) -1
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                          TO_NUMBER( rtv31.due_cutoff_day -1 )
                                                          , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv31           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv31.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv31.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv31.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv31.end_date_active  , lt_inspect_date )
                      AND  rtv31.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv31.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- 顧客階層ビューの支払条件３
                      AND  ROWNUM = 1
@@ -2214,26 +2220,26 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****支払条件３（翌月）
                    SELECT rtv32.term_id
-                         ,CASE WHEN rtv32.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 )  ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                         ,CASE WHEN rtv32.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 )  ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 ) ) -- 納品翌月の末日
                                  ELSE  DECODE( rtv32.due_cutoff_day -1 ,0
                                                 -- 月日付0日の場合、納品月の末日
-                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date )
+                                               ,LAST_DAY( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date )
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_norm_tbl2( ln_trx_idx ).inspect_date, 1 ),
                                                                   cv_date_format_yyyymm ) || TO_NUMBER( rtv32.due_cutoff_day -1 )
                                                                   , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv32           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv32.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv32.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv32.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv32.end_date_active  , lt_inspect_date )
                      AND  rtv32.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv32.term_id = gt_sales_norm_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- 顧客階層ビューの支払条件３
                      AND  ROWNUM = 1
                 ) rtv
-              WHERE TRUNC( rtv.cutoff_date ) >= gt_sales_norm_tbl2( ln_trx_idx ).delivery_date      -- 納品日
+              WHERE TRUNC( rtv.cutoff_date ) >= gt_sales_norm_tbl2( ln_trx_idx ).inspect_date      -- 納品日
               ORDER BY rtv.cutoff_date
             )
           WHERE  ROWNUM = 1;
@@ -2881,6 +2887,89 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       END IF;
 --
     END LOOP gt_sales_norm_sum_loop;                    -- 販売実績データループ終了
+    <<gt_sales_bulk_check_loop>>
+    FOR ln_ar_idx IN 1 .. gt_ar_interface_tbl.COUNT LOOP
+      -- 開始：1取引No内での出荷先顧客チェック
+--
+      -- KEYが代わったら
+      IF (
+           (
+              ( gt_ar_interface_tbl( ln_ar_idx ).trx_number IS NULL )
+              AND
+              ( gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute4 <> NVL( ln_key_dff4, 'X') )
+           )
+           OR
+           (
+              ( gt_ar_interface_tbl( ln_ar_idx ).trx_number IS NOT NULL )
+              AND
+              ( gt_ar_interface_tbl( ln_ar_idx ).trx_number <> NVL( ln_key_trx_number, 'X') )
+           )
+         )THEN
+--
+        -- 出荷先顧客フラグがONの場合
+        IF ( ln_ship_flg = cn_ship_flg_on )
+        THEN
+          <<gt_sales_bulk_ship_clear_loop>>
+          FOR start_index IN ln_start_index .. ln_ar_idx - 1 LOOP
+            -- 開始：1取引No内での出荷先顧客チェック
+--
+            -- 出荷先顧客IDをクリア
+            gt_ar_interface_tbl( start_index ).orig_system_ship_customer_id := NULL;
+            gt_ar_interface_tbl( start_index ).orig_system_ship_address_id  := NULL;
+--
+            -- 最後の行
+            IF ( gt_ar_interface_tbl.COUNT = ln_ar_idx )
+            THEN
+              -- 出荷先顧客IDをクリア
+              gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id := NULL;
+              gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id  := NULL;
+            END IF;
+--
+            -- 終了：1取引No内での出荷先顧客チェック
+          END LOOP gt_sales_bulk_ship_clear_loop;
+        END IF;
+--
+        -- 取引Noを取得
+        ln_key_trx_number := gt_ar_interface_tbl( ln_ar_idx ).trx_number;
+--
+        -- DFF4を取得
+        ln_key_dff4 := gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4;
+--
+        -- 出荷先顧客IDを取得
+        ln_key_ship_customer_id := gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id;
+--
+        -- 取引Noの開始位置を取得
+        ln_start_index := ln_ar_idx;
+--
+        -- フラグを初期化
+        ln_ship_flg := cn_ship_flg_off;
+--
+      ELSE
+        -- 出荷先顧客が同じか？
+        IF ( gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id <> ln_key_ship_customer_id ) THEN
+          -- 違う場合、出荷先顧客フラグをONにする
+          ln_ship_flg := cn_ship_flg_on;
+--
+        END IF;
+        -- DFF4を取得
+        ln_key_dff4 := gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4;
+--
+        IF ( ln_ship_flg = cn_ship_flg_on AND ln_ar_idx = gt_ar_interface_tbl.COUNT ) THEN
+          <<gt_sales_bulk_ship_clear_loop>>
+          FOR start_index IN ln_start_index .. ln_ar_idx LOOP
+            -- 開始：1取引No内での出荷先顧客チェック
+--
+            -- 出荷先顧客IDをクリア
+            gt_ar_interface_tbl( start_index ).orig_system_ship_customer_id := NULL;
+            gt_ar_interface_tbl( start_index ).orig_system_ship_address_id  := NULL;
+--
+            -- 終了：1取引No内での出荷先顧客チェック
+          END LOOP gt_sales_bulk_ship_clear_loop;
+        END IF;
+--
+      END IF;
+      -- 終了：1取引No内での出荷先顧客チェック
+    END LOOP gt_sales_bulk_check_loop;
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -3577,7 +3666,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     ln_key_trx_number       VARCHAR2(20);               -- 取引No
     ln_key_dff4             VARCHAR2(100);              -- DFF4
     ln_key_ship_customer_id NUMBER;                     -- 出荷先顧客ID
-    ln_start_index          NUMBER;                     -- 取引No毎の開始位置
+    ln_start_index          NUMBER DEFAULT 1;           -- 取引No毎の開始位置
     ln_ship_flg             NUMBER DEFAULT 0;           -- 出荷先顧客フラグ
     ln_term_amount          NUMBER DEFAULT 0;           -- 一時金額
     ln_max_amount           NUMBER DEFAULT 0;           -- 最大金額
@@ -3621,7 +3710,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
     lt_goods_item_code      xxcos_sales_exp_lines.item_code%TYPE;
     lt_item_code            xxcos_sales_exp_lines.item_code%TYPE;
     lt_prod_cls             xxcos_good_prod_class_v.goods_prod_class_code%TYPE;
-    lt_delivery_date        xxcos_sales_exp_headers.delivery_date%TYPE;          -- 納品日
+    lt_inspect_date        xxcos_sales_exp_headers.inspect_date%TYPE;          -- 検収日
 --
     -- *** ローカル例外 ***
 --
@@ -3860,7 +3949,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
         --エラーフラグOFF
         lv_err_flag := cv_n_flag;
-        lt_delivery_date := gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date;
+        lt_inspect_date := gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date;
         --=====================================================================
         -- １．支払条件IDの取得
         --=====================================================================
@@ -3874,21 +3963,21 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
               FROM
                 ( --****支払条件１（当月）
                    SELECT rtv11.term_id
-                         ,CASE WHEN rtv11.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                         ,CASE WHEN rtv11.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date )  -- 納品月の末日
                                  ELSE  DECODE( rtv11.due_cutoff_day -1, 0
                                                 -- 月日付0日の場合、納品月の前月末日を取得
-                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                                   cn_min_day, cv_date_format_on_sep ) -1
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                          TO_NUMBER( rtv11.due_cutoff_day -1 ), cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv11                           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv11.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv11.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv11.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv11.end_date_active  , lt_inspect_date )
                      AND  rtv11.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv11.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- 顧客階層ビューの支払条件１
                      AND  ROWNUM = 1
@@ -3897,21 +3986,21 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                    --****支払条件１（翌月）
                    SELECT rtv12.term_id
-                         ,CASE WHEN rtv12.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                         ,CASE WHEN rtv12.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ) ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ) ) -- 納品翌月の末日
                                  ELSE  DECODE( rtv12.due_cutoff_day -1 ,0
                                                 -- 月日付0日の場合、納品月の末日
-                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )
+                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date )
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ),
                                                                   cv_date_format_yyyymm ) || TO_NUMBER( rtv12.due_cutoff_day -1 )
                                                                   , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv12           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv12.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv12.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv12.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv12.end_date_active  , lt_inspect_date )
                      AND  rtv12.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv12.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id         -- 顧客階層ビューの支払条件１
                      AND  ROWNUM = 1
@@ -3920,22 +4009,22 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****支払条件２（当月）
                    SELECT rtv21.term_id
-                         ,CASE WHEN rtv21.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                         ,CASE WHEN rtv21.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date )  -- 納品月の末日
                                  ELSE  DECODE( rtv21.due_cutoff_day -1, 0
                                                 -- 月日付0日の場合、納品月の前月末日を取得
-                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                                   cn_min_day, cv_date_format_on_sep ) -1
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                          TO_NUMBER( rtv21.due_cutoff_day -1 )
                                                          , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv21           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv21.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv21.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv21.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv21.end_date_active  , lt_inspect_date )
                      AND  rtv21.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv21.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- 顧客階層ビューの支払条件２
                      AND  ROWNUM = 1
@@ -3944,21 +4033,21 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****支払条件２（翌月）
                    SELECT rtv22.term_id
-                         ,CASE WHEN rtv22.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                         ,CASE WHEN rtv22.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ) ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ) ) -- 納品翌月の末日
                                  ELSE  DECODE( rtv22.due_cutoff_day -1 ,0
                                                 -- 月日付0日の場合、納品月の末日
-                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )
+                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date )
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ),
                                                                   cv_date_format_yyyymm ) || TO_NUMBER( rtv22.due_cutoff_day -1 )
                                                                   , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv22           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv22.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv22.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv22.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv22.end_date_active  , lt_inspect_date )
                      AND  rtv22.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv22.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id2        -- 顧客階層ビューの支払条件２
                      AND  ROWNUM = 1
@@ -3967,22 +4056,22 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****支払条件３（当月）
                    SELECT rtv31.term_id
-                         ,CASE WHEN rtv31.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )  -- 納品月の末日
+                         ,CASE WHEN rtv31.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date )  -- 納品月の末日
                                  ELSE  DECODE( rtv31.due_cutoff_day -1, 0
                                                 -- 月日付0日の場合、納品月の前月末日を取得
-                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                                   cn_min_day, cv_date_format_on_sep ) -1
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, cv_date_format_yyyymm ) ||
+                                               ,TO_DATE( TO_CHAR  ( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, cv_date_format_yyyymm ) ||
                                                          TO_NUMBER( rtv31.due_cutoff_day -1 )
                                                          , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv31           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv31.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv31.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date   BETWEEN NVL( rtv31.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                                AND NVL( rtv31.end_date_active  , lt_inspect_date )
                      AND  rtv31.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv31.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- 顧客階層ビューの支払条件３
                      AND  ROWNUM = 1
@@ -3991,26 +4080,26 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
 --
                   --****支払条件３（翌月）
                    SELECT rtv32.term_id
-                         ,CASE WHEN rtv32.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) ) -- 支払日-1>末日
-                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ) ) -- 納品翌月の末日
+                         ,CASE WHEN rtv32.due_cutoff_day -1 >= EXTRACT( DAY FROM LAST_DAY( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ) ) ) -- 支払日-1>末日
+                                 THEN  LAST_DAY(ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ) ) -- 納品翌月の末日
                                  ELSE  DECODE( rtv32.due_cutoff_day -1 ,0
                                                 -- 月日付0日の場合、納品月の末日
-                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date )
+                                               ,LAST_DAY( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date )
                                                 -- 指定日の-1日を取得
-                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date, 1 ),
+                                               ,TO_DATE( TO_CHAR( ADD_MONTHS( gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date, 1 ),
                                                                   cv_date_format_yyyymm ) || TO_NUMBER( rtv32.due_cutoff_day -1 )
                                                                   , cv_date_format_on_sep
                                                        )
                                              )
                           END cutoff_date
                    FROM   ra_terms_vl      rtv32           -- 支払条件マスタ
-                   WHERE  lt_delivery_date  BETWEEN NVL( rtv32.start_date_active, lt_delivery_date ) -- 業務日付時点で有効
-                                                AND NVL( rtv32.end_date_active  , lt_delivery_date )
+                   WHERE  lt_inspect_date  BETWEEN NVL( rtv32.start_date_active, lt_inspect_date ) -- 検収日時点で有効
+                                               AND NVL( rtv32.end_date_active  , lt_inspect_date )
                      AND  rtv32.due_cutoff_day IS NOT NULL                                         -- 締開始日or最終月日付が未設定は対象外
                      AND  rtv32.term_id = gt_sales_bulk_tbl2( ln_trx_idx ).xchv_bill_pay_id3        -- 顧客階層ビューの支払条件３
                      AND  ROWNUM = 1
                 ) rtv
-              WHERE TRUNC( rtv.cutoff_date ) >= gt_sales_bulk_tbl2( ln_trx_idx ).delivery_date      -- 納品日
+              WHERE TRUNC( rtv.cutoff_date ) >= gt_sales_bulk_tbl2( ln_trx_idx ).inspect_date      -- 検収日
               ORDER BY rtv.cutoff_date
             )
           WHERE  ROWNUM = 1;
@@ -4649,6 +4738,91 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
       END IF;
 --
     END LOOP gt_sales_bulk_sum_loop;                    -- 販売実績データループ終了
+--
+--
+    <<gt_sales_bulk_check_loop>>
+    FOR ln_ar_idx IN 1 .. gt_ar_interface_tbl.COUNT LOOP
+      -- 開始：1取引No内での出荷先顧客チェック
+--
+      -- KEYが代わったら
+      IF (
+           (
+              ( gt_ar_interface_tbl( ln_ar_idx ).trx_number IS NULL )
+              AND
+              ( gt_ar_interface_tbl( ln_ar_idx ).link_to_line_attribute4 <> NVL( ln_key_dff4, 'X') )
+           )
+           OR
+           (
+              ( gt_ar_interface_tbl( ln_ar_idx ).trx_number IS NOT NULL )
+              AND
+              ( gt_ar_interface_tbl( ln_ar_idx ).trx_number <> NVL( ln_key_trx_number, 'X') )
+           )
+         )THEN
+--
+        -- 出荷先顧客フラグがONの場合
+        IF ( ln_ship_flg = cn_ship_flg_on )
+        THEN
+          <<gt_sales_bulk_ship_clear_loop>>
+          FOR start_index IN ln_start_index .. ln_ar_idx - 1 LOOP
+            -- 開始：1取引No内での出荷先顧客チェック
+--
+            -- 出荷先顧客IDをクリア
+            gt_ar_interface_tbl( start_index ).orig_system_ship_customer_id := NULL;
+            gt_ar_interface_tbl( start_index ).orig_system_ship_address_id  := NULL;
+--
+            -- 最後の行
+            IF ( gt_ar_interface_tbl.COUNT = ln_ar_idx )
+            THEN
+              -- 出荷先顧客IDをクリア
+              gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id := NULL;
+              gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_address_id  := NULL;
+            END IF;
+--
+            -- 終了：1取引No内での出荷先顧客チェック
+          END LOOP gt_sales_bulk_ship_clear_loop;
+        END IF;
+--
+        -- 取引Noを取得
+        ln_key_trx_number := gt_ar_interface_tbl( ln_ar_idx ).trx_number;
+--
+        -- DFF4を取得
+        ln_key_dff4 := gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4;
+--
+        -- 出荷先顧客IDを取得
+        ln_key_ship_customer_id := gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id;
+--
+        -- 取引Noの開始位置を取得
+        ln_start_index := ln_ar_idx;
+--
+        -- フラグを初期化
+        ln_ship_flg := cn_ship_flg_off;
+--
+      ELSE
+        -- 出荷先顧客が同じか？
+        IF ( gt_ar_interface_tbl( ln_ar_idx ).orig_system_ship_customer_id <> ln_key_ship_customer_id ) THEN
+          -- 違う場合、出荷先顧客フラグをONにする
+          ln_ship_flg := cn_ship_flg_on;
+--
+        END IF;
+        -- DFF4を取得
+        ln_key_dff4 := gt_ar_interface_tbl( ln_ar_idx ).interface_line_attribute4;
+--
+        IF ( ln_ship_flg = cn_ship_flg_on AND ln_ar_idx = gt_ar_interface_tbl.COUNT ) THEN
+          <<gt_sales_bulk_ship_clear_loop>>
+          FOR start_index IN ln_start_index .. ln_ar_idx LOOP
+            -- 開始：1取引No内での出荷先顧客チェック
+--
+            -- 出荷先顧客IDをクリア
+            gt_ar_interface_tbl( start_index ).orig_system_ship_customer_id := NULL;
+            gt_ar_interface_tbl( start_index ).orig_system_ship_address_id  := NULL;
+--
+            -- 終了：1取引No内での出荷先顧客チェック
+          END LOOP gt_sales_bulk_ship_clear_loop;
+        END IF;
+--
+      END IF;
+      -- 終了：1取引No内での出荷先顧客チェック
+    END LOOP gt_sales_bulk_check_loop;
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
