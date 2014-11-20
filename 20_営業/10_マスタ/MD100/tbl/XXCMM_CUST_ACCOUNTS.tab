@@ -3,7 +3,7 @@
  * TABLE Name      : xxcmm_cust_accounts
  * Description     : 顧客追加情報
  * MD.070          : 
- * Version         : 1.6
+ * Version         : 1.7
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -18,6 +18,7 @@
  *  2010/09/22    1.5  S.Niki        【E_本稼動_02021】項目：店舗営業用顧客コードの追加
  *                                                     店舗営業区分対応の取消
  *  2011/05/18    1.6  S.Niki        【E_本稼動_07429】経度 -> ピークカット開始時刻
+ *  2011/09/29    1.7  K.Nakamura    【E_本稼動_08440】稼働日カレンダコードの追加
  *
  ************************************************************************/
 CREATE TABLE xxcmm.xxcmm_cust_accounts
@@ -80,6 +81,9 @@ CREATE TABLE xxcmm.xxcmm_cust_accounts
     operation_div               VARCHAR2(1),
     change_amount               NUMBER(11,0),
     vendor_machine_number       VARCHAR2(30),
+-- 2011/09/29 Ver1.7 add start by K.Nakamura
+    calendar_code               VARCHAR2(10),
+-- 2011/09/29 Ver1.7 add end by K.Nakamura
     established_site_name       VARCHAR2(30),
     cnvs_date                   DATE,
     cnvs_base_code              VARCHAR2(4),
@@ -239,6 +243,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.change_amount               IS '釣銭
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.vendor_machine_number       IS '自動販売機番号（相手先）'
 /
+-- 2011/09/29 Ver1.7 add start by K.Nakamura
+COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.calendar_code               IS '稼働日カレンダコード'
+/
+-- 2011/09/29 Ver1.7 add end by K.Nakamura
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.established_site_name       IS '設置先名（相手先）'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_cust_accounts.cnvs_date                   IS '顧客獲得日'
