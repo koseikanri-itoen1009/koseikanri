@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A03R(body)
  * Description      : 工場入庫明細リスト
  * MD.050           : 工場入庫明細リスト MD050_COI_009_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/08/05    1.5   H.Sasaki         [障害0000926]品目カテゴリの印字制御のための修正
  *  2009/09/08    1.6   H.Sasaki         [障害0001266]OPM品目アドオンの版管理対応
  *  2009/10/22    1.7   H.Sasaki         [障害E_T4_00057]資材品目の取得方法変更
+ *  2010/02/02    1.8   N.Abe            [E_本稼動_01411]商品分のPT対応
  *
  *****************************************************************************************/
 --
@@ -608,24 +609,51 @@ AS
            )
 -- == 2009/04/22 V1.2 Moded END   ===============================================================
     IS
-      SELECT  msi.attribute7                in_base_code                   -- 入庫拠点
-             ,SUBSTRB(hca.account_name,1,8) account_name                   -- 入庫拠点名
-             ,mmt.inventory_item_id         inventory_item_id              -- 品目ID
-             ,mmt.transaction_quantity      transaction_qty                -- 取引数量
-             ,mmt.transaction_date          transaction_date               -- 取引日
-             ,msib.segment1                 item_no                        -- 品目コード
-             ,ximb.item_short_name          item_short_name                -- 略称
-             ,cat.item_category             item_category                  -- 品目カテゴリコード
-      FROM    mtl_secondary_inventories     msi                            -- 保管場所マスタ
-             ,hz_cust_accounts              hca                            -- 顧客マスタ
-             ,mtl_material_transactions     mmt                            -- 資材取引
-             ,mtl_system_items_b            msib                           -- 品目マスタ
-             ,ic_item_mst_b                 iimb                           -- OPM品目マスタ
-             ,xxcmn_item_mst_b              ximb                           -- OPM品目アドオンマスタ
-             ,( 
--- == 2009/10/22 V1.7 Modified START ===============================================================
---               SELECT msib.segment1          item_no                    -- 品目コード
---                      ,decode(mcb.segment1,cv_2,cv_3 )   item_category  -- 品目カテゴリコード
+-- == 2010/02/02 V1.8 Modified START ===============================================================
+--      SELECT  msi.attribute7                in_base_code                   -- 入庫拠点
+--             ,SUBSTRB(hca.account_name,1,8) account_name                   -- 入庫拠点名
+--             ,mmt.inventory_item_id         inventory_item_id              -- 品目ID
+--             ,mmt.transaction_quantity      transaction_qty                -- 取引数量
+--             ,mmt.transaction_date          transaction_date               -- 取引日
+--             ,msib.segment1                 item_no                        -- 品目コード
+--             ,ximb.item_short_name          item_short_name                -- 略称
+--             ,cat.item_category             item_category                  -- 品目カテゴリコード
+--      FROM    mtl_secondary_inventories     msi                            -- 保管場所マスタ
+--             ,hz_cust_accounts              hca                            -- 顧客マスタ
+--             ,mtl_material_transactions     mmt                            -- 資材取引
+--             ,mtl_system_items_b            msib                           -- 品目マスタ
+--             ,ic_item_mst_b                 iimb                           -- OPM品目マスタ
+--             ,xxcmn_item_mst_b              ximb                           -- OPM品目アドオンマスタ
+--             ,( 
+---- == 2009/10/22 V1.7 Modified START ===============================================================
+----               SELECT msib.segment1          item_no                    -- 品目コード
+----                      ,decode(mcb.segment1,cv_2,cv_3 )   item_category  -- 品目カテゴリコード
+----               FROM   mtl_system_items_b     msib                  -- 品目マスタ
+----                     ,mtl_category_sets_b    mcsb                  -- 品目カテゴリセット
+----                     ,mtl_category_sets_tl   mcst                  -- 品目カテゴリセット日本語
+----                     ,mtl_categories_b       mcb                   -- 品目カテゴリマスタ
+----                     ,mtl_item_categories    mic                   -- 品目カテゴリ割当
+----               WHERE  msib.inventory_item_id =  mic.inventory_item_id
+----                 AND  mcb.category_id        =  mic.category_id
+----                 AND  mcsb.category_set_id   =  mic.category_set_id
+----                 AND  mcb.structure_id       =  mcsb.structure_id
+----                 AND  mcst.category_set_id   =  mcsb.category_set_id
+----                 AND  mcst.language          =  USERENV( 'LANG' )
+----                 AND  mcst.category_set_name =  cv_category_hinmoku
+----                 AND  mcb.segment1           =  cv_2
+----                 AND  mic.organization_id    =  gn_organization_id
+----                 AND  msib.organization_id   =   mic.organization_id
+--               SELECT msib.segment1                       item_no         -- 品目コード
+--                     ,cv_3                                item_category   -- 品目カテゴリコード
+--               FROM   mtl_system_items_b      msib                        -- 品目マスタ
+--               WHERE  msib.organization_id    =   gn_organization_id
+--               AND    (   msib.segment1 LIKE '5%'
+--                       OR msib.segment1 LIKE '6%'
+--                      )
+---- == 2009/10/22 V1.7 Modified END   ===============================================================
+--             UNION
+--               SELECT msib.segment1          item_no               -- 品目コード
+--                     ,mcb.segment1           item_category         -- 品目カテゴリコード
 --               FROM   mtl_system_items_b     msib                  -- 品目マスタ
 --                     ,mtl_category_sets_b    mcsb                  -- 品目カテゴリセット
 --                     ,mtl_category_sets_tl   mcst                  -- 品目カテゴリセット日本語
@@ -637,77 +665,115 @@ AS
 --                 AND  mcb.structure_id       =  mcsb.structure_id
 --                 AND  mcst.category_set_id   =  mcsb.category_set_id
 --                 AND  mcst.language          =  USERENV( 'LANG' )
---                 AND  mcst.category_set_name =  cv_category_hinmoku
---                 AND  mcb.segment1           =  cv_2
+--                 AND  mcst.category_set_name =  cv_category_seishou
 --                 AND  mic.organization_id    =  gn_organization_id
 --                 AND  msib.organization_id   =   mic.organization_id
-               SELECT msib.segment1                       item_no         -- 品目コード
-                     ,cv_3                                item_category   -- 品目カテゴリコード
-               FROM   mtl_system_items_b      msib                        -- 品目マスタ
-               WHERE  msib.organization_id    =   gn_organization_id
-               AND    (   msib.segment1 LIKE '5%'
-                       OR msib.segment1 LIKE '6%'
-                      )
--- == 2009/10/22 V1.7 Modified END   ===============================================================
-             UNION
-               SELECT msib.segment1          item_no               -- 品目コード
-                     ,mcb.segment1           item_category         -- 品目カテゴリコード
-               FROM   mtl_system_items_b     msib                  -- 品目マスタ
-                     ,mtl_category_sets_b    mcsb                  -- 品目カテゴリセット
-                     ,mtl_category_sets_tl   mcst                  -- 品目カテゴリセット日本語
-                     ,mtl_categories_b       mcb                   -- 品目カテゴリマスタ
-                     ,mtl_item_categories    mic                   -- 品目カテゴリ割当
-               WHERE  msib.inventory_item_id =  mic.inventory_item_id
-                 AND  mcb.category_id        =  mic.category_id
-                 AND  mcsb.category_set_id   =  mic.category_set_id
-                 AND  mcb.structure_id       =  mcsb.structure_id
-                 AND  mcst.category_set_id   =  mcsb.category_set_id
-                 AND  mcst.language          =  USERENV( 'LANG' )
-                 AND  mcst.category_set_name =  cv_category_seishou
-                 AND  mic.organization_id    =  gn_organization_id
-                 AND  msib.organization_id   =   mic.organization_id
--- == 2009/04/22 V1.2 Added START ===============================================================
-                 AND NOT EXISTS( SELECT '1'
-                                 FROM   mtl_system_items_b     msib2
-                                 WHERE  msib.inventory_item_id =  msib2.inventory_item_id
-                                 AND    msib.organization_id   =  msib2.organization_id
--- == 2009/07/22 V1.4 Moded START ===============================================================
---                                 AND    msib2.segment1         LIKE  '6%'
-                                 AND    (msib2.segment1         LIKE  '6%'
-                                   OR    msib2.segment1         LIKE  '5%'
-                                        )
--- == 2009/07/22 V1.4 Moded END   ===============================================================
-                               )
--- == 2009/04/22 V1.2 Added END   ===============================================================
-               ) cat
-      WHERE  TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month
--- == 2009/04/22 V1.2 Moded START ===============================================================
---        AND  mmt.transaction_type_id IN (tran_type1, tran_type2)
--- == 2009/05/21 V1.3 Moded START ===============================================================
-        AND ( ( cat.item_category       IN (cv_1, cv_2)
-            AND mmt.transaction_type_id IN (tran_type1, tran_type2) )
-          OR  ( cat.item_category       =   cv_3
---            AND mmt.transaction_type_id IN (tran_type3, tran_type4, tran_type5, tran_type6) ) )
-            AND mmt.transaction_type_id IN (tran_type3, tran_type4) ) )
--- == 2009/05/21 V1.3 Moded END   ===============================================================
--- == 2009/04/22 V1.2 Moded END   ===============================================================
-        AND  mmt.subinventory_code               =  msi.secondary_inventory_name
-        AND  msi.attribute7                      =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
-        AND  hca.account_number                  =  msi.attribute7
-        AND  hca.customer_class_code             =  cv_1
-        AND  msib.inventory_item_id              =  mmt.inventory_item_id
-        AND  msib.organization_id                =  gn_organization_id
-        AND  cat.item_no                         =  msib.segment1
-        AND  cat.item_category                   =  NVL ( gr_param.item_ctg,cat.item_category )
-        AND  msib.segment1                       =  iimb.item_no
-        AND  iimb.item_id                        =  ximb.item_id
--- == 2009/09/08 V1.6 Added START ===============================================================
-        AND  mmt.transaction_date BETWEEN ximb.start_date_active
-                                  AND     NVL(ximb.end_date_active, mmt.transaction_date)
--- == 2009/09/08 V1.6 Added END   ===============================================================
-      ORDER BY msi.attribute7
-              ,cat.item_category
-              ,msib.segment1
+---- == 2009/04/22 V1.2 Added START ===============================================================
+--                 AND NOT EXISTS( SELECT '1'
+--                                 FROM   mtl_system_items_b     msib2
+--                                 WHERE  msib.inventory_item_id =  msib2.inventory_item_id
+--                                 AND    msib.organization_id   =  msib2.organization_id
+---- == 2009/07/22 V1.4 Moded START ===============================================================
+----                                 AND    msib2.segment1         LIKE  '6%'
+--                                 AND    (msib2.segment1         LIKE  '6%'
+--                                   OR    msib2.segment1         LIKE  '5%'
+--                                        )
+---- == 2009/07/22 V1.4 Moded END   ===============================================================
+--                               )
+---- == 2009/04/22 V1.2 Added END   ===============================================================
+--               ) cat
+--      WHERE  TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month
+---- == 2009/04/22 V1.2 Moded START ===============================================================
+----        AND  mmt.transaction_type_id IN (tran_type1, tran_type2)
+---- == 2009/05/21 V1.3 Moded START ===============================================================
+--        AND ( ( cat.item_category       IN (cv_1, cv_2)
+--            AND mmt.transaction_type_id IN (tran_type1, tran_type2) )
+--          OR  ( cat.item_category       =   cv_3
+----            AND mmt.transaction_type_id IN (tran_type3, tran_type4, tran_type5, tran_type6) ) )
+--            AND mmt.transaction_type_id IN (tran_type3, tran_type4) ) )
+---- == 2009/05/21 V1.3 Moded END   ===============================================================
+---- == 2009/04/22 V1.2 Moded END   ===============================================================
+--        AND  mmt.subinventory_code               =  msi.secondary_inventory_name
+--        AND  msi.attribute7                      =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
+--        AND  hca.account_number                  =  msi.attribute7
+--        AND  hca.customer_class_code             =  cv_1
+--        AND  msib.inventory_item_id              =  mmt.inventory_item_id
+--        AND  msib.organization_id                =  gn_organization_id
+--        AND  cat.item_no                         =  msib.segment1
+--        AND  cat.item_category                   =  NVL ( gr_param.item_ctg,cat.item_category )
+--        AND  msib.segment1                       =  iimb.item_no
+--        AND  iimb.item_id                        =  ximb.item_id
+---- == 2009/09/08 V1.6 Added START ===============================================================
+--        AND  mmt.transaction_date BETWEEN ximb.start_date_active
+--                                  AND     NVL(ximb.end_date_active, mmt.transaction_date)
+---- == 2009/09/08 V1.6 Added END   ===============================================================
+--      ORDER BY msi.attribute7
+--              ,cat.item_category
+--              ,msib.segment1
+      SELECT  sub.in_base_code
+             ,sub.account_name
+             ,sub.inventory_item_id
+             ,sub.transaction_qty
+             ,sub.transaction_date
+             ,sub.item_no
+             ,sub.item_short_name
+             ,sub.item_category
+      FROM    (SELECT  /*+ use_nl(iimb ximb cat msib mmt msi hca) */
+                       msi.attribute7                in_base_code                   -- 入庫拠点
+                      ,SUBSTRB(hca.account_name,1,8) account_name                   -- 入庫拠点名
+                      ,mmt.inventory_item_id         inventory_item_id              -- 品目ID
+                      ,mmt.transaction_quantity      transaction_qty                -- 取引数量
+                      ,mmt.transaction_date          transaction_date               -- 取引日
+                      ,msib.segment1                 item_no                        -- 品目コード
+                      ,ximb.item_short_name          item_short_name                -- 略称
+                      ,CASE WHEN SUBSTRB(msib.segment1, 1, 1) = '5' THEN
+                              cv_3
+                            WHEN SUBSTRB(msib.segment1, 1, 1) = '6' THEN
+                              cv_3
+                            ELSE
+                              mcb.segment1
+                            END                      item_category                  -- 品目カテゴリコード
+               FROM    inv.mtl_secondary_inventories msi                            -- 保管場所マスタ
+                      ,apps.hz_cust_accounts         hca                            -- 顧客マスタ
+                      ,inv.mtl_material_transactions mmt                            -- 資材取引
+                      ,inv.mtl_system_items_b        msib                           -- 品目マスタ
+                      ,apps.ic_item_mst_b            iimb                           -- OPM品目マスタ
+                      ,xxcmn.xxcmn_item_mst_b        ximb                           -- OPM品目アドオンマスタ
+                      ,inv.mtl_category_sets_b       mcsb                           -- 品目カテゴリセット
+                      ,inv.mtl_category_sets_tl      mcst                           -- 品目カテゴリセット日本語
+                      ,inv.mtl_categories_b          mcb                            -- 品目カテゴリマスタ
+                      ,inv.mtl_item_categories       mic                            -- 品目カテゴリ割当
+               WHERE  mmt.transaction_date           >= TO_DATE(gr_param.year_month, 'YYYY/MM')
+               AND    mmt.transaction_date           <  LAST_DAY(TO_DATE(gr_param.year_month, 'YYYY/MM')) + 1
+               AND    mmt.transaction_type_id        IN (tran_type1, tran_type2, tran_type3, tran_type4)
+               AND    mmt.subinventory_code          =  msi.secondary_inventory_name
+               AND    msi.attribute7                 =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
+               AND    msi.attribute1                 IN ('1', '3', '4')
+               AND    msi.organization_id            =  gn_organization_id
+               AND    hca.account_number             =  msi.attribute7
+               AND    hca.customer_class_code        =  cv_1
+               AND    hca.status                     =  'A'
+               AND    msib.inventory_item_id         =  mmt.inventory_item_id
+               AND    msib.organization_id           =  gn_organization_id
+               AND    msib.segment1                  =  iimb.item_no
+               AND    iimb.item_id                   =  ximb.item_id
+               AND    msib.inventory_item_id         =  mic.inventory_item_id
+               AND    mcb.category_id                =  mic.category_id
+               AND    mcsb.category_set_id           =  mic.category_set_id
+               AND    mcb.structure_id               =  mcsb.structure_id
+               AND    mcst.category_set_id           =  mcsb.category_set_id
+               AND    mcst.language                  =  USERENV( 'LANG' )
+               AND    mcst.category_set_name         =  cv_category_seishou
+               AND    mic.organization_id            =  gn_organization_id
+               AND    msib.organization_id           =  mic.organization_id
+               AND    mmt.transaction_date           BETWEEN ximb.start_date_active
+                                                     AND     NVL(ximb.end_date_active, mmt.transaction_date)
+              ) sub
+      WHERE     sub.item_category = NVL(gr_param.item_ctg, sub.item_category)
+      ORDER BY  sub.in_base_code
+               ,sub.item_category
+               ,sub.item_no
+-- == 2010/02/02 V1.8 Modified END   ===============================================================
       ;
 --
     -- ローカル・レコード

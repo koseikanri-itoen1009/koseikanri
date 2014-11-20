@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A16R(body)
  * Description      : 受払残高表（拠点別・合計）
  * MD.050           : 受払残高表（拠点別・合計） <MD050_XXCOI_006_A16>
- * Version          : V1.7
+ * Version          : V1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/07/21    1.5   H.Sasaki         [0000642]払出合計の金額算出方法を変更
  *  2009/09/11    1.6   N.Abe            [0001266]OPM品目アドオンの取得方法修正
  *  2009/10/06    1.7   H.Sasaki         [E_T3_00531]商品部のデータ抽出条件変更
+ *  2010/02/02    1.8   N.Abe            [E_本稼動_01411]商品部のPT対応
  *
  *****************************************************************************************/
 --
@@ -488,7 +489,12 @@ AS
   -- 拠点別（商品部）、かつ、拠点が設定されていない場合
   CURSOR  svf_data_cur4
   IS
-    SELECT  xirm.base_code                      base_code                 -- 拠点コード
+-- == 2010/02/02 V1.8 Modified START ===============================================================
+--    SELECT  xirm.base_code                      base_code                 -- 拠点コード
+    SELECT  /*+ use_nl(xirm mcb mic iimb xsib msib)
+                index(xirm xxcoi_inv_reception_month_n02) */
+            xirm.base_code                      base_code                 -- 拠点コード
+-- == 2010/02/02 V1.8 Modified END   ===============================================================
            ,SUBSTRB(hca.account_name, 1, 8)     account_name              -- 拠点名称
            ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
 -- == 2009/07/14 V1.4 Modified START ===============================================================
