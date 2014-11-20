@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_BUS_PERF
  * Description : 営業成績表帳票ワークテーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/20    1.0   SCS H.Kin        新規作成
  *  2009/02/12    1.1   SCS H.Kin        「パーセント～」削除
+ *  2009/06/03    1.2   SCS T.Kitajima   COUNT_NEW_POINT(NUMBER(6,0)→NUMBER(6,2))
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_BUS_PERF
@@ -110,7 +111,7 @@ CREATE TABLE XXCOS.XXCOS_REP_BUS_PERF
     COUNT_VALID_COUNT               NUMBER(6,0),                --件数実有効件数
     COUNT_NEW_COUNT                 NUMBER(6,0),                --件数新規件数
     COUNT_NEW_VENDOR_COUNT          NUMBER(6,0),                --件数新規ベンダー件数
-    COUNT_NEW_POINT                 NUMBER(6,0),                --件数新規ポイント
+    COUNT_NEW_POINT                 NUMBER(6,2),                --件数新規ポイント
     COUNT_MC_PARTY                  NUMBER(6,0),                --件数MC訪問
     POLICY_SUM_CODE                 VARCHAR2(4),                --政策群集約コード
     POLICY_SUM_NAME                 VARCHAR2(20),               --政策群集約名称

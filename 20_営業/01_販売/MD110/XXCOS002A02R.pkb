@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : 営業報告日報
  * MD.050           : 営業報告日報 MD050_COS_002_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2009/02/26    1.2   T.Nakabayashi    MD050課題No153対応 従業員、アサインメント適用日判断追加
  *  2009/02/27    1.3   T.Nakabayashi    帳票ワークテーブル削除処理 コメントアウト解除
  *  2009/05/01    1.4   K.Kiriu          [T1_0481]訪問データ抽出条件統一対応
+ *  2009/06/03    1.5   T.Kitajima       [T1_1172]集約キーに顧客コード追加
+ *  2009/06/03    1.5   T.Kitajima       [T1_1301]納品伝票番号分類で集約するように変更
  *
  *****************************************************************************************/
 --
@@ -241,7 +243,10 @@ AS
             saeh.delivery_date            AS  dlv_date,
             saeh.dlv_invoice_number       AS  hht_invoice_no,
             sael.dlv_invoice_line_number  AS  line_no,
-            saeh.dlv_invoice_class        AS  dlv_invoice_class,
+--****************************** 2009/06/03 1.5 T.Kitajima MOD START ******************************--
+--            saeh.dlv_invoice_class        AS  dlv_invoice_class,
+            MIN( saeh.dlv_invoice_class ) AS  dlv_invoice_class,
+--****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
             sael.delivery_base_code       AS  base_code,
             hzpb.party_name               AS  base_name,
             saeh.dlv_by_code              AS  employee_num,
@@ -273,7 +278,10 @@ AS
             ic_item_mst_b             iimb,
             xxcos_payment             paym,
             xxcos_lookup_values_v     xlvm,
-            xxcos_lookup_values_v     xlvd
+            xxcos_lookup_values_v     xlvd,
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+            xxcos_lookup_values_v     xlvn
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
     WHERE   saeh.delivery_date        =       icp_delivery_date
     AND     saeh.dlv_by_code          =       NVL(icp_dlv_by_code, saeh.dlv_by_code)
     AND     sael.sales_exp_header_id  =       saeh.sales_exp_header_id
@@ -313,13 +321,22 @@ AS
     AND     icp_delivery_date         BETWEEN NVL(xlvd.start_date_active(+),  icp_delivery_date)
                                       AND     NVL(xlvd.end_date_active(+),    icp_delivery_date)
     AND     xlvd.lookup_code(+)       =       sael.item_code
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+    AND     xlvn.lookup_type           =       ct_qct_dlv_slip_cls_type
+    AND     xlvn.lookup_code           =       saeh.dlv_invoice_class
+    AND     to_date(icp_delivery_date) BETWEEN NVL(xlvn.start_date_active, to_date(icp_delivery_date))
+                                       AND     NVL(xlvn.end_date_active,   to_date(icp_delivery_date))
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
     GROUP BY
             rsid.group_code,
             rsid.group_in_sequence,
             saeh.delivery_date,
             saeh.dlv_invoice_number,
             sael.dlv_invoice_line_number,
-            saeh.dlv_invoice_class,
+--****************************** 2009/06/03 1.5 T.Kitajima MOD START ******************************--
+--            saeh.dlv_invoice_class,
+            xlvn.attribute1,
+--****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
             sael.delivery_base_code,
             hzpb.party_name,
             saeh.dlv_by_code,
@@ -336,7 +353,10 @@ AS
     OR      SUM(paym.payment_amount)  <>      0
     ORDER BY
             saeh.dlv_invoice_number,
-            sael.dlv_invoice_line_number
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+            saeh.ship_to_customer_code,
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+           sael.dlv_invoice_line_number
     ;
 --
     --  各種合計金額算出
@@ -394,6 +414,9 @@ AS
               rbre.employee_num             AS  employee_num,
               rbre.dlv_date                 AS  dlv_date,
               rbre.hht_invoice_no           AS  hht_invoice_no,
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+              rbre.party_num                as  party_num,
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
               SUM(rbre.aftertax_sale)       AS  invoice_total_sale
       FROM    xxcos_rep_bus_report          rbre
       WHERE   rbre.request_id               =   cn_request_id
@@ -401,8 +424,11 @@ AS
               rbre.request_id,
               rbre.employee_num,
               rbre.dlv_date,
-              rbre.hht_invoice_no
-      HAVING  COUNT(rbre.hht_invoice_no)    >   1
+              rbre.hht_invoice_no,
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+              rbre.party_num
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+     HAVING  COUNT(rbre.hht_invoice_no)    >   1
       ;
 --
   --  営業実績カウント
@@ -608,6 +634,9 @@ AS
 --
     --  key brake判定用
     lt_hht_invoice_no                     xxcos_rep_bus_report.hht_invoice_no%TYPE;
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+    lt_party_num                          xxcos_rep_bus_report.party_num%TYPE;
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
     --  配列index定義
     lp_idx                                PLS_INTEGER;
     lp_idx_rep                            PLS_INTEGER;
@@ -664,6 +693,9 @@ AS
     lp_idx_rep                :=  0;
     lp_item_count             :=  cn_limit_item_max;
     lt_hht_invoice_no         :=  NULL;
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+    lt_party_num              :=  NULL;
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
     lp_line_count             :=  cn_line_no_default - 1;
 --
     --  0件の場合登録処理をスキップ
@@ -673,19 +705,31 @@ AS
       FOR lp_idx IN l_delivery_data_tab.FIRST..l_delivery_data_tab.LAST LOOP
 --
         --  key brake、商品情報数上限判定
-        IF  ( lt_hht_invoice_no <>  l_delivery_data_tab(lp_idx).hht_invoice_no  )
+--****************************** 2009/06/03 1.5 T.Kitajima MOD START ******************************--
+--        IF  ( lt_hht_invoice_no <>  l_delivery_data_tab(lp_idx).hht_invoice_no  )
+        IF  (lt_hht_invoice_no <>  l_delivery_data_tab(lp_idx).hht_invoice_no  )
+        OR  (lt_party_num      <>  l_delivery_data_tab(lp_idx).party_num       )
+--****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
         OR  ( lp_item_count     =   cn_limit_item_max )
         THEN
           lp_idx_rep          :=  lp_idx_rep + 1;
           lp_item_count       :=  1;
 --
-          IF  ( lt_hht_invoice_no = l_delivery_data_tab(lp_idx).hht_invoice_no  ) THEN
+--****************************** 2009/06/03 1.5 T.Kitajima MOD START ******************************--
+--          IF  ( lt_hht_invoice_no = l_delivery_data_tab(lp_idx).hht_invoice_no  ) THEN
+          IF  ( lt_hht_invoice_no = l_delivery_data_tab(lp_idx).hht_invoice_no  )
+          AND (lt_party_num       =  l_delivery_data_tab(lp_idx).party_num      )
+          THEN
+--****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
             --  明細カウントアップ
             lp_line_count     :=  lp_line_count + 1;
           ELSE
             --  明細カウント初期化＆Key情報退避
             lp_line_count     :=  1;
             lt_hht_invoice_no :=  l_delivery_data_tab(lp_idx).hht_invoice_no;
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+            lt_party_num      :=  l_delivery_data_tab(lp_idx).party_num;
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
           END IF;
 --
           --  新レコード用にIDを取得
@@ -1576,6 +1620,9 @@ AS
           AND     rbre.employee_num           =   l_invoice_total_tab(lp_idx).employee_num
           AND     rbre.dlv_date               =   l_invoice_total_tab(lp_idx).dlv_date
           AND     rbre.hht_invoice_no         =   l_invoice_total_tab(lp_idx).hht_invoice_no
+--****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+          AND     rbre.party_num              =   l_invoice_total_tab(lp_idx).party_num
+--****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
           ;
         END LOOP  invoice_total_update;
       EXCEPTION
@@ -2202,6 +2249,7 @@ AS
       RAISE global_process_expt;
     END IF;
 --
+
     --  ===============================
     --  訪問のみデータ抽出、訪問のみデータ挿入(A-4,A-5)
     --  ===============================
