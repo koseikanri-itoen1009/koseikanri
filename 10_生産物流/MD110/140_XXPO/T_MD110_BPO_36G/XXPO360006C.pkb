@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/12/05    1.19  A.Shiina         本番障害#499,#506対応
  *  2008/12/07    1.20  N.Yoshida        本番障害#533対応
  *  2009/01/09    1.21  N.Yoshida        本番障害#984対応
+ *  2009/03/30    1.22  A.Shiina         本番障害#1346対応
  *
  *****************************************************************************************/
 --
@@ -1224,6 +1225,9 @@ AS
      ||        ' OR '
      ||        ' (xrart.txns_type NOT IN('|| cv_type_hen ||',' || cv_type_nasi|| '))'
      ||     ' ) '
+-- 2009/03/30 v1.11 ADD START
+     || ' AND ph.org_id = FND_PROFILE.VALUE(''ORG_ID'') '
+-- 2009/03/30 v1.11 ADD END
      ;
 --
       lv_where := lv_where
@@ -1239,7 +1243,7 @@ AS
         ||     ' =  ''' || cv_sts_var_n || ''''      -- 取消フラグ
         || ' AND DECODE(ph.po_header_id, NULL, '''|| cv_sts_var_y ||''', pl.attribute14)'
         ||     ' =  ''' || cv_sts_var_y || ''''      -- 金額確定フラグ
-        ;
+       ;
 --
     --担当部署
     IF (gr_param_rec.dept_code.COUNT = gn_one) THEN

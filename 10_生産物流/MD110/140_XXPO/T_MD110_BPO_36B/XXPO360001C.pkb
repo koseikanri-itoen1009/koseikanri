@@ -7,7 +7,7 @@ AS
  * Description      : 発注書
  * MD.050/070       : 仕入（帳票）Issue1.0(T_MD050_BPO_360)
  *                    仕入（帳票）Issue1.0(T_MD070_BPO_36B)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                       合計が次ページに表示される現象を修正
  *  2008/10/21    1.9   T.Ohashi         指摘382対応
  *  2008/11/20    1.10  T.Ohashi         指摘664対応
+ *  2009/03/30    1.11  A.Shiina         本番#1346対応
  *
  *****************************************************************************************/
 --
@@ -686,6 +687,9 @@ AS
              || ' AND poh.attribute1           < ''' || cv_poh_cancel  || ''''
              || ' AND pol.cancel_flag         <> ''' || cv_pln_cancel_flag   || ''''
              || ' AND poh.attribute4          >= ''' || ir_param.delivery_date_from || ''''
+-- 2009/03/30 v1.11 ADD START
+             || ' AND poh.org_id               = FND_PROFILE.VALUE(''ORG_ID'') '
+-- 2009/03/30 v1.11 ADD END
              ;
     -- 発注番号が入力されている場合
     IF (ir_param.po_number IS NOT NULL) THEN
