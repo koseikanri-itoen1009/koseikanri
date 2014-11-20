@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -34,6 +34,8 @@ AS
  *  2009/02/12    1.2   S.Sasaki         [障害COK_031]顧客受注可能フラグ、売上対象区分チェック追加
  *  2009/05/14    1.3   M.Hiruta         [障害T1_1003]文字列バッファ修正
  *  2009/05/19    1.4   M.Hiruta         [障害T1_1043]一時表作成時 売上金額・売上金額（税抜き）小数点以下切捨て
+ *  2009/06/08    1.5   M.Hiruta         [障害T1_1354]EDIで取得した値のうち、マスターと突き合わせする文字列値の
+ *                                                    前後スペースを除去するよう修正
  *
  *****************************************************************************************/
   -- =========================
@@ -2130,10 +2132,16 @@ AS
               , xwest.slip_no                 AS slip_no                   --伝票番号
               , xwest.line_no                 AS line_no                   --行No
               , xwest.store_delivery_date     AS store_delivery_date       --店舗納品日
-              , xwest.edi_chain_store_code    AS edi_chain_store_code      --EDIチェーン店コード
-              , xwest.delivery_to_center_code AS delivery_to_center_code   --納入先センターコード
-              , xwest.store_code              AS store_code                --店コード
-              , xwest.goods_code_2            AS goods_code_2              --商品コード2
+-- Start 2009/06/08 Ver_1.5 T1_1354 M.Hiruta
+--              , xwest.edi_chain_store_code    AS edi_chain_store_code      --EDIチェーン店コード
+--              , xwest.delivery_to_center_code AS delivery_to_center_code   --納入先センターコード
+--              , xwest.store_code              AS store_code                --店コード
+--              , xwest.goods_code_2            AS goods_code_2              --商品コード2
+              , LTRIM( xwest.edi_chain_store_code )    AS edi_chain_store_code      --EDIチェーン店コード
+              , LTRIM( xwest.delivery_to_center_code ) AS delivery_to_center_code   --納入先センターコード
+              , LTRIM( xwest.store_code )              AS store_code                --店コード
+              , LTRIM( xwest.goods_code_2 )            AS goods_code_2              --商品コード2
+-- End   2009/06/08 Ver_1.5 T1_1354 M.Hiruta
               , xwest.order_qty_sum           AS order_qty_sum             --数量(発注数量(合計、バラ))
               , xwest.shipment_unit_price     AS shipment_unit_price       --納品単価(原単価(出荷))
               , xwest.shipment_cost_amt       AS shipment_cost_amt         --原価金額(出荷)
