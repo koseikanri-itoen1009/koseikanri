@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.8
+ * Version                : 1.9
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -40,7 +40,8 @@ AS
  *  2008/06/02   1.6   ORACLE石渡賢和   [出荷可否チェック] フォーキャストの抽出条件変更
  *                                      [積載効率チェック(積載効率算出)]抽出条件改良
  *  2008/06/13   1.7   ORACLE石渡賢和   [ロット逆転防止チェック] 移動指示の着日条件を変更
- *  2008/06/19   1.8   ORACLE山根一浩   内部変更要求No143対応
+ *  2008/06/19   1.8   ORACLE山根一浩   [出荷可否チェック] 内部変更要求No143対応
+ *  2008/06/26   1.9   ORACLE石渡賢和   [出荷可否チェック] 移動指示の着日条件を変更
  *
  *****************************************************************************************/
 --
@@ -2640,8 +2641,7 @@ AS
           FROM   xxwsh_order_headers_all       xoha,
                  xxwsh_order_lines_all         xola,
                  xxwsh_oe_transaction_types2_v xottv
-          WHERE  xoha.deliver_from_id            = in_deliver_from_id              -- 出荷元
-            AND  xoha.head_sales_branch          = iv_base_cd                      -- 拠点コード
+          WHERE  xoha.head_sales_branch          = iv_base_cd                      -- 拠点コード
             AND  xoha.latest_external_flag       = cv_yes                          -- 最新フラグ
             AND  xoha.req_status                <> cv_request_status_99            -- ステータス取消以外
             AND  xottv.transaction_type_id       = xoha.order_type_id              -- 受注タイプID
