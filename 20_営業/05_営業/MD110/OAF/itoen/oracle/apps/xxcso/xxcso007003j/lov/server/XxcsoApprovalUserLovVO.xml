@@ -9,6 +9,7 @@
    RowClass="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoApprovalUserLovVORowImpl"
    ComponentClass="itoen.oracle.apps.xxcso.xxcso007003j.lov.server.XxcsoApprovalUserLovVOImpl"
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   FetchMode="FETCH_AS_NEEDED"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
 SELECT  xev.employee_number
@@ -49,13 +50,13 @@ SELECT  xev.employee_number
 FROM    xxcso_employees_v2  xev
 WHERE   (
          (
-          (TO_DATE(xev.issue_date, 'YYYYMMDD') >= TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+          (TO_DATE(xev.issue_date, 'YYYYMMDD') <= TRUNC(xxcso_util_common_pkg.get_online_sysdate))
           AND
           (xev.position_code_new IN ('000', '001', '007', '009', '030', '047'))
          )
          OR
          (
-          (TO_DATE(xev.issue_date, 'YYYYMMDD')  < TRUNC(xxcso_util_common_pkg.get_online_sysdate))
+          (TO_DATE(xev.issue_date, 'YYYYMMDD')  > TRUNC(xxcso_util_common_pkg.get_online_sysdate))
           AND
           (xev.position_code_old IN ('000', '001', '007', '009', '030', '047'))
          )
