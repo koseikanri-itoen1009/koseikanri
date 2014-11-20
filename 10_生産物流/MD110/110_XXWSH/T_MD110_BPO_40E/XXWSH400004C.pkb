@@ -7,7 +7,7 @@ AS
  * Description            : 出荷依頼締め関数
  * MD.050                 : T_MD050_BPO_401_出荷依頼
  * MD.070                 : T_MD070_BPO_40E_出荷依頼締め関数
- * Version                : 1.18
+ * Version                : 1.19
  *
  * Program List
  *  ------------------------ ---- ---- --------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/01/16   1.15  SCS    菅原大輔   本番#1009 ロックセッション切断対応
  *  2009/02/19   1.17  SCS    伊藤ひとみ (v1.15とv1.16をマージ)本番#1053 対象データなし時の締めステータスチェック追加
  *  2009/04/16   1.18  SCS    伊藤ひとみ 本番#1398 顧客付け替えが発生し、IDが古い可能性があるので、コードで有効なものを参照する。
+ *  2009/04/17   1.19  SCS    伊藤ひとみ 本番#1398(再対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1203,10 +1204,13 @@ AS
                                                            -- 受注ヘッダアドオン.出荷元保管場所
        AND   xdl.entering_despatching_code2  = xoha.deliver_to
                                                            -- 受注ヘッダアドオン.配送先
--- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客と顧客サイトは拠点＝パーティ番号ではなくIDで結合する。
---       AND   xcasv.base_code                  = xcav.party_number
-       AND   xcasv.party_id                   = xcav.party_id
--- 2009/04/16 H.Itou Mod End
+-- 2009/04/17 H.Itou Mod Start 本番障害#1398(再対応) 拠点の情報がほしいので顧客と顧客サイトは拠点で結合
+---- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客と顧客サイトは拠点＝パーティ番号ではなくIDで結合する。
+----       AND   xcasv.base_code                  = xcav.party_number
+--       AND   xcasv.party_id                   = xcav.party_id
+---- 2009/04/16 H.Itou Mod End
+       AND   xcasv.base_code                  = xcav.party_number
+-- 2009/04/17 H.Itou Mod End
 -- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客付け替えが発生した場合、パーティサイトIDが古いので、配送先で有効なものを参照する。
 --       AND   xoha.deliver_to_id             =  xcasv.party_site_id
        AND   xoha.deliver_to                  =  xcasv.party_site_number -- パーティサイト番号 = 受注ヘッダ.配送先
@@ -1332,7 +1336,10 @@ AS
                                                            -- 顧客サイト.拠点コード
 -- 2009/04/16 H.Itou Mod End
 -- 2009/04/16 H.Itou Mod Start 本番障害#1398 顧客付け替え発生の場合、受注ヘッダの拠点が古いので、顧客情報は配送先から見るため、配送LT（倉庫・拠点）でも顧客サイトから顧客を取得
-       AND   xcasv.party_id                   = xcav.party_id
+-- 2009/04/17 H.Itou Mod Start 本番障害#1398(再対応) 拠点の情報がほしいので顧客と顧客サイトは拠点で結合
+--       AND   xcasv.party_id                   = xcav.party_id
+       AND   xcasv.base_code                  = xcav.party_number
+-- 2009/04/17 H.Itou Mod End
        AND   xoha.deliver_to                  = xcasv.party_site_number  -- パーティサイト番号 = 受注ヘッダ.配送先
        AND   xcasv.party_site_status          =  ''A''                   -- ステータス：有効な顧客
        AND   xcasv.start_date_active         <= xoha.schedule_ship_date

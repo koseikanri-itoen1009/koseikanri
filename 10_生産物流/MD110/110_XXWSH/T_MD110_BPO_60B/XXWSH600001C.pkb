@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/01/27    1.19 SCS    H.Itou     本番障害#1028対応
  *  2009/02/27    1.20 SCS    M.Hokkanji 本番障害#1228対応
  *  2009/04/17    1.21 SCS    H.Itou     本番障害#1398対応
+ *  2009/04/20    1.22 SCS    H.Itou     本番障害#1398再対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1067,7 +1068,10 @@ debug_log(FND_FILE.LOG,'処理種別：'|| iv_shipping_biz_type);
 -- 2009/04/17 H.Itou Mod End
 -- 2009/04/17 H.Itou Mod Start 本番障害#1398 顧客付け替え時にIDが最新でないので出荷先コードで結合し、顧客マスタを参照
 --    lv_sql_4 := lv_sql_4 || ' AND xcav.party_id = xcav.party_id';                  -- パーティID
-    lv_sql_4 := lv_sql_4 || ' AND xcav.party_id = xcasv.party_id';                  -- パーティID
+-- 2009/04/20 H.Itou Mod Start 本番障害#1398(再対応) 拠点の情報を取得したいので、拠点コードで結合
+--    lv_sql_4 := lv_sql_4 || ' AND xcav.party_id = xcasv.party_id';                  -- パーティID
+    lv_sql_4 := lv_sql_4 || ' AND xcav.party_number = xcasv.base_code';            -- 拠点コード
+-- 2009/04/20 H.Itou Mod End
     lv_sql_4 := lv_sql_4 || ' AND xcav.party_status       = ''A'' ';
     lv_sql_4 := lv_sql_4 || ' AND xcav.account_status     = ''A'' ';
 -- 2009/04/17 H.Itou Mod End
@@ -8837,7 +8841,10 @@ debug_log(FND_FILE.LOG,'3-2-6運賃形態:出荷');
                , xxwsh_order_headers_all   xoha                 -- 受注ヘッダアドオン
 -- 2009/04/17 H.Itou Mod Start 本番障害#1398 顧客付け替え時にIDが最新でないので出荷先コードで結合し、顧客マスタを参照
 --           WHERE xca.party_number = xoha.head_sales_branch
-           WHERE xca.party_id           = xcsv.party_id
+-- 2009/04/20 H.Itou Mod Start 本番障害#1398(再対応) 拠点の情報を取得したいので、拠点コードで結合
+--           WHERE xca.party_id           = xcsv.party_id
+           WHERE xca.party_number       = xcsv.base_code
+-- 2009/04/20 H.Itou Mod End
              AND xcsv.party_site_number = xoha.deliver_to  -- 出荷先コードで顧客サイトを結合
              AND xcsv.party_site_status = 'A'              -- サイトステータス：有効
              AND xcsv.start_date_active <= TRUNC(cur_rec.ship_date)
