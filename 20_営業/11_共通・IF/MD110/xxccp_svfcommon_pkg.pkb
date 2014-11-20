@@ -6,7 +6,7 @@ AS
  * Package Name           : xxccp_svfcommon_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_CCP_共通関数
- * Version                : 1.3
+ * Version                : 1.5
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -24,6 +24,8 @@ AS
  *  2009-03-05    1.2  Masayuki.Sano    [submit_svf_request]例外時のロールバック削除
  *  2009-03-06    1.3  Masayuki.Sano    ソート処理動作不正対応
  *  2009-03-23    1.4  Shinya.Kayahara  最終行にスラッシュ追加
+ *  2009-04-08    1.5  Masayuki.Sano    ソート処理動作不正対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -569,7 +571,10 @@ AS
     cv_op_cond              CONSTANT VARCHAR2(30)   := 'Condition=';
     cv_opv_cond1            CONSTANT VARCHAR2(30)   := '[REQUEST_ID]=';
 -- ADD START 2009/03/06
-    cv_form_mode_4          CONSTANT VARCHAR2(30)   := 'FromMode=4';
+-- 2009-04-08 UPDATE 2009-04-08 Ver.1.5 Masayuki.Sano Start
+--    cv_form_mode_4          CONSTANT VARCHAR2(30)   := 'FromMode=4';
+    cv_form_mode_4          CONSTANT VARCHAR2(30)   := 'FormMode=4';
+-- 2009-04-08 UPDATE 2009-04-08 Ver.1.5 Masayuki.Sano Start
 -- ADD END   2009/03/06
     --
     -- システムプロファイル名称定数
