@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A03C(body)
  * Description      : 電子帳簿販売実績の情報系システム連携
  * MD.050           : 電子帳簿販売実績の情報系システム連携 <MD050_CFO_019_A03>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012/08/27    1.0   T.Osawa          新規作成
+ *  2012/10/31    1.1   N.Sugiura        [結合テスト障害No29] エラー内容を出力ファイルに出力する
  *
  *****************************************************************************************/
 --
@@ -1357,6 +1358,12 @@ AS
                which  => cv_file_type_log
               ,buff   => lv_errbuf
               );
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
+            FND_FILE.PUT_LINE(
+               which  => cv_file_type_out
+              ,buff   => lv_errbuf
+            );
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
             --
           END IF;
           --
@@ -1445,6 +1452,12 @@ AS
               ,buff   => lv_errbuf
               );
             --
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
+            FND_FILE.PUT_LINE(
+               which  => cv_file_type_out
+              ,buff   => lv_errbuf
+            );
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
           END IF;
           --
           RAISE interface_error_expt;
@@ -1716,6 +1729,13 @@ AS
         , buff                =>  lv_errmsg --エラーメッセージ
       );
       --
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
+      -- 出力ファイルにもエラー内容を出力する
+      FND_FILE.PUT_LINE(
+          which               =>  cv_file_type_out
+        , buff                =>  lv_errmsg --エラーメッセージ
+      );
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_warn;
@@ -2985,6 +3005,12 @@ AS
           ,buff   => lv_errmsg
         );
         --
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
         gb_status_warn        :=  TRUE;           --警告終了に
       END IF;
       --
@@ -3218,6 +3244,12 @@ AS
            which  => FND_FILE.LOG
           ,buff   => lv_errmsg
         );
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
+        FND_FILE.PUT_LINE(
+           which  => FND_FILE.OUTPUT
+          ,buff   => lv_errmsg
+        );
+-- 2012/10/31 [結合テスト障害No29] N.Sugiura ADD
         --
         gb_status_warn        :=  TRUE;           --警告終了に
       END IF;

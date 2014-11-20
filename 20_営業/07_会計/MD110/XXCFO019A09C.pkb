@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFO019A09C(body)
  * Description      : 電子帳簿在庫管理の情報系システム連携
  * MD.050           : MD050_CFO_019_A09_電子帳簿在庫管理の情報系システム連携
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2012-09-03    1.0   K.Nakamura       新規作成
  *  2012-09-27    1.1   K.Nakamura       [結合テスト障害No18] OPM品目アドオンとの結合条件修正
+ *  2012-10-31    1.2   N.Sugiura        [結合テスト障害No38] 資材配賦と勘定科目組み合わせの結合条件修正
+ *                                       CCIDがマスタに存在しない場合は警告にするよう修正
  *
  *****************************************************************************************/
 --
@@ -142,6 +144,9 @@ AS
   cv_msg_cfo_10023            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-10023'; -- 営業原価取得エラーメッセージ
   cv_msg_cfo_10024            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-10024'; -- 標準原価取得エラーメッセージ
   cv_msg_cfo_10025            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-10025'; -- 取得対象データ無しエラーメッセージ
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+  cv_msg_cfo_10035            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-10035'; -- データ取得エラーメッセージ
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
   -- トークンコード
   cv_tkn_cause                CONSTANT VARCHAR2(20) := 'CAUSE';                -- 未連携データ登録理由
   cv_tkn_dir_tok              CONSTANT VARCHAR2(20) := 'DIR_TOK';              -- ディレクトリ名
@@ -166,6 +171,11 @@ AS
   cv_tkn_trn_type_tok         CONSTANT VARCHAR2(20) := 'TRANSACTION_TYPE_TOK'; -- 取引タイプ
   cv_tkn_trn_date             CONSTANT VARCHAR2(20) := 'TRN_DATE';             -- 取引日
   cv_tkn_trn_id               CONSTANT VARCHAR2(20) := 'TRN_ID';               -- 取引ID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+  cv_tkn_data                 CONSTANT VARCHAR2(20) := 'DATA';                 -- DATA
+  cv_tkn_item                 CONSTANT VARCHAR2(20) := 'ITEM';                 -- KEY項目
+  cv_tkn_key                  CONSTANT VARCHAR2(20) := 'KEY';                  -- KEY値
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
   -- トークン値
   cv_msg_cfo_11008            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-11008'; -- 項目が不正
   cv_msg_cfo_11017            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-11017'; -- 資材取引ID
@@ -178,6 +188,9 @@ AS
   cv_msg_cfo_11024            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-11024'; -- 在庫管理情報
   cv_msg_cfo_11025            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-11025'; -- 在庫管理未連携テーブル
   cv_msg_cfo_11026            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-11026'; -- 在庫管理管理テーブル
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+  cv_msg_cfo_11122            CONSTANT VARCHAR2(20) := 'APP-XXCFO1-11122'; -- 勘定科目組合せID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
   -- 日付フォーマット
   cv_format_yyyymmdd          CONSTANT VARCHAR2(8)  := 'YYYYMMDD';         -- YYYYMMDDフォーマット
   cv_format_yyyymmdd2         CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';       -- YYYY/MM/DDフォーマット
@@ -278,6 +291,9 @@ AS
   gt_directory_name           all_directories.directory_name%TYPE                DEFAULT NULL; -- ディレクトリ名
   gt_directory_path           all_directories.directory_path%TYPE                DEFAULT NULL; -- ディレクトリパス
   gv_file_handle              UTL_FILE.FILE_TYPE;                                              -- ファイルハンドル
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+  gt_code_combination_id      gl_code_combinations.code_combination_id%TYPE      DEFAULT NULL; -- CCID格納用
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
   -- テーブル変数
   g_chk_item_tab              g_chk_item_ttype;      -- 項目チェック
   g_inv_wait_coop_tab         g_inv_wait_coop_ttype; -- 在庫管理未連携テーブル
@@ -1652,6 +1668,37 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+    --==============================================================
+    -- CCIDチェック
+    --==============================================================
+      -- CCIDが取得できなかったら警告にする
+    IF ( gt_code_combination_id IS NULL ) THEN
+--
+      lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( iv_application  => cv_msg_kbn_cfo   -- アプリケーション短縮名
+                                                   , iv_name         => cv_msg_cfo_10035 -- メッセージコード
+                                                   , iv_token_name1  => cv_tkn_data      -- トークンコード1(勘定科目組合せID)
+                                                   , iv_token_value1 => cv_msg_cfo_11122 -- トークン値1
+                                                   , iv_token_name2  => cv_tkn_item      -- トークンコード2(資材取引ID)
+                                                   , iv_token_value2 => cv_msg_cfo_11017 -- トークン値2
+                                                   , iv_token_name3  => cv_tkn_key       -- トークンコード3(資材取引ID(値))
+                                                   , iv_token_value3 => g_data_tab(1)    -- トークン値2
+                                                   )
+                          , 1
+                          , 5000
+                          );
+--
+      -- 警告フラグ
+      gv_warn_flg := cv_flag_y;
+--
+      -- メッセージ出力
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.OUTPUT
+        ,buff   => lv_errmsg
+      );
+--
+    END IF;
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
     --==============================================================
     -- 項目チェック
     --==============================================================
@@ -2087,6 +2134,10 @@ AS
                                         , gv_aff3_shouhin                                               -- 勘定科目コードが商品
                                         , gv_aff3_seihin )                                              -- 勘定科目コードが製品
                   THEN gcc1.segment2
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+                  WHEN gcc1.segment3 IS NULL
+                  THEN NULL
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
                   ELSE gv_aff2_adj_dept_code                                                            -- 勘定科目コードが上記以外
                   END                                                     AS adj_dept_code              -- 調整部門コード
            , gcc1.segment3                                                AS segment3                   -- 勘定科目コード
@@ -2098,6 +2149,9 @@ AS
                   ELSE iimb.attribute7                                                                  -- 営業原価_旧
                   END                                                     AS discrete_cost              -- 営業原価
            , gv_coop_date                                                 AS coop_date                  -- 連携日時
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+           , gcc1.code_combination_id                                     AS code_combination_id        -- 勘定科目組み合わせID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
       FROM   mtl_material_transactions    mmt  -- 資材取引
            , mtl_transaction_accounts     mta  -- 資材配賦
            , mtl_system_items_b           msib -- Disc品目
@@ -2122,7 +2176,10 @@ AS
       AND    mmt.organization_id          = msi1.organization_id
       AND    mmt.transfer_subinventory    = msi2.secondary_inventory_name(+)
       AND    mmt.transfer_organization_id = msi2.organization_id(+)
-      AND    mta.reference_account        = gcc1.code_combination_id
+-- 2012/10/31 [結合テスト障害No38] N.Sugiura MOD
+--      AND    mta.reference_account        = gcc1.code_combination_id
+      AND    mta.reference_account        = gcc1.code_combination_id(+)
+-- 2012/10/31 [結合テスト障害No38] N.Sugiura MOD
       AND    mta.organization_id          = gt_organization_id
       AND    mta.transaction_id BETWEEN iv_tran_id_from
                                 AND     iv_tran_id_to
@@ -2167,6 +2224,10 @@ AS
                                         , gv_aff3_shouhin                                               -- 勘定科目コードが商品
                                         , gv_aff3_seihin )                                              -- 勘定科目コードが製品
                   THEN gcc1.segment2
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+                  WHEN gcc1.segment3 IS NULL
+                  THEN NULL
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
                   ELSE gv_aff2_adj_dept_code                                                            -- 勘定科目コードが上記以外
                   END                                                     AS adj_dept_code              -- 調整部門コード
            , gcc1.segment3                                                AS segment3                   -- 勘定科目コード
@@ -2178,6 +2239,9 @@ AS
                   ELSE iimb.attribute7                                                                  -- 営業原価_旧
                   END                                                     AS discrete_cost              -- 営業原価
            , gv_coop_date                                                 AS coop_date                  -- 連携日時
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+           , gcc1.code_combination_id                                     AS code_combination_id        -- 勘定科目組み合わせID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
       FROM   mtl_material_transactions    mmt  -- 資材取引
            , mtl_transaction_accounts     mta  -- 資材配賦
            , mtl_system_items_b           msib -- Disc品目
@@ -2202,7 +2266,10 @@ AS
       AND    mmt.organization_id          = msi1.organization_id
       AND    mmt.transfer_subinventory    = msi2.secondary_inventory_name(+)
       AND    mmt.transfer_organization_id = msi2.organization_id(+)
-      AND    mta.reference_account        = gcc1.code_combination_id
+-- 2012/10/31 [結合テスト障害No38] N.Sugiura MOD
+--      AND    mta.reference_account        = gcc1.code_combination_id
+      AND    mta.reference_account        = gcc1.code_combination_id(+)
+-- 2012/10/31 [結合テスト障害No38] N.Sugiura MOD
       AND    mta.organization_id          = gt_organization_id
       AND    mta.gl_batch_id BETWEEN iv_batch_id_from
                              AND     iv_batch_id_to
@@ -2248,6 +2315,10 @@ AS
                                         , gv_aff3_shouhin                                               -- 勘定科目コードが商品
                                         , gv_aff3_seihin )                                              -- 勘定科目コードが製品
                   THEN gcc1.segment2
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+                  WHEN gcc1.segment3 IS NULL
+                  THEN NULL
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
                   ELSE gv_aff2_adj_dept_code                                                            -- 勘定科目コードが上記以外
                   END                                                     AS adj_dept_code              -- 調整部門コード
            , gcc1.segment3                                                AS segment3                   -- 勘定科目コード
@@ -2259,6 +2330,9 @@ AS
                   ELSE iimb.attribute7                                                                  -- 営業原価_旧
                   END                                                     AS discrete_cost              -- 営業原価
            , gv_coop_date                                                 AS coop_date                  -- 連携日時
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+           , gcc1.code_combination_id                                     AS code_combination_id        -- 勘定科目組み合わせID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
       FROM   mtl_material_transactions    mmt  -- 資材取引
            , mtl_transaction_accounts     mta  -- 資材配賦
            , mtl_system_items_b           msib -- Disc品目
@@ -2283,7 +2357,10 @@ AS
       AND    mmt.organization_id          = msi1.organization_id
       AND    mmt.transfer_subinventory    = msi2.secondary_inventory_name(+)
       AND    mmt.transfer_organization_id = msi2.organization_id(+)
-      AND    mta.reference_account        = gcc1.code_combination_id
+-- 2012/10/31 [結合テスト障害No38] N.Sugiura MOD
+--      AND    mta.reference_account        = gcc1.code_combination_id
+      AND    mta.reference_account        = gcc1.code_combination_id(+)
+-- 2012/10/31 [結合テスト障害No38] N.Sugiura MOD
       AND    mta.organization_id          = gt_organization_id
       AND    mta.gl_batch_id BETWEEN iv_batch_id_from
                              AND     iv_batch_id_to
@@ -2322,6 +2399,10 @@ AS
                                         , gv_aff3_shouhin                                               -- 勘定科目コードが商品
                                         , gv_aff3_seihin )                                              -- 勘定科目コードが製品
                   THEN gcc1.segment2
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+                  WHEN gcc1.segment3 IS NULL
+                  THEN NULL
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
                   ELSE gv_aff2_adj_dept_code                                                            -- 勘定科目コードが上記以外
                   END                                                     AS adj_dept_code              -- 調整部門コード
            , gcc1.segment3                                                AS segment3                   -- 勘定科目コード
@@ -2333,6 +2414,9 @@ AS
                   ELSE iimb.attribute7                                                                  -- 営業原価_旧
                   END                                                     AS discrete_cost              -- 営業原価
            , gv_coop_date                                                 AS coop_date                  -- 連携日時
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+           , gcc1.code_combination_id                                     AS code_combination_id        -- 勘定科目組み合わせID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
       FROM   mtl_material_transactions    mmt  -- 資材取引
            , mtl_system_items_b           msib -- Disc品目
            , ic_item_mst_b                iimb -- OPM品目マスタ
@@ -2357,7 +2441,10 @@ AS
       AND    mmt.organization_id          = msi1.organization_id
       AND    mmt.transfer_subinventory    = msi2.secondary_inventory_name(+)
       AND    mmt.transfer_organization_id = msi2.organization_id(+)
-      AND    xiwc.reference_account       = gcc1.code_combination_id
+-- 2012/10/31 [結合テスト障害No38] N.Sugiura MOD
+--      AND    xiwc.reference_account       = gcc1.code_combination_id
+      AND    xiwc.reference_account       = gcc1.code_combination_id(+)
+-- 2012/10/31 [結合テスト障害No38] N.Sugiura MOD
       AND    xiwc.organization_id         = gt_organization_id
     ;
 --
@@ -2413,6 +2500,9 @@ AS
         , g_data_tab(25)         -- 標準原価
         , g_data_tab(26)         -- 営業原価
         , g_data_tab(27)         -- 連携日時
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+        , gt_code_combination_id -- CCID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
         ;
         --
         -- 初期化（ループ内の判定用リターンコード）
@@ -2513,6 +2603,9 @@ AS
         , g_data_tab(25)         -- 標準原価
         , g_data_tab(26)         -- 営業原価
         , g_data_tab(27)         -- 連携日時
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+        , gt_code_combination_id -- CCID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
         ;
         --
         -- 初期化（ループ内の判定用リターンコード）
@@ -2612,6 +2705,9 @@ AS
         , g_data_tab(25)         -- 標準原価
         , g_data_tab(26)         -- 営業原価
         , g_data_tab(27)         -- 連携日時
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
+        , gt_code_combination_id -- CCID
+-- 2012/11/02 [結合テスト障害No38] N.Sugiura ADD
         ;
         --
         -- 初期化（ループ内の判定用リターンコード）
