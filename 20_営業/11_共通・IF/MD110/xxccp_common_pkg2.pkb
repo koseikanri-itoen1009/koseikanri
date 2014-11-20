@@ -29,6 +29,7 @@ AS
  *  2009-02-11    1.3  K.Kanada         [業務処理日取得関数]テスト実施用にプロファイル値で
  *                                      業務日付を指定可能なように変更
  *  2009-05-01    1.4  Masayuki.Sano    障害番号T1_0910対応(スキーマ名付加)
+ *  2009-05-11    1.5  Masayuki.Sano    障害番号T1_0376対応(ダミー日付の日付変換時、書式指定)
  *****************************************************************************************/
 --
   -- ===============================
@@ -109,7 +110,10 @@ AS
       FROM   XXCCP_PROCESS_DATES
       ;
     ELSE
-      ld_prdate := to_date(lv_profile) ;
+-- 2009-05-11 UPDATE Ver.1.5 By Masayuki.Sano Start
+--      ld_prdate := to_date(lv_profile) ;
+      ld_prdate := TO_DATE(lv_profile, 'DD-MM-YYYY');
+-- 2009-05-11 UPDATE Ver.1.5 By Masayuki.Sano End
     END IF;
     RETURN TRUNC(ld_prdate,'DD');
     --
