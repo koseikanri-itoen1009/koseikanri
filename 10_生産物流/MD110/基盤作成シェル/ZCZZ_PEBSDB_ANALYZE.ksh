@@ -2,6 +2,12 @@
 
 ################################################################################
 ##                                                                            ##
+##   [ファイル名]                                                             ##
+##      ZCZZ_PEBSDB_ANALYZE.ksh                                               ##
+##                                                                            ##
+##   [ジョブ名]                                                               ##
+##      ＤＢ統計情報収集ジョブ                                                ##
+##                                                                            ##
 ##   [概要]                                                                   ##
 ##      データベースの統計情報の取得を実施する。                              ##
 ##                                                                            ##
@@ -9,6 +15,7 @@
 ##        作成者  ：   Oracle 堀井           2008/03/25 1.0.1                 ##
 ##        更新履歴：   Oracle 堀井           2008/03/25 1.0.1                 ##
 ##                       初版                                                 ##
+##                     SCS 長濱              2009/07/06 1.0.2                 ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -16,9 +23,6 @@
 ##                                                                            ##
 ##   [パラメータ]                                                             ##
 ##      なし                                                                  ##
-##                                                                            ##
-##   [使用方法]                                                               ##
-##      ZCZZ_PEBSDB_ANALYZE.ksh                                               ##
 ##                                                                            ##
 ##    Copyright 株式会社伊藤園 U5000プロジェクト 2007-2009                    ##
 ################################################################################
@@ -111,15 +115,15 @@ L_yuzamei="SYSADMIN"                       #ユーザ名
 L_konkarento_app_tansyukumei="FND"         #プログラムアプリケーション短縮名
 L_konkarentomei="FNDGSCST"                 #プログラムアプリケーション名
 
-L_hikisu01="ALL"          #スキーマ名
-L_hikisu02="10"           #評価率
-L_hikisu03='""'           #並列度
-L_hikisu04="NOBACKUP"     #内部フラグ
-L_hikisu05='""'           #要求IDの再起動
-L_hikisu06="LASTRUN"      #履歴モード
-L_hikisu07="GATHER"       #収集オプション
-L_hikisu08='""'           #変更しきい
-L_hikisu09="Y"            #依存カーソルの無効化
+L_hikisu01="ALL"            #スキーマ名
+L_hikisu02="10"             #評価率
+L_hikisu03='""'             #並列度
+L_hikisu04="NOBACKUP"       #内部フラグ
+L_hikisu05='""'             #要求IDの再起動
+L_hikisu06="LASTRUN"        #履歴モード
+L_hikisu07='"GATHER AUTO"'  #収集オプション
+L_hikisu08="10"             #変更しきい
+L_hikisu09="Y"              #依存カーソルの無効化
 
 L_rogushuturyoku "パラメーター値"
 echo "L_app_syokuseki_tansyukumei="${L_app_syokuseki_tansyukumei}   >> ${L_rogumei}
