@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A01C (body)
  * Description      : 受注データ取込機能
  * MD.050           : 受注データ取込(MD050_COS_010_A01)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2009/11/19    1.11  M.Sano           [I_E_688]ブレイクキーにチェーン店コードを追加
  *  2009/11/25    1.12  K.Atsushiba      [E_本稼動_00098]ブレイクキーに店舗納品日追加、ブレイク条件にNULL考慮
  *                                       顧客チェックにOTHERS例外追加
+ *  2009/11/29    1.13  N.Maeda          [E_本稼動_00185] 重複データ検索時条件修正
  *
  *****************************************************************************************/
 --
@@ -4494,7 +4495,11 @@ AS
             OR ( head.center_delivery_date = it_edi_work.center_delivery_date ) )    -- センター納品日
     AND     ( ( head.order_date IS NULL AND it_edi_work.order_date IS NULL  )
             OR ( head.order_date = it_edi_work.order_date ) )                        -- 発注日
-    AND     TRUNC( head.data_creation_date_edi_data ) = TRUNC( it_edi_work.data_creation_date_edi_data ) -- データ作成日（ＥＤＩデータ中）
+-- ************ 2009/11/29 1.13 N.Maeda MOD START ************ --
+    AND     ( ( head.data_creation_date_edi_data IS NULL AND it_edi_work.data_creation_date_edi_data IS NULL)
+            OR ( TRUNC( head.data_creation_date_edi_data ) = TRUNC( it_edi_work.data_creation_date_edi_data ) ) )
+--    AND     TRUNC( head.data_creation_date_edi_data ) = TRUNC( it_edi_work.data_creation_date_edi_data ) -- データ作成日（ＥＤＩデータ中）
+-- ************ 2009/11/29 1.13 N.Maeda MOD START ************ --
 -- 2009/06/29 M.Sano Ver.1.6 mod Start
 --    AND     head.shop_code              = it_edi_work.shop_code;                      -- 店コード
     AND     head.shop_code              = it_edi_work.shop_code                      -- 店コード
