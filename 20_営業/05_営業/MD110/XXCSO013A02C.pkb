@@ -38,6 +38,7 @@ AS
  *  2009-04-07    1.3   Daisuke.Abe      T1_0339対応
  *  2009-04-07    1.4   Kazuo.Satomura   T1_0378対応
  *  2009-04-08    1.5   Kazuo.Satomura   T1_0372,0403対応
+ *  2009-04-28    1.6   Tomoko.Mori      T1_0758対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -135,6 +136,9 @@ AS
   cv_tkn_msg_pro_div      CONSTANT VARCHAR2(200) := '処理区分';
   cv_tkn_msg_pro_date     CONSTANT VARCHAR2(200) := '処理対象日付';
   cv_tkn_msg_itoen_acc_nm CONSTANT VARCHAR2(200) := 'XXCSO:伊藤園顧客名';
+  /* 2009.04.28 T.Mori T1_0758対応 START */
+  cv_tkn_msg_cust_cd_dammy CONSTANT VARCHAR2(200) := 'XXCSO:AFF顧客コード（定義なし）';
+  /* 2009.04.28 T.Mori T1_0758対応 END */
   cv_tkn_msg_org_id       CONSTANT VARCHAR2(200) := 'MO:営業単位';
   cv_tkn_msg_status_id    CONSTANT VARCHAR2(200) := 'インスタンスステータスマスタのステータスID';
   cv_tkn_msg_object_del   CONSTANT VARCHAR2(200) := '物件削除済';
@@ -220,6 +224,12 @@ AS
   cv_import_status          CONSTANT VARCHAR2(1) := '0'; -- 未取込
   -- 顧客ステータス
   cv_cut_enb_status         CONSTANT VARCHAR2(1) := 'A'; -- 使用可
+  /* 2009.04.28 T.Mori T1_0758対応 START */
+  -- 顧客区分
+  cv_cust_class_10          CONSTANT VARCHAR2(200) := '10'; -- 10:顧客
+  -- プロファイル･オプション値
+  cv_prf_cust_cd_dammy      CONSTANT VARCHAR2(200) := 'XXCSO1_AFF_CUST_CODE'; -- 顧客コード（定義なし）
+  /* 2009.04.28 T.Mori T1_0758対応 END */
   
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -252,6 +262,10 @@ AS
   gv_customer_code        xxcso_cust_acct_sites_v.account_number%TYPE;
                                                                -- 新_顧客コード
   gv_owner_company        fnd_flex_values_vl.flex_value%TYPE;  -- 新_本社／工場区分
+  /* 2009.04.28 T.Mori T1_0758対応 START */
+  -- AFF顧客コード（定義なし）
+  gv_customer_code_dammy  xxcso_cust_acct_sites_v.account_number%TYPE;
+  /* 2009.04.28 T.Mori T1_0758対応 END */
   
   -- ===============================
   -- ユーザー定義カーソル型
@@ -604,6 +618,20 @@ AS
       lv_errbuf := lv_errmsg || SQLERRM;
       RAISE global_api_expt;
     END IF;
+    /* 2009.04.28 T.Mori T1_0758対応 START */
+    gv_customer_code_dammy := FND_PROFILE.VALUE(cv_prf_cust_cd_dammy);
+    IF (gv_customer_code_dammy = NULL) THEN
+      -- AFF顧客コード取得に失敗した場合（戻り値NULL）
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_app_name                  --アプリケーション短縮名
+                    ,iv_name         => cv_tkn_number_08             --メッセージコード
+                    ,iv_token_name1  => cv_tkn_prof_name
+                    ,iv_token_value1 => cv_tkn_msg_cust_cd_dammy
+                   );
+      lv_errbuf := lv_errmsg || SQLERRM;
+      RAISE global_api_expt;
+    END IF;
+    /* 2009.04.28 T.Mori T1_0758対応 END */
     -- 
     -- 営業単位取得
     gn_org_id := FND_PROFILE.VALUE(cv_prof_org_id);
@@ -1162,6 +1190,9 @@ AS
     -- *** ローカル・レコード ***
     -- *** ローカル・カーソル ***
     -- *** ローカル例外 ***
+  /* 2009.04.28 T.Mori T1_0758対応 START */
+    lv_customer_class_code      xxcso_cust_acct_sites_v.customer_class_code%TYPE;   -- 新_顧客区分コード
+  /* 2009.04.28 T.Mori T1_0758対応 END */
 --
   BEGIN
 --
@@ -1185,11 +1216,17 @@ AS
         xcasv.ADDRESS1 ||
         xcasv.ADDRESS2                   new_installation_address   -- 新_設置先住所
        ,xcasv.account_number             new_customer_code          -- 新_顧客コード
+      /* 2009.04.28 T.Mori T1_0758対応 START */
+       ,xcasv.customer_class_code        new_customer_class_code    -- 新_顧客区分コード
+      /* 2009.04.28 T.Mori T1_0758対応 END */
       INTO
         gv_department_code                                          -- 新_拠点コード
        ,gv_installation_place                                       -- 新_設置先名
        ,gv_installation_address                                     -- 新_設置先住所
        ,gv_customer_code                                            -- 新_顧客コード
+      /* 2009.04.28 T.Mori T1_0758対応 START */
+       ,lv_customer_class_code                                      -- 新_顧客区分コード
+      /* 2009.04.28 T.Mori T1_0758対応 END */
       FROM
         xxcso_cust_acct_sites_v xcasv  -- 顧客マスタサイトビュー
       WHERE
@@ -1237,6 +1274,11 @@ AS
         ov_retcode := cv_status_error;
         RAISE g_sql_err_expt;
     END;
+    /* 2009.04.28 T.Mori T1_0758対応 START */
+    IF (lv_customer_class_code <> cv_cust_class_10) THEN
+      gv_customer_code := gv_customer_code_dammy;
+    END IF;
+    /* 2009.04.28 T.Mori T1_0758対応 END */
 --
     -- ========================================
     -- 本社／工場区分の抽出 
