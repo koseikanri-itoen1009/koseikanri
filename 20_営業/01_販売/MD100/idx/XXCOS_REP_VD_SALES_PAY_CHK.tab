@@ -1,0 +1,120 @@
+/*****************************************************************************************
+ * Copyright(c)SCSK Corporation, 2011. All rights reserved.
+ *
+ * Table Name  : XXCOS_REP_VD_SALES_PAY_CHK
+ * Description : ベンダー売上・入金照合表帳票ワークテーブル
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2012/10/17     1.0   K.Nakamura       [E_本稼動_09040]新規作成
+ *
+ ****************************************************************************************/
+CREATE TABLE xxcos.xxcos_rep_vd_sales_pay_chk (
+     year_months                    VARCHAR2(6)
+    ,base_code                      VARCHAR2(4)
+    ,base_name                      VARCHAR2(360)
+    ,employee_code                  VARCHAR2(5)
+    ,employee_name                  VARCHAR2(240)
+    ,dlv_by_code                    VARCHAR2(5)
+    ,dlv_by_code_disp               VARCHAR2(5)
+    ,dlv_by_name                    VARCHAR2(240)
+    ,dlv_by_name_disp               VARCHAR2(240)
+    ,customer_code                  VARCHAR2(9)
+    ,customer_name                  VARCHAR2(360)
+    ,pre_counter                    VARCHAR2(10)
+    ,delivery_date                  VARCHAR2(10)
+    ,standard_qty                   NUMBER
+    ,current_counter                VARCHAR2(10)
+    ,error                          NUMBER
+    ,sales_amount                   NUMBER
+    ,payment_amount                 NUMBER
+    ,overs_and_shorts               NUMBER
+    ,change_balance                 NUMBER
+    ,change_pay                     NUMBER
+    ,change_return                  NUMBER
+    ,change                         NUMBER
+    ,change_out_time_100            NUMBER
+    ,change_out_time_10             NUMBER
+    ,created_by                     NUMBER        NOT NULL
+    ,creation_date                  DATE          NOT NULL
+    ,last_updated_by                NUMBER(15,0)  NOT NULL
+    ,last_update_date               DATE          NOT NULL
+    ,last_update_login              NUMBER(15,0)
+    ,request_id                     NUMBER(15,0)
+    ,program_application_id         NUMBER(15,0)
+    ,program_id                     NUMBER(15,0)
+    ,program_update_date            DATE)
+/
+COMMENT ON TABLE xxcos.xxcos_rep_vd_sales_pay_chk IS 'ベンダー売上・入金照合表帳票ワークテーブル'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.year_months                       IS '年月'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.base_code                         IS '拠点コード'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.base_name                         IS '拠点名'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.employee_code                     IS '担当営業員コード'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.employee_name                     IS '担当営業員名'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.dlv_by_code                       IS '納品者コード'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.dlv_by_code_disp                  IS '納品者コード（表示用）'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.dlv_by_name                       IS '納品者名'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.dlv_by_name_disp                  IS '納品者名（表示用）'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.customer_code                     IS '顧客コード'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.customer_name                     IS '顧客名'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.pre_counter                       IS '前回カウンタ'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.delivery_date                     IS '日付'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.standard_qty                      IS '本数'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.current_counter                   IS '今回カウンタ'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.error                             IS '誤差'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.sales_amount                      IS '売上（成績者）'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.payment_amount                    IS '入金（成績者）'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.overs_and_shorts                  IS '過不足（売上－入金）'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.change_balance                    IS '釣銭（残高）'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.change_pay                        IS '釣銭（支払）'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.change_return                     IS '釣銭（戻し）'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.change                            IS '釣銭'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.change_out_time_100               IS '釣銭切れ時間（分）100円'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.change_out_time_10                IS '釣銭切れ時間（分）10円'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.created_by                        IS '作成者'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.creation_date                     IS '作成日'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.last_updated_by                   IS '最終更新者'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.last_update_date                  IS '最終更新日'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.last_update_login                 IS '最終更新ログイン'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.request_id                        IS '要求ID'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.program_application_id            IS 'コンカレント・プログラム・アプリケーションID'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.program_id                        IS 'コンカレント・プログラムID'
+/
+COMMENT ON COLUMN xxcos.xxcos_rep_vd_sales_pay_chk.program_update_date               IS 'プログラム更新日'
+/

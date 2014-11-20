@@ -1,0 +1,17 @@
+/***************************************************************************************
+ * Copyright c 2011, SCSK Corporation. All rights reserved.
+ *
+ * Table Name  : XXCOS_INVOICE_PAYMENTS_MV_N01
+ * Description : 請求支払マテリアライズドビューインデックスN01
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ * 2012/12/07     1.0   K.Nakamura       [E_本稼動_09040]新規作成
+ *
+ **************************************************************************************/
+CREATE INDEX XXCOS.XXCOS_CHANGE_PAY_MV_N01 ON APPS.XXCOS_INVOICE_PAYMENTS_MV
+  ( invoice_id ) TABLESPACE xxidx2
+/
