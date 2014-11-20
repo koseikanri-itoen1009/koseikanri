@@ -39,9 +39,10 @@ AS
  *                                        5.標準原価計の取得を修正
  *                                           ①対象期間(開始) ②業務日付（対象期間(開始)未指定時）
  *                                        6.親品目コード取得方法を修正
- *                                        7.Disc品目アドオンの数値項目「内容量」「内訳入り数」桁数変更に伴う修正
+ *                                        7.Disc品目アドオンの数値項目「内容量」「内訳入数」桁数変更に伴う修正
  *  2009/02/17    1.5   R.Takigawa       単体テストバグ修正
  *                                        1.本社商品区分と商品製品区分の入れ替え
+ *  2009/04/14    1.6   H.Yoshikawa      障害T1_0214対応  Disc品目アドオン「内容量」「内訳入数」桁数変更
  *
  *****************************************************************************************/
 --
@@ -165,9 +166,12 @@ AS
   cv_date_fmt_std         CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_date_fmt_std;
                                                                   -- 日付書式
   cv_no                   CONSTANT VARCHAR2(1)   := 'N';          -- 'N'
--- Ver1.4 2009/02/13  7.Disc品目アドオンの数値項目「内容量」桁数変更に伴う修正
-  cv_number_fmt           CONSTANT VARCHAR2(5)   := '999D9';      -- NUMBER(4,1)
--- End1.4
+-- Ver1.6 2009/04/14  障害：T1_0214 内容量、内訳入数 桁数変更に伴う修正
+---- Ver1.4 2009/02/13  7.Disc品目アドオンの数値項目「内容量」桁数変更に伴う修正
+--  cv_number_fmt           CONSTANT VARCHAR2(5)   := '999D9';      -- NUMBER(4,1)
+---- End1.4
+  cv_number_fmt           CONSTANT VARCHAR2(6)   := '9999D9';     -- NUMBER(5,1)
+-- End1.6
   --共通化のためコメントアウト 2009/01/23
   --cv_date_format          CONSTANT VARCHAR2(10) := 'YYYY/MM/DD'; -- 日付書式
   --
@@ -1641,7 +1645,7 @@ AS
           )
           || cv_sep_com
           || lt_item01_rec.inc_num
-          || cv_sep_com    -- 内容量単位
+          || cv_sep_com    -- 内訳入数
           || lt_item01_rec.case_jan_code
           || cv_sep_com ||  -- ケースJANコード
           ( CASE
