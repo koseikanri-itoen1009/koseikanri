@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,8 @@ AS
  *  2009/09/17    1.8   SCS S.Moriyama   [障害0001390] パラメータ制御変更に伴う所属部門業務管理部チェックを削除
  *  2009/10/02    1.9   SCS S.Moriyama   [障害E_T3_00630] VDBM残高一覧表が出力されない
  *                                                        銀行コード、支店コードの異常桁数対応
+ *  2009/12/15    1.10  SCS K.Nakamura   [障害E_本稼動_00461] ソート順対応によるBM支払区分(コード値)の追加
+ *                                                            1顧客に前月・当月の2レコード存在する場合、締め・支払日共に最新の日付を設定
  *
  *****************************************************************************************/
   -- ===============================================
@@ -251,6 +253,9 @@ AS
    ,BANK_ACCT_NAME               VARCHAR2(150) -- 銀行口座名
    ,REF_BASE_CODE                VARCHAR2(4)   -- 問合せ担当拠点コード
    ,REF_BASE_NAME                VARCHAR2(240) -- 問合せ担当拠点名
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
+   ,BM_PAYMENT_CODE              VARCHAR2(30)  -- BM支払区分(コード値)
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
    ,BM_PAYMENT_TYPE              VARCHAR2(80)  -- BM支払区分
    ,BANK_TRNS_FEE                VARCHAR2(20)  -- 振込手数料
    ,PAYMENT_STOP                 VARCHAR2(20)  -- 支払停止
@@ -353,6 +358,9 @@ AS
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
              ,expect_payment_date -- 支払予定日
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
+             ,closing_date        -- 締め日
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
     ;
 --
   g_target_rec g_target_cur%ROWTYPE;
@@ -599,6 +607,9 @@ AS
     , bank_acct_name                  -- 銀行口座名
     , ref_base_code                   -- 問合せ担当拠点コード
     , ref_base_name                   -- 問合せ担当拠点名
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
+    , bm_payment_code                 -- BM支払区分(コード値)
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
     , bm_payment_type                 -- BM支払区分
     , bank_trns_fee                   -- 振込手数料
     , payment_stop                    -- 支払停止
@@ -649,6 +660,9 @@ AS
     , g_bm_balance_ttype(in_index).BANK_ACCT_NAME            -- 銀行口座名
     , g_bm_balance_ttype(in_index).REF_BASE_CODE             -- 問合せ担当拠点コード
     , g_bm_balance_ttype(in_index).REF_BASE_NAME             -- 問合せ担当拠点名
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
+    , g_bm_balance_ttype(in_index).BM_PAYMENT_CODE           -- BM支払区分(コード値)
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
     , g_bm_balance_ttype(in_index).BM_PAYMENT_TYPE           -- BM支払区分
     , g_bm_balance_ttype(in_index).BANK_TRNS_FEE             -- 振込手数料
     , g_bm_balance_ttype(in_index).PAYMENT_STOP              -- 支払停止
@@ -821,6 +835,9 @@ AS
           g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE_NAME       := gt_bank_acct_type_name_bk; -- 口座種別名
           g_bm_balance_ttype( gn_index ).BANK_ACCT_NO              := gt_bank_acct_no_bk;        -- 口座番号
           g_bm_balance_ttype( gn_index ).BANK_ACCT_NAME            := gt_bank_acct_name_bk;      -- 銀行口座名
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
+          g_bm_balance_ttype( gn_index ).BM_PAYMENT_CODE           := gt_bm_type_bk;             -- BM支払区分(コード値)
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
           g_bm_balance_ttype( gn_index ).BM_PAYMENT_TYPE           := gt_bm_payment_type_bk;     -- BM支払区分
           g_bm_balance_ttype( gn_index ).BANK_TRNS_FEE             := gt_bank_trns_fee_bk;       -- 振込手数料
           g_bm_balance_ttype( gn_index ).PAYMENT_STOP              := gt_payment_stop_bk;        -- 支払停止
@@ -1694,6 +1711,9 @@ AS
       g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE_NAME       := NULL;
       g_bm_balance_ttype( gn_index ).BANK_ACCT_NO              := NULL;
       g_bm_balance_ttype( gn_index ).BANK_ACCT_NAME            := NULL;
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD START
+      g_bm_balance_ttype( gn_index ).BM_PAYMENT_CODE           := NULL;
+-- 2009/12/15 Ver.1.10 [障害E_本稼動_00461] SCS K.Nakamura ADD END
       g_bm_balance_ttype( gn_index ).BM_PAYMENT_TYPE           := NULL;
       g_bm_balance_ttype( gn_index ).BANK_TRNS_FEE             := NULL;
       g_bm_balance_ttype( gn_index ).PAYMENT_STOP              := NULL;

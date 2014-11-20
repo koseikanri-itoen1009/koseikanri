@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_BM_BALANCE
  * Description : îÃéËécçÇàÍóóí†ï[ÉèÅ[ÉNÉeÅ[ÉuÉã
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2009/01/15    1.0   T.Osada          êVãKçÏê¨
  *  2009/04/17    1.1   T.Taniguchi      T1_0647ëŒâû
  *  2009/07/09    1.2   K.Yamaguchi      [è·äQ0000515]STORAGEãÂí«â¡
+ *  2010/01/04    1.3   S.Moriyama       [E_ñ{â“ìÆ_00461]BMéxï•ãÊï™ÅiÉRÅ[ÉhílÅjí«â¡
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
@@ -53,6 +54,9 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
    CLOSING_DATE                 DATE,
    SELLING_BASE_SECTION_CODE    VARCHAR2(5),
    NO_DATA_MESSAGE              VARCHAR2(30),
+-- 2010/01/04 Ver.1.3 [E_ñ{â“ìÆ_00461] SCS S.Moriyama ADD START
+   BM_PAYMENT_CODE              VARCHAR2(30),
+-- 2009/01/04 Ver.1.3 [E_ñ{â“ìÆ_00461] SCS S.Moriyama ADD END
    CREATED_BY                   NUMBER(15,0)    NOT NULL,
    CREATION_DATE                DATE            NOT NULL,
    LAST_UPDATED_BY              NUMBER(15,0)    NOT NULL,
@@ -137,6 +141,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.SELLING_BASE_SECTION_CODE IS 'ínãÊÉ
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.NO_DATA_MESSAGE           IS '0åèÉÅÉbÉZÅ[ÉW'
 /
+-- 2010/01/04 Ver.1.3 [E_ñ{â“ìÆ_00461] SCS S.Moriyama ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.BM_PAYMENT_CODE           IS 'BMéxï•ãÊï™ÅiÉRÅ[ÉhílÅj'
+/
+-- 2009/01/04 Ver.1.3 [E_ñ{â“ìÆ_00461] SCS S.Moriyama ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CREATED_BY                IS 'çÏê¨é“'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CREATION_DATE             IS 'çÏê¨ì˙'
