@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2010/12/14    1.15  K.Kiriu          [E_本稼動_05671]対応 PT対応（有効訪問ビューの関数を外だしにする）
  *  2011/05/17    1.16  H.Sasaki         [E_本稼動_07118]対応 処理の並列実行化
  *  2011/07/14    1.17  K.Kubo           [E_本稼動_07885]対応 PT対応（タスク情報2ヶ月抽出処理）
+ *  2012/12/27    1.18  K.Furuyama       [E_本稼動_10190]対応
  *****************************************************************************************/
 --
 --#######################  固定プライベート定数宣言部 START   #######################
@@ -167,6 +168,10 @@ AS
   ct_msg_svf_api                CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00041';
   --  要求ＩＤ
   ct_msg_request                CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00042';
+/* 2012/12/27 Ver1.18 add Start */
+  --  取得エラー
+  ct_msg_get_data_err           CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-00064';
+/* 2012/12/27 Ver1.18 add End */
 --
   --  機能固有メッセージ
   --  営業成績表 集計処理パラメータ出力
@@ -201,6 +206,10 @@ AS
   --  XXCSO:訪問実績データ識別用タスクタイプ
   ct_msg_task_type_id           CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10590';
 /* 2010/12/14 Ver1.15 Add End   */
+/* 2012/12/27 Ver1.18 Add Start */
+  --  XXCOS:会計帳簿ID
+  ct_msg_set_of_bks_id          CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-12755';
+/* 2012/12/27 Ver1.18 Add End */
   --  営業成績表 新規貢献売上集計テーブル
   ct_msg_newcust_tbl            CONSTANT  fnd_new_messages.message_name%TYPE := 'APP-XXCOS1-10575';
   --  営業成績表 売上実績集計テーブル
@@ -250,6 +259,11 @@ AS
   ct_prof_taks_type_id
     CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'XXCSO1_TASK_TYPE_VISIT';
 /* 2010/12/14 Ver1.15 Add Start */
+/* 2012/12/27 Ver1.18 Add Start */
+  -- GL会計帳簿ID
+  ct_prof_gl_set_of_bks_id
+    CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'GL_SET_OF_BKS_ID';
+/* 2012/12/27 Ver1.18 Add End */
   --  クイックコード（顧客軒数カウント条件マスタ）
   ct_qct_customer_count_type
     CONSTANT  fnd_lookup_types.lookup_type%TYPE := 'XXCOS1_CUSTOMER_COUNT';
@@ -352,6 +366,10 @@ AS
   cv_tkn_policy_group           CONSTANT  VARCHAR2(020) := 'POLICY_GROUP';
   --  各種件数集計情報削除件数
   cv_tkn_counter                CONSTANT  VARCHAR2(020) := 'COUNTER';
+/* 2012/12/27 Ver1.18 add Start */
+  -- 取得項目名称
+  cv_tkn_data                   CONSTANT  VARCHAR2(020) := 'DATA';
+/* 2012/12/27 Ver1.18 add End */
 --
   --  パラメータ識別用
   --  全て
@@ -384,6 +402,11 @@ AS
   cv_ar_class                   CONSTANT  VARCHAR2(2) := '02';
   --  オープン
   cv_open                       CONSTANT  VARCHAR2(4) := 'OPEN';
+/* 2012/12/27 Ver1.18 Add Start */
+  --  クローズ
+  cv_close                      CONSTANT  VARCHAR2(5) := 'CLOSE';
+  cv_gl                         CONSTANT  VARCHAR2(5) := 'SQLGL';
+/* 2012/12/27 Ver1.18 Add End */
 --
   --  納品伝票区分
   --  納品
@@ -553,6 +576,10 @@ AS
   --  XXCSO:訪問実績データ識別用タスクタイプF
   gt_prof_task_type_id                    jtf_tasks_b.task_type_id%TYPE;
 /* 2010/12/14 Ver1.15 Add End   */
+/* 2012/12/27 Ver1.18 Add Start */
+  -- GL会計帳簿ID
+  gt_set_of_bks_id                        gl_sets_of_books.set_of_books_id%TYPE;
+/* 2012/12/27 Ver1.18 Add End */
 --
   --  AR会計情報格納用
   g_account_info_tab                      g_account_info_ttype;
@@ -704,6 +731,11 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+/* 2012/12/27 Ver1.18 Add Start */
+    cv_last_gl_period      CONSTANT VARCHAR2(20)  := 'LAST MONTH GL PERIOD';
+    cv_this_gl_period      CONSTANT VARCHAR2(20)  := 'THIS MONTH GL PERIOD';
+    cv_o                   CONSTANT VARCHAR2(1)   := 'O';
+/* 2012/12/27 Ver1.18 Add End */
 --
 --
     -- *** ローカル変数 ***
@@ -712,11 +744,22 @@ AS
     lv_para_note_exec           VARCHAR2(5000);
     lv_para_msg                 VARCHAR2(5000);
     lv_profile_name             VARCHAR2(5000);
+    --
+/* 2012/12/27 Ver1.18 Add Start */
+    lt_closing_status           gl_period_statuses.closing_status%TYPE;   -- ステータス
+    lt_close_date               gl_period_statuses.last_update_date%TYPE; -- クローズ日(最終更新日) 
+    lv_tkn_data                 VARCHAR2(100);                            -- トークン値
+/* 2012/12/27 Ver1.18 Add End */
 --
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
 --
+/* 2012/12/27 Ver1.18 Add Start */
+    -- *** ローカルユーザー定義例外 ***
+    -- 取得失敗エラー
+    select_expt               EXCEPTION;
+/* 2012/12/27 Ver1.18 Add End */
 --
   BEGIN
 --
@@ -883,65 +926,159 @@ AS
       END IF;
     END IF;
 /* 2010/12/14 Ver1.15 Add End   */
-    --==================================
-    -- 7.AR会計期間取得(前月) 8.前月年月取得
-    --==================================
-    -- 共通関数＜会計期間情報取得＞
-    g_account_info_tab(cn_last_month).base_date := LAST_DAY(ADD_MONTHS(gd_process_date, -1));
-    g_account_info_tab(cn_last_month).base_years := TO_CHAR(g_account_info_tab(cn_last_month).base_date, cv_fmt_years);
-    xxcos_common_pkg.get_account_period(
-      --  02:AR
-      cv_ar_class
-      --  基準日
-      ,g_account_info_tab(cn_last_month).base_date
-      --  ステータス(OPEN or CLOSE)
-      ,g_account_info_tab(cn_last_month).status
-      --  会計（FROM）
-      ,g_account_info_tab(cn_last_month).from_date
-      --  会計（TO）
-      ,g_account_info_tab(cn_last_month).to_date
-      --  エラー・メッセージ
-      ,lv_errbuf
-      --  リターン・コード
-      ,lv_retcode
-      --  ユーザー・エラー・メッセージ
-      ,lv_errmsg
-      );
-    --  リターンコード確認
-    IF ( lv_retcode <> cv_status_normal ) THEN
-      ov_errmsg := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+/* 2012/12/27 Ver1.18 Del Start */
+--    --==================================
+--    -- 7.AR会計期間取得(前月) 8.前月年月取得
+--    --==================================
+--    -- 共通関数＜会計期間情報取得＞
+--    g_account_info_tab(cn_last_month).base_date := LAST_DAY(ADD_MONTHS(gd_process_date, -1));
+--    g_account_info_tab(cn_last_month).base_years := TO_CHAR(g_account_info_tab(cn_last_month).base_date, cv_fmt_years);
+--    xxcos_common_pkg.get_account_period(
+--      --  02:AR
+--      cv_ar_class
+--      --  基準日
+--      ,g_account_info_tab(cn_last_month).base_date
+--      --  ステータス(OPEN or CLOSE)
+--      ,g_account_info_tab(cn_last_month).status
+--      --  会計（FROM）
+--      ,g_account_info_tab(cn_last_month).from_date
+--      --  会計（TO）
+--      ,g_account_info_tab(cn_last_month).to_date
+--      --  エラー・メッセージ
+--      ,lv_errbuf
+--      --  リターン・コード
+--      ,lv_retcode
+--      --  ユーザー・エラー・メッセージ
+--      ,lv_errmsg
+--      );
+--    --  リターンコード確認
+--    IF ( lv_retcode <> cv_status_normal ) THEN
+--      ov_errmsg := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+/* 2012/12/27 Ver1.18 Del End */
+/* 2012/12/27 Ver1.18 Add Start */
+--    --==================================
+--    -- 7.GL会計期間取得(前月) 8.前月年月取得
+--    --==================================
+      -- GL会計帳簿ID取得
+      gt_set_of_bks_id := FND_PROFILE.VALUE( ct_prof_gl_set_of_bks_id );
+      -- プロファイルが取得できない場合はエラー
+      IF ( gt_set_of_bks_id IS NULL ) THEN
+        --プロファイル名文字列取得
+        lv_profile_name := xxccp_common_pkg.get_msg(
+          iv_application        => ct_xxcos_appl_short_name,
+          iv_name               => ct_msg_set_of_bks_id
+          );
+        --
+        lv_profile_name :=  NVL(lv_profile_name, ct_prof_gl_set_of_bks_id);
+        RAISE global_get_profile_expt;
+      END IF;
 --
+    --前月会計期間情報取得
+    g_account_info_tab(cn_last_month).base_date  := LAST_DAY(ADD_MONTHS(gd_process_date, -1));
+    g_account_info_tab(cn_last_month).base_years := TO_CHAR(g_account_info_tab(cn_last_month).base_date, cv_fmt_years);
+    --
+    BEGIN
+      SELECT gps.closing_status      closing_status
+            ,gps.start_date          start_date
+            ,gps.end_date            end_date
+            ,gps.last_update_date    last_update_date
+      INTO   lt_closing_status                               --  ステータス
+            ,g_account_info_tab(cn_last_month).from_date     --  会計（FROM）
+            ,g_account_info_tab(cn_last_month).to_date       --  会計（TO）
+            ,lt_close_date                                   --  クローズ日(最終更新日) 
+      FROM   gl_period_statuses  gps
+           , fnd_application     fa
+      WHERE  gps.application_id           = fa.application_id                            -- アプリケーションIDが一致
+      AND    fa.application_short_name    = cv_gl                                        -- アプリケーション短縮名
+      AND    gps.set_of_books_id          = gt_set_of_bks_id                             -- 会計帳簿IDが一致
+      AND    gps.adjustment_period_flag   = cv_no                                        -- 調整フラグが'N'
+      AND    gps.start_date              <= g_account_info_tab(cn_last_month).base_date  -- 開始日から基準日
+      AND    gps.end_date                >= g_account_info_tab(cn_last_month).base_date  -- 処理日から基準日
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_tkn_data := cv_last_gl_period;
+        RAISE select_expt;
+    END;
+    -- 前月会計期間情報．会計ステータスの設定
+    -- GL会計期間がオープンしている場合
+    IF lt_closing_status = cv_o THEN
+      g_account_info_tab(cn_last_month).status := cv_open;
+    -- GL会計期間がクローズしている場合
+    ELSE
+      -- クローズ日(最終更新日) = 業務日付
+      IF TRUNC(lt_close_date) = TRUNC(gd_process_date) THEN
+        g_account_info_tab(cn_last_month).status := cv_open;
+      -- クローズ日(最終更新日) <> 業務日付
+      ELSE
+        g_account_info_tab(cn_last_month).status := cv_close;
+      END IF;
+    END IF;
+/* 2012/12/27 Ver1.18 Add End */
+--
+/* 2012/12/27 Ver1.18 Del Start */
+--    --==================================
+--    -- 9.AR会計期間取得(当月) 10.当月年月取得
+--    --==================================
+--    -- 共通関数＜会計期間情報取得＞
+--    g_account_info_tab(cn_this_month).base_date := gd_process_date;
+--    g_account_info_tab(cn_this_month).base_years := TO_CHAR(g_account_info_tab(cn_this_month).base_date, cv_fmt_years);
+--    xxcos_common_pkg.get_account_period(
+--      --  02:AR
+--      cv_ar_class
+--      --  基準日
+--      ,g_account_info_tab(cn_this_month).base_date
+--      --  ステータス(OPEN or CLOSE)
+--      ,g_account_info_tab(cn_this_month).status
+--      --  会計（FROM）
+--      ,g_account_info_tab(cn_this_month).from_date
+--      --  会計（TO）
+--      ,g_account_info_tab(cn_this_month).to_date
+--      --  エラー・メッセージ
+--      ,lv_errbuf
+--      --  リターン・コード
+--      ,lv_retcode
+--      --  ユーザー・エラー・メッセージ
+--      ,lv_errmsg
+--      );
+--    --  リターンコード確認
+--    IF ( lv_retcode <> cv_status_normal ) THEN
+--      ov_errmsg := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+/* 2012/12/27 Ver1.18 Del End */
+/* 2012/12/27 Ver1.18 Add Start */
     --==================================
-    -- 9.AR会計期間取得(当月) 10.当月年月取得
+    -- 9.GL会計期間取得(当月) 10.当月年月取得
     --==================================
-    -- 共通関数＜会計期間情報取得＞
+    --当月会計期間情報取得
     g_account_info_tab(cn_this_month).base_date := gd_process_date;
     g_account_info_tab(cn_this_month).base_years := TO_CHAR(g_account_info_tab(cn_this_month).base_date, cv_fmt_years);
-    xxcos_common_pkg.get_account_period(
-      --  02:AR
-      cv_ar_class
-      --  基準日
-      ,g_account_info_tab(cn_this_month).base_date
-      --  ステータス(OPEN or CLOSE)
-      ,g_account_info_tab(cn_this_month).status
-      --  会計（FROM）
-      ,g_account_info_tab(cn_this_month).from_date
-      --  会計（TO）
-      ,g_account_info_tab(cn_this_month).to_date
-      --  エラー・メッセージ
-      ,lv_errbuf
-      --  リターン・コード
-      ,lv_retcode
-      --  ユーザー・エラー・メッセージ
-      ,lv_errmsg
-      );
-    --  リターンコード確認
-    IF ( lv_retcode <> cv_status_normal ) THEN
-      ov_errmsg := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+    --
+    BEGIN
+      SELECT DECODE(gps.closing_status,cv_o,cv_open,cv_close)      closing_status
+            ,gps.start_date          start_date
+            ,gps.end_date            end_date
+      INTO   g_account_info_tab(cn_this_month).status          --  ステータス
+            ,g_account_info_tab(cn_this_month).from_date       --  会計（FROM）
+            ,g_account_info_tab(cn_this_month).to_date         --  会計（TO）
+      FROM   gl_period_statuses    gps
+           , fnd_application       fa
+      WHERE  gps.application_id           = fa.application_id                            -- アプリケーションIDが一致
+      AND    fa.application_short_name    = cv_gl                                        -- アプリケーション短縮名
+      AND    gps.set_of_books_id          = gt_set_of_bks_id                             -- 会計帳簿IDが一致
+      AND    gps.adjustment_period_flag   = cv_no                                        -- 調整フラグが'N'
+      AND    gps.start_date              <= g_account_info_tab(cn_this_month).base_date  -- 開始日から基準日
+      AND    gps.end_date                >= g_account_info_tab(cn_this_month).base_date  -- 処理日から基準日
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_tkn_data := cv_this_gl_period;
+        RAISE select_expt;
+    END;
+/* 2012/12/27 Ver1.18 Add End */
 --
 /*
     --==================================
@@ -999,6 +1136,21 @@ AS
     --==============================================================
 --
   EXCEPTION
+/* 2012/12/27 Ver1.18 add Start */
+    --*** 取得失敗エラー ***
+    WHEN select_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                     iv_application  => ct_xxcos_appl_short_name      -- アプリケーション短縮名
+                    ,iv_name         => ct_msg_get_data_err           -- メッセージ
+                    ,iv_token_name1  => cv_tkn_data                   -- トークンコード1
+                    ,iv_token_value1 => lv_tkn_data                   -- トークン値1
+                   );
+      lv_errbuf  := lv_errmsg;
+      ov_errmsg  := lv_errmsg;                                                  --# 任意 #
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;                                            --# 任意 #
+    --
+/* 2012/12/27 Ver1.18 add End */
     -- *** プロファイル例外ハンドラ ***
     WHEN global_get_profile_expt    THEN
       ov_errmsg               :=  xxccp_common_pkg.get_msg(
