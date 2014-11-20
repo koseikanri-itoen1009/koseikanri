@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/07/17    1.11  N.Maeda          [T1_1438]ロック単位の変更
  *  2009/08/10    1.12  N.Maeda          [0000425]PT対応
  *  2009/09/04    1.13  N.Maeda          [0001211]消費税関連項目取得基準日修正
+ *  2009/11/27    1.14  K.Atsushiba      [E_本稼動_00147]PT対応
  *
  *****************************************************************************************/
 --
@@ -996,9 +997,15 @@ AS
         (
         SELECT
 -- *************** 2009/08/10 1.12 N.Maeda ADD START *****************************--
+-- *************** 2009/11/27 1.14 K.Atsushiba Mod START *****************************--
              /*+
                INDEX ( vd XXCOI_MST_VD_COLUMN_U01 )
+               INDEX (ACCT HZ_CUST_ACCT_SITES_N3)
              */
+--             /*+
+--               INDEX ( vd XXCOI_MST_VD_COLUMN_U01 )
+--             */
+-- *************** 2009/11/27 1.14 K.Atsushiba Mod End *****************************--
 -- *************** 2009/08/10 1.12 N.Maeda ADD  END  *****************************--
                  inv.base_code                 base_code                    -- 拠点コード
                 ,inv.employee_num              employee_num                 -- 営業員コード
@@ -1142,7 +1149,17 @@ AS
 --****************************** 2009/04/17 1.6 T.Kitajima ADD  END  ******************************--
       FROM
         (
-          SELECT inv.base_code                 base_code                    -- 拠点コード
+-- *************** 2009/11/27 1.14 K.Atsushiba Mod START *****************************--
+          SELECT
+        /*+
+          INDEX(XSV.hopeb HZ_ORG_PROFILES_EXT_B_N1)
+          INDEX(XSV.hopeb hz_org_profiles_ext_b_n1)
+          INDEX(INV XXCOI_HHT_INV_TRANSACTIONS_N06)
+          INDEX(ACCT HZ_CUST_ACCT_SITES_N3)
+        */
+                 inv.base_code                 base_code                    -- 拠点コード
+--          SELECT inv.base_code                 base_code                    -- 拠点コード
+-- *************** 2009/11/27 1.14 K.Atsushiba Mod End *****************************--
                 ,inv.employee_num              employee_num                 -- 営業員コード
                 ,inv.invoice_no                invoice_no                   -- 伝票No.
                 ,inv.item_code                 item_code                    -- 品目コード（品名コード
