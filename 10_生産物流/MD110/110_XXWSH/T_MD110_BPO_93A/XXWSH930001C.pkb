@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.40
+ * Version          : 1.41
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -133,6 +133,7 @@ AS
  *  2008/12/26    1.40 Oracle 福田 直樹  異常終了時に原因となった依頼Noがわかるようにする
  *  2008/12/26    1.40 Oracle 福田 直樹  出荷依頼IFのヘッダ・明細間の紐付きがなくなったデータを削除する
  *  2008/12/26    1.40 Oracle 福田 直樹  本番障害対応#688(引当なし指示品目に対する実績がなかった場合、実績0ロットが作成されない)
+ *  2009/01/05    1.41 Oracle 北寒寺正夫 本番障害対応#840 移動ロット詳細にロット実績数量をインサート、更新する際にNULLの場合0を設定するように修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -605,6 +606,9 @@ AS
   gn_normal                      NUMBER := 0;
   gn_warn                        NUMBER := 1;
   gn_error                       NUMBER := -1;
+-- Ver1.41 M.Hokkanji Start
+  gn_zero                        CONSTANT NUMBER := 0;          -- 数量が入力されていない場合の0セット用
+-- Ver1.41 M.Hokkanji End
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -12076,7 +12080,10 @@ AS
           ,lr_movlot_detail_ins.lot_id                      -- ロットID
           ,lr_movlot_detail_ins.lot_no                      -- ロットNO
           ,lr_movlot_detail_ins.actual_date                 -- 実績日
-          ,lr_movlot_detail_ins.actual_quantity             -- 実績数量
+-- Ver1.41 M.Hokkanji Start
+          ,NVL(lr_movlot_detail_ins.actual_quantity,gn_zero) -- 実績数量
+--          ,lr_movlot_detail_ins.actual_quantity             -- 実績数量
+-- Ver1.41 M.Hokkanji End
           ,gt_user_id                                       -- 作成者
           ,gt_sysdate                                       -- 作成日
           ,gt_user_id                                       -- 最終更新者
@@ -12217,7 +12224,10 @@ AS
         ,gr_movlot_detail_rec.lot_id                      -- ロットID
         ,gr_movlot_detail_rec.lot_no                      -- ロットno
         ,gr_movlot_detail_rec.actual_date                 -- 実績日
-        ,gr_movlot_detail_rec.actual_quantity             -- 実績数量
+-- Ver1.41 M.Hokkanji Start
+        ,NVL(gr_movlot_detail_rec.actual_quantity,gn_zero) -- 実績数量
+--        ,gr_movlot_detail_rec.actual_quantity             -- 実績数量
+-- Ver1.41 M.Hokkanji End
         ,gt_user_id                                       -- 作成者
         ,gt_sysdate                                       -- 作成日
         ,gt_user_id                                       -- 最終更新者
@@ -12372,7 +12382,10 @@ AS
       xxinv_mov_lot_details    xmld     -- 移動ロット詳細(アドオン)
     SET
        xmld.actual_date             = gr_movlot_detail_rec.actual_date        -- 実績日
-      ,xmld.actual_quantity         = gr_movlot_detail_rec.actual_quantity    -- 実績数量
+-- Ver1.41 M.Hokkanji Start
+--      ,xmld.actual_quantity         = gr_movlot_detail_rec.actual_quantity    -- 実績数量
+      ,xmld.actual_quantity         = NVL(gr_movlot_detail_rec.actual_quantity,gn_zero)  -- 実績数量
+-- Ver1.41 M.Hokkanji End
       ,xmld.last_updated_by         = gt_user_id                              -- 最終更新者
       ,xmld.last_update_date        = gt_sysdate                              -- 最終更新日
       ,xmld.last_update_login       = gt_login_id                             -- 最終更新ログイン
@@ -14167,7 +14180,10 @@ AS
         ,gr_movlot_detail_rec.lot_id                      -- ロットID
         ,gr_movlot_detail_rec.lot_no                      -- ロットno
         ,gr_movlot_detail_rec.actual_date                 -- 実績日
-        ,gr_movlot_detail_rec.actual_quantity             -- 実績数量
+-- Ver1.41 M.Hokkanji Start
+--        ,gr_movlot_detail_rec.actual_quantity             -- 実績数量
+        ,NVL(gr_movlot_detail_rec.actual_quantity,gn_zero) -- 実績数量
+-- Ver1.41 M.Hokkanji End
         ,gt_user_id                                       -- 作成者
         ,gt_sysdate                                       -- 作成日
         ,gt_user_id                                       -- 最終更新者
@@ -14316,7 +14332,10 @@ AS
       xxinv_mov_lot_details    xmld     -- 移動ロット詳細(アドオン)
     SET
        xmld.actual_date             = gr_movlot_detail_rec.actual_date        -- 実績日
-      ,xmld.actual_quantity         = gr_movlot_detail_rec.actual_quantity    -- 実績数量
+-- Ver1.41 M.Hokkanji Start
+--      ,xmld.actual_quantity         = gr_movlot_detail_rec.actual_quantity    -- 実績数量
+      ,xmld.actual_quantity         = NVL(gr_movlot_detail_rec.actual_quantity,gn_zero) -- 実績数量
+-- Ver1.41 M.Hokkanji End
       ,xmld.last_updated_by         = gt_user_id                              -- 最終更新者
       ,xmld.last_update_date        = gt_sysdate                              -- 最終更新日
       ,xmld.last_update_login       = gt_login_id                             -- 最終更新ログイン
