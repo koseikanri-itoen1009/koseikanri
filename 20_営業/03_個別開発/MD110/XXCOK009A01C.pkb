@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : ‰c‹ÆƒVƒXƒeƒ€\’zƒvƒƒWƒFƒNƒg
  * MD.050           : ƒAƒhƒIƒ“F”„ãE”„ãŒ´‰¿U‘Öd–ó‚Ìì¬ ”Ì”„•¨—¬ MD050_COK_009_A01
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  * 2009/10/09     1.4   SCS S.MORIYAMA   [áŠQE_T3_00632]“`•[“ü—ÍÒ‚ğU‘ÖŒ³ŒÚ‹q‚Ì’S“–‰c‹Æˆõ‚Ö•ÏX
  *                                                       d–óW–ñ’PˆÊ‚ÉU‘ÖŒ³ŒÚ‹q‚ğ’Ç‰Á
  * 2009/12/21     1.5   SCS K.NAKAMURA   [áŠQE_–{‰Ò“®_00562]’S“–‰c‹Æˆõæ“¾‚Ì”»’èğŒC³
+ * 2010/01/28     1.6   SCS Y.KUBOSHIMA  [áŠQE_–{‰Ò“®_01297]”„ã‹àŠz,‰c‹ÆŒ´‰¿‚ªƒ}ƒCƒiƒX‚Ìê‡Ad–ó‹àŠz‚Ì•„†”½“]‚·‚é‚æ‚¤•ÏX
  *
  *****************************************************************************************/
   --===============================
@@ -931,7 +932,11 @@ AS
       , iv_account_class   => gv_acct_prod_sale            -- Š¨’è‰È–Ú(A-1‚Åæ“¾‚µ‚½Š¨’è‰È–ÚƒR[ƒh(»•i”„ã‚))
       , iv_adminicle_class => gv_aff4_subacct_dummy        -- •â•‰È–Ú(ƒ_ƒ~[’l)
       , in_debit_amt       => 0                            -- Ø•û‹àŠz(0)
-      , in_credit_amt      => i_get_rec.selling_amt        -- ‘İ•û‹àŠz(”„ã‹àŠz)
+-- 2010/01/28 Ver.1.6 [áŠQE_–{‰Ò“®_01297] SCS Y.Kuboshima MOD START
+--      , in_credit_amt      => i_get_rec.selling_amt        -- ‘İ•û‹àŠz(”„ã‹àŠz)
+        -- ‹àŠz‚Ì•„†”½“]
+      , in_credit_amt      => -( i_get_rec.selling_amt )   -- ‘İ•û‹àŠz(”„ã‹àŠz)
+-- 2010/01/28 Ver.1.6 [áŠQE_–{‰Ò“®_01297] SCS Y.Kuboshima MOD END
       , iv_base_code       => i_get_rec.base_code          -- ”„ãU‘Öæ‹’“_ƒR[ƒh
 -- 2009/10/09 Ver.1.4 [áŠQE_T3_00632] SCS S.Moriyama ADD START
       , iv_sales_staff_code => iv_sales_staff              -- ”„ãU‘ÖŒ³ŒÚ‹q’S“–‰c‹Æˆõ
@@ -949,7 +954,11 @@ AS
       , iv_division        => i_get_rec.base_code          -- •”–å(”„ãU‘Öæ‹’“_ƒR[ƒh)
       , iv_account_class   => gv_acct_prod_sale            -- Š¨’è‰È–Ú(A-1‚Åæ“¾‚µ‚½Š¨’è‰È–ÚƒR[ƒh(»•i”„ã‚))
       , iv_adminicle_class => gv_aff4_subacct_dummy        -- •â•‰È–Ú(ƒ_ƒ~[’l)
-      , in_debit_amt       => i_get_rec.selling_amt        -- Ø•û‹àŠz(”„ã‹àŠz)
+-- 2010/01/28 Ver.1.6 [áŠQE_–{‰Ò“®_01297] SCS Y.Kuboshima MOD START
+--      , in_debit_amt       => i_get_rec.selling_amt        -- Ø•û‹àŠz(”„ã‹àŠz)
+        -- ‹àŠz‚Ì•„†”½“]
+      , in_debit_amt       => -( i_get_rec.selling_amt )   -- Ø•û‹àŠz(”„ã‹àŠz)
+-- 2010/01/28 Ver.1.6 [áŠQE_–{‰Ò“®_01297] SCS Y.Kuboshima MOD END
       , in_credit_amt      => 0                            -- ‘İ•û‹àŠz(0)
       , iv_base_code       => i_get_rec.base_code          -- ”„ãU‘Öæ‹’“_ƒR[ƒh
 -- 2009/10/09 Ver.1.4 [áŠQE_T3_00632] SCS S.Moriyama ADD START
@@ -1044,7 +1053,11 @@ AS
       , iv_adminicle_class => gv_assi_prod_sale_cost       -- •â•‰È–Ú(»•i”„ãŒ´‰¿_ó•¥•\(»•iŒ´‰¿))
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --      , in_debit_amt       => i_get_rec.selling_cost_amt   -- Ø•û‹àŠz(”„ãŒ´‰¿‹àŠz)
-      , in_debit_amt       => i_get_rec.trading_cost       -- Ø•û‹àŠz(‰c‹ÆŒ´‰¿)
+-- 2010/01/28 Ver.1.6 [áŠQE_–{‰Ò“®_01297] SCS Y.Kuboshima MOD START
+--      , in_debit_amt       => i_get_rec.trading_cost       -- Ø•û‹àŠz(‰c‹ÆŒ´‰¿)
+        -- ‹àŠz‚Ì•„†”½“]
+      , in_debit_amt       => -( i_get_rec.trading_cost )  -- Ø•û‹àŠz(‰c‹ÆŒ´‰¿)
+-- 2010/01/28 Ver.1.6 [áŠQE_–{‰Ò“®_01297] SCS Y.Kuboshima MOD END
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , in_credit_amt      => 0                            -- Ø•û‹àŠz(0)
       , iv_base_code       => i_get_rec.base_code          -- ”„ãU‘Öæ‹’“_ƒR[ƒh
@@ -1067,7 +1080,11 @@ AS
       , in_debit_amt       => 0                            -- Ø•û‹àŠz(0)
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --      , in_credit_amt      => i_get_rec.selling_cost_amt   -- ‘İ•û‹àŠz(”„ãŒ´‰¿‹àŠz)
-      , in_credit_amt      => i_get_rec.trading_cost       -- ‘İ•û‹àŠz(‰c‹ÆŒ´‰¿)
+-- 2010/01/28 Ver.1.6 [áŠQE_–{‰Ò“®_01297] SCS Y.Kuboshima MOD START
+--      , in_credit_amt      => i_get_rec.trading_cost       -- ‘İ•û‹àŠz(‰c‹ÆŒ´‰¿)
+        -- ‹àŠz‚Ì•„†”½“]
+      , in_credit_amt      => -( i_get_rec.trading_cost )  -- ‘İ•û‹àŠz(‰c‹ÆŒ´‰¿)
+-- 2010/01/28 Ver.1.6 [áŠQE_–{‰Ò“®_01297] SCS Y.Kuboshima MOD END
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
       , iv_base_code       => i_get_rec.base_code          -- ”„ãU‘Öæ‹’“_ƒR[ƒh
 -- 2009/10/09 Ver.1.4 [áŠQE_T3_00632] SCS S.Moriyama ADD START

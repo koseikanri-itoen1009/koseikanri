@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : 売上実績振替情報の作成（振替割合） MD050_COK_008_A06
- * Version          : 2.4
+ * Version          : 2.5
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/10/15    2.2   S.Moriyama       [E_T3_00632]売上実績振替情報登録時に売上振替元顧客コードを設定するように変更
  *  2009/11/27    2.3   K.Yamaguchi      [E_本稼動_00141]振り戻しデータの数量に-1を掛けるように修正
  *  2009/12/04    2.4   K.Yamaguchi      [E_本稼動_00292]振替元顧客はチェーン店コード(EDI)が設定されている場合にも対象とする
+ *  2010/01/26    2.5   K.Yamaguchi      [E_本稼動_01297]売上原価は按分後の数量（基準単位）に営業原価を掛けて算出
  *  
  *****************************************************************************************/
   --==================================================
@@ -177,6 +178,10 @@ AS
   cv_hc_cold                       CONSTANT VARCHAR2(1)     := '1';  -- COLD
   -- コラムNo
   cv_column_no                     CONSTANT VARCHAR2(2)     := '00'; -- ダミーコラムNO
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD START
+  -- 顧客マスタ有効ステータス
+  cv_cust_status_available         CONSTANT VARCHAR2(1)     := 'A';  -- 有効
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -252,15 +257,18 @@ AS
          , xsel.dlv_uom_code                                            AS dlv_uom_code             -- 納品単位
          , ROUND( SUM( xsel.sale_amount ), 0 )                          AS sales_amount_sum         -- 売上金額
          , ROUND( SUM( xsel.pure_amount ), 0 )                          AS pure_amount_sum          -- 本体金額
-         , ROUND( SUM(   xsel.business_cost
-                       * xxcok_common_pkg.get_uom_conversion_qty_f(
-                           xsel.item_code
-                         , xsel.dlv_uom_code
-                         , xsel.dlv_qty
-                         )
-                  )
-                , 0
-           )                                                            AS sales_cost_sum           -- 売上原価
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR START
+--         , ROUND( SUM(   xsel.business_cost
+--                       * xxcok_common_pkg.get_uom_conversion_qty_f(
+--                           xsel.item_code
+--                         , xsel.dlv_uom_code
+--                         , xsel.dlv_qty
+--                         )
+--                  )
+--                , 0
+--           )                                                            AS sales_cost_sum           -- 売上原価
+         , xsel.business_cost                                           AS business_cost            -- 営業原価
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR END
          , xseh.tax_code                                                AS tax_code                 -- 税金コード
          , xseh.tax_rate                                                AS tax_rate                 -- 消費税率
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
@@ -297,6 +305,10 @@ AS
       AND ship_hcsu.site_use_code           = cv_site_use_code_ship
       AND ship_hcsu.bill_to_site_use_id     = bill_hcsu.site_use_id
       AND bill_hcsu.site_use_code           = cv_site_use_code_bill
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD START
+      AND ship_hcsu.status                  = cv_cust_status_available
+      AND bill_hcsu.status                  = cv_cust_status_available
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD END
       AND bill_hcsu.cust_acct_site_id       = bill_hcas.cust_acct_site_id
       AND bill_hcas.cust_account_id         = bill_hca.cust_account_id
       AND xsfi.selling_from_base_code       = xseh.sales_base_code
@@ -363,6 +375,9 @@ AS
          , bill_hca.account_number
          , xsel.item_code
          , xsel.dlv_uom_code
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD START
+         , xsel.business_cost
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi ADD END
          , xseh.tax_code
          , xseh.tax_rate
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
@@ -806,7 +821,9 @@ AS
     ln_dlv_qty_sum                 NUMBER         DEFAULT 0;                    -- 納品数量
     ln_sales_amount_sum            NUMBER         DEFAULT 0;                    -- 売上金額
     ln_pure_amount_sum             NUMBER         DEFAULT 0;                    -- 本体金額
-    ln_sales_cost_sum              NUMBER         DEFAULT 0;                    -- 売上原価
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi DELETE START
+--    ln_sales_cost_sum              NUMBER         DEFAULT 0;                    -- 売上原価
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi DELETE END
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi ADD START
     -- 振替割合チェック
     ln_selling_trns_rate_total     NUMBER         DEFAULT 0;                    -- 振替割合の合計が100とならない場合はエラー
@@ -892,13 +909,45 @@ AS
       ln_sales_amount  := ROUND( i_selling_from_rec.sales_amount_sum * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
       -- 本体金額
       ln_pure_amount   := ROUND( i_selling_from_rec.pure_amount_sum  * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR START
+--      -- 売上原価
+--      ln_sales_cost    := ROUND( i_selling_from_rec.sales_cost_sum   * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
       -- 売上原価
-      ln_sales_cost    := ROUND( i_selling_from_rec.sales_cost_sum   * l_get_selling_to_tab(i).selling_trns_rate / 100, 0 );
+      ln_sales_cost    := ROUND( i_selling_from_rec.business_cost * xxcok_common_pkg.get_uom_conversion_qty_f(
+                                                                      i_selling_from_rec.item_code
+                                                                    , i_selling_from_rec.dlv_uom_code
+                                                                    , ln_dlv_qty
+                                                                    )
+                                 , 0
+                          )
+      ;
+      --==================================================
+      -- 売上原価チェック
+      --==================================================
+      IF( ln_sales_cost IS NULL ) THEN
+        lv_outmsg  := xxccp_common_pkg.get_msg(
+                        iv_application          => cv_appl_short_name_cok
+                      , iv_name                 => cv_msg_cok_10452
+                      , iv_token_name1          => cv_tkn_item_code
+                      , iv_token_value1         => i_selling_from_rec.item_code
+                      , iv_token_name2          => cv_tkn_dlv_uom_code
+                      , iv_token_value2         => i_selling_from_rec.dlv_uom_code
+                      );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which                => FND_FILE.OUTPUT
+                      , iv_message              => lv_outmsg
+                      , in_new_line             => 0
+                      );
+        RAISE error_proc_expt;
+      END IF;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR END
       -- 端数計算用集計
       ln_dlv_qty_sum      := ln_dlv_qty_sum      + ln_dlv_qty;
       ln_sales_amount_sum := ln_sales_amount_sum + ln_sales_amount;
       ln_pure_amount_sum  := ln_pure_amount_sum  + ln_pure_amount;
-      ln_sales_cost_sum   := ln_sales_cost_sum   + ln_sales_cost;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi DELETE START
+--      ln_sales_cost_sum   := ln_sales_cost_sum   + ln_sales_cost;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi DELETE END
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR END
       -- 端数調整
       IF( i = l_get_selling_to_tab.LAST ) THEN
@@ -908,8 +957,38 @@ AS
         ln_sales_amount := ln_sales_amount + i_selling_from_rec.sales_amount_sum  - ln_sales_amount_sum;
         -- 本体金額
         ln_pure_amount  := ln_pure_amount  + i_selling_from_rec.pure_amount_sum   - ln_pure_amount_sum;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR START
+--        -- 売上原価
+--        ln_sales_cost   := ln_sales_cost   + i_selling_from_rec.sales_cost_sum    - ln_sales_cost_sum;
         -- 売上原価
-        ln_sales_cost   := ln_sales_cost   + i_selling_from_rec.sales_cost_sum    - ln_sales_cost_sum;
+        ln_sales_cost   := ROUND( i_selling_from_rec.business_cost * xxcok_common_pkg.get_uom_conversion_qty_f(
+                                                                       i_selling_from_rec.item_code
+                                                                     , i_selling_from_rec.dlv_uom_code
+                                                                     , ln_dlv_qty
+                                                                     )
+                                , 0
+                           )
+        ;
+        --==================================================
+        -- 売上原価チェック
+        --==================================================
+        IF( ln_sales_cost_out IS NULL ) THEN
+          lv_outmsg  := xxccp_common_pkg.get_msg(
+                          iv_application          => cv_appl_short_name_cok
+                        , iv_name                 => cv_msg_cok_10452
+                        , iv_token_name1          => cv_tkn_item_code
+                        , iv_token_value1         => i_selling_from_rec.item_code
+                        , iv_token_name2          => cv_tkn_dlv_uom_code
+                        , iv_token_value2         => i_selling_from_rec.dlv_uom_code
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which                => FND_FILE.OUTPUT
+                        , iv_message              => lv_outmsg
+                        , in_new_line             => 0
+                        );
+          RAISE error_proc_expt;
+        END IF;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR END
       END IF;
       --==================================================
       -- 売上振替先情報の登録(A-6)
@@ -924,8 +1003,38 @@ AS
         ln_sales_amount_out := ln_sales_amount;
         -- 本体金額
         ln_pure_amount_out  := ln_pure_amount;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR START
+--        -- 売上原価
+--        ln_sales_cost_out   := ln_sales_cost;
         -- 売上原価
-        ln_sales_cost_out   := ln_sales_cost;
+        ln_sales_cost_out   := ROUND( i_selling_from_rec.business_cost * xxcok_common_pkg.get_uom_conversion_qty_f(
+                                                                           i_selling_from_rec.item_code
+                                                                         , i_selling_from_rec.dlv_uom_code
+                                                                         , ln_dlv_qty_out
+                                                                         )
+                                    , 0
+                               )
+        ;
+        --==================================================
+        -- 売上原価チェック
+        --==================================================
+        IF( ln_sales_cost_out IS NULL ) THEN
+          lv_outmsg  := xxccp_common_pkg.get_msg(
+                          iv_application          => cv_appl_short_name_cok
+                        , iv_name                 => cv_msg_cok_10452
+                        , iv_token_name1          => cv_tkn_item_code
+                        , iv_token_value1         => i_selling_from_rec.item_code
+                        , iv_token_name2          => cv_tkn_dlv_uom_code
+                        , iv_token_value2         => i_selling_from_rec.dlv_uom_code
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which                => FND_FILE.OUTPUT
+                        , iv_message              => lv_outmsg
+                        , in_new_line             => 0
+                        );
+          RAISE error_proc_expt;
+        END IF;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR END
       ELSE
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
 --        IF( ln_dlv_qty <> 0 ) THEN
@@ -1100,25 +1209,27 @@ AS
         -- セーブポイント設定
         --==================================================
         SAVEPOINT loop_start_save;
-        --==================================================
-        -- 売上原価チェック
-        --==================================================
-        IF( get_selling_from_rec.sales_cost_sum IS NULL ) THEN
-          lv_outmsg  := xxccp_common_pkg.get_msg(
-                          iv_application          => cv_appl_short_name_cok
-                        , iv_name                 => cv_msg_cok_10452
-                        , iv_token_name1          => cv_tkn_item_code
-                        , iv_token_value1         => get_selling_from_rec.item_code
-                        , iv_token_name2          => cv_tkn_dlv_uom_code
-                        , iv_token_value2         => get_selling_from_rec.dlv_uom_code
-                        );
-          lb_retcode := xxcok_common_pkg.put_message_f(
-                          in_which                => FND_FILE.OUTPUT
-                        , iv_message              => lv_outmsg
-                        , in_new_line             => 0
-                        );
-          RAISE error_proc_expt;
-        END IF;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi DELETE START
+--        --==================================================
+--        -- 売上原価チェック
+--        --==================================================
+--        IF( get_selling_from_rec.sales_cost_sum IS NULL ) THEN
+--          lv_outmsg  := xxccp_common_pkg.get_msg(
+--                          iv_application          => cv_appl_short_name_cok
+--                        , iv_name                 => cv_msg_cok_10452
+--                        , iv_token_name1          => cv_tkn_item_code
+--                        , iv_token_value1         => get_selling_from_rec.item_code
+--                        , iv_token_name2          => cv_tkn_dlv_uom_code
+--                        , iv_token_value2         => get_selling_from_rec.dlv_uom_code
+--                        );
+--          lb_retcode := xxcok_common_pkg.put_message_f(
+--                          in_which                => FND_FILE.OUTPUT
+--                        , iv_message              => lv_outmsg
+--                        , in_new_line             => 0
+--                        );
+--          RAISE error_proc_expt;
+--        END IF;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi DELETE END
         --==================================================
         -- 売上振替元担当営業コードチェック
         --==================================================
@@ -1170,8 +1281,38 @@ AS
         ln_sales_amount_counter    := get_selling_from_rec.sales_amount_sum * -1 + ln_sales_amount;
         -- 本体金額（相殺）
         ln_pure_amount_counter     := get_selling_from_rec.pure_amount_sum  * -1 + ln_pure_amount;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR START
+--        -- 売上原価（相殺）
+--        ln_sales_cost_counter      := get_selling_from_rec.sales_cost_sum   * -1 + ln_sales_cost;
         -- 売上原価（相殺）
-        ln_sales_cost_counter      := get_selling_from_rec.sales_cost_sum   * -1 + ln_sales_cost;
+        ln_sales_cost_counter      := ROUND( get_selling_from_rec.business_cost * xxcok_common_pkg.get_uom_conversion_qty_f(
+                                                                                  get_selling_from_rec.item_code
+                                                                                , get_selling_from_rec.dlv_uom_code
+                                                                                , ln_dlv_qty_counter
+                                                                                )
+                                           , 0
+                                      )
+        ;
+        --==================================================
+        -- 売上原価チェック
+        --==================================================
+        IF( ln_sales_cost_counter IS NULL ) THEN
+          lv_outmsg  := xxccp_common_pkg.get_msg(
+                          iv_application          => cv_appl_short_name_cok
+                        , iv_name                 => cv_msg_cok_10452
+                        , iv_token_name1          => cv_tkn_item_code
+                        , iv_token_value1         => get_selling_from_rec.item_code
+                        , iv_token_name2          => cv_tkn_dlv_uom_code
+                        , iv_token_value2         => get_selling_from_rec.dlv_uom_code
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                          in_which                => FND_FILE.OUTPUT
+                        , iv_message              => lv_outmsg
+                        , in_new_line             => 0
+                        );
+          RAISE error_proc_expt;
+        END IF;
+-- 2010/01/26 Ver.2.6 [E_本稼動_01297] SCS K.Yamaguchi REPAIR END
 -- 2009/09/28 Ver.2.1 [E_T3_00590] SCS K.Yamaguchi REPAIR START
 --        IF( ln_dlv_qty_counter <> 0 ) THEN
 --          -- 納品単価（相殺）

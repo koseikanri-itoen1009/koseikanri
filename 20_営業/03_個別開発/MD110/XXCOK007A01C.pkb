@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -48,6 +48,11 @@ AS
  *                                                       符号逆転を行うように修正（データパッチ時に緊急対応）
  *  2010/01/07    1.11  S.Moriyama       [E_本稼動_00180]価格表取得を振替元顧客で実施するように修正
  *                                       [E_本稼動_00834]価格表より納品単価を取得時に0円の場合は警告とするように修正
+ *  2010/01/29    1.12  Y.Kuboshima      [E_本稼動_01297]売上拠点の取得方法を変更
+ *                                                       店舗納品日が前月の場合：前月売上拠点
+ *                                                       店舗納品日が当月の場合：売上拠点
+ *                                                       担当営業員の処理日を「業務日付 -> 店舗納品日」に修正
+ *                                                       顧客使用目的マスタの抽出条件に有効フラグを追加
  *
  *****************************************************************************************/
   -- =========================
@@ -170,6 +175,9 @@ AS
   cv_ship_to                  CONSTANT VARCHAR2(10) := 'SHIP_TO';                        --使用目的(出荷先)
   cv_flag_y                   CONSTANT VARCHAR2(1)  := 'Y';                              --フラグ(Y)
   cv_flag_n                   CONSTANT VARCHAR2(1)  := 'N';                              --フラグ(N)
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD START
+  cv_flag_a                   CONSTANT VARCHAR2(1)  := 'A';                              --フラグ(A)
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD END
   cv_J                        CONSTANT VARCHAR2(1)  := 'J';                              --文字列:J
   cv_article_code             CONSTANT VARCHAR2(10) := '0000000000';                     --物件コード(固定値)
   --数値
@@ -1206,6 +1214,10 @@ AS
 --  , in_shipment_unit_price  IN  NUMBER      --納品単価
   , in_order_unit_price     IN  NUMBER      --納品単価
 -- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD START
+    --売上拠点,担当営業員の抽出のため追加
+  , id_store_delivery_date  IN  DATE        --店舗納品日
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD END
   , iv_token                IN  VARCHAR2    --トークン名
   , ov_sale_base_code       OUT VARCHAR2    --拠点コード
   , ov_account_number       OUT VARCHAR2    --顧客コード
@@ -1254,7 +1266,16 @@ AS
 --            , hca.account_name      AS account_name        --顧客名
             , hp.party_name         AS account_name        --顧客名
 -- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
-            , xca.sale_base_code    AS sale_base_code      --売上担当拠点コード
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima MOD START
+--            , xca.sale_base_code    AS sale_base_code      --売上担当拠点コード
+              -- 店舗納品日が当月の場合、売上拠点
+              -- 前月の場合、前月売上拠点を出力
+            , CASE WHEN (id_store_delivery_date < TRUNC(gd_prdate, 'MM')) THEN
+                xca.past_sale_base_code
+              ELSE
+                xca.sale_base_code
+              END                   AS sale_base_code      --売上担当拠点コード
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima MOD END
             , xca.business_low_type AS business_low_type   --業態(小分類)
             , hcsua.price_list_id   AS price_list_id       --価格表ID
       INTO    ov_account_number
@@ -1286,6 +1307,9 @@ AS
 -- Start 2009/05/19 Ver_1.4 T1_1043 M.Hiruta
       AND     hcasa.org_id             = gn_org_id
 -- End   2009/05/19 Ver_1.4 T1_1043 M.Hiruta
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD START
+      AND     hcsua.status             = cv_flag_a
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD END
       AND     hcsua.org_id             = gn_org_id;
     EXCEPTION
     -- *** 顧客コードが取得できない場合(顧客コードの変換に失敗した場合) ***
@@ -1310,7 +1334,11 @@ AS
     -- =============================================================================
     ov_sales_stuff_code := xxcok_common_pkg.get_sales_staff_code_f(
                              iv_customer_code => ov_account_number   --顧客コード
-                           , id_proc_date     => gd_prdate           --処理日
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima MOD START
+--                           , id_proc_date     => gd_prdate           --処理日
+                             -- 業務日付 -> 店舗納品日に変更
+                           , id_proc_date     => id_store_delivery_date --処理日
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima MOD END
                            );
     -- =============================================================================
     -- 売上担当拠点コード、担当営業コードのどちらか、または両方に値が
@@ -1745,6 +1773,9 @@ AS
 --    , in_shipment_unit_price  => in_shipment_unit_price       --納品単価
     , in_order_unit_price     => in_order_unit_price          --納品単価
 -- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD START
+    , id_store_delivery_date  => id_store_delivery_date       --店舗納品日
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD END
     , iv_token                => cv_token_center_code         --トークン名
     , ov_sale_base_code       => lv_sale_base_code            --拠点コード
     , ov_account_number       => lv_from_account_number       --顧客コード
@@ -1813,6 +1844,9 @@ AS
 --    , in_shipment_unit_price  => in_shipment_unit_price       --納品単価
     , in_order_unit_price     => in_order_unit_price          --納品単価
 -- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD START
+    , id_store_delivery_date  => id_store_delivery_date       --店舗納品日
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD END
     , iv_token                => cv_token_store_code          --トークン名
     , ov_sale_base_code       => lv_sale_base_code            --拠点コード
     , ov_account_number       => lv_to_account_number         --顧客コード
@@ -2305,6 +2339,10 @@ AS
         AND bill_xtv.set_of_books_id         = gn_set_of_books_id
         AND id_store_delivery_date     BETWEEN NVL( bill_xtv.start_date_active, id_store_delivery_date )
                                            AND NVL( bill_xtv.end_date_active  , id_store_delivery_date )
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD START
+        AND bill_hcsu.status                 = cv_flag_a
+        AND ship_hcsu.status                 = cv_flag_a
+-- 2010/01/28 Ver.1.12 [E_本稼動_01297] SCS Y.Kuboshima ADD END
       ;
 -- 2009/10/19 Ver.1.9 [障害E_T3_00631] SCS K.Yamaguchi REPAIR END
 --
