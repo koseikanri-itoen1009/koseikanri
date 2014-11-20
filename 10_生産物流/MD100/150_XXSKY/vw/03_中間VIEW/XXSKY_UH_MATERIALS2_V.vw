@@ -42,7 +42,13 @@ SELECT
          AND  xsims.invent_ym          >= TO_CHAR(ADD_MONTHS(trunc(sysdate,'MM'), -2), 'YYYYMM')    -- H.Itou Add 2009/12/17
          AND  xsims.invent_ym          <  TO_CHAR(ADD_MONTHS(trunc(sysdate,'MM'),  1), 'YYYYMM')    -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xmrh xmril ixm itp gic2 mcb2 gic1 mcb1 iimb ximb) use_nl (xmrh xmril ixm itp gic2 mcb2 gic1 mcb1 iimb ximb) */
+      -- ----------------------------------------------------
+      -- XFER :Œo—Žó•¥‹æ•ªî•ñ‚u‚h‚vˆÚ“®Ï‘—‚ ‚è
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xmrh xmril ixm itp gic2 mcb2 gic1 mcb1 iimb ximb) use_nl (xmrh xmril ixm itp gic2 mcb2 gic1 mcb1 iimb ximb) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -66,7 +72,10 @@ SELECT
       AND    itp.completed_ind       = 1
       AND    xmrh.mov_hdr_id         = xmril.mov_hdr_id
       AND    itp.doc_id              = ixm.transfer_id
-      AND    ixm.attribute1          = TO_CHAR(xmril.mov_line_id)
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    ixm.attribute1          = TO_CHAR(xmril.mov_line_id)
+      AND    xmril.mov_line_id          = TO_NUMBER(ixm.attribute1)
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    xrpm.rcv_pay_div        = CASE
                                        WHEN itp.trans_qty >= 0 THEN 1
                                        ELSE -1
@@ -77,7 +86,13 @@ SELECT
       AND    xmrh.actual_arrival_date >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    xmrh.actual_arrival_date <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL --trni
-      SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
+      -- ----------------------------------------------------
+      -- TRNI :Œo—Žó•¥‹æ•ªî•ñ‚u‚h‚vˆÚ“®Ï‘—‚È‚µ
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
@@ -104,7 +119,10 @@ SELECT
       AND    itc.doc_id              = iaj.doc_id
       AND    itc.doc_line            = iaj.doc_line
       AND    ijm.journal_id          = iaj.journal_id
-      AND    ijm.attribute1          = TO_CHAR(xmril.mov_line_id)
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    ijm.attribute1          = TO_CHAR(xmril.mov_line_id)
+      AND    xmril.mov_line_id          = TO_NUMBER(ijm.attribute1)
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    xrpm.rcv_pay_div        = CASE
                                        WHEN itc.trans_qty >= 0 THEN 1
                                        ELSE -1
@@ -116,7 +134,13 @@ SELECT
       AND    xmrh.actual_arrival_date >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    xmrh.actual_arrival_date <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
+      -- ----------------------------------------------------
+      -- ADJI :Œo—Žó•¥‹æ•ªî•ñVIEWÝŒÉ’²®(‘¼)
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
@@ -161,7 +185,13 @@ SELECT
       AND    itc.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itc.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+      -- ----------------------------------------------------
+      -- ADJI :Œo—Žó•¥‹æ•ªî•ñVIEWÝŒÉ’²®(Žd“ü)
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
@@ -185,7 +215,13 @@ SELECT
       AND    itc.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itc.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+      -- ----------------------------------------------------
+      -- ADJI :Œo—Žó•¥‹æ•ªî•ñ‚u‚h‚vÝŒÉ’²®(•l‰ª)
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
@@ -209,7 +245,13 @@ SELECT
       AND    itc.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itc.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
+      -- ----------------------------------------------------
+      -- ADJI :Œo—Žó•¥‹æ•ªî•ñ‚u‚h‚vÝŒÉ’²®(ˆÚ“®)
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
@@ -235,7 +277,10 @@ SELECT
       AND    iaj.doc_id              = itc.doc_id
       AND    iaj.doc_line            = itc.doc_line
       AND    ijm.journal_id          = iaj.journal_id
-      AND    ijm.attribute1          = TO_CHAR(xmrl.mov_line_id)
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    ijm.attribute1          = TO_CHAR(xmrl.mov_line_id)
+      AND    xmrl.mov_line_id          = TO_NUMBER(ijm.attribute1)
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    xmrh.mov_hdr_id         = xmrl.mov_hdr_id
       AND    xrpm.rcv_pay_div        = CASE
                                        WHEN itc.trans_qty >= 0 THEN -1
@@ -247,7 +292,13 @@ SELECT
       AND    xmrh.actual_arrival_date >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    xmrh.actual_arrival_date <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+      -- ----------------------------------------------------
+      -- ADJI :Œo—Žó•¥‹æ•ªî•ñ‚u‚h‚vÝŒÉ’²®(‚»‚Ì‘¼•¥o)
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itc.whse_code                        whse_code
             ,itc.item_id                          item_id
             ,itc.lot_id                           lot_id
@@ -274,7 +325,13 @@ SELECT
       AND    itc.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itc.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
+      -- ----------------------------------------------------
+      --  PROD :Œo—Žó•¥‹æ•ªî•ñ‚u‚h‚v¶ŽYŠÖ˜AiReverse_id‚È‚µj•iŽíE•i–ÚU‘Ö‚È‚µ
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -312,7 +369,13 @@ SELECT
       AND    itp.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itp.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
+      -- ----------------------------------------------------
+      --  PROD :Œo—Žó•¥‹æ•ªî•ñ‚u‚h‚v¶ŽYŠÖ˜AiReverse_id‚È‚µj•iŽíE•i–ÚU‘Ö
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -372,7 +435,13 @@ SELECT
       AND    itp.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itp.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      -- ----------------------------------------------------
+      --  SQL11
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -388,7 +457,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -401,11 +472,16 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    rsl.oe_order_header_id  = xola.header_id
       AND    rsl.oe_order_line_id    = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         IN ('1','2')
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.request_item_code  = xola.shipping_item_code
       AND    xrpm.doc_type           = itp.doc_type
@@ -421,7 +497,13 @@ SELECT
       AND    xoha.arrival_date       >= ADD_MONTHS(trunc(sysdate,'MM'), -2)    -- H.Itou Add 2009/12/17
       AND    xoha.arrival_date       <  ADD_MONTHS(trunc(sysdate,'MM'),  1)    -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      -- ----------------------------------------------------
+      --  SQL12
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,iimb.item_id                         item_id
             ,itp.lot_id                           lot_id
@@ -437,7 +519,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -456,11 +540,16 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    rsl.oe_order_header_id  = xoha.header_id
       AND    rsl.oe_order_line_id    = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         IN ('1','2')
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
@@ -476,7 +565,13 @@ SELECT
       AND    xoha.arrival_date       >= ADD_MONTHS(trunc(sysdate,'MM'), -2)    -- H.Itou Add 2009/12/17
       AND    xoha.arrival_date       <  ADD_MONTHS(trunc(sysdate,'MM'),  1)    -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
+      -- ----------------------------------------------------
+      --  SQL13
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,iimb.item_id                         item_id
             ,itp.lot_id                           lot_id
@@ -492,7 +587,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -511,10 +608,15 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    rsl.oe_order_header_id  = xoha.header_id
       AND    rsl.oe_order_line_id    = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
@@ -528,7 +630,13 @@ SELECT
       AND    xoha.arrival_date       >= ADD_MONTHS(trunc(sysdate,'MM'), -2)    -- H.Itou Add 2009/12/17
       AND    xoha.arrival_date       <  ADD_MONTHS(trunc(sysdate,'MM'),  1)    -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
+      -- ----------------------------------------------------
+      --  SQL14
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -544,7 +652,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -556,9 +666,14 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    rsl.oe_order_header_id  = xoha.header_id
       AND    rsl.oe_order_line_id    = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    otta.attribute4         = '2'
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
@@ -569,7 +684,13 @@ SELECT
       AND    xoha.arrival_date       >= ADD_MONTHS(trunc(sysdate,'MM'), -2)    -- H.Itou Add 2009/12/17
       AND    xoha.arrival_date       <  ADD_MONTHS(trunc(sysdate,'MM'),  1)    -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
+      -- ----------------------------------------------------
+      --  SQL15
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -600,7 +721,13 @@ SELECT
       AND    itp.trans_date         >= ADD_MONTHS(trunc(sysdate,'MM'), -2)   -- H.Itou Add 2009/12/17
       AND    itp.trans_date         <  ADD_MONTHS(trunc(sysdate,'MM'),  1)   -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      -- ----------------------------------------------------
+      --  SQL16
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -616,7 +743,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -628,11 +757,16 @@ SELECT
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         IN ('1','2')
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xola.request_item_code  = xola.shipping_item_code
       AND    xrpm.doc_type           = itp.doc_type
@@ -647,7 +781,13 @@ SELECT
       AND    xoha.arrival_date       >= ADD_MONTHS(trunc(sysdate,'MM'), -2)    -- H.Itou Add 2009/12/17
       AND    xoha.arrival_date       <  ADD_MONTHS(trunc(sysdate,'MM'),  1)    -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
+      -- ----------------------------------------------------
+      --  SQL17
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,iimb.item_id                         item_id
             ,itp.lot_id                           lot_id
@@ -663,7 +803,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -682,11 +824,16 @@ SELECT
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       = '106'
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -700,7 +847,13 @@ SELECT
       AND    xoha.arrival_date       >= ADD_MONTHS(trunc(sysdate,'MM'), -2)    -- H.Itou Add 2009/12/17
       AND    xoha.arrival_date       <  ADD_MONTHS(trunc(sysdate,'MM'),  1)    -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
+      -- ----------------------------------------------------
+      --  SQL18
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Mod End
              itp.whse_code                        whse_code
             ,iimb.item_id                         item_id
             ,itp.lot_id                           lot_id
@@ -716,7 +869,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -735,11 +890,16 @@ SELECT
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       = '113'
       AND    xrpm.shipment_provision_div = DECODE(xoha.req_status,'04','1','08','2')
@@ -751,7 +911,13 @@ SELECT
       AND    xoha.arrival_date       >= ADD_MONTHS(trunc(sysdate,'MM'), -2)    -- H.Itou Add 2009/12/17
       AND    xoha.arrival_date       <  ADD_MONTHS(trunc(sysdate,'MM'),  1)    -- H.Itou Add 2009/12/17
       UNION ALL
-      SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
+      -- ----------------------------------------------------
+      --  SQL19
+      -- ----------------------------------------------------
+-- 2009/12/21 T.Yoshimoto Add Start
+--      SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
+      SELECT
+-- 2009/12/21 T.Yoshimoto Add End
              itp.whse_code                        whse_code
             ,itp.item_id                          item_id
             ,itp.lot_id                           lot_id
@@ -767,7 +933,9 @@ SELECT
             ,xoha.arrival_date                    trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -775,12 +943,20 @@ SELECT
       WHERE  itp.doc_type            = 'OMSO'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
+-- 2009/12/21 T.Yoshimoto Add Start
+      AND    xoha.req_status         = '04'
+-- 2009/12/21 T.Yoshimoto Add End
       AND    wdd.delivery_detail_id  = itp.line_detail_id
       AND    wdd.source_header_id    = xoha.header_id
       AND    wdd.source_line_id      = xola.line_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    otta.attribute4         = '2'
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xola.order_header_id    = xoha.order_header_id
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('504','509')
@@ -813,10 +989,16 @@ SELECT
             ,xxinv_mov_req_instr_headers xmrih
             ,xxcmn_rcv_pay_mst          xrpm
       WHERE  itp.doc_type            = 'XFER'
+-- 2009/12/21 T.Yoshimoto Mod Start
+      AND    itp.reason_code         = 'X122'
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    itp.completed_ind       = 1
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
       AND    ixm.transfer_id         = itp.doc_id
-      AND    ixm.attribute1          = TO_CHAR(xmril.mov_line_id)
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    ixm.attribute1          = TO_CHAR(xmril.mov_line_id)
+      AND    xmril.mov_line_id       = TO_NUMBER(ixm.attribute1)
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    xrpm.rcv_pay_div        = CASE
                                          WHEN itp.trans_qty >= 0
                                          THEN '1'
@@ -858,7 +1040,10 @@ SELECT
       AND    itc.doc_id              = iaj.doc_id
       AND    itc.doc_line            = iaj.doc_line
       AND    ijm.journal_id          = iaj.journal_id
-      AND    ijm.attribute1          = TO_CHAR(xmril.mov_line_id)
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    ijm.attribute1          = TO_CHAR(xmril.mov_line_id)
+      AND    xmril.mov_line_id       = TO_NUMBER(ijm.attribute1)
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    xrpm.rcv_pay_div        = CASE
                                        WHEN itc.trans_qty >= 0 THEN 1
                                        ELSE -1
@@ -978,7 +1163,10 @@ SELECT
       AND    iaj.doc_id              = itc.doc_id
       AND    iaj.doc_line            = itc.doc_line
       AND    ijm.journal_id          = iaj.journal_id
-      AND    ijm.attribute1          = TO_CHAR(xmrl.mov_line_id)
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    ijm.attribute1          = TO_CHAR(xmrl.mov_line_id)
+      AND    xmrl.mov_line_id       = TO_NUMBER(ijm.attribute1)
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = CASE
@@ -1101,7 +1289,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,wsh_delivery_details             wdd
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -1109,12 +1299,23 @@ SELECT
       WHERE  itp.doc_type            = 'OMSO'
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
+-- 2009/12/21 T.Yoshimoto Add Start
+      AND    xoha.req_status         = '04'
+-- 2009/12/21 T.Yoshimoto Add End
       AND    wdd.delivery_detail_id  = itp.line_detail_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
+-- 2009/12/21 T.Yoshimoto Add Start
+      AND    otta.attribute1 = '1'
+-- 2009/12/21 T.Yoshimoto Add End
       AND    xoha.header_id          = wdd.source_header_id
       AND    xola.line_id            = wdd.source_line_id
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.dealings_div       IN ('504','509')
       AND    xrpm.stock_adjustment_div = otta.attribute4
@@ -1142,7 +1343,9 @@ SELECT
             ,xoha.arrival_date                trans_date
       FROM   ic_tran_pnd                      itp
             ,rcv_shipment_lines               rsl
-            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del Start
+--            ,oe_order_headers_all             ooha
+-- 2009/12/21 T.Yoshimoto Del End
             ,oe_transaction_types_all         otta
             ,xxwsh_order_headers_all          xoha
             ,xxwsh_order_lines_all            xola
@@ -1154,9 +1357,14 @@ SELECT
       AND    rsl.line_num            = itp.doc_line
       AND    xoha.header_id          = rsl.oe_order_header_id
       AND    xola.line_id            = rsl.oe_order_line_id
-      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del Start
+--      AND    xoha.header_id          = ooha.header_id
+-- 2009/12/21 T.Yoshimoto Del End
       AND    xola.order_header_id    = xoha.order_header_id
-      AND    otta.transaction_type_id = ooha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod Start
+--      AND    otta.transaction_type_id = ooha.order_type_id
+      AND    otta.transaction_type_id = xoha.order_type_id
+-- 2009/12/21 T.Yoshimoto Mod End
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.source_document_code = 'RMA'
       AND    xrpm.dealings_div       IN ('504','509')
