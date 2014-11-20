@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成アドオンインポート
  * MD.050           : 物流構成マスタ T_MD050_BPO_890
  * MD.070           : 物流構成アドオンインポート T_MD070_BPO_89B
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,6 +17,7 @@ AS
  *  delete_sr_lines_if     物流構成アドオンインタフェーステーブル削除(B-10)プロシージャ
  *  insert_sr_rules        物流構成アドオンマスタ挿入(B-9)プロシージャ
  *  check_whse_data        倉庫重複チェック(B-8)プロシージャ  
+ *  check_whse_data2       倉庫重複チェック2(B-11)プロシージャ  
  *  modify_end_date        適用終了日編集(B-7)ファンクション
  *  delete_sourcing_rules  物流構成アドオンマスタ削除(B-6)プロシージャ
  *  set_table_data         登録対象レコード編集(B-5)プロシージャ
@@ -33,6 +34,7 @@ AS
  *  2008/04/17    1.1   ORACLE 丸下博宣  拠点、配送先が指定なしの場合存在チェックを実施しない
  *  2008/05/23    1.2   ORACLE 椎名昭圭  内部変更要求#110対応
  *  2008/06/09    1.3   ORACLE 椎名昭圭  仕入先配送先チェックの不具合修正
+ *  2008/10/29    1.4   ORACLE 吉元強樹  統合指摘#251対応
  *
  *****************************************************************************************/
 --
@@ -113,6 +115,10 @@ AS
   gv_tkn_s_date_act           CONSTANT VARCHAR2(15) := 'S_DATE_ACT';
   gv_tkn_e_date_act           CONSTANT VARCHAR2(15) := 'E_DATE_ACT';
   gv_tkn_ng_table_name        CONSTANT VARCHAR2(15) := 'NG_TABLE_NAME';
+-- 2008/10/29 v1.4 T.Yoshimoto Add Start 統合#251
+  gv_tkn_object1              CONSTANT VARCHAR2(15) := 'OBJECT1';
+  gv_tkn_object2              CONSTANT VARCHAR2(15) := 'OBJECT2';
+-- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
   --メッセージ番号
   gv_msg_data_normal      CONSTANT VARCHAR2(15) := 'APP-XXCMN-00005'; -- 成功データ(見出し)
   gv_msg_data_error       CONSTANT VARCHAR2(15) := 'APP-XXCMN-00006'; -- エラーデータ(見出し)
@@ -135,10 +141,19 @@ AS
   gv_msg_ng_date_act      CONSTANT VARCHAR2(15) := 'APP-XXCMN-10130'; -- 適用日付NG
   gv_msg_rep_key          CONSTANT VARCHAR2(15) := 'APP-XXCMN-10055'; -- 主キー重複NG
   gv_msg_rep_whse         CONSTANT VARCHAR2(15) := 'APP-XXCMN-10128'; -- 倉庫重複NG
+-- 2008/10/29 v1.4 T.Yoshimoto Add Start 統合#251
+  gv_msg_rep_whse2        CONSTANT VARCHAR2(15) := 'APP-XXCMN-10158'; -- 倉庫重複2NG
+-- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
   gv_msg_ng_base_ship_to  CONSTANT VARCHAR2(15) := 'APP-XXCMN-10132'; -- 拠点／配送先NG
 --
   -- 対象DB名
   gv_xxcmn_sr_lines_if CONSTANT VARCHAR2(100) := '物流構成アドオンインタフェース';
+-- 2008/10/29 v1.4 T.Yoshimoto Add Start 統合#251
+  -- 対象カラム名
+  gv_colmun1           CONSTANT VARCHAR2(100) := '出庫倉庫';
+  gv_colmun2           CONSTANT VARCHAR2(100) := '移動元倉庫1';
+  gv_colmun3           CONSTANT VARCHAR2(100) := '移動元倉庫2';
+-- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -629,6 +644,138 @@ AS
 --
   END check_whse_data;
   --
+-- 2008/10/29 v1.4 T.Yoshimoto Add Start 統合#251
+  /**********************************************************************************
+   * Procedure Name   : check_whse_data2
+   * Description      : 倉庫重複チェック2(B-11)プロシージャ
+   ***********************************************************************************/
+  PROCEDURE check_whse_data2(
+    ir_sr_line    IN OUT NOCOPY sr_line_rec,  -- 1.レコード
+    ov_errbuf     OUT NOCOPY VARCHAR2,      --   エラー・メッセージ           --# 固定 #
+    ov_retcode    OUT NOCOPY  VARCHAR2,     --   リターン・コード             --# 固定 #
+    ov_errmsg     OUT NOCOPY  VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'check_whse_data2'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 移動元倉庫1が設定されている場合且つ、出庫倉庫と同じ場合
+    IF ( ( ir_sr_line.delivery_whse_code IS NOT NULL )
+      AND ( ir_sr_line.move_from_whse_code1 IS NOT NULL )
+      AND ( ir_sr_line.delivery_whse_code = ir_sr_line.move_from_whse_code1 ) ) THEN
+--
+      -- 倉庫重複チェックNG
+      ir_sr_line.message := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_rep_whse2,
+                              gv_tkn_ng_item_code, ir_sr_line.item_code,
+                              gv_tkn_ng_base_code,ir_sr_line.base_code,
+                              gv_tkn_ng_ship_to_code,ir_sr_line.ship_to_code,
+                              gv_tkn_s_date_act,
+                              TO_CHAR(ir_sr_line.start_date_active, 'YYYY/MM/DD'),
+                              gv_tkn_e_date_act,
+                              TO_CHAR(ir_sr_line.end_date_active, 'YYYY/MM/DD'),
+                              gv_tkn_ng_whse_code, ir_sr_line.delivery_whse_code,
+                              gv_tkn_ng_whse1, ir_sr_line.move_from_whse_code1,
+                              gv_tkn_ng_whse2, ir_sr_line.move_from_whse_code2,
+                              gv_tkn_ng_vendor_site_code1, ir_sr_line.vendor_site_code1,
+                              gv_tkn_object1, gv_colmun1,
+                              gv_tkn_object2, gv_colmun2 );
+--
+      RAISE check_data_expt;
+--
+    END IF;
+--
+--
+    -- 移動元倉庫2が設定されている場合且つ、移動元倉庫1と同じ場合
+    IF ( ( ir_sr_line.move_from_whse_code1 IS NOT NULL )
+      AND ( ir_sr_line.move_from_whse_code2 IS NOT NULL )
+      AND ( ir_sr_line.move_from_whse_code1 = ir_sr_line.move_from_whse_code2 ) ) THEN
+--
+      -- 倉庫重複チェックNG
+      ir_sr_line.message := xxcmn_common_pkg.get_msg(gv_msg_kbn, gv_msg_rep_whse2,
+                              gv_tkn_ng_item_code, ir_sr_line.item_code,
+                              gv_tkn_ng_base_code,ir_sr_line.base_code,
+                              gv_tkn_ng_ship_to_code,ir_sr_line.ship_to_code,
+                              gv_tkn_s_date_act,
+                              TO_CHAR(ir_sr_line.start_date_active, 'YYYY/MM/DD'),
+                              gv_tkn_e_date_act,
+                              TO_CHAR(ir_sr_line.end_date_active, 'YYYY/MM/DD'),
+                              gv_tkn_ng_whse_code, ir_sr_line.delivery_whse_code,
+                              gv_tkn_ng_whse1, ir_sr_line.move_from_whse_code1,
+                              gv_tkn_ng_whse2, ir_sr_line.move_from_whse_code2,
+                              gv_tkn_ng_vendor_site_code1, ir_sr_line.vendor_site_code1,
+                              gv_tkn_object1, gv_colmun2,
+                              gv_tkn_object2, gv_colmun3 );
+--
+      RAISE check_data_expt;
+--
+    END IF;
+--
+--
+    --==============================================================
+    --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    --*** データチェック処理エラー ***
+    WHEN check_data_expt THEN
+      ir_sr_line.row_level_status := gn_data_status_warn;
+      gn_data_status := gn_data_status_warn;
+      ov_retcode := gv_status_warn;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END check_whse_data2;
+-- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
+--
   /**********************************************************************************
    * Function Name    : modify_end_date
    * Description      : 適用終了日編集(B-7)ファンクション
@@ -1642,6 +1789,22 @@ AS
           IF (lv_retcode = gv_status_error) THEN
             RAISE check_sub_main_expt;
           END IF;
+--
+-- 2008/10/29 v1.4 T.Yoshimoto Add Start 統合#251
+          -- ===============================
+          --  倉庫重複チェック2(B-11)
+          -- ===============================    
+          check_whse_data2(
+            lr_sr_line_rec, -- 1.レコード
+            lv_errbuf,      --   エラー・メッセージ           --# 固定 #
+            lv_retcode,     --   リターン・コード             --# 固定 #
+            lv_errmsg);     --   ユーザー・エラー・メッセージ --# 固定 #
+  --
+            -- 例外処理
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE check_sub_main_expt;
+          END IF;
+-- 2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
 --
           -- ===============================
           --  物流構成アドオンマスタ挿入(B-9)

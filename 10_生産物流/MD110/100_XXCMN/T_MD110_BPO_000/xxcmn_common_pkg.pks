@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common_pkg(SPEC)
  * Description            : 共通関数(SPEC)
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数（補足資料）.xls
- * Version                : 1.3
+ * Version                : 1.4
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/05/07   1.1   marushita        WF起動関数のWF起動時パラメータにWFオーナーを追加
  *  2008/09/18   1.2   Oracle 山根 一浩 T_S_453対応(WFファイルコピー)
  *  2008/09/30   1.3   Yuko Kawano      OPM在庫会計期間CLOSE年月取得関数 T_S_500対応
+ *  2008/10/29   1.4   T.Yoshimoto      統合指摘対応(No.251)
  *
  *****************************************************************************************/
 --
@@ -106,7 +107,12 @@ AS
     iv_token_name9   IN VARCHAR2 DEFAULT NULL,
     iv_token_value9  IN VARCHAR2 DEFAULT NULL,
     iv_token_name10  IN VARCHAR2 DEFAULT NULL,
-    iv_token_value10 IN VARCHAR2 DEFAULT NULL)
+    iv_token_value10 IN VARCHAR2 DEFAULT NULL,
+--  2008/10/29 v1.4 T.Yoshimoto Add Start 統合#251
+    iv_token_name11  IN VARCHAR2 DEFAULT NULL,
+    iv_token_value11 IN VARCHAR2 DEFAULT NULL
+--  2008/10/29 v1.4 T.Yoshimoto Add End 統合#251
+    )
     RETURN VARCHAR2;
 --
   -- 担当者名取得
