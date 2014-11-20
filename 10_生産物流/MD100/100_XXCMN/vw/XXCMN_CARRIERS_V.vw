@@ -30,7 +30,8 @@ CREATE OR REPLACE VIEW xxcmn_carriers_v
   carriage_due_date,
   carriage_rounding_rule,
   carriage_tax_code,
-  pay_judgement_code
+  pay_judgement_code,
+  complusion_output_code
 )
 AS
   SELECT  hp.party_id,
@@ -63,13 +64,22 @@ AS
           xp.carriage_due_date,
           xp.carriage_rounding_rule,
           xp.carriage_tax_code,
-          xp.pay_judgement_code
+          xp.pay_judgement_code,
+          CASE
+            WHEN hca.class_code = '3PL'
+              THEN '1'
+              ELSE '0'
+          END
   FROM    hz_parties      hp,
           wsh_carriers    wc,
-          xxcmn_parties   xp
+          xxcmn_parties   xp,
+          hz_code_assignments hca
   WHERE   hp.party_id          = wc.carrier_id
   AND     hp.party_id          = xp.party_id
   AND     hp.status            = 'A'
+  AND     hp.party_id          = hca.owner_table_id(+) 
+  AND     hca.owner_table_name(+) = 'HZ_PARTIES' 
+  AND     hca.class_category(+)   = 'TRANSPORTATION_PROVIDERS'
   AND     xp.start_date_active <= TRUNC(SYSDATE)
   AND     xp.end_date_active   >= TRUNC(SYSDATE)
 ;
@@ -105,5 +115,6 @@ COMMENT ON COLUMN xxcmn_carriers_v.carriage_due_date         IS '‰^‘—”ï - ’÷“ú';
 COMMENT ON COLUMN xxcmn_carriers_v.carriage_rounding_rule    IS '‰^‘—”ï - lÌŒÜ“ü‹æ•ª';
 COMMENT ON COLUMN xxcmn_carriers_v.carriage_tax_code         IS '‰^‘—”ï - Á”ïÅ‹æ•ª';
 COMMENT ON COLUMN xxcmn_carriers_v.pay_judgement_code        IS 'x•¥”»’f‹æ•ª';
+COMMENT ON COLUMN xxcmn_carriers_v.complusion_output_code    IS '‹­§o—Í‹æ•ª';
 --
 COMMENT ON TABLE  xxcmn_carriers_v IS '‰^‘—‹ÆÒî•ñVIEW';
