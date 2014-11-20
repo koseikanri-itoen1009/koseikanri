@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A08C (body)
  * Description      : 返品実績データ作成（ＨＨＴ）
  * MD.050           : 返品実績データ作成（ＨＨＴ）(MD050_COS_001_A08)
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2009/09/04    1.19  N.Maeda          [0001211] 税関連項目取得基準日修正
  *  2009/10/29    1.20  M.Sano           [0001373] 参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
  *  2009/12/18    1.21  N.Maeda          [E_本稼動_00224] 値引ヘッダ対応
+ *  2010/02/02    1.22  Y.Kuboshima      [E_T4_00195] 会計カレンダをAR ⇒ INVに修正
  *
  *****************************************************************************************/
 --
@@ -226,7 +227,11 @@ AS
   cv_tkn_order_number         CONSTANT  VARCHAR2(100)  :=  'ORDER_NUMBER';   -- 受注番号
   cv_tkn_base_date            CONSTANT  VARCHAR2(100)  :=  'BASE_DATE';      -- 基準日
   --AR会計期間区分値
-  cv_fiscal_period_ar           CONSTANT  VARCHAR2(2) := '02';  --AR
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD START ***********************************
+--  cv_fiscal_period_ar           CONSTANT  VARCHAR2(2) := '02';  --AR
+  cv_fiscal_period_inv        CONSTANT  VARCHAR2(2) := '01';  --INV
+  cv_fiscal_period_tkn_inv    CONSTANT  VARCHAR2(3) := 'INV'; --INV
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD END *************************************
 --******************************* 2009/05/15 N.Maeda Var1.14 ADD END *****************************************
   cv_tkn_profile              CONSTANT VARCHAR2(20)  := 'PROFILE';            -- プロファイル名
   cv_depart_type              CONSTANT VARCHAR2(10)  := '1';                  -- HHT百貨店入力区分(百貨店)
@@ -1579,7 +1584,10 @@ AS
       -- 1.納品日算出
       --==================================
       get_fiscal_period_from(
-          iv_div        => cv_fiscal_period_ar             -- 会計区分
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD START ***********************************
+--          iv_div        => cv_fiscal_period_ar             -- 会計区分
+          iv_div        => cv_fiscal_period_inv            -- 会計区分
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD END *************************************
         , id_base_date  => lt_dlv_date                     -- 基準日            =  オリジナル納品日
         , od_open_date  => lt_open_dlv_date                -- 有効会計期間FROM  => 納品日
         , ov_errbuf     => lv_errbuf                       -- エラー・メッセージエラー       #固定#
@@ -1593,7 +1601,10 @@ AS
                                               iv_application   => cv_application,    --アプリケーション短縮名
                                               iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
                                               iv_token_name1   => cv_tkn_account_name,         --トークンコード1
-                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD START ***********************************
+--                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+                                              iv_token_value1  => cv_fiscal_period_tkn_inv,    --トークン値1
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD END *************************************
                                               iv_token_name2   => cv_tkn_order_number,         --トークンコード2
                                               iv_token_value2  => lt_order_no_hht,
                                               iv_token_name3   => cv_tkn_base_date,
@@ -1603,7 +1614,10 @@ AS
       -- 2.売上計上日算出
       --==================================
       get_fiscal_period_from(
-          iv_div        => cv_fiscal_period_ar                  -- 会計区分
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD START ***********************************
+--          iv_div        => cv_fiscal_period_ar                  -- 会計区分
+          iv_div        => cv_fiscal_period_inv                 -- 会計区分
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD END *************************************
         , id_base_date  => lt_inspect_date                      -- 基準日           =  オリジナル検収日
         , od_open_date  => lt_open_inspect_date                 -- 有効会計期間FROM => 検収日
         , ov_errbuf     => lv_errbuf                            -- エラー・メッセージエラー       #固定#
@@ -1617,7 +1631,10 @@ AS
                                               iv_application   => cv_application,    --アプリケーション短縮名
                                               iv_name          => ct_msg_fiscal_period_err,    --メッセージコード
                                               iv_token_name1   => cv_tkn_account_name,         --トークンコード1
-                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD START ***********************************
+--                                              iv_token_value1  => cv_fiscal_period_ar,         --トークン値1
+                                              iv_token_value1  => cv_fiscal_period_tkn_inv,    --トークン値1
+--******************************* 2010/02/02 Y.Kuboshima Var1.22 MOD END *************************************
                                               iv_token_name2   => cv_tkn_order_number,         --トークンコード2
                                               iv_token_value2  => lt_order_no_hht,
                                               iv_token_name3   => cv_tkn_base_date,

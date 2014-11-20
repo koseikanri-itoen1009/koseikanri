@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2010/01/18    1.21  M.Uehara         [E_本稼動_01128] カード売区分設定時のカード会社存在チェック追加
  *  2010/01/27    1.22  N.Maeda          [E_本稼動_01321] カード会社取得済配列設定
  *  2010/01/27    1.23  N.Maeda          [E_本稼動_01191] 処理起動モード3(納品ワークパージ)を追加
+ *  2010/02/04    1.24  Y.Kuboshima      [E_T4_00195] 会計カレンダをAR ⇒ INVに修正
  *
  *****************************************************************************************/
 --
@@ -147,7 +148,10 @@ AS
   cv_msg_status      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10006';     -- 顧客ステータスエラー
   cv_msg_base        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10008';     -- 顧客の売上拠点コードエラー
   cv_msg_class       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10009';     -- 入力区分・業態小分類整合性エラー
-  cv_msg_period      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10010';     -- 納品日AR会計期間エラー
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD START ****************************--
+--  cv_msg_period      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10010';     -- 納品日AR会計期間エラー
+  cv_msg_period      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10010';     -- 納品日取込対象期間外エラー
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD END ******************************--
   cv_msg_adjust      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10011';     -- 納品・検収日付整合性エラー
   cv_msg_future      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10012';     -- 納品日未来日エラー
   cv_msg_scope       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10013';     -- 検収日範囲エラー
@@ -1832,7 +1836,10 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_month     CONSTANT VARCHAR2(5) := 'MONTH';
-    cv_ar_class  CONSTANT VARCHAR2(2) := '02';
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD START ****************************--
+--    cv_ar_class  CONSTANT VARCHAR2(2) := '02';
+    cv_inv_class CONSTANT VARCHAR2(2) := '01';
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD END ******************************--
     cv_open      CONSTANT VARCHAR2(4) := 'OPEN';
 --***************************** 2009/04/10 1.8 T.Kitajima ADD START  *****************************--
     ct_hht_2     CONSTANT xxcmm_cust_accounts.dept_hht_div%TYPE          := '2';    -- 百貨店用HHT区分
@@ -1959,9 +1966,14 @@ AS
 --    lv_column_check         VARCHAR2(18);                                      -- 顧客ID、コラムNo.の結合した値
 -- ******************** 2009/11/25 1.18 N.Maeda DEL  END  ******************** --
     ln_time_char            NUMBER;                                            -- 時間の文字列チェック
-    lv_status               VARCHAR2(5);                                       -- AR会計期間チェック：ステータスの種類
-    ln_from_date            DATE;                                              -- AR会計期間チェック：会計（FROM）
-    ln_to_date              DATE;                                              -- AR会計期間チェック：会計（TO）
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD START ****************************--
+--    lv_status               VARCHAR2(5);                                       -- AR会計期間チェック：ステータスの種類
+--    ln_from_date            DATE;                                              -- AR会計期間チェック：会計（FROM）
+--    ln_to_date              DATE;                                              -- AR会計期間チェック：会計（TO）
+    lv_status               VARCHAR2(5);                                       -- INV会計期間チェック：ステータスの種類
+    ln_from_date            DATE;                                              -- INV会計期間チェック：会計（FROM）
+    ln_to_date              DATE;                                              -- INV会計期間チェック：会計（TO）
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD END ******************************--
     lt_resource_id          jtf_rs_resource_extns.resource_id%TYPE;            -- リソースID
 --****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
     lv_tbl_key              VARCHAR2(20);                                      -- 参照テーブルのキー値
@@ -3070,10 +3082,16 @@ AS
       --==============================================================
       --納品日の妥当性チェック（ヘッダ部）
       --==============================================================
-      --== AR会計期間チェック ==--
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD START ****************************--
+--      --== AR会計期間チェック ==--
+      --== INV会計期間チェック ==--
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD END ******************************--
       -- 共通関数＜会計期間情報取得＞
       xxcos_common_pkg.get_account_period(
-        cv_ar_class         -- 02:AR
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD START ****************************--
+--        cv_ar_class         -- 02:AR
+        cv_inv_class        -- 01:INV
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD END ******************************--
        ,lt_dlv_date         -- 納品日
        ,lv_status           -- ステータス(OPEN or CLOSE)
        ,ln_from_date        -- 会計（FROM）
@@ -3089,7 +3107,10 @@ AS
 --        RAISE global_api_expt;
 --      END IF;
 --
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD START ****************************--
 --      -- AR会計期間範囲外の場合
+      -- INV会計期間範囲外の場合
+--***************************** 2010/02/04 1.24 Y.Kuboshima MOD END ******************************--
 --      IF ( lv_status != cv_open ) THEN
       IF ( lv_status != cv_open OR lv_retcode = cv_status_error ) THEN
 --****************************** 2009/12/10 1.20 M.Sano MOD  END  *******************************--
