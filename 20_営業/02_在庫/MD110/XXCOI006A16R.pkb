@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A16R(body)
  * Description      : 受払残高表（拠点別・合計）
  * MD.050           : 受払残高表（拠点別・合計） <MD050_XXCOI_006_A16>
- * Version          : V1.6
+ * Version          : V1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/07/14    1.4   N.Abe            [0000462]群コード取得方法修正
  *  2009/07/21    1.5   H.Sasaki         [0000642]払出合計の金額算出方法を変更
  *  2009/09/11    1.6   N.Abe            [0001266]OPM品目アドオンの取得方法修正
+ *  2009/10/06    1.7   H.Sasaki         [E_T3_00531]商品部のデータ抽出条件変更
  *
  *****************************************************************************************/
 --
@@ -267,6 +268,14 @@ AS
              AND      hca1.status                   =   cv_status_a
              AND      hca2.customer_class_code(+)   =   cv_cust_cls_1
              AND      hca2.status(+)                =   cv_status_a
+-- == 2009/10/06 V1.7 Added START ===============================================================
+             AND    ((    (gv_param_output_kbn      =   cv_output_kbn_50)
+                      AND (dept_hht_div             =   '1')
+                     )
+                     OR
+                     (gv_param_output_kbn           <>  cv_output_kbn_50)
+                    )
+-- == 2009/10/06 V1.7 Added END   ===============================================================
             )         sca                                                 -- 顧客情報
     WHERE   xirm.base_code          =   sca.base_code
     AND     xirm.practice_month     =   gv_param_reception_date           -- パラメータ.受払年月
@@ -446,6 +455,14 @@ AS
              AND      hca1.status               =   cv_status_a
              AND      hca2.customer_class_code  =   cv_cust_cls_1
              AND      hca2.status               =   cv_status_a
+-- == 2009/10/06 V1.7 Added START ===============================================================
+             AND    ((    (gv_param_output_kbn  IN(cv_output_kbn_50, cv_output_kbn_70))
+                      AND (dept_hht_div             =   '1')
+                     )
+                     OR
+                     (gv_param_output_kbn       NOT IN(cv_output_kbn_50, cv_output_kbn_70))
+                    )
+-- == 2009/10/06 V1.7 Added END   ===============================================================
             )         sca                                                 -- 顧客情報
     WHERE   xirm.practice_month       =   gv_param_reception_date         -- パラメータ.受払年月
     AND     xirm.inventory_item_id    =   msib.inventory_item_id
