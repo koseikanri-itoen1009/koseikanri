@@ -235,6 +235,11 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
       ,xoha.career_id                     plan_freight_carrier_id        -- ‰^‘—‹ÆŽÒID(—\’è)
       ,xoha.freight_carrier_code          plan_freight_carrier_code      -- ‰^‘—‹ÆŽÒƒR[ƒh(—\’è)
       ,xoha.base_request_no               base_request_no                -- Œ³ˆË—ŠNo
+-- 2008-10-21 D.Nihei Add Start T_TE080_BPO_440 No14
+      ,xilv.purchase_code                 purchase_code                  -- Žd“üæƒR[ƒh
+      ,xoha.shipped_date                  result_shipped_date            -- oŒÉ“ú(ŽÀÑ)
+      ,xoha.arrival_date                  result_arrival_date            -- “üŒÉ“ú(ŽÀÑ)
+-- 2008-10-21 D.Nihei Add End
 FROM   xxwsh_order_headers_all        xoha  -- Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
       ,xxwsh_oe_transaction_types2_v  xottv -- Žó’ƒ^ƒCƒvî•ñVIEW2
       ,xxcmn_locations2_v             xlv1  -- Ž–‹ÆŠî•ñVIEW2(ˆË—Š•”—p)
@@ -1532,6 +1537,43 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN ximv.start_date_a
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="12" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PurchaseCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PURCHASE_CODE"
+      Expression="PURCHASE_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="150" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ResultShippedDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="RESULT_SHIPPED_DATE"
+      Expression="RESULT_SHIPPED_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ResultArrivalDate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Date"
+      ColumnType="DATE"
+      AliasName="RESULT_ARRIVAL_DATE"
+      Expression="RESULT_ARRIVAL_DATE"
+      SQLType="DATE" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="7" />
       </DesignTime>
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">

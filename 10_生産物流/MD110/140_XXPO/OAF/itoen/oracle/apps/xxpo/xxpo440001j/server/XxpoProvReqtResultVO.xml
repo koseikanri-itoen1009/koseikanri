@@ -56,6 +56,9 @@ SELECT xoha.order_header_id               order_header_id       -- Žó’ƒwƒbƒ_ƒAƒ
       ,xvv.spare2                         list_header_id_vendor --Žæˆøæ‰¿Ši•\ID
       ,xlvvs.lookup_code                  exe_type              -- ‹N“®ƒ^ƒCƒv
       ,xoha.base_request_no               base_request_no       -- Œ³ˆË—ŠNo
+-- 2008-10-21 D.Nihei Add Start T_TE080_BPO_440 No14
+      ,xilv.purchase_code                 purchase_code         -- Žd“üæƒR[ƒh
+-- 2008-10-21 D.Nihei Add End
 FROM   xxwsh_order_headers_all        xoha  -- Žó’ƒwƒbƒ_ƒAƒhƒIƒ“
       ,xxcmn_lookup_values_v          xlvv1 -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(ƒXƒe[ƒ^ƒX—p)
       ,xxcmn_lookup_values_v          xlvv2 -- ƒNƒCƒbƒNƒR[ƒhî•ñVIEW(’Ê’mƒXƒe[ƒ^ƒX—p)
@@ -479,6 +482,16 @@ AND    NVL(xoha.shipped_date, xoha.schedule_ship_date) BETWEEN xilv.date_from
       ColumnType="VARCHAR2"
       AliasName="BaseRequestNo"
       Expression="BaseRequestNo"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="PurchaseCode"
+      IsPersistent="false"
+      Precision="150"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="PurchaseCode"
+      Expression="PurchaseCode"
       SQLType="VARCHAR" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">

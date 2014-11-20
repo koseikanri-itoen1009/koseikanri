@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,12 +11,14 @@
 * 2008-06-17 1.1  二瓶大輔     ST不具合#126対応
 * 2008-06-18 1.2  二瓶大輔     不具合対応
 * 2008-06-02 1.3  二瓶大輔     変更要求#42対応
-*                              ST不具合#199対応
+*                             ST不具合#199対応
 * 2008-07-04 1.4  二瓶大輔     変更要求#91対応
 * 2008-07-29 1.5  二瓶大輔     内部変更要求#164,166,173、課題#32
 * 2008-08-13 1.6  二瓶大輔     ST不具合#249対応
 * 2008-08-27 1.7  伊藤ひとみ   内部変更要求#209対応
 * 2008-10-07 1.8  伊藤ひとみ   統合テスト指摘240対応
+* 2008-10-21 1.9  二瓶大輔     T_S_437対応
+*                             T_TE080_BPO_440 No14
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -50,7 +52,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.8
+ * @version 1.9
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -1568,8 +1570,10 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
       // 挿入行削除
       row.remove();
 
-      // コミット処理
-      doCommit(reqNo);
+// 2008-10-21 D.Nihei DEL START
+//      // コミット処理
+//      doCommit(reqNo);
+// 2008-10-21 D.Nihei DEL END
 
       // 削除処理成功メッセージを表示
       XxcmnUtility.putSuccessMessage(XxpoConstants.TOKEN_NAME_DEL);
@@ -3076,7 +3080,11 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         reqQty   = (String)row.getAttribute("ReqQuantity");   // 依頼数
         dbReqQty = (String)row.getAttribute("DbReqQuantity"); // DB依頼数
         // 依頼数が変更された場合
-        if (!XxcmnUtility.chkCompareNumeric(3, reqQty, dbReqQty)) 
+// 2008-10-21 D.Nihei MOD START
+//        if (!XxcmnUtility.chkCompareNumeric(3, reqQty, dbReqQty)) 
+        if ( XxcmnUtility.isBlankOrNull(dbReqQty) 
+         || !XxcmnUtility.chkCompareNumeric(3, reqQty, dbReqQty)) 
+// 2008-10-21 D.Nihei MOD END
         {
           // 依頼数を指示数へコピー
           row.setAttribute("InstQuantity", reqQty);
@@ -3270,6 +3278,28 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
                             XxpoConstants.XXPO10145));
           
     }
+// 2008-10-21 D.Nihei ADD START T_TE080_BPO_440 No14
+    String autoCreatePoClass = (String)row.getAttribute("AutoCreatePoClass"); // 自動発注作成区分
+    String purchaseCode      = (String)row.getAttribute("PurchaseCode");      // 仕入先コード
+    String shipWhseCode      = (String)row.getAttribute("ShipWhseCode");      // 出庫倉庫
+    // 出庫倉庫に費も付く仕入先コードが設定されているかチェックする。 
+    if ("1".equals(autoCreatePoClass) && XxcmnUtility.isBlankOrNull(purchaseCode))
+    {
+      //トークンを生成します。
+      MessageToken[] tokens = { new MessageToken(XxcmnConstants.TOKEN_ITEM,
+                                                 "出庫倉庫に紐付く仕入先") };
+      exceptions.add( new OAAttrValException(
+                            OAAttrValException.TYP_VIEW_OBJECT,          
+                            vo.getName(),
+                            row.getKey(),
+                            "ShipWhseCode",
+                            shipWhseCode,
+                            XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10013,
+                            tokens));
+          
+    }
+// 2008-10-21 D.Nihei ADD END
   } // chkRcv
 
   /***************************************************************************
@@ -3709,19 +3739,31 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
     // 出庫日が入力されている場合
     } else if (!XxcmnUtility.isBlankOrNull(shippedDate))
     {
-      // 出庫日＞入庫日の場合
-      if (XxcmnUtility.chkCompareDate(1, shippedDate, arrivalDate)) 
+// 2008-10-21 D.Nihei Add START
+      // 実績日(出庫日、入庫日)を取得します。
+      Date resultShippedDate = (Date)row.getAttribute("ResultShippedDate"); // 出庫日
+      Date resultArrivalDate = (Date)row.getAttribute("ResultArrivalDate"); // 入庫日
+      // 実績日が両方入力されている場合または両方入力されていない場合
+      if ( XxcmnUtility.isBlankOrNull(resultShippedDate) 
+       &&  XxcmnUtility.isBlankOrNull(resultArrivalDate))
       {
-        exceptions.add( new OAAttrValException(
-                              OAAttrValException.TYP_VIEW_OBJECT,          
-                              vo.getName(),
-                              row.getKey(),
-                              "ShippedDate",
-                              shippedDate,
-                              XxcmnConstants.APPL_XXPO, 
-                              XxpoConstants.XXPO10118));
+// 2008-10-21 D.Nihei Add END
+        // 出庫日＞入庫日の場合
+        if (XxcmnUtility.chkCompareDate(1, shippedDate, arrivalDate)) 
+        {
+          exceptions.add( new OAAttrValException(
+                                OAAttrValException.TYP_VIEW_OBJECT,          
+                                vo.getName(),
+                                row.getKey(),
+                                "ShippedDate",
+                                shippedDate,
+                                XxcmnConstants.APPL_XXPO, 
+                                XxpoConstants.XXPO10118));
 
+        }
+// 2008-10-21 D.Nihei Add START
       }
+// 2008-10-21 D.Nihei Add END
     }
     // エラーがあった場合エラーをスローします。
     if (exceptions.size() > 0)

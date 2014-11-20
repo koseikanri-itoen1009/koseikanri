@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.11
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,9 @@
 * 2008-08-07 1.9  二瓶大輔     内部変更要求#166修正
 * 2008-08-19 1.10 二瓶大輔     ST不具合#249対応
 * 2008-10-07 1.11 伊藤ひとみ   統合テスト指摘240対応
+* 2008-10-21 1.12 二瓶大輔     統合障害#384
+* 2008-10-22 1.13 伊藤ひとみ   変更要求#217,238,統合テスト指摘49対応
+* 2008-10-22 1.14 吉元強樹     統合テスト指摘426対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -40,7 +43,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.11
+ * @version 1.13
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -4825,21 +4828,25 @@ public class XxpoUtility
     sb.append(" BEGIN ");
     
 // 20080630 yoshimoto add Start
-    if (XxpoConstants.PO_TYPE_3.equals(orderDivision)) 
-    {
-      sb.append("   SELECT xcilv.inventory_location_id                           ");
-      sb.append("   INTO  ln_location_id                                         ");
-      sb.append("   FROM xxcmn_item_locations_v xcilv                            ");
-      sb.append("   WHERE xcilv.segment1 = :1;                                   ");     // INパラメータ1(相手先在庫入庫先コード)
-    } else 
-    {
-// 20080630 yoshimoto add Start
-      // OPM保管倉庫IDを取得
-      sb.append("   SELECT xcilv.location_id                                     ");
-      sb.append("   INTO  ln_location_id                                         ");
-      sb.append("   FROM xxcmn_item_locations_v xcilv                            ");
-      sb.append("   WHERE xcilv.segment1 = :1;                                   ");     // INパラメータ1(納入先コード)
-    }
+// 2008-10-22 H.Itou Del Start 統合テスト指摘49,変更要求#238
+//    if (XxpoConstants.PO_TYPE_3.equals(orderDivision)) 
+//    {
+// 2008-10-22 H.Itou Del End
+    sb.append("   SELECT xcilv.inventory_location_id                           ");
+    sb.append("   INTO  ln_location_id                                         ");
+    sb.append("   FROM xxcmn_item_locations_v xcilv                            ");
+    sb.append("   WHERE xcilv.segment1 = :1;                                   ");     // INパラメータ1(相手先在庫入庫先コード)
+// 2008-10-22 H.Itou Del Start 統合テスト指摘49,変更要求#238
+//    } else 
+//    {
+//// 20080630 yoshimoto add Start
+//      // OPM保管倉庫IDを取得
+//      sb.append("   SELECT xcilv.location_id                                     ");
+//      sb.append("   INTO  ln_location_id                                         ");
+//      sb.append("   FROM xxcmn_item_locations_v xcilv                            ");
+//      sb.append("   WHERE xcilv.segment1 = :1;                                   ");     // INパラメータ1(納入先コード)
+//    }
+// 2008-10-22 H.Itou Del End
 
     // 有効日ベース引当可能数を取得
     sb.append("   :2 := xxcmn_common_pkg.get_can_enc_in_time_qty(              ");     // OUTパラメータ4(有効日ベース引当可能数)
@@ -5433,23 +5440,25 @@ public class XxpoUtility
 // 2008-07-17 H.Itou Add End
     sb.append("   FROM po_line_locations_all plla "                             );
     sb.append("   WHERE plla.po_line_id = :2; "                                 ); // 発注明細ID
-// 2008-07-17 H.Itou Add Start
-    // 発注納入明細.closed_codeがCLOSED FOR RECEIVINGの場合、OPENに変更
-    sb.append("   IF (lt_closed_code = 'CLOSED FOR RECEIVING') THEN  "          );
-    sb.append("     UPDATE po_line_locations_all plla "                         ); // 発注納入明細
-    sb.append("     SET    plla.closed_code               = 'OPEN' "            );
-    sb.append("           ,plla.closed_reason             = NULL "              );
-    sb.append("           ,plla.closed_date               = NULL "              );
-    sb.append("           ,plla.closed_by                 = NULL "              );
-    sb.append("           ,plla.shipment_closed_date      = NULL "              );
-    sb.append("           ,plla.closed_for_receiving_date = NULL "              );
-    sb.append("           ,plla.closed_for_invoice_date   = NULL "              );
-    sb.append("           ,plla.last_update_date          = SYSDATE "           );
-    sb.append("           ,plla.last_updated_by           = FND_GLOBAL.USER_ID "  );
-    sb.append("           ,plla.last_update_login         = FND_GLOBAL.LOGIN_ID " );
-    sb.append("     WHERE  plla.po_line_id  = :2;  "                            ); // 発注明細ID
-    sb.append("   END IF;  "                                                    );
-// 2008-07-17 H.Itou Add End
+// 2008-10-21 D.Nihei Del Start 統合障害#384
+//// 2008-07-17 H.Itou Add Start
+//    // 発注納入明細.closed_codeがCLOSED FOR RECEIVINGの場合、OPENに変更
+//    sb.append("   IF (lt_closed_code = 'CLOSED FOR RECEIVING') THEN  "          );
+//    sb.append("     UPDATE po_line_locations_all plla "                         ); // 発注納入明細
+//    sb.append("     SET    plla.closed_code               = 'OPEN' "            );
+//    sb.append("           ,plla.closed_reason             = NULL "              );
+//    sb.append("           ,plla.closed_date               = NULL "              );
+//    sb.append("           ,plla.closed_by                 = NULL "              );
+//    sb.append("           ,plla.shipment_closed_date      = NULL "              );
+//    sb.append("           ,plla.closed_for_receiving_date = NULL "              );
+//    sb.append("           ,plla.closed_for_invoice_date   = NULL "              );
+//    sb.append("           ,plla.last_update_date          = SYSDATE "           );
+//    sb.append("           ,plla.last_updated_by           = FND_GLOBAL.USER_ID "  );
+//    sb.append("           ,plla.last_update_login         = FND_GLOBAL.LOGIN_ID " );
+//    sb.append("     WHERE  plla.po_line_id  = :2;  "                            ); // 発注明細ID
+//    sb.append("   END IF;  "                                                    );
+//// 2008-07-17 H.Itou Add End
+// 2008-10-21 D.Nihei Del End
     // 受入ロットトランザクションオープンIF登録
     sb.append("   INSERT INTO rcv_transactions_interface rti ( "                );
     sb.append("      rti.interface_transaction_id "                             );
@@ -7549,8 +7558,10 @@ public class XxpoUtility
     sb.append("   SET rart.quantity          = :1 "                             );  // 数量  
     sb.append("      ,rart.rcv_rtn_quantity  = :2 "                             );  // 受入返品数量
     sb.append("      ,rart.line_description  = :3 "                             );  // 明細摘要
-    sb.append("      ,rart.created_by        = FND_GLOBAL.USER_ID "             );  // 作成者          
-    sb.append("      ,rart.creation_date     = SYSDATE "                        );  // 作成日          
+// 2008-10-22 H.Itou Del Start 変更要求＃217
+//    sb.append("      ,rart.created_by        = FND_GLOBAL.USER_ID "             );  // 作成者          
+//    sb.append("      ,rart.creation_date     = SYSDATE "                        );  // 作成日          
+// 2008-10-22 H.Itou Del End
     sb.append("      ,rart.last_updated_by   = FND_GLOBAL.USER_ID"              );  // 最終更新者      
     sb.append("      ,rart.last_update_date  = SYSDATE "                        );  // 最終更新日      
     sb.append("      ,rart.last_update_login = FND_GLOBAL.LOGIN_ID "            );  // 最終更新ログイン
@@ -10433,4 +10444,93 @@ public class XxpoUtility
     }
   } // getTotalAmount
 // 2008-06-18 H.Itou ADD END
+
+// 2008-10-22 T.Yoshimoto ADD START
+  /***************************************************************************
+   * 受注ヘッダ.有償金額確定済みを確認します
+   * @param trans - トランザクション
+   * @param requestNo - 依頼No
+   * @throws OAException - OA例外
+   ***************************************************************************
+   */
+  public static boolean chkAmountFixClass(
+    OADBTransaction trans, 
+    String requestNo
+    ) throws OAException
+  {
+    String apiName = "chkAmountFixClass";
+    String plSqlRet;
+
+    // PL/SQL作成
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN "                                               );
+    sb.append("   SELECT xoha.amount_fix_class "                     ); // 有償金額確定区分(1:確定,2:未確定)
+    sb.append("   INTO   :1 "                                        ); 
+    sb.append("   FROM   po_headers_all pha "                        ); // 発注ヘッダ
+    sb.append("         ,xxwsh_order_headers_all xoha "              ); // 受注ヘッダアドオン
+    sb.append("   WHERE  pha.attribute9 = xoha.request_no "          ); // 依頼No
+    sb.append("   AND    xoha.latest_external_flag = 'Y' "           ); // 最新フラグ
+    sb.append("   AND    xoha.request_no = :2; "                     ); // 依頼No
+    sb.append("END; "                                                );
+
+    //PL/SQL設定
+    CallableStatement cstmt
+      = trans.createCallableStatement(sb.toString(), OADBTransaction.DEFAULT);
+
+    try
+    {
+      // パラメータ設定(INパラメータ)
+      cstmt.setString(2, requestNo);  // 依頼No
+
+      // パラメータ設定(OUTパラメータ)
+      cstmt.registerOutParameter(1, Types.VARCHAR); // ロットカウント数
+      
+      //PL/SQL実行
+      cstmt.execute();
+      
+      // 戻り値取得
+      plSqlRet = cstmt.getString(1);
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      // ロールバック
+      XxpoUtility.rollBack(trans);
+      XxcmnUtility.writeLog(trans,
+                            XxpoConstants.CLASS_AM_XXPO320001J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                            XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch(SQLException s)
+      {
+        // ロールバック
+        XxpoUtility.rollBack(trans);
+        XxcmnUtility.writeLog(trans,
+                              XxpoConstants.CLASS_AM_XXPO320001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                              XxcmnConstants.XXCMN10123);
+      }
+    }
+    
+    // PL/SQL戻り値が0の場合 false
+    if ("1".equals(plSqlRet))
+    {
+      return true;
+    
+    // PL/SQL戻り値が0以外の場合 true
+    } else
+    {
+      return false;
+    }
+  } // chkAmountFixClass 
+// 2008-10-22 T.Yoshimoto ADD END
 }
