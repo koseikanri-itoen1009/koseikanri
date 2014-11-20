@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼/出荷実績作成処理
  * MD.050           : 出荷実績 T_MD050_BPO_420
  * MD.070           : 出荷依頼出荷実績作成処理 T_MD070_BPO_42A
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/05/14    1.1   Oracle 宮田 隆史   MD050指摘事項のNo56反映
  *  2008/05/19    1.2   Oracle 宮田 隆史   依頼NoのTO_NUMBER化廃止
  *  2008/05/22    1.3   Oracle 宮田 隆史   受注明細作成時の単価NULL対応
+ *  2008/06/12    1.4   Oracle 丸下 博宣   受注ヘッダ、明細更新時の対象WHOカラムを追加
   *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4421,20 +4422,28 @@ AS
 --
     -- 受注ヘッダアドオンを更新
     UPDATE xxwsh_order_headers_all
-    SET    actual_confirm_class = gv_yes,                 -- 実績計上済区分
-           header_id            = gt_header_id,           -- 受注ヘッダID
-           last_updated_by      = gn_user_id,             -- 最終更新者
-           last_update_date     = SYSDATE,                -- 最終更新日
-           last_update_login    = gn_login_id             -- 最終更新ログイン
+    SET    actual_confirm_class    = gv_yes,             -- 実績計上済区分
+           header_id               = gt_header_id,       -- 受注ヘッダID
+           last_updated_by         = gn_user_id,         -- 最終更新者
+           last_update_date        = SYSDATE,            -- 最終更新日
+           last_update_login       = gn_login_id,        -- 最終更新ログイン
+           request_id              = gn_conc_request_id, -- 要求ID
+           program_application_id  = gn_prog_appl_id,    -- コンカレント・プログラム・アプリケーションID
+           program_id              = gn_conc_program_id, -- コンカレント・プログラムID
+           program_update_date     = SYSDATE             -- プログラム更新日
     WHERE  order_header_id      = gt_gen_order_header_id;
     -- 受注明細アドオンを更新
     FORALL i IN 1 .. gt_order_line_id.COUNT
       UPDATE xxwsh_order_lines_all
-      SET    header_id         = gt_header_id,        -- 受注ヘッダID
-             line_id           = gt_line_id(i),       -- 受注明細ID
-             last_updated_by   = gn_user_id,          -- 最終更新者
-             last_update_date  = SYSDATE,             -- 最終更新日
-             last_update_login = gn_login_id          -- 最終更新ログイン
+      SET  header_id               = gt_header_id,        -- 受注ヘッダID
+           line_id                 = gt_line_id(i),       -- 受注明細ID
+           last_updated_by         = gn_user_id,          -- 最終更新者
+           last_update_date        = SYSDATE,             -- 最終更新日
+           last_update_login       = gn_login_id,         -- 最終更新ログイン
+           request_id              = gn_conc_request_id,  -- 要求ID
+           program_application_id  = gn_prog_appl_id,     -- コンカレント・プログラム・アプリケーションID
+           program_id              = gn_conc_program_id,  -- コンカレント・プログラムID
+           program_update_date     = SYSDATE              -- プログラム更新日
       WHERE  order_line_id     = gt_order_line_id(i);
   EXCEPTION
 --
