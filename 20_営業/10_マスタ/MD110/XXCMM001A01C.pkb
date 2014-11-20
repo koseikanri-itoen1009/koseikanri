@@ -23,6 +23,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/16    1.0   SCS 工藤 真純    初回作成
  *  2009/03/09    1.1   SCS 瀧川 倫太郎  仕入先の銀行口座登録チェックをコメントアウト
+ *  2009/05/13    1.2   SCS 吉川 博章    T1_0978対応
  *
  *****************************************************************************************/
 --
@@ -576,7 +577,10 @@ AS
     CURSOR vendor_cur
     IS
       SELECT SUBSTRB(pv.segment1,1,9)           vender_num,         --仕入先番号
-             SUBSTRB(pvs.vendor_site_code,1,9)  vendor_site_code,   --仕入先サイトコード
+-- Ver1.2 Mod 2009/05/13 T1_0978対応 仕入先サイトコードは半角のみのため仕入先サイトIDを連携するよう修正
+--             SUBSTRB(pvs.vendor_site_code,1,9)  vendor_site_code,   --仕入先サイトコード
+             TO_CHAR( pvs.vendor_site_id )      vendor_site_code,   --仕入先サイトコード(仕入先サイトID)
+-- End
              SUBSTRB(pv.vendor_name,1,100)      vendor_nm,          --仕入先名
              DECODE(SUBSTRB(pvs.zip,4,1), '-', SUBSTRB(pvs.zip,1,3)||SUBSTRB(pvs.zip,5,4), SUBSTRB(pvs.zip,1,7))
                                                 zip,                --郵便番号
@@ -601,7 +605,10 @@ AS
              ap_bank_branches abb,       --銀行支店マスタ
              ap_terms att,               --支払条件マスタ
              po_vendors pv,              --仕入先マスタ
-             po_vendor_sites_all pvs     --仕入先サイトマスタ
+-- Ver1.2 Mod 2009/05/13 T1_0978対応 営業OUのみ対象とする
+--             po_vendor_sites_all pvs     --仕入先サイトマスタ
+             po_vendor_sites  pvs        --仕入先サイトマスタ
+-- End
       WHERE  pv.vendor_id = pvs.vendor_id
       AND    EXISTS
              (SELECT 'x'
@@ -614,7 +621,10 @@ AS
       AND    aba.bank_branch_id = abb.bank_branch_id(+)
       UNION ALL
       SELECT SUBSTRB(pv.segment1,1,9)           vender_num,         --仕入先番号
-             SUBSTRB(pvs.vendor_site_code,1,9)  vendor_site_code,   --仕入先サイトコード
+-- Ver1.2 Mod 2009/05/13 T1_0978対応 仕入先サイトコードは半角のみのため仕入先サイトIDを連携するよう修正
+--             SUBSTRB(pvs.vendor_site_code,1,9)  vendor_site_code,   --仕入先サイトコード
+             TO_CHAR( pvs.vendor_site_id )      vendor_site_code,   --仕入先サイトコード(仕入先サイトID)
+-- End
              SUBSTRB(pv.vendor_name,1,100)      vendor_nm,          --仕入先名
              DECODE(SUBSTRB(pvs.zip,4,1), '-', SUBSTRB(pvs.zip,1,3)||SUBSTRB(pvs.zip,5,4), SUBSTRB(pvs.zip,1,7))
                                                 zip,                --郵便番号
@@ -634,7 +644,10 @@ AS
              NULL                               account_holder_nm_alt --口座名義人名カナ
       FROM   ap_terms att,               --支払条件マスタ
              po_vendors pv,              --仕入先マスタ
-             po_vendor_sites_all pvs     --仕入先サイトマスタ
+-- Ver1.2 Mod 2009/05/13 T1_0978対応 営業OUのみ対象とする
+--             po_vendor_sites_all pvs     --仕入先サイトマスタ
+             po_vendor_sites pvs         --仕入先サイトマスタ
+-- End
       WHERE  pv.vendor_id = pvs.vendor_id
       AND    NOT EXISTS
              (SELECT 'x'
@@ -644,7 +657,6 @@ AS
               AND    abau.primary_flag = 'Y')
       AND    pvs.terms_id = att.term_id(+)
       ORDER  BY  vender_num;
-
 --
   BEGIN
 --
