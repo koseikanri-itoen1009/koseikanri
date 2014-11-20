@@ -248,6 +248,9 @@ AS
         ,gme_material_details         gmd_in_pr                  -- 生産原料詳細
         ,gmd_routings_b               grb_in_pr                  -- 工順マスタ
         ,gmd_routings_tl              grt_in_pr                  -- 工順マスタ日本語
+-- 2008/10/28 Y.Yamamoto v1.1 add start
+        ,xxinv_mov_lot_details        xmld_in_pr                 -- 移動ロット詳細(アドオン)
+-- 2008/10/28 Y.Yamamoto v1.1 add end
         ,ic_tran_pnd                  itp_in_pr                  -- OPM保留在庫トランザクション
         ,ic_whse_mst                  iwm_in_pr                  -- OPM倉庫マスタ
         ,mtl_item_locations           mil_in_pr                  -- OPM保管場所マスタ
@@ -277,12 +280,18 @@ AS
   AND    itp_in_pr.completed_ind            = 0
   AND    itp_in_pr.delete_mark              = 0                  -- 有効チェック(OPM保留在庫)
   AND    grb_in_pr.attribute9               = mil_in_pr.segment1
-  AND    EXISTS ( SELECT 1
-                  FROM   xxinv_mov_lot_details xmld
-                  WHERE  xmld.mov_line_id        = gmd_in_pr.material_detail_id
-                  AND    xmld.document_type_code = '40'    -- 生産指示
-                  AND    xmld.record_type_code   = '10'    -- 指示
-                  AND    ROWNUM = 1)
+-- 2008/10/28 Y.Yamamoto v1.1 update start
+--  AND    EXISTS ( SELECT 1
+--                  FROM   xxinv_mov_lot_details xmld
+--                  WHERE  xmld.mov_line_id        = gmd_in_pr.material_detail_id
+--                  AND    xmld.document_type_code = '40'    -- 生産指示
+--                  AND    xmld.record_type_code   = '10'    -- 指示
+--                  AND    ROWNUM = 1)
+  AND    xmld_in_pr.mov_line_id             = gmd_in_pr.material_detail_id
+  AND    xmld_in_pr.document_type_code      = '40'    -- 生産指示
+  AND    xmld_in_pr.record_type_code        = '10'    -- 指示
+  AND    xmld_in_pr.lot_id                  = 0
+-- 2008/10/28 Y.Yamamoto v1.1 update start
   AND    NOT EXISTS( SELECT 1
                      FROM   gme_batch_header gbh_in_pr_ex
                      WHERE  gbh_in_pr_ex.batch_id      = gbh_in_pr.batch_id
@@ -543,7 +552,11 @@ AS
         ,NULL                                          AS manufacture_date
         ,NULL                                          AS uniqe_sign
         ,NULL                                          AS expiration_date -- <---- ここまで共通
-        ,xoha_out_om2.schedule_arrival_date            AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update start
+--        ,xoha_out_om2.schedule_arrival_date            AS arrival_date
+        ,NVL(xoha_out_om2.schedule_arrival_date
+            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update end
         ,xoha_out_om2.schedule_ship_date               AS leaving_date
         ,'1'                                           AS status        -- 予定
         ,xrpm.new_div_invent                           AS reason_code
@@ -552,7 +565,16 @@ AS
         ,xvsa_out_om2.vendor_site_name                 AS ukebaraisaki_name
         ,NULL                                          AS vendor_site_name
         ,0                                             AS stock_quantity
-        ,xmld_out_om2.actual_quantity                  AS leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2.actual_quantity                  AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   FROM   xxwsh_order_headers_all      xoha_out_om2                 -- 受注ヘッダ(アドオン)
         ,xxwsh_order_lines_all        xola_out_om2                 -- 受注明細(アドオン)
         ,xxinv_mov_lot_details        xmld_out_om2                 -- 移動ロット詳細(アドオン)
@@ -572,6 +594,10 @@ AS
                 ,flv_out_om2.meaning
                 ,xrpm_out_om2.shipment_provision_div
                 ,xrpm_out_om2.ship_prov_rcv_pay_category
+-- 2008/10/24 Y.Yamamoto v1.1 add start
+                ,xrpm_out_om2.item_div_origin
+                ,xrpm_out_om2.item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 add end
           FROM   fnd_lookup_values flv_out_om2                      -- クイックコード
                 ,xxcmn_rcv_pay_mst xrpm_out_om2                    -- 受払区分アドオンマスタ
           WHERE  flv_out_om2.lookup_type               = 'XXCMN_NEW_DIVISION'
@@ -616,6 +642,10 @@ AS
   AND    mcb2_out_om2.segment1                         = '5'
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2.attribute11
   OR     xrpm.ship_prov_rcv_pay_category              IS NULL)
+-- 2008/10/24 Y.Yamamoto v1.1 add start
+  AND    xrpm.item_div_origin                          = mcb2_out_om2.segment1
+  AND    xrpm.item_div_ahead                           = mcb_out_om2.segment1
+-- 2008/10/24 Y.Yamamoto v1.1 add end
   AND    xvsa_out_om2.vendor_site_id                   = xoha_out_om2.vendor_site_id
   AND    xvsa_out_om2.start_date_active               <= TRUNC(SYSDATE)
   AND    xvsa_out_om2.end_date_active                 >= TRUNC(SYSDATE)
@@ -627,7 +657,11 @@ AS
         ,NULL                                          AS manufacture_date
         ,NULL                                          AS uniqe_sign
         ,NULL                                          AS expiration_date -- <---- ここまで共通
-        ,xoha_out_om2.schedule_arrival_date            AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update start
+--        ,xoha_out_om2.schedule_arrival_date            AS arrival_date
+        ,NVL(xoha_out_om2.schedule_arrival_date
+            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update end
         ,xoha_out_om2.schedule_ship_date               AS leaving_date
         ,'1'                                           AS status        -- 予定
         ,xrpm.new_div_invent                           AS reason_code
@@ -636,7 +670,16 @@ AS
         ,xvsa_out_om2.vendor_site_name                 AS ukebaraisaki_name
         ,NULL                                          AS vendor_site_name
         ,0                                             AS stock_quantity
-        ,xmld_out_om2.actual_quantity                  AS leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2.actual_quantity                  AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   FROM   xxwsh_order_headers_all      xoha_out_om2                 -- 受注ヘッダ(アドオン)
         ,xxwsh_order_lines_all        xola_out_om2                 -- 受注明細(アドオン)
         ,xxinv_mov_lot_details        xmld_out_om2                 -- 移動ロット詳細(アドオン)
@@ -656,8 +699,12 @@ AS
                 ,flv_out_om2.meaning
                 ,xrpm_out_om2.shipment_provision_div
                 ,xrpm_out_om2.ship_prov_rcv_pay_category
-                ,nvl(xrpm_out_om2.item_div_origin,'Dummy')         AS item_div_origin
-                ,nvl(xrpm_out_om2.item_div_ahead,'Dummy')          AS item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--                ,nvl(xrpm_out_om2.item_div_origin,'Dummy')         AS item_div_origin
+--                ,nvl(xrpm_out_om2.item_div_ahead,'Dummy')          AS item_div_ahead
+                ,xrpm_out_om2.item_div_origin
+                ,DECODE(xrpm_out_om2.item_div_ahead,'5','5','Dummy') AS item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 update end
           FROM   fnd_lookup_values flv_out_om2                      -- クイックコード
                 ,xxcmn_rcv_pay_mst xrpm_out_om2                    -- 受払区分アドオンマスタ
           WHERE  flv_out_om2.lookup_type               = 'XXCMN_NEW_DIVISION'
@@ -699,12 +746,113 @@ AS
   AND    gic2_out_om2.category_id                      = mcb2_out_om2.category_id
   AND    gic2_out_om2.category_set_id                  = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND    xrpm.item_div_origin                          = DECODE(mcb2_out_om2.segment1,'5','5','Dummy')
-  AND    xrpm.item_div_ahead                           = DECODE(mcb_out_om2.segment1,'5','5','Dummy')
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--  AND    xrpm.item_div_ahead                           = DECODE(mcb_out_om2.segment1,'5','5','Dummy')
+  AND    xrpm.item_div_ahead                           = mcb_out_om2.segment1
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2.attribute11
   OR     xrpm.ship_prov_rcv_pay_category              IS NULL)
   AND    xvsa_out_om2.vendor_site_id                   = xoha_out_om2.vendor_site_id
   AND    xvsa_out_om2.start_date_active               <= TRUNC(SYSDATE)
   AND    xvsa_out_om2.end_date_active                 >= TRUNC(SYSDATE)
+-- 2008/10/24 Y.Yamamoto v1.1 add start
+  UNION ALL
+  SELECT iwm_out_om2.attribute1                        AS ownership_code
+        ,mil_out_om2.inventory_location_id             AS inventory_location_id
+        ,xmld_out_om2.item_id                          AS item_id
+        ,NULL                                          AS lot_no
+        ,NULL                                          AS manufacture_date
+        ,NULL                                          AS uniqe_sign
+        ,NULL                                          AS expiration_date -- <---- ここまで共通
+        ,NVL(xoha_out_om2.schedule_arrival_date
+            ,xoha_out_om2.schedule_ship_date)          AS arrival_date
+        ,xoha_out_om2.schedule_ship_date               AS leaving_date
+        ,'1'                                           AS status        -- 予定
+        ,xrpm.new_div_invent                           AS reason_code
+        ,xrpm.meaning                                  AS reason_code_name
+        ,xoha_out_om2.request_no                       AS voucher_no
+        ,xvsa_out_om2.vendor_site_name                 AS ukebaraisaki_name
+        ,NULL                                          AS vendor_site_name
+        ,0                                             AS stock_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2.actual_quantity                  AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
+  FROM   xxwsh_order_headers_all      xoha_out_om2                 -- 受注ヘッダ(アドオン)
+        ,xxwsh_order_lines_all        xola_out_om2                 -- 受注明細(アドオン)
+        ,xxinv_mov_lot_details        xmld_out_om2                 -- 移動ロット詳細(アドオン)
+        ,oe_transaction_types_all     otta_out_om2                 -- 受注タイプ
+        ,ic_whse_mst                  iwm_out_om2                  -- OPM倉庫マスタ
+        ,mtl_item_locations           mil_out_om2                  -- OPM保管場所マスタ
+        ,ic_item_mst_b                iimb_out_om2                 -- OPM品目マスタ
+        ,mtl_system_items_b           msib_out_om2                 -- 品目マスタ
+        ,ic_item_mst_b                iimb2_out_om2                -- OPM品目マスタ
+        ,mtl_system_items_b           msib2_out_om2                -- 品目マスタ
+        ,gmi_item_categories          gic_out_om2
+        ,mtl_categories_b             mcb_out_om2
+        ,gmi_item_categories          gic2_out_om2
+        ,mtl_categories_b             mcb2_out_om2
+        ,xxcmn_vendor_sites_all       xvsa_out_om2
+        ,(SELECT xrpm_out_om2.new_div_invent
+                ,flv_out_om2.meaning
+                ,xrpm_out_om2.shipment_provision_div
+                ,xrpm_out_om2.ship_prov_rcv_pay_category
+                ,xrpm_out_om2.item_div_origin
+                ,DECODE(xrpm_out_om2.item_div_ahead,'5','5','Dummy') AS item_div_ahead
+          FROM   fnd_lookup_values flv_out_om2                      -- クイックコード
+                ,xxcmn_rcv_pay_mst xrpm_out_om2                    -- 受払区分アドオンマスタ
+          WHERE  flv_out_om2.lookup_type               = 'XXCMN_NEW_DIVISION'
+          AND    flv_out_om2.language                  = 'JA'
+          AND    flv_out_om2.lookup_code               = xrpm_out_om2.new_div_invent
+          AND    xrpm_out_om2.doc_type                 = 'OMSO'
+          AND    xrpm_out_om2.use_div_invent           = 'Y'
+          AND    xrpm_out_om2.shipment_provision_div   = '2'       -- 支給依頼
+          AND    xrpm_out_om2.item_div_origin          = '5'
+          AND    xrpm_out_om2.prod_div_origin         IS NULL
+          AND    xrpm_out_om2.prod_div_ahead          IS NULL
+         ) xrpm
+  WHERE  xoha_out_om2.order_header_id                  = xola_out_om2.order_header_id
+  AND    xoha_out_om2.deliver_from_id                  = mil_out_om2.inventory_location_id
+  AND    iwm_out_om2.mtl_organization_id               = mil_out_om2.organization_id
+  AND    xola_out_om2.shipping_inventory_item_id       = xola_out_om2.request_item_id
+  AND    xola_out_om2.request_item_id                  = msib_out_om2.inventory_item_id
+  AND    iimb_out_om2.item_no                          = msib_out_om2.segment1
+  AND    msib_out_om2.organization_id                  = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+  AND    xola_out_om2.shipping_inventory_item_id       = msib2_out_om2.inventory_item_id
+  AND    iimb2_out_om2.item_no                         = msib2_out_om2.segment1
+  AND    msib2_out_om2.organization_id                 = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+  AND    xmld_out_om2.mov_line_id                      = xola_out_om2.order_line_id
+  AND    xmld_out_om2.document_type_code               = '30'      -- 支給指示
+  AND    xmld_out_om2.record_type_code                 = '10'      -- 指示
+  AND    xmld_out_om2.lot_id                           = 0
+  AND    xoha_out_om2.req_status                       = '07'      -- 受領済
+  AND    NVL( xoha_out_om2.actual_confirm_class, 'N' ) = 'N'       -- 実績未計上
+  AND    xoha_out_om2.latest_external_flag             = 'Y'       -- ON
+  AND    xola_out_om2.delete_flag                      = 'N'       -- OFF
+  AND    xoha_out_om2.schedule_ship_date              <= TRUNC( SYSDATE )
+  AND    xoha_out_om2.order_type_id                    = otta_out_om2.transaction_type_id
+  AND    xrpm.shipment_provision_div                   = otta_out_om2.attribute1
+  AND    gic_out_om2.item_id                           = iimb_out_om2.item_id
+  AND    gic_out_om2.category_id                       = mcb_out_om2.category_id
+  AND    gic_out_om2.category_set_id                   = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    mcb_out_om2.segment1                          = '5'
+  AND    gic2_out_om2.item_id                          = iimb2_out_om2.item_id
+  AND    gic2_out_om2.category_id                      = mcb2_out_om2.category_id
+  AND    gic2_out_om2.category_set_id                  = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    xrpm.item_div_origin                          = DECODE(mcb2_out_om2.segment1,'5','5','Dummy')
+  AND    xrpm.item_div_ahead                           = mcb_out_om2.segment1
+  AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2.attribute11
+  OR     xrpm.ship_prov_rcv_pay_category              IS NULL)
+  AND    xvsa_out_om2.vendor_site_id                   = xoha_out_om2.vendor_site_id
+  AND    xvsa_out_om2.start_date_active               <= TRUNC(SYSDATE)
+  AND    xvsa_out_om2.end_date_active                 >= TRUNC(SYSDATE)
+-- 2008/10/24 Y.Yamamoto v1.1 add end
   UNION ALL
   -- 生産原料投入予定
   SELECT iwm_out_pr.attribute1                         AS ownership_code
@@ -1125,7 +1273,9 @@ AS
   AND    gmd_in_pr_e70a.item_id                 = itp_in_pr_e70.item_id
   AND    itp_in_pr_e70.location                 = mil_in_pr_e70.segment1
   AND    mil_in_pr_e70.organization_id          = iwm_in_pr_e70.mtl_organization_id
-  AND    grb_in_pr_e70.attribute9               = mil_in_pr_e70.segment1
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    grb_in_pr_e70.attribute9               = mil_in_pr_e70.segment1
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    grct_in_pr_e70.language                = 'JA'
   AND    grct_in_pr_e70.routing_class           = grcb_in_pr_e70.routing_class
   AND    grcb_in_pr_e70.routing_class           = grb_in_pr_e70.routing_class
@@ -1326,7 +1476,9 @@ AS
          ) xrpm
   WHERE  itc_in_ad_e_x97.doc_type                = xrpm.doc_type
   AND    itc_in_ad_e_x97.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_in_ad_e_x97.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_in_ad_e_x97.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_in_ad_e_x97.lot_id                  = 0
   AND    itc_in_ad_e_x97.whse_code               = iwm_in_ad_e_x97.whse_code
   AND    itc_in_ad_e_x97.location                = mil_in_ad_e_x97.segment1
@@ -1379,7 +1531,9 @@ AS
          ) xrpm
   WHERE  itc_in_ad_e_x97.doc_type                = xrpm.doc_type
   AND    itc_in_ad_e_x97.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_in_ad_e_x97.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_in_ad_e_x97.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_in_ad_e_x97.lot_id                  = 0
   AND    itc_in_ad_e_x97.whse_code               = iwm_in_ad_e_x97.whse_code
   AND    itc_in_ad_e_x97.location                = mil_in_ad_e_x97.segment1
@@ -1436,7 +1590,9 @@ AS
          ) xrpm
   WHERE  itc_in_ad_e_x9.doc_type                = xrpm.doc_type
   AND    itc_in_ad_e_x9.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_in_ad_e_x9.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_in_ad_e_x9.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_in_ad_e_x9.lot_id                  = 0
   AND    itc_in_ad_e_x9.whse_code               = iwm_in_ad_e_x9.whse_code
   AND    itc_in_ad_e_x9.location                = mil_in_ad_e_x9.segment1
@@ -1464,7 +1620,10 @@ AS
         ,mil2_in_ad_e_xx.description                   AS ukebaraisaki_name
         ,NULL                                          AS deliver_to_name
         ,0                                             AS stock_quantity
-        ,ABS(itc_in_ad_e_xx.trans_qty)                 AS leaving_quantity
+-- 2008/10/31 Y.Yamamoto v1.1 update start
+--        ,ABS(itc_in_ad_e_xx.trans_qty)                 AS leaving_quantity
+        ,itc_in_ad_e_xx.trans_qty                      AS leaving_quantity
+-- 2008/10/31 Y.Yamamoto v1.1 update end
   FROM   xxinv_mov_req_instr_headers  xmrih_in_ad_e_xx               -- 移動依頼/指示ヘッダ(アドオン)
         ,xxinv_mov_req_instr_lines    xmril_in_ad_e_xx               -- 移動依頼/指示明細(アドオン)
         ,xxinv_mov_lot_details        xmldt_in_ad_e_xx               -- 移動ロット詳細(アドオン)
@@ -1493,7 +1652,9 @@ AS
   AND    xmril_in_ad_e_xx.mov_line_id           = xmldt_in_ad_e_xx.mov_line_id
   AND    itc_in_ad_e_xx.doc_type                = xrpm.doc_type
   AND    itc_in_ad_e_xx.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_in_ad_e_xx.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_in_ad_e_xx.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_in_ad_e_xx.item_id                 = xmril_in_ad_e_xx.item_id
   AND    itc_in_ad_e_xx.lot_id                  = xmldt_in_ad_e_xx.lot_id
   AND    itc_in_ad_e_xx.location                = xmrih_in_ad_e_xx.ship_to_locat_code
@@ -1549,7 +1710,9 @@ AS
          ) xrpm
   WHERE  itc_in_ad_e_xx.doc_type                = xrpm.doc_type
   AND    itc_in_ad_e_xx.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_in_ad_e_xx.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_in_ad_e_xx.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_in_ad_e_xx.lot_id                  = 0
   AND    itc_in_ad_e_xx.whse_code               = iwm_in_ad_e_xx.whse_code
   AND    itc_in_ad_e_xx.location                = mil_in_ad_e_xx.segment1
@@ -1759,8 +1922,14 @@ AS
         ,gmd_routings_tl              grt_out_pr_e70                  -- 工順マスタ日本語
         ,gmd_routing_class_b          grcb_out_pr_e70                 -- 工順区分マスタ
         ,gmd_routing_class_tl         grct_out_pr_e70                 -- 工順区分マスタ日本語
-        ,gmi_item_categories          gic_in_pr_e70_r
-        ,mtl_categories_b             mcb_in_pr_e70_r
+-- 2008/10/31 Y.Yamamoto v1.1 update start
+--        ,gmi_item_categories          gic_in_pr_e70_r
+--        ,mtl_categories_b             mcb_in_pr_e70_r
+        ,gmi_item_categories          gic_out_pr_e70_r
+        ,mtl_categories_b             mcb_out_pr_e70_r
+        ,gmi_item_categories          gic_out_pr_e70_s
+        ,mtl_categories_b             mcb_out_pr_e70_s
+-- 2008/10/31 Y.Yamamoto v1.1 update end
         ,(SELECT xrpm_out_pr_e70.new_div_invent
                 ,flv_out_pr_e70.meaning
                 ,xrpm_out_pr_e70.doc_type
@@ -1794,19 +1963,31 @@ AS
   AND    itp_out_pr_e70.whse_code                = iwm_out_pr_e70.whse_code
   AND    itp_out_pr_e70.location                 = mil_out_pr_e70.segment1
   AND    iwm_out_pr_e70.mtl_organization_id      = mil_out_pr_e70.organization_id
-  AND    grb_out_pr_e70.attribute9               = mil_out_pr_e70.segment1
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    grb_out_pr_e70.attribute9               = mil_out_pr_e70.segment1
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    grb_out_pr_e70.routing_id               = gbh_out_pr_e70.routing_id
   AND    xrpm.routing_class                      = grb_out_pr_e70.routing_class
   AND    xrpm.line_type                          = gmd_out_pr_e70a.line_type
   AND    grct_out_pr_e70.routing_class_desc      = FND_PROFILE.VALUE('XXINV_DUMMY_ROUTING')
-  AND    xrpm.item_div_origin                    = '5'
-  AND    xrpm.item_div_ahead                     = mcb_in_pr_e70_r.segment1
+-- 2008/10/31 Y.Yamamoto v1.1 update start
+  AND    gic_out_pr_e70_s.item_id                = itp_out_pr_e70.item_id
+  AND    gic_out_pr_e70_s.category_id            = mcb_out_pr_e70_s.category_id
+  AND    gic_out_pr_e70_s.category_set_id        = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    mcb_out_pr_e70_s.segment1               = xrpm.item_div_ahead
+  AND    gic_out_pr_e70_r.item_id                = gmd_out_pr_e70b.item_id
+  AND    gic_out_pr_e70_r.category_id            = mcb_out_pr_e70_r.category_id
+  AND    gic_out_pr_e70_r.category_set_id        = gic_out_pr_e70_s.category_set_id
+  AND    mcb_out_pr_e70_r.segment1               = xrpm.item_div_origin
+--  AND    xrpm.item_div_origin                    = '5'
+--  AND    xrpm.item_div_ahead                     = mcb_in_pr_e70_r.segment1
   AND    gbh_out_pr_e70.batch_id                 = gmd_out_pr_e70b.batch_id
   AND    gmd_out_pr_e70a.batch_id                = gmd_out_pr_e70b.batch_id
   AND    gmd_out_pr_e70b.line_type               = 1                   -- 完成品
-  AND    gmd_out_pr_e70b.item_id                 = gic_in_pr_e70_r.item_id
-  AND    gic_in_pr_e70_r.category_id             = mcb_in_pr_e70_r.category_id
-  AND    gic_in_pr_e70_r.category_set_id         = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+--  AND    gmd_out_pr_e70b.item_id                 = gic_in_pr_e70_r.item_id
+--  AND    gic_in_pr_e70_r.category_id             = mcb_in_pr_e70_r.category_id
+--  AND    gic_in_pr_e70_r.category_set_id         = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+-- 2008/10/31 Y.Yamamoto v1.1 update start
   UNION ALL
   -- 生産出庫実績 解体
   SELECT iwm_out_pr_e70.attribute1                     AS ownership_code
@@ -1966,7 +2147,11 @@ AS
         ,NULL                                          AS manufacture_date
         ,NULL                                          AS uniqe_sign
         ,NULL                                          AS expiration_date -- <---- ここまで共通
-        ,xoha_out_om2_e.arrival_date                   AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update start
+--        ,xoha_out_om2_e.arrival_date                   AS arrival_date
+        ,NVL(xoha_out_om2_e.arrival_date
+            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update end
         ,xoha_out_om2_e.shipped_date                   AS leaving_date
         ,'2'                                           AS status           -- 実績
         ,xrpm.new_div_invent                           AS reason_code
@@ -1975,7 +2160,16 @@ AS
         ,xvsa_out_om2_e.vendor_site_name               AS ukebaraisaki_name
         ,NULL                                          AS vendor_site_name
         ,0                                             AS stock_quantity
-        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2_e.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2_e.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2_e.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   FROM   xxwsh_order_headers_all      xoha_out_om2_e                 -- 受注ヘッダ(アドオン)
         ,xxwsh_order_lines_all        xola_out_om2_e                 -- 受注明細(アドオン)
         ,xxinv_mov_lot_details        xmld_out_om2_e                 -- 移動ロット詳細(アドオン)
@@ -1996,6 +2190,10 @@ AS
                 ,xrpm_out_om2_e.shipment_provision_div
                 ,xrpm_out_om2_e.ship_prov_rcv_pay_category
                 ,xrpm_out_om2_e.stock_adjustment_div
+-- 2008/10/24 Y.Yamamoto v1.1 add start
+                ,xrpm_out_om2_e.item_div_origin
+                ,xrpm_out_om2_e.item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 add end
           FROM   fnd_lookup_values flv_out_om2_e                      -- クイックコード
                 ,xxcmn_rcv_pay_mst xrpm_out_om2_e                    -- 受払区分アドオンマスタ
           WHERE  flv_out_om2_e.lookup_type                      = 'XXCMN_NEW_DIVISION'
@@ -2039,6 +2237,10 @@ AS
   AND    mcb2_out_om2_e.segment1                       = '5'
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2_e.attribute11 
       OR xrpm.ship_prov_rcv_pay_category              IS NULL)
+-- 2008/10/24 Y.Yamamoto v1.1 add start
+  AND    xrpm.item_div_origin                          = mcb2_out_om2_e.segment1
+  AND    xrpm.item_div_ahead                           = mcb_out_om2_e.segment1
+-- 2008/10/24 Y.Yamamoto v1.1 add end
   AND    xvsa_out_om2_e.vendor_site_id                 = xoha_out_om2_e.vendor_site_id
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
@@ -2050,7 +2252,11 @@ AS
         ,NULL                                          AS manufacture_date
         ,NULL                                          AS uniqe_sign
         ,NULL                                          AS expiration_date -- <---- ここまで共通
-        ,xoha_out_om2_e.arrival_date                   AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update start
+--        ,xoha_out_om2_e.arrival_date                   AS arrival_date
+        ,NVL(xoha_out_om2_e.arrival_date
+            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update end
         ,xoha_out_om2_e.shipped_date                   AS leaving_date
         ,'2'                                           AS status           -- 実績
         ,xrpm.new_div_invent                           AS reason_code
@@ -2059,7 +2265,16 @@ AS
         ,xvsa_out_om2_e.vendor_site_name               AS ukebaraisaki_name
         ,NULL                                          AS vendor_site_name
         ,0                                             AS stock_quantity
-        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2_e.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2_e.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2_e.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   FROM   xxwsh_order_headers_all      xoha_out_om2_e                 -- 受注ヘッダ(アドオン)
         ,xxwsh_order_lines_all        xola_out_om2_e                 -- 受注明細(アドオン)
         ,xxinv_mov_lot_details        xmld_out_om2_e                 -- 移動ロット詳細(アドオン)
@@ -2080,6 +2295,10 @@ AS
                 ,xrpm_out_om2_e.shipment_provision_div
                 ,xrpm_out_om2_e.ship_prov_rcv_pay_category
                 ,xrpm_out_om2_e.stock_adjustment_div
+-- 2008/10/24 Y.Yamamoto v1.1 add start
+                ,xrpm_out_om2_e.item_div_origin
+                ,xrpm_out_om2_e.item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 add end
           FROM   fnd_lookup_values flv_out_om2_e                      -- クイックコード
                 ,xxcmn_rcv_pay_mst xrpm_out_om2_e                    -- 受払区分アドオンマスタ
           WHERE  flv_out_om2_e.lookup_type                      = 'XXCMN_NEW_DIVISION'
@@ -2124,6 +2343,10 @@ AS
   AND    mcb2_out_om2_e.segment1                       = '5'
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2_e.attribute11 
       OR xrpm.ship_prov_rcv_pay_category              IS NULL)
+-- 2008/10/24 Y.Yamamoto v1.1 add start
+  AND    xrpm.item_div_origin                          = mcb2_out_om2_e.segment1
+  AND    xrpm.item_div_ahead                           = mcb_out_om2_e.segment1
+-- 2008/10/24 Y.Yamamoto v1.1 add end
   AND    xvsa_out_om2_e.vendor_site_id                 = xoha_out_om2_e.vendor_site_id
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
@@ -2135,7 +2358,11 @@ AS
         ,NULL                                          AS manufacture_date
         ,NULL                                          AS uniqe_sign
         ,NULL                                          AS expiration_date -- <---- ここまで共通
-        ,xoha_out_om2_e.arrival_date                   AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update start
+--        ,xoha_out_om2_e.arrival_date                   AS arrival_date
+        ,NVL(xoha_out_om2_e.arrival_date
+            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update end
         ,xoha_out_om2_e.shipped_date                   AS leaving_date
         ,'2'                                           AS status           -- 実績
         ,xrpm.new_div_invent                           AS reason_code
@@ -2144,7 +2371,16 @@ AS
         ,xvsa_out_om2_e.vendor_site_name               AS ukebaraisaki_name
         ,NULL                                          AS vendor_site_name
         ,0                                             AS stock_quantity
-        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2_e.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2_e.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2_e.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   FROM   xxwsh_order_headers_all      xoha_out_om2_e                 -- 受注ヘッダ(アドオン)
         ,xxwsh_order_lines_all        xola_out_om2_e                 -- 受注明細(アドオン)
         ,xxinv_mov_lot_details        xmld_out_om2_e                 -- 移動ロット詳細(アドオン)
@@ -2165,8 +2401,12 @@ AS
                 ,xrpm_out_om2_e.shipment_provision_div
                 ,xrpm_out_om2_e.ship_prov_rcv_pay_category
                 ,xrpm_out_om2_e.stock_adjustment_div
-                ,nvl(xrpm_out_om2_e.item_div_origin,'Dummy')         AS item_div_origin
-                ,nvl(xrpm_out_om2_e.item_div_ahead,'Dummy')          AS item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--                ,nvl(xrpm_out_om2_e.item_div_origin,'Dummy')         AS item_div_origin
+--                ,nvl(xrpm_out_om2_e.item_div_ahead,'Dummy')          AS item_div_ahead
+                ,xrpm_out_om2_e.item_div_origin
+                ,DECODE(xrpm_out_om2_e.item_div_ahead,'5','5','Dummy') AS item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 update end
           FROM   fnd_lookup_values flv_out_om2_e                      -- クイックコード
                 ,xxcmn_rcv_pay_mst xrpm_out_om2_e                    -- 受払区分アドオンマスタ
           WHERE  flv_out_om2_e.lookup_type                      = 'XXCMN_NEW_DIVISION'
@@ -2209,7 +2449,10 @@ AS
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2_e.attribute11 
       OR xrpm.ship_prov_rcv_pay_category              IS NULL)
   AND    xrpm.item_div_origin                          = DECODE(mcb2_out_om2_e.segment1,'5','5','Dummy')
-  AND    xrpm.item_div_ahead                           = DECODE(mcb_out_om2_e.segment1,'5','5','Dummy')
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--  AND    xrpm.item_div_ahead                           = DECODE(mcb_out_om2_e.segment1,'5','5','Dummy')
+  AND    xrpm.item_div_ahead                           = mcb_out_om2_e.segment1
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   AND    xvsa_out_om2_e.vendor_site_id                 = xoha_out_om2_e.vendor_site_id
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
@@ -2221,7 +2464,11 @@ AS
         ,NULL                                          AS manufacture_date
         ,NULL                                          AS uniqe_sign
         ,NULL                                          AS expiration_date -- <---- ここまで共通
-        ,xoha_out_om2_e.arrival_date                   AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update start
+--        ,xoha_out_om2_e.arrival_date                   AS arrival_date
+        ,NVL(xoha_out_om2_e.arrival_date
+            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+-- 2008/10/23 Y.Yamamoto v1.1 update end
         ,xoha_out_om2_e.shipped_date                   AS leaving_date
         ,'2'                                           AS status           -- 実績
         ,xrpm.new_div_invent                           AS reason_code
@@ -2230,7 +2477,16 @@ AS
         ,xvsa_out_om2_e.vendor_site_name               AS ukebaraisaki_name
         ,NULL                                          AS vendor_site_name
         ,0                                             AS stock_quantity
-        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2_e.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2_e.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2_e.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   FROM   xxwsh_order_headers_all      xoha_out_om2_e                 -- 受注ヘッダ(アドオン)
         ,xxwsh_order_lines_all        xola_out_om2_e                 -- 受注明細(アドオン)
         ,xxinv_mov_lot_details        xmld_out_om2_e                 -- 移動ロット詳細(アドオン)
@@ -2251,8 +2507,12 @@ AS
                 ,xrpm_out_om2_e.shipment_provision_div
                 ,xrpm_out_om2_e.ship_prov_rcv_pay_category
                 ,xrpm_out_om2_e.stock_adjustment_div
-                ,nvl(xrpm_out_om2_e.item_div_origin,'Dummy')         AS item_div_origin
-                ,nvl(xrpm_out_om2_e.item_div_ahead,'Dummy')          AS item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--                ,nvl(xrpm_out_om2_e.item_div_origin,'Dummy')         AS item_div_origin
+--                ,nvl(xrpm_out_om2_e.item_div_ahead,'Dummy')          AS item_div_ahead
+                ,xrpm_out_om2_e.item_div_origin
+                ,DECODE(xrpm_out_om2_e.item_div_ahead,'5','5','Dummy') AS item_div_ahead
+-- 2008/10/24 Y.Yamamoto v1.1 update end
           FROM   fnd_lookup_values flv_out_om2_e                      -- クイックコード
                 ,xxcmn_rcv_pay_mst xrpm_out_om2_e                    -- 受払区分アドオンマスタ
           WHERE  flv_out_om2_e.lookup_type                      = 'XXCMN_NEW_DIVISION'
@@ -2296,10 +2556,208 @@ AS
   AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2_e.attribute11 
       OR xrpm.ship_prov_rcv_pay_category              IS NULL)
   AND    xrpm.item_div_origin                          = DECODE(mcb2_out_om2_e.segment1,'5','5','Dummy')
-  AND    xrpm.item_div_ahead                           = DECODE(mcb_out_om2_e.segment1,'5','5','Dummy')
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--  AND    xrpm.item_div_ahead                           = DECODE(mcb_out_om2_e.segment1,'5','5','Dummy')
+  AND    xrpm.item_div_ahead                           = mcb_out_om2_e.segment1
+-- 2008/10/24 Y.Yamamoto v1.1 update end
   AND    xvsa_out_om2_e.vendor_site_id                 = xoha_out_om2_e.vendor_site_id
   AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
   AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
+-- 2008/10/24 Y.Yamamoto v1.1 add start
+  UNION ALL
+  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+        ,mil_out_om2_e.inventory_location_id           AS inventory_location_id
+        ,xmld_out_om2_e.item_id                        AS item_id
+        ,NULL                                          AS lot_no
+        ,NULL                                          AS manufacture_date
+        ,NULL                                          AS uniqe_sign
+        ,NULL                                          AS expiration_date -- <---- ここまで共通
+        ,NVL(xoha_out_om2_e.arrival_date
+            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+        ,'2'                                           AS status           -- 実績
+        ,xrpm.new_div_invent                           AS reason_code
+        ,xrpm.meaning                                  AS reason_code_name
+        ,xoha_out_om2_e.request_no                     AS voucher_no
+        ,xvsa_out_om2_e.vendor_site_name               AS ukebaraisaki_name
+        ,NULL                                          AS vendor_site_name
+        ,0                                             AS stock_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2_e.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2_e.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2_e.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
+  FROM   xxwsh_order_headers_all      xoha_out_om2_e                 -- 受注ヘッダ(アドオン)
+        ,xxwsh_order_lines_all        xola_out_om2_e                 -- 受注明細(アドオン)
+        ,xxinv_mov_lot_details        xmld_out_om2_e                 -- 移動ロット詳細(アドオン)
+        ,oe_transaction_types_all     otta_out_om2_e                 -- 受注タイプ
+        ,ic_whse_mst                  iwm_out_om2_e                     -- OPM倉庫マスタ
+        ,mtl_item_locations           mil_out_om2_e                     -- OPM保管場所マスタ
+        ,ic_item_mst_b                iimb_out_om2_e                    -- OPM品目マスタ
+        ,mtl_system_items_b           msib_out_om2_e                    -- 品目マスタ
+        ,ic_item_mst_b                iimb2_out_om2_e                -- OPM品目マスタ
+        ,mtl_system_items_b           msib2_out_om2_e                -- 品目マスタ
+        ,xxcmn_vendor_sites_all       xvsa_out_om2_e
+        ,gmi_item_categories          gic_out_om2_e
+        ,mtl_categories_b             mcb_out_om2_e
+        ,gmi_item_categories          gic2_out_om2_e
+        ,mtl_categories_b             mcb2_out_om2_e
+        ,(SELECT xrpm_out_om2_e.new_div_invent
+                ,flv_out_om2_e.meaning
+                ,xrpm_out_om2_e.shipment_provision_div
+                ,xrpm_out_om2_e.ship_prov_rcv_pay_category
+                ,xrpm_out_om2_e.stock_adjustment_div
+                ,xrpm_out_om2_e.item_div_origin
+                ,DECODE(xrpm_out_om2_e.item_div_ahead,'5','5','Dummy') AS item_div_ahead
+          FROM   fnd_lookup_values flv_out_om2_e                      -- クイックコード
+                ,xxcmn_rcv_pay_mst xrpm_out_om2_e                    -- 受払区分アドオンマスタ
+          WHERE  flv_out_om2_e.lookup_type                      = 'XXCMN_NEW_DIVISION'
+          AND    flv_out_om2_e.language                         = 'JA'
+          AND    flv_out_om2_e.lookup_code                      = xrpm_out_om2_e.new_div_invent
+          AND    xrpm_out_om2_e.doc_type                        = 'OMSO'
+          AND    xrpm_out_om2_e.use_div_invent                  = 'Y'
+          AND    xrpm_out_om2_e.item_div_origin                 = '5'
+          AND    xrpm_out_om2_e.prod_div_origin                IS NULL
+          AND    xrpm_out_om2_e.prod_div_ahead                 IS NULL
+         ) xrpm
+  WHERE  otta_out_om2_e.order_category_code            = 'ORDER'
+  AND    xoha_out_om2_e.order_header_id                = xola_out_om2_e.order_header_id
+  AND    xoha_out_om2_e.deliver_from_id                = mil_out_om2_e.inventory_location_id
+  AND    iwm_out_om2_e.mtl_organization_id             = mil_out_om2_e.organization_id
+  AND    xola_out_om2_e.shipping_inventory_item_id     = xola_out_om2_e.request_item_id
+  AND    xola_out_om2_e.request_item_id                = msib_out_om2_e.inventory_item_id
+  AND    iimb_out_om2_e.item_no                        = msib_out_om2_e.segment1
+  AND    msib_out_om2_e.organization_id                = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+  AND    xola_out_om2_e.shipping_inventory_item_id     = msib2_out_om2_e.inventory_item_id
+  AND    iimb2_out_om2_e.item_no                       = msib2_out_om2_e.segment1
+  AND    msib2_out_om2_e.organization_id               = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+  AND    xmld_out_om2_e.mov_line_id                    = xola_out_om2_e.order_line_id
+  AND    xmld_out_om2_e.document_type_code             = '30'      -- 支給指示
+  AND    xmld_out_om2_e.record_type_code               = '20'      -- 出庫実績
+  AND    xmld_out_om2_e.lot_id                         = 0
+  AND    xoha_out_om2_e.req_status                     = '08'      -- 出荷実績計上済
+  AND    xoha_out_om2_e.latest_external_flag           = 'Y'       -- ON
+  AND    xola_out_om2_e.delete_flag                    = 'N'       -- OFF
+  AND    otta_out_om2_e.attribute1                     = '2'       -- 支給依頼
+  AND    xoha_out_om2_e.order_type_id                  = otta_out_om2_e.transaction_type_id
+  AND    xrpm.shipment_provision_div                   = otta_out_om2_e.attribute1
+  AND    gic_out_om2_e.item_id                         = iimb_out_om2_e.item_id
+  AND    gic_out_om2_e.category_id                     = mcb_out_om2_e.category_id
+  AND    gic_out_om2_e.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    mcb_out_om2_e.segment1                        = '5' 
+  AND    gic2_out_om2_e.item_id                        = iimb2_out_om2_e.item_id
+  AND    gic2_out_om2_e.category_id                    = mcb2_out_om2_e.category_id
+  AND    gic2_out_om2_e.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2_e.attribute11 
+      OR xrpm.ship_prov_rcv_pay_category              IS NULL)
+  AND    xrpm.item_div_origin                          = DECODE(mcb2_out_om2_e.segment1,'5','5','Dummy')
+  AND    xrpm.item_div_ahead                           = mcb_out_om2_e.segment1
+  AND    xvsa_out_om2_e.vendor_site_id                 = xoha_out_om2_e.vendor_site_id
+  AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
+  AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
+  UNION ALL
+  SELECT iwm_out_om2_e.attribute1                      AS ownership_code
+        ,mil_out_om2_e.inventory_location_id           AS inventory_location_id
+        ,xmld_out_om2_e.item_id                        AS item_id
+        ,NULL                                          AS lot_no
+        ,NULL                                          AS manufacture_date
+        ,NULL                                          AS uniqe_sign
+        ,NULL                                          AS expiration_date -- <---- ここまで共通
+        ,NVL(xoha_out_om2_e.arrival_date
+            ,xoha_out_om2_e.shipped_date)              AS arrival_date
+        ,xoha_out_om2_e.shipped_date                   AS leaving_date
+        ,'2'                                           AS status           -- 実績
+        ,xrpm.new_div_invent                           AS reason_code
+        ,xrpm.meaning                                  AS reason_code_name
+        ,xoha_out_om2_e.request_no                     AS voucher_no
+        ,xvsa_out_om2_e.vendor_site_name               AS ukebaraisaki_name
+        ,NULL                                          AS vendor_site_name
+        ,0                                             AS stock_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update start
+--        ,xmld_out_om2_e.actual_quantity                AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '104'
+            AND otta_out_om2_e.order_category_code = 'RETURN' ) THEN
+            ABS( xmld_out_om2_e.actual_quantity ) * -1
+          ELSE
+            xmld_out_om2_e.actual_quantity
+          END                                             leaving_quantity
+-- 2008/10/24 Y.Yamamoto v1.1 update end
+  FROM   xxwsh_order_headers_all      xoha_out_om2_e                 -- 受注ヘッダ(アドオン)
+        ,xxwsh_order_lines_all        xola_out_om2_e                 -- 受注明細(アドオン)
+        ,xxinv_mov_lot_details        xmld_out_om2_e                 -- 移動ロット詳細(アドオン)
+        ,oe_transaction_types_all     otta_out_om2_e                 -- 受注タイプ
+        ,ic_whse_mst                  iwm_out_om2_e                     -- OPM倉庫マスタ
+        ,mtl_item_locations           mil_out_om2_e                     -- OPM保管場所マスタ
+        ,ic_item_mst_b                iimb_out_om2_e                    -- OPM品目マスタ
+        ,mtl_system_items_b           msib_out_om2_e                    -- 品目マスタ
+        ,ic_item_mst_b                iimb2_out_om2_e                -- OPM品目マスタ
+        ,mtl_system_items_b           msib2_out_om2_e                -- 品目マスタ
+        ,xxcmn_vendor_sites_all       xvsa_out_om2_e
+        ,gmi_item_categories          gic_out_om2_e
+        ,mtl_categories_b             mcb_out_om2_e
+        ,gmi_item_categories          gic2_out_om2_e
+        ,mtl_categories_b             mcb2_out_om2_e
+        ,(SELECT xrpm_out_om2_e.new_div_invent
+                ,flv_out_om2_e.meaning
+                ,xrpm_out_om2_e.shipment_provision_div
+                ,xrpm_out_om2_e.ship_prov_rcv_pay_category
+                ,xrpm_out_om2_e.stock_adjustment_div
+                ,xrpm_out_om2_e.item_div_origin
+                ,DECODE(xrpm_out_om2_e.item_div_ahead,'5','5','Dummy') AS item_div_ahead
+          FROM   fnd_lookup_values flv_out_om2_e                      -- クイックコード
+                ,xxcmn_rcv_pay_mst xrpm_out_om2_e                    -- 受払区分アドオンマスタ
+          WHERE  flv_out_om2_e.lookup_type                      = 'XXCMN_NEW_DIVISION'
+          AND    flv_out_om2_e.language                         = 'JA'
+          AND    flv_out_om2_e.lookup_code                      = xrpm_out_om2_e.new_div_invent
+          AND    xrpm_out_om2_e.doc_type                        = 'PORC'
+          AND    xrpm_out_om2_e.source_document_code            = 'RMA'
+          AND    xrpm_out_om2_e.use_div_invent                  = 'Y'
+          AND    xrpm_out_om2_e.item_div_origin                 = '5'
+          AND    xrpm_out_om2_e.prod_div_origin                IS NULL
+          AND    xrpm_out_om2_e.prod_div_ahead                 IS NULL
+         ) xrpm
+  WHERE  otta_out_om2_e.order_category_code            = 'RETURN'
+  AND    xoha_out_om2_e.order_header_id                = xola_out_om2_e.order_header_id
+  AND    xoha_out_om2_e.deliver_from_id                = mil_out_om2_e.inventory_location_id
+  AND    iwm_out_om2_e.mtl_organization_id             = mil_out_om2_e.organization_id
+  AND    xola_out_om2_e.shipping_inventory_item_id     = xola_out_om2_e.request_item_id
+  AND    xola_out_om2_e.request_item_id                = msib_out_om2_e.inventory_item_id
+  AND    iimb_out_om2_e.item_no                        = msib_out_om2_e.segment1
+  AND    msib_out_om2_e.organization_id                = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+  AND    xola_out_om2_e.shipping_inventory_item_id     = msib2_out_om2_e.inventory_item_id
+  AND    iimb2_out_om2_e.item_no                       = msib2_out_om2_e.segment1
+  AND    msib2_out_om2_e.organization_id               = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+  AND    xmld_out_om2_e.mov_line_id                    = xola_out_om2_e.order_line_id
+  AND    xmld_out_om2_e.document_type_code             = '30'      -- 支給指示
+  AND    xmld_out_om2_e.record_type_code               = '20'      -- 出庫実績
+  AND    xmld_out_om2_e.lot_id                         = 0
+  AND    xoha_out_om2_e.req_status                     = '08'      -- 出荷実績計上済
+  AND    xoha_out_om2_e.latest_external_flag           = 'Y'       -- ON
+  AND    xola_out_om2_e.delete_flag                    = 'N'       -- OFF
+  AND    otta_out_om2_e.attribute1                     = '2'       -- 支給依頼
+  AND    xoha_out_om2_e.order_type_id                  = otta_out_om2_e.transaction_type_id
+  AND    xrpm.shipment_provision_div                   = otta_out_om2_e.attribute1
+  AND    gic_out_om2_e.item_id                         = iimb_out_om2_e.item_id
+  AND    gic_out_om2_e.category_id                     = mcb_out_om2_e.category_id
+  AND    gic_out_om2_e.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND    mcb_out_om2_e.segment1                        = '5' 
+  AND    gic2_out_om2_e.item_id                        = iimb2_out_om2_e.item_id
+  AND    gic2_out_om2_e.category_id                    = mcb2_out_om2_e.category_id
+  AND    gic2_out_om2_e.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  AND   (xrpm.ship_prov_rcv_pay_category               = otta_out_om2_e.attribute11 
+      OR xrpm.ship_prov_rcv_pay_category              IS NULL)
+  AND    xrpm.item_div_origin                          = DECODE(mcb2_out_om2_e.segment1,'5','5','Dummy')
+  AND    xrpm.item_div_ahead                           = mcb_out_om2_e.segment1
+  AND    xvsa_out_om2_e.vendor_site_id                 = xoha_out_om2_e.vendor_site_id
+  AND    xvsa_out_om2_e.start_date_active             <= TRUNC(SYSDATE)
+  AND    xvsa_out_om2_e.end_date_active               >= TRUNC(SYSDATE)
+-- 2008/10/24 Y.Yamamoto v1.1 add end
   UNION ALL
   -- 在庫調整 出庫実績(出荷 見本出庫 廃却出庫)
   SELECT iwm_out_om3_e.attribute1                      AS ownership_code
@@ -2392,7 +2850,10 @@ AS
         ,xrpm.meaning                                  AS ukebaraisaki_name
         ,NULL                                          AS deliver_to_name
         ,0                                             AS stock_quantity
-        ,ABS(itc_out_ad_e_x97.trans_qty)               AS leaving_quantity
+-- 2008/10/31 Y.Yamamoto v1.1 update start
+--        ,ABS(itc_out_ad_e_x97.trans_qty)               AS leaving_quantity
+        ,itc_out_ad_e_x97.trans_qty                    AS leaving_quantity
+-- 2008/10/31 Y.Yamamoto v1.1 update end
   FROM   ic_tran_cmp                  itc_out_ad_e_x97                  -- OPM完了在庫トランザクション
         ,ic_jrnl_mst                  ijm_out_ad_e_x97                  -- OPMジャーナルマスタ
         ,ic_adjs_jnl                  iaj_out_ad_e_x97                  -- OPM在庫調整ジャーナル
@@ -2413,7 +2874,9 @@ AS
           AND    xrpm_out_ad_e_x97.rcv_pay_div            = '-1'                 -- 払出
          ) xrpm
   WHERE  itc_out_ad_e_x97.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_out_ad_e_x97.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_out_ad_e_x97.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_out_ad_e_x97.lot_id                  = 0
   AND    iwm_out_ad_e_x97.mtl_organization_id     = mil_out_ad_e_x97.organization_id
   AND    itc_out_ad_e_x97.whse_code               = iwm_out_ad_e_x97.whse_code
@@ -2440,7 +2903,10 @@ AS
         ,xv_out_ad_e_x97.vendor_name                   AS ukebaraisaki_name -- 受払先名
         ,NULL                                          AS deliver_to_name
         ,0                                             AS stock_quantity
-        ,ABS(itc_out_ad_e_x97.trans_qty)               AS leaving_quantity
+-- 2008/10/31 Y.Yamamoto v1.1 update start
+--        ,ABS(itc_out_ad_e_x97.trans_qty)               AS leaving_quantity
+        ,itc_out_ad_e_x97.trans_qty                    AS leaving_quantity
+-- 2008/10/31 Y.Yamamoto v1.1 update end
   FROM   ic_tran_cmp                  itc_out_ad_e_x97                  -- OPM完了在庫トランザクション
         ,ic_jrnl_mst                  ijm_out_ad_e_x97                  -- OPMジャーナルマスタ
         ,ic_adjs_jnl                  iaj_out_ad_e_x97                  -- OPM在庫調整ジャーナル
@@ -2464,7 +2930,9 @@ AS
           AND    xrpm_out_ad_e_x97.rcv_pay_div            = '-1'                 -- 払出
          ) xrpm
   WHERE  itc_out_ad_e_x97.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_out_ad_e_x97.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_out_ad_e_x97.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_out_ad_e_x97.lot_id                  = 0
   AND    iwm_out_ad_e_x97.mtl_organization_id     = mil_out_ad_e_x97.organization_id
   AND    itc_out_ad_e_x97.whse_code               = iwm_out_ad_e_x97.whse_code
@@ -2523,7 +2991,9 @@ AS
          ) xrpm
   WHERE  itc_out_ad_e_x2.doc_type                = xrpm.doc_type
   AND    itc_out_ad_e_x2.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_out_ad_e_x2.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_out_ad_e_x2.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_out_ad_e_x2.lot_id                  = 0
   AND    iwm_out_ad_e_x2.mtl_organization_id     = mil_out_ad_e_x2.organization_id
   AND    itc_out_ad_e_x2.whse_code               = iwm_out_ad_e_x2.whse_code
@@ -2583,7 +3053,9 @@ AS
          ) xrpm
   WHERE  itc_out_ad_e_12.doc_type               = xrpm.doc_type
   AND    itc_out_ad_e_12.reason_code            = xrpm.reason_code
-  AND    SIGN( itc_out_ad_e_12.trans_qty )      = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_out_ad_e_12.trans_qty )      = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_out_ad_e_12.item_id                = xmldt_out_ad_e_12.item_id
   AND    itc_out_ad_e_12.lot_id                 = xmldt_out_ad_e_12.lot_id
   AND    itc_out_ad_e_12.location               = xmrih_out_ad_e_12.shipped_locat_code
@@ -2618,7 +3090,15 @@ AS
         ,xrpm.meaning                                  AS ukebaraisaki_name
         ,NULL                                          AS deliver_to_name
         ,0                                             AS stock_quantity
-        ,ABS(itc_out_ad_e_xx.trans_qty)                AS leaving_quantity
+-- 2008/10/31 Y.Yamamoto v1.1 update start
+--        ,ABS(itc_out_ad_e_xx.trans_qty)                AS leaving_quantity
+        ,CASE
+          WHEN (xrpm.new_div_invent = '503' ) THEN
+            itc_out_ad_e_xx.trans_qty * -1
+          ELSE
+            itc_out_ad_e_xx.trans_qty
+          END                                             leaving_quantity
+-- 2008/10/31 Y.Yamamoto v1.1 update end
   FROM   ic_adjs_jnl                  iaj_out_ad_e_xx                  -- OPM在庫調整ジャーナル
         ,ic_jrnl_mst                  ijm_out_ad_e_xx                  -- OPMジャーナルマスタ
         ,ic_tran_cmp                  itc_out_ad_e_xx                  -- OPM完了在庫トランザクション
@@ -2641,7 +3121,9 @@ AS
          ) xrpm
   WHERE  itc_out_ad_e_xx.doc_type                = xrpm.doc_type
   AND    itc_out_ad_e_xx.reason_code             = xrpm.reason_code
-  AND    SIGN( itc_out_ad_e_xx.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete start
+--  AND    SIGN( itc_out_ad_e_xx.trans_qty )       = xrpm.rcv_pay_div
+-- 2008/10/23 Y.Yamamoto v1.1 delete end
   AND    itc_out_ad_e_xx.lot_id                  = 0
   AND    iwm_out_ad_e_xx.mtl_organization_id     = mil_out_ad_e_xx.organization_id
   AND    itc_out_ad_e_xx.whse_code               = iwm_out_ad_e_xx.whse_code
