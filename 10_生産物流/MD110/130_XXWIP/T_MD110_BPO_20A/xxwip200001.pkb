@@ -7,7 +7,7 @@ AS
  * Description            : 生産バッチロット詳細画面データソースパッケージ(BODY)
  * MD.050                 : T_MD050_BPO_200_生産バッチ.doc
  * MD.070                 : T_MD070_BPO_20A_生産バッチ一覧画面.doc
- * Version                : 1.7
+ * Version                : 1.8
  *
  * Program List
  *  --------------------  ---- ----- -------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *                                      本番障害#648対応（条件修正) 
  *  2008/12/24   1.7   D.Nihei          本番障害#836対応（抽出箇所編集) 
  *                                      本番障害#837対応（抽出箇所編集) 
+ *  2009/01/05   1.8   D.Nihei          本番障害#912対応（抽出SQL追加) 
  *****************************************************************************************/
 --
   -- 定数宣言
@@ -271,6 +272,40 @@ AS
         wk_sql1 := wk_sql1 || '       AND     oha.latest_external_flag  = ''Y'' ';
         wk_sql1 := wk_sql1 || '       AND     ola.delete_flag           = ''N'' ';
         wk_sql1 := wk_sql1 || '       AND     otta.attribute1           = ''2'') ';
+-- 2009/01/05 D.Nihei ADD START
+        wk_sql1 := wk_sql1 || '      + ';
+        wk_sql1 := wk_sql1 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) - NVL(SUM(mld.before_actual_quantity), 0) ';
+        wk_sql1 := wk_sql1 || '       FROM    xxinv_mov_req_instr_headers mrih ';
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_req_instr_lines   mril ';
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_lot_details       mld  ';
+        wk_sql1 := wk_sql1 || '       WHERE   mrih.ship_to_locat_id   = enable_lot.inventory_location_id ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.comp_actual_flg    = ''Y'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.correct_actual_flg = ''Y'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.status             = ''06'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.mov_hdr_id         = mril.mov_hdr_id ';
+        wk_sql1 := wk_sql1 || '       AND     mril.mov_line_id        = mld.mov_line_id ';
+        wk_sql1 := wk_sql1 || '       AND     mril.delete_flg         = ''N'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.item_id             = ilm.item_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.lot_id              = ilm.lot_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.document_type_code  = ''20'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.record_type_code    = ''30'') ';
+        wk_sql1 := wk_sql1 || '      + ';
+        wk_sql1 := wk_sql1 || '      (SELECT  NVL(SUM(mld.before_actual_quantity), 0) - NVL(SUM(mld.actual_quantity), 0) ';
+        wk_sql1 := wk_sql1 || '       FROM    xxinv_mov_req_instr_headers mrih ';
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_req_instr_lines   mril ';
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_lot_details       mld  ';
+        wk_sql1 := wk_sql1 || '       WHERE   mrih.shipped_locat_id   = enable_lot.inventory_location_id ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.comp_actual_flg    = ''Y'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.correct_actual_flg = ''Y'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.status             = ''06'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.mov_hdr_id         = mril.mov_hdr_id ';
+        wk_sql1 := wk_sql1 || '       AND     mril.mov_line_id        = mld.mov_line_id ';
+        wk_sql1 := wk_sql1 || '       AND     mril.delete_flg         = ''N'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.item_id             = ilm.item_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.lot_id              = ilm.lot_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.document_type_code  = ''20'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.record_type_code    = ''20'') ';
+-- 2009/01/05 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '     )                                      stock_qty                '; -- 在庫総数
 -- 入庫予定SQL
         wk_sql1 := wk_sql1 || '    ,( ';
@@ -468,6 +503,40 @@ AS
         wk_sql1 := wk_sql1 || '       AND     mld.record_type_code      = ''20'' ';
         wk_sql1 := wk_sql1 || '       AND     otta.attribute1           = ''2'' ';
         wk_sql1 := wk_sql1 || '       AND     otta.transaction_type_id  = oha.order_type_id) ';
+-- 2009/01/05 D.Nihei ADD START
+        wk_sql1 := wk_sql1 || '      + ';
+        wk_sql1 := wk_sql1 || '      (SELECT  NVL(SUM(mld.actual_quantity), 0) - NVL(SUM(mld.before_actual_quantity), 0) ';
+        wk_sql1 := wk_sql1 || '       FROM    xxinv_mov_req_instr_headers mrih ';
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_req_instr_lines   mril ';
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_lot_details       mld  ';
+        wk_sql1 := wk_sql1 || '       WHERE   mrih.ship_to_locat_id   = enable_lot.inventory_location_id ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.comp_actual_flg    = ''Y'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.correct_actual_flg = ''Y'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.status             = ''06'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.mov_hdr_id         = mril.mov_hdr_id ';
+        wk_sql1 := wk_sql1 || '       AND     mril.mov_line_id        = mld.mov_line_id ';
+        wk_sql1 := wk_sql1 || '       AND     mril.delete_flg         = ''N'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.item_id             = ilm.item_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.lot_id              = ilm.lot_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.document_type_code  = ''20'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.record_type_code    = ''30'') ';
+        wk_sql1 := wk_sql1 || '      + ';
+        wk_sql1 := wk_sql1 || '      (SELECT  NVL(SUM(mld.before_actual_quantity), 0) - NVL(SUM(mld.actual_quantity), 0) ';
+        wk_sql1 := wk_sql1 || '       FROM    xxinv_mov_req_instr_headers mrih ';
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_req_instr_lines   mril ';
+        wk_sql1 := wk_sql1 || '             , xxinv_mov_lot_details       mld  ';
+        wk_sql1 := wk_sql1 || '       WHERE   mrih.shipped_locat_id   = enable_lot.inventory_location_id ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.comp_actual_flg    = ''Y'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.correct_actual_flg = ''Y'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.status             = ''06'' ';
+        wk_sql1 := wk_sql1 || '       AND     mrih.mov_hdr_id         = mril.mov_hdr_id ';
+        wk_sql1 := wk_sql1 || '       AND     mril.mov_line_id        = mld.mov_line_id ';
+        wk_sql1 := wk_sql1 || '       AND     mril.delete_flg         = ''N'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.item_id             = ilm.item_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.lot_id              = ilm.lot_id ';
+        wk_sql1 := wk_sql1 || '       AND     mld.document_type_code  = ''20'' ';
+        wk_sql1 := wk_sql1 || '       AND     mld.record_type_code    = ''20'') ';
+-- 2009/01/05 D.Nihei ADD END
         wk_sql1 := wk_sql1 || '     )                                      stock_qty                '; -- 在庫総数
 -- 入庫予定SQL
         wk_sql1 := wk_sql1 || '    ,( ';
