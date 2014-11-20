@@ -8,7 +8,7 @@ CREATE OR REPLACE VIEW xxinv_stc_entry_no_v
 AS 
 --2009/01/15 Add Start #3
 SELECT TO_CHAR(gbh.batch_no) AS ENTRY_NO
-      ,'10'                  AS CLASS
+      ,'1'                   AS CLASS
 FROM   gme_batch_header             gbh                  -- 生産バッチ
       ,gmd_routings_b               grb                  -- 工順マスタ
 WHERE  gbh.routing_id               = grb.routing_id
@@ -18,7 +18,7 @@ UNION
 --2009/01/15 Add End   #3
 SELECT DISTINCT TO_CHAR(gbh1.batch_no) AS ENTRY_NO
 --2009/01/15 Add Start #3
-      ,'20'                            AS CLASS
+      ,'2'                             AS CLASS
 --2009/01/15 Add End   #3
 FROM   xxcmn_rcv_pay_mst            xrpm1                 -- 受払区分アドオンマスタ
       ,gme_batch_header             gbh1                  -- 生産バッチ
@@ -45,7 +45,7 @@ AND (( gmd1.attribute5             IS NULL )
 UNION
 SELECT DISTINCT ijm2.journal_no   AS ENTRY_NO
 --2009/01/15 Add Start #3
-      ,'20'                       AS CLASS
+      ,'2'                        AS CLASS
 --2009/01/15 Add End   #3
 FROM   xxcmn_rcv_pay_mst            xrpm2                       -- 受払区分アドオンマスタ
       ,ic_adjs_jnl                  iaj2                        -- OPM在庫調整ジャーナル
@@ -63,7 +63,7 @@ AND    itc2.doc_line                = iaj2.doc_line
 UNION
 SELECT DISTINCT xoha3.request_no AS ENTRY_NO
 --2009/01/15 Add Start #3
-      ,'20'                      AS CLASS
+      ,'2'                       AS CLASS
 --2009/01/15 Add End   #3
 FROM   xxcmn_rcv_pay_mst            xrpm3                 -- 受払区分アドオンマスタ
       ,xxwsh_order_lines_all        xola3                 -- 受注明細(アドオン)
