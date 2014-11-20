@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_employee_v
  * Description     : 従業員ビュー
- * Version         : 1.4
+ * Version         : 1.5
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -14,6 +14,7 @@
  *  2009/02/26    1.2   T.kitajima       アサイメントの適用日項目を追加
  *  2009/10/16    1.3   S.Miyakoshi      [0001397]グループの所属条件を追加
  *  2010/04/20    1.4   K.Atsushiba      [E_本稼動_02151]本部コード対応
+ *  2010/05/26    1.5   S.Miyakoshi      [E_本稼動_02774]月中異動者の旧拠点情報取得の対応
  ************************************************************************/
 CREATE OR REPLACE VIEW XXCOS_EMPLOYEE_V (
     employee_number
@@ -142,7 +143,9 @@ SELECT    pap.employee_number,
      WHERE pap.person_id   = bif.person_id
        AND pap.person_id   = jre.source_id(+)
        AND jre.resource_id = jrm.resource_id(+)
-       AND jrm.delete_flag = 'N'
+-- == 2010/05/26 1.5 Del Start ===============================================================
+--       AND jrm.delete_flag = 'N'
+-- == 2010/05/26 1.5 Del End ===============================================================
        AND pap.attribute3 IN ('1','2')
        AND jrm.group_id    = jrb.group_id
        AND jrb.attribute1  = bif.base_code

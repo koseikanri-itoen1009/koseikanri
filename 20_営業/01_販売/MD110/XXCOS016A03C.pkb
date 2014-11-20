@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS016A03C(body)
  * Description      : 人事システム向け、販売実績賞与データ(I/F)作成処理
  * MD.050           : A03_人事システム向け販売実績データの作成（月次・賞与） COS_016_A03
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009/10/16    1.5   S.Miyakoshi      [0001397]二重計上の対応
  *  2010/01/22    1.6   S.Miyakoshi      [E_本稼動_01234](A-15)異常終了時のログ出力内容の変更
  *  2010/04/20    1.7   K.Atsushiba      [E_本稼動_02151]本部コード対応
+ *  2010/05/26    1.8   S.Miyakoshi      [E_本稼動_02774]月中退職者が未計上の対応
  *
  *****************************************************************************************/
 --
@@ -2900,8 +2901,14 @@ AS
 -- == 2010/04/20 1.7 Del START ===============================================================
 --        AND ld_month_next_date BETWEEN add_on_start_date AND add_on_end_date
 -- == 2010/04/20 1.7 Del END ===============================================================
-        AND ld_month_next_date BETWEEN effective_start_date AND effective_end_date
-        AND ld_month_next_date BETWEEN asaiment_start_date AND asaiment_end_date
+-- == 2010/05/26 1.8 Mod START ===============================================================
+--        AND ld_month_next_date BETWEEN effective_start_date AND effective_end_date
+--        AND ld_month_next_date BETWEEN asaiment_start_date AND asaiment_end_date
+        AND (effective_start_date   <= ld_month_next_date
+        AND  effective_end_date     >= ld_month_first_date)
+        AND (asaiment_start_date    <= ld_month_next_date
+        AND  asaiment_end_date      >= ld_month_first_date)
+-- == 2010/05/26 1.8 Mod End =================================================================
       ;
     TYPE t_datacur IS TABLE OF data_cur%ROWTYPE INDEX BY BINARY_INTEGER;
     l_data_rec        t_datacur;
