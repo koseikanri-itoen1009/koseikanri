@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価取込
  * MD.050           : 標準原価マスタ T_MD050_BPO_820
  * MD.070           : 標準原価取込   T_MD070_BPO_82A
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/09/10    1.3   Oracle 山根一浩  PT 2-2_18 指摘62対応
  *  2009/04/09    1.4   SCS丸下          本番障害1395 年度切替対応
  *  2009/04/27    1.5   SCS 椎名         本番障害1407対応
+ *  2009/05/12    1.6   SCS丸下          本番障害1474対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1050,6 +1051,7 @@ AS
     lv_item_year        VARCHAR2(4);
     lv_item_date        VARCHAR2(20);
     lv_parent_item_code VARCHAR2(10);
+    lv_item_type        VARCHAR2(1);
 --
     -- *** ローカル・カーソル ***
     -- 子単価取得カーソル xsli_request
@@ -1131,11 +1133,13 @@ AS
       AND xicv.item_class_code = cv_item_product
       AND ROWNUM = 1;
 --
+    lv_item_type := '5'; --2009/05/12 ADD 製品
     IF (ln_count = 0) THEN
       -- 品目区分チェックNG
       ir_report_rec.message1 := xxcmn_common_pkg.get_msg(
         gv_msg_kbn, gv_msg_ng_product,
         gv_tkn_item_value, ir_report_rec.item_code);
+      lv_item_type := '2'; --2009/05/12 ADD 資材を想定
     END IF;
 --
     -- 適用開始日時点存在チェック 適用開始日時点で登録されていること
@@ -1285,101 +1289,104 @@ AS
     in_total_amount := ln_price;
 --
     -- 親子関係チェック
-    BEGIN
-      SELECT ximv1.item_no
-            ,ximv2.parent_item_id
-      INTO lv_parent_item_code
-          ,ln_parent_item_id
-      FROM xxcmn_item_mst2_v ximv1           -- OPM品目情報VIEW
-          ,xxcmn_item_mst2_v ximv2           -- OPM品目情報VIEW
-      WHERE ximv1.item_id = ximv2.parent_item_id
-        AND ximv2.item_no = ir_report_rec.item_code
-        AND ximv2.start_date_active <= ld_start_date
-        AND ximv2.end_date_active >= ld_start_date
-        AND ROWNUM = 1;
---
-      -- 抽出データと親品目データが一致しない場合（親品目情報を取得）
-      IF (lv_parent_item_code <> ir_report_rec.item_code) THEN
-        SELECT COUNT(xsci.item_code)
-        INTO ln_count
-        FROM xxcmn_standard_cost_if xsci -- 標準原価インタフェース
-        WHERE xsci.item_code = lv_parent_item_code;
-        IF (ln_count = 0) THEN
-          ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
-            gv_msg_kbn, gv_msg_ng_itemcode_p,
-            gv_tkn_item_code_p, lv_parent_item_code,
-            gv_tkn_item_code_c, ir_report_rec.item_code);
-          RAISE check_data_expt;
-        END IF;
---
-        SELECT SUM(xsci.unit_price)
-        INTO ln_parent_price
-        FROM xxcmn_standard_cost_if xsci -- 標準原価インタフェース
-        WHERE xsci.item_code = lv_parent_item_code;
---
-        -- 親品目単価と子品目単価が一致しない場合
-        IF ((ln_price IS NULL) AND (ln_parent_price IS NOT NULL)) OR
-            ((ln_price IS NOT NULL) AND (ln_parent_price IS NULL)) OR
-            (ln_price <> ln_parent_price) THEN
-          ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
-            gv_msg_kbn, gv_msg_ng_unitprice_p,
-            gv_tkn_item_code_p, lv_parent_item_code,
-            gv_tkn_item_code_c, ir_report_rec.item_code);
-          RAISE check_data_expt;
-        END IF;
-      -- 抽出データと親品目データが一致する場合（子品目情報を取得）
-      ELSE
---
-        <<get_parnet_price_loop>>
-        FOR get_srl_data IN parent_price_cur(
-          ir_report_rec.item_code,
-          ln_parent_item_id,
-          ld_start_date)  LOOP
-          BEGIN
-            SELECT SUM(xsci.unit_price)
-            INTO ln_parent_price
-            FROM xxcmn_standard_cost_if xsci -- 標準原価インタフェース
-            WHERE xsci.item_code = get_srl_data.item_code;
-          EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-              ln_parent_price := NULL;
-          END;
-          -- 子品目情報が取得できない場合
-          IF (ln_parent_price IS  NULL) THEN
-            -- 廃止区分が「0（取扱中）」の場合
-            IF (get_srl_data.obsolete_class = cv_obsolete_handling) THEN
-              ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
-                gv_msg_kbn, gv_msg_ng_itemcode_c1,
-                gv_tkn_item_code_p, ir_report_rec.item_code,
-                gv_tkn_item_code_c, get_srl_data.item_code);
-              RAISE check_data_expt;
-            -- 廃止区分が「1（廃止）」の場合
-            ELSIF (get_srl_data.obsolete_class = cv_obsolete_abolition)THEN
-              ir_report_rec.message7 := xxcmn_common_pkg.get_msg(
-                gv_msg_kbn, gv_msg_ng_itemcode_c2,
-                gv_tkn_item_code_p, ir_report_rec.item_code,
-                gv_tkn_item_code_c, get_srl_data.item_code);
-            END IF;
-          ELSE
-            -- 親品目単価と子品目単価が一致しない場合
-            IF ((ln_price IS NULL) AND (ln_parent_price IS NOT NULL)) OR
-                ((ln_price IS NOT NULL) AND (ln_parent_price IS NULL)) OR
-                (ln_price <> ln_parent_price) THEN
-              ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
-                gv_msg_kbn, gv_msg_ng_unitprice_p,
-                gv_tkn_item_code_p, ir_report_rec.item_code,
-                gv_tkn_item_code_c, get_srl_data.item_code);
-              RAISE check_data_expt;
-            END IF;
+    -- 2009/05/12 製品の場合のみチェックに修正
+    IF (lv_item_type = '5' ) THEN
+      BEGIN
+        SELECT ximv1.item_no
+              ,ximv2.parent_item_id
+        INTO lv_parent_item_code
+            ,ln_parent_item_id
+        FROM xxcmn_item_mst2_v ximv1           -- OPM品目情報VIEW
+            ,xxcmn_item_mst2_v ximv2           -- OPM品目情報VIEW
+        WHERE ximv1.item_id = ximv2.parent_item_id
+          AND ximv2.item_no = ir_report_rec.item_code
+          AND ximv2.start_date_active <= ld_start_date
+          AND ximv2.end_date_active >= ld_start_date
+          AND ROWNUM = 1;
+  --
+        -- 抽出データと親品目データが一致しない場合（親品目情報を取得）
+        IF (lv_parent_item_code <> ir_report_rec.item_code) THEN
+          SELECT COUNT(xsci.item_code)
+          INTO ln_count
+          FROM xxcmn_standard_cost_if xsci -- 標準原価インタフェース
+          WHERE xsci.item_code = lv_parent_item_code;
+          IF (ln_count = 0) THEN
+            ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
+              gv_msg_kbn, gv_msg_ng_itemcode_p,
+              gv_tkn_item_code_p, lv_parent_item_code,
+              gv_tkn_item_code_c, ir_report_rec.item_code);
+            RAISE check_data_expt;
           END IF;
-        END LOOP get_parnet_price_loop;
---
-      END IF;
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        ln_parent_item_id := NULL;
-        lv_parent_item_code := NULL;
-    END;
+  --
+          SELECT SUM(xsci.unit_price)
+          INTO ln_parent_price
+          FROM xxcmn_standard_cost_if xsci -- 標準原価インタフェース
+          WHERE xsci.item_code = lv_parent_item_code;
+  --
+          -- 親品目単価と子品目単価が一致しない場合
+          IF ((ln_price IS NULL) AND (ln_parent_price IS NOT NULL)) OR
+              ((ln_price IS NOT NULL) AND (ln_parent_price IS NULL)) OR
+              (ln_price <> ln_parent_price) THEN
+            ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
+              gv_msg_kbn, gv_msg_ng_unitprice_p,
+              gv_tkn_item_code_p, lv_parent_item_code,
+              gv_tkn_item_code_c, ir_report_rec.item_code);
+            RAISE check_data_expt;
+          END IF;
+        -- 抽出データと親品目データが一致する場合（子品目情報を取得）
+        ELSE
+  --
+          <<get_parnet_price_loop>>
+          FOR get_srl_data IN parent_price_cur(
+            ir_report_rec.item_code,
+            ln_parent_item_id,
+            ld_start_date)  LOOP
+            BEGIN
+              SELECT SUM(xsci.unit_price)
+              INTO ln_parent_price
+              FROM xxcmn_standard_cost_if xsci -- 標準原価インタフェース
+              WHERE xsci.item_code = get_srl_data.item_code;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                ln_parent_price := NULL;
+            END;
+            -- 子品目情報が取得できない場合
+            IF (ln_parent_price IS  NULL) THEN
+              -- 廃止区分が「0（取扱中）」の場合
+              IF (get_srl_data.obsolete_class = cv_obsolete_handling) THEN
+                ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
+                  gv_msg_kbn, gv_msg_ng_itemcode_c1,
+                  gv_tkn_item_code_p, ir_report_rec.item_code,
+                  gv_tkn_item_code_c, get_srl_data.item_code);
+                RAISE check_data_expt;
+              -- 廃止区分が「1（廃止）」の場合
+              ELSIF (get_srl_data.obsolete_class = cv_obsolete_abolition)THEN
+                ir_report_rec.message7 := xxcmn_common_pkg.get_msg(
+                  gv_msg_kbn, gv_msg_ng_itemcode_c2,
+                  gv_tkn_item_code_p, ir_report_rec.item_code,
+                  gv_tkn_item_code_c, get_srl_data.item_code);
+              END IF;
+            ELSE
+              -- 親品目単価と子品目単価が一致しない場合
+              IF ((ln_price IS NULL) AND (ln_parent_price IS NOT NULL)) OR
+                  ((ln_price IS NOT NULL) AND (ln_parent_price IS NULL)) OR
+                  (ln_price <> ln_parent_price) THEN
+                ir_report_rec.skip_message := xxcmn_common_pkg.get_msg(
+                  gv_msg_kbn, gv_msg_ng_unitprice_p,
+                  gv_tkn_item_code_p, ir_report_rec.item_code,
+                  gv_tkn_item_code_c, get_srl_data.item_code);
+                RAISE check_data_expt;
+              END IF;
+            END IF;
+          END LOOP get_parnet_price_loop;
+  --
+        END IF;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          ln_parent_item_id := NULL;
+          lv_parent_item_code := NULL;
+      END;
+    END IF; -- 親子関係チェックEND
 --
     -- ステータスに正常を格納
     ir_report_rec.row_level_status := gn_data_status_normal;
