@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A01R (body)
  * Description      : 受注一覧リスト
  * MD.050           : 受注一覧リスト MD050_COS_009_A01
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2010/03/29    1.11  M.Sano           [E_本稼動_02006]PT対応(その他（CSV/画面）)
  *  2010/04/01    1.12  M.Sano           [E_本稼動_01811]受注ソース「出荷実績依頼」追加対応
  *  2011/04/20    1.13  N.Horigome       [E_本稼動_03310]EDI取込時の受注抽出条件修正対応
+ *  2012/01/30    1.14  K.Kiriu          [E_本稼動_08658]EDI出力時の出力数量変更対応
  *
  *****************************************************************************************/
 --
@@ -210,6 +211,9 @@ AS
   cv_tkn_nm_order_source_name    CONSTANT  VARCHAR2(100) :=  'ORDER_SOURCE_NAME';   --受注ソース名
   cv_tkn_nm_order_status         CONSTANT  VARCHAR2(100) :=  'ORDER_STATUS';        --ステータス
 /* 2010/04/01 Ver1.12 Add End   */
+/* 2012/01/30 Ver1.14 Add Start */
+  cv_tkn_output_quantity_type    CONSTANT  VARCHAR2(100) :=  'OUTPUT_QUANTITY_TYPE'; --出力数量区分
+/* 2012/01/30 Ver1.14 Add End   */
   --トークン値
   cv_msg_vl_order_date_from      CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11802';    --受注日(FROM)
   cv_msg_vl_order_date_to        CONSTANT  VARCHAR2(100) :=  'APP-XXCOS1-11803';    --受注日(TO)
@@ -290,6 +294,11 @@ AS
   cn_record_type_detail     CONSTANT  NUMBER        := 1;                      -- レコードタイプ：明細
   cn_record_type_denpyokei  CONSTANT  NUMBER        := 2;                      -- レコードタイプ：伝票計
 /* 2010/01/22 Ver1.9 Add End E_本稼動_00408対応 */
+/* 2012/01/30 Ver1.14 Add Start */
+  --出力数量区分
+  cv_edi_quantity_type      CONSTANT  VARCHAR2(1)   := '1';                    -- 出力数量区分：EDI
+  cv_oe_quantity_type       CONSTANT  VARCHAR2(1)   := '2';                    -- 出力数量区分：OE(画面)
+/* 2012/01/30 Ver1.14 Add End   */
 /* 2010/04/01 Ver1.12 Add Start */
   --その他定数
   cv_exists_yes             CONSTANT  VARCHAR2(1)   := 'Y';                    -- 存在チェック出力用
@@ -353,6 +362,9 @@ AS
 /* 2010/04/01 Ver1.12 Add Start */
     iv_order_status                 IN     VARCHAR2,         --   受注ステータス
 /* 2010/04/01 Ver1.12 Add End   */
+/* 2012/01/30 Ver1.14 Add Start */
+    iv_output_quantity_type         IN     VARCHAR2,         --   出力数量区分
+/* 2012/01/30 Ver1.14 Add End   */
     ov_errbuf                       OUT    VARCHAR2,         --   エラー・メッセージ           --# 固定 #
     ov_retcode                      OUT    VARCHAR2,         --   リターン・コード             --# 固定 #
     ov_errmsg                       OUT    VARCHAR2)         --   ユーザー・エラー・メッセージ --# 固定 #
@@ -374,6 +386,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+/* 2012/01/30 Ver1.14 Add Start */
+    lt_output_quantity_type fnd_lookup_values.lookup_type%TYPE := 'XXCOS1_OUTPUT_QUANTITY_TYPE';  --受注一覧用出力数量区分
+/* 2012/01/30 Ver1.14 Add End   */
 --
     -- *** ローカル変数 ***
     lv_para_msg      VARCHAR2(5000);                         -- パラメータ出力メッセージ
@@ -767,7 +782,15 @@ AS
 --        iv_token_value2       =>  iv_delivery_base_code
         iv_token_value2       =>  iv_delivery_base_code,
         iv_token_name3        =>  cv_tkn_nm_rep_out_type,
-        iv_token_value3       =>  iv_output_type
+/* 2012/01/30 Ver1.14 Mod Start */
+--        iv_token_value3       =>  iv_output_type
+        iv_token_value3       =>  iv_output_type,
+        iv_token_name4        =>  cv_tkn_output_quantity_type,
+        iv_token_value4       =>  xxcos_common_pkg.get_specific_master(
+                                    lt_output_quantity_type
+                                   ,iv_output_quantity_type
+                                  )
+/* 2012/01/30 Ver1.14 Mod End   */
 /* 2009/12/28 Ver1.9 Mod End   */
       );
 /* 2009/12/28 Ver1.9 Add Start */
@@ -786,7 +809,15 @@ AS
         iv_token_name5        =>  cv_tkn_nm_order_c_date_f_t,
         iv_token_value5       =>  iv_order_creation_date_from || ',' || iv_order_creation_date_to,
         iv_token_name6        =>  cv_tkn_nm_s_ordered_date_f_t,
-        iv_token_value6       =>  iv_ordered_date_h_from || ',' || iv_ordered_date_h_to
+/* 2012/01/30 Ver1.14 Mod Start */
+--        iv_token_value6       =>  iv_ordered_date_h_from || ',' || iv_ordered_date_h_to
+        iv_token_value6       =>  iv_ordered_date_h_from || ',' || iv_ordered_date_h_to,
+        iv_token_name7        =>  cv_tkn_output_quantity_type,
+        iv_token_value7       =>  xxcos_common_pkg.get_specific_master(
+                                    lt_output_quantity_type
+                                   ,iv_output_quantity_type
+                                  )
+/* 2012/01/30 Ver1.14 Mod End   */
       );
 /* 2009/12/28 Ver1.9 Add End   */
     END IF;
@@ -1369,6 +1400,9 @@ AS
 /* 2010/04/01 Ver1.12 Add Start */
     iv_order_status                 IN     VARCHAR2,     --   受注ステータス
 /* 2010/04/01 Ver1.12 Add End   */
+/* 2012/01/30 Ver1.14 Add Start */
+    iv_output_quantity_type         IN     VARCHAR2,     --   出力数量区分
+/* 2012/01/30 Ver1.14 Add End   */
     ov_errbuf                       OUT    VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode                      OUT    VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg                       OUT    VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1434,12 +1468,27 @@ AS
         ,otta.order_category_code              AS order_category_code        -- カテゴリ
 /* 2010/03/08 Ver1.10 Add Start */
 --        ,oola.ordered_quantity                 AS quantity                   -- 数量
-        ,NVL( ( SELECT xel.sum_order_qty
-                FROM   xxcos_edi_lines        xel
-                WHERE  xel.edi_header_info_id = xeh.edi_header_info_id
-                AND    xel.order_connection_line_number
+/* 2012/01/30 Ver1.14 Mod Start */
+--        ,NVL( ( SELECT xel.sum_order_qty
+--                FROM   xxcos_edi_lines        xel
+--                WHERE  xel.edi_header_info_id = xeh.edi_header_info_id
+--                AND    xel.order_connection_line_number
+--                                              = oola.orig_sys_line_ref )
+--             , oola.ordered_quantity )         AS quantity                   -- 数量
+        ,CASE
+           --出力数量区分が"1"(EDIの数量)の場合
+           WHEN iv_output_quantity_type = cv_edi_quantity_type THEN
+             NVL( ( SELECT xel.sum_order_qty
+                    FROM   xxcos_edi_lines        xel
+                    WHERE  xel.edi_header_info_id = xeh.edi_header_info_id
+                    AND    xel.order_connection_line_number
                                               = oola.orig_sys_line_ref )
-             , oola.ordered_quantity )         AS quantity                   -- 数量
+               , oola.ordered_quantity )
+           --出力数量区分が"2"(受注画面の数量)の場合
+           WHEN iv_output_quantity_type = cv_oe_quantity_type  THEN
+             oola.ordered_quantity
+         END                                   AS quantity                   -- 数量
+/* 2012/01/30 Ver1.14 Mod End   */
 /* 2010/03/08 Ver1.10 Add End   */
         ,oola.order_quantity_uom               AS uom_code                   -- 受注単位
         ,oola.unit_selling_price               AS dlv_unit_price             -- 販売単価
@@ -2860,6 +2909,9 @@ AS
 /* 2010/04/01 Ver1.12 Add Start */
     iv_order_status                 IN     VARCHAR2,         --   受注ステータス
 /* 2010/04/01 Ver1.12 Add End   */
+/* 2012/01/30 Ver1.14 Add Start */
+    iv_output_quantity_type         IN     VARCHAR2,         --   出力数量区分
+/* 2012/01/30 Ver1.14 Add End   */
     ov_errbuf                       OUT    VARCHAR2,         --   エラー・メッセージ           --# 固定 #
     ov_retcode                      OUT    VARCHAR2,         --   リターン・コード             --# 固定 #
     ov_errmsg                       OUT    VARCHAR2)         --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2950,6 +3002,9 @@ AS
 /* 2010/04/01 Ver1.12 Add Start */
       iv_order_status,              -- 受注ステータス
 /* 2010/04/01 Ver1.12 Add End   */
+/* 2012/01/30 Ver1.14 Add Start */
+      iv_output_quantity_type,      -- 出力数量区分
+/* 2012/01/30 Ver1.14 Add End   */
       lv_errbuf,                    -- エラー・メッセージ           --# 固定 #
       lv_retcode,                   -- リターン・コード             --# 固定 #
       lv_errmsg);                   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3025,6 +3080,9 @@ AS
 /* 2010/04/01 Ver1.12 Add Start */
       iv_order_status,              -- 受注ステータス
 /* 2010/04/01 Ver1.12 Add End   */
+/* 2012/01/30 Ver1.14 Add Start */
+      iv_output_quantity_type,      -- 出力数量区分
+/* 2012/01/30 Ver1.14 Add End   */
       lv_errbuf,                    -- エラー・メッセージ           --# 固定 #
       lv_retcode,                   -- リターン・コード             --# 固定 #
       lv_errmsg);                   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3206,7 +3264,11 @@ AS
 /* 2010/04/01 Ver1.12 Mod Start */
 --    iv_ordered_date_h_to            IN     VARCHAR2          --   納品日(ヘッダ)(TO)
     iv_ordered_date_h_to            IN     VARCHAR2,         --   納品日(ヘッダ)(TO)
-    iv_order_status                 IN     VARCHAR2          --   受注ステータス
+/* 2012/01/30 Ver1.14 Mod Start */
+--    iv_order_status                 IN     VARCHAR2          --   受注ステータス
+    iv_order_status                 IN     VARCHAR2,         --   受注ステータス
+    iv_output_quantity_type         IN     VARCHAR2          --   出力数量区分
+/* 2012/01/30 Ver1.14 Mod End   */
 /* 2010/04/01 Ver1.12 Mod End   */
 /* 2009/12/28 Ver1.9 Mod End   */
   )
@@ -3284,6 +3346,9 @@ AS
 /* 2010/04/01 Ver1.12 Add Start */
       ,iv_order_status                 -- 受注ステータス
 /* 2010/04/01 Ver1.12 Add End   */
+/* 2012/01/30 Ver1.14 Add Start */
+      ,iv_output_quantity_type         -- 出力数量区分
+/* 2012/01/30 Ver1.14 Add End   */
       ,lv_errbuf                       -- エラー・メッセージ           --# 固定 #
       ,lv_retcode                      -- リターン・コード             --# 固定 #
       ,lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
