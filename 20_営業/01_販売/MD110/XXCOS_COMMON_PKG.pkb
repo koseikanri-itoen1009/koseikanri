@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(販売)
  * MD.070           : 共通関数    MD070_IPO_COS
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * --------------------------- ------ ---------- -----------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2008/11/21    1.0   SCS              新規作成
  *  2009/04/30    1.1   T.Kitajima       [T1_0710]get_delivered_from 出荷拠点コード取得方法変更
  *  2009/05/14    1.2   N.Maeda          [T1_0997]納品形態区分の導出方法修正
+ *  2009/08/03    1.3   N.Maeda          [0000433]get_account_period,get_specific_masterの
+ *                                                参照タイプコード取得時の不要なテーブル結合の削除
  *
  *****************************************************************************************/
 --
@@ -2424,27 +2426,37 @@ AS
 --
     -- 会計区分 値チェック
     BEGIN
+-- ******************** 2009/08/03 1.3 N.Maeda MOD START ******************************--
+--      SELECT  COUNT(1)
+--      INTO    ln_lookup_cnt
+--      FROM    fnd_lookup_values     look_val,
+--              fnd_lookup_types_tl   types_tl,
+--              fnd_lookup_types      types,
+--              fnd_application_tl    appl,
+--              fnd_application       app
+--      WHERE   appl.application_id   = types.application_id
+--      AND     app.application_id    = appl.application_id
+--      AND     types_tl.lookup_type  = look_val.lookup_type
+--      AND     types.lookup_type     = types_tl.lookup_type
+--      AND     types.security_group_id   = types_tl.security_group_id
+--      AND     types.view_application_id = types_tl.view_application_id
+--      AND     types_tl.language = cv_tkn_ja
+--      AND     look_val.language = cv_tkn_ja
+--      AND     appl.language     = cv_tkn_ja
+--      AND     app.application_short_name = ct_xxcos_appl_short_name
+--      AND     look_val.lookup_type       = cv_acc_lookup_type
+--      AND     look_val.meaning           = iv_account_period
+--      AND     ROWNUM = 1
+--      ;
+--
       SELECT  COUNT(1)
       INTO    ln_lookup_cnt
-      FROM    fnd_lookup_values     look_val,
-              fnd_lookup_types_tl   types_tl,
-              fnd_lookup_types      types,
-              fnd_application_tl    appl,
-              fnd_application       app
-      WHERE   appl.application_id   = types.application_id
-      AND     app.application_id    = appl.application_id
-      AND     types_tl.lookup_type  = look_val.lookup_type
-      AND     types.lookup_type     = types_tl.lookup_type
-      AND     types.security_group_id   = types_tl.security_group_id
-      AND     types.view_application_id = types_tl.view_application_id
-      AND     types_tl.language = cv_tkn_ja
-      AND     look_val.language = cv_tkn_ja
-      AND     appl.language     = cv_tkn_ja
-      AND     app.application_short_name = ct_xxcos_appl_short_name
-      AND     look_val.lookup_type       = cv_acc_lookup_type
-      AND     look_val.meaning           = iv_account_period
-      AND     ROWNUM = 1
+      FROM    fnd_lookup_values     look_val
+      WHERE   look_val.language     = cv_tkn_ja
+      AND     look_val.lookup_type  = cv_acc_lookup_type
+      AND     look_val.meaning      = iv_account_period
       ;
+-- ******************** 2009/08/03 1.3 N.Maeda MOD  END  ******************************--
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -2785,17 +2797,27 @@ AS
     --==============================================================
     --1.特定マスタ取得
     --==============================================================
+-- *************** 2009/08/03 N.Maeda 1.3 MOD START ******************** --
+--    SELECT flv.meaning
+--    INTO   lt_meaning
+--    FROM   fnd_lookup_values_vl  flv,
+--           fnd_lookup_types_vl   flt,
+--           fnd_application_tl    fat
+--    WHERE  fat.application_id = flt.application_id
+--    AND    fat.language       = cv_japan
+--    AND    flt.lookup_type    = flv.lookup_type
+--    AND    flv.lookup_type    = it_lookup_type
+--    AND    flv.lookup_code    = it_lookup_code
+--    ;
+--
     SELECT flv.meaning
     INTO   lt_meaning
-    FROM   fnd_lookup_values_vl  flv,
-           fnd_lookup_types_vl   flt,
-           fnd_application_tl    fat
-    WHERE  fat.application_id = flt.application_id
-    AND    fat.language       = cv_japan
-    AND    flt.lookup_type    = flv.lookup_type
-    AND    flv.lookup_type    = it_lookup_type
+    FROM   fnd_lookup_values_vl  flv
+    WHERE  flv.lookup_type    = it_lookup_type
     AND    flv.lookup_code    = it_lookup_code
     ;
+--
+-- *************** 2009/08/03 N.Maeda 1.3 MOD  END  ******************** --
 --
     --==============================================================
     --2.返却
