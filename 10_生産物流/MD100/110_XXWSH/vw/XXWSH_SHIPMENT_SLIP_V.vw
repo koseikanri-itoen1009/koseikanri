@@ -54,12 +54,27 @@ SELECT
   ,xic4v.item_class_code                               AS    item_class_code     -- 品目区分
   ,xola.request_item_code                             AS    shipping_item_code  -- コード(品目)
   ,xim2v.item_short_name                               AS    item_short_name     -- 商品名
+-- 2008/10/17 MOD START
+--  ,CASE 
+--    WHEN ( xola.reserved_quantity IS NULL ) THEN 
+--     TRUNC ( ( xola.quantity /  xim2v.num_of_cases ),3 )
+--    ELSE 
+--       xola.quantity
+--   END                                                 AS   case_quantity        -- ケース数量
   ,CASE 
-    WHEN ( xola.reserved_quantity IS NULL ) THEN 
-     TRUNC ( ( xola.quantity /  xim2v.num_of_cases ),3 )
-    ELSE 
-       xola.quantity
+    WHEN  ( ( xic4v.item_class_code = '5' ) AND ( xim2v.conv_unit IS NOT NULL  ) ) THEN
+          TRUNC ((xola.quantity / TO_NUMBER(
+                                            CASE
+                                              WHEN ( xim2v.num_of_cases > 0 ) THEN
+                                                xim2v.num_of_cases
+                                              ELSE
+                                                TO_CHAR(1)
+                                            END
+                                          )),3 )
+    ELSE
+          xola.quantity
    END                                                 AS   case_quantity        -- ケース数量
+-- 2008/10/17 MOD END
   ,ilm.attribute3                                      AS   lot_no               -- ロットNo
   ,xim2v.num_of_cases                                  AS   num_of_cases         -- 入数
   ,xmld.actual_quantity                                AS   actual_quantity      -- 数量
