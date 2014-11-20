@@ -57,7 +57,15 @@ SELECT
   ,xoha.deliver_from                  AS  deliver_from           --"出庫元(コード)"
   ,xlv.zip                            AS  shipped_zip            --"出庫元(郵便番号)"
   ,xlv.address_line1                  AS  shipped_address        --"出庫元(住所)"
-  ,xilv.description                   AS  shipped_name           --"出庫元(名称)"
+--2009/01/21 Mod Start
+  ,CASE
+     WHEN xilv.whse_inside_outside_div = 1 THEN
+       SUBSTRB('(株)伊藤園' || xilv.description,1,50)
+     ELSE
+       xilv.description
+   END                                AS  shipped_name           --"出庫元(名称)"
+--  ,xilv.description                   AS  shipped_name           --"出庫元(名称)"
+--2009/01/21 Mod End
   ,xlv.phone                          AS  shipped_phone          --"出庫元(電話番号)"
   ,TO_CHAR('配達指定　有 ・ 無')      AS  deli_shitei            --"配達指定"
   ---------------------------------------------------------------------------------
@@ -224,7 +232,15 @@ SELECT
   ,xoha.deliver_from                  AS  deliver_from           --"出庫元(コード)"
   ,xlv.zip                            AS  shipped_zip            --"出庫元(郵便番号)"
   ,xlv.address_line1                  AS  shipped_address        --"出庫元(住所)"
-  ,xilv.description                   AS  shipped_name           --"出庫元(名称)"
+--2009/01/21 Mod Start
+  ,CASE
+     WHEN xilv.whse_inside_outside_div = 1 THEN
+       SUBSTRB('(株)伊藤園' || xilv.description,1,50)
+     ELSE
+       xilv.description
+     END                              AS  shipped_name           --"出庫元(名称)"
+--  ,xilv.description                   AS  shipped_name           --"出庫元(名称)"
+--2009/01/21 Mod End
   ,xlv.phone                          AS  shipped_phone          --"出庫元(電話番号)"
   ,TO_CHAR('配達指定　有 ・ 無')      AS  deli_shitei            --"配達指定"
   ---------------------------------------------------------------------------------
@@ -380,7 +396,15 @@ SELECT
   ,xmrih.shipped_locat_code            AS  deliver_from           --"出庫元(コード)"
   ,xlv2.zip                            AS  shipped_zip            --"出庫元(郵便番号)"
   ,xlv2.address_line1                  AS  shipped_address        --"出庫元(住所)"
-  ,xilv2.description                   AS  shipped_name           --"出庫元(名称)"
+--2009/01/21 Mod Start
+  ,CASE
+     WHEN xilv2.whse_inside_outside_div = 1 THEN
+       SUBSTRB('(株)伊藤園' || xilv2.description,1,50)
+     ELSE
+       xilv2.description
+     END                               AS  shipped_name           --"出庫元(名称)"
+--  ,xilv2.description                   AS  shipped_name           --"出庫元(名称)"
+--2009/01/21 Mod End
   ,xlv2.phone                          AS  shipped_phone          --"出庫元(電話番号)"
   ,TO_CHAR('配達指定　有 ・ 無')       AS  deli_shitei            --"配達指定"
   ---------------------------------------------------------------------------------
@@ -389,7 +413,15 @@ SELECT
   ,xmrih.ship_to_locat_code            AS  deliver_to             --"配送先/入庫先(コード)"
   ,xlv1.zip                            AS  ship_zip               --"配送先/入庫先(郵便番号)"
   ,xlv1.address_line1                  AS  ship_address           --"配送先/入庫先(住所)"
-  ,xilv1.description                   AS  ship_name              --"配送先/入庫先(名称)"
+--2009/01/21 Mod Start
+  ,CASE
+     WHEN xilv1.whse_inside_outside_div = 1 THEN
+       SUBSTRB('(株)伊藤園' || xilv1.description,1,50)
+     ELSE
+       xilv1.description
+     END                               AS  shipped_name           --"出庫元(名称)"
+--  ,xilv1.description                   AS  ship_name              --"配送先/入庫先(名称)"
+--2009/01/21 Mod End
   ,xlv1.phone                          AS  ship_phone             --"配送先/入庫先(電話番号)"
 FROM
    xxinv_mov_req_instr_headers    xmrih     -- 移動依頼/指示ヘッダ(アドオン)
@@ -499,7 +531,15 @@ SELECT
   ,xcs.deliver_from                   AS deliver_from           --"出庫元(コード)"
   ,xlv_from.zip                       AS shipped_zip            --"出庫元(郵便番号)"
   ,xlv_from.address_line1             AS shipped_address        --"出庫元(住所)"
-  ,xilv_from.description              AS shipped_name           --"出庫元(名称)"
+--2009/01/21 Mod Start
+  ,CASE
+     WHEN xilv_from.whse_inside_outside_div = 1 THEN
+       SUBSTRB('(株)伊藤園' || xilv_from.description,1,50)
+     ELSE
+       xilv_from.description
+     END                               AS  shipped_name           --"出庫元(名称)"
+--  ,xilv_from.description              AS shipped_name           --"出庫元(名称)"
+--2009/01/21 Mod End
   ,xlv_from.phone                     AS shipped_phone          --"出庫元(電話番号)"
   ,'配達指定　有 ・ 無'               AS deli_shitei            --"配達指定"
   ---------------------------------------------------------------------------------
@@ -517,7 +557,16 @@ SELECT
    END                                AS ship_address           --"配送先/入庫先(住所)"
   ,CASE
      WHEN xcs.deliver_to_code_class IN ('1','10') THEN xcasv.party_site_full_name
-     WHEN xcs.deliver_to_code_class = '4'        THEN xilv.description
+--2009/01/21 Mod Start
+     WHEN xcs.deliver_to_code_class = '4'        THEN
+       CASE
+         WHEN xilv.whse_inside_outside_div = 1 THEN
+           SUBSTRB('(株)伊藤園' || xilv.description,1,50)
+         ELSE
+           xilv.description
+         END
+--     WHEN xcs.deliver_to_code_class = '4'        THEN xilv.description
+--2009/01/21 Mod End
      WHEN xcs.deliver_to_code_class = '11'         THEN xvsv.vendor_site_name
    END                                AS ship_name              --"配送先/入庫先(名称)"
   ,CASE
@@ -606,11 +655,11 @@ COMMENT ON COLUMN xxwsh_invoice_v.shipped_date IS '出庫予定日'
 /
 COMMENT ON COLUMN xxwsh_invoice_v.deliver_from IS '出庫元(コード)'
 /
-COMMENT ON COLUMN xxwsh_invoice_v.shipped_zip IS '出庫元(名称)'
+COMMENT ON COLUMN xxwsh_invoice_v.shipped_zip IS '出庫元(郵便番号)'
 /
-COMMENT ON COLUMN xxwsh_invoice_v.shipped_address IS '出庫元(郵便番号)'
+COMMENT ON COLUMN xxwsh_invoice_v.shipped_address IS '出庫元(住所)'
 /
-COMMENT ON COLUMN xxwsh_invoice_v.shipped_name IS '出庫元(住所)'
+COMMENT ON COLUMN xxwsh_invoice_v.shipped_name IS '出庫元(名称)'
 /
 COMMENT ON COLUMN xxwsh_invoice_v.shipped_phone IS '出庫元(電話番号)'
 /
@@ -620,11 +669,11 @@ COMMENT ON COLUMN xxwsh_invoice_v.party_name IS '管轄拠点'
 /
 COMMENT ON COLUMN xxwsh_invoice_v.deliver_to IS '配送先/入庫先(コード)'
 /
-COMMENT ON COLUMN xxwsh_invoice_v.ship_zip IS '配送先/入庫先(名称)'
+COMMENT ON COLUMN xxwsh_invoice_v.ship_zip IS '配送先/入庫先(郵便番号)'
 /
-COMMENT ON COLUMN xxwsh_invoice_v.ship_address IS '配送先/入庫先(郵便番号)'
+COMMENT ON COLUMN xxwsh_invoice_v.ship_address IS '配送先/入庫先(住所)'
 /
-COMMENT ON COLUMN xxwsh_invoice_v.ship_name IS '配送先/入庫先(住所)'
+COMMENT ON COLUMN xxwsh_invoice_v.ship_name IS '配送先/入庫先(名称)'
 /
 COMMENT ON COLUMN xxwsh_invoice_v.ship_phone IS '配送先/入庫先(電話番号)'
 /
