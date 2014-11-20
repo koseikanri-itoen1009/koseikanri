@@ -7,7 +7,7 @@ AS
  * Description      : 配送先マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 配送先マスタインタフェース T_MD070_BPO_80F
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/05/09    1.1  Oracle 椎名 昭圭  変更要求#11･内部変更要求#62･#66対応
  *  2008/05/14    1.2  Oracle 椎名 昭圭  内部変更要求#96対応
  *  2008/05/16    1.3  Oracle 丸下 博宣  支払先サイトアドオン略称出力を追加
+ *  2008/06/12    1.4  Oracle 丸下       日付項目書式変更
  *
  *****************************************************************************************/
 --
@@ -505,9 +506,9 @@ AS
                                                                     || cv_sep_com   -- 区分18
                                                                     || cv_sep_com   -- 区分19
                                                                     || cv_sep_com   -- 区分20
-                        || TO_CHAR(gt_ship_mst_tbl(i).start_date_active, 'YYYYMMDD')
+                        || TO_CHAR(gt_ship_mst_tbl(i).start_date_active, 'YYYY/MM/DD')
                                                                     || cv_sep_com   -- 適用開始日
-                        || TO_CHAR(gt_ship_mst_tbl(i).last_update_date, 'YYYYMMDD')
+                        || TO_CHAR(gt_ship_mst_tbl(i).last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                         ;                                                           -- 更新日時
 --
           -- CSVファイルへ出力する場合
@@ -575,9 +576,9 @@ AS
                                                                     || cv_sep_com   -- 区分18
                                                                     || cv_sep_com   -- 区分19
                                                                     || cv_sep_com   -- 区分20
-                        || TO_CHAR(gt_pay_mst_tbl(i).start_date_active, 'YYYYMMDD')
+                        || TO_CHAR(gt_pay_mst_tbl(i).start_date_active, 'YYYY/MM/DD')
                                                                     || cv_sep_com   -- 適用開始日
-                        || TO_CHAR(gt_pay_mst_tbl(i).last_update_date, 'YYYYMMDD')
+                        || TO_CHAR(gt_pay_mst_tbl(i).last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                         ;                                                           -- 更新日時
 --
           -- CSVファイルへ出力する場合

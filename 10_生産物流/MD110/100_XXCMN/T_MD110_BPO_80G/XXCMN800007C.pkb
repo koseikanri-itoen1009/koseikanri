@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 倉庫マスタインタフェース T_MD070_BPO_80G
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2007/12/26    1.0  Oracle 椎名 昭圭  初回作成
  *  2008/05/02    1.1  Oracle 椎名 昭圭  変更要求#11･内部変更要求#62対応
+ *  2008/06/12    1.2  Oracle 丸下       日付項目書式変更
  *
  *****************************************************************************************/
 --
@@ -217,7 +218,7 @@ AS
           xxcmn_locations_all        xla,   -- 事業所アドオンマスタ
           hr_all_organization_units  haou,  -- 在庫組織マスタ
           xxcmn_item_locations_v     xilv   -- OPM保管場所情報VIEW
-    WHERE hla.attribute1            =  iv_deli_type
+    WHERE ((iv_deli_type IS NULL) OR (hla.attribute1 = iv_deli_type))
     AND   hla.location_id           =  xla.location_id
     AND   hla.location_id           =  haou.location_id
     AND   haou.organization_id      =  xilv.mtl_organization_id
@@ -393,9 +394,9 @@ AS
                                                                     || cv_sep_com   -- 区分18
                                                                     || cv_sep_com   -- 区分19
                                                                     || cv_sep_com   -- 区分20
-                        || TO_CHAR(gt_ware_mst_tbl(i).start_date_active, 'YYYYMMDD')
+                        || TO_CHAR(gt_ware_mst_tbl(i).start_date_active, 'YYYY/MM/DD')
                                                                     || cv_sep_com   -- 適用開始日
-                        || TO_CHAR(gt_ware_mst_tbl(i).last_update_date, 'YYYYMMDD')
+                        || TO_CHAR(gt_ware_mst_tbl(i).last_update_date, 'YYYY/MM/DD HH24:MI:SS')
                         ;                                                           -- 更新日時
 --
           -- CSVファイルへ出力する場合

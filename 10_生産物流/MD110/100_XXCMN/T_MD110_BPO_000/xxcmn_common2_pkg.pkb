@@ -57,7 +57,7 @@ AS
  *
  *  2008/02/04   抽出元のテーブルは、ビューを使用しない事とする。
  *  2008/04/03   1.1   oracle 丸下     内部変更要求#32 get_stock_qty修正
- *  2008/05/16   1.2   oracle 椎名     内部変更要求#98対応
+ *  2008/05/22   1.2   oracle 椎名     内部変更要求#98対応
  *
  *****************************************************************************************/
 --
@@ -885,7 +885,8 @@ AS
     AND     mld.lot_id              = in_lot_id
     AND     mld.document_type_code  = cv_doc_type
     AND     mld.record_type_code    = cv_rec_type
-    ;--
+    ;
+--
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
@@ -2670,7 +2671,7 @@ AS
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
     iv_item_code   IN VARCHAR2,             -- 品目コード
     id_eff_date    IN DATE,                 -- 有効日付
-    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    on_qty         OUT NOCOPY NUMBER,       -- 引当数
     ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2762,7 +2763,7 @@ AS
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
     iv_item_code   IN VARCHAR2,             -- 品目コード
     id_eff_date    IN DATE,                 -- 有効日付
-    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    on_qty         OUT NOCOPY NUMBER,       -- 引当数
     ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -2854,7 +2855,7 @@ AS
     in_whse_id     IN NUMBER,               -- 保管倉庫ID
     in_item_id     IN NUMBER,               -- 品目ID
     id_eff_date    IN DATE,                 -- 有効日付
-    on_qty         OUT NOCOPY NUMBER,       -- 数量
+    on_qty         OUT NOCOPY NUMBER,       -- 引当数
     ov_errbuf      OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode     OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg      OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -3548,7 +3549,7 @@ AS
       ln_stock_qty := ln_inv_lot_onhand 
                     + ln_inv_lot_in_inout_rpt_qty
                     + ln_inv_lot_in_in_rpt_qty
-                    + ln_inv_lot_out_inout_rpt_qty
+                    - ln_inv_lot_out_inout_rpt_qty
                     - ln_inv_lot_out_out_rpt_qty
                     - ln_inv_lot_ship_qty
                     - ln_inv_lot_provide_qty;
@@ -3802,7 +3803,7 @@ AS
       ln_stock_qty := ln_inv_onhand
                     + ln_inv_in_inout_rpt_qty
                     + ln_inv_in_in_rpt_qty
-                    + ln_inv_out_inout_rpt_qty
+                    - ln_inv_out_inout_rpt_qty
                     - ln_inv_out_out_rpt_qty
                     - ln_inv_ship_qty
                     - ln_inv_provide_qty;
