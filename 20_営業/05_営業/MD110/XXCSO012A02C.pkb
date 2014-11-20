@@ -7,7 +7,7 @@ AS
  * Description      : ファイルアップロードIFに取込まれたデータを
  *                    物件マスタ情報(IB)に登録します。
  * MD.050           : MD050_CSO_012_A02_自動販売機データ格納
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009-05-22    1.3   M.Ohtsuki        T1_1141対応      廃棄フラグに0を設定
  *  2009-01-13    1.4   K.Hosoi          E_本稼動_00443対応
+ *  2014-05-19    1.5   K.Nakamura       E_本稼動_11853対応 ベンダー購入対応
  *
  *****************************************************************************************/
 --
@@ -125,6 +126,17 @@ AS
   cv_tkn_number_50        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00557';  -- 機器区分取得エラー
   cv_tkn_number_32        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00518';  -- データ抽出0件メッセージ
   cv_tkn_number_51        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00550';  -- CSVデータフォーマットエラー
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+  cv_tkn_number_52        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00670';  -- リース区分
+  cv_tkn_number_53        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00662';  -- 申告地
+  cv_tkn_number_54        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00675';  -- 取得価格
+  cv_tkn_number_55        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00678';  -- 機種マスタビュー
+  cv_tkn_number_56        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00031';  -- 存在エラー
+  cv_tkn_number_57        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00680';  -- 参照タイプ ：
+  cv_tkn_number_58        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00681';  -- 値セット ：
+  cv_tkn_number_59        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00682';  -- 固定資産時必須エラー
+  cv_tkn_number_60        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00268';  -- マイナス値エラーメッセージ
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
   cv_target_rec_msg       CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90000';  -- 対象件数メッセージ
   cv_success_rec_msg      CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001';  -- 成功件数メッセージ
   cv_error_rec_msg        CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002';  -- エラー件数メッセージ
@@ -156,10 +168,26 @@ AS
   cv_tkn_value2           CONSTANT VARCHAR2(20) := 'VALUE2';
   cv_tkn_bukken           CONSTANT VARCHAR2(20) := 'BUKKEN';
   cv_cnt_token            CONSTANT VARCHAR2(10) := 'COUNT';           -- 件数メッセージ用トークン名
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+  cv_tkn_lookup_type_name CONSTANT VARCHAR2(20) := 'LOOKUP_TYPE_NAME';
+  cv_tkn_eigyo            CONSTANT VARCHAR2(20) := 'EIGYO';
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
-  cv_encoded_f            CONSTANT VARCHAR2(1)   := 'F';              -- FALSE   
+  cv_encoded_f            CONSTANT VARCHAR2(1)   := 'F';              -- FALSE
 --
-  cv_msg_conm             CONSTANT VARCHAR2(1)   := ',';              -- FALSE   
+  cv_msg_conm             CONSTANT VARCHAR2(1)   := ',';              -- カンマ
+--
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+  cv_hyphen               CONSTANT VARCHAR2(1)   := '-';                -- ハイフン
+  -- 値セット
+  cv_xxcff_dclr_place     CONSTANT VARCHAR2(30) := 'XXCFF_DCLR_PLACE';  -- 申告地
+  -- 参照タイプ
+  cv_xxcso1_lease_kbn     CONSTANT VARCHAR2(30) := 'XXCSO1_LEASE_KBN';  -- リース区分
+  --
+  cv_fixed_assets         CONSTANT VARCHAR2(1)  := '4';                 -- リース区分「固定資産」
+  cv_y                    CONSTANT VARCHAR2(1)  := 'Y';                 -- 有効フラグY
+  ct_language             CONSTANT fnd_flex_values_tl.language%TYPE := USERENV('LANG'); -- 言語
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -242,6 +270,10 @@ AS
     ,last_jotai_kbn        NUMBER               -- 先月末機器状態
     ,last_year_month       NUMBER               -- 先月末年月
 /*20090326_matsunaka_ST183 END*/
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    ,vd_shutoku_kg         NUMBER               -- 取得価格
+    ,dclr_place            NUMBER               -- 申告地
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
   );
   -- 追加属性ID格納用レコード変数
   gr_ext_attribs_id_rec   gr_ib_ext_attribs_id_rtype;
@@ -254,6 +286,11 @@ AS
     object_code          VARCHAR2(10)            -- 物件コード
    ,serial_code          VARCHAR2(15)            -- 機種コード
    ,base_code            VARCHAR2(4)             -- 拠点コード
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+   ,lease_kbn            VARCHAR2(1)             -- リース区分
+   ,dclr_place           VARCHAR2(5)             -- 申告地
+   ,vd_shutoku_kg        VARCHAR2(10)            -- 取得価格
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
   );
   gr_blob_data gr_blob_data_rtype;
 --  
@@ -535,10 +572,16 @@ AS
     -- 先月末年月
     cv_last_year_month        CONSTANT VARCHAR2(100) := 'LAST_YEAR_MONTH';
 /*20090326_matsunaka_ST183 END*/
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    -- 取得価格
+    cv_vd_shutoku_kg          CONSTANT VARCHAR2(100) := 'VD_SHUTOKU_KG';
+    -- 申告地
+    cv_dclr_place             CONSTANT VARCHAR2(100) := 'DCLR_PLACE';
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     -- *** ローカル変数 ***
     -- 業務処理日
-    ld_process_date           DATE;    
+    ld_process_date           DATE;
     -- コンカレント入力パラメータなしメッセージ格納用
     lv_noprm_msg              VARCHAR2(5000);  
     -- プロファイル値取得失敗時 トークン値格納用
@@ -1871,6 +1914,54 @@ AS
       RAISE global_process_expt;
     END IF;
 /*20090326_matsunaka_ST183 END*/
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    -- 追加属性ID(取得価格)
+    gr_ext_attribs_id_rec.vd_shutoku_kg := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                              cv_vd_shutoku_kg
+                                             ,ld_process_date
+                                           );
+    IF ( gr_ext_attribs_id_rec.vd_shutoku_kg IS NULL ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_54 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => lv_msg                       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_vd_shutoku_kg             -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    -- 追加属性ID(申告地)
+    gr_ext_attribs_id_rec.dclr_place := xxcso_ib_common_pkg.get_ib_ext_attribs_id(
+                                           cv_dclr_place
+                                          ,ld_process_date
+                                        );
+    IF ( gr_ext_attribs_id_rec.dclr_place IS NULL ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_53 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                  -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_12             -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                     ,iv_token_value1 => cv_attribute_id_info         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_attribute_name        -- トークンコード2
+                     ,iv_token_value2 => lv_msg                       -- トークン値2
+                     ,iv_token_name3  => cv_tkn_attribute_code        -- トークンコード3
+                     ,iv_token_value3 => cv_dclr_place                -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     -- ========================
     -- 本社/工場区分(本社)取得 
@@ -2033,13 +2124,12 @@ AS
       lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_app_name,         -- アプリケーション短縮名：XXCSO
                      cv_tkn_number_40,    -- メッセージ：データ変換エラー
-                     cv_tkn_table,        
-                     cv_table_name,    
-                     cv_tkn_file_id,        
-                     in_file_id,    
-                     cv_tkn_errmsg,        
-                     SQLERRM)
-;
+                     cv_tkn_table,
+                     cv_table_name,
+                     cv_tkn_file_id,
+                     in_file_id,
+                     cv_tkn_errmsg,
+                     SQLERRM);
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
@@ -2104,7 +2194,10 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
-    cn_format_col_cnt        CONSTANT NUMBER := 3;  -- 項目数
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+--    cn_format_col_cnt        CONSTANT NUMBER := 3;  -- 項目数
+    cn_format_col_cnt        CONSTANT NUMBER := 6;  -- 項目数
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     -- *** ローカル変数 ***
     lv_object_front          VARCHAR2(3);
@@ -2115,6 +2208,10 @@ AS
     lv_tmp                   VARCHAR2(2000);
     ln_pos                   NUMBER;
     ln_cnt                   NUMBER := 1;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    lv_msg                   VARCHAR2(5000);
+    lv_vd_shutoku_kg         VARCHAR2(2000); -- チェック用
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     -- *** ローカル例外 ***
 --    
@@ -2172,9 +2269,9 @@ AS
       lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_app_name,         -- アプリケーション短縮名：XXCSO
                      cv_tkn_number_41,
-                     cv_tkn_item,        
-                     cv_object_code,    
-                     cv_tkn_base_value,        
+                     cv_tkn_item,
+                     cv_object_code,
+                     cv_tkn_base_value,
                      it_blob_data(in_data_num)
                      );
       lv_errbuf := lv_errmsg;
@@ -2189,9 +2286,9 @@ AS
       lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_app_name,         -- アプリケーション短縮名：XXCSO
                      cv_tkn_number_41,
-                     cv_tkn_item,        
-                     cv_serial_code,    
-                     cv_tkn_base_value,        
+                     cv_tkn_item,
+                     cv_serial_code,
+                     cv_tkn_base_value,
                      it_blob_data(in_data_num)
                      );
       lv_errbuf := lv_errmsg;
@@ -2206,14 +2303,32 @@ AS
       lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_app_name,         -- アプリケーション短縮名：XXCSO
                      cv_tkn_number_41,
-                     cv_tkn_item,        
-                     cv_base_code,    
-                     cv_tkn_base_value,        
+                     cv_tkn_item,
+                     cv_base_code,
+                     cv_tkn_base_value,
                      it_blob_data(in_data_num)
                      );
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
+--
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    -- リース区分
+    gr_blob_data.lease_kbn := xxccp_common_pkg.char_delim_partition(it_blob_data(in_data_num)
+                                                                   ,cv_msg_conm
+                                                                   ,4);
+--
+    -- 申告地
+    gr_blob_data.dclr_place := xxccp_common_pkg.char_delim_partition(it_blob_data(in_data_num)
+                                                                    ,cv_msg_conm
+                                                                    ,5);
+--
+    -- 取得価格
+    lv_vd_shutoku_kg := NULL;
+    lv_vd_shutoku_kg := xxccp_common_pkg.char_delim_partition(it_blob_data(in_data_num)
+                                                             ,cv_msg_conm
+                                                             ,6);
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     -- ***************************************************
     -- 3.項目値妥当性チェック
@@ -2226,13 +2341,35 @@ AS
     ELSE
       lv_errmsg := xxccp_common_pkg.get_msg(
                    cv_app_name,         -- アプリケーション短縮名：XXCSO
-                   cv_tkn_number_42,    
+                   cv_tkn_number_42,
                    cv_tkn_base_value,
                    gr_blob_data.object_code
                    );
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
+--
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    -- 取得価格マイナス値チェック
+    lv_substr := SUBSTRB(lv_vd_shutoku_kg,1,1);
+    IF ( lv_substr = cv_hyphen ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_54 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      cv_app_name
+                     ,cv_tkn_number_60
+                     ,cv_tkn_eigyo
+                     ,lv_msg
+                     ,cv_tkn_base_value
+                     ,lv_vd_shutoku_kg
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+--
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     --物件コード半角数字チェック
     lb_ret := xxccp_common_pkg.chk_number(
@@ -2241,23 +2378,46 @@ AS
       lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_app_name,         -- アプリケーション短縮名：XXCSO
                      cv_tkn_number_43,
-                     cv_tkn_item,        
-                     cv_object_code,    
-                     cv_tkn_base_value,        
+                     cv_tkn_item,
+                     cv_object_code,
+                     cv_tkn_base_value,
                      gr_blob_data.object_code
                      );
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
 --
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    -- 取得価格半角数字チェック
+    lb_ret := xxccp_common_pkg.chk_number(
+                iv_check_char   => lv_vd_shutoku_kg
+              );
+    IF ( lb_ret = FALSE ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_54 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      cv_app_name
+                     ,cv_tkn_number_43
+                     ,cv_tkn_item
+                     ,lv_msg
+                     ,cv_tkn_base_value
+                     ,lv_vd_shutoku_kg
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+--
     --物件コードLENGTHチェック
     IF (LENGTHB(gr_blob_data.object_code) <> 10) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_app_name,         -- アプリケーション短縮名：XXCSO
                      cv_tkn_number_44,
-                     cv_tkn_item,        
-                     cv_object_code,    
-                     cv_tkn_base_value,        
+                     cv_tkn_item,
+                     cv_object_code,
+                     cv_tkn_base_value,
                      gr_blob_data.object_code
                      );
       lv_errbuf := lv_errmsg;
@@ -2269,14 +2429,36 @@ AS
       lv_errmsg := xxccp_common_pkg.get_msg(
                      cv_app_name,         -- アプリケーション短縮名：XXCSO
                      cv_tkn_number_44,
-                     cv_tkn_item,        
-                     cv_serial_code,    
-                     cv_tkn_base_value,        
+                     cv_tkn_item,
+                     cv_serial_code,
+                     cv_tkn_base_value,
                      gr_blob_data.serial_code
                      );
       lv_errbuf := lv_errmsg;
       RAISE global_process_expt;
     END IF;
+--
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    -- 取得価格LENGTHチェック
+    IF ( LENGTHB(lv_vd_shutoku_kg) > 10 ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name        => cv_tkn_number_54 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      cv_app_name
+                     ,cv_tkn_number_44
+                     ,cv_tkn_item
+                     ,lv_msg
+                     ,cv_tkn_base_value
+                     ,lv_vd_shutoku_kg
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    gr_blob_data.vd_shutoku_kg := lv_vd_shutoku_kg;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -2344,6 +2526,14 @@ AS
     -- *** ローカル変数 ***
     ln_cnt          NUMBER;
     lv_hazard_class po_un_numbers_vl.hazard_class_id%TYPE;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    lv_msg                   VARCHAR2(5000);
+    lv_msg2                  VARCHAR2(5000);
+    lb_ret                   BOOLEAN DEFAULT TRUE;
+    lt_lease_kbn             po_un_numbers_vl.attribute13%TYPE; -- リース区分
+    lt_vd_shutoku_kg         po_un_numbers_vl.attribute14%TYPE; -- 取得価格
+    lt_dclr_place            fnd_flex_values.flex_value%TYPE;   -- 申告地
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     -- *** ローカル例外 ***
 --    
@@ -2405,9 +2595,17 @@ AS
       SELECT flvv.meaning
             ,punv.attribute3
             ,punv.hazard_class_id
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+            ,punv.attribute13
+            ,punv.attribute14
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
       INTO   gv_maker_name
             ,gv_age_type
             ,lv_hazard_class
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+            ,lt_lease_kbn
+            ,lt_vd_shutoku_kg
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
       FROM   po_un_numbers_vl punv
             ,fnd_lookup_values_vl flvv
       WHERE  punv.un_number = gr_blob_data.serial_code
@@ -2499,6 +2697,267 @@ AS
         lv_errbuf := lv_errmsg;
         RAISE global_process_expt;
     END;
+--
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+  -- ***************************************************
+  -- 4.リース区分チェック
+  -- ***************************************************
+    -- 分割データのリース区分に値が設定されていない場合
+    IF ( gr_blob_data.lease_kbn IS NULL ) THEN
+      -- 機種マスタの値を設定
+      gr_blob_data.lease_kbn := lt_lease_kbn;
+    END IF;
+    --
+    -- 機種マスタのリース区分もNULLである場合
+    IF ( gr_blob_data.lease_kbn IS NULL ) THEN
+      lv_msg    := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_52 -- メッセージ
+                   );
+      lv_msg2   := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name      -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_55 -- メッセージ
+                   );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_app_name                    -- アプリケーション短縮名
+                     ,iv_name         => cv_tkn_number_56               -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_item                    -- トークンコード1
+                     ,iv_token_value1 => lv_msg                         -- トークン値1
+                     ,iv_token_name2  => cv_tkn_table                   -- トークンコード2
+                     ,iv_token_value2 => lv_msg2                        -- トークン値2
+                     ,iv_token_name3  => cv_tkn_base_value              -- トークンコード3
+                     ,iv_token_value3 => gr_blob_data.object_code || cv_msg_conm ||
+                                         gr_blob_data.serial_code || cv_msg_conm ||
+                                         gr_blob_data.base_code   || cv_msg_conm ||
+                                         gr_blob_data.lease_kbn   || cv_msg_conm ||
+                                         gr_blob_data.dclr_place  || cv_msg_conm ||
+                                         gr_blob_data.vd_shutoku_kg     -- トークン値3
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_process_expt;
+    END IF;
+    --
+    -- リース区分のマスタチェック
+    BEGIN
+      SELECT flvv.lookup_code     lookup_code
+      INTO   lt_lease_kbn
+      FROM   fnd_lookup_values_vl flvv
+      WHERE  flvv.lookup_type  = cv_xxcso1_lease_kbn
+      AND    flvv.lookup_code  = gr_blob_data.lease_kbn
+      AND    flvv.enabled_flag = cv_y
+      AND    gd_process_date   BETWEEN NVL(flvv.start_date_active, gd_process_date)
+                               AND     NVL(flvv.end_date_active, gd_process_date)
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_msg    := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_52               -- メッセージ
+                     );
+        lv_msg2   := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_57               -- メッセージ
+                       ,iv_token_name1  => cv_tkn_lookup_type_name        -- トークンコード1
+                       ,iv_token_value1 => cv_xxcso1_lease_kbn            -- トークン値1
+                     );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_56               -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_item                    -- トークンコード1
+                       ,iv_token_value1 => lv_msg                         -- トークン値1
+                       ,iv_token_name2  => cv_tkn_table                   -- トークンコード2
+                       ,iv_token_value2 => lv_msg2                        -- トークン値2
+                       ,iv_token_name3  => cv_tkn_base_value              -- トークンコード3
+                       ,iv_token_value3 => gr_blob_data.object_code || cv_msg_conm ||
+                                           gr_blob_data.serial_code || cv_msg_conm ||
+                                           gr_blob_data.base_code   || cv_msg_conm ||
+                                           gr_blob_data.lease_kbn   || cv_msg_conm ||
+                                           gr_blob_data.dclr_place  || cv_msg_conm ||
+                                           gr_blob_data.vd_shutoku_kg     -- トークン値3
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      -- 抽出に失敗した場合
+      WHEN OTHERS THEN
+        lv_msg2   := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_57               -- メッセージ
+                       ,iv_token_name1  => cv_tkn_lookup_type_name        -- トークンコード1
+                       ,iv_token_value1 => cv_xxcso1_lease_kbn            -- トークン値1
+                     );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_45               -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_table                   -- トークンコード1
+                       ,iv_token_value1 => lv_msg2                        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_errmsg                  -- トークンコード2
+                       ,iv_token_value2 => SQLERRM                        -- トークン値2
+                       ,iv_token_name3  => cv_tkn_process                 -- トークンコード3
+                       ,iv_token_value3 => cv_select_process              -- トークン値3
+                       ,iv_token_name4  => cv_tkn_base_value              -- トークンコード4
+                       ,iv_token_value4 => gr_blob_data.object_code || cv_msg_conm ||
+                                           gr_blob_data.serial_code || cv_msg_conm ||
+                                           gr_blob_data.base_code   || cv_msg_conm ||
+                                           gr_blob_data.lease_kbn   || cv_msg_conm ||
+                                           gr_blob_data.dclr_place  || cv_msg_conm ||
+                                           gr_blob_data.vd_shutoku_kg      -- トークン値4
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+    END;
+--
+  -- ***************************************************
+  -- 5.申告地チェック
+  -- ***************************************************
+    -- リース区分が固定資産以外の場合
+    IF ( gr_blob_data.lease_kbn <> cv_fixed_assets ) THEN
+      -- NULLを設定
+      gr_blob_data.dclr_place := NULL;
+    -- リース区分が固定資産の場合
+    ELSIF ( gr_blob_data.lease_kbn = cv_fixed_assets ) THEN
+      -- 申告地に値が設定されていない場合
+      IF ( gr_blob_data.dclr_place IS NULL ) THEN
+        lv_msg    := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_53               -- メッセージ
+                     );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_59               -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_item                    -- トークンコード1
+                       ,iv_token_value1 => lv_msg                         -- トークン値1
+                       ,iv_token_name2  => cv_tkn_base_value              -- トークンコード2
+                       ,iv_token_value2 => gr_blob_data.object_code || cv_msg_conm ||
+                                           gr_blob_data.serial_code || cv_msg_conm ||
+                                           gr_blob_data.base_code   || cv_msg_conm ||
+                                           gr_blob_data.lease_kbn   || cv_msg_conm ||
+                                           gr_blob_data.dclr_place  || cv_msg_conm ||
+                                           gr_blob_data.vd_shutoku_kg     -- トークン値2
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+      --
+      -- 申告地のマスタチェック
+      BEGIN
+        SELECT ffv.flex_value       flex_value
+        INTO   lt_dclr_place
+        FROM   fnd_flex_values      ffv
+              ,fnd_flex_values_tl   ffvt
+              ,fnd_flex_value_sets  ffvs
+        WHERE  ffv.flex_value_id        = ffvt.flex_value_id
+        AND    ffv.flex_value_set_id    = ffvs.flex_value_set_id
+        AND    ffvs.flex_value_set_name = cv_xxcff_dclr_place
+        AND    gd_process_date BETWEEN NVL(ffv.start_date_active, gd_process_date)
+                               AND     NVL(ffv.end_date_active, gd_process_date)
+        AND    ffv.enabled_flag         = cv_y
+        AND    ffvt.language            = ct_language
+        AND    ffv.flex_value           = gr_blob_data.dclr_place
+        ;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_msg    := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                    -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_53               -- メッセージ
+                       );
+          lv_msg2   := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                    -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_58               -- メッセージ
+                         ,iv_token_name1  => cv_tkn_value_set_name          -- トークンコード1
+                         ,iv_token_value1 => cv_xxcff_dclr_place            -- トークン値1
+                       );
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                    -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_56               -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_item                    -- トークンコード1
+                         ,iv_token_value1 => lv_msg                         -- トークン値1
+                         ,iv_token_name2  => cv_tkn_table                   -- トークンコード2
+                         ,iv_token_value2 => lv_msg2                        -- トークン値2
+                         ,iv_token_name3  => cv_tkn_base_value              -- トークンコード3
+                         ,iv_token_value3 => gr_blob_data.object_code || cv_msg_conm ||
+                                             gr_blob_data.serial_code || cv_msg_conm ||
+                                             gr_blob_data.base_code   || cv_msg_conm ||
+                                             gr_blob_data.lease_kbn   || cv_msg_conm ||
+                                             gr_blob_data.dclr_place  || cv_msg_conm ||
+                                             gr_blob_data.vd_shutoku_kg     -- トークン値3
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+        -- 抽出に失敗した場合
+        WHEN OTHERS THEN
+          lv_msg2   := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                    -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_58               -- メッセージ
+                         ,iv_token_name1  => cv_tkn_value_set_name          -- トークンコード1
+                         ,iv_token_value1 => cv_xxcff_dclr_place            -- トークン値1
+                       );
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_app_name                    -- アプリケーション短縮名
+                         ,iv_name         => cv_tkn_number_45               -- メッセージコード
+                         ,iv_token_name1  => cv_tkn_table                   -- トークンコード1
+                         ,iv_token_value1 => lv_msg2                        -- トークン値1
+                         ,iv_token_name2  => cv_tkn_errmsg                  -- トークンコード2
+                         ,iv_token_value2 => SQLERRM                        -- トークン値2
+                         ,iv_token_name3  => cv_tkn_process                 -- トークンコード3
+                         ,iv_token_value3 => cv_select_process              -- トークン値3
+                         ,iv_token_name4  => cv_tkn_base_value              -- トークンコード4
+                         ,iv_token_value4 => gr_blob_data.object_code || cv_msg_conm ||
+                                             gr_blob_data.serial_code || cv_msg_conm ||
+                                             gr_blob_data.base_code   || cv_msg_conm ||
+                                             gr_blob_data.lease_kbn   || cv_msg_conm ||
+                                             gr_blob_data.dclr_place  || cv_msg_conm ||
+                                             gr_blob_data.vd_shutoku_kg     -- トークン値4
+                       );
+          lv_errbuf := lv_errmsg;
+          RAISE global_process_expt;
+      END;
+    END IF;
+--
+  -- ***************************************************
+  -- 6.取得価格チェック
+  -- ***************************************************
+    -- リース区分が固定資産以外の場合
+    IF ( gr_blob_data.lease_kbn <> cv_fixed_assets ) THEN
+      -- NULLを設定
+      gr_blob_data.vd_shutoku_kg := NULL;
+    -- リース区分が固定資産の場合
+    ELSIF ( gr_blob_data.lease_kbn = cv_fixed_assets ) THEN
+      -- 分割データの取得価格に値が設定されていない場合
+      IF ( gr_blob_data.vd_shutoku_kg IS NULL ) THEN
+        -- 機種マスタの値を設定
+        gr_blob_data.vd_shutoku_kg := lt_vd_shutoku_kg;
+      END IF;
+      --
+      -- 取得価格に値が設定されていない場合
+      IF ( gr_blob_data.vd_shutoku_kg IS NULL ) THEN
+        lv_msg    := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_54               -- メッセージ
+                     );
+        lv_msg2   := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_55               -- メッセージ
+                     );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                    -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_56               -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_item                    -- トークンコード1
+                       ,iv_token_value1 => lv_msg                         -- トークン値1
+                       ,iv_token_name2  => cv_tkn_table                   -- トークンコード2
+                       ,iv_token_value2 => lv_msg2                        -- トークン値2
+                       ,iv_token_name3  => cv_tkn_base_value              -- トークンコード3
+                       ,iv_token_value3 => gr_blob_data.object_code || cv_msg_conm ||
+                                           gr_blob_data.serial_code || cv_msg_conm ||
+                                           gr_blob_data.base_code   || cv_msg_conm ||
+                                           gr_blob_data.lease_kbn   || cv_msg_conm ||
+                                           gr_blob_data.dclr_place  || cv_msg_conm ||
+                                           gr_blob_data.vd_shutoku_kg     -- トークン値3
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -2787,7 +3246,10 @@ AS
     -- リース区分
     ln_cnt := ln_cnt + 1;
     l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.lease_kbn;
-    l_ext_attrib_values_tab(ln_cnt).attribute_value := cv_kbn1;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+--    l_ext_attrib_values_tab(ln_cnt).attribute_value := cv_kbn1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := gr_blob_data.lease_kbn;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
 --
     -- 地区コード
     ln_cnt := ln_cnt + 1;
@@ -3025,6 +3487,18 @@ AS
     l_ext_attrib_values_tab(ln_cnt).attribute_value := NULL;
 /*20090326_matsunaka_ST183 END*/
 --
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+    -- 取得価格
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.vd_shutoku_kg;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := gr_blob_data.vd_shutoku_kg;
+--
+    -- 申告地
+    ln_cnt := ln_cnt + 1;
+    l_ext_attrib_values_tab(ln_cnt).attribute_id    := gr_ext_attribs_id_rec.dclr_place;
+    l_ext_attrib_values_tab(ln_cnt).attribute_value := gr_blob_data.dclr_place;
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
+--
     -- ====================
     -- 3.パーティデータ作成
     -- ====================
@@ -3056,53 +3530,53 @@ AS
     -- 6.標準APIより、物件登録処理を行う
     -- =================================
 --
-      CSI_ITEM_INSTANCE_PUB.create_item_instance(
-         p_api_version           => cn_api_version
-        ,p_commit                => lv_commit
-        ,p_init_msg_list         => lv_init_msg_list
-        ,p_validation_level      => ln_validation_level
-        ,p_instance_rec          => l_instance_rec
-        ,p_ext_attrib_values_tbl => l_ext_attrib_values_tab
-        ,p_party_tbl             => l_party_tab
-        ,p_account_tbl           => l_account_tab
-        ,p_pricing_attrib_tbl    => l_pricing_attrib_tab
-        ,p_org_assignments_tbl   => l_org_assignments_tab
-        ,p_asset_assignment_tbl  => l_asset_assignment_tab
-        ,p_txn_rec               => l_txn_rec
-        ,x_return_status         => lv_return_status
-        ,x_msg_count             => ln_msg_count
-        ,x_msg_data              => lv_msg_data
-      );
+    CSI_ITEM_INSTANCE_PUB.create_item_instance(
+       p_api_version           => cn_api_version
+      ,p_commit                => lv_commit
+      ,p_init_msg_list         => lv_init_msg_list
+      ,p_validation_level      => ln_validation_level
+      ,p_instance_rec          => l_instance_rec
+      ,p_ext_attrib_values_tbl => l_ext_attrib_values_tab
+      ,p_party_tbl             => l_party_tab
+      ,p_account_tbl           => l_account_tab
+      ,p_pricing_attrib_tbl    => l_pricing_attrib_tab
+      ,p_org_assignments_tbl   => l_org_assignments_tab
+      ,p_asset_assignment_tbl  => l_asset_assignment_tab
+      ,p_txn_rec               => l_txn_rec
+      ,x_return_status         => lv_return_status
+      ,x_msg_count             => ln_msg_count
+      ,x_msg_data              => lv_msg_data
+    );
 --
-      -- 正常終了でない場合
-      IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
-        IF (FND_MSG_PUB.Count_Msg > 0) THEN
-          FOR i IN 1..FND_MSG_PUB.Count_Msg LOOP
-            FND_MSG_PUB.Get(
-               p_msg_index     => i
-              ,p_encoded       => cv_encoded_f
-              ,p_data          => lv_io_msg_data
-              ,p_msg_index_out => ln_io_msg_count
-            );
-            lv_msg_data := lv_msg_data || lv_io_msg_data;
-          END LOOP;
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application   => cv_app_name                   -- アプリケーション短縮名
-                       ,iv_name          => cv_tkn_number_45              -- メッセージコード
-                       ,iv_token_name1   => cv_tkn_table                  -- トークンコード1
-                       ,iv_token_value1  => cv_inst_base_insert           -- トークン値1
-                       ,iv_token_name2   => cv_tkn_process                -- トークンコード2
-                       ,iv_token_value2  => cv_insert_process             -- トークン値2
-                       ,iv_token_name3   => cv_tkn_errmsg                 -- トークンコード3
-                       ,iv_token_value3  => lv_msg_data                       -- トークン値3
-                       ,iv_token_name4   => cv_tkn_base_value             -- トークンコード4
-                       ,iv_token_value4  => gr_blob_data.object_code||cv_msg_conm||gr_blob_data.serial_code||
-                                            cv_msg_conm||gr_blob_data.base_code   -- トークン値4
-                     );
-          lv_errbuf := lv_errmsg;
-          RAISE update_error_expt;
-        END IF;
+    -- 正常終了でない場合
+    IF (lv_return_status <> FND_API.G_RET_STS_SUCCESS) THEN
+      IF (FND_MSG_PUB.Count_Msg > 0) THEN
+        FOR i IN 1..FND_MSG_PUB.Count_Msg LOOP
+          FND_MSG_PUB.Get(
+             p_msg_index     => i
+            ,p_encoded       => cv_encoded_f
+            ,p_data          => lv_io_msg_data
+            ,p_msg_index_out => ln_io_msg_count
+          );
+          lv_msg_data := lv_msg_data || lv_io_msg_data;
+        END LOOP;
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application   => cv_app_name                   -- アプリケーション短縮名
+                     ,iv_name          => cv_tkn_number_45              -- メッセージコード
+                     ,iv_token_name1   => cv_tkn_table                  -- トークンコード1
+                     ,iv_token_value1  => cv_inst_base_insert           -- トークン値1
+                     ,iv_token_name2   => cv_tkn_process                -- トークンコード2
+                     ,iv_token_value2  => cv_insert_process             -- トークン値2
+                     ,iv_token_name3   => cv_tkn_errmsg                 -- トークンコード3
+                     ,iv_token_value3  => lv_msg_data                       -- トークン値3
+                     ,iv_token_name4   => cv_tkn_base_value             -- トークンコード4
+                     ,iv_token_value4  => gr_blob_data.object_code||cv_msg_conm||gr_blob_data.serial_code||
+                                          cv_msg_conm||gr_blob_data.base_code   -- トークン値4
+                   );
+        lv_errbuf := lv_errmsg;
+        RAISE update_error_expt;
       END IF;
+    END IF;
 --
     -- ========================================
     -- 7.物件関連情報変更履歴テーブルの登録処理
@@ -3124,6 +3598,10 @@ AS
         ,install_address                        -- 設置先住所
         ,logical_delete_flag                    -- 論理削除フラグ
         ,account_number                         -- 顧客コード
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+        ,declaration_place                       -- 申告地
+        ,disposal_intaface_flag                  -- 廃棄連携フラグ
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
         ,created_by                             -- 作成者
         ,creation_date                          -- 作成日
         ,last_updated_by                        -- 最終更新者
@@ -3149,6 +3627,10 @@ AS
         ,gv_address                             -- 設置先住所
         ,cv_flg_no                              -- 論理削除フラグ
         ,gr_blob_data.base_code                 -- 顧客コード
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 START */
+        ,gr_blob_data.dclr_place                -- 申告地
+        ,cv_flg_no                              -- 廃棄連携フラグ
+/* 2014-05-19 K.Nakamura E_本稼動_11853対応 END */
         ,cn_created_by                          -- 作成者
         ,SYSDATE                                -- 作成日
         ,cn_last_updated_by                     -- 最終更新者
@@ -3176,18 +3658,18 @@ AS
                      );
         lv_errbuf := lv_errmsg;
         RAISE update_error_expt;
-     END;
+    END;
 --
   EXCEPTION
     -- *** 更新失敗例外ハンドラ ***
     WHEN update_error_expt THEN
-    fnd_file.put_line(
-       which  => FND_FILE.OUTPUT
-      ,buff   => ''           || CHR(10) ||   -- 空行の挿入
-                 'エラー：'||lv_errmsg|| CHR(10) ||
-                 ''                           -- 空行の挿入
-    );
-
+      fnd_file.put_line(
+         which  => FND_FILE.OUTPUT
+        ,buff   => ''           || CHR(10) ||   -- 空行の挿入
+                   'エラー：'||lv_errmsg|| CHR(10) ||
+                   ''                           -- 空行の挿入
+      );
+--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
