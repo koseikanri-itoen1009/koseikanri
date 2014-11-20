@@ -6,21 +6,23 @@ AS
  * Package Name     : XXCOI008A03C(body)
  * Description      : 情報系システムへの連携の為、EBSの月次在庫受払表(アドオン)をCSVファイルに出力
  * MD.050           : 月別受払残高情報系連携 <MD050_COI_008_A03>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理(A-1)
+ *  create_csv_p           累計情報なし棚卸データCSV作成(A-9)
  *  create_csv_p           受払(在庫)CSVの作成(A-6)
  *  get_inv_info_p         棚卸情報取得(A-5)
  *  recept_month_cur_p     月次在庫受払表(累計)情報の抽出(A-4)
  *  get_open_period_p      オープン在庫会計期間取得(A-3)
  *  submain                メイン処理プロシージャ
  *                           ・ファイルのオープン処理(A-2)
- *                           ・ファイルのクローズ処理(A-5) 
+ *                           ・ファイルのクローズ処理(A-7) 
  *  main                   コンカレント実行ファイル登録プロシージャ
+ *                           ・件数表示処理(A-8)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -29,6 +31,8 @@ AS
  *  2008/01/07    1.0   S.Kanda          新規作成
  *  2009/04/08    1.1   T.Nakamura       [障害 T1_0197] 月次在庫受払表（累計）データを基に
  *                                                      受払残高情報を取得するよう変更
+ *  2010/01/06    1.2   N.Abe            [E_本稼動_00630] 基準在庫変更の算出を変更
+ *                                                        棚卸情報の送信を追加
  *
  *****************************************************************************************/
 --
@@ -96,6 +100,7 @@ AS
   cv_yes                    CONSTANT VARCHAR2(2)   := 'Y';             -- フラグ用変数
 -- == 2009/04/08 V1.1 Added START ===============================================================
   cv_process_type_0         CONSTANT VARCHAR2(2)   := '0';             -- 処理区分(日次)
+  cv_process_type_1         CONSTANT VARCHAR2(2)   := '1';             -- 処理区分(月次)
   cv_fmt_date               CONSTANT VARCHAR2(6)   := 'YYYYMM';        -- 日付型フォーマット
   cv_fmt_date_hyp           CONSTANT VARCHAR2(7)   := 'YYYY-MM';       -- 日付型フォーマット(ハイフン)
 -- == 2009/04/08 V1.1 Added START ===============================================================
@@ -615,6 +620,254 @@ AS
 --
   END init;
 --
+-- == 2010/01/06 V1.2 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : create_csv_i
+   * Description      : 累計情報なし棚卸データCSV作成(A-9)
+   ***********************************************************************************/
+  PROCEDURE create_csv_i(
+     iv_year_month IN  VARCHAR2     --   年月
+   , ov_errbuf     OUT VARCHAR2     --   エラー・メッセージ                  --# 固定 #
+   , ov_retcode    OUT VARCHAR2     --   リターン・コード                    --# 固定 #
+   , ov_errmsg     OUT VARCHAR2)    --   ユーザー・エラー・メッセージ        --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'create_csv_i'; -- プログラム名
+--
+--#######################  固定ローカル変数宣言部 START   ######################
+--
+    lv_errbuf  VARCHAR2(5000);   -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);      -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);   -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_csv_com       CONSTANT VARCHAR2(1)   := ',';
+--
+    -- *** ローカル変数 ***
+    lv_recept_month     VARCHAR2(3000);  -- CSV出力用変数
+    lv_process_date     VARCHAR2(14);    -- システム日付 格納用変数
+    lv_last_update_date VARCHAR2(14);    -- 最終更新日 格納用変数
+--
+    -- ===============================
+    -- ローカル・カーソル
+    -- ===============================
+    -- 受払全項目０で、棚卸のみ行われており、累計テーブルにデータが存在しない。
+    -- 又は、受払全項目０で、月首在庫のみ存在し、累計テーブルにデータが存在しない。
+    -- 累計情報なしデータ抽出
+    CURSOR  get_no_sumdata_cur(
+             iv_year_month              IN VARCHAR2
+           )
+    IS
+      SELECT  xirm.base_code                                          -- 拠点コード
+            , xirm.practice_month                                     -- 年月
+            , xirm.subinventory_code                                  -- 保管場所
+            , xirm.subinventory_type                                  -- 保管場所区分
+            , msib.segment1                                           -- 品目コード
+            , xirm.operation_cost                                     -- 営業原価
+            , xirm.standard_cost                                      -- 標準原価
+            , xirm.month_begin_quantity                               -- 月首棚卸高
+            , xirm.inv_result                                         -- 棚卸結果
+            , xirm.inv_result_bad                                     -- 棚卸結果(不良品)
+            , xirm.inv_wear                                           -- 棚卸減耗 
+            , xirm.last_update_date                                   -- 最終更新日
+      FROM    xxcoi_inv_reception_monthly     xirm                    -- 月次在庫受払表
+             ,mtl_system_items_b              msib                    -- Disc品目マスタ
+      WHERE   xirm.practice_month         =   iv_year_month           -- 年月
+      AND     xirm.inventory_kbn          =   cv_inv_kbn_2            -- 棚卸区分
+      AND     xirm.organization_id        =   gn_organization_id      -- 組織ID
+      AND     (xirm.inv_result            <>  0                       -- 棚卸結果
+         OR    xirm.inv_result_bad        <>  0                       -- 棚卸結果(不良品)
+         OR    xirm.month_begin_quantity  <>  0)                      -- 月首棚卸高
+      AND     xirm.sales_shipped          =   0                       -- 売上出庫
+      AND     xirm.sales_shipped_b        =   0                       -- 売上出庫振戻
+      AND     xirm.return_goods           =   0                       -- 返品
+      AND     xirm.return_goods_b         =   0                       -- 返品振戻
+      AND     xirm.warehouse_ship         =   0                       -- 倉庫へ返庫
+      AND     xirm.truck_ship             =   0                       -- 営業車へ出庫
+      AND     xirm.others_ship            =   0                       -- 入出庫＿その他出庫
+      AND     xirm.warehouse_stock        =   0                       -- 倉庫より入庫
+      AND     xirm.truck_stock            =   0                       -- 営業車より入庫
+      AND     xirm.others_stock           =   0                       -- 入出庫＿その他入庫
+      AND     xirm.change_stock           =   0                       -- 倉替入庫
+      AND     xirm.change_ship            =   0                       -- 倉替出庫
+      AND     xirm.goods_transfer_old     =   0                       -- 商品振替（旧商品）
+      AND     xirm.goods_transfer_new     =   0                       -- 商品振替（新商品）
+      AND     xirm.sample_quantity        =   0                       -- 見本出庫
+      AND     xirm.sample_quantity_b      =   0                       -- 見本出庫振戻
+      AND     xirm.customer_sample_ship   =   0                       -- 顧客見本出庫
+      AND     xirm.customer_sample_ship_b =   0                       -- 顧客見本出庫振戻
+      AND     xirm.customer_support_ss    =   0                       -- 顧客協賛見本出庫
+      AND     xirm.customer_support_ss_b  =   0                       -- 顧客協賛見本出庫振戻
+      AND     xirm.ccm_sample_ship        =   0                       -- 顧客広告宣伝費A自社商品
+      AND     xirm.ccm_sample_ship_b      =   0                       -- 顧客広告宣伝費A自社商品振戻
+      AND     xirm.vd_supplement_stock    =   0                       -- 消化VD補充入庫
+      AND     xirm.vd_supplement_ship     =   0                       -- 消化VD補充出庫
+      AND     xirm.inventory_change_in    =   0                       -- 基準在庫変更入庫
+      AND     xirm.inventory_change_out   =   0                       -- 基準在庫変更出庫
+      AND     xirm.factory_return         =   0                       -- 工場返品
+      AND     xirm.factory_return_b       =   0                       -- 工場返品振戻
+      AND     xirm.factory_change         =   0                       -- 工場倉替
+      AND     xirm.factory_change_b       =   0                       -- 工場倉替振戻
+      AND     xirm.removed_goods          =   0                       -- 廃却
+      AND     xirm.removed_goods_b        =   0                       -- 廃却振戻
+      AND     xirm.factory_stock          =   0                       -- 工場入庫
+      AND     xirm.factory_stock_b        =   0                       -- 工場入庫振戻
+      AND     xirm.wear_decrease          =   0                       -- 棚卸減耗増
+      AND     xirm.wear_increase          =   0                       -- 棚卸減耗減
+      AND     xirm.selfbase_ship          =   0                       -- 保管場所移動＿自拠点出庫
+      AND     xirm.selfbase_stock         =   0                       -- 保管場所移動＿自拠点入庫
+      AND     xirm.inventory_item_id      =   msib.inventory_item_id  -- 品目ID
+      AND     msib.organization_id        =   gn_organization_id      -- 組織ID
+      AND NOT EXISTS (SELECT 1
+                      FROM  xxcoi_inv_reception_sum xirs                      -- 月次在庫受払表(累計)
+                      WHERE xirs.practice_date      = iv_year_month           -- 年月
+                      AND   xirs.base_code          = xirm.base_code          -- 拠点コード
+                      AND   xirs.subinventory_code  = xirm.subinventory_code  -- 保管場所
+                      AND   xirs.inventory_item_id  = xirm.inventory_item_id  -- 品目ID
+                     )
+      ;
+      get_no_sumdata_rec   get_no_sumdata_cur%ROWTYPE;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 変数の初期化
+    lv_recept_month     := NULL;
+    lv_process_date     := NULL;
+    lv_last_update_date := NULL;
+--
+    -- ***************************************
+    -- ***        ループ処理の記述         ***
+    -- ***       処理部の呼び出し          ***
+    -- ***************************************
+    --累計テーブル未存在データ取得カーソルオープン
+    OPEN get_no_sumdata_cur( 
+           iv_year_month => iv_year_month
+         );
+      --
+      <<no_sumdata_loop>>
+      LOOP
+        FETCH get_no_sumdata_cur INTO get_no_sumdata_rec;
+        --次データがなくなったら終了
+        EXIT WHEN get_no_sumdata_cur%NOTFOUND;
+        --対象件数加算
+        gn_target_cnt := gn_target_cnt + 1;
+--
+        lv_process_date     := TO_CHAR(gd_sysdate , 'YYYYMMDDHH24MISS' );                          -- 連携日時
+        lv_last_update_date := TO_CHAR(get_no_sumdata_rec.last_update_date , 'YYYYMMDDHH24MISS');  -- 最終更新日
+--
+        -- =================================
+        -- CSVファイル作成
+        -- =================================
+        --
+        -- カーソルで取得した値をCSVファイルに格納します
+        lv_recept_month := 
+          cv_file_encloser || gv_company_code                       || cv_file_encloser || cv_csv_com || -- 1.会社コード
+                              get_no_sumdata_rec.practice_month                         || cv_csv_com || -- 2.年月
+          cv_file_encloser || get_no_sumdata_rec.base_code          || cv_file_encloser || cv_csv_com || -- 3.拠点（部門）コード
+          cv_file_encloser || get_no_sumdata_rec.subinventory_code  || cv_file_encloser || cv_csv_com || -- 4.保管場所コード
+          cv_file_encloser || get_no_sumdata_rec.segment1           || cv_file_encloser || cv_csv_com || -- 5.商品コード
+          cv_file_encloser || get_no_sumdata_rec.subinventory_type  || cv_file_encloser || cv_csv_com || -- 6.保管場所区分
+                              get_no_sumdata_rec.operation_cost                         || cv_csv_com || -- 7.営業原価
+                              get_no_sumdata_rec.standard_cost                          || cv_csv_com || -- 8.標準原価
+                              get_no_sumdata_rec.month_begin_quantity                   || cv_csv_com || -- 9.月首棚卸高
+                              0                                                         || cv_csv_com || -- 10.工場入庫
+                              0                                                         || cv_csv_com || -- 11.倉替入庫
+                              0                                                         || cv_csv_com || -- 12.拠点内入庫
+                              0                                                         || cv_csv_com || -- 13.振替入庫
+                              0                                                         || cv_csv_com || -- 14.売上出庫
+                              0                                                         || cv_csv_com || -- 15.顧客返品
+                              0                                                         || cv_csv_com || -- 16.倉替出庫
+                              0                                                         || cv_csv_com || -- 17.拠点内出庫
+                              0                                                         || cv_csv_com || -- 18.基準在庫変更
+                              0                                                         || cv_csv_com || -- 19.工場返品
+                              0                                                         || cv_csv_com || -- 20.工場倉替
+                              0                                                         || cv_csv_com || -- 21.廃却出庫
+                              0                                                         || cv_csv_com || -- 22.振替出庫
+                              0                                                         || cv_csv_com || -- 23.協賛見本
+                              get_no_sumdata_rec.inv_result                             || cv_csv_com || -- 24.棚卸結果
+                              get_no_sumdata_rec.inv_result_bad                         || cv_csv_com || -- 25.棚卸結果(不良品)
+                              get_no_sumdata_rec.inv_wear                               || cv_csv_com || -- 26.棚卸減耗
+                              lv_last_update_date                                       || cv_csv_com || -- 27.更新日時
+                              lv_process_date;                                                           -- 28.連携日時
+--
+          UTL_FILE.PUT_LINE(
+              gv_activ_file_h     -- A-3.で取得したファイルハンドル
+            , lv_recept_month     -- デリミタ＋上記CSV出力項目
+            );
+--
+        -- 正常件数に加算
+        gn_normal_cnt := gn_normal_cnt + 1;
+      --
+      --ループの終了
+      END LOOP no_sumdata_loop;
+      --
+    --カーソルのクローズ
+    CLOSE get_no_sumdata_cur;
+--
+    --==============================================================
+    --メッセージ出力をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      IF get_no_sumdata_cur%ISOPEN THEN
+        CLOSE get_no_sumdata_cur;
+      END IF;
+      --
+      -- エラーメッセージ
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      -- カーソルがオープンしている場合はクローズする
+      IF get_no_sumdata_cur%ISOPEN THEN
+        CLOSE get_no_sumdata_cur;
+      END IF;
+      --
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      -- カーソルがオープンしている場合はクローズする
+      IF get_no_sumdata_cur%ISOPEN THEN
+        CLOSE get_no_sumdata_cur;
+      END IF;
+      --
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      -- カーソルがオープンしている場合はクローズする
+      IF get_no_sumdata_cur%ISOPEN THEN
+        CLOSE get_no_sumdata_cur;
+      END IF;
+      --
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END create_csv_i;
+-- == 2010/01/06 V1.2 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : create_csv_p
    * Description      : 受払(在庫)CSVの作成(A-6)
@@ -720,9 +973,14 @@ AS
     ln_sum_ship := NVL( ir_recept_month_cur.warehouse_ship , 0 )
                      + NVL( ir_recept_month_cur.truck_ship , 0 ) + NVL( ir_recept_month_cur.others_ship , 0 );
     --
-    -- 基準在庫変更  = カーソルで抽出した基準在庫変更入庫 + 基準在庫変更出庫
+-- == 2010/01/06 V1.2 Modified START ===============================================================
+--    -- 基準在庫変更  = カーソルで抽出した基準在庫変更入庫 + 基準在庫変更出庫
+--    ln_sum_inv_change := NVL( ir_recept_month_cur.inventory_change_in , 0 )
+--                           + NVL( ir_recept_month_cur.inventory_change_out , 0 );
+    -- 基準在庫変更  = カーソルで抽出した基準在庫変更入庫 - 基準在庫変更出庫
     ln_sum_inv_change := NVL( ir_recept_month_cur.inventory_change_in , 0 )
-                           + NVL( ir_recept_month_cur.inventory_change_out , 0 );
+                           - NVL( ir_recept_month_cur.inventory_change_out , 0 );
+-- == 2010/01/06 V1.2 Modified END   ===============================================================
     --
     -- 工場返品   = で抽出した工場返品 - 工場返品振戻
     ln_factory_return := NVL( ir_recept_month_cur.factory_return , 0 )
@@ -942,7 +1200,7 @@ AS
       -- 棚卸減耗を取得
       gn_inv_wear       := 0;
 --
-    -- パラメータ「処理区分」が「1：日次」の場合
+    -- パラメータ「処理区分」が「1：月次」の場合
     ELSE
 --
       -- 月次在庫受払表(累計)の年月＜業務日付の年月の場合
@@ -1497,6 +1755,29 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- == 2010/01/06 V1.2 Added START ===============================================================
+      IF (    (gv_process_type = cv_process_type_1)
+          AND (LAST_DAY(TO_DATE(get_open_period_tab(i).year_month, cv_fmt_date)) < gd_process_date)
+         )
+      THEN
+        -- 処理区分：１（月次）かつ、締月（前月）の場合
+        -- ========================================
+        -- A-9．累計情報なし棚卸データCSV作成
+        -- ========================================
+        create_csv_i(
+            iv_year_month => get_open_period_tab(i).year_month  -- 年月
+          , ov_errbuf     => lv_errbuf         -- エラー・メッセージ           --# 固定 #
+          , ov_retcode    => lv_retcode        -- リターン・コード             --# 固定 #
+          , ov_errmsg     => lv_errmsg         -- ユーザー・エラー・メッセージ --# 固定 #
+        );
+        -- 終了パラメータ判定
+        IF (lv_retcode = cv_status_error) THEN
+          -- エラー処理
+          RAISE global_process_expt;
+        END IF;
+      END IF;
+-- == 2010/01/06 V1.2 Added END   ===============================================================
+      --
     END LOOP open_period_loop;
 --
     -- データが０件で終了した場合
@@ -1519,8 +1800,9 @@ AS
     END IF;
 -- 
 -- == 2009/04/08 V1.1 Moded END   ===============================================================
+    --
     -- ===============================
-    -- A-5．ファイルのクローズ処理
+    -- A-7．ファイルのクローズ処理
     -- ===============================
     UTL_FILE.FCLOSE(
       file => gv_activ_file_h
@@ -1680,7 +1962,7 @@ AS
     --
     --
     --==============================================================
-    -- A-6．件数表示処理
+    -- A-8．件数表示処理
     --==============================================================
     -- エラー時は成功件数出力を０にセット
     --           エラー件数出力を１にセット
