@@ -7,7 +7,7 @@ AS
  * Description      : EDI請求書データ作成
  * MD.050           : MD050_CFR_003_A04_EDI請求書データ作成
  * MD.070           : MD050_CFR_003_A04_EDI請求書データ作成
- * Version          : 1.9
+ * Version          : 2.0
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009/10/15    1.7   SCS 萱原 伸哉     AR仕様変更IE558対応
  *  2009/11/02    1.8   SCS 廣瀬 真佐人   AR仕様変更IE601,603対応  
  *  2009/11/16    1.9   SCS 廣瀬 真佐人   AR共通課題IE678対応
+ *  2009/12/13    2.0   SCS 松尾 泰生    [障害本稼動_00350] 消費税区分を判断した請求金額の対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -959,12 +960,32 @@ AS
             ,xil.ship_cust_name                       ship_cust_name         -- 店舗名称（漢字）
             ,xil.ship_cust_kana_name                  ship_cust_kana_name    -- 店舗名称（カナ）
             ,NULL                                     inv_sign               -- 請求金額符号／請求消費税額符号
-            ,xil.ship_amount + xil.tax_amount         inv_slip_amount        -- 請求金額／支払金額
+-- Modify 2009.12.13 Ver2.0 Start
+--            ,xil.ship_amount + xil.tax_amount         inv_slip_amount        -- 請求金額／支払金額
+            ,CASE
+               WHEN xih.tax_type = '1' THEN           --消費税区分が外税の場合、税抜金額
+                 xil.ship_amount
+               WHEN xih.tax_type = '2' THEN           --消費税区分が内税(伝票)の場合、税込金額
+                 xil.ship_amount + xil.tax_amount
+               WHEN xih.tax_type = '3' THEN           --消費税区分が内税(単価)の場合、税込金額
+                 xil.ship_amount + xil.tax_amount
+               ELSE                                   --消費税区分が上記以外(非課税)の場合、税込金額
+                 xil.ship_amount + xil.tax_amount
+               END                                    inv_slip_amount        -- 請求金額／支払金額
+-- Modify 2009.12.13 Ver2.0 End
             ,xih.tax_type                             tax_type               -- 消費税区分
             ,LTRIM(REPLACE(TO_CHAR(TRUNC(xil.tax_rate,2)
                                   ,cv_num_format_t)
                           ,cv_msg_cont))              tax_rate               -- 消費税率
-            ,xil.tax_amount                           tax_amount             -- 請求消費税額／支払消費税額
+-- Modify 2009.12.13 Ver2.0 Start
+--            ,xil.tax_amount                           tax_amount             -- 請求消費税額／支払消費税額
+            ,CASE
+               WHEN xih.tax_type = '4' THEN           --消費税区分が(非課税)の場合、0
+                 0
+               ELSE                                   --消費税区分が上記以外の場合
+                 xil.tax_amount
+             END                                      tax_amount             -- 請求消費税額／支払消費税額
+-- Modify 2009.12.13 Ver2.0 End
             ,xih.tax_gap_trx_id                       tax_gap_trx_id         -- 税差額取引ID
             ,0                                        tax_gap_flg            -- 消費税差額フラグ
             ,NULL                                     mis_calc_type          -- 違算区分
