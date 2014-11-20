@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A05R(body)
  * Description      : 受注エラーリスト
  * MD.050           : 受注エラーリスト MD050_COS_010_A05
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *                                       ・再発行の可能化
  *                                       ・出力対象のエラー情報を制御する機能の追加
  *                                       ・伝票単位でEDIワーク情報を削除できる機能の追加
+ *  2012/08/02    1.8   T.Osawa          [E_本稼動_09864]受注エラーリストのカナ店舗名称表示
  *
  *****************************************************************************************/
 --
@@ -232,6 +233,9 @@ AS
    ,shop_code            xxcos_edi_errors.shop_code%TYPE          --店舗コード
    ,customer_number      hz_cust_accounts.account_number%TYPE     --顧客コード
    ,shop_name            xxcmm_cust_accounts.cust_store_name%TYPE --店舗名称
+-- 2012/08/02 T.Osawa Ver.1.8 add start
+   ,shop_name_alt        xxcos_edi_errors.shop_name_alt%TYPE      --店舗名称（カナ）
+-- 2012/08/02 T.Osawa Ver.1.8 add end
    ,line_no              xxcos_edi_errors.line_no%TYPE            --行No
    ,item_code            xxcos_edi_errors.item_code%TYPE          --品目コード
    ,edi_item_code        xxcos_edi_errors.edi_item_code%TYPE      --EDI商品コード
@@ -1095,6 +1099,9 @@ AS
         l_work_tab(lv_work_idx).shop_code                   := SUBSTRB(g_edi_err_tab(i).shop_code,1,10);
         l_work_tab(lv_work_idx).customer_number             := SUBSTRB(g_edi_err_tab(i).customer_number,1,9);
         l_work_tab(lv_work_idx).shop_name                   := SUBSTRB(g_edi_err_tab(i).shop_name,1,20);
+-- 2012/08/02 T.Osawa Ver.1.8 add start
+        l_work_tab(lv_work_idx).shop_name_alt               := SUBSTRB(g_edi_err_tab(i).shop_name_alt,1,20);
+-- 2012/08/02 T.Osawa Ver.1.8 add end
         l_work_tab(lv_work_idx).line_no                     := g_edi_err_tab(i).line_no;
         l_work_tab(lv_work_idx).item_code                   := SUBSTRB(g_edi_err_tab(i).item_code,1,7);
         l_work_tab(lv_work_idx).edi_item_code               := SUBSTRB(g_edi_err_tab(i).edi_item_code,1,20);
@@ -1214,6 +1221,9 @@ AS
             ,xee.shop_code                                       shop_code             --店舗コード
             ,store.account_number                                customer_number       --顧客コード
             ,store.cust_store_name                               shop_name             --店舗名称
+-- 2012/08/02 T.Osawa Ver.1.8 add start
+            ,xee.shop_name_alt                                   shop_name_alt         --店舗名称（カナ）
+-- 2012/08/02 T.Osawa Ver.1.8 add end
             ,xee.line_no                                         line_no               --行No
             ,xee.item_code                                       item_code             --品目コード
             ,xee.edi_item_code                                   edi_item_code         --EDI商品コード

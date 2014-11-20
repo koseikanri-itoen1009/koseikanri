@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS010A03C (body)
  * Description      : 納品確定データ取込機能
  * MD.050           : 納品確定データ取込(MD050_COS_010_A03)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -87,6 +87,7 @@ AS
  *  2010/07/29    1.23  K.Kiriu          [E_本稼動_04113] 顧客品目マスタの取得条件不具合対応
  *  2011/02/04    1.24  T.Ishiwata       [E_本稼動_06475] 最上位担当営業員設定時、EDIワークに残さない対応
  *  2011/07/21    1.25  K.Kiriu          [E_本稼動_07906] 流通BMS対応
+ *  2012/08/02    1.26  T.Osawa          [E_本稼動_09864] 受注エラーリストのカナ店舗名称表示
  *
  *****************************************************************************************/
 --
@@ -3119,6 +3120,9 @@ AS
 -- 2009/07/16 Ver.1.7 M.Sano Mod End
     gt_edi_errors(ln_idx).invoice_number               := it_edi_work.invoice_number;                    -- 伝票番号
     gt_edi_errors(ln_idx).shop_code                    := it_edi_work.shop_code;                         -- 店舗コード
+-- 2012/08/02 Ver.1.26 T.Osawa Add Start
+    gt_edi_errors(ln_idx).shop_name_alt                := it_edi_work.shop_name_alt;                     -- 店舗名称（カナ）
+-- 2012/08/02 Ver.1.26 T.Osawa Add End
     gt_edi_errors(ln_idx).line_no                      := it_edi_work.line_no;                           -- 行番号
     gt_edi_errors(ln_idx).edi_item_code                := it_edi_work.product_code2;                     -- 商品コード２
     gt_edi_errors(ln_idx).item_code                    := NVL(iv_dummy_item, it_edi_work.item_code);     -- 品目コード

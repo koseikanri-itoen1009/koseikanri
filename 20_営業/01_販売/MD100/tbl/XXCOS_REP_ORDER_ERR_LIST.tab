@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_ORDER_ERR_LIST
  * Description : 受注エラーリスト帳票ワークテーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,8 @@
  *  2009/01/30    1.0   SCS K.Kumamoto 新規作成
  *  2009/04/08    1.1   SCS N.Maeda    【ST障害No.T1_0382】店舗コード(SHOP_CODE)の桁数を8⇒10に変更
  *  2009/07/09    1.2   SCS T.Tominaga 【0000486】行No(LINE_NO)の桁数を2⇒3,0に変更
+ *  2012/08/02    1.3   SCSK T.Osawa   【E_本稼動_09864】カラムの追加
+ *                                      ・店舗名称（カナ）
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_ORDER_ERR_LIST
@@ -28,6 +30,9 @@ CREATE TABLE XXCOS.XXCOS_REP_ORDER_ERR_LIST
    ,SHOP_CODE                     VARCHAR2(10)                                 --店舗コード
    ,CUSTOMER_NUMBER               VARCHAR2(9)                                  --顧客コード
    ,SHOP_NAME                     VARCHAR2(20)                                 --店舗名称
+-- 2012/08/02 Ver1.3 Add Start
+   ,SHOP_NAME_ALT                 VARCHAR2(20)                                 -- 店舗名称（カナ）
+-- 2012/08/02 Ver1.3 Add End
    ,LINE_NO                       NUMBER(3,0)                                  --行No
    ,ITEM_CODE                     VARCHAR2(7)                                  --品目コード
    ,EDI_ITEM_CODE                 VARCHAR2(20)                                 --EDI商品コード
@@ -62,6 +67,9 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.INVOICE_NUMBER                I
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.SHOP_CODE                     IS '店舗コード';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.CUSTOMER_NUMBER               IS '顧客コード';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.SHOP_NAME                     IS '店舗名称';
+-- 2012/08/02 Ver1.3 Add Start
+COMMENT ON COLUMN XXCOS.XXCOS_EDI_ERRORS.SHOP_NAME_ALT                         IS  '店舗名称（カナ）';
+-- 2012/08/02 Ver1.3 Add End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.LINE_NO                       IS '行No';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.ITEM_CODE                     IS '品目コード';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_ORDER_ERR_LIST.EDI_ITEM_CODE                 IS 'EDI商品コード';
