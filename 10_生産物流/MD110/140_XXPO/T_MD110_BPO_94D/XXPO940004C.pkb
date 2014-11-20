@@ -255,8 +255,14 @@ AS
     info_h               VARCHAR2(10), -- ПоХсВg
     info_i               VARCHAR2(10), -- ПоХсВh
     info_j               VARCHAR2(10), -- ПоХсВi
+-- 2008/07/31 Mod БЂ
+/*
     info_k               VARCHAR2(10), -- ПоХсВj
     info_l               VARCHAR2(10), -- ПоХсВk
+*/
+    info_k               VARCHAR2(20), -- ПоХсВj
+    info_l               VARCHAR2(20), -- ПоХсВk
+-- 2008/07/31 Mod Б™
     info_m               VARCHAR2(7),  -- ПоХсВl
     info_n               VARCHAR2(10), -- ПоХсВm
     info_o               VARCHAR2(2),  -- ПоХсВn
