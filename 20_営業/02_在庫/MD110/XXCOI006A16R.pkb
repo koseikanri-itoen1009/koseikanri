@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A16R(body)
  * Description      : 受払残高表（拠点別・合計）
  * MD.050           : 受払残高表（拠点別・合計） <MD050_XXCOI_006_A16>
- * Version          : V1.2
+ * Version          : V1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,8 @@ AS
  *  2008/12/01    1.0   Y.Kobayashi      初版作成
  *  2009/05/13    1.1   T.Nakamura       [障害T1_0960]参照するカテゴリを商品製品区分に変更
  *  2009/06/26    1.2   H.Sasaki         [0000258]払出合計に基準在庫変更入庫を追加
+ *  2009/07/13    1.3   N.Abe            [0000282]百貨店計、専門店計の名称出力を修正
+ *  2009/07/14    1.4   N.Abe            [0000462]群コード取得方法修正
  *
  *****************************************************************************************/
 --
@@ -181,6 +183,9 @@ AS
 --  gv_item_category          VARCHAR2(10);                       -- カテゴリー名
   gv_item_category          VARCHAR2(12);                       -- カテゴリー名
 -- == 2009/05/13 V1.1 Modified END   ===============================================================
+-- == 2009/07/14 V1.4 Added START ===============================================================
+  gd_target_date            DATE;
+-- == 2009/07/14 V1.4 Added END   ===============================================================
 --
   -- ===============================
   -- ユーザー定義カーソル
@@ -191,7 +196,16 @@ AS
     SELECT  xirm.base_code                      base_code                 -- 拠点コード
            ,SUBSTRB(sca.account_name, 1, 8)     account_name              -- 拠点名称
            ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
-           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+-- == 2009/07/14 V1.4 Modified START ===============================================================
+--           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+           ,SUBSTR(
+              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                      THEN iimb.attribute1                                -- 群コード(旧)
+                      ELSE iimb.attribute2                                -- 群コード(新)
+                    END
+              ), 1, 3
+            )                                   policy_group              -- 群コード
+-- == 2009/07/14 V1.4 Modified END   ===============================================================
            ,msib.segment1                       item_code                 -- 品目コード
            ,xsib.item_short_name                item_short_name           -- 商品名称（略称）
            ,xirm.month_begin_quantity           month_begin_quantity      -- 月首棚卸高
@@ -274,7 +288,16 @@ AS
     SELECT  xirm.base_code                      base_code                 -- 拠点コード
            ,SUBSTRB(hca.account_name, 1, 8)     account_name              -- 拠点名称
            ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
-           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+-- == 2009/07/14 V1.4 Modified START ===============================================================
+--           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+           ,SUBSTR(
+              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                      THEN iimb.attribute1                                -- 群コード(旧)
+                      ELSE iimb.attribute2                                -- 群コード(新)
+                    END
+              ), 1, 3
+            )                                   policy_group              -- 群コード
+-- == 2009/07/14 V1.4 Modified END   ===============================================================
            ,msib.segment1                       item_code                 -- 品目コード
            ,xsib.item_short_name                item_short_name           -- 商品名称（略称）
            ,xirm.month_begin_quantity           month_begin_quantity      -- 月首棚卸高
@@ -345,7 +368,16 @@ AS
     SELECT  xirm.base_code                      base_code                 -- 拠点コード
            ,SUBSTRB(sca.account_name, 1, 8)     account_name              -- 拠点名称
            ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
-           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+-- == 2009/07/14 V1.4 Modified START ===============================================================
+--           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+           ,SUBSTR(
+              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                      THEN iimb.attribute1                                -- 群コード(旧)
+                      ELSE iimb.attribute2                                -- 群コード(新)
+                    END
+              ), 1, 3
+            )                                   policy_group              -- 群コード
+-- == 2009/07/14 V1.4 Modified END   ===============================================================
            ,msib.segment1                       item_code                 -- 品目コード
            ,xsib.item_short_name                item_short_name           -- 商品名称（略称）
            ,xirm.month_begin_quantity           month_begin_quantity      -- 月首棚卸高
@@ -428,7 +460,16 @@ AS
     SELECT  xirm.base_code                      base_code                 -- 拠点コード
            ,SUBSTRB(hca.account_name, 1, 8)     account_name              -- 拠点名称
            ,mcb.segment1                        item_type                 -- 商品製品区分（カテゴリコード）
-           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+-- == 2009/07/14 V1.4 Modified START ===============================================================
+--           ,SUBSTR(iimb.attribute2, 1, 3)       policy_group              -- 群コード
+           ,SUBSTR(
+              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                      THEN iimb.attribute1                                -- 群コード(旧)
+                      ELSE iimb.attribute2                                -- 群コード(新)
+                    END
+              ), 1, 3
+            )                                   policy_group              -- 群コード
+-- == 2009/07/14 V1.4 Modified END   ===============================================================
            ,msib.segment1                       item_code                 -- 品目コード
            ,xsib.item_short_name                item_short_name           -- 商品名称（略称）
            ,xirm.month_begin_quantity           month_begin_quantity      -- 月首棚卸高
@@ -777,8 +818,11 @@ AS
     END IF;
     --
     -- 06.拠点名称
-    IF (gv_param_output_kbn IN(cv_output_kbn_80, cv_output_kbn_90)) THEN
-      -- 直営店計、全社計
+-- == 2009/07/13 V1.3 Modified START ===============================================================
+--    IF (gv_param_output_kbn IN(cv_output_kbn_80, cv_output_kbn_90)) THEN
+    IF (gv_param_output_kbn IN(cv_output_kbn_60, cv_output_kbn_70, cv_output_kbn_80, cv_output_kbn_90)) THEN
+-- == 2009/07/13 V1.3 Modified END   ===============================================================
+      -- 直営店計、全社計、百貨店計、専門店計
       lv_base_name  :=  SUBSTRB(gt_output_kbn_type_name, 1, 8);
     ELSE
       lv_base_name  :=  SUBSTRB(ir_svf_data.account_name, 1, 8);
@@ -1039,6 +1083,9 @@ AS
       RAISE global_process_expt;
     END IF;
     --
+-- == 2009/07/14 V1.4 Added START ===============================================================
+    gd_target_date := LAST_DAY(ld_dummy);
+-- == 2009/07/14 V1.4 Added START ===============================================================
     -- ============================
     --  2.パラメータ.拠点チェック
     -- ============================
