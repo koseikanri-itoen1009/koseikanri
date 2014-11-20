@@ -34,6 +34,7 @@ AS
  *  chk_wk_req_proc           作業依頼／発注情報連携対象テーブル存在チェック処理(A-18)
  *  insert_wk_req_proc        作業依頼／発注情報連携対象テーブル登録処理(A-19)
  *  update_wk_req_proc        作業依頼／発注情報連携対象テーブル更新処理(A-20)
+ *  start_approval_wf_proc    承認ワークフロー起動(エラー通知)(A-21)
  *  submain                   メイン処理プロシージャ
  *  main_for_application      メイン処理（発注依頼申請用）
  *  main_for_approval         メイン処理（発注依頼承認用）
@@ -48,6 +49,7 @@ AS
  *  2009-04-02    1.2   N.Yabuki         【ST障害対応177】顧客ステータスチェックに「25：SP承認済」を追加
  *  2009-04-03    1.3   N.Yabuki         【ST障害対応297】経費購買品（カテゴリ区分がNULL）を抽出対象外に修正
  *  2009-04-06    1.4   N.Yabuki         【ST障害対応101】作業依頼／発注情報連携対象テーブルの存在チェック、更新処理追加
+ *  2009-04-10    1.5   D.Abe            【ST障害対応108】エラー通知の起動処理を追加。
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -3463,6 +3465,146 @@ AS
   END update_wk_req_proc;
 /*20090406_yabuki_ST101 END*/
   --
+/* 20090410_abe_T1_0108 START*/
+  /**********************************************************************************
+   * Procedure Name   : start_approval_wf_proc
+   * Description      : 承認ワークフロー起動(エラー通知)(A-21)
+   ***********************************************************************************/
+  PROCEDURE start_approval_wf_proc(
+      iv_itemtype              IN         VARCHAR2
+    , iv_itemkey               IN         VARCHAR2
+    , iv_errmsg                IN         VARCHAR2
+    , ov_errbuf                OUT NOCOPY VARCHAR2    -- エラー・メッセージ  --# 固定 #
+    , ov_retcode               OUT NOCOPY VARCHAR2    -- リターン・コード    --# 固定 #
+  ) IS
+    --
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(100) := 'start_approval_wf_proc';  -- プロシージャ名
+    --
+    --#######################  固定ローカル変数宣言部 START   ######################
+    --
+    lv_errbuf  VARCHAR2(5000); -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);    -- リターン・コード
+    --
+    --###########################  固定部 END   ####################################
+    --
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cv_wf_itemtype              CONSTANT VARCHAR2(30) := 'XXCSO011';
+    cv_wf_process               CONSTANT VARCHAR2(30) := 'XXCSO011A01P01';
+    cv_wf_pkg_name              CONSTANT VARCHAR2(30) := 'wf_engine';
+    cv_wf_createprocess         CONSTANT VARCHAR2(30) := 'createprocess';
+    cv_wf_setitemattrtext       CONSTANT VARCHAR2(30) := 'setitemattrtext';
+    cv_wf_startprocess          CONSTANT VARCHAR2(30) := 'startprocess';
+    cv_wf_itemtype_reqpprv      CONSTANT VARCHAR2(30) := 'REQAPPRV';
+    cv_wf_activity_status       CONSTANT VARCHAR2(30) := 'NOTIFIED';
+    --
+    -- ワークフロー属性名
+    cv_wf_xxcso_approver_user_name    CONSTANT VARCHAR2(30) := 'XXCSO_APPROVER_USER_NAME';
+    cv_wf_xxcso_ib_chk_errmsg         CONSTANT VARCHAR2(30) := 'XXCSO_IB_CHK_ERRMSG';
+    cv_wf_xxcso_notification_id       CONSTANT VARCHAR2(30) := 'XXCSO_APPROVAL_NOTIFICATION_ID';
+    --
+    cv_wf_approver_user_name          CONSTANT VARCHAR2(30) := 'APPROVER_USER_NAME';
+    --
+    -- トークン用定数
+    --
+    -- *** ローカル変数 ***
+    lv_itemkey                  VARCHAR2(100);
+    lv_token_value              VARCHAR2(60);
+    lv_wf_approver_user_name    VARCHAR2(2000);
+    ln_approval_s               NUMBER;
+    --
+    -- *** ローカル例外 ***
+    wf_api_others_expt          EXCEPTION;
+    --
+    PRAGMA EXCEPTION_INIT( wf_api_others_expt, -20002 );
+    --
+  BEGIN
+    --
+    --##################  固定ステータス初期化部 START   ###################
+    --
+    ov_retcode := cv_status_normal;
+    --
+    --###########################  固定部 END   ############################
+    --
+    SELECT xxcso_approval_s01.NEXTVAL
+    INTO   ln_approval_s
+    FROM   DUAL;
+    lv_itemkey := cv_wf_itemtype
+                    || TO_CHAR( SYSDATE, 'YYYYMMDD' )
+                    || TO_CHAR(ln_approval_s);
+
+    -- 承認ユーザ名を取得
+    lv_wf_approver_user_name := WF_ENGINE.GetItemAttrText(
+        itemtype => iv_itemtype
+      , itemkey  => iv_itemkey
+      , aname    => cv_wf_approver_user_name
+      , ignore_notfound => TRUE
+    );
+    IF (lv_wf_approver_user_name IS NULL) THEN
+      RAISE global_api_others_expt;
+    END IF;
+    --
+    -- ==========================
+    -- ワークフロープロセス生成
+    -- ==========================
+    lv_token_value := cv_wf_pkg_name || cv_wf_createprocess;
+    --
+    WF_ENGINE.CREATEPROCESS(
+        itemtype => cv_wf_itemtype
+      , itemkey  => lv_itemkey
+      , process  => cv_wf_process
+    );
+    --
+    -- ==========================
+    -- ワークフロー属性設定
+    -- ==========================
+    --
+    -- 承認ユーザ
+    WF_ENGINE.SETITEMATTRTEXT(
+        itemtype => cv_wf_itemtype
+      , itemkey  => lv_itemkey
+      , aname    => cv_wf_xxcso_approver_user_name
+      , avalue   => lv_wf_approver_user_name
+    );
+    --
+    -- エラーメッセージ
+    WF_ENGINE.SETITEMATTRTEXT(
+        itemtype => cv_wf_itemtype
+      , itemkey  => lv_itemkey
+      , aname    => cv_wf_xxcso_ib_chk_errmsg
+      , avalue   => iv_errmsg
+    );
+    --
+    -- ==========================
+    -- ワークフロープロセス起動
+    -- ==========================
+    --
+    WF_ENGINE.STARTPROCESS(
+        itemtype => cv_wf_itemtype
+      , itemkey  => lv_itemkey
+    );
+    --
+  EXCEPTION
+    WHEN global_api_others_expt THEN
+      -- *** 共通関数OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    WHEN OTHERS THEN
+     -- *** OTHERS例外ハンドラ ***
+      ov_errbuf  := cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM;
+      ov_retcode := cv_status_error;
+      --
+    --
+    --#####################################  固定部 END   ##########################################
+    --
+  END start_approval_wf_proc;
+/* 20090410_abe_T1_0108 END*/
   --
   /**********************************************************************************
    * Procedure Name   : submain
@@ -5267,9 +5409,28 @@ AS
     -- ===============================
     lv_errbuf         VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode        VARCHAR2(1);     -- リターン・コード
+    /* 20090410_abe_T1_0108 START*/
+    lv_errbuf_wf      VARCHAR2(5000);  -- エラー・メッセージ
+    ln_notification_id NUMBER;
+    /* 20090410_abe_T1_0108 END*/
     --
   BEGIN
     --
+    /* 20090410_abe_T1_0108 START*/
+    -- 複数回起動されるため、通知IDが取得できない場合は終了する。
+    BEGIN
+      SELECT wias.notification_id
+      INTO   ln_notification_id
+      FROM   wf_item_activity_statuses wias
+      WHERE  wias.item_type = itemtype
+      AND    wias.item_key  = itemkey
+      AND    wias.notification_id IS NOT NULL;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
+    --
+    /* 20090410_abe_T1_0108 END*/
     -- ===============================================
     -- submainの呼び出し（実際の処理はsubmainで行う）
     -- ===============================================
@@ -5295,6 +5456,20 @@ AS
         , aname    => cv_ib_chk_errmsg
         , avalue   => lv_errbuf
       );
+      /* 20090410_abe_T1_0108 START*/
+      --
+      lv_errbuf_wf := lv_errbuf;
+      -- ========================================
+      -- A-21. 承認ワークフロー起動(エラー通知)
+      -- ========================================
+      start_approval_wf_proc(
+        iv_itemtype    => itemtype
+      , iv_itemkey     => itemkey
+      , iv_errmsg      => lv_errbuf_wf          -- エラーメッセージ
+      , ov_errbuf      => lv_errbuf             -- エラー・メッセージ  --# 固定 #
+      , ov_retcode     => lv_retcode            -- リターン・コード    --# 固定 #
+      );
+      /* 20090410_abe_T1_0108 END*/
       --
     END IF;
 --
