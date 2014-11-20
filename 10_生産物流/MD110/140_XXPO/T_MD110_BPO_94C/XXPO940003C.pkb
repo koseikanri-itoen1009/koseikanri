@@ -8,7 +8,7 @@ AS
  * Description      : ロット在庫情報抽出処理
  * MD.050           : 生産物流共通                  T_MD050_BPO_940
  * MD.070           : ロット在庫情報抽出処理        T_MD070_BPO_94C
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/06/18    1.0   Oracle 大橋 孝郎 初回作成
  *  2008/08/01    1.1   Oracle 吉田 夏樹 ST不具合対応
  *  2008/08/04    1.2   Oracle 吉田 夏樹 PT対応
+ *  2008/08/19    1.3   Oracle 山根 一浩 仕様不備・指摘15
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1087,8 +1088,12 @@ AS
              ,REPLACE(iiim.item_short_name,gv_sep_com)                 AS item_short_name   -- 品名・略称
              ,iiim.lot_id                                              AS lot_id            -- ロットID
              ,DECODE(iiim.lot_ctl, gv_lot_code0, NULL, iiim.lot_no)    AS lot_no            -- ロットNo
+/* 2008/08/19 Mod ↓
              ,FND_DATE.STRING_TO_DATE(iiim.attribute1, gv_date_format) AS product_date      -- 製造年月日(DFF1)
              ,FND_DATE.STRING_TO_DATE(iiim.attribute3, gv_date_format) AS use_by_date       -- 賞味期限(DFF3)
+2008/08/19 Mod ↑ */
+             ,iiim.attribute1                                          AS product_date      -- 製造年月日(DFF1)
+             ,iiim.attribute3                                          AS use_by_date       -- 賞味期限(DFF3)
              ,iiim.attribute2                                          AS original_char     -- 固有記号(DFF2)
              ,iiim.attribute20                                         AS manu_factory      -- 製造工場(DFF20)
              ,iiim.attribute21                                         AS manu_lot          -- 製造ロット(DFF21)
@@ -1097,15 +1102,27 @@ AS
              ,iiim.attribute15                                         AS rank2             -- ランク2(DFF15)
              ,REPLACE(iiim.attribute18,gv_sep_com)                     AS description       -- 摘要(DFF18)
              ,iiim.attribute22                                         AS qt_inspect_req_no -- 検査依頼番号(DFF22)
+/* 2008/08/19 Mod ↓
              ,FND_DATE.STRING_TO_DATE(iiim.inspect_due_date1, gv_date_format) AS inspect_due_date1 -- 検査予定日1
              ,FND_DATE.STRING_TO_DATE(iiim.test_date1, gv_date_format)        AS test_date1        -- 検査日1
-             ,iiim.qt_effect1                                           AS qt_effect1        -- 結果1
+2008/08/19 Mod ↑ */
+             ,TO_CHAR(iiim.inspect_due_date1, gv_date_format)          AS inspect_due_date1 -- 検査予定日1
+             ,TO_CHAR(iiim.test_date1, gv_date_format)                 AS test_date1        -- 検査日1
+             ,iiim.qt_effect1                                          AS qt_effect1        -- 結果1
+/* 2008/08/19 Mod ↓
              ,FND_DATE.STRING_TO_DATE(iiim.inspect_due_date2, gv_date_format) AS inspect_due_date2 -- 検査予定日2
              ,FND_DATE.STRING_TO_DATE(iiim.test_date2, gv_date_format)  AS test_date2        -- 検査日2
-             ,iiim.qt_effect2                                           AS qt_effect2        -- 結果2
+2008/08/19 Mod ↑ */
+             ,TO_CHAR(iiim.inspect_due_date2, gv_date_format)          AS inspect_due_date2 -- 検査予定日2
+             ,TO_CHAR(iiim.test_date2, gv_date_format)                 AS test_date2        -- 検査日2
+             ,iiim.qt_effect2                                          AS qt_effect2        -- 結果2
+/* 2008/08/19 Mod ↓
              ,FND_DATE.STRING_TO_DATE(iiim.inspect_due_date3, gv_date_format) AS inspect_due_date3 -- 検査予定日3
              ,FND_DATE.STRING_TO_DATE(iiim.test_date3, gv_date_format)        AS test_date3        -- 検査日3
-             ,iiim.qt_effect3                                           AS qt_effect3        -- 結果3
+2008/08/19 Mod ↑ */
+             ,TO_CHAR(iiim.inspect_due_date3, gv_date_format)          AS inspect_due_date3 -- 検査予定日3
+             ,TO_CHAR(iiim.test_date3, gv_date_format)                 AS test_date3        -- 検査日3
+             ,iiim.qt_effect3                                          AS qt_effect3        -- 結果3
       FROM   (SELECT xilv.segment1,              -- 保管倉庫
                      xilv.inventory_location_id, -- 保管倉庫ID
                      xilv.mtl_organization_id,   -- 在庫組織ID
