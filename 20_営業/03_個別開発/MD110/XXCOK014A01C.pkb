@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.15
+ * Version          : 3.16
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2011/04/01    3.13  M.Watanabe       [E_本稼動_06757] 販売実績にて変動電気代のみの場合でも電気料の計算対象とする
  *  2012/02/23    3.14  S.Niki           [E_本稼動_09144] 売上金額（税込）に変動電気代を加算しないよう修正
  *  2012/09/14    3.15  S.Niki           [E_本稼動_08751] パフォーマンス改善対応
+ *  2012/10/01    3.16  K.Kiriu          [E_本稼動_10133] パフォーマンス改善対応(ヒント句固定化)
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -737,7 +738,14 @@ AS
                 , NVL2( xmbc.calc_type, xmbc.bm3_amt                           , NULL )            AS bm3_amt                  -- 【ＢＭ３】BM金額
                 , NVL2( xmbc.calc_type, NULL, xse.item_code )                                      AS item_code                -- エラー品目コード
                 , xse.amount_fix_date                                                              AS amount_fix_date          -- 金額確定日
-           FROM ( SELECT /*+ LEADING(xt0c xcbi xseh xsel xsim) USE_NL(xsel xsim) */
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
+--           FROM ( SELECT /*+ LEADING(xt0c xcbi xseh xsel xsim) USE_NL(xsel xsim) */
+           FROM ( SELECT /*+
+                           LEADING(xt0c xcbi hca xca)
+                           USE_NL(xt0c xcbi xseh xsel xsim)
+                           INDEX(xseh XXCOS_SALES_EXP_HEADERS_N08)
+                         */
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR END
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR START
 --                         xseh.sales_base_code                   AS sales_base_code             -- 売上拠点コード
 --                       , xseh.results_employee_code             AS results_employee_code       -- 成績計上者コード
@@ -993,7 +1001,14 @@ AS
                 , NVL2( xmbc.calc_type, xmbc.bm3_amt                           , NULL )            AS bm3_amt                  -- 【ＢＭ３】BM金額
                 , NVL2( xmbc.calc_type, NULL, xse.item_code )                                      AS item_code                -- エラー品目コード
                 , xse.amount_fix_date                                                              AS amount_fix_date          -- 金額確定日
-           FROM ( SELECT /*+ LEADING(xt0c xcbi xseh xsel xsim) USE_NL(xsel xsim) */
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
+--           FROM ( SELECT /*+ LEADING(xt0c xcbi xseh xsel xsim) USE_NL(xsel xsim) */
+           FROM ( SELECT /*+
+                           LEADING(xt0c xcbi hca xca)
+                           USE_NL(xt0c xcbi xseh xsel xsim)
+                           INDEX(xseh XXCOS_SALES_EXP_HEADERS_N08)
+                         */
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR END
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi REPAIR START
 --                         xseh.sales_base_code               AS sales_base_code                 -- 売上拠点コード
 --                       , xseh.results_employee_code         AS results_employee_code           -- 成績計上者コード
@@ -1521,7 +1536,12 @@ AS
   -- 販売実績情報・定額条件
   CURSOR get_sales_data_cur4 IS
     SELECT /*+
-             LEADING( xt0c hca xca xcbi xmbc )
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
+--             LEADING( xt0c hca xca xcbi xmbc )
+             LEADING(xt0c hca xca xcbi xmbc)
+             USE_NL(xt0c xcbi xmbc xseh xsel )
+             INDEX(xseh XXCOS_SALES_EXP_HEADERS_N08)
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR END
            */
            CASE
              WHEN TRUNC( xt0c.closing_date, 'MM' ) = TRUNC( gd_process_date, 'MM' ) THEN
@@ -3193,7 +3213,15 @@ GROUP BY CASE
     --==================================================
     CURSOR xsel_update_lock_cur
     IS
-      SELECT xsel.sales_exp_line_id    AS sales_exp_line_id    -- 販売実績明細ID
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
+--      SELECT xsel.sales_exp_line_id    AS sales_exp_line_id    -- 販売実績明細ID
+      SELECT /*+
+               LEADING(xt0c xcbi)
+               USE_NL(xt0c xcbi xseh xsel)
+               INDEX(xseh XXCOS_SALES_EXP_HEADERS_N08)
+             */
+             xsel.sales_exp_line_id    AS sales_exp_line_id    -- 販売実績明細ID
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR END
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
 --      FROM xxcok_tmp_014a01c_custdata xt0c            -- 条件別販手販協計算顧客情報一時表
       FROM xxcok_wk_014a01c_custdata xt0c             -- 条件別販手販協計算顧客情報一時表
@@ -3275,7 +3303,15 @@ GROUP BY CASE
       , xsel.program_application_id = cn_program_application_id
       , xsel.program_id             = cn_program_id
       , xsel.program_update_date    = SYSDATE
-    WHERE EXISTS ( SELECT 'X'
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR START
+--    WHERE EXISTS ( SELECT 'X'
+    WHERE EXISTS ( SELECT /*+
+                            LEADING(xt0c xcbi)
+                            USE_NL(xt0c xcbi xseh xsel2) 
+                            INDEX(xseh XXCOS_SALES_EXP_HEADERS_N08)
+                          */
+                          'X'
+-- 2012/10/01 Ver.3.16 [E_本稼動_10133] SCSK K.Kiriu REPAIR END
 -- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
 --                   FROM xxcok_tmp_014a01c_custdata xt0c            -- 条件別販手販協計算顧客情報一時表
                    FROM xxcok_wk_014a01c_custdata xt0c             -- 条件別販手販協計算顧客情報一時表
