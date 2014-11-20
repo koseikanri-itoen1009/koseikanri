@@ -14,6 +14,7 @@
 --  Date          Ver.    Editor           Description
 -- ------------- ------- ---------------- ---------------------------------------------------------
 --  2009/1/16    1.0     Kenji.Sai        新規作成
+--  2009/5/7     1.1     Tomoko.Mori      T1_0912対応
 --
 -- ************************************************************************************************
 --
@@ -28,7 +29,10 @@ FIELDS TERMINATED BY "," TRAILING NULLCOLS
     NO_SEQ                  INTEGER EXTERNAL "XXCSO_IN_ROUTE_NO_S01.NEXTVAL",    -- シーケンス番号
     RECORD_NUMBER           POSITION(1) INTEGER EXTERNAL,                        -- レコード番号
     ACCOUNT_NUMBER          POSITION(*) CHAR OPTIONALLY ENCLOSED BY '"' ,        -- 顧客コード
-    ROUTE_NO                POSITION(*) CHAR OPTIONALLY ENCLOSED BY '"' ,        -- ルートコード
+--    /*20090507_mori_T1_0912 START*/
+    ROUTE_NO                POSITION(*) CHAR OPTIONALLY ENCLOSED BY '"' "TRIM(' ' from :ROUTE_NO)",        -- ルートコード
+--    ROUTE_NO                POSITION(*) CHAR OPTIONALLY ENCLOSED BY '"' ,        -- ルートコード
+--    /*20090507_mori_T1_0912 END*/
     INPUT_DATE              POSITION(*) INTEGER EXTERNAL "TO_DATE(:INPUT_DATE,'YYYYMMDD')" , -- 入力日付
     COALITION_TRANCE_DATE   SYSDATE,                                             -- 連携処理日
     CREATED_BY              "FND_GLOBAL.USER_ID",                                -- *** 作成者

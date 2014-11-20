@@ -35,6 +35,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009-1-8     1.0   Kenji.Sai        新規作成
  *  2009-05-01   1.1   Tomoko.Mori      T1_0897対応
+ *  2009-05-07   1.2   Tomoko.Mori      T1_0912対応
  *
  *****************************************************************************************/
 -- 
@@ -600,6 +601,9 @@ AS
     cv_visit_date_len       CONSTANT NUMBER        := 8;                    -- 訪問日
     cv_visit_time_len       CONSTANT NUMBER        := 4;                    -- 訪問時刻
     cv_visit_date_fmt       CONSTANT VARCHAR2(100) := 'YYYYMMDDHH24MI';     -- DATE型
+    /*20090507_mori_T1_0912 START*/
+    cv_blank                CONSTANT VARCHAR2(1)   := ' ';                  -- 空白
+    /*20090507_mori_T1_0912 END*/
 --
     -- *** ローカル変数 ***
     l_col_data_tab          g_col_data_ttype;       -- 分割後項目データを格納する配列
@@ -716,6 +720,14 @@ AS
       END IF;
 --
       -- 3). サイズチェック
+      /*20090507_mori_T1_0912 START*/
+      -- 末尾半角スペース削除
+      l_col_data_tab(3)         := TRIM(cv_blank from l_col_data_tab(3));             -- 訪問区分1
+      l_col_data_tab(4)         := TRIM(cv_blank from l_col_data_tab(4));             -- 訪問区分2
+      l_col_data_tab(5)         := TRIM(cv_blank from l_col_data_tab(5));             -- 訪問区分3
+      l_col_data_tab(6)         := TRIM(cv_blank from l_col_data_tab(6));             -- 訪問区分4
+      l_col_data_tab(7)         := TRIM(cv_blank from l_col_data_tab(7));             -- 訪問区分5
+      /*20090507_mori_T1_0912 END*/
       IF (LENGTHB(l_col_data_tab(1)) <> cv_account_number_len) THEN
         lb_return  := FALSE;
         lv_item_nm := '顧客コード';
