@@ -1,5 +1,5 @@
-CREATE OR REPLACE
-PACKAGE BODY XXINV100001C AS
+CREATE OR REPLACE PACKAGE BODY XXINV100001C
+AS
 --
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -103,6 +103,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/11/11    1.14 Oracle 福田 直樹 統合指摘#589対応
  *  2008/11/13    1.15 Oracle 大橋 孝郎 指摘586,596対応
  *  2008/12/01    1.16 Oracle 大橋 孝郎 本番#155対応
+ *  2009/02/17    1.17 Oracle 加波 由香里 本番障害#38対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -481,6 +482,47 @@ PACKAGE BODY XXINV100001C AS
   t_forecast_interface_tab_inst   MRP_FORECAST_INTERFACE_PK.t_forecast_interface;
 -- add end 1.11
 --
+-- 2009/02/17 本番障害#38対応 ADD Start --
+-- =======================================
+--  プロシージャ宣言                    
+-- =======================================
+  -- A-2-3 引取計画Forecast名抽出
+  PROCEDURE get_f_degi_hikitori(
+    in_if_data_tbl           IN  forecast_tbl,
+    in_if_data_cnt           IN  NUMBER,          -- 処理中のIFデータカウンタ
+    ov_errbuf                OUT NOCOPY VARCHAR2, -- エラー・メッセージ           --# 固定 #
+    ov_retcode               OUT NOCOPY VARCHAR2, -- リターン・コード             --# 固定 #
+    ov_errmsg                OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
+  );
+--
+  -- A-4-3 計画商品Forecast名抽出
+  PROCEDURE get_f_degi_keikaku(
+    in_if_data_tbl           IN  forecast_tbl,
+    in_if_data_cnt           IN  NUMBER,          -- 処理中のIFデータカウンタ
+    ov_errbuf                OUT NOCOPY VARCHAR2, -- エラー・メッセージ           --# 固定 #
+    ov_retcode               OUT NOCOPY VARCHAR2, -- リターン・コード             --# 固定 #
+    ov_errmsg                OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
+  );
+--
+  -- A-5-3 出荷数制限AForecast名抽出
+  PROCEDURE get_f_degi_seigen_a(
+    in_if_data_tbl           IN  forecast_tbl,
+    in_if_data_cnt           IN  NUMBER,          -- 処理中のIFデータカウンタ
+    ov_errbuf                OUT NOCOPY VARCHAR2, -- エラー・メッセージ           --# 固定 #
+    ov_retcode               OUT NOCOPY VARCHAR2, -- リターン・コード             --# 固定 #
+    ov_errmsg                OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
+  );
+--
+  -- A-6-3 出荷数制限BForecast名抽出
+  PROCEDURE get_f_degi_seigen_b(
+    in_if_data_tbl           IN  forecast_tbl,
+    in_if_data_cnt           IN  NUMBER,          -- 処理中のIFデータカウンタ
+    ov_errbuf                OUT NOCOPY VARCHAR2, -- エラー・メッセージ           --# 固定 #
+    ov_retcode               OUT NOCOPY VARCHAR2, -- リターン・コード             --# 固定 #
+    ov_errmsg                OUT NOCOPY VARCHAR2  -- ユーザー・エラー・メッセージ --# 固定 #
+  );
+-- 2009/02/17 本番障害#38対応 ADD End   --
+--
   /**********************************************************************************
    * Procedure Name   : if_data_disp
    * Description      : インターフェースデータ行を処理結果レポートに表示する
@@ -718,7 +760,6 @@ PACKAGE BODY XXINV100001C AS
 --#####################################  固定部 END   ##########################################
 --
   END parameter_check_yyyymm;
---
 --
   /**********************************************************************************
    * Procedure Name   : parameter_check_forecast_year
@@ -5626,6 +5667,34 @@ PACKAGE BODY XXINV100001C AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2009/02/17 本番障害#38対応 ADD Start --
+    -- A-2-3 引取計画Forecast名抽出
+    -- (Forcast名チェック)
+    get_f_degi_hikitori(    in_if_data_tbl  => in_if_data_tbl -- Forcast登録用配列
+                          , in_if_data_cnt  => in_if_data_cnt -- 処理中のデータカウンタ
+                          , ov_errbuf       => lv_errbuf
+                          , ov_retcode      => lv_retcode
+                          , ov_errmsg       => lv_errmsg 
+                        );
+    -- 警告およびエラーであればログを出力し処理続行
+    IF (lv_retcode <> gv_status_normal) THEN
+      if_data_disp( in_if_data_tbl, in_if_data_cnt);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
+    END IF;
+    -- 警告およびエラー件数を保存
+    IF (lv_retcode = gv_status_warn) THEN
+      ln_warn_cnt := 1;
+    ELSIF (lv_retcode = gv_status_error) THEN
+      ln_error_cnt := 1;
+    END IF;
+    -- システムエラー(オラクルエラー)の場合はここで処理を中止してエラーリターンする。
+    IF ((lv_retcode = gv_status_error ) AND ( lv_errmsg IS NULL )) THEN
+      -- エラー件数は1として例外処理へ
+      gn_error_cnt := 1;
+      RAISE global_api_expt;
+    END IF;
+-- 2009/02/17 本番障害#38対応 ADD End   --
     -- 各チェックにてエラーまたは警告が発生していたらリターン値に
     -- エラーまたは警告をセットする。
     IF (ln_warn_cnt > 0) THEN
@@ -6416,6 +6485,35 @@ PACKAGE BODY XXINV100001C AS
       RAISE global_api_expt;
     END IF;
 --
+-- 2009/02/17 本番障害#38 ADD Start --
+    -- A-4-3 計画商品Forecast名抽出
+    -- (Forcast名称チェック)
+    get_f_degi_keikaku(   in_if_data_tbl  => in_if_data_tbl
+                        , in_if_data_cnt  => in_if_data_cnt
+                        , ov_errbuf       => lv_errbuf 
+                        , ov_retcode      => lv_retcode
+                        , ov_errmsg       => lv_errmsg 
+                        );
+    -- 警告およびエラーであればログを出力し処理続行
+    IF (lv_retcode <> gv_status_normal) THEN
+      if_data_disp( in_if_data_tbl, in_if_data_cnt);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
+    END IF;
+    -- 警告およびエラー件数を保存
+    IF (lv_retcode = gv_status_warn) THEN
+      ln_warn_cnt := 1;
+    ELSIF (lv_retcode = gv_status_error) THEN
+      ln_error_cnt := 1;
+    END IF;
+    -- システムエラー(オラクルエラー)の場合はここで処理を中止してエラーリターンする。
+    IF ((lv_retcode = gv_status_error ) AND ( lv_errmsg IS NULL )) THEN
+      -- エラー件数は1として例外処理へ
+      gn_error_cnt := 1;
+      RAISE global_api_expt;
+    END IF;
+-- 2009/02/17 本番障害#38 ADD End   --
+
     -- 各チェックにてエラーまたは警告が発生していたらリターン値に
     -- エラーまたは警告をセットする。
     IF (ln_warn_cnt > 0) THEN
@@ -6786,6 +6884,34 @@ PACKAGE BODY XXINV100001C AS
       FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
       FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
     END IF;
+    -- 警告およびエラー件数を保存1
+    IF (lv_retcode = gv_status_warn) THEN
+      ln_warn_cnt := 1;
+    ELSIF (lv_retcode = gv_status_error) THEN
+      ln_error_cnt := 1;
+    END IF;
+    -- システムエラー(オラクルエラー)の場合はここで処理を中止してエラーリターンする。
+    IF ((lv_retcode = gv_status_error ) AND ( lv_errmsg IS NULL )) THEN
+      -- エラー件数は1として例外処理へ
+      gn_error_cnt := 1;
+      RAISE global_api_expt;
+    END IF;
+--
+-- 2009/02/17 本番障害#38対応 ADD Start --
+    -- A-5-3 出荷数制限AForecast名抽出
+    -- (Forcast名チェック)
+    get_f_degi_seigen_a( in_if_data_tbl => in_if_data_tbl
+                        ,in_if_data_cnt => in_if_data_cnt
+                        ,ov_errbuf      => lv_errbuf
+                        ,ov_retcode     => lv_retcode
+                        ,ov_errmsg      => lv_errmsg
+    );
+    -- 警告およびエラーであればログを出力し処理続行
+    IF (lv_retcode <> gv_status_normal) THEN
+      if_data_disp( in_if_data_tbl, in_if_data_cnt);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
+    END IF;
     -- 警告およびエラー件数を保存
     IF (lv_retcode = gv_status_warn) THEN
       ln_warn_cnt := 1;
@@ -6798,6 +6924,7 @@ PACKAGE BODY XXINV100001C AS
       gn_error_cnt := 1;
       RAISE global_api_expt;
     END IF;
+-- 2009/02/17 本番障害#38対応 ADD End ----
 --
     -- 各チェックにてエラーまたは警告が発生していたらリターン値に
     -- エラーまたは警告をセットする。
@@ -7246,6 +7373,35 @@ PACKAGE BODY XXINV100001C AS
       gn_error_cnt := 1;
       RAISE global_api_expt;
     END IF;
+--
+-- 2009/02/17 本番障害#38対応 ADD Start --
+    -- A-6-3 出荷数制限BForecast名抽出
+    -- (Forcast名チェック)
+    get_f_degi_seigen_b( in_if_data_tbl => in_if_data_tbl -- Forcast登録用配列
+                        ,in_if_data_cnt => in_if_data_cnt -- 処理中のデータカウンタ
+                        ,ov_errbuf      => lv_errbuf
+                        ,ov_retcode     => lv_retcode
+                        ,ov_errmsg      => lv_errmsg
+    );
+    -- 警告およびエラーであればログを出力し処理続行
+    IF (lv_retcode <> gv_status_normal) THEN
+      if_data_disp( in_if_data_tbl, in_if_data_cnt);
+      FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
+    END IF;
+    -- 警告およびエラー件数を保存
+    IF (lv_retcode = gv_status_warn) THEN
+      ln_warn_cnt := 1;
+    ELSIF (lv_retcode = gv_status_error) THEN
+      ln_error_cnt := 1;
+    END IF;
+    -- システムエラー(オラクルエラー)の場合はここで処理を中止してエラーリターンする。
+    IF ((lv_retcode = gv_status_error ) AND ( lv_errmsg IS NULL )) THEN
+      -- エラー件数は1として例外処理へ
+      gn_error_cnt := 1;
+      RAISE global_api_expt;
+    END IF;
+-- 2009/02/17 本番障害#38対応 ADD End ----
 --
     -- 各チェックにてエラーまたは警告が発生していたらリターン値に
     -- エラーまたは警告をセットする。
@@ -10297,22 +10453,24 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
 --
     <<araigae_loop>>
     FOR ln_data_cnt IN 1..gn_target_cnt LOOP
-        -- A-2-3 引取計画Forecast名抽出
-        get_f_degi_hikitori( lt_if_data,
-                             ln_data_cnt,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
--- mod start 1.11
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
--- mod end 1.11
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
-
+-- 2009/02/17 本番障害#38 DEL Start --
+--        -- A-2-3 引取計画Forecast名抽出
+--        get_f_degi_hikitori( lt_if_data,
+--                             ln_data_cnt,
+--                             lv_errbuf,
+--                             lv_retcode,
+--                             lv_errmsg );
+--        -- エラーがあったらループ処理中止
+--        IF (lv_retcode = gv_status_error) THEN
+---- mod start 1.11
+--          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+---- mod end 1.11
+--          gn_error_cnt := gn_error_cnt + 1;
+--          ln_error_flg := 1;
+--          EXIT;
+--        END IF;
+--
+-- 2009/02/17 本番障害#38 DEL End    --
       OPEN forecast_araigae_cur;
 --
       FETCH forecast_araigae_cur BULK COLLECT INTO lr_araigae_data;
@@ -11109,21 +11267,23 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --
     <<araigae_loop>>
     FOR ln_data_cnt IN 1..gn_target_cnt LOOP
-        -- A-4-3 計画商品Forecast名抽出
-        get_f_degi_keikaku( lt_if_data,
-                            ln_data_cnt,
-                            lv_errbuf,
-                            lv_retcode,
-                            lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
--- mod start 1.11
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
--- mod end 1.11
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+-- 2009/02/17 本番障害#38 DEL Start --
+--        -- A-4-3 計画商品Forecast名抽出
+--        get_f_degi_keikaku( lt_if_data,
+--                            ln_data_cnt,
+--                            lv_errbuf,
+--                            lv_retcode,
+--                            lv_errmsg );
+--        -- エラーがあったらループ処理中止
+--        IF (lv_retcode = gv_status_error) THEN
+---- mod start 1.11
+--          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+---- mod end 1.11
+--          gn_error_cnt := gn_error_cnt + 1;
+--          ln_error_flg := 1;
+--          EXIT;
+--        END IF;
+---- 2009/02/17 本番障害#38 DEL End   --
 --
       OPEN forecast_araigae_cur(lt_if_data(ln_data_cnt).base_code,lt_if_data(ln_data_cnt).item_code );
 --
@@ -11580,22 +11740,24 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
       <<araigae_loop>>
       FOR ln_data_cnt IN 1..gn_target_cnt LOOP
 --
-        -- A-5-3 出荷数制限AForecast名抽出
-        get_f_degi_seigen_a( lt_if_data,
-                             ln_data_cnt,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg );
-        lv_err_msg2 := lv_errmsg;
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
--- mod start 1.11
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
--- mod end 1.11
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+-- 2009/02/17 本番障害#38対応 DEL Start --
+--        -- A-5-3 出荷数制限AForecast名抽出
+--        get_f_degi_seigen_a( lt_if_data,
+--                             ln_data_cnt,
+--                             lv_errbuf,
+--                             lv_retcode,
+--                             lv_errmsg );
+--        lv_err_msg2 := lv_errmsg;
+--        -- エラーがあったらループ処理中止
+--        IF (lv_retcode = gv_status_error) THEN
+---- mod start 1.11
+--          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+---- mod end 1.11
+--          gn_error_cnt := gn_error_cnt + 1;
+--          ln_error_flg := 1;
+--          EXIT;
+--        END IF;
+-- 2009/02/17 本番障害#38対応 DEL End ----
 --
       OPEN forecast_araigae_cur(lt_if_data(ln_data_cnt).item_code);
 --
@@ -12095,21 +12257,23 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
       <<araigae_loop>>
       FOR ln_data_cnt IN 1..gn_target_cnt LOOP
 --
-        -- A-6-3 出荷数制限BForecast名抽出
-        get_f_degi_seigen_b( lt_if_data,
-                             ln_data_cnt,
-                             lv_errbuf,
-                             lv_retcode,
-                             lv_errmsg );
-        -- エラーがあったらループ処理中止
-        IF (lv_retcode = gv_status_error) THEN
--- mod start 1.11
-          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
--- mod end 1.11
-          gn_error_cnt := gn_error_cnt + 1;
-          ln_error_flg := 1;
-          EXIT;
-        END IF;
+-- 2009/02/17 本番障害#38対応 DEL Start --
+--        -- A-6-3 出荷数制限BForecast名抽出
+--        get_f_degi_seigen_b( lt_if_data,
+--                             ln_data_cnt,
+--                             lv_errbuf,
+--                             lv_retcode,
+--                             lv_errmsg );
+--        -- エラーがあったらループ処理中止
+--        IF (lv_retcode = gv_status_error) THEN
+---- mod start 1.11
+--          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+---- mod end 1.11
+--          gn_error_cnt := gn_error_cnt + 1;
+--          ln_error_flg := 1;
+--          EXIT;
+--        END IF;
+-- 2009/02/17 本番障害#38対応 DEL End ----
 --
       OPEN forecast_araigae_cur(lt_if_data(ln_data_cnt).item_code);
 --
