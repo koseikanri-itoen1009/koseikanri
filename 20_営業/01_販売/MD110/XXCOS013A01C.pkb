@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A01C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、AR請求取引に連携する処理
  * MD.050           : ARへの販売実績データ連携 MD050_COS_013_A01
- * Version          : 1.19
+ * Version          : 1.20
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -48,6 +48,7 @@ AS
  *  2009/05/12    1.17  K.KIN            T1_0693
  *  2009/05/14    1.18  K.KIN            T1_0795
  *  2009/05/15    1.19  K.KIN            T1_0776
+ *  2009/05/20    1.20  K.KIN            T1_1078
  *
  *****************************************************************************************/
 --
@@ -167,6 +168,7 @@ AS
   cv_org_sys_id_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12784'; -- 顧客所在地参照IDが未設定
   cv_jour_no_msg            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12785'; -- 仕訳パターンない
   cv_receipt_id_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12789'; -- 支払方法が未設定
+  cv_tax_no_msg             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12790'; -- 対象外税金コード取得エラー
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -226,6 +228,7 @@ AS
   cv_qct_cust_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_CUS_CLASS_MST_013_A01';   -- 顧客区分特定マスタ
   cv_qct_item_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_ITEM_DTL_MST_013_A01';    -- AR品目明細摘要特定マスタ
   cv_qct_jour_cls           CONSTANT  VARCHAR2(50) := 'XXCOS1_JOUR_CLS_MST_013_A01';    -- AR会計配分仕訳特定マスタ
+  cv_out_tax_cls            CONSTANT  VARCHAR2(50) := 'XXCOS1_CONS_TAX_NO_APPLICABLE';  -- 消費税区分(対象外)
 --
   -- クイックコード
   cv_qcc_code               CONSTANT  VARCHAR2(50) := 'XXCOS_013_A01%';                 -- クイックコード
@@ -451,6 +454,7 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
   gn_warn_flag                        VARCHAR2(1) DEFAULT 'N';                      -- 警告フラグ
   gn_skip_cnt                         NUMBER DEFAULT 0;                             -- スキップ件数
   gv_skip_flag                        VARCHAR2(1);                                  -- スキップフラグ
+  gt_exp_tax_cls                      fnd_lookup_values.meaning%TYPE;               -- 消費税区分(対象外)
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -881,6 +885,30 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                         , iv_token_value1  => cv_qcv_tax_cls
                         , iv_token_name2   => cv_tkn_lookup_dff3
                         , iv_token_value2  => cv_attribute_1
+                      );
+          lv_errbuf := lv_errmsg;
+        RAISE global_no_lookup_expt;
+    END;
+--
+    -- 消費税区分(対象外)
+    BEGIN
+      SELECT flvl.meaning
+      INTO   gt_exp_tax_cls
+      FROM   fnd_lookup_values           flvl
+      WHERE  flvl.lookup_type            = cv_out_tax_cls
+        AND  flvl.enabled_flag           = cv_enabled_yes
+        AND  flvl.language               = USERENV( 'LANG' )
+        AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
+                             AND         NVL( flvl.end_date_active,   gd_process_date );
+--
+    -- クイックコード取得出来ない場合
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                          iv_application   => cv_xxcos_short_nm
+                        , iv_name          => cv_tax_no_msg
+                        , iv_token_name1   => cv_tkn_lookup_type
+                        , iv_token_value1  => cv_out_tax_cls
                       );
           lv_errbuf := lv_errmsg;
         RAISE global_no_lookup_expt;
@@ -1443,6 +1471,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           gt_sales_exp_tbl( ln_sale_idx ).pure_amount      := gt_sales_exp_tbl2( sale_idx ).cash_and_card;
           -- 税金は０を固定
           gt_sales_exp_tbl( ln_sale_idx ).tax_amount       := 0;
+          -- 税金コードは消費税区分(対象外)にする
+          gt_sales_exp_tbl( ln_sale_idx ).tax_code         := gt_exp_tax_cls;
           -- 併用額は０を固定
           gt_sales_exp_tbl( ln_sale_idx ).cash_and_card    := 0;
 --
@@ -1481,6 +1511,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
                                                                   + gt_sales_exp_tbl2( sale_idx ).tax_amount;
             -- 税金は０を固定
             gt_sales_exp_tbl( ln_sale_idx ).tax_amount       := 0;
+            -- 税金コードは消費税区分(対象外)にする
+            gt_sales_exp_tbl( ln_sale_idx ).tax_code         := gt_exp_tax_cls;
             -- 併用額は０を固定
             gt_sales_exp_tbl( ln_sale_idx ).cash_and_card    := 0;
           END IF;
@@ -1537,6 +1569,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
            OR gt_sales_exp_tbl2( sale_idx ).cust_gyotai_sho = gt_gyotai_fvd ) THEN
           -- 税金を０に固定
           gt_sales_exp_tbl( ln_sale_idx ).tax_amount       := 0;
+          -- 税金コードは消費税区分(対象外)にする
+          gt_sales_exp_tbl( ln_sale_idx ).tax_code         := gt_exp_tax_cls;
 --
             gt_sales_exp_tbl( ln_sale_idx ).pure_amount      := gt_sales_exp_tbl2( sale_idx ).pure_amount
                                                                 + gt_sales_exp_tbl2( sale_idx ).tax_amount;
@@ -2743,7 +2777,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_y_flag;
                                                         -- 税込金額フラグ
-        ELSIF( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
+        ELSIF( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls 
+          OR gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_exp_tax_cls ) THEN
           -- 外税の場合、'N'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_n_flag;
@@ -2860,7 +2895,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_y_flag;
                                                         -- 税込金額フラグ
-        ELSIF( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
+        ELSIF( gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls  
+          OR gt_sales_norm_tbl2( ln_trx_idx ).tax_code = gt_exp_tax_cls ) THEN
           -- 外税の場合、'N'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_n_flag;
@@ -4596,7 +4632,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_y_flag;
                                                         -- 税込金額フラグ
-        ELSIF( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
+        ELSIF( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls 
+          OR gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_exp_tax_cls ) THEN
           -- 外税の場合、'N'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_n_flag;
@@ -4711,7 +4748,8 @@ gt_bulk_card_tbl              g_sales_exp_ttype;                                
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_y_flag;
                                                         -- 税込金額フラグ
-        ELSIF( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls ) THEN
+        ELSIF( gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_out_tax_cls 
+          OR gt_sales_bulk_tbl2( ln_trx_idx ).tax_code = gt_exp_tax_cls ) THEN
           -- 外税の場合、'N'を設定
           gt_ar_interface_tbl( ln_ar_idx ).amount_includes_tax_flag
                                                         := cv_n_flag;
