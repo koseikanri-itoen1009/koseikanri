@@ -1,0 +1,5 @@
+CREATE INDEX xxcos.xxcos_rep_bus_sales_sum_n03 ON xxcos.xxcos_rep_bus_sales_sum (
+  dlv_date desc
+)
+TABLESPACE xxidx2
+/
