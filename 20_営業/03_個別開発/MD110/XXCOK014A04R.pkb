@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *                                                        銀行コード、支店コードの異常桁数対応
  *  2009/12/15    1.10  SCS K.Nakamura   [障害E_本稼動_00461] ソート順対応によるBM支払区分(コード値)の追加
  *                                                            1顧客に前月・当月の2レコード存在する場合、締め・支払日共に最新の日付を設定
+ *  2010/01/27    1.11  SCS K.Kiriu      [障害E_本稼動_01176] 口座種別追加に伴う口座種別名取得元クイックコード変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -147,7 +148,10 @@ AS
   cv_flag_y                  CONSTANT VARCHAR2(1)   := 'Y';
   -- 参照タイプ
   cv_lookup_type_bm_kbn      CONSTANT VARCHAR2(20)  := 'XXCMM_BM_PAYMENT_KBN';
-  cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'JP_BANK_ACCOUNT_TYPE';
+-- 2010/01/27 Ver.1.11 [障害E_本稼動_01176] SCS K.Kiriu START
+--  cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'JP_BANK_ACCOUNT_TYPE';
+  cv_lookup_type_bank        CONSTANT VARCHAR2(16)  := 'XXCSO1_KOZA_TYPE';
+-- 2010/01/27 Ver.1.11 [障害E_本稼動_01176] SCS K.Kiriu END
   -- 値セット
   cv_set_name                CONSTANT VARCHAR2(18)  := 'XXCOK1_TARGET_DISP';
   -- SVF起動パラメータ

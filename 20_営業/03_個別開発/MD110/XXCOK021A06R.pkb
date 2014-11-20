@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *                                                        補助科目:05103は問屋マージン
  *                                                        補助科目:05132は拡売費、その他はその他科目へ設定
  *  2009/12/24    1.8   S.Moriyama       [E_本稼動_00608] SQLチューニング
+ *  2010/01/27    1.9   K.Kiriu          [E_本稼動_01176] 口座種別追加に伴う口座種別名取得元クイックコード変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -126,7 +127,10 @@ AS
   cv_primary_flag            CONSTANT VARCHAR2(1)   := 'Y';   -- 主銀行
   -- タイプ
   cv_lookup_type_tonya       CONSTANT VARCHAR2(20)  := 'XXCMM_TONYA_CODE';
-  cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'JP_BANK_ACCOUNT_TYPE';
+-- 2010/01/27 Ver.1.9 [E_本稼動_01176] SCS K.Kiiru UPD START
+--  cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'JP_BANK_ACCOUNT_TYPE';
+  cv_lookup_type_bank        CONSTANT VARCHAR2(20)  := 'XXCSO1_KOZA_TYPE';
+-- 2010/01/27 Ver.1.9 [E_本稼動_01176] SCS K.Kiiru UPD END
   -- 請求単位
   cv_unit_type_cs            CONSTANT VARCHAR2(1)   := '2';   -- C/S
   -- SVF起動パラメータ
