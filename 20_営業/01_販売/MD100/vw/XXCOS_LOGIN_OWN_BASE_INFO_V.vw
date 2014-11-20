@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   K.Kakishita      新規作成
+ *  2009/07/22    1.1   M.Maruyama       障害番号0000640 対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_login_own_base_info_v (
   base_code,                            --拠点コード
@@ -64,11 +65,13 @@ AS
     hca.party_id                        = hp.party_id
   AND hca.account_number                = obc.own_base_code
   AND hca.customer_class_code           = '1'
-  AND obc.process_date                  >= TRUNC(
-                                             NVL( TO_DATE( hca.attribute3,  'RRRR/MM/DD' ),
-                                               obc.process_date
-                                             )
-                                           )
+--  2009/7/22 Ver1.1 Del Start
+--  AND obc.process_date                  >= TRUNC(
+--                                             NVL( TO_DATE( hca.attribute3,  'RRRR/MM/DD' ),
+--                                               obc.process_date
+--                                             )
+--                                           )
+--  2009/7/22 Ver1.1 Del End
   ;
 COMMENT ON  COLUMN  xxcos_login_own_base_info_v.base_code        IS  '拠点コード'; 
 COMMENT ON  COLUMN  xxcos_login_own_base_info_v.base_name        IS  '拠点名称';

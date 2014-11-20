@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/01    1.0   K.Kakishita      V‹Kì¬
  *  2009/07/17    1.1   K.Atsushiba      áŠQ”Ô†0000488 ‘Î‰ž
+ *  2009/07/22    1.1   M.Maruyama       áŠQ”Ô†0000640 ‘Î‰ž
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_login_base_info_v (
   base_code,                            --‹’“_ƒR[ƒh
@@ -86,9 +87,11 @@ AS
 --                                               obc.process_date
 --                                             )
 --                                           )                                           
-  AND obc.process_date                  >= NVL( TO_DATE( hca.attribute3,  'RRRR/MM/DD' ),
-                                               obc.process_date
-                                             )
+--  2009/07/22 Ver1.2 Del Start
+--  AND obc.process_date                  >= NVL( TO_DATE( hca.attribute3,  'RRRR/MM/DD' ),
+--                                               obc.process_date
+--                                             )
+--  2009/07/22 Ver1.2 Del End
 --  2009/07/17 Ver1.1 Mod End
 --  2009/07/17 Ver1.1 Del Start
 --  UNION
