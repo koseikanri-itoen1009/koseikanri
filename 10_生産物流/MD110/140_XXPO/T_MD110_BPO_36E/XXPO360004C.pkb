@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *                                       されない現象への対応
  *  2008/06/25    1.11  Y.Ishikawa       総数は、数量(QUANTITY)ではなく受入返品数量
  *                                       (RCV_RTN_QUANTITY)をセットする
+ *  2008/07/04    1.12  Y.Majikina       TEMP領域エラー回避のため、xxcmn_categories4_vを使用
+ *                                       しないように修正
  *
  *****************************************************************************************/
 --
@@ -533,91 +535,81 @@ AS
     -- ============================================================================================
     -- < 品目カテゴリ(商品区分) > --
     -- ============================================================================================
-        lv_comm_where := lv_comm_where
-                      || ' AND xicv.prod_class_code  =   xcv.category_code '
-                      || ' AND xcv.category_set_name = ''' || cv_comm_division || '''';
---
     -- --------------------------------
     -- パラメータ：商品区分が入力済
     -- ---------------------------------
     IF ( ir_param.item_division IS NOT NULL) THEN
       lv_comm_where := lv_comm_where
-               || ' AND xcv.category_code = ''' || ir_param.item_division || '''';
+               || ' AND ctgg.category_code = ''' || ir_param.item_division || '''';
     END IF;
 --
     -- ============================================================================================
     -- < 品目カテゴリ(品目区分) > --
     -- ============================================================================================
-    lv_comm_where := lv_comm_where
-             || ' AND xicv.item_class_code    = xcv2.category_code '
-             || ' AND xcv2.category_set_name  = ''' || cv_item_division || '''';
---
     -- ---------------------------------------
     -- パラメータ：品目区分が入力済
     -- ---------------------------------------
     IF ( ir_param.art_division IS NOT NULL) THEN
       lv_comm_where := lv_comm_where
-               || ' AND xcv2.category_code = ''' || ir_param.art_division || '''';
+               || ' AND ctgi.category_code = ''' || ir_param.art_division || '''';
     END IF;
 --
     -- ============================================================================================
     -- < 品目カテゴリ(群) > --
     -- ===========================================================================================
-    lv_comm_where := lv_comm_where
-             || ' AND xicv.crowd_code         =   xcv3.category_code ';
---             || ' AND xcv3.category_set_name  = ''' || cv_crowd_cd     || '''';
+--
     -- 入力状態
     -- すべて入力済み
     IF (( ir_param.crowd1 IS NOT NULL ) AND ( ir_param.crowd2 IS NOT NULL)
      AND ( ir_param.crowd3 IS NOT NULL )) THEN
        lv_comm_where := lv_comm_where
-                || ' AND ((xcv3.category_code LIKE ''' || ir_param.crowd1 || ''' || '''
+                || ' AND ((ctgc.category_code LIKE ''' || ir_param.crowd1 || ''' || '''
                 || '' || cv_per || ''' )'
-                || '  OR  (xcv3.category_code LIKE ''' || ir_param.crowd2 || ''' || '''
+                || '  OR  (ctgc.category_code LIKE ''' || ir_param.crowd2 || ''' || '''
                 || '' || cv_per || ''' )'
-                || '  OR  (xcv3.category_code LIKE ''' || ir_param.crowd3 || ''' || '''
+                || '  OR  (ctgc.category_code LIKE ''' || ir_param.crowd3 || ''' || '''
                 || '' || cv_per || '''))';
     -- 群1のみ入力済み
     ELSIF (( ir_param.crowd1 IS NOT NULL ) AND ( ir_param.crowd2 IS NULL)
      AND   ( ir_param.crowd3 IS NULL )) THEN
        lv_comm_where := lv_comm_where
-                || ' AND (xcv3.category_code LIKE ''' || ir_param.crowd1 || ''' || '''
+                || ' AND (ctgc.category_code LIKE ''' || ir_param.crowd1 || ''' || '''
                 || '' || cv_per || ''' )';
     -- 群2のみ入力済み
     ELSIF (( ir_param.crowd1 IS NULL ) AND ( ir_param.crowd2 IS NOT NULL)
      AND   ( ir_param.crowd3 IS NULL )) THEN
        lv_comm_where := lv_comm_where
-                || ' AND (xcv3.category_code LIKE ''' || ir_param.crowd2 || ''' || '''
+                || ' AND (ctgc.category_code LIKE ''' || ir_param.crowd2 || ''' || '''
                 || '' || cv_per || ''' )';
     -- 群3のみ入力済み
     ELSIF (( ir_param.crowd1 IS NULL ) AND ( ir_param.crowd2 IS NULL)
      AND   ( ir_param.crowd3 IS NOT NULL )) THEN
        lv_comm_where := lv_comm_where
-                || ' AND (xcv3.category_code LIKE ''' || ir_param.crowd3 || ''' || '''
+                || ' AND (ctgc.category_code LIKE ''' || ir_param.crowd3 || ''' || '''
                 || '' || cv_per || ''' )';
     -- 群1と群2が入力済
     ELSIF (( ir_param.crowd1 IS NOT NULL ) AND ( ir_param.crowd2 IS NOT NULL)
      AND   ( ir_param.crowd3 IS NULL )) THEN
        lv_comm_where := lv_comm_where
-                || ' AND ((xcv3.category_code LIKE ''' || ir_param.crowd1 || ''' || '''
+                || ' AND ((ctgc.category_code LIKE ''' || ir_param.crowd1 || ''' || '''
                 || '' || cv_per || ''' )'
-                || '  OR  (xcv3.category_code LIKE ''' || ir_param.crowd2 || ''' || '''
+                || '  OR  (ctgc.category_code LIKE ''' || ir_param.crowd2 || ''' || '''
                 || '' || cv_per || ''' ))';
     -- 群1と群3が入力済み
     ELSIF (( ir_param.crowd1 IS NOT NULL ) AND ( ir_param.crowd2 IS NULL)
      AND   ( ir_param.crowd3 IS NOT NULL )) THEN
        lv_comm_where := lv_comm_where
-                || ' AND ((xcv3.category_code LIKE ''' || ir_param.crowd1 || ''' || '''
+                || ' AND ((ctgc.category_code LIKE ''' || ir_param.crowd1 || ''' || '''
                 || '' || cv_per || ''' )'
-                || '  OR  (xcv3.category_code LIKE ''' || ir_param.crowd3 || ''' || '''
+                || '  OR  (ctgc.category_code LIKE ''' || ir_param.crowd3 || ''' || '''
                 || '' || cv_per || ''' ))';
     -- 群2と群3が入力済み
     ELSIF (( ir_param.crowd1 IS NULL ) AND ( ir_param.crowd2 IS NOT NULL)
      AND   ( ir_param.crowd3 IS NOT NULL )) THEN
        lv_comm_where := lv_comm_where
-                || ' AND ((xcv3.category_code LIKE ''' || ir_param.crowd2 || ''' || '''
+                || ' AND ((ctgc.category_code LIKE ''' || ir_param.crowd2 || ''' || '''
                 || '' || cv_per || ''' )'
-                || '  OR  (xcv3.category_code LIKE ''' || ir_param.crowd3 || ''' || '''
+                || '  OR  (ctgc.category_code LIKE ''' || ir_param.crowd3 || ''' || '''
                 || '' || cv_per || ''' ))';
     END IF;
 --
@@ -625,8 +617,8 @@ AS
     -- SELECT句生成
     -- ============================================
     lv_select := ' SELECT '
-              || ' xcv.category_code         AS  category_cd, '        -- 商品区分コード
-              || ' xcv.category_description  AS  category_desc, ';     -- 商品区分名
+              || ' ctgg.category_code         AS  category_cd, '        -- 商品区分コード
+              || ' ctgg.category_description  AS  category_desc, ';     -- 商品区分名
 --
     -- ------------------------------------------
     -- パラメータ：担当部署がZZZZだった場合
@@ -659,8 +651,8 @@ AS
     lv_select := lv_select
               || ' xvv.segment1               AS  xv_seg1, '         -- 取引先コード
               || ' xvv.vendor_short_name      AS  vend_shrt_nm, '    -- 取引先名
-              || ' xcv2.category_code         AS  category_cd2, '    -- 品目区分コード
-              || ' xcv2.category_description  AS  category_desc2,'   -- 品目区分名
+              || ' ctgi.category_code         AS  category_cd2, '    -- 品目区分コード
+              || ' ctgi.category_description  AS  category_desc2,'   -- 品目区分名
               || ' ximv.old_crowd_code        AS  old_crw_cd, '      -- 群
               || ' ximv.item_no               AS  item_no, '         -- 品目(品目コード
               || ' ximv.item_short_name       AS  item_sht_nm, '     -- 品目(品目名)
@@ -731,17 +723,56 @@ AS
             || ' xxcmn_vendor_sites2_v     xvsv, '   -- 仕入先サイト情報VIEW2
             || ' ic_lots_mst               ilm, '    -- OPMロットマスタ
             || ' xxcmn_locations2_v        xlv, '    -- 事業所情報VIEW2
-            || ' xxcmn_item_categories4_v  xicv,'    -- OPM品目カテゴリ割当情報VIEW4
-            || ' xxpo_categories_v         xcv, '    -- XXPO品目情報VIEW(商品区分)
-            || ' xxpo_categories_v         xcv2, '   -- XXPO品目情報VIEW(品目区分)
-            || ' (SELECT mcb.segment1  AS category_code '
-            || '  FROM   mtl_category_sets_tl  mcst, '
-            || ' mtl_category_sets_b   mcsb, '
-            || ' mtl_categories_b      mcb '
-            || ' WHERE  mcsb.category_set_id  = mcst.category_set_id '
-            || ' AND    mcst.language         = ''' || gv_language || ''''
-            || ' AND    mcsb.structure_id     = mcb.structure_id '
-            || ' AND    mcst.category_set_name = ''' || cv_crowd_cd || '''' || ') xcv3 ';
+            -- XXPOカテゴリ情報VIEW（商品）
+            || ' ( SELECT  gic.item_id      AS item_id '
+            || '          ,mcb.segment1     AS category_code '
+            || '          ,mct.description  AS category_description'
+            || '     FROM  gmi_item_categories   gic, '
+            || '           mtl_category_sets_tl  mcst, '
+            || '           mtl_category_sets_b   mcsb, '
+            || '           mtl_categories_b      mcb, '
+            || '           mtl_categories_tl     mct '
+            || '    WHERE  mcsb.category_set_id   = mcst.category_set_id '
+            || '      AND  mcst.language          = ''' || gv_language || ''''
+            || '      AND  mcsb.structure_id      = mcb.structure_id '
+            || '      AND  mcb.category_id        = mct.category_id '
+            || '      AND  gic.category_id        = mcb.category_id'
+            || '      AND  gic.category_set_id    = mcsb.category_set_id'
+            || '      AND  mct.language           = ''' || gv_language || ''''
+            || '      AND  mcst.category_set_name = ''' || cv_comm_division || '''' || ') ctgg '
+            -- XXPOカテゴリ情報VIEW（品目）
+            || ' ,( SELECT  gic.item_id      AS item_id '
+            || '           ,mcb.segment1     AS category_code '
+            || '           ,mct.description  AS category_description'
+            || '      FROM  gmi_item_categories   gic, '
+            || '            mtl_category_sets_tl  mcst, '
+            || '            mtl_category_sets_b   mcsb, '
+            || '            mtl_categories_b      mcb, '
+            || '            mtl_categories_tl     mct '
+            || '     WHERE  mcsb.category_set_id   = mcst.category_set_id '
+            || '       AND  mcst.language          = ''' || gv_language || ''''
+            || '       AND  mcsb.structure_id      = mcb.structure_id '
+            || '       AND  mcb.category_id        = mct.category_id '
+            || '       AND  gic.category_id        = mcb.category_id'
+            || '       AND  gic.category_set_id    = mcsb.category_set_id'
+            || '       AND  mct.language           = ''' || gv_language || ''''
+            || '       AND  mcst.category_set_name = ''' || cv_item_division || '''' || ') ctgi '
+            -- XXPOカテゴリ情報VIEW（群コード）
+            || ' ,( SELECT  gic.item_id   AS item_id '
+            || '           ,mcb.segment1  AS category_code '
+            || '      FROM  gmi_item_categories   gic, '
+            || '            mtl_category_sets_tl  mcst, '
+            || '            mtl_category_sets_b   mcsb, '
+            || '            mtl_categories_b      mcb, '
+            || '            mtl_categories_tl     mct '
+            || '     WHERE  mcsb.category_set_id   = mcst.category_set_id '
+            || '       AND  mcst.language          = ''' || gv_language || ''''
+            || '       AND  mcsb.structure_id      = mcb.structure_id '
+            || '       AND  mcb.category_id        = mct.category_id '
+            || '       AND  gic.category_id        = mcb.category_id'
+            || '       AND  gic.category_set_id    = mcsb.category_set_id'
+            || '       AND  mct.language           = ''' || gv_language || ''''
+            || '       AND  mcst.category_set_name = ''' || cv_crowd_cd || '''' || ') ctgc ';
 --
     -- ===========================================================
     -- WHERE句生成
@@ -815,10 +846,14 @@ AS
     -- ============================================================================================
     -- < 工場 > --
     -- ============================================================================================
-             || ' AND pha.vendor_id          =   xvv.vendor_id '
-             || ' AND xvsv.vendor_site_code  =   pla.attribute2 '       -- 工場コード(DFF)
-             || ' AND xicv.item_id           =   ximv.item_id '
-             || ' AND rcrt.item_id           =   xicv.item_id ';
+             || ' AND pha.vendor_id          = xvv.vendor_id '
+             || ' AND xvsv.vendor_site_code  = pla.attribute2 '       -- 工場コード(DFF)
+             || ' AND ctgg.item_id           = ximv.item_id'
+             || ' AND ctgi.item_id           = ximv.item_id'
+             || ' AND ctgc.item_id           = ximv.item_id'
+             || ' AND rcrt.item_id           = ctgg.item_id'
+             || ' AND rcrt.item_id           = ctgi.item_id'
+             || ' AND rcrt.item_id           = ctgc.item_id';
 --
     -- ============================================================================================
     -- < セキュリティ > --
@@ -852,8 +887,8 @@ AS
     -- 発注なし仕入返品取得SQL
     -- =======================================================================================
     lv_select_1 := ' SELECT '
-                || ' xcv.category_code          AS  category_cd,'
-                || ' xcv.category_description   AS  category_desc,';
+                || ' ctgg.category_code          AS  category_cd,'
+                || ' ctgg.category_description   AS  category_desc,';
 --
       IF ( ir_param.dept_code = gv_dept_cd_all ) THEN
         lv_select_1 := lv_select_1
@@ -868,8 +903,8 @@ AS
     lv_select_1 := lv_select_1
                 || ' xvv.segment1               AS  xv_seg1,'
                 || ' xvv.vendor_short_name      AS  vend_shrt_nm,'
-                || ' xcv2.category_code         AS  category_cd2,'
-                || ' xcv2.category_description  AS  category_desc2,'
+                || ' ctgi.category_code         AS  category_cd2,'
+                || ' ctgi.category_description  AS  category_desc2,'
                 || ' ximv.old_crowd_code        AS  old_crw_cd,'
                 || ' ximv.item_no               AS  item_no,'
                 || ' ximv.item_short_name       AS  item_sht_nm,'
@@ -913,17 +948,56 @@ AS
               || ' xxcmn_vendors2_v          xvv,'
               || ' ic_lots_mst               ilm,'
               || ' xxcmn_locations2_v        xlv,'
-              || ' xxcmn_item_categories4_v  xicv,'
-              || ' xxpo_categories_v         xcv,'
-              || ' xxpo_categories_v         xcv2,'
-              || ' (SELECT mcb.segment1  AS category_code '
-              || '  FROM   mtl_category_sets_tl  mcst, '
-              || ' mtl_category_sets_b   mcsb, '
-              || ' mtl_categories_b      mcb '
-              || ' WHERE  mcsb.category_set_id  = mcst.category_set_id '
-              || ' AND    mcst.language         = ''' || gv_language || ''''
-              || ' AND    mcsb.structure_id     = mcb.structure_id '
-              || ' AND    mcst.category_set_name = ''' || cv_crowd_cd || '''' || ') xcv3 ';
+              -- XXPOカテゴリ情報VIEW（商品）
+              || ' ( SELECT  gic.item_id      AS item_id '
+              || '          ,mcb.segment1     AS category_code '
+              || '          ,mct.description  AS category_description'
+              || '     FROM  gmi_item_categories   gic, '
+              || '           mtl_category_sets_tl  mcst, '
+              || '           mtl_category_sets_b   mcsb, '
+              || '           mtl_categories_b      mcb, '
+              || '           mtl_categories_tl     mct '
+              || '    WHERE  mcsb.category_set_id   = mcst.category_set_id '
+              || '      AND  mcst.language          = ''' || gv_language || ''''
+              || '      AND  mcsb.structure_id      = mcb.structure_id '
+              || '      AND  mcb.category_id        = mct.category_id '
+              || '      AND  gic.category_id        = mcb.category_id'
+              || '      AND  gic.category_set_id    = mcsb.category_set_id'
+              || '      AND  mct.language           = ''' || gv_language || ''''
+              || '      AND  mcst.category_set_name = ''' || cv_comm_division || '''' || ') ctgg '
+               -- XXPOカテゴリ情報VIEW（品目）
+              || ' ,( SELECT  gic.item_id      AS item_id '
+              || '           ,mcb.segment1     AS category_code '
+              || '           ,mct.description  AS category_description'
+              || '      FROM  gmi_item_categories   gic, '
+              || '            mtl_category_sets_tl  mcst, '
+              || '            mtl_category_sets_b   mcsb, '
+              || '            mtl_categories_b      mcb, '
+              || '            mtl_categories_tl     mct '
+              || '     WHERE  mcsb.category_set_id   = mcst.category_set_id '
+              || '       AND  mcst.language          = ''' || gv_language || ''''
+              || '       AND  mcsb.structure_id      = mcb.structure_id '
+              || '       AND  mcb.category_id        = mct.category_id '
+              || '       AND  gic.category_id        = mcb.category_id'
+              || '       AND  gic.category_set_id    = mcsb.category_set_id'
+              || '       AND  mct.language           = ''' || gv_language || ''''
+              || '       AND  mcst.category_set_name = ''' || cv_item_division || '''' || ') ctgi '
+              -- XXPOカテゴリ情報VIEW（群コード）
+              || ' ,( SELECT  gic.item_id   AS item_id '
+              || '           ,mcb.segment1  AS category_code '
+              || '      FROM  gmi_item_categories   gic, '
+              || '            mtl_category_sets_tl  mcst, '
+              || '            mtl_category_sets_b   mcsb, '
+              || '            mtl_categories_b      mcb, '
+              || '            mtl_categories_tl     mct '
+              || '     WHERE  mcsb.category_set_id   = mcst.category_set_id '
+              || '       AND  mcst.language          = ''' || gv_language || ''''
+              || '       AND  mcsb.structure_id      = mcb.structure_id '
+              || '       AND  mcb.category_id        = mct.category_id '
+              || '       AND  gic.category_id        = mcb.category_id'
+              || '       AND  gic.category_set_id    = mcsb.category_set_id'
+              || '       AND  mct.language           = ''' || gv_language || ''''
+              || '       AND  mcst.category_set_name = ''' || cv_crowd_cd || '''' || ') ctgc ';
 --
     -- ===========================================================
     -- WHERE句生成
@@ -940,15 +1014,17 @@ AS
                || ' BETWEEN xvv.start_date_active AND xvv.end_date_active'
                || ' AND ''' || ir_param.deliver_from || ''''
                || ' BETWEEN xlv.start_date_active AND xlv.end_date_active '
-               || ' AND rcrt.item_id           =   ilm.item_id(+)'
-               || ' AND rcrt.lot_id            =   ilm.lot_id(+)'
-               || ' AND rcrt.item_id           =   ximv.item_id'
-               || ' AND rcrt.department_code   =   xlv.location_code'
-               || ' AND rcrt.vendor_id         =   xvv.vendor_id'
-               || ' AND xicv.item_id           =   ximv.item_id'
-               || ' AND rcrt.item_id           =   xicv.item_id'
-               || ' AND xicv.prod_class_code   =   xcv.category_code'
-               || ' AND xcv.category_set_name  = ''' || cv_comm_division || '''';
+               || ' AND rcrt.item_id           = ilm.item_id(+)'
+               || ' AND rcrt.lot_id            = ilm.lot_id(+)'
+               || ' AND rcrt.item_id           = ximv.item_id'
+               || ' AND rcrt.department_code   = xlv.location_code'
+               || ' AND rcrt.vendor_id         = xvv.vendor_id'
+               || ' AND ctgg.item_id           = ximv.item_id'
+               || ' AND ctgi.item_id           = ximv.item_id'
+               || ' AND ctgc.item_id           = ximv.item_id'
+               || ' AND rcrt.item_id           = ctgg.item_id'
+               || ' AND rcrt.item_id           = ctgi.item_id'
+               || ' AND rcrt.item_id           = ctgc.item_id';
 --
     -- ---------------------------------------
     -- パラメータ：担当部署が入力済

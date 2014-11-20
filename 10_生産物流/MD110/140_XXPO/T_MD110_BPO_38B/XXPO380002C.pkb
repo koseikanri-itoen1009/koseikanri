@@ -7,7 +7,7 @@ AS
  * Description      : 発注依頼書
  * MD.050/070       : 発注依頼作成Issue1.0  (T_MD050_BPO_380)
  *                    発注依頼作成Issue1.0  (T_MD070_BPO_38B)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -30,6 +30,8 @@ AS
  *                                       されない現象への対応
  *  2008/06/27    1.3   T.Ikehara        明細が最大行出力（30行出力）の時に、
  *                                       合計が次ページに表示される現象を修正
+ *  2008/07/04    1.4   I.Higa           TEMP領域エラー回避のため、xxcmn_item_categories4_vを
+ *                                       使用しないようにする
  *
  *****************************************************************************************/
 --
@@ -406,24 +408,31 @@ AS
       || ',xxcmn_item_mst2_v                    ximv'               -- OPM品目情報VIEW
       || ',xxcmn_locations2_v                   xl'                 -- 事業所情報VIEW
       || ',xxcmn_item_locations2_v              xilv'               -- OPM保管場所情報VIEW
-      || ',xxcmn_item_categories4_v             xicv'               -- OPM品目カテゴリ割当情報VIEW
       || ',(SELECT mcb.segment1  AS category_code '    -- XXPOカテゴリ情報VIEW（商品
       || ',        mcst.category_set_name '
+      || ',        gic.item_id '
       || '  FROM   mtl_category_sets_tl  mcst, '
       || '   mtl_category_sets_b   mcsb, '
-      || '   mtl_categories_b      mcb '
+      || '   mtl_categories_b      mcb, '
+      || '   gmi_item_categories    gic '
       || '  WHERE mcsb.category_set_id  = mcst.category_set_id '
       || '  AND   mcst.language         = ''' || cv_ja || ''''
       || '  AND   mcsb.structure_id     = mcb.structure_id '
+      || '  AND   gic.category_set_id   = mcsb.category_set_id '
+      || '  AND   gic.category_id       = mcb.category_id '
       || '  AND   mcst.category_set_name = ''' || gc_cat_set_prod_class || '''' || ') ctgg'
       || ',(SELECT mcb.segment1  AS category_code '    -- XXPOカテゴリ情報VIEW（品目
       || ',        mcst.category_set_name '
+      || ',        gic.item_id '
       || '  FROM   mtl_category_sets_tl  mcst, '
       || '   mtl_category_sets_b   mcsb, '
-      || '   mtl_categories_b      mcb '
+      || '   mtl_categories_b      mcb, '
+      || '   gmi_item_categories    gic '
       || '  WHERE mcsb.category_set_id  = mcst.category_set_id '
       || '  AND   mcst.language         = ''' || cv_ja || ''''
       || '  AND   mcsb.structure_id     = mcb.structure_id '
+      || '  AND   gic.category_set_id   = mcsb.category_set_id '
+      || '  AND   gic.category_id       = mcb.category_id '
       || '  AND   mcst.category_set_name = ''' || gc_cat_set_item_class || '''' || ') ctgi'
       || ',fnd_lookup_values                    flv '               -- クイックコード
       || ',xxcmn_party_sites2_v                 xpsv'               -- パーティサイト情報VIEW
@@ -555,8 +564,7 @@ AS
     ---------------------------------------------------------------------------------------------
     -- 品目カテゴリ（商品区分）の絞込み条件
     lv_where := lv_where
-      || ' AND ximv.item_id                          = xicv.item_id'
-      || ' AND xicv.prod_class_code                  = ctgg.category_code '
+      || ' AND ximv.item_id                          = ctgg.item_id'
       ;
     -- 商品区分が入力されている場合
     IF (gr_param.iv_prod_class_code IS NOT NULL) THEN
@@ -567,7 +575,7 @@ AS
     ---------------------------------------------------------------------------------------------
     -- 品目カテゴリ（品目区分）の絞込み条件
     lv_where := lv_where
-      || ' AND xicv.item_class_code    = ctgi.category_code'
+      || ' AND ximv.item_id                          = ctgi.item_id'
       ;
     -- 品目区分が入力されている場合
     IF (gr_param.iv_item_class_code IS NOT NULL) THEN

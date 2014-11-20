@@ -7,7 +7,7 @@ AS
  * Description      : 出庫予定表
  * MD.050/MD.070    : 有償支給帳票Issue1.0 (T_MD050_BPO_360)
  *                    有償支給帳票Issue1.0 (T_MD070_BPO_36C)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/06/17    1.6   I.Higa             xxpo_categories_vを使用しないようにする
  *  2008/06/25    1.7   I.Higa             特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                         されない現象への対応
+ *  2008/07/04    1.8   Y.Ishikawa         xxcmn_item_categories4_vを使用しないようにする
  *
  ****************************************************************************************/
 --
@@ -496,9 +497,11 @@ AS
             || ',xxcmn_item_mst2_v        itm'     -- OPM品目情報VIEW
             || ',xxcmn_item_locations2_v  itmv'    -- OPM保管場所情報VIEW
              -- XXPOカテゴリ情報VIEW（商品）
-            || ' ,(SELECT mcb.segment1  AS category_code '
+            || ' ,(SELECT gic.item_id AS item_id '
+            || ' ,mcb.segment1  AS category_code '
             || ' ,mct.description  AS category_description'
-            || '  FROM   mtl_category_sets_tl  mcst, '
+            || '  FROM   gmi_item_categories    gic, '
+            || ' mtl_category_sets_tl  mcst, '
             || ' mtl_category_sets_b   mcsb, '
             || ' mtl_categories_b      mcb, '
             || ' mtl_categories_tl     mct '
@@ -506,12 +509,16 @@ AS
             || ' AND    mcst.language          = ''' || gv_language || ''''
             || ' AND    mcsb.structure_id      = mcb.structure_id '
             || ' AND    mcb.category_id        = mct.category_id '
+            || ' AND    gic.category_id        = mcb.category_id'
+            || ' AND    gic.category_set_id    = mcsb.category_set_id'
             || ' AND    mct.language           = ''' || gv_language || ''''
             || ' AND    mcst.category_set_name = ''' || gc_cat_set_goods_class || '''' || ') ctgg '
              -- XXPOカテゴリ情報VIEW（品目）
-            || ' ,(SELECT mcb.segment1  AS category_code '
+            || ' ,(SELECT gic.item_id AS item_id '
+            || ' ,mcb.segment1  AS category_code '
             || ' ,mct.description  AS category_description'
-            || '  FROM   mtl_category_sets_tl  mcst, '
+            || '  FROM   gmi_item_categories    gic, '
+            || ' mtl_category_sets_tl  mcst, '
             || ' mtl_category_sets_b   mcsb, '
             || ' mtl_categories_b      mcb, '
             || ' mtl_categories_tl     mct '
@@ -519,9 +526,10 @@ AS
             || ' AND    mcst.language          = ''' || gv_language || ''''
             || ' AND    mcsb.structure_id      = mcb.structure_id '
             || ' AND    mcb.category_id        = mct.category_id '
+            || ' AND    gic.category_id        = mcb.category_id'
+            || ' AND    gic.category_set_id    = mcsb.category_set_id'
             || ' AND    mct.language           = ''' || gv_language || ''''
             || ' AND    mcst.category_set_name = ''' || gc_cat_set_item_class || '''' || ') ctgi '
-            || ',xxcmn_item_categories4_v gic'     -- OPM品目カテゴリ割当
             || ',ic_lots_mst              lot'     -- OPMロットマスタ
             ;
 --
@@ -573,8 +581,7 @@ AS
     ---------------------------------------------------------------------------------------------
     -- 品目カテゴリ（商品区分）の絞込み条件
     lv_where := lv_where
-             || ' AND itm.item_id                          = gic.item_id'
-             || ' AND gic.prod_class_code                  = ctgg.category_code '
+             || ' AND itm.item_id                          = ctgg.item_id'
              ;
     -- 商品区分が入力されている場合
     IF (ir_param.goods_class IS NOT NULL) THEN
@@ -585,7 +592,7 @@ AS
     ---------------------------------------------------------------------------------------------
     -- 品目カテゴリ（品目区分）の絞込み条件
     lv_where := lv_where
-             || ' AND gic.item_class_code    = ctgi.category_code'
+             || ' AND itm.item_id                          = ctgi.item_id'
              ;
     -- 品目区分が入力されている場合
     IF (ir_param.item_class IS NOT NULL) THEN
