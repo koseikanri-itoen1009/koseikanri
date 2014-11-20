@@ -10,6 +10,9 @@ CREATE OR REPLACE VIEW xxinv_rcv_pay_mst8_v
  ,doc_type
  ,doc_id
  ,doc_line
+-- 08/12/07 v1.4 N.Yoshida update start
+ ,line_id
+-- 08/12/07 v1.4 N.Yoshida update end
 )
 AS
   SELECT xrpm.new_div_invent
@@ -22,6 +25,9 @@ AS
         ,xrpm.doc_type
         ,rsl.shipment_header_id AS doc_id
         ,rsl.line_num           AS doc_line
+-- 08/12/07 v1.4 N.Yoshida update start
+        ,rt.transaction_id      AS line_id
+-- 08/12/07 v1.4 N.Yoshida update end
   FROM   xxcmn_rcv_pay_mst         xrpm
         ,rcv_shipment_lines        rsl
         ,oe_order_headers_all      ooha
@@ -37,6 +43,9 @@ AS
 --        ,xxcmn_item_categories4_v  xicv4_o
         ,xxcmn_item_categories5_v  xicv4_a
         ,xxcmn_item_categories5_v  xicv4_o
+-- 08/12/07 v1.4 N.Yoshida update start
+        ,rcv_transactions          rt
+-- 08/12/07 v1.4 N.Yoshida update end
 -- 2008/08/27 K.Yamane Mod Å™
   WHERE  xrpm.doc_type                    = 'PORC'
   AND    xrpm.source_document_code        = 'RMA'
@@ -125,6 +134,10 @@ AS
      AND  xicv4_o.item_class_code        <> '5'
      AND  xrpm.prod_div_origin            IS NULL
      AND  xrpm.prod_div_ahead             IS NULL ))
+-- 08/12/07 v1.4 N.Yoshida update start
+  AND    rsl.shipment_line_id             = rt.shipment_line_id
+  AND    rsl.destination_type_code        = rt.destination_type_code
+-- 08/12/07 v1.4 N.Yoshida update end
 -- 08/11/10 v1.3 Y.Yamamoto update end
 -- 08/07/08 Y.Yamamoto Update v1.02 End
 -- 08/06/09 Y.Yamamoto Update v1.01 End
@@ -139,6 +152,9 @@ UNION ALL
         ,xrpm.doc_type
         ,rsl.shipment_header_id AS doc_id
         ,rsl.line_num           AS doc_line
+-- 08/12/07 v1.4 N.Yoshida update start
+        ,rt.transaction_id      AS line_id
+-- 08/12/07 v1.4 N.Yoshida update end
   FROM   xxcmn_rcv_pay_mst         xrpm
         ,rcv_shipment_lines        rsl
         ,rcv_transactions          rt

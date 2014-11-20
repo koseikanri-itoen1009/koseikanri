@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.25
+ * Version          : 1.26
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -52,6 +52,7 @@ AS
  *  2008/11/17    1.23  Yasuhisa Yamamoto  統合指摘 #659対応
  *  2008/12/02    1.24  Yasuhisa Yamamoto  本番指摘 #321対応
  *  2008/12/04    1.25  Hitomi Itou        本番指摘 #362対応
+ *  2008/12/07    1.26  Natsuki Yoshida    本番指摘 #520対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1512,6 +1513,10 @@ AS
                     AND    xrpm8v.doc_type                  = itp_porc.doc_type
                     AND    xrpm8v.doc_id                    = itp_porc.doc_id
                     AND    xrpm8v.doc_line                  = itp_porc.doc_line
+-- 08/12/07 N.Yoshida ADD v1.26 Start
+                    AND    xrpm8v.line_id                   = itp_porc.line_id
+-- 08/12/07 N.Yoshida ADD v1.26 End
+-- 08/09/05 Y.Yamamoto ADD v1.16 Start
 -- 08/05/07 Y.Yamamoto ADD v1.1 Start
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 前月末在庫の抽出
@@ -2473,6 +2478,9 @@ AS
                     AND    xrpm8v.doc_type                  = itp_porc.doc_type
                     AND    xrpm8v.doc_id                    = itp_porc.doc_id
                     AND    xrpm8v.doc_line                  = itp_porc.doc_line
+-- 08/12/07 N.Yoshida ADD v1.26 Start
+                    AND    xrpm8v.line_id                   = itp_porc.line_id
+-- 08/12/07 N.Yoshida ADD v1.26 End
 -- 08/05/07 Y.Yamamoto ADD v1.1 Start
 -- 08/06/07 Y.Yamamoto Update v2.1 Start
 --                    UNION  -- 前月末在庫の抽出
