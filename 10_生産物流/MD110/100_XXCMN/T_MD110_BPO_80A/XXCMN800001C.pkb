@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -83,6 +83,7 @@ AS
  *  2008/07/07    1.5   Oracle 山根 一浩 I_S_192対応
  *  2008/08/08    1.6   Oracle 山根 一浩 ST不具合修正
  *  2008/08/18    1.7   Oracle 山根 一浩 変更要求No61 不具合修正対応
+ *  2008/08/19    1.8   Oracle 山根 一浩 T_TE110_BPO_130-002 指摘216対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7001,6 +7002,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    cv_def_cond   CONSTANT VARCHAR2(2) := '00';
 --
     -- *** ローカル変数 ***
     lv_site_name      xxcmn_party_sites.party_site_name%TYPE;
@@ -7040,6 +7042,7 @@ AS
         ,address_line2
         ,phone
         ,fax
+        ,freshness_condition                     -- 2008/08/19 Add
         ,created_by
         ,creation_date
         ,last_updated_by
@@ -7062,6 +7065,7 @@ AS
         ,ir_masters_rec.party_site_addr2         --住所２
         ,ir_masters_rec.phone                    --電話番号
         ,ir_masters_rec.fax                      --ＦＡＸ番号
+        ,cv_def_cond                             --鮮度条件 2008/08/19 Add
         ,gn_created_by
         ,gd_creation_date
         ,gn_last_updated_by
@@ -9716,7 +9720,8 @@ AS
     gd_last_update_date        := SYSDATE;
     gn_last_update_login       := FND_GLOBAL.LOGIN_ID;
     gn_request_id              := FND_GLOBAL.CONC_REQUEST_ID;
-    gn_program_application_id  := FND_GLOBAL.QUEUE_APPL_ID;
+--    gn_program_application_id  := FND_GLOBAL.QUEUE_APPL_ID;
+    gn_program_application_id  := FND_GLOBAL.PROG_APPL_ID;
     gn_program_id              := FND_GLOBAL.CONC_PROGRAM_ID;
     gd_program_update_date     := SYSDATE;
 --

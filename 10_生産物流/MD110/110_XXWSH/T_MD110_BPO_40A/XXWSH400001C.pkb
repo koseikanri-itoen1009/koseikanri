@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,24 +30,26 @@ AS
  *  main                   P コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
- * ------------- ----- ---------------- -------------------------------------------------
- *  Date          Ver.  Editor           Description
- * ------------- ----- ---------------- -------------------------------------------------
- *  2008/03/04    1.0   Tatsuya Kurata   新規作成
- *  2008/04/17    1.1   Tatsuya Kurata   内部変更要求#40,#42,#45対応
- *  2008/04/30    1.2   Tatsuya Kurata   内部変更要求#65対応
- *  2008/06/04    1.3   椎名  昭圭       不具合修正
- *  2008/06/10    1.4   石渡  賢和       不具合修正(エラーリストでスペース埋めを削除）
- *                                       xxwsh_common910_pkgの帰り値判定を修正
- *  2008/06/19    1.5   Y.Shindou        内部変更要求#143対応
- *  2008/06/27    1.6   石渡  賢和       不具合修正(着荷日がずれる、TRUNC対応）
- *  2008/07/04    1.7   上原  正好       ST不具合#392対応(運賃区分、物流担当確認依頼区分、
- *                                       契約外運賃区分のデフォルト値設定)
- *  2008/07/09    1.8   Oracle 山根一浩  I_S_192対応
- *  2008/07/30    1.9   Oracle 山根一浩  ST指摘28,課題No32,変更要求178,T_S_476対応
- *  2008/08/06    1.10  Oracle 山根一浩  出荷追加_2
- *  2008/08/13    1.11  Oracle 伊藤ひとみ出荷追加_1
- *  2008/08/18    1.12  Oracle 伊藤ひとみ出荷追加_1のバグ エラー出力順を明細順に変更
+ * ------------- ----- ------------------ -------------------------------------------------
+ *  Date          Ver.  Editor             Description
+ * ------------- ----- ------------------ -------------------------------------------------
+ *  2008/03/04    1.0   Tatsuya Kurata     新規作成
+ *  2008/04/17    1.1   Tatsuya Kurata     内部変更要求#40,#42,#45対応
+ *  2008/04/30    1.2   Tatsuya Kurata     内部変更要求#65対応
+ *  2008/06/04    1.3   椎名  昭圭         不具合修正
+ *  2008/06/10    1.4   石渡  賢和         不具合修正(エラーリストでスペース埋めを削除）
+ *                                         xxwsh_common910_pkgの帰り値判定を修正
+ *  2008/06/19    1.5   Y.Shindou          内部変更要求#143対応
+ *  2008/06/27    1.6   石渡  賢和         不具合修正(着荷日がずれる、TRUNC対応）
+ *  2008/07/04    1.7   上原  正好         ST不具合#392対応(運賃区分、物流担当確認依頼区分、
+ *                                         契約外運賃区分のデフォルト値設定)
+ *  2008/07/09    1.8   Oracle 山根一浩    I_S_192対応
+ *  2008/07/30    1.9   Oracle 山根一浩    ST指摘28,課題No32,変更要求178,T_S_476対応
+ *  2008/08/06    1.10  Oracle 山根一浩    出荷追加_2
+ *  2008/08/13    1.11  Oracle 伊藤ひとみ  出荷追加_1
+ *  2008/08/18    1.12  Oracle 伊藤ひとみ  出荷追加_1のバグ エラー出力順を明細順に変更
+ *  2008/08/19    1.13  Oracle 伊藤ひとみ  T_S_611 出荷元保管場所より代表運送業者を取得し、設定する。
+ *                                         結合指摘#87 出荷停止日エラーログの日付フォーマット修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -104,6 +106,10 @@ AS
      ,we_loading_msg_seq NUMBER                                   -- 積載効率(重量)メッセージ格納SEQ
      ,ca_loading_msg_seq NUMBER                                   -- 積載効率(容積)メッセージ格納SEQ
 -- 2008/08/18 H.Itou Add End
+-- 2008/08/19 H.Itou Add Start T_S_611
+     ,career_id            xxwsh_order_headers_all.career_id%TYPE             -- 運送業者ID
+     ,freight_carrier_code xxwsh_order_headers_all.freight_carrier_code%TYPE  -- 運送業者
+-- 2008/08/19 H.Itou Add End
     );
   TYPE tab_data_to_plan IS TABLE OF rec_to_plan INDEX BY PLS_INTEGER;
 --
@@ -209,6 +215,14 @@ AS
   -- 出荷先
   TYPE h_deliver_to                  IS TABLE OF
                 xxwsh_order_headers_all.deliver_to%TYPE INDEX BY BINARY_INTEGER;
+-- 2008/08/19 H.Itou Add Start T_S_611
+  -- 運送業者ID
+  TYPE h_career_id                  IS TABLE OF
+                xxwsh_order_headers_all.career_id%TYPE INDEX BY BINARY_INTEGER;
+  -- 運送業者
+  TYPE h_freight_carrier_code       IS TABLE OF
+                xxwsh_order_headers_all.freight_carrier_code%TYPE INDEX BY BINARY_INTEGER;
+-- 2008/08/19 H.Itou Add End
   -- 配送区分
   TYPE h_shipping_method_code        IS TABLE OF
                 xxwsh_order_headers_all.shipping_method_code%TYPE INDEX BY BINARY_INTEGER;
@@ -560,6 +574,10 @@ AS
   gt_h_customer_code           h_customer_code;          -- 顧客
   gt_h_deliver_to_id           h_deliver_to_id;          -- 配送先ID
   gt_h_deliver_to              h_deliver_to;             -- 配送先
+-- 2008/08/19 H.Itou Add Start T_S_611
+  gt_h_career_id               h_career_id;              -- 運送業者ID
+  gt_h_freight_carrier_code    h_freight_carrier_code;   -- 運送業者
+-- 2008/08/19 H.Itou Add End
   gt_h_shipping_method_code    h_shipping_method_code;   -- 配送区分
   gt_h_request_no              h_request_no;             -- 依頼No
   gt_h_req_status              h_req_status;             -- ステータス
@@ -1096,6 +1114,10 @@ AS
             ,NULL                                         -- 積載効率(重量)メッセージ格納SEQ
             ,NULL                                         -- 積載効率(容積)メッセージ格納SEQ
 -- 2008/08/18 H.Itou Add End
+-- 2008/08/19 H.Itou Add T_S_611
+            ,xcv.party_id                   AS career_id            -- 運送業者ID
+            ,xcv.party_number               AS freight_carrier_code -- 運送業者
+-- 2008/08/19 H.Itou Add End
       FROM  mrp_forecast_designators  mfds   -- フォーキャスト名        T
            ,mrp_forecast_items        mfi    -- フォーキャスト品目      T
            ,mrp_forecast_dates        mfd    -- フォーキャスト日付      T
@@ -1104,6 +1126,9 @@ AS
            ,xxcmn_cust_acct_sites_v  xcasv   -- 顧客サイト情報          V
            ,xxcmn_item_categories3_v  xicv   -- OPM品目カテゴリ割当情報 V
            ,xxcmn_item_mst2_v         ximv   -- OPM品目情報             V
+-- 2008/08/19 H.Itou Add T_S_611
+           ,xxcmn_carriers_v          xcv    -- 運送業者情報            V
+-- 2008/08/19 H.Itou Add End
       WHERE mfds.attribute1                     = gv_h_plan                -- 引取計画 '01'
 -- 2008/07/30 Mod ↓
 /*
@@ -1130,6 +1155,9 @@ AS
       AND   xicv.prod_class_code                = gv_1                     -- 'リーフ'
       AND   ximv.start_date_active             <= gd_sysdate
       AND   ximv.end_date_active               >= gd_sysdate
+-- 2008/08/19 H.Itou Add T_S_611
+      AND   xilv.frequent_mover                 = xcv.party_number(+)      -- 代表運送会社
+-- 2008/08/19 H.Itou Add End
       ORDER BY mfds.attribute3             -- 拠点
               ,mfds.attribute2             -- 出荷元
               ,mfd.forecast_date           -- 着荷予定日
@@ -2244,7 +2272,10 @@ AS
          ,iv_arrival_date => TO_CHAR(gt_to_plan(gn_i).for_date,'YYYY/MM/DD')
                                                                 --  in 着日
          ,iv_err_msg      => gv_tkn_msg_18                      --  in エラーメッセージ
-         ,iv_err_clm      => gt_to_plan(gn_i).amount            --  in エラー項目  [数量]
+-- 2008/08/19 H.Itou Mod Start 結合指摘#87
+--         ,iv_err_clm      => gt_to_plan(gn_i).amount            --  in エラー項目  [数量]
+         ,iv_err_clm      => TO_CHAR(gd_ship_day,'YYYY/MM/DD')  --  in エラー項目  [出荷予定日]
+-- 2008/08/19 H.Itou Mod End
          ,ov_errbuf       => lv_errbuf                          -- out エラー・メッセージ
          ,ov_retcode      => lv_retcode                         -- out リターン・コード
          ,ov_errmsg       => lv_errmsg                          -- out ユーザー・エラー・メッセージ
@@ -3167,6 +3198,10 @@ AS
     gt_h_deliver_to_id(gn_h_cnt)           := gt_to_plan(in_plan_cnt).p_s_site;   -- 配送先ID
     gt_h_deliver_to(gn_h_cnt)              := gt_to_plan(in_plan_cnt).ship_t_no;  -- 配送先
     --
+-- 2008/08/19 H.Itou Add Start T_S_611
+    gt_h_career_id(gn_h_cnt)               := gt_to_plan(in_plan_cnt).career_id;            -- 運送業者ID
+    gt_h_freight_carrier_code(gn_h_cnt)    := gt_to_plan(in_plan_cnt).freight_carrier_code; -- 運送業者
+-- 2008/08/19 H.Itou Add End
     gt_h_shipping_method_code(gn_h_cnt)    := gv_max_kbn;                  -- 配送区分
     gt_h_request_no(gn_h_cnt)              := gv_req_no;                   -- 依頼No
     gt_h_req_status(gn_h_cnt)              := gr_ship_st;                  -- ステータス
@@ -3290,6 +3325,10 @@ AS
          ,customer_code
          ,deliver_to_id
          ,deliver_to
+-- 2008/08/19 H.Itou Add Start T_S_611
+         ,career_id                     -- 運送業者ID
+         ,freight_carrier_code          -- 運送業者
+-- 2008/08/19 H.Itou Add End
          ,shipping_method_code
          ,request_no
          ,req_status
@@ -3340,6 +3379,10 @@ AS
          ,gt_h_customer_code(i)
          ,gt_h_deliver_to_id(i)
          ,gt_h_deliver_to(i)
+-- 2008/08/19 H.Itou Add Start T_S_611
+         ,gt_h_career_id(i)             -- 運送業者ID
+         ,gt_h_freight_carrier_code(i)  -- 運送業者
+-- 2008/08/19 H.Itou Add End
          ,gt_h_shipping_method_code(i)
          ,gt_h_request_no(i)
          ,gt_h_req_status(i)
