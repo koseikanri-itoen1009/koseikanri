@@ -521,9 +521,9 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH600004C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE1"
-      OWNER = "SCS_NAKADA01"
-      LAST_UPDATE_DATE = "2008/07/01 18:33:12"
+    BEGIN DFF_SEGMENT "iv_dept_code_01" "ATTRIBUTE1"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
@@ -536,11 +536,164 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH600004C"
       DEFAULT_TYPE = "S"
       DEFAULT_VALUE =
      "SELECT XLV.LOCATION_CODE FROM FND_USER FU,PER_ALL_PEOPLE_F PAPF,PER_ALL_ASSIGNMENTS_F PAAF,XXCMN_LOCATIONS_V XLV WHERE FU.USER_ID = FND_PROFILE.VALUE( 'USER_ID' ) AND FU.EMPLOYEE_ID = PAPF.PERSON_ID AND PAPF.PERSON_ID = PAAF.PERSON_ID AND NVL(PAAF.EFFECTIVE_START_DATE, TO_DATE('19000101','RRRRMMDD')) <= TRUNC(SYSDATE) AND NVL(PAAF.EFFECTIVE_END_DATE, TO_DATE('99991231','RRRRMMDD')) >= TRUNC(SYSDATE) AND PAAF.LOCATION_ID = XLV.LOCATION_ID"
-      FORM_LEFT_PROMPT = "部署"
-      FORM_ABOVE_PROMPT = "部署"
-      DESCRIPTION = "部署"
+      FORM_LEFT_PROMPT = "部署1"
+      FORM_ABOVE_PROMPT = "部署1"
+      DESCRIPTION = "部署1"
     END DFF_SEGMENT
     
+    BEGIN DFF_SEGMENT "iv_dept_code_02" "ATTRIBUTE5"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
+      COLUMN_SEQ_NUM = "11"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署2"
+      FORM_ABOVE_PROMPT = "部署2"
+      DESCRIPTION = "部署2"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_03" "ATTRIBUTE6"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
+      COLUMN_SEQ_NUM = "12"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署3"
+      FORM_ABOVE_PROMPT = "部署3"
+      DESCRIPTION = "部署3"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_04" "ATTRIBUTE7"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
+      COLUMN_SEQ_NUM = "13"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署4"
+      FORM_ABOVE_PROMPT = "部署4"
+      DESCRIPTION = "部署4"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_05" "ATTRIBUTE8"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
+      COLUMN_SEQ_NUM = "14"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署5"
+      FORM_ABOVE_PROMPT = "部署5"
+      DESCRIPTION = "部署5"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_06" "ATTRIBUTE9"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
+      COLUMN_SEQ_NUM = "15"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署6"
+      FORM_ABOVE_PROMPT = "部署6"
+      DESCRIPTION = "部署6"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_07" "ATTRIBUTE10"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
+      COLUMN_SEQ_NUM = "16"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署7"
+      FORM_ABOVE_PROMPT = "部署7"
+      DESCRIPTION = "部署7"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_08" "ATTRIBUTE11"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
+      COLUMN_SEQ_NUM = "17"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署8"
+      FORM_ABOVE_PROMPT = "部署8"
+      DESCRIPTION = "部署8"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_09" "ATTRIBUTE12"
+      OWNER = "SCS_HMARUSHITA"
+      LAST_UPDATE_DATE = "2008/07/22 21:42:33"
+      COLUMN_SEQ_NUM = "18"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署9"
+      FORM_ABOVE_PROMPT = "部署9"
+      DESCRIPTION = "部署9"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_10" "ATTRIBUTE13"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 22:03:25"
+      COLUMN_SEQ_NUM = "19"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署10"
+      FORM_ABOVE_PROMPT = "部署10"
+      DESCRIPTION = "部署10"
+    END DFF_SEGMENT
+
     BEGIN DFF_SEGMENT "iv_date_fix" "ATTRIBUTE2"
       OWNER = "XX_SETUP_USER01"
       LAST_UPDATE_DATE = "2008/06/02 21:35:58"
@@ -627,8 +780,26 @@ BEGIN PROGRAM "XXWSH600004C" "XXWSH"
   SRS_FLEX = "XXWSH" "$SRS$.XXWSH600004C"
   AUTO_ANNOTATION =
  "/**\n\
-  * @param iv_dept_code 部署\n\
+  * @param iv_dept_code_01 部署1\n\
   * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_dept_code_02 部署2\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_03 部署3\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_04 部署4\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_05 部署5\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_06 部署6\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_07 部署7\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_08 部署8\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_09 部署9\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_10 部署10\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
   * @param iv_date_fix 確定通知実施日\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_fix_from 確定通知実施時間From\n\
@@ -636,6 +807,7 @@ BEGIN PROGRAM "XXWSH600004C" "XXWSH"
   * @param iv_fix_to 確定通知実施時間To\n\
   * @rep:paraminfo {@rep:type XXCMN_TIME2} {@rep:displayed Y}\n\
   */"
+
 
 
 END PROGRAM
@@ -15542,50 +15714,6 @@ BEGIN VALUE_SET "XXWSH_REQ_NO_MOVE_NO_SH_MV2"
 
 END VALUE_SET
 
-BEGIN VALUE_SET "XXWSH_ORD_TYPE_SHIP_NOT_INVADJ"
-  OWNER = "SCS_NAKADA01"
-  LAST_UPDATE_DATE = "2008/07/14 10:37:15"
-  VALIDATION_TYPE = "F"
-  PROTECTED_FLAG = "N"
-  SECURITY_ENABLED_FLAG = "N"
-  LONGLIST_FLAG = "N"
-  FORMAT_TYPE = "C"
-  MAXIMUM_SIZE = "30"
-  ALPHANUMERIC_ALLOWED_FLAG = "Y"
-  UPPERCASE_ONLY_FLAG = "N"
-  NUMERIC_MODE_ENABLED_FLAG = "N"
-  DESCRIPTION = "XXWSH：受注タイプ(出荷のみ、在庫調整を除く)"
-
-
-  BEGIN VSET_TABLE
-    OWNER = "SCS_NAKADA01"
-    LAST_UPDATE_DATE = "2008/07/14 10:37:15"
-    APPLICATION_TABLE_NAME = "XXWSH_OE_TRANSACTION_TYPES_V"
-    SUMMARY_ALLOWED_FLAG = "N"
-    VALUE_COLUMN_NAME = "TRANSACTION_TYPE_NAME"
-    VALUE_COLUMN_TYPE = "V"
-    VALUE_COLUMN_SIZE = "30"
-    ID_COLUMN_NAME = "TRANSACTION_TYPE_ID"
-    ID_COLUMN_TYPE = "N"
-    ID_COLUMN_SIZE = "15"
-    ENABLED_COLUMN_NAME = "'Y'"
-    COMPILED_ATTRIBUTE_COLUMN_NAME = "NULL"
-    HIERARCHY_LEVEL_COLUMN_NAME = "NULL"
-    START_DATE_COLUMN_NAME = "to_date(null)"
-    END_DATE_COLUMN_NAME = "to_date(null)"
-    SUMMARY_COLUMN_NAME = "'N'"
-    ADDITIONAL_WHERE_CLAUSE =
-   "WHERE SHIPPING_SHIKYU_CLASS = '1'\n\
-  AND USED_DISP_FLG = 'Y' AND ORDER_CATEGORY_CODE = 'ORDER' AND ADJS_CLASS = '1'"
-  END VSET_TABLE
-  
-
-
-
-
-
-END VALUE_SET
-
 BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH920003C"
   OWNER = "XX_SETUP_USER01"
   LAST_UPDATE_DATE = "2008/05/02 00:00:00"
@@ -15662,14 +15790,14 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH920003C"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_transaction_type_id" "ATTRIBUTE4"
-      OWNER = "SCS_NAKADA01"
-      LAST_UPDATE_DATE = "2008/07/14 10:38:00"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 22:15:38"
       COLUMN_SEQ_NUM = "40"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
       REQUIRED_FLAG = "N"
       SECURITY_ENABLED_FLAG = "N"
-      FLEX_VALUE_SET_NAME = "XXWSH_ORD_TYPE_SHIP_NOT_INVADJ"
+      FLEX_VALUE_SET_NAME = "XXWSH_ORD_TYPE_SHIP_ONLY"
       DISPLAY_SIZE = "30"
       MAXIMUM_DESCRIPTION_LEN = "50"
       CONCATENATION_DESCRIPTION_LEN = "25"
@@ -15803,7 +15931,7 @@ BEGIN PROGRAM "XXWSH920003C" "XXWSH"
   * @param iv_deliver_from_id 出庫元\n\
   * @rep:paraminfo {@rep:type XXWSH_ITEM_LOCATION_CODE1} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_transaction_type_id 出庫形態\n\
-  * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_NOT_INVADJ} {@rep:displayed Y}\n\
+  * @rep:paraminfo {@rep:type XXWSH_ORD_TYPE_SHIP_ONLY} {@rep:displayed Y}\n\
   * @param iv_object_date_from 対象期間From\n\
   * @rep:paraminfo {@rep:type XXCMN_YYYYMMDD} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_object_date_to 対象期間To\n\
@@ -17328,8 +17456,8 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400008C"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_kyoten_cd" "ATTRIBUTE2"
-      OWNER = "SCS_NAKADA01"
-      LAST_UPDATE_DATE = "2008/07/01 18:23:36"
+      OWNER = "SCS_KKUMAMOTO"
+      LAST_UPDATE_DATE = "2008/07/17 11:23:28"
       COLUMN_SEQ_NUM = "20"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
@@ -17341,7 +17469,7 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH400008C"
       CONCATENATION_DESCRIPTION_LEN = "25"
       DEFAULT_TYPE = "S"
       DEFAULT_VALUE =
-     "SELECT XCAV.PARTY_NUMBER FROM FND_USER FU,PER_ALL_PEOPLE_F PAPF,PER_ALL_ASSIGNMENTS_F PAAF,XXCMN_LOCATIONS_V XLV,XXCMN_CUST_ACCOUNTS_V XCAV WHERE FU.USER_ID = FND_PROFILE.VALUE( 'USER_ID' ) AND FU.EMPLOYEE_ID = PAPF.PERSON_ID AND PAPF.PERSON_ID = PAAF.PERSON_ID AND NVL(PAAF.EFFECTIVE_START_DATE, TO_DATE('19000101','RRRRMMDD')) <= TRUNC(SYSDATE) AND NVL(PAAF.EFFECTIVE_END_DATE, TO_DATE('99991231','RRRRMMDD')) >= TRUNC(SYSDATE) AND PAAF.LOCATION_ID = XLV.LOCATION_ID AND XLV.LOCATION_CODE = XCAV.PARTY_NUMBER"
+     "SELECT XCAV.PARTY_NUMBER FROM FND_USER FU,PER_ALL_PEOPLE_F PAPF,PER_ALL_ASSIGNMENTS_F PAAF,XXCMN_LOCATIONS_V XLV,XXCMN_CUST_ACCOUNTS_V XCAV WHERE FU.USER_ID = FND_PROFILE.VALUE( 'USER_ID' ) AND FU.EMPLOYEE_ID = PAPF.PERSON_ID AND PAPF.PERSON_ID = PAAF.PERSON_ID AND NVL(PAAF.EFFECTIVE_START_DATE, TO_DATE('19000101','RRRRMMDD')) <= TRUNC(SYSDATE) AND NVL(PAAF.EFFECTIVE_END_DATE, TO_DATE('99991231','RRRRMMDD')) >= TRUNC(SYSDATE) AND PAAF.LOCATION_ID = XLV.LOCATION_ID AND XLV.LOCATION_CODE = XCAV.PARTY_NUMBER AND NVL(FND_PROFILE.VALUE('XXWSH_EXTRACT_PATTERN_401J'),'2') != '1'"
       FORM_LEFT_PROMPT = "拠点"
       FORM_ABOVE_PROMPT = "拠点"
       DESCRIPTION = "拠点"
@@ -17636,9 +17764,9 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH600002C"
     GLOBAL_FLAG = "Y"
     DESCRIPTIVE_FLEX_CONTEXT_NAME = "Global Data Elements"
   
-    BEGIN DFF_SEGMENT "iv_dept_code" "ATTRIBUTE1"
-      OWNER = "SCS_NAKADA01"
-      LAST_UPDATE_DATE = "2008/07/01 18:25:20"
+    BEGIN DFF_SEGMENT "iv_dept_code_01" "ATTRIBUTE1"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:50:46"
       COLUMN_SEQ_NUM = "10"
       ENABLED_FLAG = "Y"
       DISPLAY_FLAG = "Y"
@@ -17654,6 +17782,159 @@ BEGIN DESC_FLEX "XXWSH" "$SRS$.XXWSH600002C"
       FORM_LEFT_PROMPT = "部署"
       FORM_ABOVE_PROMPT = "部署"
       DESCRIPTION = "部署"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_02" "ATTRIBUTE9"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:50:46"
+      COLUMN_SEQ_NUM = "11"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署2"
+      FORM_ABOVE_PROMPT = "部署2"
+      DESCRIPTION = "部署2"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_03" "ATTRIBUTE10"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:50:46"
+      COLUMN_SEQ_NUM = "12"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署3"
+      FORM_ABOVE_PROMPT = "部署3"
+      DESCRIPTION = "部署3"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_04" "ATTRIBUTE11"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:57:54"
+      COLUMN_SEQ_NUM = "13"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署4"
+      FORM_ABOVE_PROMPT = "部署4"
+      DESCRIPTION = "部署4"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_05" "ATTRIBUTE12"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:57:54"
+      COLUMN_SEQ_NUM = "14"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署5"
+      FORM_ABOVE_PROMPT = "部署5"
+      DESCRIPTION = "部署5"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_06" "ATTRIBUTE13"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:57:54"
+      COLUMN_SEQ_NUM = "15"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署6"
+      FORM_ABOVE_PROMPT = "部署6"
+      DESCRIPTION = "部署6"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_07" "ATTRIBUTE14"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:57:54"
+      COLUMN_SEQ_NUM = "16"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署7"
+      FORM_ABOVE_PROMPT = "部署7"
+      DESCRIPTION = "部署7"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_08" "ATTRIBUTE15"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:57:54"
+      COLUMN_SEQ_NUM = "17"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署8"
+      FORM_ABOVE_PROMPT = "部署8"
+      DESCRIPTION = "部署8"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_09" "ATTRIBUTE16"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:57:54"
+      COLUMN_SEQ_NUM = "18"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署9"
+      FORM_ABOVE_PROMPT = "部署9"
+      DESCRIPTION = "部署9"
+    END DFF_SEGMENT
+    
+    BEGIN DFF_SEGMENT "iv_dept_code_10" "ATTRIBUTE17"
+      OWNER = "SCS_MUEHARA"
+      LAST_UPDATE_DATE = "2008/07/22 21:57:54"
+      COLUMN_SEQ_NUM = "19"
+      ENABLED_FLAG = "Y"
+      DISPLAY_FLAG = "Y"
+      REQUIRED_FLAG = "N"
+      SECURITY_ENABLED_FLAG = "N"
+      FLEX_VALUE_SET_NAME = "XXWSH_DEPT_CODE1"
+      DISPLAY_SIZE = "4"
+      MAXIMUM_DESCRIPTION_LEN = "50"
+      CONCATENATION_DESCRIPTION_LEN = "25"
+      FORM_LEFT_PROMPT = "部署10"
+      FORM_ABOVE_PROMPT = "部署10"
+      DESCRIPTION = "部署10"
     END DFF_SEGMENT
     
     BEGIN DFF_SEGMENT "iv_fix_class" "ATTRIBUTE4"
@@ -17818,8 +18099,26 @@ BEGIN PROGRAM "XXWSH600002C" "XXWSH"
   SRS_FLEX = "XXWSH" "$SRS$.XXWSH600002C"
   AUTO_ANNOTATION =
  "/**\n\
-  * @param iv_dept_code 部署\n\
+  * @param iv_dept_code_01 部署\n\
   * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y} {@rep:required}\n\
+  * @param iv_dept_code_02 部署2\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_03 部署3\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_04 部署4\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_05 部署5\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_06 部署6\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_07 部署7\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_08 部署8\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_09 部署9\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
+  * @param iv_dept_code_10 部署10\n\
+  * @rep:paraminfo {@rep:type XXWSH_DEPT_CODE1} {@rep:displayed Y}\n\
   * @param iv_fix_class 予定確定区分\n\
   * @rep:paraminfo {@rep:type XXWSH_SCHEDULE_FIX_CLASS} {@rep:displayed Y} {@rep:required}\n\
   * @param iv_date_cutoff 締め実施日\n\
@@ -17835,6 +18134,7 @@ BEGIN PROGRAM "XXWSH600002C" "XXWSH"
   * @param iv_time_fix_to 確定通知実施時間To\n\
   * @rep:paraminfo {@rep:type XXCMN_TIME2} {@rep:displayed Y}\n\
   */"
+
 
 
 END PROGRAM
