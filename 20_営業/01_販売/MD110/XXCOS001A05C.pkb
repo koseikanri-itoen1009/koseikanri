@@ -81,6 +81,7 @@ AS
  *  2009/10/13    1.22  N.Maeda          [0001381] 受注明細の販売実績連携済みフラグ追加対応
  *  2009/10/30    1.23  M.Sano           [0001373] 参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
  *  2009/12/08    1.24  M.Fujinuma       [E_本稼動_00224]値引のみのヘッダーデータに対応
+ *  2009/12/21    1.24  N.Maeda          [E_本稼動_00224] 値引きヘッダー納品画面登録情報対応
  *
  *****************************************************************************************/
 --
@@ -8191,15 +8192,29 @@ AS
     --            ELSE
     --              lt_sale_amount_sum   := ln_amount;
     --            END IF;
-    --******************************* 2009/05/18 N.Maeda Var1.15 MOD START ***************************************
-    --              lt_sale_amount_sum := lt_tax_include;
-                  lt_sale_amount_sum := lt_tax_include - lt_sales_consumption_tax;
-    --******************************* 2009/05/18 N.Maeda Var1.15 MOD END *****************************************
-    --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
-                  -- 本体金額合計
-                  lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
-                  -- 消費税金額合計
-                  lt_tax_amount_sum  := lt_sales_consumption_tax;
+-- ************ 2009/12/21 1.24 N.Maeda ADD START ************ --
+                  -- 明細データが値引き明細のみであった場合
+                  IF ( ln_line_data_count = 1 ) THEN
+                    -- 売上金額合計
+                    lt_sale_amount_sum := -(lt_sale_discount_amount);
+                    -- 本体金額合計
+                    lt_pure_amount_sum := -(lt_sale_discount_amount);
+                    -- 消費税金額合計
+                    lt_tax_amount_sum  := lt_tax_amount;
+                  ELSE
+-- ************ 2009/12/21 1.24 N.Maeda ADD  END  ************ --
+      --******************************* 2009/05/18 N.Maeda Var1.15 MOD START ***************************************
+      --              lt_sale_amount_sum := lt_tax_include;
+                    lt_sale_amount_sum := lt_tax_include - lt_sales_consumption_tax;
+      --******************************* 2009/05/18 N.Maeda Var1.15 MOD END *****************************************
+      --************************** 2009/03/18 1.5 T.kitajima MOD  END  ************************************
+                    -- 本体金額合計
+                    lt_pure_amount_sum := ( lt_total_amount - lt_sale_discount_amount );
+                    -- 消費税金額合計
+                    lt_tax_amount_sum  := lt_sales_consumption_tax;
+-- ************ 2009/12/21 1.24 N.Maeda ADD START ************ --
+                  END IF;
+-- ************ 2009/12/21 1.24 N.Maeda ADD  END  ************ --
     --
                 ELSIF ( lt_consumption_tax_class = cv_ins_bid_tax ) THEN  -- 内税（単価込み）
     --
