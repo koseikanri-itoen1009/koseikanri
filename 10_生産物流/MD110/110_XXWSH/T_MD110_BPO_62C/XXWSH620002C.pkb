@@ -7,7 +7,7 @@ AS
  * Description      : 出庫配送依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 出庫配送依頼表 T_MD070_BPO_62C
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *                                       課題#32 単位/入数換算の処理ロジック
  *  2008/11/07    1.14  Y.Yamamoto       統合指摘#143対応(数量0のデータを対象外とする)
  *  2008/11/13    1.15  Y.Yamamoto       統合指摘#595対応、内部変更#168
+ *  2008/11/20    1.16  Y.Yamamoto       統合指摘#464、#686対応
  *
  *****************************************************************************************/
 --
@@ -124,6 +125,9 @@ AS
   gc_item_cd_prdct            CONSTANT  VARCHAR2(1)   := '5' ;              -- 製品
   gc_item_cd_material         CONSTANT  VARCHAR2(1)   := '1' ;              -- 原料
   gc_item_cd_prdct_half       CONSTANT  VARCHAR2(1)   := '4' ;              -- 半製品
+-- 2008/11/20 Y.Yamamoto v1.16 add start
+  gc_item_cd_shizai           CONSTANT  VARCHAR2(1)   := '2' ;              -- 資材
+-- 2008/11/20 Y.Yamamoto v1.16 add end
   -- 小口区分
   gc_small_amount_enabled     CONSTANT VARCHAR2(1)    := '1' ;              -- 小口区分が対象
   -- ユーザー区分
@@ -467,16 +471,19 @@ AS
       RAISE get_prof_expt ;
     END IF ;
 --
+-- 2008/11/20 Y.Yamamoto v1.16 delete start
+    -- 内部ユーザーでのみ取得するため、下の従業員区分の取得後に移動
     -- 職責：商品区分(セキュリティ)取得
-    gv_prod_kbn := FND_PROFILE.VALUE(gc_prof_name_item_div) ;
-    IF (gv_prod_kbn IS NULL) THEN
-      lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
-                                            ,gc_msg_id_not_get_prof
-                                            ,gc_msg_tkn_nm_prof
-                                            ,gc_msg_tkn_val_prof_prod5
-                                           ) ;
-      RAISE get_prof_expt ;
-    END IF ;
+--    gv_prod_kbn := FND_PROFILE.VALUE(gc_prof_name_item_div) ;
+--    IF (gv_prod_kbn IS NULL) THEN
+--      lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+--                                            ,gc_msg_id_not_get_prof
+--                                            ,gc_msg_tkn_nm_prof
+--                                            ,gc_msg_tkn_val_prof_prod5
+--                                           ) ;
+--      RAISE get_prof_expt ;
+--    END IF ;
+-- 2008/11/20 Y.Yamamoto v1.16 delete end
 --
     -- ====================================================
     -- パラメータチェック(F-2)
@@ -513,6 +520,21 @@ AS
     ;
 -- 2008/11/07 Y.Yamamoto v1.14 update end
     --2008/07/04 ST不具合対応#394
+-- 2008/11/20 Y.Yamamoto v1.16 add start
+    -- 内部ユーザーの場合、取得する
+    -- 職責：商品区分(セキュリティ)取得
+    IF (gv_papf_attribute3 = gc_user_kbn_inside) THEN
+      gv_prod_kbn := FND_PROFILE.VALUE(gc_prof_name_item_div) ;
+      IF (gv_prod_kbn IS NULL) THEN
+        lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
+                                              ,gc_msg_id_not_get_prof
+                                              ,gc_msg_tkn_nm_prof
+                                              ,gc_msg_tkn_val_prof_prod5
+                                             ) ;
+        RAISE get_prof_expt ;
+      END IF ;
+    END IF;
+-- 2008/11/20 Y.Yamamoto v1.16 add end
 --
 -- 2008/10/27 del start1.13 統合指摘297 確定実施日は必須から任意に変更する。
 --    IF ( gv_papf_attribute3 = gc_user_kbn_inside ) THEN  --2008/07/04 ST不具合対応#394
@@ -1191,8 +1213,15 @@ AS
     ------------------------------------------------
     -- OPM品目カテゴリ割当情報VIEW4
     ------------------------------------------------
-    || ' AND xim2v.item_id = xic4v.item_id' 
+-- 2008/11/20 Y.Yamamoto v1.16 update start
+--    || ' AND xim2v.item_id = xic4v.item_id' 
+    || ' AND xim2v.item_id = xic4v.item_id' ;
+    IF (gv_papf_attribute3 = gc_user_kbn_inside) THEN
+      -- 商品区分セキュリティのチェックは内部ユーザーのみ行うように修正
+      lv_sql_shu_where2 :=   lv_sql_shu_where2 
     || ' AND xic4v.prod_class_code = '''|| gv_prod_kbn ||''' ' ;
+    END IF;
+-- 2008/11/20 Y.Yamamoto v1.16 update end
     IF ( gt_param.iv_item_kbn IS NOT NULL ) THEN
      lv_sql_shu_where2 :=   lv_sql_shu_where2 
      || ' AND xic4v.item_class_code = '''|| gt_param.iv_item_kbn ||''' ' ;
@@ -1256,7 +1285,10 @@ AS
     -- 従業員区分が'外部'で、｢運賃区分＝対象｣または｢強制出力フラグ＝対象｣の場合、出力対象外
     || ' AND' 
     || ' xoha.freight_charge_class =''' || gc_freight_charge_code_1 || ''''       -- 運賃区分
-    || ' AND' 
+-- 2008/11/20 Y.Yamamoto v1.16 update start
+--    || ' AND' 
+    || ' OR' 
+-- 2008/11/20 Y.Yamamoto v1.16 update end
     || ' xc2v.complusion_output_code =''' || gc_freight_charge_code_1|| ''''      -- 強制出力区分
 -- 2008/07/09 add S.Takemoto end
     || ' )' 
@@ -1591,8 +1623,15 @@ AS
     ------------------------------------------------
     -- OPM品目カテゴリ割当情報VIEW4
     ------------------------------------------------
-    || ' AND xim2v.item_id = xic4v.item_id' 
+-- 2008/11/20 Y.Yamamoto v1.16 update start
+--    || ' AND xim2v.item_id = xic4v.item_id' 
+    || ' AND xim2v.item_id = xic4v.item_id' ;
+    IF (gv_papf_attribute3 = gc_user_kbn_inside) THEN
+      -- 商品区分セキュリティのチェックは内部ユーザーのみ行うように修正
+      lv_sql_sik_where2 :=  lv_sql_sik_where2
     || ' AND xic4v.prod_class_code = ''' || gv_prod_kbn ||'''' ;
+    END IF;
+-- 2008/11/20 Y.Yamamoto v1.16 update start
     IF ( gt_param.iv_item_kbn IS NOT NULL ) THEN
       lv_sql_sik_where2 :=  lv_sql_sik_where2
       || ' AND xic4v.item_class_code = '''|| gt_param.iv_item_kbn ||'''' ;
@@ -1655,7 +1694,10 @@ AS
     -- 従業員区分が'外部'で、｢運賃区分＝対象｣または｢強制出力フラグ＝対象｣の場合、出力対象外
     || ' AND'
     || ' xoha.freight_charge_class =''' || gc_freight_charge_code_1 || ''''       -- 運賃区分
-    || ' AND'
+-- 2008/11/20 Y.Yamamoto v1.16 update start
+--    || ' AND'
+    || ' OR'
+-- 2008/11/20 Y.Yamamoto v1.16 update end
     || ' xc2v.complusion_output_code =''' || gc_freight_charge_code_1|| ''''      -- 強制出力区分
 -- 2008/07/09 add S.Takemoto end
     || ' )' 
@@ -2012,8 +2054,15 @@ AS
     -------------------------------------------------------------------------------
     -- OPM品目カテゴリ割当情報VIEW4
     -------------------------------------------------------------------------------
-    || ' AND xim2v.item_id = xic4v.item_id' 
+-- 2008/11/20 Y.Yamamoto v1.16 update start
+--    || ' AND xim2v.item_id = xic4v.item_id' 
+    || ' AND xim2v.item_id = xic4v.item_id' ;
+    IF (gv_papf_attribute3 = gc_user_kbn_inside) THEN
+      -- 商品区分セキュリティのチェックは内部ユーザーのみ行うように修正
+      lv_sql_ido_where2 :=  lv_sql_ido_where2
     || ' AND xic4v.prod_class_code = '''|| gv_prod_kbn ||'''' ;
+    END IF;
+-- 2008/11/20 Y.Yamamoto v1.16 update end
     IF ( gt_param.iv_item_kbn IS NOT NULL ) THEN
       lv_sql_ido_where2 :=  lv_sql_ido_where2 
       || ' AND xic4v.item_class_code = '''
@@ -2077,7 +2126,10 @@ AS
     -- 従業員区分が'外部'で、｢運賃区分＝対象｣または｢強制出力フラグ＝対象｣の場合、出力対象外
     || ' AND' 
     || ' xmrih.freight_charge_class =''' || gc_freight_charge_code_1 || ''''       -- 運賃区分
-    || ' AND' 
+-- 2008/11/20 Y.Yamamoto v1.16 update start
+--    || ' AND' 
+    || ' OR' 
+-- 2008/11/20 Y.Yamamoto v1.16 update end
     || ' xc2v.complusion_output_code =''' || gc_freight_charge_code_1|| ''''      -- 強制出力区分
 -- 2008/07/09 add S.Takemoto end
     || ' )' 
@@ -2215,8 +2267,13 @@ AS
       || ' AND ( xcs.carrier_code = '''|| gt_param.iv_freight_carrier_code ||''')' ;
     END IF ;
 -- 2008/07/29 add S.Takemoto start
+-- 2008/11/20 Y.Yamamoto v1.16 update start
+    IF (gv_papf_attribute3 = gc_user_kbn_inside) THEN
+      -- 商品区分セキュリティのチェックは内部ユーザーのみ行うように修正
     lv_sql_etc_where1 :=  lv_sql_etc_where1 
     || ' AND xcs.prod_class ='''|| gv_prod_kbn ||'''' ;
+    END IF;
+-- 2008/11/20 Y.Yamamoto v1.16 update end
 -- 2008/07/29 add S.Takemoto end
     -------------------------------------------------------------------------------
     -- 配送区分情報VIEW2
@@ -2381,10 +2438,17 @@ AS
     || ' ,item_code ASC'              -- 商品コード
 --    || ' ,DECODE(item_class_code, ''' || gc_item_cd_prdct     || ''', attribute1 )' -- 製造日
 --    || ' ,DECODE(item_class_code, ''' || gc_item_cd_prdct     || ''', attribute2 )' -- 固有記号
-    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', attribute1 )' -- 製造日
-    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', attribute2 )' -- 固有記号
+-- 2008/11/20 Y.Yamamoto v1.16 update start
+--    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', attribute1 )' -- 製造日
+--    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', attribute2 )' -- 固有記号
 --    || ' ,DECODE(xic4v.item_class_code, ''' || gc_item_cd_prdct     || ''', ''0'' , TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) )' -- ロットNO
-    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', 0 , TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) )' -- ロットNO
+--    || ' ,DECODE(''' || gt_param.iv_item_kbn || ''', ''' || gc_item_cd_prdct || ''', 0 , TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) )' -- ロットNO
+    || ' ,DECODE(item_class_code, ''' || gc_item_cd_prdct || ''', attribute1 )' -- 製造日
+    || ' ,DECODE(item_class_code, ''' || gc_item_cd_prdct || ''', attribute2 )' -- 固有記号
+    || ' ,DECODE(item_class_code, ''' || gc_item_cd_material   || ''', TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) ' 
+    || '                        , ''' || gc_item_cd_shizai     || ''', TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) ' 
+    || '                        , ''' || gc_item_cd_prdct_half || ''', TO_NUMBER( DECODE( lot_id, 0 , ''0'', lot_no) ) )' -- ロットNO
+-- 2008/11/20 Y.Yamamoto v1.16 update start
     ;
 -- 2008/10/27 mod end 1.13 
 --

@@ -7,7 +7,7 @@ AS
  * Description      : 入庫依頼表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 入庫依頼表 T_MD070_BPO_62D
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                       T_S_501(ソート順の変更),統合指摘#341(配送No未設定時タグ修正)
  *  2008/10/20    1.9   Yuko Kawano      課題#32,変更#168対応
  *  2008/11/06    1.10  Y.Yamamoto       統合指摘#143対応(数量0のデータを対象外とする)
+ *  2008/11/20    1.11  Y.Yamamoto       統合指摘#463、#686対応
  *
  *****************************************************************************************/
 --
@@ -397,6 +398,9 @@ AS
     -- プロファイル値取得
     -- ====================================================
     -- 職責：商品区分(セキュリティ)取得
+-- 2008/11/20 Y.Yamamoto v1.11 add start
+    -- 内部ユーザーの場合、取得する
+    IF (gv_employee_kbn = gc_user_kbn_inside) THEN
     gv_prod_kbn := FND_PROFILE.VALUE('XXCMN_ITEM_DIV_SECURITY') ;
     IF (gv_prod_kbn IS NULL) THEN
       lv_errmsg := xxcmn_common_pkg.get_msg( gc_application_wsh
@@ -406,6 +410,8 @@ AS
                                            ) ;
       RAISE get_prof_expt ;
     END IF ;
+    END IF;
+-- 2008/11/20 Y.Yamamoto v1.11 add end
 --
     -- ADD START 2008/06/04 NAKADA
     -- 確定通知実施日、確定通知実施時間の編集
@@ -644,34 +650,41 @@ AS
 ---- 2008/07/10 A.Shiina v1.4 ADD End
 -- 2008/07/15 A.Shiina v1.6 UPDATE End
 -- add start 1.8
-            ,(CASE 
-              WHEN gt_param.item_kbn IS NOT NULL THEN
-                DECODE(xicv4.item_class_code, gv_item_cd_prdct    , ilm.attribute1 , 0 )
-              ELSE
-                '0'
-              END )                        AS  sort1
-            ,(CASE 
-              WHEN gt_param.item_kbn IS NOT NULL THEN
-                DECODE(xicv4.item_class_code, gv_item_cd_prdct    , ilm.attribute2 , 0 )
-              ELSE
-                '0'
-              END )                        AS  sort2
-            ,TO_NUMBER(
-             (CASE 
-              WHEN gt_param.item_kbn IS NOT NULL THEN
-                CASE xicv4.item_class_code
-                WHEN gv_item_cd_genryo THEN
-                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
-                WHEN gv_item_cd_sizai THEN
-                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
-                WHEN gv_item_cd_hanseihin THEN
-                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
-                ELSE
-                  '0'
-                END
-              ELSE
-                '0'
-              END ))                       AS  sort3
+-- 2008/11/20 Y.Yamamoto v1.11 update start
+--            ,(CASE 
+--              WHEN gt_param.item_kbn IS NOT NULL THEN
+--                DECODE(xicv4.item_class_code, gv_item_cd_prdct    , ilm.attribute1 , 0 )
+--              ELSE
+--                '0'
+--              END )                        AS  sort1
+--            ,(CASE 
+--              WHEN gt_param.item_kbn IS NOT NULL THEN
+--                DECODE(xicv4.item_class_code, gv_item_cd_prdct    , ilm.attribute2 , 0 )
+--              ELSE
+--                '0'
+--              END )                        AS  sort2
+--            ,TO_NUMBER(
+--             (CASE 
+--              WHEN gt_param.item_kbn IS NOT NULL THEN
+--                CASE xicv4.item_class_code
+--                WHEN gv_item_cd_genryo THEN
+--                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
+--                WHEN gv_item_cd_sizai THEN
+--                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
+--                WHEN gv_item_cd_hanseihin THEN
+--                  DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )
+--                ELSE
+--                  '0'
+--                END
+--              ELSE
+--                '0'
+--              END ))                       AS  sort3
+            ,DECODE(xicv4.item_class_code, gv_item_cd_prdct,     ilm.attribute1, 0 )  AS  sort1
+            ,DECODE(xicv4.item_class_code, gv_item_cd_prdct,     ilm.attribute2, 0 )  AS  sort2
+            ,DECODE(xicv4.item_class_code, gv_item_cd_genryo,    TO_NUMBER(DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no ))
+                                         , gv_item_cd_sizai,     TO_NUMBER(DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no ))
+                                         , gv_item_cd_hanseihin, TO_NUMBER(DECODE(ilm.lot_id, 0 , '0' , ilm.lot_no )))  AS  sort3
+-- 2008/11/20 Y.Yamamoto v1.11 update start
 -- add end   1.8
       FROM
              xxwsh_carriers_schedule        xcs       -- 配車配送計画(アドオン)
@@ -784,7 +797,10 @@ AS
         AND  (gt_param.item_kbn IS NULL
           OR  xicv4.item_class_code = gt_param.item_kbn
         )
-        AND  xicv4.prod_class_code = gv_prod_kbn
+-- 2008/11/20 Y.Yamamoto v1.11 delete start
+          -- 品目セキュリティのチェックはユーザー情報の抽出で行う
+--        AND  xicv4.prod_class_code = gv_prod_kbn
+-- 2008/11/20 Y.Yamamoto v1.11 delete end
         ----------------------------------------------------------------------------------
         -- 移動ロット詳細情報
         AND  xmril.mov_line_id           =  xmld.mov_line_id(+)
@@ -814,7 +830,13 @@ AS
         AND  papf.person_id            =  fu.employee_id
         AND  (
               -- 内部ユーザーの場合
-              (papf.attribute3  = gc_user_kbn_inside)
+-- 2008/11/20 Y.Yamamoto v1.11 update start
+--              (papf.attribute3  = gc_user_kbn_inside)
+              -- 品目セキュリティチェックをここで行う
+              ((papf.attribute3  = gc_user_kbn_inside)
+                AND  xicv4.prod_class_code = gv_prod_kbn
+               )
+-- 2008/11/20 Y.Yamamoto v1.11 update end
               -- 外部ユーザーの場合
           OR  ((papf.attribute3 = gc_user_kbn_outside)
                 AND (
