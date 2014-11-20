@@ -1,2 +1,2 @@
 CREATE OR REPLACE DIRECTORY XXCFF_LEASE_FILEPATH_INFO
-  AS '/var/ST/ebsif/outbound/cd_iffile/kb';
+  AS '/ebs/ebsd03/ebsif/outbound/cd_iffile/kb';
