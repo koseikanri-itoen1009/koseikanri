@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2009/05/19    1.1  H.Ogawa       障害番号：T1_1029対応
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_AFF_BASE_V2
 (
@@ -18,6 +19,9 @@ CREATE OR REPLACE VIEW APPS.XXCSO_AFF_BASE_V2
 ,row_order
 ,old_head_office_code
 ,base_short_name
+/* 20090519_Ogawa_T1_1029 START*/
+,summary_flag
+/* 20090519_Ogawa_T1_1029 END*/
 )
 AS
 SELECT
@@ -26,6 +30,9 @@ SELECT
 ,ffv.attribute6
 ,ffv.attribute7
 ,ffv.attribute5
+/* 20090519_Ogawa_T1_1029 START*/
+,ffv.summary_flag
+/* 20090519_Ogawa_T1_1029 END*/
 FROM
  gl_sets_of_books gsob
 ,fnd_id_flex_segments fifs
@@ -46,4 +53,7 @@ COMMENT ON COLUMN XXCSO_AFF_BASE_V2.base_name IS '拠点名';
 COMMENT ON COLUMN XXCSO_AFF_BASE_V2.row_order IS '拠点並び順';
 COMMENT ON COLUMN XXCSO_AFF_BASE_V2.old_head_office_code IS '旧本部コード';
 COMMENT ON COLUMN XXCSO_AFF_BASE_V2.base_short_name IS '拠点名（略称）';
+/* 20090519_Ogawa_T1_1029 START*/
+COMMENT ON COLUMN XXCSO_AFF_BASE_V2.summary_flag IS '集計区分';
+/* 20090519_Ogawa_T1_1029 END*/
 COMMENT ON TABLE XXCSO_AFF_BASE_V2 IS '共通用：AFF部門マスタ（最新）ビュー';
