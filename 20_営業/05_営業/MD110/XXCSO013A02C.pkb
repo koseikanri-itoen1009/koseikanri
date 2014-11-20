@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009-04-03    1.2   Kazuo.Satomura   T1_0269対応
  *  2009-04-07    1.3   Daisuke.Abe      T1_0339対応
  *  2009-04-07    1.4   Kazuo.Satomura   T1_0378対応
+ *  2009-04-08    1.5   Kazuo.Satomura   T1_0372,0403対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -186,6 +187,9 @@ AS
   cb_true                 CONSTANT BOOLEAN := TRUE;
   cb_false                CONSTANT BOOLEAN := FALSE;
   cv_null                 CONSTANT VARCHAR2(10) := 'NULL';
+  /* 2009.04.08 K.Satomura T1_0403対応 START */
+  cn_zero                 CONSTANT NUMBER := 0;
+  /* 2009.04.08 K.Satomura T1_0403対応 END */
   --INパラメータ：処理区分
   cv_prm_normal           CONSTANT VARCHAR2(1) := '1';
   cv_prm_div              CONSTANT VARCHAR2(1) := '2';
@@ -932,6 +936,10 @@ AS
         xiwd.completion_kbn = cv_comp_kbn_ok  -- 完了区分
       AND
         xiwd.install1_processed_flag = cv_yes  -- 物件1処理済フラグ
+      /* 2009.04.08 K.Satomura T1_0372対応 START */
+      GROUP BY
+        xiwd.po_number
+      /* 2009.04.08 K.Satomura T1_0372対応 END */
       ;
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1398,54 +1406,104 @@ AS
     ov_change_flg := cv_yes;
     --
     IF (
+        /* 2009.04.08 K.Satomura T1_0403対応 START*/
+        --    (
+        --       g_get_xxcso_ib_info_h_rec.old_po_number                                
+        --     = gn_po_number                                                       -- 発注番号
+        --    )
+        --AND (
+        --       g_get_xxcso_ib_info_h_rec.old_manufacturer_name                        
+        --     = gv_manufacturer_name                                               -- メーカー名
+        --    )
+        --AND (
+        --       g_get_xxcso_ib_info_h_rec.old_age_type                                 
+        --     = gv_age_type                                                        -- 年式
+        --    )
+        --AND (
+        --       g_get_xxcso_ib_info_h_rec.old_model                                    
+        --     = g_get_xxcso_ib_info_h_rec.new_model                                -- 機種 
+        --    )
+        --AND (
+        --       NVL(g_get_xxcso_ib_info_h_rec.old_serial_number       , cv_null)       
+        --     = NVL(g_get_xxcso_ib_info_h_rec.new_serial_number       , cv_null)   -- 機番 
+        --    )
+        --AND (
+        --       g_get_xxcso_ib_info_h_rec.old_quantity                                 
+        --     = g_get_xxcso_ib_info_h_rec.new_quantity                             -- 数量 
+        --    )
+        --AND (
+        --       NVL(g_get_xxcso_ib_info_h_rec.old_department_code     , cv_null)       
+        --     = NVL(gv_department_code                                , cv_null)   -- 拠点コード 
+        --    )
+        --AND (
+        --       g_get_xxcso_ib_info_h_rec.old_owner_company                            
+        --     = gv_owner_company                                                   -- 本社／工場区分
+        --    )
+        --AND (
+        --       NVL(g_get_xxcso_ib_info_h_rec.old_installation_place  , cv_null)       
+        --     = NVL(gv_installation_place                             , cv_null)   -- 設置先名 
+        --    )
+        --AND (
+        --       g_get_xxcso_ib_info_h_rec.old_installation_address                     
+        --     = gv_installation_address                                            -- 設置先住所 
+        --    )
+        --AND (
+        --       g_get_xxcso_ib_info_h_rec.old_active_flag                              
+        --     = g_get_xxcso_ib_info_h_rec.new_active_flag                          -- 論理削除フラグ
+        --    )
+        --AND (
+        --       g_get_xxcso_ib_info_h_rec.old_customer_code                            
+        --     = gv_customer_code                                                   -- 顧客コード 
+        --    )
             (
-               g_get_xxcso_ib_info_h_rec.old_po_number                                
-             = gn_po_number                                                       -- 発注番号
+               NVL(g_get_xxcso_ib_info_h_rec.old_po_number, cn_zero)
+             = NVL(gn_po_number, cn_zero) -- 発注番号
             )
         AND (
-               g_get_xxcso_ib_info_h_rec.old_manufacturer_name                        
-             = gv_manufacturer_name                                               -- メーカー名
+               NVL(g_get_xxcso_ib_info_h_rec.old_manufacturer_name, cv_null)
+             = NVL(gv_manufacturer_name, cv_null) -- メーカー名
             )
         AND (
-               g_get_xxcso_ib_info_h_rec.old_age_type                                 
-             = gv_age_type                                                        -- 年式
+               NVL(g_get_xxcso_ib_info_h_rec.old_age_type, cv_null)
+             = NVL(gv_age_type, cv_null) -- 年式
             )
         AND (
-               g_get_xxcso_ib_info_h_rec.old_model                                    
-             = g_get_xxcso_ib_info_h_rec.new_model                                -- 機種 
+               NVL(g_get_xxcso_ib_info_h_rec.old_model, cv_null)
+             = NVL(g_get_xxcso_ib_info_h_rec.new_model , cv_null) -- 機種
             )
         AND (
-               NVL(g_get_xxcso_ib_info_h_rec.old_serial_number       , cv_null)       
-             = NVL(g_get_xxcso_ib_info_h_rec.new_serial_number       , cv_null)   -- 機番 
+               NVL(g_get_xxcso_ib_info_h_rec.old_serial_number , cv_null)
+             = NVL(g_get_xxcso_ib_info_h_rec.new_serial_number , cv_null) -- 機番
             )
         AND (
-               g_get_xxcso_ib_info_h_rec.old_quantity                                 
-             = g_get_xxcso_ib_info_h_rec.new_quantity                             -- 数量 
+               NVL(g_get_xxcso_ib_info_h_rec.old_quantity, cn_zero)
+             = NVL(g_get_xxcso_ib_info_h_rec.new_quantity, cn_zero) -- 数量
             )
         AND (
-               NVL(g_get_xxcso_ib_info_h_rec.old_department_code     , cv_null)       
-             = NVL(gv_department_code                                , cv_null)   -- 拠点コード 
+               NVL(g_get_xxcso_ib_info_h_rec.old_department_code, cv_null)
+             = NVL(gv_department_code, cv_null) -- 拠点コード 
             )
         AND (
-               g_get_xxcso_ib_info_h_rec.old_owner_company                            
-             = gv_owner_company                                                   -- 本社／工場区分
+               NVL(g_get_xxcso_ib_info_h_rec.old_owner_company, cv_null)
+             = NVL(gv_owner_company, cv_null)-- 本社／工場区分
             )
         AND (
-               NVL(g_get_xxcso_ib_info_h_rec.old_installation_place  , cv_null)       
-             = NVL(gv_installation_place                             , cv_null)   -- 設置先名 
+               NVL(g_get_xxcso_ib_info_h_rec.old_installation_place, cv_null)
+             = NVL(gv_installation_place, cv_null) -- 設置先名 
             )
         AND (
-               g_get_xxcso_ib_info_h_rec.old_installation_address                     
-             = gv_installation_address                                            -- 設置先住所 
+               NVL(g_get_xxcso_ib_info_h_rec.old_installation_address, cv_null)
+             = NVL(gv_installation_address, cv_null)-- 設置先住所
             )
         AND (
-               g_get_xxcso_ib_info_h_rec.old_active_flag                              
-             = g_get_xxcso_ib_info_h_rec.new_active_flag                          -- 論理削除フラグ
+               NVL(g_get_xxcso_ib_info_h_rec.old_active_flag, cv_null)
+             = NVL(g_get_xxcso_ib_info_h_rec.new_active_flag, cv_null) -- 論理削除フラグ
             )
         AND (
-               g_get_xxcso_ib_info_h_rec.old_customer_code                            
-             = gv_customer_code                                                   -- 顧客コード 
+               NVL(g_get_xxcso_ib_info_h_rec.old_customer_code, cv_null)
+             = NVL(gv_customer_code, cv_null)-- 顧客コード 
             )
+        /* 2009.04.08 K.Satomura T1_0403対応 END*/
        ) THEN
       -- 変更項目が存在しない場合変更チェックフラグにNを設定
       ov_change_flg := cv_no;
