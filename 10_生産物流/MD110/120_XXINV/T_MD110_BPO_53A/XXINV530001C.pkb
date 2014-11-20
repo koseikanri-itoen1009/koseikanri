@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸結果インターフェース
  * MD.050           : 棚卸(T_MD050_BPO_530)
  * MD.070           : 結果インターフェース(T_MD070_BPO_53A)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  *  ----------------------------------------------------------------------------------------
@@ -42,6 +42,7 @@ AS
  *  2008/09/16    1.7   T.Ikehara        修正(不具合ID7対応：重複削除はエラーとしない)
  *  2008/10/15    1.8   T.Ikehara        修正(不具合ID8対応：重複削除対象データを
  *                                                           妥当性チェック対象外に修正 )
+ *  2008/12/06    1.9   H.Itou           修正(本番障害#510対応：日付は変換して比較)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -472,27 +473,42 @@ AS
     --品目区分が製品の場合
     IF  (iv_item_typ   = gv_item_cls_prdct) THEN
       lv_sql  :=  lv_sql
--- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
---      ||  '  AND xsi.maker_date  = '''  ||  if_rec.maker_date   || ''''  --製造日
---      ||  '  AND xsi.limit_date  = '''  ||  if_rec.limit_date   || ''''  --賞味期限
---      ||  '  AND xsi.proper_mark = '''  ||  if_rec.proper_mark  || ''''  --固有記号
---      --2008/5/02(レビューNo2)
---      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
---                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
-      ||  '  AND xsi.maker_date  = :maker_date   '  -- 製造日
-      ||  '  AND xsi.limit_date  = :limit_date   '  -- 賞味期限
-      ||  '  AND xsi.proper_mark = :proper_mark  '  -- 固有記号
-      ||  '  AND xsi.invent_date = :invent_date  '; -- 棚卸日
--- 2008/09/04 H.Itou Mod End
+-- 2008/12/06 H.Itou Mod Start
+---- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+----      ||  '  AND xsi.maker_date  = '''  ||  if_rec.maker_date   || ''''  --製造日
+----      ||  '  AND xsi.limit_date  = '''  ||  if_rec.limit_date   || ''''  --賞味期限
+----      ||  '  AND xsi.proper_mark = '''  ||  if_rec.proper_mark  || ''''  --固有記号
+----      --2008/5/02(レビューNo2)
+----      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
+----                          TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+--      ||  '  AND xsi.maker_date,  = :maker_date   '  -- 製造日
+--      ||  '  AND xsi.limit_date  = :limit_date   '  -- 賞味期限
+--      ||  '  AND xsi.proper_mark = :proper_mark  '  -- 固有記号
+--      ||  '  AND xsi.invent_date = :invent_date  '; -- 棚卸日
+---- 2008/09/04 H.Itou Mod End
+      ||  '  AND CASE '
+      ||  '         WHEN xsi.maker_date IS NULL   THEN ''*'''
+      ||  '         WHEN xsi.maker_date = ''0''   THEN ''0'''
+      ||  '         ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(xsi.maker_date, ''' || gc_char_d_format || '''), ''' || gc_char_d_format || '''), xsi.maker_date) '
+      ||  '      END = :maker_date ' -- 製造日
+      ||  '  AND CASE '
+      ||  '         WHEN xsi.limit_date IS NULL   THEN ''*'''
+      ||  '         WHEN xsi.limit_date = ''0''   THEN ''0'''
+      ||  '         ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(xsi.limit_date, ''' || gc_char_d_format || '''), ''' || gc_char_d_format || '''), xsi.limit_date) '
+      ||  '      END = :limit_date '-- 賞味期限
+      ||  '  AND xsi.proper_mark = :proper_mark  ' -- 固有記号
+      ||  '  AND xsi.invent_date = :invent_date  ' -- 棚卸日
+      ;
+-- 2008/12/06 H.Itou Mod End
     --品目区分が製品以外
     ELSE
       lv_sql  :=  lv_sql
 -- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
 --      ||  '  AND xsi.lot_no      = '''  ||  if_rec.lot_no  || '''' --ロットNo
 --      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
---                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+--                          TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
       ||  '  AND xsi.lot_no      = :lot_no       '  --ロットNo
-      ||  '  AND xsi.invent_date = :invent_date  '; --棚卸日
+      ||  '  AND xsi.invent_date = :invent_date  '; -- 棚卸日
 -- 2008/09/04 H.Itou Mod End
     END IF;
 --
@@ -506,16 +522,32 @@ AS
     --品目区分が製品の場合
     IF  (iv_item_typ   = gv_item_cls_prdct) THEN
       lv_sql  :=  lv_sql
-      ||  ', xsi.maker_date  '     --製造日
-      ||  ', xsi.limit_date  '     --賞味期限
-      ||  ', xsi.maker_date  '     --固有記号
-      ||  ', xsi.invent_date  ';   --棚卸日--2008/05/02
+-- 2008/12/06 H.Itou Mod Start
+--      ||  ', xsi.maker_date  '     --製造日
+--      ||  ', xsi.limit_date  '     --賞味期限
+--      ||  ', xsi.proper_mark  '    --固有記号
+--      ||  ', xsi.invent_date  ';   --棚卸日--2008/05/02
+      ||  ', CASE '
+      ||  '    WHEN xsi.maker_date IS NULL   THEN ''*'''
+      ||  '    WHEN xsi.maker_date = ''0''   THEN ''0'''
+      ||  '    ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(xsi.maker_date, ''' || gc_char_d_format || '''), ''' || gc_char_d_format || '''), xsi.maker_date) '
+      ||  '  END ' -- 製造日
+      ||  ', CASE '
+      ||  '    WHEN xsi.limit_date IS NULL   THEN ''*'''
+      ||  '    WHEN xsi.limit_date = ''0''   THEN ''0'''
+      ||  '    ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(xsi.limit_date, ''' || gc_char_d_format || '''), ''' || gc_char_d_format || '''), xsi.limit_date) '
+      ||  '  END ' -- 賞味期限
+      ||  ', xsi.proper_mark  '                                                                                          -- 固有記号
+      ||  ', xsi.invent_date  '                                                                                          -- 棚卸日--2008/05/02
+      ;
+-- 2008/12/06 H.Itou Mod End
     ELSE
       lv_sql  :=  lv_sql
       ||  ', xsi.lot_no  '         --ロットNo
       ||  ', xsi.invent_date  ';   --棚卸日
     END IF;
 --
+FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql);
     BEGIN
 -- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
 --      EXECUTE  IMMEDIATE lv_sql INTO  ln_cnt;
@@ -527,8 +559,20 @@ AS
              ,if_rec.invent_whse_code -- 棚卸倉庫
              ,if_rec.invent_seq       -- 棚卸連番
              ,if_rec.item_code        -- 品目
-             ,if_rec.maker_date       -- 製造日
-             ,if_rec.limit_date       -- 賞味期限
+-- 2008/12/06 H.Itou Mod Start
+--             ,if_rec.maker_date       -- 製造日
+--             ,if_rec.limit_date       -- 賞味期限
+             ,CASE 
+                WHEN if_rec.maker_date IS NULL THEN '*'  -- NULLならダミーコード
+                WHEN if_rec.maker_date = '0'   THEN '0'  -- 0なら0のまま
+                ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(if_rec.maker_date, gc_char_d_format), gc_char_d_format), if_rec.maker_date) -- 正しいフォーマットの場合、日付変換してチェック
+              END -- 製造日
+             ,CASE 
+                WHEN if_rec.limit_date IS NULL THEN '*'  -- NULLならダミーコード
+                WHEN if_rec.limit_date = '0'   THEN '0'  -- 0なら0のまま
+                ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(if_rec.limit_date, gc_char_d_format), gc_char_d_format), if_rec.limit_date) -- 正しいフォーマットの場合、日付変換してチェック
+              END -- 賞味期限
+-- 2008/12/06 H.Itou Mod End
              ,if_rec.proper_mark      -- 固有記号
              ,if_rec.invent_date      -- 棚卸日
         ;
@@ -576,27 +620,42 @@ AS
       --品目区分が製品の場合
       IF  (iv_item_typ   = gv_item_cls_prdct) THEN
         lv_sql  :=  lv_sql
--- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
---      ||  '  AND xsi.maker_date  = '''  ||  if_rec.maker_date   || ''''  --製造日
---      ||  '  AND xsi.limit_date  = '''  ||  if_rec.limit_date   || ''''  --賞味期限
---      ||  '  AND xsi.proper_mark = '''  ||  if_rec.proper_mark  || ''''  --固有記号
---      --2008/5/02(レビューNo2)
---      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
---                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
-      ||  '  AND xsi.maker_date  = :maker_date   '  -- 製造日
-      ||  '  AND xsi.limit_date  = :limit_date   '  -- 賞味期限
-      ||  '  AND xsi.proper_mark = :proper_mark  '  -- 固有記号
-      ||  '  AND xsi.invent_date = :invent_date  '; -- 棚卸日
--- 2008/09/04 H.Itou Mod End
+-- 2008/12/06 H.Itou Mod Start
+---- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
+----        ||  '  AND xsi.maker_date  = '''  ||  if_rec.maker_date   || ''''  --製造日
+----        ||  '  AND xsi.limit_date  = '''  ||  if_rec.limit_date   || ''''  --賞味期限
+----        ||  '  AND xsi.proper_mark = '''  ||  if_rec.proper_mark  || ''''  --固有記号
+----        --2008/5/02(レビューNo2)
+----        ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
+----                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
+--        ||  '  AND xsi.maker_date,  = :maker_date   '  -- 製造日
+--        ||  '  AND xsi.limit_date  = :limit_date   '  -- 賞味期限
+--        ||  '  AND xsi.proper_mark = :proper_mark  '  -- 固有記号
+--        ||  '  AND xsi.invent_date = :invent_date  '; -- 棚卸日
+---- 2008/09/04 H.Itou Mod End
+        ||  '  AND CASE '
+        ||  '         WHEN xsi.maker_date IS NULL   THEN ''*'''
+        ||  '         WHEN xsi.maker_date = ''0''   THEN ''0'''
+        ||  '         ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(xsi.maker_date, ''' || gc_char_d_format || '''), ''' || gc_char_d_format || '''), xsi.maker_date) '
+        ||  '      END = :maker_date ' -- 製造日
+        ||  '  AND CASE '
+        ||  '         WHEN xsi.limit_date IS NULL   THEN ''*'''
+        ||  '         WHEN xsi.limit_date = ''0''   THEN ''0'''
+        ||  '         ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(xsi.limit_date, ''' || gc_char_d_format || '''), ''' || gc_char_d_format || '''), xsi.limit_date) '
+        ||  '      END = :limit_date '-- 賞味期限
+        ||  '  AND xsi.proper_mark = :proper_mark  '                                                                             -- 固有記号
+        ||  '  AND xsi.invent_date = :invent_date  '                                                                             -- 棚卸日
+        ;
+-- 2008/12/06 H.Itou Mod End
       --品目区分が製品以外
       ELSE
         lv_sql  :=  lv_sql
 -- 2008/09/04 H.Itou Mod Start PT 6-3_39指摘#12 バインド変数に変更
---      ||  '  AND xsi.lot_no      = '''  ||  if_rec.lot_no  || '''' --ロットNo
---      ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
+--        ||  '  AND xsi.lot_no      = '''  ||  if_rec.lot_no  || '''' --ロットNo
+--        ||  '  AND TO_CHAR(xsi.invent_date ,''' || gc_char_d_format || '' || ''')  = '''  ||
 --                            TO_CHAR( if_rec.invent_date, gc_char_d_format) || '''';--棚卸日
-      ||  '  AND xsi.lot_no      = :lot_no       '  --ロットNo
-      ||  '  AND xsi.invent_date = :invent_date  '; --棚卸日
+        ||  '  AND xsi.lot_no      = :lot_no       '  --ロットNo
+        ||  '  AND xsi.invent_date = :invent_date  '; -- 棚卸日
 -- 2008/09/04 H.Itou Mod End
       END IF;
 --
@@ -610,10 +669,25 @@ AS
       --品目区分が製品の場合
       IF  (iv_item_typ   = gv_item_cls_prdct) THEN
         lv_sql  :=  lv_sql
-        ||  ', xsi.maker_date  '     --製造日
-        ||  ', xsi.limit_date  '     --賞味期限
-        ||  ', xsi.maker_date  '     --固有記号
-        ||  ', xsi.invent_date  ';   --棚卸日--2008/05/02
+-- 2008/12/06 H.Itou Mod Start
+--        ||  ', xsi.maker_date  '     --製造日
+--        ||  ', xsi.limit_date  '     --賞味期限
+--        ||  ', xsi.proper_mark  '     --固有記号
+--        ||  ', xsi.invent_date  ';   --棚卸日--2008/05/02
+        ||  ', CASE '
+        ||  '    WHEN xsi.maker_date IS NULL   THEN ''*'''
+        ||  '    WHEN xsi.maker_date = ''0''   THEN ''0'''
+        ||  '    ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(xsi.maker_date, ''' || gc_char_d_format || '''), ''' || gc_char_d_format || '''), xsi.maker_date) '
+        ||  '  END ' -- 製造日
+        ||  ', CASE '
+        ||  '    WHEN xsi.limit_date IS NULL   THEN ''*'''
+        ||  '    WHEN xsi.limit_date = ''0''   THEN ''0'''
+        ||  '    ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(xsi.limit_date, ''' || gc_char_d_format || '''), ''' || gc_char_d_format || '''), xsi.limit_date) '
+        ||  '  END ' -- 賞味期限
+        ||  ', xsi.proper_mark  '                                                             -- 固有記号
+        ||  ', xsi.invent_date  '                                                             -- 棚卸日--2008/05/02
+        ;
+-- 2008/12/06 H.Itou Mod End
       ELSE
         lv_sql  :=  lv_sql
         ||  ', xsi.lot_no  '         --ロットNo
@@ -631,8 +705,20 @@ AS
              ,if_rec.invent_whse_code -- 棚卸倉庫
              ,if_rec.invent_seq       -- 棚卸連番
              ,if_rec.item_code        -- 品目
-             ,if_rec.maker_date       -- 製造日
-             ,if_rec.limit_date       -- 賞味期限
+-- 2008/12/06 H.Itou Mod Start
+--             ,if_rec.maker_date       -- 製造日
+--             ,if_rec.limit_date       -- 賞味期限
+             ,CASE 
+                WHEN if_rec.maker_date IS NULL THEN '*'  -- NULLならダミーコード
+                WHEN if_rec.maker_date = '0'   THEN '0'  -- 0なら0のまま
+                ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(if_rec.maker_date, gc_char_d_format), gc_char_d_format), if_rec.maker_date) -- 正しいフォーマットの場合、日付変換してチェック
+              END -- 製造日
+             ,CASE 
+                WHEN if_rec.limit_date IS NULL THEN '*'  -- NULLならダミーコード
+                WHEN if_rec.limit_date = '0'   THEN '0'  -- 0なら0のまま
+                ELSE NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(if_rec.limit_date, gc_char_d_format), gc_char_d_format), if_rec.limit_date) -- 正しいフォーマットの場合、日付変換してチェック
+              END -- 賞味期限
+-- 2008/12/06 H.Itou Mod End
              ,if_rec.proper_mark      -- 固有記号
              ,if_rec.invent_date      -- 棚卸日
         ;
@@ -891,7 +977,10 @@ AS
         CASE (inv_if_rec(i).item_type)
           WHEN (gv_item_cls_prdct) THEN
             -- 製品
-            ltbl_xsir(ln_ins_cnt).maker_date := inv_if_rec(i).maker_date;
+-- 2008/12/06 H.Itou Add Start
+--            ltbl_xsir(ln_ins_cnt).maker_date := inv_if_rec(i).maker_date;
+            ltbl_xsir(ln_ins_cnt).maker_date := inv_if_rec(i).maker_date1;
+-- 2008/12/06 H.Itou Add End
           ELSE
             -- 製品以外
             CASE (inv_if_rec(i).lot_ctl)
@@ -949,6 +1038,17 @@ AS
         ltbl_xsir(ln_ins_cnt).rack_no2         := inv_if_rec(i).rack_no2;
         -- ラックNo３
         ltbl_xsir(ln_ins_cnt).rack_no3         := inv_if_rec(i).rack_no3;
+-- 2008/12/06 H.Itou Add Start 本番障害#510 日付書式を合わせるため、一度TO_DATEする。
+        -- 製造日
+        IF (ltbl_xsir(ln_ins_cnt).maker_date <> '0') THEN
+          ltbl_xsir(ln_ins_cnt).maker_date := TO_CHAR(FND_DATE.STRING_TO_DATE(ltbl_xsir(ln_ins_cnt).maker_date, gc_char_d_format), gc_char_d_format);
+        END IF;
+--
+        -- 賞味期限
+        IF (ltbl_xsir(ln_ins_cnt).limit_date <> '0') THEN
+          ltbl_xsir(ln_ins_cnt).limit_date := TO_CHAR(FND_DATE.STRING_TO_DATE(ltbl_xsir(ln_ins_cnt).limit_date, gc_char_d_format), gc_char_d_format);
+        END IF;
+-- 2008/12/06 H.Itou Add End
         -- WHO情報
         ltbl_xsir(ln_ins_cnt).created_by             := gn_user_id;
         ltbl_xsir(ln_ins_cnt).creation_date          := gd_sysdate;
@@ -1036,8 +1136,12 @@ AS
       AND    xsir.report_post_code = if_rec.report_post_code -- 報告部署
       AND    xsir.item_code        = if_rec.item_code        -- 品目
       AND    xsir.invent_date      = if_rec.invent_date      -- 棚卸日
-      AND    xsir.maker_date       = if_rec.maker_date       -- 製造日
-      AND    xsir.limit_date       = if_rec.limit_date       -- 賞味期限
+-- 2008/12/06 H.Itou Mod Start
+--      AND    xsir.maker_date       = if_rec.maker_date       -- 製造日
+--      AND    xsir.limit_date       = if_rec.limit_date       -- 賞味期限
+      AND    NVL(xsir.maker_date, '*') = NVL(if_rec.maker_date1, '*') -- 製造日
+      AND    NVL(xsir.limit_date, '*') = NVL(if_rec.limit_date, '*')  -- 賞味期限
+-- 2008/12/06 H.Itou Mod End
       AND    xsir.proper_mark      = if_rec.proper_mark      -- 固有記号
       FOR UPDATE NOWAIT;
 --
@@ -1085,6 +1189,17 @@ AS
     FOR i IN 1 .. inv_if_rec.COUNT LOOP
 --
       lr_rowid := NULL;
+-- 2008/12/06 H.Itou Add Start 本番障害#510 日付書式を合わせるため、一度TO_DATEする。
+      -- 製造日
+      IF (inv_if_rec(i).maker_date <> '0') THEN
+        inv_if_rec(i).maker_date := TO_CHAR(FND_DATE.STRING_TO_DATE(inv_if_rec(i).maker_date, gc_char_d_format), gc_char_d_format);
+      END IF;
+--
+      -- 賞味期限
+      IF (inv_if_rec(i).limit_date <> '0') THEN
+        inv_if_rec(i).limit_date := TO_CHAR(FND_DATE.STRING_TO_DATE(inv_if_rec(i).limit_date, gc_char_d_format), gc_char_d_format);
+      END IF;
+-- 2008/12/06 H.Itou Add End
       BEGIN
         IF  (inv_if_rec(i).sts  = gv_sts_ok) THEN--正常データのみ
             -- 品目区分が製品
@@ -1311,62 +1426,66 @@ AS
       --データダンプフラグ初期化
       lb_dump_flag  := FALSE;
 --
-      -- ===========================================
-      -- 重複チェック                              =
-      -- ===========================================
-      proc_duplication_chk(
-        if_rec      => inv_if_rec(i)  -- 1.棚卸インターフェース
-       ,iv_item_typ => lv_item_type   -- 2.データダンプ文字列
-       ,ib_dup_sts  => lb_dup_sts     -- 3.重複チェック結果
-       ,ib_dup_del_sts => lb_dup_del_sts -- 4.重複削除チェック結果
-       ,ov_errbuf   => lv_errbuf
-       ,ov_retcode  => lv_dupretcd
-       ,ov_errmsg   => lv_errmsg);
-      -- エラーの場合
-      IF (lv_dupretcd = gv_status_error) THEN
-        RAISE global_api_expt;
-      END IF;
+-- 2008/12/06 H.Itou Del Start 品目区分を取得してから重複チェックを行うので、最後に移動
+--      -- ===========================================
+--      -- 重複チェック                              =
+--      -- ===========================================
+--      proc_duplication_chk(
+--        if_rec      => inv_if_rec(i)  -- 1.棚卸インターフェース
+--       ,iv_item_typ => lv_item_type   -- 2.データダンプ文字列
+--       ,ib_dup_sts  => lb_dup_sts     -- 3.重複チェック結果
+--       ,ib_dup_del_sts => lb_dup_del_sts -- 4.重複削除チェック結果
+--       ,ov_errbuf   => lv_errbuf
+--       ,ov_retcode  => lv_dupretcd
+--       ,ov_errmsg   => lv_errmsg);
+--      -- エラーの場合
+--      IF (lv_dupretcd = gv_status_error) THEN
+--        RAISE global_api_expt;
+--      END IF;
+----
+--      IF  (lb_dup_sts  = FALSE) THEN
+--        IF (lb_dup_del_sts = TRUE) THEN
+--          inv_if_rec(i).sts  :=  gv_sts_del;  --重複削除
+--        ELSE
+--          inv_if_rec(i).sts  :=  gv_sts_ng;  --重複エラー 4,6
+--        END IF;
+--        IF  ((lb_dump_flag  = FALSE) AND (lb_dup_del_sts = FALSE)) THEN -- 重複削除はエラーとしない
+--          --データダンプ取得
+--          proc_get_data_dump(
+--            if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+--           ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+--           ,ov_errbuf  => lv_errbuf
+--           ,ov_retcode => lv_retcode
+--           ,ov_errmsg  => lv_errmsg);
+--          -- エラーの場合
+--          IF (lv_retcode = gv_status_error) THEN
+--            RAISE global_api_expt;
+--          ELSE
+--            lv_retcode  := gv_status_warn;
+--          END IF;
+--          -- 警告データダンプPL/SQL表投入
+--          gn_err_msg_cnt := gn_err_msg_cnt + 1;
+--          warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+--          lb_dump_flag :=  TRUE;
+--        END IF;
+----
+--        IF (lb_dup_del_sts = FALSE) THEN -- 重複削除はエラーとしない
+--          -- 警告エラーメッセージ取得 (同一ファイル内に重複データが存在します。)
+--          lv_errmsg := xxcmn_common_pkg.get_msg(
+--                        iv_application  => gv_xxinv,
+--                        iv_name         => 'APP-XXINV-10101');
+----
+--          -- 警告メッセージPL/SQL表投入
+--          gn_err_msg_cnt := gn_err_msg_cnt + 1;
+--          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+--        END IF;
+----
+--      END IF;
+-- 2008/12/06 H.Itou Del End
 --
-      IF  (lb_dup_sts  = FALSE) THEN
-        IF (lb_dup_del_sts = TRUE) THEN
-          inv_if_rec(i).sts  :=  gv_sts_del;  --重複削除
-        ELSE
-          inv_if_rec(i).sts  :=  gv_sts_ng;  --重複エラー 4,6
-        END IF;
-        IF  ((lb_dump_flag  = FALSE) AND (lb_dup_del_sts = FALSE)) THEN -- 重複削除はエラーとしない
-          --データダンプ取得
-          proc_get_data_dump(
-            if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
-           ,ov_dump    => lv_dump        -- 2.データダンプ文字列
-           ,ov_errbuf  => lv_errbuf
-           ,ov_retcode => lv_retcode
-           ,ov_errmsg  => lv_errmsg);
-          -- エラーの場合
-          IF (lv_retcode = gv_status_error) THEN
-            RAISE global_api_expt;
-          ELSE
-            lv_retcode  := gv_status_warn;
-          END IF;
-          -- 警告データダンプPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_dump;
-          lb_dump_flag :=  TRUE;
-        END IF;
---
-        IF (lb_dup_del_sts = FALSE) THEN -- 重複削除はエラーとしない
-          -- 警告エラーメッセージ取得 (同一ファイル内に重複データが存在します。)
-          lv_errmsg := xxcmn_common_pkg.get_msg(
-                        iv_application  => gv_xxinv,
-                        iv_name         => 'APP-XXINV-10101');
---
-          -- 警告メッセージPL/SQL表投入
-          gn_err_msg_cnt := gn_err_msg_cnt + 1;
-          warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
-        END IF;
---
-      END IF;
---
-      IF (lb_dup_del_sts != true) THEN
+-- 2008/12/06 H.Itou Del Start
+--      IF (lb_dup_del_sts != true) THEN
+-- 2008/12/06 H.Itou Del End
         -- ===============================
         -- 品目マスタチェック(OPM品目マスタに存在するかチェックします。）
         -- ===============================
@@ -1780,16 +1899,31 @@ AS
                 ln_lot_id :=  NULL;
                 lv_lot_no :=  NULL;
                 lv_limit_date :=  NULL;
+-- 2008/12/06 H.Itou Add Start
+                lv_maker_date  := NULL; -- 製造日
+                lv_proper_mark := NULL; -- 固有記号
+-- 2008/12/06 H.Itou Add End
                 SELECT
                   ilm.lot_id     AS lot_id     -- ロットID
                  ,ilm.lot_no     AS lot_no     -- ロットNO
                  ,ilm.attribute3 AS limit_date -- 賞味期限
+-- 2008/12/06 H.Itou Add Start
+                 ,ilm.attribute1 AS maker_date  -- 製造日
+                 ,ilm.attribute2 AS proper_mark -- 固有記号
+-- 2008/12/06 H.Itou Add End
                 INTO
                   ln_lot_id
                  ,lv_lot_no
                  ,lv_limit_date
+-- 2008/12/06 H.Itou Add Start
+                 ,lv_maker_date  -- 製造日
+                 ,lv_proper_mark -- 固有記号
+-- 2008/12/06 H.Itou Add End
                 FROM   ic_lots_mst ilm
-                WHERE ilm.attribute1 = '' || TO_CHAR(ld_maker_date, gc_char_d_format) || ''--製造日
+-- 2008/12/06 H.Itou Add Start
+--                WHERE ilm.attribute1 = '' || TO_CHAR(ld_maker_date, gc_char_d_format) || ''--製造日
+                WHERE  FND_DATE.STRING_TO_DATE(ilm.attribute1, gc_char_d_format) = ld_maker_date --製造日
+-- 2008/12/06 H.Itou Add End
                 AND    ilm.attribute2 = inv_if_rec(i).proper_mark--固有記号
                 AND    ilm.item_id = ln_item_id --品目ID
                 AND ROWNUM  = 1;
@@ -1976,19 +2110,30 @@ AS
                 ln_lot_id :=  NULL;
                 lv_lot_no :=  NULL;
                 lv_limit_date :=  NULL;
+-- 2008/12/06 H.Itou Add Start
+                lv_maker_date :=  NULL;
+-- 2008/12/06 H.Itou Add End
                 ld_maker_date :=
                           FND_DATE.STRING_TO_DATE(inv_if_rec(i).maker_date, gc_char_d_format);
                 SELECT
                   ilm.lot_id     AS lot_id     -- ロットID
                  ,ilm.lot_no     AS lot_no     -- ロットNO
                  ,ilm.attribute3 AS limit_date -- 賞味期限
+-- 2008/12/06 H.Itou Add Start
+                 ,ilm.attribute1 AS maker_date -- 製造年月日
+-- 2008/12/06 H.Itou Add End
                 INTO
                   ln_lot_id
                  ,lv_lot_no
                  ,lv_limit_date
+-- 2008/12/06 H.Itou Add Start
+                 ,lv_maker_date           -- 製造年月日
+-- 2008/12/06 H.Itou Add End
                 FROM   ic_lots_mst ilm
-                WHERE  ilm.attribute1 =
-                            '' || TO_CHAR(ld_maker_date, gc_char_d_format) || '' --製造日
+-- 2008/12/06 H.Itou Add Start
+--                WHERE ilm.attribute1 = '' || TO_CHAR(ld_maker_date, gc_char_d_format) || ''--製造日
+                WHERE  FND_DATE.STRING_TO_DATE(ilm.attribute1, gc_char_d_format) = ld_maker_date --製造日
+-- 2008/12/06 H.Itou Add End
                 AND    ilm.attribute2 = inv_if_rec(i).proper_mark --固有記号
                 AND    ilm.item_id = ln_item_id
                 AND ROWNUM  = 1;
@@ -2045,8 +2190,10 @@ AS
                      ,lv_lot_no
                      ,lv_maker_date
                     FROM   ic_lots_mst ilm
-                    WHERE  ilm.attribute3 =
-                                '' || TO_CHAR(ld_limit_date, gc_char_d_format) || ''--賞味--
+-- 2008/12/06 H.Itou Add Start
+--                    WHERE ilm.attribute1 = '' || TO_CHAR(ld_maker_date, gc_char_d_format) || ''--製造日
+                    WHERE  FND_DATE.STRING_TO_DATE(ilm.attribute3, gc_char_d_format) = ld_limit_date --賞味期限
+-- 2008/12/06 H.Itou Add End
                     AND    ilm.attribute2 = inv_if_rec(i).proper_mark--固有記号
                     AND    ilm.item_id = ln_item_id; --品目ID
                   EXCEPTION
@@ -2407,6 +2554,62 @@ AS
           warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
         END IF;
 --
+-- 2008/12/06 H.Itou Add Start 上から移動
+        -- ===========================================
+        -- 重複チェック                              =
+        -- ===========================================
+        proc_duplication_chk(
+          if_rec      => inv_if_rec(i)  -- 1.棚卸インターフェース
+         ,iv_item_typ => lv_item_type   -- 2.データダンプ文字列
+         ,ib_dup_sts  => lb_dup_sts     -- 3.重複チェック結果
+         ,ib_dup_del_sts => lb_dup_del_sts -- 4.重複削除チェック結果
+         ,ov_errbuf   => lv_errbuf
+         ,ov_retcode  => lv_dupretcd
+         ,ov_errmsg   => lv_errmsg);
+        -- エラーの場合
+        IF (lv_dupretcd = gv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+        IF  (lb_dup_sts  = FALSE) THEN
+          IF (lb_dup_del_sts = TRUE) THEN
+            inv_if_rec(i).sts  :=  gv_sts_del;  --重複削除
+          ELSE
+            inv_if_rec(i).sts  :=  gv_sts_ng;  --重複エラー 4,6
+          END IF;
+          IF  ((lb_dump_flag  = FALSE) AND (lb_dup_del_sts = FALSE)) THEN -- 重複削除はエラーとしない
+            --データダンプ取得
+            proc_get_data_dump(
+              if_rec     => inv_if_rec(i)  -- 1.棚卸インターフェース
+             ,ov_dump    => lv_dump        -- 2.データダンプ文字列
+             ,ov_errbuf  => lv_errbuf
+             ,ov_retcode => lv_retcode
+             ,ov_errmsg  => lv_errmsg);
+            -- エラーの場合
+            IF (lv_retcode = gv_status_error) THEN
+              RAISE global_api_expt;
+            ELSE
+              lv_retcode  := gv_status_warn;
+            END IF;
+            -- 警告データダンプPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_dump;
+            lb_dump_flag :=  TRUE;
+          END IF;
+--
+          IF (lb_dup_del_sts = FALSE) THEN -- 重複削除はエラーとしない
+            -- 警告エラーメッセージ取得 (同一ファイル内に重複データが存在します。)
+            lv_errmsg := xxcmn_common_pkg.get_msg(
+                          iv_application  => gv_xxinv,
+                          iv_name         => 'APP-XXINV-10101');
+--
+            -- 警告メッセージPL/SQL表投入
+            gn_err_msg_cnt := gn_err_msg_cnt + 1;
+            warn_dump_tab(gn_err_msg_cnt) := lv_errmsg;
+          END IF;
+--
+        END IF;
+-- 2008/12/06 H.Itou Add End 上から移動
         --マスタチェックで取得した項目を配列へ退避
         inv_if_rec(i).item_id      := ln_item_id;          --品目ID
         inv_if_rec(i).lot_ctl      := ln_lot_ctl;          --ロット管理区分
@@ -2420,7 +2623,9 @@ AS
         inv_if_rec(i).proper_mark1 := lv_proper_mark;      --固有記号
         inv_if_rec(i).limit_date1  := lv_limit_date;       --賞味期限
 --
-      END IF;
+-- 2008/12/06 H.Itou Del Start
+--      END IF;
+-- 2008/12/06 H.Itou Del En
 --
     END LOOP process_loop;
 --

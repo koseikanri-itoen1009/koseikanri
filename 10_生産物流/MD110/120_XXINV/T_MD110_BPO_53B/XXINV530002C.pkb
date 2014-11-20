@@ -7,7 +7,7 @@ AS
  * Description      : HHT棚卸データIFプログラム
  * MD.050/070       : 棚卸Issue1.0(T_MD050_BPO_530)
  *                  : 棚卸Issue1.0(T_MD050_BPO_53B)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *                      T.Endou          修正(MD.050_530の不具合について５.txtの対応)
  *  2008/05/08    1.3   T.Endou          修正(ロット管理しない場合はNULL)
  *  2008/05/09    1.4   M.Inamine        修正(2008/05/08 03 不具合対応：日付書式の誤り)
+ *  2008/12/06    1.5   T.Miyata         修正(本番障害#510対応：日付は変換して比較)
  *
  *****************************************************************************************/
 --
@@ -144,6 +145,10 @@ AS
   gv_content_col          CONSTANT VARCHAR2(4)  := '入数';
   gv_loose_amt_col        CONSTANT VARCHAR2(8)  := '棚卸バラ';
 --
+-- 2008/12/06 T.Miyata Add Start
+  gc_char_d_format        CONSTANT VARCHAR2(30) := 'YYYY/MM/DD' ;
+-- 2008/12/06 T.Miyata Add End
+--
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -199,7 +204,26 @@ AS
     FROM   xxinv_stc_inventory_hht_work xsihw
     FOR UPDATE NOWAIT;
 --
+-- 2008/12/07 T.MIYATA ADD START #510
 --
+  /**********************************************************************************
+   * Function Name    : fnc_check_date
+   * Description      : 日付チェックを行います。
+   ***********************************************************************************/
+  FUNCTION fnc_check_date(
+    iv_date IN VARCHAR2
+    ) RETURN VARCHAR2
+  IS
+  BEGIN
+--
+    RETURN to_char(to_date(iv_date, gc_char_d_format), gc_char_d_format);
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN null;
+  END fnc_check_date;
+--
+-- 2008/12/07 T.MIYATA ADD END #510
 --
   /**********************************************************************************
    * Function Name    : fnc_check_num
@@ -493,6 +517,17 @@ AS
       ltbl_xsir(ln_cnt_loop).rack_no2         := gtbl_normal_ins(ln_cnt_loop).rack_no2;
       -- ラックNo３
       ltbl_xsir(ln_cnt_loop).rack_no3         := gtbl_normal_ins(ln_cnt_loop).rack_no3;
+-- 2008/12/06 T.Miyata Add Start 本番障害#510 日付書式を合わせるため、一度TO_DATEする。
+        -- 製造日
+        IF (ltbl_xsir(ln_cnt_loop).maker_date <> '0') THEN
+          ltbl_xsir(ln_cnt_loop).maker_date := TO_CHAR(FND_DATE.STRING_TO_DATE(ltbl_xsir(ln_cnt_loop).maker_date, gc_char_d_format), gc_char_d_format);
+        END IF;
+--
+        -- 賞味期限
+        IF (ltbl_xsir(ln_cnt_loop).limit_date <> '0') THEN
+          ltbl_xsir(ln_cnt_loop).limit_date := TO_CHAR(FND_DATE.STRING_TO_DATE(ltbl_xsir(ln_cnt_loop).limit_date, gc_char_d_format), gc_char_d_format);
+        END IF;
+-- 2008/12/06 T.Miyata Add End
       -- WHO情報
       ltbl_xsir(ln_cnt_loop).created_by             := gn_user_id;
       ltbl_xsir(ln_cnt_loop).creation_date          := gd_sysdate;
@@ -581,8 +616,12 @@ AS
       AND    xsir.report_post_code = itbl_hht_work.report_post_code -- 報告部署
       AND    xsir.item_code        = itbl_hht_work.item_code        -- 品目
       AND    xsir.invent_date      = itbl_hht_work.invent_date      -- 棚卸日
-      AND    xsir.maker_date       = itbl_hht_work.maker_date       -- 製造日
-      AND    xsir.limit_date       = itbl_hht_work.limit_date       -- 賞味期限
+-- 2008/12/06 T.Miyata Add Start
+--      AND    xsir.maker_date       = itbl_hht_work.maker_date       -- 製造日
+--      AND    xsir.limit_date       = itbl_hht_work.limit_date       -- 賞味期限
+      AND    fnc_check_date(xsir.maker_date) = fnc_check_date(itbl_hht_work.maker_date) -- 製造日
+--test      AND    fnc_check_date(xsir.limit_date) = fnc_check_date(itbl_hht_work.limit_date)  -- 賞味期限
+-- 2008/12/06 T.Miyata Add End
       AND    xsir.proper_mark      = itbl_hht_work.proper_mark      -- 固有記号
       FOR UPDATE NOWAIT;
 --
@@ -630,6 +669,17 @@ AS
     FOR ln_cnt_loop IN 1 .. gtbl_normal.COUNT LOOP
 --
       lr_rowid := NULL;
+-- 2008/12/06 T.Miyata Add Start 本番障害#510 日付書式を合わせるため、一度TO_DATEする。
+      -- 製造日
+      IF (gtbl_normal(ln_cnt_loop).maker_date <> '0') THEN
+        gtbl_normal(ln_cnt_loop).maker_date := TO_CHAR(FND_DATE.STRING_TO_DATE(gtbl_normal(ln_cnt_loop).maker_date, gc_char_d_format), gc_char_d_format);
+      END IF;
+--
+      -- 賞味期限
+      IF (gtbl_normal(ln_cnt_loop).limit_date <> '0') THEN
+        gtbl_normal(ln_cnt_loop).limit_date := TO_CHAR(FND_DATE.STRING_TO_DATE(gtbl_normal(ln_cnt_loop).limit_date, gc_char_d_format), gc_char_d_format);
+      END IF;
+-- 2008/12/06 T.Miyata Add End
       BEGIN
         IF (gtbl_normal(ln_cnt_loop).b3_item_class_code = gv_item_class_products) THEN
           -- 品目区分が製品
@@ -1776,8 +1826,12 @@ AS
        ,xsihw.invent_seq       AS invent_seq
        ,xsihw.item_code        AS item_code
        ,xsihw.lot_no           AS lot_no
-       ,xsihw.maker_date       AS maker_date
-       ,xsihw.limit_date       AS limit_date
+-- 2008/12/06 T.Miyata Update Start
+--       ,xsihw.maker_date       AS maker_date
+--       ,xsihw.limit_date       AS limit_date
+       ,TO_CHAR(FND_DATE.STRING_TO_DATE(xsihw.maker_date, gc_char_d_format), gc_char_d_format)       AS maker_date
+       ,TO_CHAR(FND_DATE.STRING_TO_DATE(xsihw.limit_date, gc_char_d_format), gc_char_d_format)       AS limit_date
+-- 2008/12/06 T.Miyata Update End
        ,xsihw.proper_mark      AS proper_mark
        ,xsihw.case_amt         AS case_amt
        ,xsihw.content          AS content
@@ -1811,8 +1865,12 @@ AS
          ,xsihw.invent_whse_code
          ,xsihw.report_post_code
          ,xsihw.item_code
-         ,xsihw.maker_date
-         ,xsihw.limit_date
+-- 2008/12/06 T.Miyata Update Start
+--         ,xsihw.maker_date
+--         ,xsihw.limit_date
+         ,TO_CHAR(FND_DATE.STRING_TO_DATE(xsihw.maker_date, gc_char_d_format), gc_char_d_format)       AS maker_date
+         ,TO_CHAR(FND_DATE.STRING_TO_DATE(xsihw.limit_date, gc_char_d_format), gc_char_d_format)       AS limit_date
+-- 2008/12/06 T.Miyata Update End
          ,xsihw.proper_mark
          ,xsihw.invent_date --2008/05/02
         FROM xxinv_stc_inventory_hht_work xsihw

@@ -1,4 +1,4 @@
-create or replace PACKAGE BODY xxwsh400004c
+CREATE OR REPLACE PACKAGE BODY xxwsh400004c
 AS
 /*****************************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
@@ -46,7 +46,7 @@ AS
  *  2008/10/10   1.8   Oracle 伊藤ひとみ 統合テスト指摘239対応
  *  2008/10/28   1.9   Oracle 伊藤ひとみ 統合テスト指摘141対応
  *  2008/11/14   1.10  SCS    伊藤ひとみ 統合テスト指摘650対応
- *  2008/12/01   1.11  SCS    菅原大輔   本番指摘253対応（暫定）
+ *  2008/12/07   1.11  SCS    菅原大輔   本番#386
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -885,7 +885,10 @@ AS
            xxwsh_order_headers_all       xoha           -- 受注ヘッダアドオン
          WHERE
            xoha.request_no         =  :iv_request_no    -- 依頼No
-         FOR UPDATE OF xoha.order_header_id NOWAIT '
+--2008/12/07 D.Sugahara Mod Start
+         FOR UPDATE OF xoha.order_header_id  SKIP LOCKED '
+--         FOR UPDATE OF xoha.order_header_id NOWAIT 
+--2008/12/07 D.Sugahara Mod End
       ;
     -- 締め処理
     cv_main_sql1                   CONSTANT VARCHAR2(32000) :=
@@ -1143,7 +1146,10 @@ AS
        AND   xottv.start_date_active        <= NVL(:id_schedule_ship_date,xoha.schedule_ship_date)
        AND  (xottv.end_date_active          IS NULL
        OR    xottv.end_date_active          >= NVL(:id_schedule_ship_date,xoha.schedule_ship_date))
-       FOR UPDATE OF xoha.req_status NOWAIT'
+--2008/12/07 D.Sugahara Mod Start
+         FOR UPDATE OF xoha.req_status SKIP LOCKED '
+--       FOR UPDATE OF xoha.req_status NOWAIT'
+--2008/12/07 D.Sugahara Mod End
       ;
 --
     -- *** ローカル・カーソル ***
@@ -1780,8 +1786,6 @@ AS
 -- 2008/11/14 H.Itou Mod End
         END IF;
 --
-
-/* 20081201 D.Sugahara Deleted※暫定 Start --リードタイムエラーを回避するため
         -- リードタイム算出
         xxwsh_common910_pkg.calc_lead_time(cv_deliver_from_4,     -- 4:倉庫
                                            lr_u_rec.deliver_from, -- E-2出荷元保管場所
@@ -1884,9 +1888,6 @@ AS
                                                 lr_u_rec.request_no);
           RAISE global_api_expt;
         END IF;
-*/
-
---20081201 D.Sugahara Deleted※暫定 End --リードタイムエラーを回避するため
 --
       END IF;
 --
@@ -2137,3 +2138,4 @@ AS
   END ship_tightening;
   --
 END xxwsh400004c;
+/

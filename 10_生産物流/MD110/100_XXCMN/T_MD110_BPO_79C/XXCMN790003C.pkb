@@ -7,7 +7,7 @@ AS
  * Description      : 加重平均計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 加重平均計算処理 T_MD070_BPO_79C
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/2/6      1.0   R.Matusita       新規作成
  *  2008/12/02    1.1   H.Marushita      数量ゼロの取引別ロット原価を抽出対象外とする。
+ *  2008/12/03    1.2   H.Marushita      数量ゼロの取引別ロット原価をロット別原価に登録する。
  *
  *****************************************************************************************/
 --
@@ -312,6 +313,25 @@ AS
       AND   xtlc.trans_qty > 0
 -- 2008/12/02 ADD END
       GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
+-- 2008/12/03 ADD START
+      UNION
+      SELECT  xtlc.item_id               item_id         -- 品目ID
+            , xtlc.item_code             item_code       -- 品目コード
+            , xtlc.lot_id                lot_id          -- ロットID
+            , xtlc.lot_num               lot_num         -- ロットNo
+            , SUM(1) trans_qty -- 取引数量
+            , SUM(NVL(xtlc.unit_price,0)) price     -- 単価*数量（=取引金額）
+      FROM    xxcmn_txn_lot_cost xtlc              -- 取引別ロット別原価（アドオン）
+      WHERE xtlc.trans_qty  = 0 
+      AND   xtlc.unit_price > 0
+      AND   NOT EXISTS
+      (SELECT 'X'
+       FROM xxcmn_lot_cost xlc            -- ロット別原価（アドオン）
+       WHERE xtlc.item_id   = xlc.item_id
+       AND   xtlc.lot_id    = xlc.lot_id
+      )
+      GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
+-- 2008/12/03 ADD END
       ;
 --
     -- 更新用
@@ -331,6 +351,19 @@ AS
       AND   xtlc.trans_qty > 0
 -- 2008/12/02 ADD END
       GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
+-- 2008/12/03 ADD START
+      UNION
+      SELECT  xtlc.item_id               item_id   -- 品目ID
+            , xtlc.lot_id                lot_id    -- ロットID
+            , SUM(1) trans_qty -- 取引数量
+            , SUM(NVL(xtlc.unit_price,0)) price     -- 単価*数量（=取引金額）
+      FROM    xxcmn_txn_lot_cost xtlc              -- 取引別ロット別原価（アドオン）
+            , xxcmn_lot_cost xlc                   -- ロット別原価（アドオン）
+      WHERE xtlc.item_id   = xlc.item_id
+      AND   xtlc.lot_id    = xlc.lot_id
+      AND   xtlc.trans_qty = 0 and xtlc.unit_price > 0
+      GROUP BY xtlc.item_id, xtlc.item_code ,xtlc.lot_id ,xtlc.lot_num
+-- 2008/12/02 ADD END
       ;
     -- *** ローカル・レコード ***
 --

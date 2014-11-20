@@ -7,7 +7,7 @@ AS
  * Description      : 棚卸表
  * MD.050/070       : 棚卸Issue1.0 (T_MD050_BPO_530)
                       棚卸表Draft1A (T_MD070_BPO_530C)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/06/24    1.4   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
  *  2008/12/06    1.5   N.Yoshida        本番障害No.493対応 入数の少数点以下表示を修正
+ *  2008/12/07    1.6   T.Miyata         12月分の棚卸表が出力されない障害を修正
  *
  *****************************************************************************************/
 --
@@ -501,7 +502,11 @@ AS
 --
 --棚卸対象期間取得
     ld_object_date := FND_DATE.STRING_TO_DATE(iv_inventory_time,cv_date_type);
-    ld_next_date := FND_DATE.STRING_TO_DATE(iv_inventory_time + 1,cv_date_type);
+-- 2008/12/07 T.Miyata Modify Start 既存の処理だと、12月に1を足すため不正な年月となりNullとなってしまう。
+--    ld_next_date := FND_DATE.STRING_TO_DATE(iv_inventory_time + 1,cv_date_type);
+    ld_next_date := last_day(ld_object_date);
+-- 2008/12/07 T.Miyata Modify End
+
 --
     lv_sql :=
          'SELECT'
