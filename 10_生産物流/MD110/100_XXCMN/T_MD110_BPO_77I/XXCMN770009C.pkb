@@ -7,7 +7,7 @@ AS
  * Description      : ëºä®íËêUë÷å¥âøç∑àŸï\
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD050_BPO_770)
  *                  : åééüÅYêÿèàóùí†ï[Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/11/29    1.13  N.Yoshida        ñ{î‘#213ÅA214ëŒâû
  *  2008/12/08    1.14  N.Yoshida        ñ{î‘è·äQëŒâû éÛíçÉwÉbÉ_ÉAÉhÉIÉìÇ≈ç≈êVÉtÉâÉOYÇí«â¡
  *  2008/12/18    1.15  A.Shiina         ñ{î‘#789ëŒâû
+ *  2009/01/14    1.16  N.Yoshida        ñ{î‘#1015ëŒâû
  *
  *****************************************************************************************/
 --
@@ -497,18 +498,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -598,8 +599,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -624,18 +630,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -726,8 +732,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -752,18 +763,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -861,8 +872,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -887,18 +903,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -997,8 +1013,13 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -1024,18 +1045,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -1128,8 +1149,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -1154,18 +1180,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -1252,8 +1278,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -1278,18 +1309,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -1375,8 +1406,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -1402,18 +1438,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -1500,8 +1536,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -1526,18 +1567,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -1631,8 +1672,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -1657,18 +1703,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -1767,8 +1813,13 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -1794,18 +1845,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -1895,8 +1946,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -1921,18 +1977,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -2017,8 +2073,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       GROUP BY iimb2.item_no
@@ -2055,18 +2116,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -2156,8 +2217,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -2183,18 +2249,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -2285,8 +2351,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -2312,18 +2383,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -2421,8 +2492,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -2448,18 +2524,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -2558,8 +2634,13 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -2586,18 +2667,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -2690,8 +2771,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -2717,18 +2803,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -2815,8 +2901,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -2842,18 +2933,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -2939,8 +3030,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -2967,18 +3063,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -3065,8 +3161,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -3092,18 +3193,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -3197,8 +3298,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -3224,18 +3330,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -3334,8 +3440,13 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -3362,18 +3473,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -3463,8 +3574,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -3490,18 +3606,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -3586,8 +3702,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    xrpm.new_div_account    = gr_param.rcv_pay_div
@@ -3625,18 +3746,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -3726,8 +3847,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -3753,18 +3879,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -3855,8 +3981,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -3882,18 +4013,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -3991,8 +4122,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -4018,18 +4154,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -4128,8 +4264,13 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -4156,18 +4297,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -4260,8 +4401,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -4287,18 +4433,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -4385,8 +4531,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -4412,18 +4563,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -4509,8 +4660,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -4537,18 +4693,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -4635,8 +4791,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -4662,18 +4823,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -4767,8 +4928,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -4794,18 +4960,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -4904,8 +5070,13 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -4932,18 +5103,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -5033,8 +5204,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -5060,18 +5236,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -5156,8 +5332,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -5195,18 +5376,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -5296,8 +5477,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -5324,18 +5510,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -5426,8 +5612,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -5454,18 +5645,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -5563,8 +5754,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -5591,18 +5787,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -5701,8 +5897,13 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -5730,18 +5931,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -5834,8 +6035,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -5862,18 +6068,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -5960,8 +6166,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -5988,18 +6199,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -6085,8 +6296,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -6114,18 +6330,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -6212,8 +6428,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -6240,18 +6461,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -6345,8 +6566,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -6373,18 +6599,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -6483,8 +6709,13 @@ AS
       AND    xrpm.item_div_ahead     = '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -6512,18 +6743,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(gc_rcv_pay_div_adj)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -6613,8 +6844,13 @@ AS
       AND    xrpm.break_col_09       IS NOT NULL
       AND    itp.item_id             = iimb2.item_id
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
@@ -6641,18 +6877,18 @@ AS
 -- 2008/11/29 v1.13 UPDATE START
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))) AS from_price
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))) AS from_price
             ,SUM(ROUND(
 --               DECODE(iimb.attribute15
                DECODE(iimb2.attribute15
-                    ,gn_one,xsup_m.stnd_unit_price
+                    ,gn_one,NVL(xsup_m.stnd_unit_price,0)
 --                    ,DECODE(iimb.lot_ctl
                     ,DECODE(iimb2.lot_ctl
 -- 2008/11/29 v1.13 UPDATE END
-                      ,gn_one1,xlc.unit_ploce,xsup_m.stnd_unit_price))
+                      ,gn_one1,xlc.unit_ploce,NVL(xsup_m.stnd_unit_price,0)))
                * (itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)))) AS from_cost
 -- 2008/11/29 v1.13 UPDATE START
 --            ,SUM(xsup.stnd_unit_price) to_price
@@ -6737,8 +6973,13 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_09       IS NOT NULL
       AND    iimb2.item_id           = ximb2.item_id
-      AND    xsup_m.item_id          = iimb2.item_id
-      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+-- 2009/01/14 v1.16 N.Yoshida mod start
+--      AND    xsup_m.item_id          = iimb2.item_id
+--      AND    itp.trans_date BETWEEN xsup_m.start_date_active AND xsup_m.end_date_active
+      AND    xsup_m.item_id(+)       = iimb2.item_id
+      AND    NVL(xsup_m.start_date_active, itp.trans_date) <= itp.trans_date
+      AND    NVL(xsup_m.end_date_active, itp.trans_date)   >= itp.trans_date
+-- 2009/01/14 v1.16 N.Yoshida mod start
       AND    xsup.item_id            = iimb.item_id
       AND    itp.trans_date BETWEEN xsup.start_date_active AND xsup.end_date_active
       AND    mcb3.segment1           = lt_crowd_code
