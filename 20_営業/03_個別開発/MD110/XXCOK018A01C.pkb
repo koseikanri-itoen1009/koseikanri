@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK018A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：ARインターフェイス（AR I/F）販売物流 MD050_COK_018_A01
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ------------------------------       ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/1/7      1.0   K.Suenaga        新規作成
  *  2009/3/17     1.1   M.Hiruta         [障害T1_0073]請求取引OIFへ登録する顧客IDを修正、顧客サイトIDを追加
+ *  2009/3/24     1.2   T.Taniguchi      [障害T1_0118]請求取引OIFへ登録する金額を修正、外税・内税を考慮
  *
  *****************************************************************************************/
 --
@@ -128,6 +129,9 @@ AS
   cv_validate_flag           CONSTANT VARCHAR2(1)  := 'N';       --有効フラグ
   cn_no_tax                  CONSTANT NUMBER       := 0;         --消費税率
   cn_rev_num                 CONSTANT NUMBER       := 1;         --明細番号
+-- 2009/3/24     ver1.2   T.Taniguchi  ADD STR
+  cv_tax_flag_y              CONSTANT VARCHAR2(1)  := 'Y';       --内税フラグ
+-- 2009/3/24     ver1.2   T.Taniguchi  ADD END
   -- ===============================
   -- グローバル変数
   -- ===============================
@@ -167,6 +171,7 @@ AS
   gn_bill_address_id         NUMBER         DEFAULT NULL; --請求先顧客サイトID
   gv_tax_flag                VARCHAR2(1)    DEFAULT NULL; --消費税税フラグ
   gn_tax_rate                NUMBER         DEFAULT NULL; --消費税率
+  gn_tax_amt                 NUMBER         DEFAULT NULL; --消費税額
   -- ===============================
   -- グローバルカーソル：AR連携データの取得(入金時値引高)
   -- ===============================
@@ -625,7 +630,9 @@ AS
   BEGIN
     ov_retcode := cv_status_normal;
 --
-    gn_csh_rcpt := i_discnt_amount_rec.sum_csh_rcpt_discount_amt - i_discnt_amount_rec.sum_csh_rcpt_discount_amt_tax;
+-- 2009/3/24     ver1.2   T.Taniguchi  DEL STR
+--    gn_csh_rcpt := i_discnt_amount_rec.sum_csh_rcpt_discount_amt - i_discnt_amount_rec.sum_csh_rcpt_discount_amt_tax;
+-- 2009/3/24     ver1.2   T.Taniguchi  DEL END
 --
     <<ins_ra_if_lines_all_loop>>
     FOR ln_cnt IN 1..2 LOOP
@@ -653,6 +660,21 @@ AS
         AND    gd_operation_date BETWEEN avtab.start_date AND NVL( avtab.end_date, ( gd_operation_date ) )
         ;
       END;
+-- 2009/3/24     ver1.2   T.Taniguchi  ADD STR
+      --================================================================
+      --金額の設定
+      --================================================================
+      -- 内税の場合
+      IF gv_tax_flag = cv_tax_flag_y THEN
+        gn_csh_rcpt := ( i_discnt_amount_rec.sum_csh_rcpt_discount_amt ) * -1; -- (税込金額) * -1
+      -- 外税の場合
+      ELSE
+        gn_csh_rcpt := ( i_discnt_amount_rec.sum_csh_rcpt_discount_amt
+                        - i_discnt_amount_rec.sum_csh_rcpt_discount_amt_tax ) * -1; -- (税込金額 - 消費税額) * -1
+      END IF;
+      -- 消費税額の設定
+      gn_tax_amt := ( i_discnt_amount_rec.sum_csh_rcpt_discount_amt_tax ) * -1;
+-- 2009/3/24     ver1.2   T.Taniguchi  ADD END
       --================================================================
       --収益/仕訳パターン：借方
       --================================================================
@@ -698,7 +720,10 @@ AS
       ELSIF ( ln_cnt = 2 )
         AND ( gn_tax_rate <> 0 ) THEN
         lt_line_type               := cv_tax_class;                                      -- 明細タイプ:税金行
-        lt_line_amount             := i_discnt_amount_rec.sum_csh_rcpt_discount_amt_tax; -- 入金値引消費税額
+-- 2009/3/24     ver1.2   T.Taniguchi  MOD STR
+--        lt_line_amount             := i_discnt_amount_rec.sum_csh_rcpt_discount_amt_tax; -- 入金値引消費税額
+        lt_line_amount             := gn_tax_amt;                                          -- 入金値引消費税額
+-- 2009/3/24     ver1.2   T.Taniguchi  MOD END
         lt_link_to_line_context    := gv_sales_category;                                 -- 収益行の明細コンテキスト値
         lt_link_to_line_attribute1 := gv_slip_number;                                    -- 収益行の伝票番号値
         lt_link_to_line_attribute2 := cn_rev_num;                                        -- 収益行の明細行伝票番号値
@@ -787,7 +812,10 @@ AS
         lv_segment3             := gv_aff3_payment_excise_tax;                        -- 勘定科目コード :仮払消費税等
         lv_segment4             := gv_aff4_subacct_dummy;                             -- 補助科目コード :ダミー値
         lt_account_class        := cv_tax_class;                                      -- 配分タイプ(税金)
-        lt_distributions_amount := i_discnt_amount_rec.sum_csh_rcpt_discount_amt_tax; -- 明細金額:入金値引消費税額
+-- 2009/3/24     ver1.2   T.Taniguchi  MOD STR
+--        lt_distributions_amount := i_discnt_amount_rec.sum_csh_rcpt_discount_amt_tax; -- 明細金額:入金値引消費税額
+        lt_distributions_amount := gn_tax_amt;                                       -- (明細金額:入金値引消費税額) * -1
+-- 2009/3/24     ver1.2   T.Taniguchi  MOD END
         --================================================================
         --CCID取得
         --================================================================

@@ -7,7 +7,7 @@ AS
  * Description      : 販売手数料（自販機）の計算結果を情報系システムに
  *                    連携するインターフェースファイルを作成します
  * MD.050           : 情報系システムIFファイル作成-条件別販手販協  MD050_COK_014_A02
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,8 @@ AS
  *                                                     共通関数 締め日取得処理に業務処理日付－２営業日を渡すよう修正
  *                                                     業務処理日付＝取得した営業日の場合に条件別販手販協情報を
  *                                                     取得するよう修正
+ *  2009/03/26    1.5   M.Hiruta         [障害T1_0162] ファイル出力処理において納品数量がNULLである場合
+ *                                                     0へ置換するよう修正
  *
  *****************************************************************************************/
 --
@@ -824,7 +826,10 @@ AS
           cv_wq ||          gt_bms_csv_tab( in_csv_cnt ).supplier_code                || cv_wq || cv_comma || -- 仕入先コード
           cv_wq ||          gt_bms_csv_tab( in_csv_cnt ).supplier_site_code           || cv_wq || cv_comma || -- 支払先サイトコード
                    TO_CHAR( gt_bms_csv_tab( in_csv_cnt ).delivery_date )                       || cv_comma || -- 納品日年月
-                   TO_CHAR( gt_bms_csv_tab( in_csv_cnt ).delivery_qty )                        || cv_comma || -- 納品数量
+-- Start 2009/03/26 Ver_1.5 M.Hiruta
+--                   TO_CHAR( gt_bms_csv_tab( in_csv_cnt ).delivery_qty )                        || cv_comma || -- 納品数量
+                   TO_CHAR( NVL( gt_bms_csv_tab( in_csv_cnt ).delivery_qty , cv_0 ) )          || cv_comma || -- 納品数量
+-- End   2009/03/26 Ver_1.5 M.Hiruta
           cv_wq ||          gt_bms_csv_tab( in_csv_cnt ).delivery_unit_type           || cv_wq || cv_comma || -- 納品単位(本/ケース)
                    TO_CHAR( gt_bms_csv_tab( in_csv_cnt ).selling_amt_tax )                     || cv_comma || -- 売上金額(税込)
           cv_wq ||          gt_bms_csv_tab( in_csv_cnt ).account_type                 || cv_wq || cv_comma || -- 取引条件
