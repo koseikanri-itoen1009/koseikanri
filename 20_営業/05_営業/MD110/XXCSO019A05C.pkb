@@ -8,7 +8,7 @@ AS
  *                           訪問売上計画管理表を帳票に出力します。
  * MD.050                  : 営業システム構築プロジェクトアドオン：
  *                           訪問売上計画管理表
- * Version                 : 1.5
+ * Version                 : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2009-06-26    1.4   Satomura.Kazuo    統合テスト障害番号0000016対応
  *  2009-07-02    1.5   Hiroshi.Ogawa     障害番号：0000312
  *  2009-08-03    1.6   Satomura.Kazuo    統合テスト障害番号0000911対応
+ *  2009-08-03    1.7   Mio.Maruyama      統合テスト障害番号0001105対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5963,7 +5964,10 @@ AS
     --
     -- 基本項目以外取得
     <<get_loop>>
-    FOR i IN lt_tmp_rep_vs_plan_tab.FIRST..lt_tmp_rep_vs_plan_tab.LAST LOOP
+    /* 2009.08.18 M.Maruyama 0001105対応 START */
+--    FOR i IN lt_tmp_rep_vs_plan_tab.FIRST..lt_tmp_rep_vs_plan_tab.LAST LOOP
+    FOR i IN 1..lt_tmp_rep_vs_plan_tab.COUNT LOOP
+    /* 2009.08.18 M.Maruyama 0001105対応 END */
       BEGIN
         SELECT dai.lookup_code business_high_type -- 業態（大分類）
               ,dai.meaning     business_high_name -- 業態（大分類）名
