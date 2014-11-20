@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A02R(body)
  * Description      : 指定された条件に紐づく入庫確認情報のリストを出力します。
  * MD.050           : 入庫未確認リスト MD050_COI_001_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/11/27    1.7   N.Abe            [E_本稼動_00089]同一伝票番号の他拠点を抽出しない
  *  2009/12/09    1.8   N.Abe            [E_本稼動_00379]差異あり抽出方法の修正
  *  2009/12/21    1.9   H.Sasaki         [E_本稼動_00549]出荷数量のNULL対応
+ *  2010/01/13    1.10  H.Sasaki         [E_本稼動_01094]伝票日付差異を出力対象外
  *
  *****************************************************************************************/
 --
@@ -286,20 +287,22 @@ AS
 -- == 2009/12/21 V1.9 Modified START ===============================================================
                    )
                  OR iv_output_type = cv_output_div_30
-                )
-          UNION
-          SELECT xsi1.slip_num
-          FROM   xxcoi_storage_information xsi1
-                ,xxcoi_storage_information xsi2
-          WHERE  xsi1.base_code         = iv_base_code
--- == 2009/12/09 V1.8 Added START ===============================================================
-          AND    xsi2.base_code         = iv_base_code
--- == 2009/12/09 V1.8 Added END   ===============================================================
-          AND    TRUNC(xsi1.slip_date) BETWEEN TO_DATE(iv_date_from,'YYYY/MM/DD') AND TO_DATE(iv_date_to,'YYYY/MM/DD')
-          AND    xsi1.summary_data_flag = cv_yes
-          AND    xsi1.slip_num          = xsi2.slip_num
-          AND    TRUNC(xsi1.slip_date) <> TRUNC(xsi2.slip_date)
-          AND    iv_output_type         = cv_output_div_20
+                 )
+-- == 2010/01/13 V1.10 Deleted START ===============================================================
+--          UNION
+--          SELECT xsi1.slip_num
+--          FROM   xxcoi_storage_information xsi1
+--                ,xxcoi_storage_information xsi2
+--          WHERE  xsi1.base_code         = iv_base_code
+---- == 2009/12/09 V1.8 Added START ===============================================================
+--          AND    xsi2.base_code         = iv_base_code
+---- == 2009/12/09 V1.8 Added END   ===============================================================
+--          AND    TRUNC(xsi1.slip_date) BETWEEN TO_DATE(iv_date_from,'YYYY/MM/DD') AND TO_DATE(iv_date_to,'YYYY/MM/DD')
+--          AND    xsi1.summary_data_flag = cv_yes
+--          AND    xsi1.slip_num          = xsi2.slip_num
+--          AND    TRUNC(xsi1.slip_date) <> TRUNC(xsi2.slip_date)
+--          AND    iv_output_type         = cv_output_div_20
+-- == 2010/01/13 V1.10 Deleted END   ===============================================================
         )xsii
   WHERE  xsi.base_code    = hca_b.account_number
 -- == 2009/11/27 V1.7 Added START ===============================================================
