@@ -7,7 +7,7 @@ AS
  * Description      : 半製品原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 半製品原価計算処理 T_MD070_BPO_79B
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/12/05    1.7   H.Marushita      本番435対応
  *  2008/12/20    1.8   H.Marushita      重複データ対応
  *  2009/03/06    1.9   A.Shiina         本番#1273対応
+ *  2009/03/31    1.10  A.Shiina         本番#1385対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -560,10 +561,15 @@ AS
         -- 半製品単価計算処理
         -- =================================
         -- 副産物原価を算出する
+-- 2009/03/31 v1.10 UPDATE START
+/*
         ln_by_prod_cost_price :=  gt_half_finish_goods_tab(in_index_cnt).by_prod_price  
                                                                           -- 副産物単価
                                   * gt_half_finish_goods_tab(in_index_cnt).by_prod_qty;
                                                                           -- 副産物取引数量
+*/
+        ln_by_prod_cost_price :=  gt_half_finish_goods_tab(in_index_cnt).by_prod_price; -- 副産物単価
+-- 2009/03/31 v1.10 UPDATE END
 --
         -- 半製品単価を算出する
         IF (gt_half_finish_goods_tab(in_index_cnt).trans_qty = 0) THEN
@@ -1265,7 +1271,10 @@ AS
 --
   -- 副産物単価取得
   CURSOR by_product_price_cur(batch_id ic_tran_pnd.doc_id%TYPE) IS
-    SELECT  ccd.cmpnt_cost        cmpnt_cost              -- コンポーネント原価
+-- 2009/03/31 v1.10 UPDATE START
+--    SELECT  ccd.cmpnt_cost        cmpnt_cost              -- コンポーネント原価
+    SELECT  SUM(ccd.cmpnt_cost * itp.trans_qty) by_prod_cost_price -- 副産物原価
+-- 2009/03/31 v1.10 UPDATE END
     FROM    ic_tran_pnd           itp                     -- 保留在庫トランザクション
           ,(SELECT cc.calendar_code          calendar_code
                   ,cc.item_id                item_id
@@ -1287,6 +1296,8 @@ AS
     AND     itp.trans_date        <=  cll.end_date        -- 期間（至）
   ;
 --
+-- 2009/03/31 v1.10 DELETE START
+/*
   -- 副産物取引数量取得
   CURSOR by_product_qty_cur(batch_id ic_tran_pnd.doc_id%TYPE) IS
     SELECT  itp.trans_qty         trans_qty
@@ -1300,10 +1311,14 @@ AS
     AND     itp.item_id           = ximv.item_id          -- 品目ID
   ;
 --
+*/
+-- 2009/03/31 v1.10 DELETE END
     -- <カーソル名>レコード型
     half_finished_goods_cur_rec   half_finished_goods_cur%ROWTYPE;  -- 半製品データ
     by_product_price_cur_rec      by_product_price_cur%ROWTYPE;     -- 副産物単価
-    by_product_qty_cur_rec        by_product_qty_cur%ROWTYPE;       -- 副産物取引数量
+-- 2009/03/31 v1.10 DELETE START
+--    by_product_qty_cur_rec        by_product_qty_cur%ROWTYPE;       -- 副産物取引数量
+-- 2009/03/31 v1.10 DELETE END
 --
   BEGIN
 --
@@ -1359,8 +1374,11 @@ AS
     FOR loop_cnt IN half_finished_goods_cur LOOP
 --
       -- 変数初期化
-      by_product_price_cur_rec.cmpnt_cost := NULL;  -- 副産物単価
-      by_product_qty_cur_rec.trans_qty    := NULL;  -- 副産物取引数量
+-- 2009/03/31 v1.10 UPDATE START
+--      by_product_price_cur_rec.cmpnt_cost := NULL;  -- 副産物単価
+--      by_product_qty_cur_rec.trans_qty    := NULL;  -- 副産物取引数量
+      by_product_price_cur_rec.by_prod_cost_price := NULL;  -- 副産物単価
+-- 2009/03/31 v1.10 UPDATE END
 --
       -- データカウント
       gn_index_cnt :=  gn_index_cnt + 1;  -- データカウント
@@ -1373,11 +1391,15 @@ AS
       FETCH by_product_price_cur INTO by_product_price_cur_rec;
       CLOSE by_product_price_cur;
 --
+-- 2009/03/31 v1.10 DELETE START
+/*
       -- 副産物取引数量取得
       OPEN by_product_qty_cur(loop_cnt.doc_id);
       FETCH by_product_qty_cur INTO by_product_qty_cur_rec;
       CLOSE by_product_qty_cur;
 --
+*/
+-- 2009/03/31 v1.10 DELETE END
       --=================================
       -- B-4.半製品データ格納処理
       --=================================
@@ -1389,12 +1411,18 @@ AS
       gt_half_finish_goods_tab(gn_index_cnt).lot_no     :=  loop_cnt.lot_no;      -- ロットNO
       gt_half_finish_goods_tab(gn_index_cnt).trans_qty  :=  loop_cnt.trans_qty;   -- 取引数量
       -- 副産物単価
-      IF (by_product_price_cur_rec.cmpnt_cost IS NOT NULL) THEN
-        gt_half_finish_goods_tab(gn_index_cnt).by_prod_price := by_product_price_cur_rec.cmpnt_cost;
+-- 2009/03/31 v1.10 UPDATE START
+--      IF (by_product_price_cur_rec.cmpnt_cost IS NOT NULL) THEN
+--        gt_half_finish_goods_tab(gn_index_cnt).by_prod_price := by_product_price_cur_rec.cmpnt_cost;
+      IF (by_product_price_cur_rec.by_prod_cost_price IS NOT NULL) THEN
+        gt_half_finish_goods_tab(gn_index_cnt).by_prod_price := by_product_price_cur_rec.by_prod_cost_price;
+-- 2009/03/31 v1.10 UPDATE END
       ELSE
         -- データが取得できない場合は0をセット
         gt_half_finish_goods_tab(gn_index_cnt).by_prod_price := 0;
       END IF;
+-- 2009/03/31 v1.10 DELETE START
+/*
       -- 副産物取引数量
       IF (by_product_qty_cur_rec.trans_qty IS NOT NULL) THEN
         gt_half_finish_goods_tab(gn_index_cnt).by_prod_qty := by_product_qty_cur_rec.trans_qty;
@@ -1403,6 +1431,8 @@ AS
         gt_half_finish_goods_tab(gn_index_cnt).by_prod_qty := 0;
       END IF;
       gt_half_finish_goods_tab(gn_index_cnt).half_fin_price  := NULL;          -- 半製品単価
+*/
+-- 2009/03/31 v1.10 DELETE END
 --
       --=================================
       -- B-5.投入品データ抽出処理
@@ -1487,9 +1517,13 @@ AS
       IF (by_product_price_cur%ISOPEN) THEN
         CLOSE by_product_price_cur;
       END IF;
+-- 2009/03/31 v1.10 DELETE START
+/*
       IF (by_product_qty_cur%ISOPEN) THEN
         CLOSE by_product_qty_cur;
       END IF;
+*/
+-- 2009/03/31 v1.10 DELETE END
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
       ov_retcode := gv_status_error;
@@ -1501,9 +1535,13 @@ AS
       IF (by_product_price_cur%ISOPEN) THEN
         CLOSE by_product_price_cur;
       END IF;
+-- 2009/03/31 v1.10 DELETE START
+/*
       IF (by_product_qty_cur%ISOPEN) THEN
         CLOSE by_product_qty_cur;
       END IF;
+*/
+-- 2009/03/31 v1.10 DELETE END
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS例外ハンドラ ***
@@ -1514,9 +1552,13 @@ AS
       IF (by_product_price_cur%ISOPEN) THEN
         CLOSE by_product_price_cur;
       END IF;
+-- 2009/03/31 v1.10 DELETE START
+/*
       IF (by_product_qty_cur%ISOPEN) THEN
         CLOSE by_product_qty_cur;
       END IF;
+*/
+-- 2009/03/31 v1.10 DELETE END
       ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
 --
