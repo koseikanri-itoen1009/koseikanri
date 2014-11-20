@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/12/07    1.16 SCS    D.Sugahara 本番障害#524暫定対応
  *  2009/01/05    1.17 SCS    H.Itou     本番障害#879対応
  *  2009/01/08    1.18 SCS    H.Itou     本番障害#558,599対応
+ *  2009/01/27    1.19 SCS    H.Itou     本番障害#1028対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -817,6 +818,9 @@ debug_log(FND_FILE.LOG,'【パージ処理(B-1)】');
     , id_date_from            IN  DATE            --  8.出庫日From
     , id_date_to              IN  DATE            --  9.出庫日To
     , iv_forwarder            IN  NUMBER          -- 10.運送業者ID
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    , iv_instruction_dept     IN  VARCHAR2        -- 11.指示部署
+-- 2009/01/27 H.Itou Add End
     , ov_errbuf               OUT NOCOPY VARCHAR2 -- エラー・メッセージ           --# 固定 #
     , ov_retcode              OUT NOCOPY VARCHAR2 -- リターン・コード             --# 固定 #
     , ov_errmsg               OUT NOCOPY VARCHAR2 -- ユーザー・エラー・メッセージ --# 固定 #
@@ -928,7 +932,11 @@ debug_log(FND_FILE.LOG,'処理種別：'|| iv_shipping_biz_type);
                     || gv_msg_comma ||
                     TO_CHAR(id_date_to, 'YYYY/MM/DD HH24:MI:SS')    -- 出庫日To
                     || gv_msg_comma ||
-                    TO_CHAR(iv_forwarder);                          -- 運送業者
+                    TO_CHAR(iv_forwarder)                           -- 運送業者
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+                    || gv_msg_comma ||
+                    iv_instruction_dept;                            -- 指示部署
+-- 2009/01/27 H.Itou Add End
 --
     -- ===============================
     -- SQL文字列作成(出荷依頼)
@@ -1007,6 +1015,13 @@ debug_log(FND_FILE.LOG,'処理種別：'|| iv_shipping_biz_type);
     IF (iv_forwarder IS NOT NULL) THEN
       lv_sql_3 := ' AND xoha.career_id = '|| iv_forwarder ||'';
     END IF;
+--
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    -- 変動部(指示部署)
+    IF (iv_instruction_dept IS NOT NULL) THEN
+      lv_sql_3 := lv_sql_3 || ' AND xoha.instruction_dept = '''|| iv_instruction_dept ||'''';
+    END IF;
+-- 2009/01/27 H.Itou Add End
 --
     -- 固定部
     lv_sql_4 := ' AND xotv.order_category_code = '''|| cv_cat_order ||'''';     -- 受注カテゴリ
@@ -1130,6 +1145,12 @@ debug_log(FND_FILE.LOG,'出荷依頼SQL: '||lv_sql_buff_ship);
       lv_sql_m3 := ' AND xmrh.career_id = '|| iv_forwarder ||'';
     END IF;
 --
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    -- 変動部(指示部署)
+    IF (iv_instruction_dept IS NOT NULL) THEN
+      lv_sql_m3 := lv_sql_m3 || ' AND xmrh.instruction_post_code = '''|| iv_instruction_dept ||'''';
+    END IF;
+-- 2009/01/27 H.Itou Add End
     -- 固定部
     lv_sql_m4 := ' AND xmrh.shipping_method_code = xlv.lookup_code';          -- 配送区分
     lv_sql_m4 := lv_sql_m4 || ' AND xlv.lookup_type = '''|| cv_ship_method ||'''';  --
@@ -9739,6 +9760,9 @@ debug_log(FND_FILE.LOG,'B15_1.3 配車配送計画削除件数：'||TO_CHAR(SQL%rowcount));
     iv_date_from            IN  VARCHAR2,         --  8.出庫日From
     iv_date_to              IN  VARCHAR2,         --  9.出庫日To
     iv_forwarder_id         IN  VARCHAR2,         -- 10.運送業者ID
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    iv_instruction_dept     IN  VARCHAR2,         -- 11.指示部署
+-- 2009/01/27 H.Itou Add End
     ov_errbuf               OUT NOCOPY VARCHAR2,  -- エラー・メッセージ           --# 固定 #
     ov_retcode              OUT NOCOPY VARCHAR2,  -- リターン・コード             --# 固定 #
     ov_errmsg               OUT NOCOPY VARCHAR2)  -- ユーザー・エラー・メッセージ --# 固定 #
@@ -9925,6 +9949,9 @@ debug_log(FND_FILE.LOG,'パラメータチェック終了');
       , id_date_from            => ld_date_from             --  8.出庫日From
       , id_date_to              => ld_date_to               --  9.出庫日To
       , iv_forwarder            => iv_forwarder_id          -- 10.運送業者ID
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+      , iv_instruction_dept     => iv_instruction_dept      -- 11.指示部署
+-- 2009/01/27 H.Itou Add End
       , ov_errbuf               => lv_errbuf                -- エラー・メッセージ           --# 固定 #
       , ov_retcode              => lv_retcode               -- リターン・コード             --# 固定 #
       , ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ --# 固定 #
@@ -10149,7 +10176,10 @@ debug_log(FND_FILE.LOG,'終了ステータス＝ '||ov_retcode);
     iv_transaction_type_id  IN  VARCHAR2,         --  7.出庫形態ID
     iv_date_from            IN  VARCHAR2,         --  8.出庫日From
     iv_date_to              IN  VARCHAR2,         --  9.出庫日To
-    iv_forwarder_id         IN  VARCHAR2          -- 10.運送業者ID
+    iv_forwarder_id         IN  VARCHAR2,         -- 10.運送業者ID
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    iv_instruction_dept     IN  VARCHAR2          -- 11.指示部署
+-- 2009/01/27 H.Itou Add End
   )
 --
 --
@@ -10225,6 +10255,9 @@ debug_log(FND_FILE.LOG,'サブメイン呼出');
       iv_date_from            => iv_date_from,           --  8.出庫日From
       iv_date_to              => iv_date_to,             --  9.出庫日To
       iv_forwarder_id         => iv_forwarder_id,        -- 10.運送業者ID
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+      iv_instruction_dept     => iv_instruction_dept,    -- 11.指示部署
+-- 2009/01/27 H.Itou Add End
       ov_errbuf               => lv_errbuf,              -- エラー・メッセージ           --# 固定 #
       ov_retcode              => lv_retcode,             -- リターン・コード             --# 固定 #
       ov_errmsg               => lv_errmsg);             -- ユーザー・エラー・メッセージ --# 固定 #

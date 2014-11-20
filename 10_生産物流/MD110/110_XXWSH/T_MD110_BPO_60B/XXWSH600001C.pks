@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2008/12/07    1.16 SCS    D.Sugahara 本番障害#524暫定対応
  *  2009/01/05    1.17 SCS    H.Itou     本番障害#879対応
  *  2009/01/08    1.18 SCS    H.Itou     本番障害#558,599対応
+ *  2009/01/27    1.19 SCS    H.Itou     本番障害#1028対応
  *****************************************************************************************/
 --
   --コンカレント実行ファイル登録プロシージャ
@@ -53,7 +54,10 @@ AS
     iv_transaction_type_id  IN  VARCHAR2,         --  7.出庫形態
     iv_date_from            IN  VARCHAR2,         --  8.出庫日From
     iv_date_to              IN  VARCHAR2,         --  9.出庫日To
-    iv_forwarder_id         IN  VARCHAR2          -- 10.運送業者
+    iv_forwarder_id         IN  VARCHAR2,         -- 10.運送業者
+-- 2009/01/27 H.Itou Add Start 本番障害#1028対応
+    iv_instruction_dept     IN  VARCHAR2          -- 11.指示部署
+-- 2009/01/27 H.Itou Add End
   );
 END xxwsh600001c;
 /
