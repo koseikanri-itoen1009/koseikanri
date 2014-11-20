@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -118,6 +118,7 @@ AS
  *  2009/02/03    1.21 Oracle 野村       本番#1017対応
  *  2009/02/09    1.22 Oracle 野村       本番#1017対応
  *  2009/04/07    1.23 Oracle 野村       本番#432対応
+ *  2009/04/30    1.24 Oracle 野村       本番#432対応
  *
  *****************************************************************************************/
 --
@@ -10979,11 +10980,16 @@ AS
       END IF;
 --
 *****/
-      -- 運送業者、配送距離、運賃マスタの変更フラグが'1'の場合はPL/SQL表へ格納する
+      -- 運送業者、配送距離、運賃マスタの変更フラグが'1'
+      --   もしくは運賃明細が更新されている場合はPL/SQL表へ格納する
       IF  (( gt_exch_deliv_tab(ln_index).pay_change_flg      = gv_target_y )
         OR ( gt_exch_deliv_tab(ln_index).distance_change_flg = gv_target_y )
         OR ( gt_exch_deliv_tab(ln_index).charg_shp_change_flg = gv_target_y )
-        OR ( gt_exch_deliv_tab(ln_index).charg_lrf_change_flg = gv_target_y )) THEN
+-- *----------* 2009/04/30 Ver.1.24 本番#432対応 start *----------*
+--        OR ( gt_exch_deliv_tab(ln_index).charg_lrf_change_flg = gv_target_y )) THEN
+        OR ( gt_exch_deliv_tab(ln_index).charg_lrf_change_flg = gv_target_y )
+        OR ( gt_exch_deliv_tab(ln_index).last_update_date     = gd_sysdate   )) THEN
+-- *----------* 2009/04/30 Ver.1.24 本番#432対応 end   *----------*
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
       IF (gv_debug_flg = gv_debug_on) THEN
