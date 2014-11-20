@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI002A01R(body)
  * Description      : 倉替伝票
  * MD.050           : 倉替伝票 MD050_COI_002_A01
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2009/05/13    1.1   H.Sasaki         [T1_0774]伝票番号の桁数を修正
  *  2009/07/30    1.2   N.Abe            [0000638]数量の取得項目修正
  *  2009/12/14    1.3   N.Abe            [E_本稼動_00385]倉替抽出方法修正
+ *  2009/12/25    1.4   N.Abe            [E_本稼動_00610]パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -84,10 +85,14 @@ AS
   -- ===============================
   -- ユーザー定義例外
   -- ===============================
-  lock_expt                      EXCEPTION; -- ロック取得エラー
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--  lock_expt                      EXCEPTION; -- ロック取得エラー
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
   no_data_expt                   EXCEPTION; -- 取得件数0件例外
 --
-  PRAGMA EXCEPTION_INIT( lock_expt, -54 );  -- ロック取得例外
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--  PRAGMA EXCEPTION_INIT( lock_expt, -54 );  -- ロック取得例外
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
   -- ===============================
   -- ユーザー定義グローバル定数
   -- ===============================
@@ -1260,17 +1265,19 @@ AS
     -- *** ローカル変数 ***
 --
     -- *** ローカル・カーソル ***
-    -- 資材取引ロック
-    CURSOR del_xrs_tbl_cur
-    IS
-      SELECT 'X'                    AS request_id  -- 要求ID
-      FROM   xxcoi_rep_kuragae_slip xrk            -- 倉替伝票帳票ワークテーブル
-      WHERE  xrk.request_id = cn_request_id        -- 要求ID
-      FOR UPDATE OF xrk.request_id NOWAIT
-    ;
---
-    -- *** ローカル・レコード ***
-    del_xrs_tbl_rec  del_xrs_tbl_cur%ROWTYPE;
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--    -- 資材取引ロック
+--    CURSOR del_xrs_tbl_cur
+--    IS
+--      SELECT 'X'                    AS request_id  -- 要求ID
+--      FROM   xxcoi_rep_kuragae_slip xrk            -- 倉替伝票帳票ワークテーブル
+--      WHERE  xrk.request_id = cn_request_id        -- 要求ID
+--      FOR UPDATE OF xrk.request_id NOWAIT
+--    ;
+----
+--    -- *** ローカル・レコード ***
+--    del_xrs_tbl_rec  del_xrs_tbl_cur%ROWTYPE;
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
 --
   BEGIN
 --
@@ -1280,14 +1287,16 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- カーソルオープン
-    OPEN del_xrs_tbl_cur;
---
-    <<del_xrs_tbl_cur_loop>>
-    LOOP
-      -- レコード読込
-      FETCH del_xrs_tbl_cur INTO del_xrs_tbl_rec;
-      EXIT WHEN del_xrs_tbl_cur%NOTFOUND;
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--    -- カーソルオープン
+--    OPEN del_xrs_tbl_cur;
+----
+--    <<del_xrs_tbl_cur_loop>>
+--    LOOP
+--      -- レコード読込
+--      FETCH del_xrs_tbl_cur INTO del_xrs_tbl_rec;
+--      EXIT WHEN del_xrs_tbl_cur%NOTFOUND;
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
 --
       -- 倉替伝票帳票ワークテーブルの削除
       DELETE
@@ -1295,56 +1304,66 @@ AS
       WHERE  xrk.request_id = cn_request_id -- 要求ID
       ;
 --
-    END LOOP del_xrs_tbl_cur_loop;
---
-    -- カーソルクローズ
-    CLOSE del_xrs_tbl_cur;
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--    END LOOP del_xrs_tbl_cur_loop;
+----
+--    -- カーソルクローズ
+--    CLOSE del_xrs_tbl_cur;
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
 --
     --==============================================================
     --メッセージ出力（エラー以外）をする必要がある場合は処理を記述
     --==============================================================
 --
   EXCEPTION
-    -- ロック取得エラー
-    WHEN lock_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xrs_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xrs_tbl_cur;
-      END IF;
-      lv_errmsg  := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_application_short_name
-                      , iv_name         => cv_table_lock_err_msg
-                    );
-      lv_errbuf  := lv_errmsg;
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
-      ov_retcode := cv_status_error;
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--    -- ロック取得エラー
+--    WHEN lock_expt THEN
+--      -- カーソルがOPENしている場合
+--      IF ( del_xrs_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xrs_tbl_cur;
+--      END IF;
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_application_short_name
+--                      , iv_name         => cv_table_lock_err_msg
+--                    );
+--      lv_errbuf  := lv_errmsg;
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
+--      ov_retcode := cv_status_error;
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
 --
 --#################################  固定例外処理部 START   ####################################
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xrs_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xrs_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xrs_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xrs_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf, 1, 5000 );
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xrs_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xrs_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xrs_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xrs_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
-      -- カーソルがOPENしている場合
-      IF ( del_xrs_tbl_cur%ISOPEN ) THEN
-        CLOSE del_xrs_tbl_cur;
-      END IF;
+-- == 2009/12/25 V1.4 Deleted START ===============================================================
+--      -- カーソルがOPENしている場合
+--      IF ( del_xrs_tbl_cur%ISOPEN ) THEN
+--        CLOSE del_xrs_tbl_cur;
+--      END IF;
+-- == 2009/12/25 V1.4 Deleted END   ===============================================================
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
