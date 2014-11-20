@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : ”Ì”„ÀÑî•ñEè”—¿ŒvZğŒ‚©‚ç‚Ì”Ì”„è”—¿ŒvZˆ—
  * MD.050           : ğŒ•Ê”Ìè”Ì‹¦ŒvZˆ— MD050_COK_014_A01
- * Version          : 2.0
+ * Version          : 2.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/06/01    2.0   K.Yamaguchi      [áŠQT1_0620][áŠQT1_0823][áŠQT1_1124][áŠQT1_1303]
  *                                       [áŠQT1_1400][áŠQT1_1402][áŠQT1_1422]
  *                                       C³¢“ï‚É‚æ‚èÄì¬
+ *  2009/06/26    2.1   M.Hiruta         [áŠQ0000269] ƒpƒtƒH[ƒ}ƒ“ƒX‚ğŒüã‚³‚¹‚é‚½‚ßSQL‚ğC³
  *
  *****************************************************************************************/
   --==================================================
@@ -131,6 +132,9 @@ AS
   cv_lookup_type_03                CONSTANT VARCHAR2(30)    := 'XXCMM_CUST_GYOTAI_SHO';             -- ‹Æ‘Ôi¬•ª—Şj
   cv_lookup_type_04                CONSTANT VARCHAR2(30)    := 'XXCMM_ITM_YOKIGUN';                 -- —eŠíŒQ
   cv_lookup_type_05                CONSTANT VARCHAR2(30)    := 'XXCOS1_NO_INV_ITEM_CODE';           -- ”ñİŒÉ•i–Ú
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+  cv_lookup_type_06                CONSTANT VARCHAR2(30)    := 'XXCMM_CUST_GYOTAI_CHU';             -- ‹Æ‘Ôi’†•ª—Şj
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
   -- —LŒøƒtƒ‰ƒO
   cv_enable                        CONSTANT VARCHAR2(1)     := 'Y';
   -- ‹¤’ÊŠÖ”ƒƒbƒZ[ƒWo—Í‹æ•ª
@@ -235,25 +239,37 @@ AS
          , ship_xca.delivery_chain_code          AS ship_delivery_chain_code   -- yo‰×æz”[•iæƒ`ƒF[ƒ“ƒR[ƒh
          , bill_hca.account_number               AS bill_cust_code             -- y¿‹æzŒÚ‹qƒR[ƒh
          , CASE
-             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
                ship_xcm.term_name
              ELSE
                bill_rtt1.name
            END                                   AS term_name1                 -- x•¥ğŒ
          , CASE
-             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
                NULL
              ELSE
                bill_rtt2.name
            END                                   AS term_name2                 -- ‘æ2x•¥ğŒ
          , CASE
-             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
                NULL
              ELSE
                bill_rtt3.name
            END                                   AS term_name3                 -- ‘æ3x•¥ğŒ
          , CASE
-             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--             WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
                gn_bm_support_period_to
              ELSE
                TO_NUMBER( bill_hcsua.attribute8 )
@@ -262,30 +278,108 @@ AS
          , bill_avtab.tax_code                   AS tax_code                   -- Å‹àƒR[ƒh
          , bill_avtab.tax_rate                   AS tax_rate                   -- Å—¦
          , bill_hcsua.tax_rounding_rule          AS tax_rounding_rule          -- ’[”ˆ—‹æ•ª
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--         , CASE
+--             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+--                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+--                  )
+--             THEN
+--               gv_vendor_dummy_code
+--             ELSE
+--               ship_xca.contractor_supplier_code
+--           END                                   AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
          , CASE
+             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+               ship_xca.contractor_supplier_code
              WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
                     AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
                   )
              THEN
                gv_vendor_dummy_code
              ELSE
-               ship_xca.contractor_supplier_code
+               NULL
            END                                   AS bm1_vendor_code            -- y‚a‚l‚Pzd“üæƒR[ƒh
-         , bm1_pvsa.vendor_site_code             AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
-         , bm1_pvsa.attribute4                   AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
-         , ship_xca.bm_pay_supplier_code1        AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
-         , bm2_pvsa.vendor_site_code             AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
-         , bm2_pvsa.attribute4                   AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
-         , ship_xca.bm_pay_supplier_code2        AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
-         , bm3_pvsa.vendor_site_code             AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
-         , bm3_pvsa.attribute4                   AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--         , bm1_pvsa.vendor_site_code             AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm1_pvsa.vendor_site_code
+             ELSE
+               NULL
+           END                                   AS bm1_vendor_site_code       -- y‚a‚l‚Pzd“üæƒTƒCƒgƒR[ƒh
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--         , bm1_pvsa.attribute4                   AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm1_pvsa.attribute4
+             ELSE
+               NULL
+           END                                   AS bm1_bm_payment_type        -- y‚a‚l‚PzBMx•¥‹æ•ª
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--         , ship_xca.bm_pay_supplier_code1        AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+         , CASE
+             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+               ship_xca.bm_pay_supplier_code1
+             ELSE
+               NULL
+           END                                   AS bm2_vendor_code            -- y‚a‚l‚Qzd“üæƒR[ƒh
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--         , bm2_pvsa.vendor_site_code             AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm2_pvsa.vendor_site_code
+             ELSE
+               NULL
+           END                                   AS bm2_vendor_site_code       -- y‚a‚l‚Qzd“üæƒTƒCƒgƒR[ƒh
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm2_pvsa.attribute4
+             ELSE
+               NULL
+           END                                   AS bm2_bm_payment_type        -- y‚a‚l‚QzBMx•¥‹æ•ª
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--         , ship_xca.bm_pay_supplier_code2        AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+         , CASE
+             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+               ship_xca.bm_pay_supplier_code2
+             ELSE
+               NULL
+           END                                   AS bm3_vendor_code            -- y‚a‚l‚Rzd“üæƒR[ƒh
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--         , bm3_pvsa.vendor_site_code             AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm3_pvsa.vendor_site_code
+             ELSE
+               NULL
+           END                                   AS bm3_vendor_site_code       -- y‚a‚l‚Rzd“üæƒTƒCƒgƒR[ƒh
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--         , bm3_pvsa.attribute4                   AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm3_pvsa.attribute4
+             ELSE
+               NULL
+           END                                   AS bm3_bm_payment_type        -- y‚a‚l‚RzBMx•¥‹æ•ª
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
          , ship_xca.receiv_discount_rate         AS receiv_discount_rate       -- “ü‹à’lˆø—¦
          , NVL2( MAX( ship_xcbs.calc_target_period_to )
                , MAX( ship_xcbs.calc_target_period_to ) + 1
                , MIN( xseh.delivery_date )
            )                                     AS calc_target_period_from    -- ŒvZ‘ÎÛŠúŠÔ(FROM)
     FROM xxcos_sales_exp_headers       xseh                -- ”Ì”„ÀÑƒwƒbƒ_
-       , xxcos_sales_exp_lines         xsel                -- ”Ì”„ÀÑ–¾×
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--       , xxcos_sales_exp_lines         xsel                -- ”Ì”„ÀÑ–¾×
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
        , hz_cust_accounts              ship_hca            -- yo‰×æzŒÚ‹qƒ}ƒXƒ^
        , xxcmm_cust_accounts           ship_xca            -- yo‰×æzŒÚ‹q’Ç‰Áî•ñ
        , hz_parties                    ship_hp             -- yo‰×æzŒÚ‹qƒp[ƒeƒB
@@ -311,7 +405,28 @@ AS
        , ra_terms_tl                   bill_rtt3           -- ‘æ3x•¥ğŒƒ}ƒXƒ^
        , fnd_lookup_values             bill_flv1           -- Á”ïÅ‹æ•ª
        , ar_vat_tax_all_b              bill_avtab          -- Å‹àƒ}ƒXƒ^
-       , fnd_lookup_values             ship_flv1           -- ‹Æ‘Ôi¬•ª—Şj
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--       , fnd_lookup_values             ship_flv1           -- ‹Æ‘Ôi¬•ª—Şj
+       , ( SELECT flv_sho.lookup_code AS lookup_code -- ‹Æ‘Ôi¬•ª—Şj
+                , flv_sho.attribute1  AS attribute1  -- ‹Æ‘Ôi’†•ª—Şj
+           FROM fnd_lookup_values    flv_chu    -- ‹Æ‘Ôi’†•ª—Şj
+              , fnd_lookup_values    flv_sho    -- ‹Æ‘Ôi¬•ª—Şj
+           WHERE flv_chu.lookup_type = cv_lookup_type_06   -- ‹Æ‘Ôi’†•ª—Şj
+             AND flv_sho.lookup_type = cv_lookup_type_03   -- ‹Æ‘Ôi¬•ª—Şj
+             AND gd_process_date BETWEEN NVL( flv_chu.start_date_active, gd_process_date )
+                                     AND NVL( flv_chu.end_date_active,   gd_process_date )
+             AND flv_chu.language            = USERENV( 'LANG' )
+             AND (    ( flv_sho.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
+                   OR ( flv_chu.lookup_code <>  cv_gyotai_tyu_vd                      )
+                 )
+             AND flv_chu.enabled_flag        = cv_enable
+             AND flv_sho.enabled_flag        = cv_enable
+             AND gd_process_date BETWEEN NVL( flv_sho.start_date_active, gd_process_date )
+                                     AND NVL( flv_sho.end_date_active,   gd_process_date )
+             AND flv_sho.language            = USERENV( 'LANG' )
+             AND flv_sho.attribute1          = flv_chu.lookup_code
+         )                             ship_flv1           -- ‹Æ‘Ôi¬•ª—Şj
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
        , fnd_lookup_values             ship_flv2           -- Às‹æ•ª
        , ( SELECT xcm.install_account_id  AS install_account_id -- İ’uæŒÚ‹qID
                 , CASE
@@ -343,8 +458,16 @@ AS
                           HAVING MAX( xcm2.contract_number )   = xcm.contract_number
                  )
           )                            ship_xcm            -- Œ_–ñŠÇ—î•ñ
-    WHERE xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
-      AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--    WHERE xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+--      AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+    WHERE EXISTS ( SELECT 'X'
+                   FROM xxcos_sales_exp_lines xsel  -- ”Ì”„ÀÑ–¾×
+                   WHERE xseh.sales_exp_header_id     = xsel.sales_exp_header_id
+                     AND xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
+                     AND ROWNUM = 1
+          )
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
       AND xseh.delivery_date          <= gd_process_date - gn_bm_support_period_from
       AND ship_hca.account_number      = xseh.ship_to_customer_code
       AND ship_hca.customer_class_code = cv_customer_class_customer
@@ -399,14 +522,16 @@ AS
       AND gd_process_date        BETWEEN NVL( bill_avtab.start_date, gd_process_date )
                                      AND NVL( bill_avtab.end_date,   gd_process_date )
       AND ship_flv1.lookup_code        = ship_xca.business_low_type
-      AND ship_flv1.lookup_type        = cv_lookup_type_03      -- QÆƒ^ƒCƒvF‹Æ‘Ô(¬•ª—Ş)
-      AND ship_flv1.language           = USERENV( 'LANG' )
-      AND ship_flv1.enabled_flag       = cv_enable
-      AND gd_process_date        BETWEEN NVL( ship_flv1.start_date_active, gd_process_date )
-                                     AND NVL( ship_flv1.end_date_active,   gd_process_date )
-      AND (    ( ship_flv1.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
-            OR ( ship_flv1.attribute1  <> cv_gyotai_tyu_vd                       )
-          )
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--      AND ship_flv1.lookup_type        = cv_lookup_type_03      -- QÆƒ^ƒCƒvF‹Æ‘Ô(¬•ª—Ş)
+--      AND ship_flv1.language           = USERENV( 'LANG' )
+--      AND ship_flv1.enabled_flag       = cv_enable
+--      AND gd_process_date        BETWEEN NVL( ship_flv1.start_date_active, gd_process_date )
+--                                     AND NVL( ship_flv1.end_date_active,   gd_process_date )
+--      AND (    ( ship_flv1.lookup_code IN( cv_gyotai_sho_24, cv_gyotai_sho_25 )  )
+--            OR ( ship_flv1.attribute1  <> cv_gyotai_tyu_vd                       )
+--          )
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
       AND ship_flv2.lookup_code        = gv_param_proc_type
       AND ship_flv2.lookup_type        = cv_lookup_type_01      -- QÆƒ^ƒCƒvF”Ìè”Ì‹¦ŒvZÀs‹æ•ª
       AND ship_flv2.language           = USERENV( 'LANG' )
@@ -434,25 +559,37 @@ AS
            , ship_xca.business_low_type
            , ship_xca.delivery_chain_code           , bill_hca.account_number
            , CASE
-               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
                  ship_xcm.term_name
                ELSE
                  bill_rtt1.name
              END
            , CASE
-               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
                  NULL
                ELSE
                  bill_rtt2.name
              END
            , CASE
-               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- End 2009/06/26 Ver_2.1 0000269 M.Hiruta
                  NULL
                ELSE
                  bill_rtt3.name
              END
            , CASE
-               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+--               WHEN bill_xca.business_low_type = cv_gyotai_sho_25 THEN
+               WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
                  gn_bm_support_period_to
                ELSE
                  TO_NUMBER( bill_hcsua.attribute8 )
@@ -461,23 +598,84 @@ AS
            , bill_avtab.tax_code
            , bill_avtab.tax_rate
            , bill_hcsua.tax_rounding_rule
-           , CASE
-               WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
-                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
-                    )
-               THEN
-                 gv_vendor_dummy_code
-               ELSE
-                 ship_xca.contractor_supplier_code
-             END
-           , bm1_pvsa.vendor_site_code
-           , bm1_pvsa.attribute4
-           , ship_xca.bm_pay_supplier_code1
-           , bm2_pvsa.vendor_site_code
-           , bm2_pvsa.attribute4
-           , ship_xca.bm_pay_supplier_code2
-           , bm3_pvsa.vendor_site_code
-           , bm3_pvsa.attribute4
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--           , CASE
+--               WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+--                      AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+--                    )
+--               THEN
+--                 gv_vendor_dummy_code
+--               ELSE
+--                 ship_xca.contractor_supplier_code
+--             END
+--           , bm1_pvsa.vendor_site_code
+--           , bm1_pvsa.attribute4
+--           , ship_xca.bm_pay_supplier_code1
+--           , bm2_pvsa.vendor_site_code
+--           , bm2_pvsa.attribute4
+--           , ship_xca.bm_pay_supplier_code2
+--           , bm3_pvsa.vendor_site_code
+--           , bm3_pvsa.attribute4
+         , CASE
+             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+               ship_xca.contractor_supplier_code
+             WHEN (     ( ship_flv1.attribute1          <> cv_gyotai_tyu_vd )
+                    AND ( ship_xca.receiv_discount_rate IS NOT NULL         )
+                  )
+             THEN
+               gv_vendor_dummy_code
+             ELSE
+               NULL
+           END
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm1_pvsa.vendor_site_code
+             ELSE
+               NULL
+           END
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm1_pvsa.attribute4
+             ELSE
+               NULL
+           END
+         , CASE
+             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+               ship_xca.bm_pay_supplier_code1
+             ELSE
+               NULL
+           END
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm2_pvsa.vendor_site_code
+             ELSE
+               NULL
+           END
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm2_pvsa.attribute4
+             ELSE
+               NULL
+           END
+         , CASE
+             WHEN ship_flv1.attribute1 = cv_gyotai_tyu_vd THEN
+               ship_xca.bm_pay_supplier_code2
+             ELSE
+               NULL
+           END
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm3_pvsa.vendor_site_code
+             ELSE
+               NULL
+           END
+         , CASE
+             WHEN ship_xca.business_low_type = cv_gyotai_sho_25 THEN
+               bm3_pvsa.attribute4
+             ELSE
+               NULL
+           END
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
            , ship_xca.receiv_discount_rate
     ORDER BY bill_hca.account_number
            , ship_flv1.attribute1
@@ -1808,6 +2006,9 @@ AS
                     AND xseh.sales_exp_header_id    = xsel.sales_exp_header_id
                     AND xsel.to_calculate_fees_flag = cv_xsel_if_flag_no
                     AND xsim.item_code              = xsel.item_code
+-- Start 2009/06/26 Ver_2.1 0000269 M.Hiruta
+                    AND xt0c.receiv_discount_rate  IS NOT NULL -- “ü‹à’lˆø—¦‚ªİ’è‚³‚ê‚Ä‚¢‚éŒÚ‹q‚Ì‚İ
+-- End   2009/06/26 Ver_2.1 0000269 M.Hiruta
                     AND NOT EXISTS ( SELECT 'X'
                                      FROM fnd_lookup_values             flv2       -- ”ñİŒÉ•i–Ú
                                      WHERE flv2.lookup_code         = xsel.item_code
@@ -2224,7 +2425,15 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || 'y' || i_g
       --==================================================
       -- “o˜^ğŒŠm”F
       --==================================================
-      IF( i_xcbs_data_tab( i ).supplier_code IS NOT NULL ) THEN
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR START
+--      IF( i_xcbs_data_tab( i ).supplier_code IS NOT NULL ) THEN
+      IF(     ( i_xcbs_data_tab( i ).supplier_code IS NOT NULL )
+          AND (    ( i_xcbs_data_tab( i ).cond_bm_amt_tax       IS NOT NULL ) -- VDBM(Å) 
+                OR ( i_xcbs_data_tab( i ).electric_amt_tax      IS NOT NULL ) -- “d‹C—¿(Å)
+                OR ( i_xcbs_data_tab( i ).csh_rcpt_discount_amt IS NOT NULL ) -- “ü‹à’lˆøŠz
+              )
+      ) THEN
+-- 2009/07/07 Ver.2.1 [áŠQ0000269] SCS K.Yamaguchi REPAIR END
         --==================================================
         -- ğŒ•Ê”Ìè”Ì‹¦ŒvZŒ‹‰Ê‚ğğŒ•Ê”Ìè”Ì‹¦ƒe[ƒuƒ‹‚É“o˜^
         --==================================================
