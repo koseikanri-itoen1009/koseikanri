@@ -7,7 +7,7 @@ AS
  * Description      : 出庫調整表
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 出庫調整表 T_MD070_BPO_62H
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,8 +36,8 @@ AS
  *                                       禁則文字「'」「"」「<」「>」「＆」対応
  *  2008/07/10    1.4   Naoki Fukuda     移動の換算単位不具合対応
  *  2008/07/16    1.5   Kazuo Kumamoto   結合テスト障害対応(配送No未設定時は依頼No毎に運送業者情報を出力)
- *  2008/10/22    1.6   Yuko  Kawano     課題#32対応(指示なし実績情報を対象外とする)
- *
+ *  2008/10/22    1.6   Yuko  Kawano     課題#62対応(指示なし実績情報を対象外とする)
+ *  2008/10/31    1.7   Hitomi Itou      課題#32対応(単位条件にケース入数 > 0を追加)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -579,10 +579,19 @@ AS
            ELSE xola.quantity
          END                     AS  qty -- 数量
         ,CASE
-          -- 入出庫換算単位が未設定
-          WHEN ximv.conv_unit IS NULL THEN  ximv.item_um
-          -- 入出庫換算単位が設定済
-          ELSE ximv.conv_unit
+-- 2008/10/31 H.Itou Mod Start 課題#32
+--          -- 入出庫換算単位が未設定
+--          WHEN ximv.conv_unit IS NULL THEN  ximv.item_um
+--          -- 入出庫換算単位が設定済
+--          ELSE ximv.conv_unit
+          -- 入出庫換算単位が設定ありで、ケース入数が0より大きく、製品の場合、入出庫換算単位
+          WHEN ((ximv.conv_unit IS NOT NULL)
+          AND   (ximv.num_of_cases > 0)
+          AND   (xicv.item_class_code = gc_item_cd_prdct)
+          AND   (xicv.prod_class_code IN (gc_prod_cd_drink, gc_prod_cd_leaf))) THEN  ximv.conv_unit
+          -- 入出庫換算単位が設定なしの場合、品目単位
+          ELSE   ximv.item_um
+-- 2008/10/31 H.Itou Mod End 課題#32
          END                     AS   qty_tani            -- 数量_単位
         ,xola.pallet_quantity    AS   pallet_quantity     -- パレット枚数
         ,xola.layer_quantity     AS   layer_quantity      -- 段数
@@ -842,6 +851,9 @@ AS
         ,CASE
            -- 入出庫換算単位が設定済み かつ ドリンク製品の場合
            WHEN (ximv.conv_unit IS NOT NULL
+-- 2008/10/31 H.Itou Mod Start 課題#32
+              AND  ximv.num_of_cases > 0 -- ケース入数が0より大きい
+-- 2008/10/31 H.Itou Mod End 課題#32
               AND  xicv.item_class_code = gc_item_cd_prdct
               AND  xicv.prod_class_code = gc_prod_cd_drink
            ) THEN ximv.conv_unit
