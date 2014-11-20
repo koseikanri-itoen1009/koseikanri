@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2009/09/04    1.7   K.Kiriu          [0000900]PT対応
  *  2009/10/30    1.8   M.Sano           [0001373]XXCOS_RS_INFO_V変更に伴うPT対応
  *  2009/11/12    1.9   N.Maeda          [E_T4_00188]新規獲得ポイント集計条件修正
+ *  2009/11/18    1.10  T.Nishikawa      [E_本番_00220]性能劣化に伴うヒント句追加
  *
  *****************************************************************************************/
 --
@@ -2065,6 +2066,9 @@ AS
               cd_program_update_date                    AS  program_update_date
       FROM    (
               SELECT
+--Ver1.10 Add Start
+                      /*+  USE_NL(sael iimb) */
+--Ver1.10 Add End
                       saeh.delivery_date                        AS  dlv_date,
                       saeh.sales_base_code                      AS  sale_base_code,
                       saeh.results_employee_code                AS  results_employee_code,
@@ -2355,9 +2359,12 @@ AS
               SELECT
 /* 2009/09/04 Ver1.7 Add Start */
                       /*+
-                        USE_NL(xsti)
+--Ver1.10 Mod Start
+                 --       USE_NL(xsti)
                         USE_NL(xlvs)
-                        USE_NL(iimb)
+                 --       USE_NL(iimb)
+                        USE_NL(xsti iimb)
+--Ver1.10 Mod Start
                       */
 /* 2009/09/04 Ver1.7 Add End   */
                       xsti.selling_date                         AS  dlv_date,
@@ -2728,7 +2735,10 @@ AS
                  USE_NL(work.xrsi.paaf_o)
                  USE_NL(work.xrsi.jrgm_o)
                  USE_NL(work.xrsi.jrgb_o)
-                 USE_NL(work.xrsi)
+--Ver1.10 Mod Start
+              --   USE_NL(work.xrsi)
+                 INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
+--Ver1.10 Mod End
 --Ver1.8 Add Start
                  USE_NL(work.xrsi.jrgm_max.jrgm_m)
 --Ver1.8 Add End
@@ -2956,7 +2966,10 @@ AS
                 USE_NL(work.xrsi.paaf_o)
                 USE_NL(work.xrsi.jrgm_o)
                 USE_NL(work.xrsi.jrgb_o)
-                USE_NL(work.xrsi)
+--Ver1.10 Mod Start
+            --    USE_NL(work.xrsi)
+                INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
+--Ver1.10 Mod End
 --Ver1.8 Add Start
                 USE_NL(work.xrsi.jrgm_max.jrgm_m)
 --Ver1.8 Add End
@@ -3195,7 +3208,10 @@ AS
                 USE_NL(work.xrsi.paaf_o)
                 USE_NL(work.xrsi.jrgm_o)
                 USE_NL(work.xrsi.jrgb_o)
-                USE_NL(work.xrsi)
+--Ver1.10 Mod Start
+            --    USE_NL(work.xrsi)
+                INDEX(work.xsal.hopeb XXCSO_HOPEB_N02)
+--Ver1.10 Mod End
 --Ver1.8 Add Start
                 USE_NL(work.xrsi.jrgm_max.jrgm_m)
 --Ver1.8 Add End
