@@ -58,18 +58,24 @@ SELECT
         ,XDL.code_division                      -- 配送先コード区分
         ,FLV02.meaning                          -- 配送先コード区分名
         ,XDL.shipping_address_code              -- 配送先コード
-        ,SAC.name       shipping_address_code_name -- 代表配送先名
+        ,SAC.name    shipping_address_code_name -- 代表配送先名
         ,XDL.payments_judgment_classe           -- 支払判断区分
         ,FLV03.meaning                          -- 支払判断区分名
         ,CASE WHEN XDL.order_type = '1'
-              THEN XHMV.配送先_拠点コード       -- 管轄拠点（出荷の場合）
+-- 2009/12/01 Y.Fukami Mod Start
+--              THEN XHMV.配送先_拠点コード       -- 管轄拠点（出荷の場合）
+              THEN XHM2V.配送先_拠点コード      -- 管轄拠点（出荷の場合）
+-- 2009/12/01 Y.Fukami Mod End
               WHEN XDL.order_type = '2'
               THEN NULL                         -- 管轄拠点（支給の場合、NULL）
               WHEN XDL.order_type = '3'
               THEN '2100'                       -- 管轄拠点（移動の場合、'2100'固定）
          END base_code
         ,CASE WHEN XDL.order_type = '1'
-              THEN XHMV.配送先_拠点名           -- 管轄拠点名称（出荷の場合）
+-- 2009/12/01 Y.Fukami Mod Start
+--              THEN XHMV.配送先_拠点名           -- 管轄拠点名称（出荷の場合）
+              THEN XHM2V.配送先_拠点名          -- 管轄拠点名称（出荷の場合）
+-- 2009/12/01 Y.Fukami Mod End
               WHEN XDL.order_type = '2'
               THEN NULL                         -- 管轄拠点名称（支給の場合、NULL）
               WHEN XDL.order_type = '3'
@@ -104,14 +110,59 @@ SELECT
                                                 -- 最終更新日(支給依頼情報IF明細)
         ,FU_LL.user_name                        -- 最終更新ログイン
 FROM
-         xxwip_delivery_lines   XDL             -- 運賃明細アドオン
+-- 2009/12/01 Y.Fukami Mod Start
+--         xxwip_delivery_lines   XDL             -- 運賃明細アドオン
+-- 運賃明細アドオンに出荷の場合の管轄拠点を取得するための配送先IDを受注ヘッダアドオンから結合
+        (
+                SELECT
+                       XXDL.request_no
+                      ,XXDL.invoice_no
+                      ,XXDL.delivery_no
+                      ,XXDL.delivery_company_code
+                      ,XXDL.whs_code
+                      ,XXDL.dellivary_classe
+                      ,XXDL.code_division
+                      ,XXDL.shipping_address_code
+                      ,XXDL.payments_judgment_classe
+                      ,XXDL.ship_date
+                      ,XXDL.arrival_date
+                      ,XXDL.report_date
+                      ,XXDL.judgement_date
+                      ,XXDL.goods_classe
+                      ,XXDL.weight_capacity_class
+                      ,XXDL.distance
+                      ,XXDL.actual_distance
+                      ,XXDL.qty
+                      ,XXDL.delivery_weight
+                      ,XXDL.order_type
+                      ,XXDL.mixed_code
+                      ,XXDL.outside_contract
+                      ,XXDL.transfer_location
+                      ,XXDL.description
+                      ,XXDL.created_by
+                      ,XXDL.creation_date
+                      ,XXDL.last_update_login
+                      ,XXDL.last_updated_by
+                      ,XXDL.last_update_date
+                      ,XOHA.result_deliver_to_id
+                FROM
+                       xxwip_delivery_lines     XXDL      -- 運賃明細アドオン
+                      ,xxwsh_order_headers_all  XOHA      -- 受注ヘッダアドオン
+                WHERE
+                       XOHA.request_no(+)              =  XXDL.request_no
+                  AND  XOHA.latest_external_flag(+)    =  'Y'
+        )                                       XDL     -- 運賃明細アドオン＋受注ヘッダアドオンの配送先ID
+-- 2009/12/01 Y.Fukami Mod End
         ,xxsky_carriers2_v      XC2V            -- SKYLINK用中間VIEW 運送業者情報VIEW2(運送業者名)
         ,xxsky_item_locations_v XILV            -- SKYLINK用中間VIEW OPM保管場所情報VIEW(出庫倉庫名)
         ,xxsky_locations2_v     XL2V            -- SKYLINK用中間VIEW 事業所情報VIEW2(振替先名)
         ,fnd_lookup_values      FLV01           -- クイックコード表(配送区分名)
         ,fnd_lookup_values      FLV02           -- クイックコード表(配送先コード区分名)
         ,fnd_lookup_values      FLV03           -- クイックコード表(支払判断区分名)
-        ,XXSKY_配送先マスタ_基本_V    XHMV      -- SKYLINK用配送先マスタ_基本_V
+-- 2009/12/01 Y.Fukami Mod Start
+--        ,XXSKY_配送先マスタ_基本_V    XHMV      -- SKYLINK用配送先マスタ_基本_V
+        ,XXSKY_配送先マスタ_基本2_V   XHM2V     -- SKYLINK用配送先マスタ_基本2_V
+-- 2009/12/01 Y.Fukami Mod End
         ,xxsky_locations2_v     XL2V02          -- SKYLINK用中間VIEW 事業所情報VIEW2(管轄拠点名)
         ,fnd_lookup_values      FLV04           -- クイックコード表(商品区分名)
         ,fnd_lookup_values      FLV05           -- クイックコード表(重量容積区分名)
@@ -178,11 +229,18 @@ WHERE
    AND  FLV03.lookup_type(+)            = 'XXWIP_CLAIM_PAY_STD'
    AND  FLV03.lookup_code(+)            = XDL.payments_judgment_classe
         -- 管轄拠点情報取得
-   AND  XDL.shipping_address_code       = XHMV.配送先_番号(+)
+-- 2009/12/01 Y.Fukami Mod Start
+--   AND  XDL.shipping_address_code       = XHMV.配送先_番号(+)
+   AND  XDL.result_deliver_to_id        = XHM2V.配送先_ID(+)
+   AND  XHM2V.顧客拠点_適用開始日(+)   <= XDL.ship_date
+   AND  XHM2V.顧客拠点_適用終了日(+)   >= XDL.ship_date
+   AND  XHM2V.配送先_適用開始日(+)     <= XDL.ship_date
+   AND  XHM2V.配送先_適用終了日(+)     >= XDL.ship_date
+-- 2009/12/01 Y.Fukami Mod End
         -- 管轄拠点名
-   AND  XL2V02.location_code(+)           = '2100'            -- 飲料部
-   AND  XL2V02.start_date_active(+)       <= XDL.ship_date
-   AND  XL2V02.end_date_active(+)         >= XDL.ship_date
+   AND  XL2V02.location_code(+)         = '2100'            -- 飲料部
+   AND  XL2V02.start_date_active(+)    <= XDL.ship_date
+   AND  XL2V02.end_date_active(+)      >= XDL.ship_date
         -- 商品区分名
    AND  FLV04.language(+)               = 'JA'
    AND  FLV04.lookup_type(+)            = 'XXWIP_ITEM_TYPE'
