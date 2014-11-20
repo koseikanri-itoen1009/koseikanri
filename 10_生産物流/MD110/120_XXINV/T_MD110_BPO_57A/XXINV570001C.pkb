@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2009/02/04    1.18  Yuko  Kawano     本番障害#1142(実績訂正(標準未反映の不具合対応))
  *  2009/02/19    1.19  Akiyoshi Shiina  本番障害#1179(ロット実績数量0が存在する移動実績情報の処理)
  *  2009/02/19    1.20  Akiyoshi Shiina  本番障害#1194(ロックエラーを警告にする)
+ *  2009/02/24    1.21  Akiyoshi Shiina  再対応_本番障害#1179(ロット実績数量0が存在する移動実績情報の処理)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2336,10 +2337,32 @@ AS
         -- 訂正前後数量が0の場合
         /*****************************************/
         -- API登録処理をskipする
+-- 2009/02/24 v1.21 UPDATE START
+/*
         IF ((move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0)
           AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity = 0)
           AND (move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity = 0)
           AND (move_target_tbl(gn_rec_idx).lot_in_bf_act_quantity = 0))
+*/
+        IF (
+             (
+               (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0)
+                 AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity = 0)
+                   AND (move_target_tbl(gn_rec_idx).lot_out_bf_act_quantity = 0)
+                     AND (move_target_tbl(gn_rec_idx).lot_in_bf_act_quantity = 0)
+             )
+             OR
+             (
+               (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0)
+                 AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity IS NULL)
+             )
+             OR
+             (
+               (move_target_tbl(gn_rec_idx).lot_out_actual_quantity IS NULL)
+                 AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity = 0)
+             )
+           )
+-- 2009/02/24 v1.21 UPDATE END
         THEN
           NULL;
         ELSE
@@ -5411,7 +5434,22 @@ AS
 --
         -- 出庫と入庫で移動実績数量が同数が前提のため出庫数のみで判断
         -- 移動情報の数量が0の場合(実績登録しない)
-        IF ( move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0 ) THEN
+-- 2009/02/24 v1.21 UPDATE START
+--        IF ( move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0 ) THEN
+        IF (
+             ( move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0 )
+             OR
+             (
+               (move_target_tbl(gn_rec_idx).lot_out_actual_quantity = 0)
+                 AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity IS NULL)
+             )
+             OR
+             (
+               (move_target_tbl(gn_rec_idx).lot_out_actual_quantity IS NULL)
+                 AND (move_target_tbl(gn_rec_idx).lot_in_actual_quantity = 0)
+             )
+           ) THEN
+-- 2009/02/24 v1.21 UPDATE END
           -- 何もしない
           NULL;
 --
