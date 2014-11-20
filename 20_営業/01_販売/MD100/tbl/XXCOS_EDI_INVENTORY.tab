@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_EDI_INVENTORY
  * Description : EDI在庫情報テーブル
- * Version     : 1.0
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Watanabe   新規作成
  *  2009/02/17    1.1   SCS T.Ishiwata   単位コード(EBS)追加
+ *  2009/07/02    1.2   SCS K.Kiriu      [T1_0022,T1_0023,T1_0024,T1_0042,T1_0201]対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_EDI_INVENTORY
@@ -70,7 +71,10 @@ CREATE TABLE XXCOS.XXCOS_EDI_INVENTORY
   ,CHECK_DIGIT                       VARCHAR2(1)          NULL                   --  チェックデジット
   ,CHAIN_PECULIAR_AREA_HEADER        VARCHAR2(200)        NULL                   --  チェーン店固有エリア（ヘッダ）
   ,PRODUCT_CODE_ITOUEN               VARCHAR2(7)          NULL                   --  商品コード（伊藤園）
-  ,PRODUCT_CODE_OTHER_PARTY          VARCHAR2(16)         NOT NULL               --  商品コード（先方）
+/* 2009/07/02 Ver1.2 Mod Start */
+--  ,PRODUCT_CODE_OTHER_PARTY          VARCHAR2(16)         NOT NULL               --  商品コード（先方）
+  ,PRODUCT_CODE_OTHER_PARTY          VARCHAR2(16)         NULL                   --  商品コード（先方）
+/* 2009/07/02 Ver1.2 Mod End   */
   ,JAN_CODE                          VARCHAR2(13)         NULL                   --  ＪＡＮコード
   ,ITF_CODE                          VARCHAR2(16)         NULL                   --  ＩＴＦコード
   ,PRODUCT_NAME                      VARCHAR2(60)         NULL                   --  商品名（漢字）

@@ -10,6 +10,8 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/30    1.0   SCS K.Okaguchi   新規作成
+ *  2009/07/01    1.1   SCS M.Sano       [T1_0022],[T1_0023],[T1_0024],[T1_0042],[T1_0201]
+ *                                       情報区分による必須チェックの実行制御対応
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_EDI_ORDER_WORK(
@@ -228,12 +230,12 @@ CREATE TABLE XXCOS.XXCOS_EDI_ORDER_WORK(
  ,L3_COLUMN                        VARCHAR2(22)        NULL                               -- Ｌ－３欄
  ,CHAIN_PECULIAR_AREA_HEADER       VARCHAR2(200)       NULL                               -- チェーン店固有エリア（ヘッダー）
  ,ORDER_CONNECTION_NUMBER          VARCHAR2(10)        NULL                               -- 受注関連番号（仮）
- ,LINE_NO                          NUMBER(3)           NULL                               -- 行Ｎｏ
+ ,LINE_NO                          NUMBER(3)           NOT NULL                           -- 行Ｎｏ
  ,STOCKOUT_CLASS                   VARCHAR2(2)         NULL                               -- 欠品区分
  ,STOCKOUT_REASON                  VARCHAR2(20)        NULL                               -- 欠品理由
  ,PRODUCT_CODE_ITOUEN              VARCHAR2(7)         NULL                               -- 商品コード（伊藤園）
  ,PRODUCT_CODE1                    VARCHAR2(16)        NULL                               -- 商品コード１
- ,PRODUCT_CODE2                    VARCHAR2(16)        NOT NULL                           -- 商品コード２
+ ,PRODUCT_CODE2                    VARCHAR2(16)        NULL                               -- 商品コード２
  ,JAN_CODE                         VARCHAR2(13)        NULL                               -- ＪＡＮコード
  ,ITF_CODE                         VARCHAR2(16)        NULL                               -- ＩＴＦコード
  ,EXTENSION_ITF_CODE               VARCHAR2(16)        NULL                               -- 内箱ＩＴＦコード
