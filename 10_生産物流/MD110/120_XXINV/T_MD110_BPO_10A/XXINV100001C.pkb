@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -100,7 +100,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/09/01    1.11 Oracle 大橋 孝郎 PT 2-2_13 指摘56,PT 2-2_14 指摘58,メッセージ出力不具合対応
  *  2008/09/16    1.12 Oracle 大橋 孝郎 PT 2-2_14指摘75,76,77対応
  *  2008/11/07    1.13 Oracle Yuko Kawano 統合指摘#585
- *
+ *  2008/11/11    1.14 Oracle 福田 直樹 統合指摘#589対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1926,7 +1926,8 @@ PACKAGE BODY XXINV100001C AS
     -- インターフェーステーブル重複データ抽出
     CURSOR forecast_if_cur1
     IS
-      SELECT mfi.forecast_if_id,
+      SELECT /*+ INDEX( mfi xxinv_mfi_n01 ) */               -- 2008/11/11 統合指摘#589 Add
+             mfi.forecast_if_id,
              mfi.forecast_designator,
              mfi.location_code,
              mfi.base_code,
@@ -2149,7 +2150,8 @@ PACKAGE BODY XXINV100001C AS
     -- インターフェーステーブル重複データ抽出
     CURSOR forecast_if_cur5
     IS
-      SELECT mfi.forecast_if_id,
+      SELECT /*+ INDEX( mfi xxinv_mfi_n01 ) */              -- 2008/11/11 統合指摘#589 Add
+             mfi.forecast_if_id,
              mfi.forecast_designator,
              mfi.location_code,
              mfi.base_code,
@@ -2523,7 +2525,8 @@ PACKAGE BODY XXINV100001C AS
     -- 販売計画/引取計画インタ－フェーステーブルから引取計画データ抽出
     CURSOR forecast_if_cur
     IS
-      SELECT mfi.forecast_if_id         -- 取引ID
+      SELECT /*+ INDEX( mfi xxinv_mfi_n01 ) */                      -- 2008/11/11 統合指摘#589 Add
+             mfi.forecast_if_id         -- 取引ID
             ,mfi.forecast_designator    -- Forecast分類
             ,mfi.location_code          -- 出荷倉庫
             ,mfi.base_code              -- 拠点
@@ -2662,7 +2665,8 @@ PACKAGE BODY XXINV100001C AS
     -- 販売計画/引取計画インタ－フェーステーブルから販売計画データ抽出
     CURSOR forecast_if_cur
     IS
-      SELECT mfi.forecast_if_id         -- 取引ID
+      SELECT /*+ INDEX( mfi xxinv_mfi_n01 ) */                  -- 2008/11/11 統合指摘#589 Add
+             mfi.forecast_if_id         -- 取引ID
             ,mfi.forecast_designator    -- Forecast分類
             ,mfi.location_code          -- 出荷倉庫
             ,mfi.base_code              -- 拠点
@@ -4809,7 +4813,8 @@ PACKAGE BODY XXINV100001C AS
     IS
 -- mod start 1.12
 --      SELECT mfi.location_code,              -- 出荷倉庫
-      SELECT /*+ INDEX(xxinv_mrp_forecast_interface,xxinv_mfi_n02) */
+--      SELECT /*+ INDEX(xxinv_mrp_forecast_interface,xxinv_mfi_n02) */           -- 2008/11/11 統合指摘#589 Del
+      SELECT /*+ INDEX( mfi xxinv_mfi_n02 ) */                                    -- 2008/11/11 統合指摘#589 Add
             mfi.location_code,              -- 出荷倉庫
             mfi.base_code,                   -- 拠点
             mfi.item_code,                   -- 品目
@@ -4964,7 +4969,8 @@ PACKAGE BODY XXINV100001C AS
     -- 拠点、品目、開始日付で重複しているデータがあればエラー
     CURSOR forecast_if_cur
     IS
-      SELECT mfi.base_code,                    -- 拠点
+      SELECT /*+ INDEX( mfi xxinv_mfi_n03 ) */                         -- 2008/11/11 統合指摘#589 Add
+             mfi.base_code,                    -- 拠点
              mfi.item_code,                    -- 品目
              mfi.forecast_date                 -- 開始日付
       FROM   xxinv_mrp_forecast_interface mfi
@@ -10062,7 +10068,8 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
     -- 販売計画/引取計画インタ－フェーステーブルから対象データ削除
     ln_loop_cnt := 0;
     FORALL ln_loop_cnt IN 1..gn_target_cnt
-      DELETE FROM xxinv_mrp_forecast_interface
+      DELETE /*+ INDEX( xxinv_mrp_forecast_interface XXINV_MFI_PK ) */       -- 2008/11/11 統合指摘#589 Add
+      FROM xxinv_mrp_forecast_interface
       WHERE  forecast_if_id = t_txns_type(ln_loop_cnt);
 --
 --add start 1.4

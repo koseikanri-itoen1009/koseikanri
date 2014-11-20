@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -108,6 +108,7 @@ AS
  *  2008/10/18    1.21 Oracle 福田 直樹  変更一覧#168(課題一覧#62)(受注の指示無し実績登録時、出荷依頼画面に合わせ出荷予定日・着荷予定日にNULLをセット)
  *  2008/10/27    1.22 Oracle 福田 直樹  課題T_S_619(1)対応(常に無条件で全データについて引当可能チェックをしている)
  *  2008/10/30    1.23 Oracle 福田 直樹  統合指摘#390対応(顧客発注番号の9桁以内チェック・数字チェックを追加)
+ *  2008/11/11    1.24 Oracle 福田 直樹  統合指摘#589対応(ヒント句追加対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3656,7 +3657,8 @@ AS
     -- 時分秒(00:00:00)を考慮してパージ対象期間より-1日した期間を対象日付から引き作成日と比較を行う。
     CURSOR xshli_cur
     IS
-      SELECT xshi.header_id
+      SELECT /*+ INDEX ( xshi xxwsh_sh_n06 ) */           -- 2008/11/11 統合指摘#589 Add
+             xshi.header_id
             ,xsli.line_id
       FROM   xxwsh_shipping_headers_if xshi   --IF_H
             ,xxwsh_shipping_lines_if   xsli   --IF_L
@@ -3893,9 +3895,10 @@ AS
     )
     -- 2008/09/03 内部変更#211 Add End --------------------------------------------------
     IS
-    SELECT xshi.header_id
+    SELECT /*+ INDEX ( xshi xxwsh_sh_n04 ) */                 -- 2008/11/11 統合指摘#589 Add
+           xshi.header_id
           ,xshi.order_source_ref
-    FROM   xxwsh_shipping_headers_if xshi
+	    FROM   xxwsh_shipping_headers_if xshi
     WHERE NOT EXISTS (SELECT 'X'
                         FROM xxwsh_shipping_lines_if xsli
                        WHERE xshi.header_id = xsli.header_id)
@@ -4094,7 +4097,8 @@ AS
     BEGIN
       -- ロック取得処理
       wk_sql := NULL;
-      wk_sql := wk_sql || '  SELECT  ';
+      --wk_sql := wk_sql || '  SELECT  ';                                 -- 2008/11/11 統合指摘#589 Del
+      wk_sql := wk_sql || '  SELECT /*+ INDEX (xshi xxwsh_sh_n05) */ ';   -- 2008/11/11 統合指摘#589 Add
       wk_sql := wk_sql || '           xshi.party_site_code       AS party_site_code       ';  -- IF_H.出荷先
       wk_sql := wk_sql || '          ,xshi.freight_carrier_code  AS freight_carrier_code  ';  -- IF_H.運送業者
       wk_sql := wk_sql || '          ,xshi.shipping_method_code  AS shipping_method_code  ';  -- IF_H.配送区分

@@ -7,7 +7,7 @@ AS
  * Description      : 運賃アドオンマスタ取込処理
  * MD.050           : 運賃計算（マスタ） T_MD050_BPO_720
  * MD.070           : 運賃アドオンマスタ取込処理（72E）T_MD070_BPO_72E
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ------------------------ ----------------------------------------------------------
@@ -33,8 +33,8 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
- *  2008/1/9      1.0   Y.Kanami         新規作成
- *
+ *  2008/01/09    1.0   Y.Kanami         新規作成
+ *  2008/11/11    1.1   N.Fukuda         統合指摘#589対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -227,7 +227,8 @@ AS
     -- 運賃アドオンマスタインタフェースロックカーソル
     CURSOR xxwip_delivery_charges_if_cur(lt_request_id xxwip_delivery_charges_if.request_id%TYPE)
     IS
-      SELECT xdci.delivery_charges_if_id        -- 運賃アドオンマスタインタフェースID
+      SELECT /*+ INDEX( xdci xxwip_deli_char_if_n01 ) */            -- 2008/11/11 統合指摘#589 Add
+             xdci.delivery_charges_if_id        -- 運賃アドオンマスタインタフェースID
       FROM   xxwip_delivery_charges_if    xdci  -- 運賃アドオンマスタインタフェース
       WHERE  xdci.request_id = lt_request_id    -- 要求ID
       FOR UPDATE NOWAIT
@@ -462,7 +463,8 @@ AS
     -- *** ローカル・カーソル ***
     -- 重複データ取得カーソル
     CURSOR xdci_duplication_chk_cur IS
-      SELECT COUNT(xdci.delivery_charges_if_id) cnt  -- データカウント
+      SELECT /*+ INDEX( xdci xxwip_deli_char_if_n01 ) */                  -- 2008/11/11 統合指摘#589 Add
+          COUNT(xdci.delivery_charges_if_id) cnt  -- データカウント
         , xdci.p_b_classe                         -- 支払請求区分
         , xdci.goods_classe                       -- 商品区分
         , xdci.delivery_company_code              -- 運送業者
@@ -493,7 +495,8 @@ AS
       , lt_start_date_active  xxwip_delivery_charges_if.start_date_active%TYPE      -- 適用開始日
       ) 
     IS
-      SELECT  xdci.delivery_charges_if_id   delivery_charges_if_id        -- 運賃マスタID
+      SELECT  /*+ INDEX( xdci xxwip_deli_char_if_n02 ) */                 -- 2008/11/11 統合指摘#589 Add
+              xdci.delivery_charges_if_id   delivery_charges_if_id        -- 運賃マスタID
           ,   xdci.p_b_classe               p_b_classe                    -- 支払請求区分
           ,   xdci.goods_classe             goods_classe                  -- 商品区分
           ,   xdci.delivery_company_code    delivery_company_code         -- 運送業者
@@ -613,7 +616,8 @@ AS
         -- ===============================
         -- エラーデータ削除
         -- ===============================
-        DELETE FROM xxwip_delivery_charges_if xdci  -- 運賃アドオンインタフェース
+        DELETE /*+ INDEX( xdci xxwip_deli_char_if_n02 ) */                            -- 2008/11/11 統合指摘#589 Add
+        FROM xxwip_delivery_charges_if xdci  -- 運賃アドオンインタフェース
         WHERE   xdci.p_b_classe               = xdci_dupl_chk.p_b_classe              -- 支払請求区分
           AND   xdci.goods_classe             = xdci_dupl_chk.goods_classe            -- 商品区分
           AND   xdci.delivery_company_code    = xdci_dupl_chk.delivery_company_code   -- 運送業者
@@ -1143,7 +1147,8 @@ AS
     -- *** ローカル・カーソル ***
     -- 登録データ取得カーソル
     CURSOR get_ins_data_cur IS
-      SELECT  xdci.p_b_classe               -- 支払請求区分
+      SELECT  /*+ INDEX( xdci xxwip_deli_char_if_n01 ) */                 -- 2008/11/11 統合指摘#589 Add
+              xdci.p_b_classe               -- 支払請求区分
             , xdci.goods_classe             -- 商品区分
             , xdci.delivery_company_code    -- 運送業者
             , xdci.shipping_address_classe  -- 配送区分
@@ -1334,7 +1339,8 @@ AS
     -- *** ローカル・カーソル ***
     -- 更新データ取得カーソル
     CURSOR get_upd_data_cur IS
-      SELECT  xdci.p_b_classe               -- 支払請求区分
+      SELECT  /*+ INDEX( xdci xxwip_deli_char_if_n01 ) */                   -- 2008/11/11 統合指摘#589 Add
+              xdci.p_b_classe               -- 支払請求区分
             , xdci.goods_classe             -- 商品区分
             , xdci.delivery_company_code    -- 運送業者
             , xdci.shipping_address_classe  -- 配送区分
@@ -2074,7 +2080,8 @@ AS
     -- 運賃アドオンマスタインタフェース削除
     -- =====================================
     FORALL ln_count IN 1..request_id_tab.COUNT
-      DELETE FROM xxwip_delivery_charges_if xdci          -- 運賃アドオンマスタインタフェース
+      DELETE /*+ INDEX( xdci xxwip_deli_char_if_n01 ) */             -- 2008/11/11 統合指摘#589 Add
+      FROM xxwip_delivery_charges_if xdci          -- 運賃アドオンマスタインタフェース
       WHERE   xdci.request_id = request_id_tab(ln_count)  -- 要求ID
       ;
 --
@@ -2251,7 +2258,8 @@ AS
       SELECT fcr.request_id
       FROM   fnd_concurrent_requests fcr                -- コンカレント要求IDテーブル
       WHERE  EXISTS (
-               SELECT 'X'
+               SELECT /*+ INDEX( xdci xxwip_deli_char_if_n01 ) */       -- 2008/11/11 統合指摘#589 Add
+                      'X'
                FROM   xxwip_delivery_charges_if xdci    -- 運賃アドオンマスタインタフェース
                WHERE  xdci.request_id = fcr.request_id  -- 要求ID
                AND    ROWNUM = 1
