@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common2_pkg(BODY)
  * Description            : ã§í ä÷êî2(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_à¯ìñâ¬î\êîéZèoÅiï‚ë´éëóøÅj.doc
- * Version                : 1.19
+ * Version                : 1.20
  *
  * Program List
  *  ---------------------------- ---- ----- --------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *  2008/12/24   1.17  oracle éRñ{     ñ{î‘è·äQ#836ëŒâû S3    ê∂éYì¸å…ó\íËíäèoèåèí«â¡
  *  2009/03/31   1.18  ñÏë∫            ñ{î‘è·äQ#1346ëŒâû
  *  2010/02/23   1.19  SCSà…ì°         E_ñ{â“ìÆ_01612ëŒâû
+ *  2010/04/15   1.20  SCSñkä¶éõ       E_ñ{â“ìÆ_02103ëŒâû
  *
  *****************************************************************************************/
 --
@@ -305,7 +306,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
               NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -409,7 +413,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -508,7 +515,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+     SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -608,7 +618,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -714,7 +727,10 @@ AS
 --
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(CASE
-    SELECT  /*+ leading(oha otta ola mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(oha otta ola mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(CASE
 -- 2008/09/17 v1.12 UPDATE End 
                       WHEN (otta.order_category_code = cv_cate_order) THEN
@@ -835,7 +851,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(CASE
-    SELECT  /*+ leading(oha otta ola mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(oha otta ola mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(CASE
 -- 2008/09/17 v1.12 UPDATE End 
                       WHEN (otta.order_category_code = cv_cate_order) THEN
@@ -960,8 +979,12 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.before_actual_quantity),0),
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.before_actual_quantity),0),
+
 -- 2008/09/17 v1.12 UPDATE End 
 -- 2008/09/16 v1.11 UPDATE START
 --            NVL(SUM(mril.ship_to_quantity),0)
@@ -1066,7 +1089,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.before_actual_quantity),0),
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.before_actual_quantity),0),
 -- 2008/09/17 v1.12 UPDATE End 
 -- 2008/09/16 v1.11 UPDATE START
@@ -1175,7 +1201,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -1481,7 +1510,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -1595,7 +1627,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(oha otta ola mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(oha otta ola mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -1714,7 +1749,10 @@ AS
     -- ***************************************
 -- 2008/09/11 v1.9 UPDATE START
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(oha otta ola mld) */ 
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(oha otta ola mld) */ 
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/11 v1.9 UPDATE END
     INTO    on_qty
@@ -1833,7 +1871,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(oha otta ola mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(oha otta ola mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -1952,7 +1993,10 @@ AS
     -- ***************************************
 -- 2008/09/11 v1.9 UPDATE START
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(oha otta ola mld) */ 
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(oha otta ola mld) */ 
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/11 v1.9 UPDATE END
     INTO    on_qty
@@ -2060,7 +2104,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -2160,7 +2207,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.actual_quantity), 0)
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.actual_quantity), 0)
 -- 2008/09/17 v1.12 UPDATE End 
     INTO    on_qty
@@ -2940,7 +2990,10 @@ AS
 --    AND     otta.attribute1           IN (cv_ship_pro_type, cv_warehouse_type)
 --    AND     otta.transaction_type_id  = oha.order_type_id
 --
-    SELECT  /*+ leading(oha otta ola mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+--    SELECT  /*+ leading(oha otta ola mld) */
+    SELECT
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(CASE
                       WHEN (otta.order_category_code = cv_cate_order) THEN
                         NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
@@ -3074,7 +3127,10 @@ AS
 --    AND     otta.attribute1           = cv_ship_pro_type
 --    AND     otta.transaction_type_id  = oha.order_type_id
 --
-    SELECT  /*+ leading(oha otta ola mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(oha otta ola mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(CASE
                       WHEN (otta.order_category_code = cv_cate_order) THEN
                         NVL(mld.actual_quantity, 0) - NVL(mld.before_actual_quantity, 0)
@@ -3183,8 +3239,11 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.before_actual_quantity),0),
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
             NVL(SUM(mld.before_actual_quantity),0),
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
 -- 2008/09/17 v1.12 UPDATE End 
 -- 2008/09/16 v1.11 UPDATE START
 --            NVL(SUM(mril.ship_to_quantity),0)
@@ -3286,7 +3345,10 @@ AS
     -- ***************************************
 -- 2008/09/17 v1.12 UPDATE Start 
 --    SELECT  NVL(SUM(mld.before_actual_quantity),0),
-    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd Start
+    SELECT
+--    SELECT  /*+ leading(mrih) use_nl(mrih mril mld) */
+-- 2010/04/15 Ver1.20 M.Hokkanji Upd End
             NVL(SUM(mld.before_actual_quantity),0),
 -- 2008/09/17 v1.12 UPDATE End 
 -- 2008/09/16 v1.11 UPDATE START
