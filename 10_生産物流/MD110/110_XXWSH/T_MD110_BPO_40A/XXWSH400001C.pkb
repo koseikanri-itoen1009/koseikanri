@@ -7,7 +7,7 @@ AS
  * Description      : 引取計画からのリーフ出荷依頼自動作成
  * MD.050/070       : 出荷依頼                              (T_MD050_BPO_400)
  *                    引取計画からのリーフ出荷依頼自動作成  (T_MD070_BPO_40A)
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/06/04    1.3   椎名  昭圭       不具合修正
  *  2008/06/10    1.4   石渡  賢和       不具合修正(エラーリストでスペース埋めを削除）
  *                                       xxwsh_common910_pkgの帰り値判定を修正
+ *  2008/06/19    1.5   Y.Shindou        内部変更要求#143対応
  *
  *****************************************************************************************/
 --
@@ -1989,6 +1990,7 @@ AS
                                    ,gt_to_plan(gn_i).amount   -- 数量             in 数量
                                    ,gt_to_plan(gn_i).for_date -- 対象日           in 着荷予定日
                                    ,gt_to_plan(gn_i).ship_id  -- 出荷元ID         in 出荷元ID
+                                   ,NULL
                                    ,lv_retcode                -- リターン・コード
                                    ,lv_errmsg_code            -- エラー・メッセージ・コード
                                    ,lv_errmsg                 -- ユーザー・エラー・メッセージ
@@ -2055,6 +2057,7 @@ AS
                                    ,gt_to_plan(gn_i).amount  -- 数量             in 数量
                                    ,gd_ship_day              -- 対象日           in 出荷予定日
                                    ,gt_to_plan(gn_i).ship_id -- 出荷元ID         in 出荷元ID
+                                   ,NULL
                                    ,lv_retcode               -- リターン・コード
                                    ,lv_errmsg_code           -- エラー・メッセージ・コード
                                    ,lv_errmsg                -- ユーザー・エラー・メッセージ
@@ -2424,7 +2427,7 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- 共通関数｢積載効率チェック(積載効率算出)｣にてチェック (明細重量の場合)
+   -- 共通関数｢積載効率チェック(積載効率算出)｣にてチェック (明細重量の場合)
     xxwsh_common910_pkg.calc_load_efficiency
                             (
                               gn_h_ttl_weight             -- 合計重量         in 積載重量合計
@@ -2640,7 +2643,8 @@ AS
        ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
       );
     IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
+      RAISE global_api_expt;
+      --RAISE global_process_expt;
     END IF;
 --
     ------------------------------------------------------
@@ -3233,30 +3237,33 @@ AS
 --
     END LOOP headers_data_loop;
 --
-    -- =====================================================
-    -- 受注ヘッダアドオンレコード生成 (A-11)
-    -- =====================================================
-      pro_headers_create
+    IF (gt_to_plan.COUNT <> 0) THEN
+      -- =====================================================
+      -- 受注ヘッダアドオンレコード生成 (A-11)
+      -- =====================================================
+        pro_headers_create
+          (
+            ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
+            ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
+            ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+        IF (lv_retcode = gv_status_error) THEN
+          RAISE global_process_expt;
+        END IF;
+--
+      -- =====================================================
+      -- 出荷依頼登録処理 (A-12)
+      -- =====================================================
+      pro_ship_order
         (
           ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
-          ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
-          ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
+         ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
+         ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
         );
       IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
       END IF;
 --
-    -- =====================================================
-    -- 出荷依頼登録処理 (A-12)
-    -- =====================================================
-    pro_ship_order
-      (
-        ov_errbuf         => lv_errbuf          -- エラー・メッセージ           --# 固定 #
-       ,ov_retcode        => lv_retcode         -- リターン・コード             --# 固定 #
-       ,ov_errmsg         => lv_errmsg          -- ユーザー・エラー・メッセージ --# 固定 #
-      );
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
     END IF;
 --
     -- ステータスを挿入

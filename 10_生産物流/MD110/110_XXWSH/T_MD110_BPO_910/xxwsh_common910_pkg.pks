@@ -40,6 +40,8 @@ AS
  *  2008/05/30   1.5   ORACLE椎名昭圭   内部変更要求#116対応
  *  2008/06/02   1.6   ORACLE石渡賢和   [出荷可否チェック] フォーキャストの抽出条件変更
  *                                      [積載効率チェック(積載効率算出)]抽出条件改良
+ *  2008/06/13   1.7   ORACLE石渡賢和   [ロット逆転防止チェック] 移動指示の着日条件を変更
+ *  2008/06/19   1.8   ORACLE山根一浩   内部変更要求No143対応
  *
  *****************************************************************************************/
 --
@@ -127,10 +129,11 @@ AS
     in_amount                     IN  NUMBER,                                              -- 4.数量
     id_date                       IN  DATE,                                                -- 5.対象日付
     in_deliver_from_id            IN  NUMBER,                                              -- 6.出荷元ID
-    ov_retcode                    OUT NOCOPY VARCHAR2,                                     -- 7.リターンコード
-    ov_errmsg_code                OUT NOCOPY VARCHAR2,                                     -- 8.エラーメッセージコード
-    ov_errmsg                     OUT NOCOPY VARCHAR2,                                     -- 9.エラーメッセージ
-    on_result                     OUT NOCOPY NUMBER                                        -- 10.処理結果
+    iv_request_no                 IN  VARCHAR2,                                            -- 7.依頼No
+    ov_retcode                    OUT NOCOPY VARCHAR2,                                     -- 8.リターンコード
+    ov_errmsg_code                OUT NOCOPY VARCHAR2,                                     -- 9.エラーメッセージコード
+    ov_errmsg                     OUT NOCOPY VARCHAR2,                                     -- 10.エラーメッセージ
+    on_result                     OUT NOCOPY NUMBER                                        -- 11.処理結果
   );
 --
 END xxwsh_common910_pkg;

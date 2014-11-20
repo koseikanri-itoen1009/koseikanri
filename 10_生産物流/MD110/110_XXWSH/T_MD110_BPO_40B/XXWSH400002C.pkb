@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.6
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,7 +46,10 @@ AS
  *                                       １ヘッダ目は明細が削除されないため修正
  *  2008/06/10    1.6   石渡  賢和       エラーリストの数値項目前スペース埋めを削除
  *                                       xxwsh_common910_pkgの帰り値判定を修正
- *
+ *  2008/06/13    1.7   石渡  賢和       共通関数異常終了時のエラーリストを再調整
+ *                                       明細重量の計算方法を修正
+ *  2008/06/17    1.8   石渡  賢和       基本重量・基本容積のセット判断を修正
+ *  2008/06/19    1.9   新藤  義勝       内部変更要求#143対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2636,7 +2639,7 @@ AS
       gn_detail_ca := NVL(gn_ttl_ca,0);                         -- 明細容積
     --ELSE
       -- 上記以外
-      gn_detail_we := NVL(gn_ttl_we,0) + NVL(gn_ttl_prt_we,0);  -- 明細重量
+      --gn_detail_we := NVL(gn_ttl_we,0) + NVL(gn_ttl_prt_we,0);  -- 明細重量
       --gn_detail_ca := NVL(gn_ttl_ca,0) + NVL(gn_ttl_prt_we,0);  -- 明細容積
     --END IF;
 --
@@ -2768,6 +2771,7 @@ AS
                            ,gn_item_amount                 -- 数量             in 数量
                            ,gt_head_line(gn_i).arr_date    -- 対象日           in 着荷予定日
                            ,gr_ship_id                     -- 出荷元ID         in 出荷元ID
+                           ,gv_new_order_no                -- 依頼No           6/19追加
                            ,lv_retcode                     -- リターン・コード
                            ,lv_errmsg_code                 -- エラー・メッセージ・コード
                            ,lv_errmsg                      -- ユーザー・エラー・メッセージ
@@ -2793,7 +2797,7 @@ AS
          ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
          ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
          ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
-         ,iv_err_clm      => lv_errmsg                      --  in エラー項目
+         ,iv_err_clm      => lv_errmsg_code                 --  in エラー項目
          ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
          ,ov_retcode      => lv_retcode                     -- out リターン・コード
          ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
@@ -2843,6 +2847,7 @@ AS
                            ,gn_item_amount                 -- 数量             in 数量
                            ,gt_head_line(gn_i).ship_date   -- 対象日           in 出荷予定日
                            ,gr_ship_id                     -- 出荷元ID         in 出荷元ID
+                           ,gv_new_order_no                -- 依頼No           6/19追加
                            ,lv_retcode                     -- リターン・コード
                            ,lv_errmsg_code                 -- エラー・メッセージ・コード
                            ,lv_errmsg                      -- ユーザー・エラー・メッセージ
@@ -2868,7 +2873,7 @@ AS
          ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
          ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
          ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
-         ,iv_err_clm      => lv_errmsg                      --  in エラー項目
+         ,iv_err_clm      => lv_errmsg_code                 --  in エラー項目
          ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
          ,ov_retcode      => lv_retcode                     -- out リターン・コード
          ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
@@ -2949,6 +2954,7 @@ AS
                              ,gn_item_amount                 -- 数量             in 数量
                              ,gt_head_line(gn_i).arr_date    -- 対象日           in 着荷予定日
                              ,gr_ship_id                     -- 出荷元ID         in 出荷元ID
+                             ,gv_new_order_no                -- 依頼No           6/19追加
                              ,lv_retcode                     -- リターン・コード
                              ,lv_errmsg_code                 -- エラー・メッセージ・コード
                              ,lv_errmsg                      -- ユーザー・エラー・メッセージ
@@ -2975,7 +2981,7 @@ AS
            ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
            ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
            ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
-           ,iv_err_clm      => lv_errmsg                      --  in エラー項目
+           ,iv_err_clm      => lv_errmsg_code                 --  in エラー項目
            ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                     -- out リターン・コード
            ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
@@ -3026,6 +3032,7 @@ AS
                              ,gn_item_amount                 -- 数量             in 数量
                              ,gt_head_line(gn_i).ship_date   -- 対象日           in 出荷予定日
                              ,gr_ship_id                     -- 出荷元ID         in 出荷元ID
+                             ,gv_new_order_no                -- 依頼No           6/19追加
                              ,lv_retcode                     -- リターン・コード
                              ,lv_errmsg_code                 -- エラー・メッセージ・コード
                              ,lv_errmsg                      -- ユーザー・エラー・メッセージ
@@ -3051,7 +3058,7 @@ AS
            ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
            ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
            ,iv_err_msg      => lv_errmsg                      --  in エラーメッセージ
-           ,iv_err_clm      => lv_errmsg                      --  in エラー項目
+           ,iv_err_clm      => lv_errmsg_code                 --  in エラー項目
            ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
            ,ov_retcode      => lv_retcode                     -- out リターン・コード
            ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
@@ -3733,11 +3740,11 @@ AS
 --
     -- 基本重量・基本容積判定
     -- 商品区分「リーフ」の場合
-    IF (gr_item_kbn = gv_1) THEN
+    IF (gr_item_skbn = gv_1) THEN
       gn_basic_we := gn_leaf_we;
       gn_basic_ca := gn_leaf_ca;
     -- 商品区分「ドリンク」の場合
-    ELSIF (gr_item_kbn = gv_2) THEN
+    ELSIF (gr_item_skbn = gv_2) THEN
       gn_basic_we := gn_drink_we;
       gn_basic_ca := gn_drink_ca;
     END IF;

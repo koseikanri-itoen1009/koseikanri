@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/06/11    1.2   M.Hokkanji       配車が組まれていない場合でも出力されるように修正
  *  2008/06/12    1.3   M.Nomura         結合テスト 不具合対応#7
  *  2008/06/17    1.4   M.Hokkanji       システムテスト 不具合対応#153
+ *  2008/06/19    1.5   M.Nomura         システムテスト 不具合対応#193
  *
  *****************************************************************************************/
 --
@@ -319,6 +320,10 @@ AS
      ,lot_ctl                   xxcmn_item_mst2_v.lot_ctl%TYPE
      ,line_delete_flag          VARCHAR2(1)
      ,mov_lot_dtl_id            xxinv_mov_lot_details.mov_lot_dtl_id%TYPE
+-- ##### 20080619 1.5 ST不具合#193 START #####
+     ,out_whse_inout_div        xxcmn_item_locations_v.whse_inside_outside_div%TYPE   -- 出 倉庫 内外倉庫区分
+     ,in_whse_inout_div         xxcmn_item_locations_v.whse_inside_outside_div%TYPE   -- 入 倉庫 内外倉庫区分
+-- ##### 20080619 1.5 ST不具合#193 END   #####
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
   gt_main_data  tab_main_data ;
@@ -865,6 +870,10 @@ AS
             ,main.lot_ctl                     -- 38:ロット使用
             ,main.line_delete_flag            -- 39:明細削除フラグ
             ,main.mov_lot_dtl_id              -- 40:ロット詳細ID
+-- ##### 20080619 1.5 ST不具合#193 START #####
+            ,out_whse_inout_div               -- 42:内外倉庫区分：出
+            ,in_whse_inout_div                -- 41:内外倉庫区分：入
+-- ##### 20080619 1.5 ST不具合#193 END   #####
       FROM
         (
         -- =========================================================================================
@@ -927,6 +936,10 @@ AS
                  ELSE                  gc_delete_flag_n
                END                                AS line_delete_flag
               ,imld.mov_lot_dtl_id                AS mov_lot_dtl_id
+-- ##### 20080619 1.5 ST不具合#193 START #####
+              ,NULL                                 AS out_whse_inout_div   -- 内外倉庫区分：出
+              ,NULL                                 AS in_whse_inout_div    -- 内外倉庫区分：入
+-- ##### 20080619 1.5 ST不具合#193 END   #####
         FROM xxwsh_order_headers_all    xoha      -- 受注ヘッダアドオン
             ,xxwsh_order_lines_all      xola      -- 受注明細アドオン
             ,oe_transaction_types_all   otta      -- 受注タイプ
@@ -1089,6 +1102,10 @@ AS
                  ELSE                   gc_delete_flag_n
                END                                AS line_delete_flag
               ,imld.mov_lot_dtl_id                AS mov_lot_dtl_id
+-- ##### 20080619 1.5 ST不具合#193 START #####
+              ,xil1.whse_inside_outside_div       AS out_whse_inout_div   -- 内外倉庫区分：出
+              ,xil2.whse_inside_outside_div       AS in_whse_inout_div    -- 内外倉庫区分：入
+-- ##### 20080619 1.5 ST不具合#193 END   #####
         FROM xxinv_mov_req_instr_headers    xmrih     -- 移動依頼指示ヘッダアドオン
             ,xxinv_mov_req_instr_lines      xmril     -- 移動依頼指示明細アドオン
             ,xxcmn_item_locations_v         xil1      -- OPM保管場所情報VIEW（配送元）
@@ -1131,6 +1148,7 @@ AS
                                 AND     NVL( xc.end_date_active(+), gd_effective_date )
         AND   xmrih.career_id   = xc.party_id(+)
 -- M.Hokkanji Ver1.2 END
+--
         --------------------------------------------------------------------------------------------
         -- 保管場所（配送先）
         AND   xmrih.ship_to_locat_id = xil2.inventory_location_id
@@ -1138,6 +1156,16 @@ AS
         -- 保管場所（配送元）
         AND   xmrih.shipped_locat_id = xil1.inventory_location_id
         --------------------------------------------------------------------------------------------
+-- ##### 20080619 1.5 ST不具合#193 START #####
+        AND
+        (
+          (xil2.whse_inside_outside_div = gc_whse_io_div_i)
+          OR
+          (xil1.whse_inside_outside_div = gc_whse_io_div_i)
+        )
+-- ##### 20080619 1.5 ST不具合#193 END   #####
+        --------------------------------------------------------------------------------------------
+--
         -- 移動依頼指示ヘッダ
         AND   NOT EXISTS
                 ( SELECT 1
@@ -1660,15 +1688,69 @@ AS
       -- ヘッダデータの作成
       -------------------------------------------------------
       IF ( iv_break_flg = gc_yes_no_y ) THEN
+-- ##### 20080619 1.5 ST不具合#193 START #####
+        -- 内外倉庫区分が内部倉庫の場合
+        IF (gt_main_data(in_idx).out_whse_inout_div = gc_whse_io_div_i) THEN
+-- ##### 20080619 1.5 ST不具合#193 END   #####
+          -------------------------------------------------------
+          -- 移動出庫の作成
+          -------------------------------------------------------
+          lv_pallet_sum_quantity := gt_main_data(in_idx).pallet_quantity_o ;
+          prc_cre_head_data
+            (
+              ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+             ,iv_data_class           => gc_data_class_mov_s      -- データ種別
+             ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
+             ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+             ,ov_retcode              => lv_retcode               -- リターン・コード
+             ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+            ) ;
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
+-- ##### 20080619 1.5 ST不具合#193 START #####
+        END IF;
+-- ##### 20080619 1.5 ST不具合#193 END   #####
+--
+-- ##### 20080619 1.5 ST不具合#193 START #####
+        -- 内外倉庫区分が内部倉庫の場合
+        IF (gt_main_data(in_idx).in_whse_inout_div = gc_whse_io_div_i) THEN
+-- ##### 20080619 1.5 ST不具合#193 END   #####
+          -------------------------------------------------------
+          -- 移動入庫の作成
+          -------------------------------------------------------
+          lv_pallet_sum_quantity := gt_main_data(in_idx).pallet_quantity_i ;
+          prc_cre_head_data
+            (
+              ir_main_data            => gt_main_data(in_idx)     -- 対象データ
+             ,iv_data_class           => gc_data_class_mov_n      -- データ種別
+             ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
+             ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
+             ,ov_retcode              => lv_retcode               -- リターン・コード
+             ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
+            ) ;
+          IF ( lv_retcode = gv_status_error ) THEN
+            RAISE global_api_expt;
+          END IF ;
+-- ##### 20080619 1.5 ST不具合#193 START #####
+        END IF;
+-- ##### 20080619 1.5 ST不具合#193 END   #####
+--
+      END IF ;
+--
+-- ##### 20080619 1.5 ST不具合#193 START #####
+      -- 内外倉庫区分が内部倉庫の場合
+      IF (gt_main_data(in_idx).out_whse_inout_div = gc_whse_io_div_i) THEN
+-- ##### 20080619 1.5 ST不具合#193 END   #####
         -------------------------------------------------------
-        -- 移動出庫の作成
+        -- 明細データの作成（移動出庫）
         -------------------------------------------------------
-        lv_pallet_sum_quantity := gt_main_data(in_idx).pallet_quantity_o ;
-        prc_cre_head_data
+        prc_cre_dtl_data
           (
             ir_main_data            => gt_main_data(in_idx)     -- 対象データ
            ,iv_data_class           => gc_data_class_mov_s      -- データ種別
-           ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
+           ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
+           ,iv_item_quantity        => lv_item_quantity         -- 品目数量
            ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
            ,ov_retcode              => lv_retcode               -- リターン・コード
            ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
@@ -1676,41 +1758,14 @@ AS
         IF ( lv_retcode = gv_status_error ) THEN
           RAISE global_api_expt;
         END IF ;
+-- ##### 20080619 1.5 ST不具合#193 START #####
+      END IF;
+-- ##### 20080619 1.5 ST不具合#193 END   #####
 --
-        -------------------------------------------------------
-        -- 移動入庫の作成
-        -------------------------------------------------------
-        lv_pallet_sum_quantity := gt_main_data(in_idx).pallet_quantity_i ;
-        prc_cre_head_data
-          (
-            ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-           ,iv_data_class           => gc_data_class_mov_n      -- データ種別
-           ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
-           ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-           ,ov_retcode              => lv_retcode               -- リターン・コード
-           ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-          ) ;
-        IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_api_expt;
-        END IF ;
-      END IF ;
---
-      -------------------------------------------------------
-      -- 明細データの作成（移動出庫）
-      -------------------------------------------------------
-      prc_cre_dtl_data
-        (
-          ir_main_data            => gt_main_data(in_idx)     -- 対象データ
-         ,iv_data_class           => gc_data_class_mov_s      -- データ種別
-         ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
-         ,iv_item_quantity        => lv_item_quantity         -- 品目数量
-         ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
-         ,ov_retcode              => lv_retcode               -- リターン・コード
-         ,ov_errmsg               => lv_errmsg                -- ユーザー・エラー・メッセージ
-        ) ;
-      IF ( lv_retcode = gv_status_error ) THEN
-        RAISE global_api_expt;
-      END IF ;
+-- ##### 20080619 1.5 ST不具合#193 START #####
+        -- 内外倉庫区分が内部倉庫の場合
+        IF (gt_main_data(in_idx).in_whse_inout_div = gc_whse_io_div_i) THEN
+-- ##### 20080619 1.5 ST不具合#193 END   #####
       -------------------------------------------------------
       -- 明細データの作成（移動入庫）
       -------------------------------------------------------
@@ -1727,6 +1782,9 @@ AS
       IF ( lv_retcode = gv_status_error ) THEN
         RAISE global_api_expt;
       END IF ;
+-- ##### 20080619 1.5 ST不具合#193 START #####
+      END IF;
+-- ##### 20080619 1.5 ST不具合#193 END   #####
 --
     END IF ;
 --
