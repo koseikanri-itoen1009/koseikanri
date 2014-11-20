@@ -1,0 +1,6 @@
+CREATE INDEX xxcsm.xxcsm_new_cust_point_hst_n03
+  ON xxcsm_new_cust_point_hst
+   ( year_month )
+TABLESPACE xxidx2
+/
+
