@@ -25,6 +25,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/12    1.0   Akinori Takeshita   新規作成
  *  2009-03-09    1.1   Yutaka.Kuboshima    ファイル出力先のプロファイルの変更
+ *  2009-04-02    1.2   Yutaka.kuboshima    障害T1_0182、T1_0254の対応
  *
  *****************************************************************************************/
 --
@@ -72,6 +73,9 @@ AS
   -- ===============================
   gv_out_file_dir  VARCHAR2(100);
   gv_out_file_file VARCHAR2(100);
+-- 2009/04/02 Ver1.2 add start by Yutaka.Kuboshima
+  gd_process_date  DATE;
+-- 2009/04/02 Ver1.2 add end by Yutaka.Kuboshima
 --
 --##########################  固定共通例外宣言部 START  ###########################
 --
@@ -208,6 +212,10 @@ AS
       RAISE init_err_expt;
     END IF;
 --
+-- 2009/04/02 Ver1.2 add start by Yutaka.Kuboshima
+    --業務日付取得
+    gd_process_date := xxccp_common_pkg2.get_process_date;
+-- 2009/04/02 Ver1.2 add end by Yutaka.Kuboshima
   EXCEPTION
     WHEN init_err_expt THEN                           --*** 初期処理例外 ***
       ov_errmsg  := lv_errmsg;
@@ -381,9 +389,12 @@ AS
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_type, 1, 30) || cv_dqu;     --参照タイプ
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_code, 1, 30) || cv_dqu;     --参照コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(ref_name, 1, 80) || cv_dqu;     --名称
-      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_type, 1, 30) || cv_dqu;  --親参照タイプ
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_type, 1, 30) || cv_dqu;  --親参照タイプ
+--      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_code, 1, 30) || cv_dqu;  --親参照コード
       lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_code, 1, 30) || cv_dqu;  --親参照コード
-
+      lv_output_str := lv_output_str || cv_comma || cv_dqu || SUBSTRB(pt_ref_type, 1, 30) || cv_dqu;  --親参照タイプ
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
       --CSVファイル出力
       UTL_FILE.PUT_LINE(if_file_handler,lv_output_str);
 
@@ -469,6 +480,10 @@ AS
     cv_lookup_type        CONSTANT VARCHAR2(11)    := 'LOOKUP_TYPE';            --抽出データ取得エラートークン
     cv_ng_table           CONSTANT VARCHAR2(5)     := 'TABLE';                  --マスタデータ取得エラートークン
     cv_err_cust_code_msg  CONSTANT VARCHAR2(20)    := '顧客コード';             --CSV出力エラー文字列
+-- 2009/04/02 Ver1.2 add start by Yutaka.Kuboshima
+    cv_max_date           CONSTANT VARCHAR2(8)     := '99991231';               --MAX日付
+    cv_date_format        CONSTANT VARCHAR2(8)     := 'YYYYMMDD';               --日付書式
+-- 2009/04/02 Ver1.2 add end by Yutaka.Kuboshima
 --
     -- *** ローカル変数 ***
     lv_header_str                  VARCHAR2(2000)  := NULL;                     --ヘッダメッセージ格納用変数
@@ -570,7 +585,10 @@ AS
                                    ,NULL        AS lv_pt_ref_code
                              FROM  fnd_lookup_values
                              WHERE language = cv_language_ja 
-                             AND   lookup_type = 'CUSTOMER_CLASS'
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                             AND   lookup_type = 'CUSTOMER_CLASS'
+                             AND   lookup_type = 'CUSTOMER CLASS'
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                              AND   enabled_flag = cv_y_flag
                              ORDER BY lookup_code;
 
@@ -612,7 +630,10 @@ AS
         lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
                                               cv_no_data_err_msg,
                                               cv_lookup_type,
-                                              'CUSTOMER_CLASS');
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                              'CUSTOMER_CLASS');
+                                              'CUSTOMER CLASS');
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
         ov_retcode := cv_status_warn;
                                               
         --警告メッセージ出力
@@ -713,7 +734,10 @@ AS
                            SELECT
                                   lookup_type AS lv_ref_type 
                                  ,lookup_code AS lv_ref_code 
-                                 ,meaning     AS lv_ref_name                                 
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                 ,meaning     AS lv_ref_name                                 
+                                 ,description AS lv_ref_name
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                                  ,NULL        AS lv_pt_ref_type
                                  ,NULL        AS lv_pt_ref_code
                            FROM  fnd_lookup_values
@@ -787,7 +811,10 @@ AS
                               SELECT
                                      lookup_type AS lv_ref_type
                                     ,lookup_code AS lv_ref_code
-                                    ,meaning     AS lv_ref_name                                 
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                    ,meaning     AS lv_ref_name                                 
+                                    ,description AS lv_ref_name
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                                     ,NULL        AS lv_pt_ref_type
                                     ,NULL        AS lv_pt_ref_code
                               FROM  fnd_lookup_values
@@ -1084,8 +1111,12 @@ AS
                                        lookup_type AS lv_ref_type 
                                       ,lookup_code AS lv_ref_code 
                                       ,meaning     AS lv_ref_name                                 
-                                      ,NULL        AS lv_pt_ref_type
-                                      ,NULL        AS lv_pt_ref_code
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                      ,NULL        AS lv_pt_ref_type
+--                                      ,NULL        AS lv_pt_ref_code
+                                      ,'XXCMM_CUST_GYOTAI_DAI' AS lv_pt_ref_type
+                                      ,attribute1              AS lv_pt_ref_code
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                                 FROM  fnd_lookup_values
                                 WHERE language = cv_language_ja 
                                 AND   lookup_type = 'XXCMM_CUST_GYOTAI_CHU'
@@ -1306,8 +1337,12 @@ AS
                                        lookup_type AS lv_ref_type 
                                       ,lookup_code AS lv_ref_code 
                                       ,meaning     AS lv_ref_name                                 
-                                      ,NULL        AS lv_pt_ref_type
-                                      ,NULL        AS lv_pt_ref_code
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                      ,NULL        AS lv_pt_ref_type
+--                                      ,NULL        AS lv_pt_ref_code
+                                      ,'XXCMM_CUST_GYOTAI_CHU' AS lv_pt_ref_type
+                                      ,attribute1              AS lv_pt_ref_code
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                                 FROM  fnd_lookup_values
                                 WHERE language = cv_language_ja 
                                 AND   lookup_type = 'XXCMM_CUST_GYOTAI_SHO'
@@ -4122,7 +4157,10 @@ AS
                                       ,NULL        AS lv_pt_ref_code
                                 FROM  fnd_lookup_values
                                 WHERE language = cv_language_ja 
-                                AND   lookup_type = 'XXCSO1_ASN_HOUMON_KUBUN'
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                AND   lookup_type = 'XXCSO1_ASN_HOUMON_KUBUN'
+                                AND   lookup_type = 'XXCSO_ASN_HOUMON_KUBUN'
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                                 AND   enabled_flag = cv_y_flag
                                 ORDER BY lookup_code;
 
@@ -4164,7 +4202,10 @@ AS
         lv_errmsg := xxccp_common_pkg.get_msg(gv_xxcmm_msg_kbn,
                                               cv_no_data_err_msg,
                                               cv_lookup_type,
-                                              'XXCSO1_ASN_HOUMON_KUBUN');
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                              'XXCSO1_ASN_HOUMON_KUBUN');
+                                              'XXCSO_ASN_HOUMON_KUBUN');
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
         ov_retcode := cv_status_warn;
 
         --警告メッセージ出力
@@ -5520,18 +5561,28 @@ AS
     DECLARE
 
       CURSOR syozoku_mst_cur IS
-                                 SELECT 
-                                        lookup_type AS lv_ref_type 
-                                       ,lookup_code AS lv_ref_code 
-                                       ,meaning     AS lv_ref_name                                 
+-- 2009/04/03 Ver1.2 modify start by Yutaka.Kuboshima
+--                                 SELECT 
+--                                        lookup_type AS lv_ref_type 
+--                                       ,lookup_code AS lv_ref_code 
+--                                       ,meaning     AS lv_ref_name                                 
+--                                       ,NULL        AS lv_pt_ref_type
+--                                       ,NULL        AS lv_pt_ref_code
+                                 SELECT DISTINCT
+                                        lookup_type AS lv_ref_type
+                                       ,attribute1  AS lv_ref_code
+                                       ,attribute6  AS lv_ref_name
                                        ,NULL        AS lv_pt_ref_type
                                        ,NULL        AS lv_pt_ref_code
+-- 2009/04/03 Ver1.2 modify end by Yutaka.Kuboshima
                                  FROM  fnd_lookup_values
                                  WHERE language = cv_language_ja
                                  AND   lookup_type = 'XXCSO1_SYOZOKU_MST'
                                  AND   enabled_flag = cv_y_flag
-                                 ORDER BY lookup_code;
-
+-- 2009/04/03 Ver1.2 modify start by Yutaka.Kuboshima
+--                                 ORDER BY lookup_code;
+                                 ORDER BY attribute1;
+-- 2009/04/03 Ver1.2 modify end by Yutaka.Kuboshima
       syozoku_mst_rec syozoku_mst_cur%ROWTYPE;
      
     BEGIN
@@ -5596,8 +5647,12 @@ AS
       CURSOR jigyosyo_cur IS
                               SELECT 
                                      lookup_type AS lv_ref_type 
-                                    ,lookup_code AS lv_ref_code 
-                                    ,meaning     AS lv_ref_name                                 
+-- 2009/04/03 Ver1.2 modify start by Yutaka.Kuboshima
+--                                    ,lookup_code AS lv_ref_code 
+--                                    ,meaning     AS lv_ref_name                                 
+                                    ,attribute2  AS lv_ref_code
+                                    ,attribute7  AS lv_ref_name
+-- 2009/04/03 Ver1.2 modify end by Yutaka.Kuboshima
                                     ,'XXCSO1_SYOZOKU_MST_DFF1' AS lv_pt_ref_type     
                                     ,attribute1  AS lv_pt_ref_code
                               FROM  fnd_lookup_values
@@ -6210,8 +6265,10 @@ AS
                                 AND   mtl_tl.language = cv_language_ja
                                 AND   mtl_set_tl.category_set_name IN ('政策群コード', '商品製品区分')
                                 ORDER BY mtl_set_tl.category_set_name
-                                        ,mtl_b.attribute1;
-
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                        ,mtl_b.attribute1;
+                                        ,mtl_b.segment1;
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
       hinmoku_cat_rec hinmoku_cat_cur%ROWTYPE;
      
     BEGIN
@@ -6284,8 +6341,10 @@ AS
                                          ,NULL          AS lv_pt_ref_code
                                   FROM   ra_terms_tl
                                   WHERE  language = cv_language_ja
-                                  ORDER BY description;
-
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                  ORDER BY description;
+                                  ORDER BY name;
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
       shiharai_mst_rec shiharai_mst_cur%ROWTYPE;
 
     BEGIN
@@ -6504,14 +6563,24 @@ AS
     DECLARE
 
       CURSOR opm_loc_cur IS
+-- 2009/04/03 Ver1.2 modify start by Yutaka.Kuboshima
+--                             SELECT  
+--                                    'MTL_ITEM_LOCATIONS'   AS lv_ref_type 
+--                                   ,inventory_location_id  AS lv_ref_code
+--                                   ,description            AS lv_ref_name
+--                                   ,NULL                   AS lv_pt_ref_type
+--                                   ,NULL                   AS lv_pt_ref_code
+--                            FROM   mtl_item_locations
+--                            ORDER BY inventory_location_id;
                              SELECT  
-                                    'MTL_ITEM_LOCATIONS'   AS lv_ref_type 
-                                   ,inventory_location_id  AS lv_ref_code
-                                   ,description            AS lv_ref_name
+                                    'IC_WHSE_MST'          AS lv_ref_type 
+                                   ,whse_code              AS lv_ref_code
+                                   ,whse_name              AS lv_ref_name
                                    ,NULL                   AS lv_pt_ref_type
                                    ,NULL                   AS lv_pt_ref_code
-                            FROM   mtl_item_locations
-                            ORDER BY inventory_location_id;
+                            FROM   ic_whse_mst
+                            ORDER BY whse_code;
+-- 2009/04/03 Ver1.2 modify end by Yutaka.Kuboshima
 
       opm_loc_rec opm_loc_cur%ROWTYPE;
 
@@ -6579,12 +6648,18 @@ AS
       CURSOR vendor_cur IS
                             SELECT  
                                     'PO_VENDORS'  AS lv_ref_type 
-                                   ,vendor_id     AS lv_ref_code  
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                                   ,vendor_id     AS lv_ref_code  
+                                   ,segment1      AS lv_ref_code  
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
                                    ,vendor_name   AS lv_ref_name
                                    ,NULL          AS lv_pt_ref_type  
                                    ,NULL          AS lv_pt_ref_code
                             FROM   po_vendors
-                            ORDER BY vendor_id;
+-- 2009/04/02 Ver1.2 modify start by Yutaka.Kuboshima
+--                            ORDER BY vendor_id;
+                            ORDER BY segment1;
+-- 2009/04/02 Ver1.2 modify end by Yutaka.Kuboshima
 
       vendor_rec vendor_cur%ROWTYPE;
 
@@ -6658,6 +6733,9 @@ AS
                                ,NULL  AS lv_pt_ref_code
                         FROM   ar_vat_tax_all_b
                         WHERE  enabled_flag = cv_y_flag
+-- 2009/04/02 Ver1.2 add start by Yutaka.Kuboshima
+                        AND    gd_process_date BETWEEN start_date AND NVL(end_date, TO_DATE(cv_max_date, cv_date_format))
+-- 2009/04/02 Ver1.2 add end by Yutaka.Kuboshima
                         ORDER BY tax_code;
 
       tax_rec tax_cur%ROWTYPE;
