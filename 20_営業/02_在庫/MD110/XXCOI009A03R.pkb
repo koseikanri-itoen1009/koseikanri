@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A03R(body)
  * Description      : 工場入庫明細リスト
  * MD.050           : 工場入庫明細リスト MD050_COI_009_A03
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/03/02    1.1   K.Tsuboi         [障害番号028]品目コードに対応する略称が表示されない点について修正
  *                                       [障害番号029]標準原価額に取引数量×標準原価の計算値を設定する
  *  2009/04/22    1.2   T.Nakamura       [障害T1_0491]資材品目のみ抽出対象となる取引タイプを変更
+ *  2009/05/21    1.3   T.Nakamura       [障害T1_1111]取引タイプの絞込条件から梱包材料原価振替、梱包材料原価振替振戻を除外
  *
  *****************************************************************************************/
 --
@@ -550,8 +551,10 @@ AS
 -- == 2009/04/22 V1.2 Added START ===============================================================
     cv_tran_type_packing_temp      CONSTANT VARCHAR2(3)   := '250';  -- 取引タイプコード 梱包材料一時受入
     cv_tran_type_packing_temp_b    CONSTANT VARCHAR2(3)   := '260';  -- 取引タイプコード 梱包材料一時受入振戻
-    cv_tran_type_packing_cost      CONSTANT VARCHAR2(3)   := '270';  -- 取引タイプコード 梱包材料原価振替
-    cv_tran_type_packing_cost_b    CONSTANT VARCHAR2(3)   := '280';  -- 取引タイプコード 梱包材料原価振替振戻
+-- == 2009/05/21 V1.3 Deleted START =============================================================
+--    cv_tran_type_packing_cost      CONSTANT VARCHAR2(3)   := '270';  -- 取引タイプコード 梱包材料原価振替
+--    cv_tran_type_packing_cost_b    CONSTANT VARCHAR2(3)   := '280';  -- 取引タイプコード 梱包材料原価振替振戻
+-- == 2009/05/21 V1.3 Deleted END   =============================================================
 -- == 2009/04/22 V1.2 Added END   ===============================================================
 --   
     -- *** ローカル変数 ***
@@ -575,10 +578,12 @@ AS
     ln_tran_type_packing_temp      mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 梱包材料一時受入
     lv_tran_type_packing_temp_b    mtl_transaction_types.transaction_type_name%TYPE;   -- 取引タイプ名 梱包材料一時受入振戻
     ln_tran_type_packing_temp_b    mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 梱包材料一時受入振戻
-    lv_tran_type_packing_cost      mtl_transaction_types.transaction_type_name%TYPE;   -- 取引タイプ名 梱包材料原価振替
-    ln_tran_type_packing_cost      mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 梱包材料原価振替
-    lv_tran_type_packing_cost_b    mtl_transaction_types.transaction_type_name%TYPE;   -- 取引タイプ名 梱包材料原価振替振戻
-    ln_tran_type_packing_cost_b    mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 梱包材料原価振替振戻
+-- == 2009/05/21 V1.3 Deleted START =============================================================
+--    lv_tran_type_packing_cost      mtl_transaction_types.transaction_type_name%TYPE;   -- 取引タイプ名 梱包材料原価振替
+--    ln_tran_type_packing_cost      mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 梱包材料原価振替
+--    lv_tran_type_packing_cost_b    mtl_transaction_types.transaction_type_name%TYPE;   -- 取引タイプ名 梱包材料原価振替振戻
+--    ln_tran_type_packing_cost_b    mtl_transaction_types.transaction_type_id%TYPE;     -- 取引タイプID 梱包材料原価振替振戻
+-- == 2009/05/21 V1.3 Deleted END   =============================================================
 -- == 2009/04/22 V1.2 Added END   ===============================================================
 --
     -- ===============================
@@ -592,8 +597,10 @@ AS
              , tran_type2 NUMBER
              , tran_type3 NUMBER
              , tran_type4 NUMBER
-             , tran_type5 NUMBER
-             , tran_type6 NUMBER
+-- == 2009/05/21 V1.3 Deleted START =============================================================
+--             , tran_type5 NUMBER
+--             , tran_type6 NUMBER
+-- == 2009/05/21 V1.3 Deleted END   =============================================================
            )
 -- == 2009/04/22 V1.2 Moded END   ===============================================================
     IS
@@ -657,10 +664,13 @@ AS
       WHERE  TO_CHAR ( mmt.transaction_date, 'YYYYMM' ) = gr_param.year_month
 -- == 2009/04/22 V1.2 Moded START ===============================================================
 --        AND  mmt.transaction_type_id IN (tran_type1, tran_type2)
+-- == 2009/05/21 V1.3 Moded START ===============================================================
         AND ( ( cat.item_category       IN (cv_1, cv_2)
             AND mmt.transaction_type_id IN (tran_type1, tran_type2) )
           OR  ( cat.item_category       =   cv_3
-            AND mmt.transaction_type_id IN (tran_type3, tran_type4, tran_type5, tran_type6) ) )
+--            AND mmt.transaction_type_id IN (tran_type3, tran_type4, tran_type5, tran_type6) ) )
+            AND mmt.transaction_type_id IN (tran_type3, tran_type4) ) )
+-- == 2009/05/21 V1.3 Moded END   ===============================================================
 -- == 2009/04/22 V1.2 Moded END   ===============================================================
         AND  mmt.subinventory_code               =  msi.secondary_inventory_name
         AND  msi.attribute7                      =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
@@ -832,78 +842,80 @@ AS
       RAISE global_api_expt;
     END IF;
 --
-    -- ===============================
-    -- 取引タイプ名取得：梱包材料原価振替
-    -- ===============================
-    lv_tran_type_packing_cost := xxcoi_common_pkg.get_meaning(cv_tran_type,cv_tran_type_packing_cost);
-    --
-    -- リターンコードがNULLの場合はエラー
-    IF ( lv_tran_type_packing_cost IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name
-                     ,iv_name         => cv_msg_xxcoi10022
-                     ,iv_token_name1  => cv_tkn_lookup_type
-                     ,iv_token_value1 => cv_tran_type
-                     ,iv_token_name2  => cv_tkn_lookup_code
-                     ,iv_token_value2 => cv_tran_type_packing_cost
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    -- ===============================
-    -- 取引タイプID取得：梱包材料原価振替
-    -- ===============================
-    ln_tran_type_packing_cost := xxcoi_common_pkg.get_transaction_type_id(lv_tran_type_packing_cost);
-    --
-    -- リターンコードがNULLの場合はエラー
-    IF ( ln_tran_type_packing_cost IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name
-                     ,iv_name         => cv_msg_xxcoi10012
-                     ,iv_token_name1  => cv_tkn_tran_type
-                     ,iv_token_value1 => lv_tran_type_packing_cost
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    -- ===============================
-    -- 取引タイプ名取得：梱包材料原価振替振戻
-    -- ===============================
-    lv_tran_type_packing_cost_b := xxcoi_common_pkg.get_meaning(cv_tran_type,cv_tran_type_packing_cost_b);
-    --
-    -- リターンコードがNULLの場合はエラー
-    IF ( lv_tran_type_packing_cost_b IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name
-                     ,iv_name         => cv_msg_xxcoi10022
-                     ,iv_token_name1  => cv_tkn_lookup_type
-                     ,iv_token_value1 => cv_tran_type
-                     ,iv_token_name2  => cv_tkn_lookup_code
-                     ,iv_token_value2 => cv_tran_type_packing_cost_b
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
-    -- ===============================
-    -- 取引タイプID取得：梱包材料原価振替振戻
-    -- ===============================
-    ln_tran_type_packing_cost_b := xxcoi_common_pkg.get_transaction_type_id(lv_tran_type_packing_cost_b);
-    --
-    -- リターンコードがNULLの場合はエラー
-    IF ( ln_tran_type_packing_cost_b IS NULL ) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                      iv_application  => cv_app_name
-                     ,iv_name         => cv_msg_xxcoi10012
-                     ,iv_token_name1  => cv_tkn_tran_type
-                     ,iv_token_value1 => lv_tran_type_packing_cost_b
-                   );
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
---
+-- == 2009/05/21 V1.3 Deleted START =============================================================
+--    -- ===============================
+--    -- 取引タイプ名取得：梱包材料原価振替
+--    -- ===============================
+--    lv_tran_type_packing_cost := xxcoi_common_pkg.get_meaning(cv_tran_type,cv_tran_type_packing_cost);
+--    --
+--    -- リターンコードがNULLの場合はエラー
+--    IF ( lv_tran_type_packing_cost IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name
+--                     ,iv_name         => cv_msg_xxcoi10022
+--                     ,iv_token_name1  => cv_tkn_lookup_type
+--                     ,iv_token_value1 => cv_tran_type
+--                     ,iv_token_name2  => cv_tkn_lookup_code
+--                     ,iv_token_value2 => cv_tran_type_packing_cost
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    -- ===============================
+--    -- 取引タイプID取得：梱包材料原価振替
+--    -- ===============================
+--    ln_tran_type_packing_cost := xxcoi_common_pkg.get_transaction_type_id(lv_tran_type_packing_cost);
+--    --
+--    -- リターンコードがNULLの場合はエラー
+--    IF ( ln_tran_type_packing_cost IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name
+--                     ,iv_name         => cv_msg_xxcoi10012
+--                     ,iv_token_name1  => cv_tkn_tran_type
+--                     ,iv_token_value1 => lv_tran_type_packing_cost
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    -- ===============================
+--    -- 取引タイプ名取得：梱包材料原価振替振戻
+--    -- ===============================
+--    lv_tran_type_packing_cost_b := xxcoi_common_pkg.get_meaning(cv_tran_type,cv_tran_type_packing_cost_b);
+--    --
+--    -- リターンコードがNULLの場合はエラー
+--    IF ( lv_tran_type_packing_cost_b IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name
+--                     ,iv_name         => cv_msg_xxcoi10022
+--                     ,iv_token_name1  => cv_tkn_lookup_type
+--                     ,iv_token_value1 => cv_tran_type
+--                     ,iv_token_name2  => cv_tkn_lookup_code
+--                     ,iv_token_value2 => cv_tran_type_packing_cost_b
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+----
+--    -- ===============================
+--    -- 取引タイプID取得：梱包材料原価振替振戻
+--    -- ===============================
+--    ln_tran_type_packing_cost_b := xxcoi_common_pkg.get_transaction_type_id(lv_tran_type_packing_cost_b);
+--    --
+--    -- リターンコードがNULLの場合はエラー
+--    IF ( ln_tran_type_packing_cost_b IS NULL ) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                      iv_application  => cv_app_name
+--                     ,iv_name         => cv_msg_xxcoi10012
+--                     ,iv_token_name1  => cv_tkn_tran_type
+--                     ,iv_token_value1 => lv_tran_type_packing_cost_b
+--                   );
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+----
+-- == 2009/05/21 V1.3 Deleted END   =============================================================
 -- == 2009/04/22 V1.2 Added END   ===============================================================
     -- ***************************************
     -- ***        ループ処理の記述         ***
@@ -918,8 +930,10 @@ AS
             , tran_type2 => ln_tran_type_factory_store_b
             , tran_type3 => ln_tran_type_packing_temp
             , tran_type4 => ln_tran_type_packing_temp_b
-            , tran_type5 => ln_tran_type_packing_cost
-            , tran_type6 => ln_tran_type_packing_cost_b
+-- == 2009/05/21 V1.3 Deleted START =============================================================
+--            , tran_type5 => ln_tran_type_packing_cost
+--            , tran_type6 => ln_tran_type_packing_cost_b
+-- == 2009/05/21 V1.3 Deleted END   =============================================================
           );
 -- == 2009/04/22 V1.2 Moded END   ===============================================================
     --
