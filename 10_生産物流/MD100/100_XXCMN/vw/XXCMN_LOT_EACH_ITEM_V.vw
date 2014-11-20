@@ -3,7 +3,7 @@
  *
  * View Name       : XXCMN_LOT_EACH_ITEM_V
  * Description     : ロット別品目情報View
- * Version         : 1.1
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -12,6 +12,7 @@
  *  2008-04-14    1.0   R.Tomoyose       新規作成
  *  2008-05-20    1.1   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_Vをやめ
  *                                       必要なテーブルのみの結合とする。
+ *  2008-06-30    1.2   Y.Ishikawa       カテゴリ取得部分でGROUP BYの利用をやめる
  *
  ************************************************************************/
  CREATE OR REPLACE VIEW XXCMN_LOT_EACH_ITEM_V(
@@ -141,10 +142,10 @@ SELECT  XIMV.ITEM_ID                        ITEM_ID,
         XIMV.DESTINATION_DIV                ITEM_ATTRIBUTE28,
         XIMV.ORDER_JUDGE_TIMES              ITEM_ATTRIBUTE29,
         XIMV.RECEPT_DATE                    ITEM_ATTRIBUTE30,
-        XICV.ITEM_CLASS_CODE                ITEM_DIV,
-        XICV.PROD_CLASS_CODE                PROD_DIV,
-        XICV.CROWD_CODE                     CROWD_CODE,
-        XICV.ACNT_CROWD_CODE                ACNT_CROWD_CODE,
+        MCB_A2.SEGMENT1                     ITEM_DIV,
+        MCB_A1.SEGMENT1                     PROD_DIV,
+        MCB_A3.SEGMENT1                     CROWD_CODE,
+        MCB_A4.SEGMENT1                     ACNT_CROWD_CODE,
         XIMV.ITEM_NAME                      ITEM_NAME,
         XIMV.ITEM_SHORT_NAME                ITEM_SHORT_NAME,
         XIMV.ITEM_NAME_ALT                  ITEM_NAME_ALT,
@@ -194,34 +195,46 @@ SELECT  XIMV.ITEM_ID                        ITEM_ID,
 FROM  XXCMN_ITEM_MST2_V         XIMV,
       IC_LOTS_MST               ILM,
       XXCMN_LOT_COST            XLC,
-      (SELECT GIC.ITEM_ID
-        ,MAX( CASE
-                WHEN MCST.CATEGORY_SET_NAME = '商品区分' THEN MCB.SEGMENT1
-                ELSE NULL
-              END ) AS PROD_CLASS_CODE
-        ,MAX( CASE
-                WHEN MCST.CATEGORY_SET_NAME = '品目区分' THEN MCB.SEGMENT1
-                ELSE NULL
-              END ) AS ITEM_CLASS_CODE
-        ,MAX( CASE
-                WHEN MCST.CATEGORY_SET_NAME = '群コード' THEN MCB.SEGMENT1
-                ELSE NULL
-              END ) AS CROWD_CODE
-        ,MAX( CASE
-                WHEN MCST.CATEGORY_SET_NAME = '経理部用群コード' THEN MCB.SEGMENT1
-                ELSE NULL
-              END ) AS ACNT_CROWD_CODE
-         FROM
-              GMI_ITEM_CATEGORIES    GIC
-             ,MTL_CATEGORIES_B       MCB
-             ,MTL_CATEGORY_SETS_TL   MCST
-        WHERE GIC.CATEGORY_SET_ID   = MCST.CATEGORY_SET_ID
-          AND GIC.CATEGORY_ID       = MCB.CATEGORY_ID
-          AND MCST.LANGUAGE         = 'JA'
-          AND MCST.SOURCE_LANG      = 'JA'
-          AND MCST.CATEGORY_SET_NAME IN( '商品区分','品目区分','群コード','経理部用群コード' )
-        GROUP BY GIC.ITEM_ID)     XICV
-WHERE XIMV.ITEM_ID  = XICV.ITEM_ID
+      GMI_ITEM_CATEGORIES       GIC_A1,
+      MTL_CATEGORIES_B          MCB_A1,
+      MTL_CATEGORY_SETS_TL      MCST_A1,
+      GMI_ITEM_CATEGORIES       GIC_A2,
+      MTL_CATEGORIES_B          MCB_A2,
+      MTL_CATEGORY_SETS_TL      MCST_A2,
+      GMI_ITEM_CATEGORIES       GIC_A3,
+      MTL_CATEGORIES_B          MCB_A3,
+      MTL_CATEGORY_SETS_TL      MCST_A3,
+      GMI_ITEM_CATEGORIES       GIC_A4,
+      MTL_CATEGORIES_B          MCB_A4,
+      MTL_CATEGORY_SETS_TL      MCST_A4
+  -- 商品区分カテゴリ取得情報
+  WHERE GIC_A1.CATEGORY_SET_ID  = MCST_A1.CATEGORY_SET_ID
+  AND GIC_A1.CATEGORY_ID        = MCB_A1.CATEGORY_ID
+  AND MCST_A1.LANGUAGE          = 'JA'
+  AND MCST_A1.SOURCE_LANG       = 'JA'
+  AND MCST_A1.CATEGORY_SET_NAME = '商品区分'
+  AND XIMV.ITEM_ID              = GIC_A1.ITEM_ID
+  -- 商品区分カテゴリ取得情報
+  AND GIC_A2.CATEGORY_SET_ID    = MCST_A2.CATEGORY_SET_ID
+  AND GIC_A2.CATEGORY_ID        = MCB_A2.CATEGORY_ID
+  AND MCST_A2.LANGUAGE          = 'JA'
+  AND MCST_A2.SOURCE_LANG       = 'JA'
+  AND MCST_A2.CATEGORY_SET_NAME = '品目区分'
+  AND XIMV.ITEM_ID              = GIC_A2.ITEM_ID
+  -- 郡取得情報
+  AND GIC_A3.CATEGORY_SET_ID    = MCST_A3.CATEGORY_SET_ID
+  AND GIC_A3.CATEGORY_ID        = MCB_A3.CATEGORY_ID
+  AND MCST_A3.LANGUAGE          = 'JA'
+  AND MCST_A3.SOURCE_LANG       = 'JA'
+  AND MCST_A3.CATEGORY_SET_NAME = '群コード'
+  AND XIMV.ITEM_ID              = GIC_A3.ITEM_ID
+  -- 経理郡取得情報
+  AND GIC_A4.CATEGORY_SET_ID    = MCST_A4.CATEGORY_SET_ID
+  AND GIC_A4.CATEGORY_ID        = MCB_A4.CATEGORY_ID
+  AND MCST_A4.LANGUAGE          = 'JA'
+  AND MCST_A4.SOURCE_LANG       = 'JA'
+  AND MCST_A4.CATEGORY_SET_NAME = '経理部用群コード'
+  AND XIMV.ITEM_ID              = GIC_A4.ITEM_ID
   AND XIMV.ITEM_ID  = ILM.ITEM_ID(+)
   AND ILM.ITEM_ID   = XLC.ITEM_ID(+)
   AND ILM.LOT_ID    = XLC.LOT_ID(+)
