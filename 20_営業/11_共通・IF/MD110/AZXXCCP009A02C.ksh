@@ -5,7 +5,7 @@
 ## Program Name     : AZXXCCP009A02C                                            ##
 ## Description      : 対向システムジョブ状況更新処理                            ##
 ## MD.050           : 対向システムジョブ状況更新処理 <MD050_CCP_009_A02>        ##
-## Version          : 1.1                                                       ##
+## Version          : 1.4                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -33,6 +33,7 @@
 ##  2009/06/17    1.3   Shigeto.Niki     [PT単体性能フィードバック]             ##
 ##                                         CONCSUB要求待ち時間変更              ##
 ##                                           (デフォルト15秒→1秒)              ##
+##  2009/11/23    1.4   Shigeto.Niki     ログ出力先修正                         ##
 ##################################################################################
 
 ################################################################################
@@ -44,7 +45,11 @@ L_user_name="JP1SALES"               #ユーザ名
 L_conc_appl="XXCCP"                  #コンカレント：アプリケーション短縮名
 L_conc_name="XXCCP009A02C"           #コンカレント：プログラム短縮名
 # 2009/03/04 Ver.1.1 Koji.Oomata add START
-L_logpath="/var/tmp/jp1/log"
+
+# 2009/11/23 Ver.1.4 Shigeto.Niki mod START
+#L_logpath="/var/tmp/jp1/log"
+L_logpath="/var/log/jp1/PEBSITO"
+# 2009/11/23 Ver.1.4 Shigeto.Niki mod END
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`

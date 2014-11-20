@@ -5,7 +5,7 @@
 ## Program Name     : XXCCP009A01C                                              ##
 ## Description      : 画面起動ジョブネット対応                                  ##
 ## MD.050           : 画面起動ジョブネット対応 <MD050_CCP_009_A01>              ##
-## Version          : 1.10                                                      ##
+## Version          : 1.11                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -89,6 +89,7 @@
 ##                                       ・FND_CONCURRENT_REQUESTSテーブルを    ##
 ##                                         参照し、完了のデータのみを監視対象   ##
 ##                                         とする。                             ##
+##  2009/11/23    1.11  Shigeto.Niki     ・一時ファイルパス修正                 ##
 ##                                                                              ##
 ##################################################################################
 
@@ -96,8 +97,11 @@
 ##                                 変数定義                                   ##
 ################################################################################
 # 2009/04/02 Ver.1.4 Masayuki.Sano mod START
-#L_tmppath="/var/tmp"                 #一時ファイルパス[環境依存値] #2009/08/19 Ver1.7 Add
-L_tmppath="$COMMON_TOP/temp"          #一時ファイルパス
+#L_tmppath="/var/tmp"                            #一時ファイルパス[環境依存値] #2009/08/19 Ver1.7 Add
+# 2009/11/23 Ver.1.11 Shigeto.Niki mod START
+#L_tmppath="$COMMON_TOP/tmp"                      #一時ファイルパス
+L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"        #一時ファイルパス
+# 2009/11/23 Ver.1.11 Shigeto.Niki mod END
 # 2009/04/02 Ver.1.4 Masayuki.Sano mod END
 
 C_appl_name="XXCCP"                  #共通：アプリケーション短縮目

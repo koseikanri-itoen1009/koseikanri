@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIシステム用I/F連携機能（INBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.10                                                      ##
+## Version          : 1.11                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -48,6 +48,7 @@
 ##                                         日本語のパス情報を取得するよう修正   ##
 ##  2009/08/19    1.10  Masayuki.Sano    障害番号[0000835]                      ##
 ##                                         一時ファイル名変更                   ##
+##  2009/11/23    1.11  Shigeto.Niki     一時ファイルパス修正                   ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -57,10 +58,14 @@
 ##                                 変数定義                                   ##
 ################################################################################
 
-C_appl_name="XXCCP"                #アプリケーション短縮名
-C_program_id="ZBZZEXINBOUND"       #プログラムID
-L_logpath="/var/log/jp1/PEBSITO"   #ログファイルパス[環境依存値]
-L_tmppath="$COMMON_TOP/temp"       #一時ファイルパス[環境依存値]
+C_appl_name="XXCCP"                             #アプリケーション短縮名
+C_program_id="ZBZZEXINBOUND"                    #プログラムID
+L_logpath="/var/log/jp1/PEBSITO"                #ログファイルパス[環境依存値]
+
+# 2009/11/23 Ver.1.11 Shigeto.Niki mod START
+#L_tmppath="$COMMON_TOP/temp"                    #一時ファイルパス[環境依存値]
+L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"       #一時ファイルパス[環境依存値]
+# 2009/11/23 Ver.1.11 Shigeto.Niki mod END
 
 # 戻り値
 #2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 Start

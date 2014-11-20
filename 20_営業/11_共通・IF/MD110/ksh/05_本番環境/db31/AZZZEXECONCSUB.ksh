@@ -5,7 +5,7 @@
 ## Program Name     : AZZZEXECONCSUB                                            ##
 ## Description      : EBSコンカレント用汎用スクリプト                           ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.4                                                       ##
+## Version          : 1.5                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -34,6 +34,7 @@
 ##                                           (デフォルト60秒→1秒)              ##
 ##  2009/08/19    1.4   Masayuki.Sano    障害番号[0000835]                      ##
 ##                                       ・一時ファイル名変更                   ##
+##  2009/11/23    1.5   Shigeto.NIki     ・一時ファイルパス修正                 ##
 ##                                                                              ##
 ##################################################################################
 
@@ -42,9 +43,13 @@
 ################################################################################
 
 ## 変数定義
-#L_shellpath="/uspg/jp1/zb/shl/T1"                                  #2009/08/19 Ver1.4 DEL
-L_logpath="/var/log/jp1/PEBSITO"   #ログファイルパス[環境依存値]
-L_tmppath="$COMMON_TOP/temp"       #一時ファイルパス[環境依存値]
+#L_shellpath="/uspg/jp1/zb/shl/T1"               #2009/08/19 Ver1.4 DEL
+L_logpath="/var/log/jp1/PEBSITO"                 #ログファイルパス[環境依存値]
+
+# 2009/11/23 Ver.1.5 Shigeto.Niki mod START
+#L_tmppath="$COMMON_TOP/temp"                     #一時ファイルパス[環境依存値]
+L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"        #一時ファイルパス[環境依存値]
+# 2009/11/23 Ver.1.5 Shigeto.Niki mod END
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
