@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK015A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : EDIシステムにてイセトー社へ送信する支払案内書(圧着はがき)用データファイル作成
- * Version          : 2.4
+ * Version          : 2.5
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009/11/16    2.2   S.Moriyama       [変更依頼I_E_665] 郵便番号を7桁ハイフンなしからハイフンありへ変更
  *  2009/12/15    2.3   K.Nakamura       [障害E_本稼動_00427] 銀行振込手数料の算出を変更
  *  2010/01/06    2.4   K.Yamaguchi      [E_本稼動_00901] 締め日の判定方法修正
+ *  2010/10/20    2.5   S.Arizumi        [E_本稼動_01144対応]金額確定ステータスが確定済のレコードのみ対象とするように修正
  *
  *****************************************************************************************/
   -- ===============================================
@@ -137,11 +138,14 @@ AS
   cv_prof_edi_data_type_line CONSTANT VARCHAR2(40)    := 'XXCOK1_ISETO_EDI_DATA_TYPE_LINE';  -- XXCOK:イセトーEDIデータ区分_明細
   cv_prof_edi_data_type_fee  CONSTANT VARCHAR2(40)    := 'XXCOK1_ISETO_EDI_DATA_TYPE_FEE';   -- XXCOK:イセトーEDIデータ区分_手数料
   cv_prof_edi_data_type_sum  CONSTANT VARCHAR2(40)    := 'XXCOK1_ISETO_EDI_DATA_TYPE_SUM';   -- XXCOK:イセトーEDIデータ区分_合計
-  cv_prof_org_id             CONSTANT VARCHAR2(40)    := 'ORG_ID';                           -- 組織ID
+  cv_prof_org_id             CONSTANT VARCHAR2(40)    := 'ORG_ID';                           -- MO: 営業単位
   -- セパレータ
   cv_msg_part                CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                CONSTANT VARCHAR2(1)     := '.';
   cv_msg_canm                CONSTANT VARCHAR2(1)     := ',';
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi ADD START
+  cv_msg_wq                  CONSTANT VARCHAR2(1)     := '"';
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi ADD END
   -- 数値
   cn_number_0                CONSTANT NUMBER          := 0;
   cn_number_1                CONSTANT NUMBER          := 1;
@@ -168,9 +172,15 @@ AS
   -- 連携ステータス（EDI支払案内書）
   cv_edi_if_status_0         CONSTANT VARCHAR2(1)     := '0';                   -- 未処理
   cv_edi_if_status_1         CONSTANT VARCHAR2(1)     := '1';                   -- 処理済
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi ADD START
+  -- 連携ステータス（本振用FB）
+  cv_fb_if_status_0          CONSTANT VARCHAR2(1)     := '0';                   -- 未処理
+  -- 連携ステータス（GL）
+  cv_gl_if_status_0          CONSTANT VARCHAR2(1)     := '0';                   -- 未処理
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi ADD END
   -- BM支払区分
-  cv_bm_pay_class_1          CONSTANT VARCHAR2(1)     := '1';                   -- 本振(案内有)
-  cv_bm_pay_class_2          CONSTANT VARCHAR2(1)     := '2';                   -- 本振(案内無)
+  cv_bm_pay_class_1          CONSTANT VARCHAR2(1)     := '1';                   -- 本振(案内書あり)
+  cv_bm_pay_class_2          CONSTANT VARCHAR2(1)     := '2';                   -- 本振(案内書なし)
   -- 主銀行フラグ
   cv_primary_flag            CONSTANT VARCHAR2(1)     := 'Y';                   -- 主銀行
   -- 銀行手数料負担者
@@ -196,11 +206,13 @@ AS
   gn_error_cnt               NUMBER DEFAULT cn_number_0;                        -- エラー件数
   gn_skip_cnt                NUMBER DEFAULT cn_number_0;                        -- スキップ件数
   gd_process_date            DATE   DEFAULT NULL;                               -- 業務処理日付
-  gd_operating_date          DATE   DEFAULT NULL;                               -- 営業日(連携対象締め日)
-  gd_close_date              DATE   DEFAULT NULL;                               -- 締め日
-  gd_schedule_date           DATE   DEFAULT NULL;                               -- 支払予定日
+  gd_operating_date          DATE   DEFAULT NULL;                               -- 締め支払日導出元日付
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi DELETE START
+--  gd_close_date              DATE   DEFAULT NULL;                               -- 締め日
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi DELETE START
+  gd_schedule_date           DATE   DEFAULT NULL;                               -- 締め日
   gd_pay_date                DATE   DEFAULT NULL;                               -- 支払日
-  gv_prof_org_id             VARCHAR2(40) DEFAULT NULL;                         -- 組織ID
+  gv_prof_org_id             VARCHAR2(40) DEFAULT NULL;                         -- 営業単位ID
   gv_i_dire_path             fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- イセトー_ディレクトリパス
   gv_i_file_name             fnd_profile_option_values.profile_option_value%TYPE DEFAULT NULL; -- イセトー_ファイル名
 -- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi DELETE START
@@ -297,12 +309,22 @@ AS
 --       AND xbb.closing_date              <= gd_operating_date
        AND xbb.closing_date              <= gd_schedule_date
 -- 2010/01/06 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi REPAIR END
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi ADD START
+       AND xbb.expect_payment_date       <= gd_pay_date
+       AND xbb.fb_interface_status       =  cv_fb_if_status_0
+       AND xbb.gl_interface_status       =  cv_gl_if_status_0
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi ADD END
        AND NVL( xbb.payment_amt_tax, cn_number_0 ) =  cn_number_0
        AND pv.segment1                   =  xbb.supplier_code
        AND pv.vendor_id                  =  pvs.vendor_id
-       AND pvs.vendor_site_code          =  xbb.supplier_site_code
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi DELETE START
+--       AND pvs.vendor_site_code          =  xbb.supplier_site_code
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi DELETE END
        AND pvs.attribute4                IN ( cv_bm_pay_class_1 , cv_bm_pay_class_2 )
-       AND TRUNC( gd_process_date )      <  NVL( pvs.inactive_date, TRUNC( gd_process_date ) + 1 )
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi REPAIR START
+--       AND TRUNC( gd_process_date )      <  NVL( pvs.inactive_date, TRUNC( gd_process_date ) + 1 )
+       AND gd_pay_date                   <  NVL( pvs.inactive_date, gd_pay_date + 1 )
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi REPAIR END
        AND pvs.org_id                    =  TO_NUMBER( gv_prof_org_id )
        AND cntct_hca.account_number      =  pvs.attribute5
        AND cntct_hp.party_id             =  cntct_hca.party_id
@@ -313,8 +335,12 @@ AS
        AND pvs.vendor_id                 =  abau.vendor_id
        AND pvs.vendor_site_id            =  abau.vendor_site_id
        AND abau.primary_flag             =  cv_primary_flag
-       AND TRUNC( gd_process_date )      BETWEEN NVL( abau.start_date, TRUNC( gd_process_date ) )
-                                             AND NVL( abau.end_date,   TRUNC( gd_process_date ) )
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi REPAIR START
+--       AND TRUNC( gd_process_date )      BETWEEN NVL( abau.start_date, TRUNC( gd_process_date ) )
+--                                             AND NVL( abau.end_date,   TRUNC( gd_process_date ) )
+       AND gd_pay_date                   BETWEEN NVL( abau.start_date, gd_pay_date )
+                                             AND NVL( abau.end_date,   gd_pay_date )
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi REPAIR END
        AND aba.bank_account_id           =  abau.external_bank_account_id
        AND abb.bank_branch_id            =  aba.bank_branch_id
 -- 2010/01/12 Ver.2.4 [E_本稼動_00901] SCS K.Yamaguchi ADD START
@@ -510,6 +536,9 @@ AS
          AND xbb.expect_payment_date   BETWEEN it_bm_data_rec.expect_payment_date_start
                                        AND it_bm_data_rec.expect_payment_date_end
          AND NVL( xbb.payment_amt_tax , 0) = cn_number_0
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi ADD START
+         AND xbb.amt_fix_status        = cv_fix_status
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi ADD END
          AND xbb.base_code             = it_bm_line_rec.sales_base_code
          AND xbb.cust_code             = it_bm_line_rec.cust_code
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
@@ -1300,7 +1329,10 @@ AS
 --
     CURSOR l_output_header_cur
     IS
-      SELECT flv.meaning
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi REPAIR START
+--      SELECT flv.meaning
+      SELECT cv_msg_wq || flv.meaning || cv_msg_wq  AS meaning
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi REPAIR END
         FROM fnd_lookup_values flv
        WHERE flv.lookup_type = cv_lookup_type
          AND flv.language = USERENV('LANG')
@@ -1438,23 +1470,42 @@ AS
       -- ===============================================
       -- 連携情報CSV出力
       -- ===============================================
-      lv_output_csv_data := l_bm_data_rec.payee_code                 || cv_msg_canm  -- 仕入先CD
-                         || l_bm_data_rec.payee_name                 || cv_msg_canm  -- 仕入先名
-                         || l_bm_data_rec.cntct_base_code            || cv_msg_canm  -- 拠点CD
-                         || l_bm_data_rec.cntct_base_name            || cv_msg_canm  -- 拠点名
-                         || l_bm_data_rec.payee_bank_number          || cv_msg_canm  -- 銀行CD
-                         || l_bm_data_rec.payee_bank_name            || cv_msg_canm  -- 銀行名
-                         || l_bm_data_rec.payee_bank_branch_num      || cv_msg_canm  -- 支店CD
-                         || l_bm_data_rec.payee_bank_branch_name     || cv_msg_canm  -- 支店名
-                         || l_bm_data_rec.payee_bank_holder_name_alt || cv_msg_canm  -- 口座名
-                         || TO_CHAR( l_bm_data_rec.total_payment_amt_tax )
-                                                                     || cv_msg_canm  -- BM総合計
-                         || TO_CHAR( l_bm_data_rec.reserve_amt_tax ) || cv_msg_canm  -- 保留金額
-                         || TO_CHAR( l_bm_data_rec.payment_amt_tax ) || cv_msg_canm  -- BM金額
-                         || TO_CHAR( gn_bank_fee )                   || cv_msg_canm  -- 振手料
-                         || TO_CHAR( ln_total_payment_amt_tax )      || cv_msg_canm  -- 総支払額
-                         || l_bm_data_rec.payee_bm_pay_class         || cv_msg_canm  -- BM支払区分
-                         || lv_output_error ;                                        -- エラー
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi REPAIR START
+--      lv_output_csv_data := l_bm_data_rec.payee_code                 || cv_msg_canm  -- 仕入先CD
+--                         || l_bm_data_rec.payee_name                 || cv_msg_canm  -- 仕入先名
+--                         || l_bm_data_rec.cntct_base_code            || cv_msg_canm  -- 拠点CD
+--                         || l_bm_data_rec.cntct_base_name            || cv_msg_canm  -- 拠点名
+--                         || l_bm_data_rec.payee_bank_number          || cv_msg_canm  -- 銀行CD
+--                         || l_bm_data_rec.payee_bank_name            || cv_msg_canm  -- 銀行名
+--                         || l_bm_data_rec.payee_bank_branch_num      || cv_msg_canm  -- 支店CD
+--                         || l_bm_data_rec.payee_bank_branch_name     || cv_msg_canm  -- 支店名
+--                         || l_bm_data_rec.payee_bank_holder_name_alt || cv_msg_canm  -- 口座名
+--                         || TO_CHAR( l_bm_data_rec.total_payment_amt_tax )
+--                                                                     || cv_msg_canm  -- BM総合計
+--                         || TO_CHAR( l_bm_data_rec.reserve_amt_tax ) || cv_msg_canm  -- 保留金額
+--                         || TO_CHAR( l_bm_data_rec.payment_amt_tax ) || cv_msg_canm  -- BM金額
+--                         || TO_CHAR( gn_bank_fee )                   || cv_msg_canm  -- 振手料
+--                         || TO_CHAR( ln_total_payment_amt_tax )      || cv_msg_canm  -- 総支払額
+--                         || l_bm_data_rec.payee_bm_pay_class         || cv_msg_canm  -- BM支払区分
+--                         || lv_output_error ;                                        -- エラー
+      lv_output_csv_data := cv_msg_wq || l_bm_data_rec.payee_code                 || cv_msg_wq  -- 仕入先CD
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.payee_name                 || cv_msg_wq  -- 仕入先名
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.cntct_base_code            || cv_msg_wq  -- 拠点CD
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.cntct_base_name            || cv_msg_wq  -- 拠点名
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.payee_bank_number          || cv_msg_wq  -- 銀行CD
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.payee_bank_name            || cv_msg_wq  -- 銀行名
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.payee_bank_branch_num      || cv_msg_wq  -- 支店CD
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.payee_bank_branch_name     || cv_msg_wq  -- 支店名
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.payee_bank_holder_name_alt || cv_msg_wq  -- 口座名
+          || cv_msg_canm ||              TO_CHAR( l_bm_data_rec.total_payment_amt_tax )         -- BM総合計
+          || cv_msg_canm ||              TO_CHAR( l_bm_data_rec.reserve_amt_tax       )         -- 保留金額
+          || cv_msg_canm ||              TO_CHAR( l_bm_data_rec.payment_amt_tax       )         -- BM金額
+          || cv_msg_canm ||              TO_CHAR( gn_bank_fee                         )         -- 振手料
+          || cv_msg_canm ||              TO_CHAR( ln_total_payment_amt_tax            )         -- 総支払額
+          || cv_msg_canm || cv_msg_wq || l_bm_data_rec.payee_bm_pay_class         || cv_msg_wq  -- BM支払区分
+          || cv_msg_canm || cv_msg_wq || lv_output_error                          || cv_msg_wq  -- エラー
+          ;
+-- 2010/10/20 Ver.2.5 [E_本稼動_01144] SCS S.Arizumi REPAIR END
 --
       -- ===============================================
       -- 出力の表示へ連係情報出力

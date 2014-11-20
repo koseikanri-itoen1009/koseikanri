@@ -13,7 +13,7 @@ AS
  *                    自販機販売手数料を振り込むためのFBデータを作成します。
  *
  * MD.050           : FBデータファイル作成（FBデータ作成） MD050_COK_016_A02
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *                                   FB作成データレコードの出力(A-10)
  *                                   FB作成トレーラレコードの出力(A-13)
  *                                   FB作成エンドレコードの出力(A-15)
+ *  upd_carried_forward_data         翌月繰り越しデータの更新(A-17)
  *  submain                          メイン処理プロシージャ
  *  main                             コンカレント実行ファイル登録プロシージャ
  *
@@ -57,6 +58,8 @@ AS
  *  2009/12/17    1.9   S.Moriyama       [E_本稼動_00511対応]FB明細レコードの振込金額の次項目として
  *                                                           91byte目に半角数値0を設定するように修正
  *                                                           顧客コード1、顧客コード2については10byte前0埋めを行うように修正
+ *  2010/09/30    1.10  S.Arizumi        [E_本稼動_01144対応]当月保留分を翌月のイセトー経由の支払案内書に含む修正
+ *                                                           金額確定ステータスが確定済のレコードのみ対象とするように修正
  *
  *****************************************************************************************/
 --
@@ -110,8 +113,12 @@ AS
   cv_msg_cok_10254            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10254';    -- FB作成明細情報取得エラー
   cv_msg_cok_10255            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10255';    -- FB作成ヘッダー情報取得エラー
   cv_msg_cok_10256            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10256';    -- FB作成ヘッダー情報重複エラー
-  cv_msg_cok_10243            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10243';    -- FB作成結果更新ロックエラー
-  cv_msg_cok_10244            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10244';    -- FB作成結果更新エラー
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR START
+--  cv_msg_cok_10243            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10243';    -- FB作成結果更新ロックエラー
+--  cv_msg_cok_10244            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10244';    -- FB作成結果更新エラー
+  cv_msg_cok_00053            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00053';    -- 販手残高テーブル更新ロックエラー
+  cv_msg_cok_00054            CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00054';    -- 販手残高テーブル更新エラー
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR END
   cv_msg_ccp_90000            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90000';    -- 抽出件数メッセージ
   cv_msg_ccp_90002            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90002';    -- エラー件数メッセージ
   cv_msg_ccp_90001            CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90001';    -- ファイル出力件数メッセージ
@@ -142,6 +149,12 @@ AS
   cv_zero                     CONSTANT VARCHAR2(1)   := '0';                   -- 文字型数字：'0'
   cv_1                        CONSTANT VARCHAR2(1)   := '1';                   -- 文字型数字：'1'
   cv_2                        CONSTANT VARCHAR2(1)   := '2';                   -- 文字型数字：'2'
+--
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD START
+  cn_zero                     CONSTANT NUMBER        := 0;                     -- 数値：0
+  cn_1                        CONSTANT NUMBER        := 1;                     -- 数値：1
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
+--
 -- Start 2009/05/12 Ver_1.3 T1_0832 M.Hiruta
   cv_i                        CONSTANT VARCHAR2(1)   := 'I';                   -- 銀行手数料負担者：'I'（当方）
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
@@ -264,10 +277,17 @@ AS
         ,ap_bank_accounts_all          abaa                                          -- 銀行口座マスタ
         ,ap_bank_branches              abb                                           -- 銀行支店マスタ
   WHERE  xbb.fb_interface_status        = cv_zero
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD START
+  AND    xbb.gl_interface_status        = cv_zero
+  AND    xbb.amt_fix_status             = cv_1
+  AND    xbb.payment_amt_tax            = cn_zero
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
   AND    xbb.resv_flag                 IS NULL
   AND    xbb.expect_payment_date       <= gd_pay_date
   AND    xbb.supplier_code              = pv.segment1
-  AND    xbb.supplier_site_code         = pvsa.vendor_site_code
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE START
+--  AND    xbb.supplier_site_code         = pvsa.vendor_site_code
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE END
   AND    pvsa.hold_all_payments_flag    = cv_no
   AND    ( pvsa.inactive_date          IS NULL OR pvsa.inactive_date >= gd_pay_date )
   AND    pvsa.attribute4               IN( cv_1, cv_2 )
@@ -351,8 +371,10 @@ AS
     -- ローカル定数
     --===============================
     cv_prg_name      CONSTANT       VARCHAR2(100) := 'init';     -- プログラム名
-    cn_zero          CONSTANT       NUMBER        := 0;          -- 数値:0
-    cn_1             CONSTANT       NUMBER        := 1;          -- 数値:1
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE START
+--    cn_zero          CONSTANT       NUMBER        := 0;          -- 数値:0
+--    cn_1             CONSTANT       NUMBER        := 1;          -- 数値:1
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE END
     --===============================
     -- ローカル変数
     --===============================
@@ -1122,7 +1144,9 @@ AS
     -- グローバル定数化
 --    cv_i               CONSTANT VARCHAR2(1)   := 'I';                     -- 当方
 -- End   2009/05/12 Ver_1.3 T1_0832 M.Hiruta
-    cn_zero            CONSTANT NUMBER        := 0;                       -- 数値：0
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE START
+--    cn_zero            CONSTANT NUMBER        := 0;                       -- 数値：0
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE END
     --================================
     -- ローカル変数
     --================================
@@ -1245,8 +1269,10 @@ AS
     cv_prg_name        CONSTANT VARCHAR2(100) := 'storage_fb_line';   -- プログラム名
     --
     cv_data_type       CONSTANT VARCHAR2(1)   := '2';                 -- データ区分
-    cn_zero            CONSTANT NUMBER        := 0;                   -- 数値：0
-    cn_1               CONSTANT NUMBER        := 1;                   -- 数値：1
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE END
+--    cn_zero            CONSTANT NUMBER        := 0;                   -- 数値：0
+--    cn_1               CONSTANT NUMBER        := 1;                   -- 数値：1
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE END
     --=================================
     -- ローカル変数
     --=================================
@@ -1356,7 +1382,9 @@ AS
     -- ローカル定数
     --===============================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_backmargin_balance'; -- プログラム名
-    cn_zero       CONSTANT NUMBER        := 0;                        -- 数値：0
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE START
+--    cn_zero       CONSTANT NUMBER        := 0;                        -- 数値：0
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi DELETE END
     --================================
     -- ローカル変数
     --================================
@@ -1374,7 +1402,12 @@ AS
     SELECT xbb.bm_balance_id  AS bm_balance_id          -- 販手残高ID
     FROM   xxcok_backmargin_balance  xbb                -- 販手残高テーブル
     WHERE  xbb.fb_interface_status  = cv_zero
-    AND    xbb.resv_flag IS NULL
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD START
+    AND    xbb.gl_interface_status  = cv_zero
+    AND    xbb.amt_fix_status       = cv_1
+    AND    xbb.payment_amt_tax      = cn_zero
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
+    AND    xbb.resv_flag           IS NULL
     AND    xbb.expect_payment_date <= gd_pay_date
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
 --    AND    xbb.supplier_code        = gt_fb_line_tab( in_cnt ).supplier_code
@@ -1416,7 +1449,12 @@ AS
           ,xbb.last_update_date       = SYSDATE                                        -- 最終更新日
           ,xbb.last_update_login      = cn_last_update_login                           -- 最終更新ログインID
       WHERE xbb.fb_interface_status   = cv_zero
-      AND   xbb.resv_flag             IS NULL
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD START
+      AND   xbb.gl_interface_status   = cv_zero
+      AND   xbb.amt_fix_status        = cv_1
+      AND   xbb.payment_amt_tax       = cn_zero
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
+      AND   xbb.resv_flag            IS NULL
       AND   xbb.expect_payment_date  <= gd_pay_date
 -- 2009/07/02 Ver.1.5 [障害0000291] SCS K.Yamaguchi REPAIR START
 --      AND   xbb.supplier_code         = gt_fb_line_tab( in_cnt ).supplier_code
@@ -1436,7 +1474,10 @@ AS
       -- *** ロック取得例外ハンドラ ***
       lv_out_msg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appli_xxcok
-                      ,iv_name         => cv_msg_cok_10243
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR START
+--                      ,iv_name         => cv_msg_cok_10243
+                      ,iv_name         => cv_msg_cok_00053
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR END
                     );
       lb_retcode := xxcok_common_pkg.put_message_f(
                       in_which    => FND_FILE.LOG       -- 出力区分
@@ -1449,7 +1490,10 @@ AS
       -- *** 更新例外ハンドラ ***
       lv_out_msg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appli_xxcok
-                      ,iv_name         => cv_msg_cok_10244
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR START
+--                      ,iv_name         => cv_msg_cok_10244
+                      ,iv_name         => cv_msg_cok_00054
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR END
                     );
       lb_retcode := xxcok_common_pkg.put_message_f(
                       in_which    => FND_FILE.LOG       -- 出力区分
@@ -2066,6 +2110,140 @@ AS
 --      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
 --      ov_retcode := cv_status_error;
 --  END submain;
+--
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD START
+   /**********************************************************************************
+   * Procedure Name   : upd_carried_forward_data
+   * Description      : 翌月繰り越しデータの更新(A-17)
+   ***********************************************************************************/
+  PROCEDURE upd_carried_forward_data(
+      ov_errbuf   OUT VARCHAR2  -- エラー・メッセージ
+    , ov_retcode  OUT VARCHAR2  -- リターン・コード
+    , ov_errmsg   OUT VARCHAR2  -- ユーザー・エラー・メッセージ
+   , iv_proc_type IN  VARCHAR2  -- 処理パラメータ
+  )
+  IS
+    --===============================
+    -- ローカル定数
+    --===============================
+    cv_prg_name CONSTANT VARCHAR2(100)  := 'upd_carried_forward_data';  -- プログラム名
+    --================================
+    -- ローカル変数
+    --================================
+    lv_errbuf   VARCHAR2(5000)  DEFAULT NULL; -- エラー・メッセージ
+    lv_retcode  VARCHAR2(1)     DEFAULT NULL; -- リターン・コード
+    lv_errmsg   VARCHAR2(5000)  DEFAULT NULL; -- ユーザー・エラー・メッセージ
+    lv_out_msg  VARCHAR2(2000)  DEFAULT NULL; -- メッセージ
+    lb_retcode  BOOLEAN         DEFAULT TRUE; -- リターン・コード
+    --=================================
+    -- ローカルカーソル
+    --=================================
+    -- ロック取得
+    CURSOR xbb_update_lock_cur
+    IS
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR START
+--      SELECT  /*+ INDEX( xbb xxcok_backmargin_balance_n10 ) */
+--              xbb.bm_balance_id AS bm_balance_id  -- 販手残高ID
+--      FROM    xxcok_backmargin_balance  xbb -- 販手残高テーブル
+--      WHERE   xbb.fb_interface_status     =  '0'  -- 連携ステータス（本振用FB）     ：未連携
+--        AND   xbb.gl_interface_status     =  '0'  -- 連携ステータス（GL）           ：未連携
+--        AND   xbb.edi_interface_status    =  '1'  -- 連携ステータス（EDI支払案内書）：連携済
+--        AND   xbb.expect_payment_amt_tax  <> 0
+--        AND   xbb.payment_amt_tax         =  0
+--        AND   (     xbb.publication_date  IS NOT NULL
+--                 OR xbb.org_slip_number   IS NOT NULL
+--              )
+      SELECT  /*+
+               */
+              xbb.bm_balance_id AS bm_balance_id  -- 販手残高ID
+      FROM    xxcok_backmargin_balance  xbb -- 販手残高テーブル
+      WHERE   xbb.expect_payment_date     <= gd_pay_date
+        AND   xbb.amt_fix_status          =  cv_1     -- 金額確定ステータス             ：確定済
+        AND   xbb.fb_interface_status     =  cv_zero  -- 連携ステータス（本振用FB）     ：未連携
+        AND   xbb.gl_interface_status     =  cv_zero  -- 連携ステータス（GL）           ：未連携
+        AND   xbb.edi_interface_status    =  cv_1     -- 連携ステータス（EDI支払案内書）：連携済
+        AND   xbb.expect_payment_amt_tax  <> cn_zero
+        AND   xbb.payment_amt_tax         =  cn_zero
+        AND   (     xbb.publication_date  IS NOT NULL
+                 OR xbb.org_slip_number   IS NOT NULL
+              )
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi REPAIR END
+      FOR UPDATE NOWAIT
+    ;
+--
+  BEGIN
+    -- ステータス初期化
+    ov_retcode := cv_status_normal;
+--
+    --==================================================
+    -- 処理区分が'2'(本振用FBデータ作成処理)の場合
+    --==================================================
+    IF( iv_proc_type = cv_2 ) THEN
+      <<update_lock_loop>>
+      FOR xbb_update_lock_rec IN xbb_update_lock_cur LOOP
+        UPDATE  xxcok_backmargin_balance  xbb -- 販手残高テーブル
+        SET xbb.publication_date        = NULL                      -- 案内書発効日
+          , xbb.edi_interface_status    = cv_zero                   -- 連携ステータス（EDI支払案内書）
+          , xbb.edi_interface_date      = NULL                      -- 連携日        （EDI支払案内書）
+          , xbb.org_slip_number         = NULL                      -- 元伝票番号
+          , xbb.request_id              = cn_request_id             -- 要求ID
+          , xbb.program_application_id  = cn_program_application_id -- コンカレント・プログラム・アプリケーションID
+          , xbb.program_id              = cn_program_id             -- コンカレント・プログラムID
+          , xbb.program_update_date     = SYSDATE                   -- プログラム更新日
+          , xbb.last_updated_by         = cn_last_updated_by        -- 最終更新者
+          , xbb.last_update_date        = SYSDATE                   -- 最終更新日
+          , xbb.last_update_login       = cn_last_update_login      -- 最終更新ログイン
+        WHERE xbb.bm_balance_id =  xbb_update_lock_rec.bm_balance_id
+        ;
+      END LOOP update_lock_loop;
+    END IF;
+--
+  EXCEPTION
+    -- *** ロック取得例外ハンドラ ***
+    WHEN global_lock_err_expt THEN
+      lv_out_msg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appli_xxcok
+                      , iv_name         => cv_msg_cok_00053
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                       in_which         => FND_FILE.LOG
+                     , iv_message       => lv_out_msg
+                     , in_new_line      => 0
+                    );
+--
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_out_msg, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errmsg  := NULL;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+--
+      lv_out_msg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_appli_xxcok
+                      , iv_name         => cv_msg_cok_00054
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                       in_which         => FND_FILE.LOG
+                     , iv_message       => lv_out_msg
+                     , in_new_line      => 0
+                    );
+  END upd_carried_forward_data;
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -2407,6 +2585,21 @@ AS
     IF( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
     END IF;
+--
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD START
+    --==================================================
+    -- A-17.翌月繰り越しデータの更新
+    --==================================================
+    upd_carried_forward_data(
+        ov_errbuf     => lv_errbuf    -- エラー・メッセージ
+      , ov_retcode    => lv_retcode   -- リターン・コード
+      , ov_errmsg     => lv_errmsg    -- ユーザー・エラー・メッセージ
+      , iv_proc_type  => iv_proc_type -- 処理パラメータ
+    );
+    IF( lv_retcode = cv_status_error ) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2010/09/30 Ver.1.10 [E_本稼動_01144] SCS S.Arizumi ADD END
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
