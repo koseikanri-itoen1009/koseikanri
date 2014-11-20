@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF010A16C(body)
  * Description      : リース仕訳作成
  * MD.050           : MD050_CFF_010_A16_リース仕訳作成
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,8 @@ AS
  *  2009/05/14    1.3   SCS礒崎祐次      [障害T1_0874]資産仕訳時の設定内容変更対応
  *  2009/05/26    1.4   SCS松中俊樹      [障害T1_1157]振替時の控除額から消費税分を削除
  *  2009/05/27    1.5   SCS山岸謙一      [障害T1_1223]顧客コードの仕訳への設定は自販機のみとする改修
+ *  2013/07/22    1.6   SCSK中野徹也     [E_本稼動_10871]消費税増税対応
+ *  2014/01/28    1.7   SCSK中野徹也     [E_本稼動_11170]支払利息計上時の不具合対応
  *
  *****************************************************************************************/
 --
@@ -456,7 +458,10 @@ AS
            ,NULL                                AS liab_tax_blc       -- リース債務残_消費税
            ,NULL                                AS liab_pretax_blc    -- リース債務残_本体＋税
                                                                       -- (リース債務残 + リース債務残_消費税)
-           ,ctrct_head.tax_code                 AS tax_code           -- 税コード
+-- 2013/07/22 Ver.1.6 T.Nakano ADD Start
+--           ,ctrct_head.tax_code                 AS tax_code           -- 税コード
+           ,NVL(ctrct_line.tax_code ,ctrct_head.tax_code)    AS tax_code  -- 税コード
+-- 2013/07/22 Ver.1.6 T.Nakano ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -512,7 +517,10 @@ AS
                   + pay_plan.fin_tax_debt_rem + pay_plan.fin_tax_debt
               END                                                       AS liab_pretax_blc    -- リース債務残_本体＋税
                                                                       -- (リース債務残 + リース債務残_消費税)
-           ,ctrct_head.tax_code                 AS tax_code           -- 税コード
+-- 2013/07/22 Ver.1.6 T.Nakano ADD Start
+--       ,ctrct_head.tax_code                 AS tax_code           -- 税コード
+           ,NVL(ctrct_line.tax_code ,ctrct_head.tax_code)    AS tax_code  -- 税コード
+-- 2013/07/22 Ver.1.6 T.Nakano ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -556,7 +564,10 @@ AS
            ,pay_plan.fin_debt_rem + pay_plan.fin_debt
               + pay_plan.fin_tax_debt_rem + pay_plan.fin_tax_debt   AS liab_pretax_blc    -- リース債務残_本体＋税
                                                                       -- (リース債務残 + リース債務残_消費税)
-           ,ctrct_head.tax_code                 AS tax_code           -- 税コード
+-- 2013/07/22 Ver.1.6 T.Nakano ADD Start
+--           ,ctrct_head.tax_code                 AS tax_code           -- 税コード
+           ,NVL(ctrct_line.tax_code ,ctrct_head.tax_code)                 AS tax_code           -- 税コード
+-- 2013/07/22 Ver.1.6 T.Nakano ADD End
     FROM
            xxcff_fa_transactions   xxcff_fa_trn  -- リース取引
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -612,7 +623,10 @@ AS
            ,pay_plan.lease_tax_charge
               - pay_plan.lease_tax_deduction AS charge_tax         -- リース料_消費税
            --T1_1157 2009/05/26 MOD END
-           ,ctrct_head.tax_code              AS tax_code           -- 税コード
+-- 2013/07/22 Ver.1.6 T.Nakano ADD Start
+--           ,ctrct_head.tax_code              AS tax_code           -- 税コード
+           ,NVL(ctrct_line.tax_code ,ctrct_head.tax_code)    AS tax_code  -- 税コード
+-- 2013/07/22 Ver.1.6 T.Nakano ADD End
     FROM
            xxcff_pay_planning      pay_plan      -- リース支払計画
           ,xxcff_contract_lines    ctrct_line    -- リース契約明細
@@ -1057,8 +1071,19 @@ AS
     IF (iot_jnl_aff_rec.amount_grp = 'PAY_INTEREST') THEN
       --DR(借方)
       IF (iot_jnl_aff_rec.crdr_type = 'DR') THEN
-        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.pay_interest;
-        iot_jnl_aff_rec.amount_cr := NULL;
+-- 2014/01/28 Ver.1.7 T.Nakano MOD Start
+--        iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.pay_interest;
+--        iot_jnl_aff_rec.amount_cr := NULL;
+        --支払利息が正
+        IF ( it_jnl_amount_rec.pay_interest >= 0 ) THEN
+          iot_jnl_aff_rec.amount_dr := it_jnl_amount_rec.pay_interest;
+          iot_jnl_aff_rec.amount_cr := NULL;
+        --支払利息が負
+        ELSE
+          iot_jnl_aff_rec.amount_dr := NULL;
+          iot_jnl_aff_rec.amount_cr := ABS(it_jnl_amount_rec.pay_interest);
+        END IF;
+-- 2014/01/28 Ver.1.7 T.Nakano MOD End
       --CR(貸方)
       ELSE
         iot_jnl_aff_rec.amount_dr := NULL;
