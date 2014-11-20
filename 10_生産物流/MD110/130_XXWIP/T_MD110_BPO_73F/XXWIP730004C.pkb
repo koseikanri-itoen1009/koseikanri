@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    支払運賃チェックリスト        (T_MD070_BPO_73F)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2008/07/28    1.8   Masayuki Nomura  変更要求結合テスト障害対応
  *  2008/08/04    1.9   Masayuki Nomura  内部変更要求#186対応
  *  2008/08/11    1.10  Takao Ohashi     T_TE080_BPO_730 指摘10対応
+ *  2008/10/15    1.11  Yasuhisa Yamamoto 統合障害#300,331,T_TE080_BPO_730 指摘14対応
  *
  *****************************************************************************************/
 --
@@ -102,6 +103,12 @@ AS
   gc_code_division_s        CONSTANT VARCHAR2(1) := '1' ;
   gc_code_division_p        CONSTANT VARCHAR2(1) := '2' ;
   gc_code_division_m        CONSTANT VARCHAR2(1) := '3' ;
+-- S 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- S --
+  -- 配車タイプ
+  gc_code_dispatch_2        CONSTANT VARCHAR2(1) := '2' ;    -- 伝票なし配車(リーフ小口)
+  gc_code_dispatch_3        CONSTANT VARCHAR2(1) := '3' ;    -- 伝票なし配車(リーフ小口以外)
+  gc_dispatch_type_j        CONSTANT VARCHAR2(2) := '他' ;   -- 他
+-- E 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- E --
 --
   ------------------------------
   -- その他
@@ -179,8 +186,12 @@ AS
      ,distance_2        VARCHAR2(4)       -- 距離２
      ,deliv_div         VARCHAR2(2)       -- 配送区分
      ,deliv_div_name    VARCHAR2(10)      -- 配送区分名
-     ,qty               VARCHAR2(4)       -- 数量
-     ,qty_sum           VARCHAR2(5)       -- 数量計
+-- S 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- S --
+--     ,qty               VARCHAR2(4)       -- 数量
+--     ,qty_sum           VARCHAR2(5)       -- 数量計
+     ,qty               VARCHAR2(9)       -- 数量
+     ,qty_sum           VARCHAR2(10)      -- 数量計
+-- E 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- E --
 -- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
 --     ,weight            VARCHAR2(5)       -- 重量
      ,weight            VARCHAR2(6)       -- 重量
@@ -204,6 +215,9 @@ AS
      ,div_weight        VARCHAR2(2)       -- 重
      ,div_outside       VARCHAR2(2)       -- 契
      ,div_return        VARCHAR2(2)       -- 戻
+-- S 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- S --
+     ,div_dispatch      VARCHAR2(2)       -- 他
+-- E 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- E --
      ,description       VARCHAR2(40)      -- 摘要
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
@@ -598,6 +612,13 @@ AS
                WHEN gc_return_flag_n THEN gc_return_flag_jn
                ELSE NULL
              END                        AS div_return       -- 戻
+-- S 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- S --
+            ,CASE xd.dispatch_type
+               WHEN gc_code_dispatch_2 THEN gc_dispatch_type_j
+               WHEN gc_code_dispatch_3 THEN gc_dispatch_type_j
+               ELSE NULL
+             END                        AS div_dispatch     -- 他
+-- E 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- E --
             ,xdl.description            AS description      -- 摘要
       FROM xxwip_deliverys        xd
           ,xxwip_delivery_lines   xdl
@@ -724,8 +745,11 @@ AS
       ORDER BY xcat.segment1
               ,xcar.party_number
               ,xd.judgement_date
-              ,NVL( xdl.whs_code, xd.whs_code )
+-- S 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- S --
+              ,xd.whs_code
               ,TO_NUMBER( xd.delivery_no )
+              ,NVL( xdl.whs_code, xd.whs_code )
+-- E 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- E --
               ,TO_NUMBER( xdl.request_no  )
     ;
 --
@@ -1263,6 +1287,13 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_name  := 'div_return' ;
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).div_return ;
+-- S 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- S --
+      -- 他
+      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      gt_xml_data_table(gl_xml_idx).tag_name  := 'div_dispatch' ;
+      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+      gt_xml_data_table(gl_xml_idx).tag_value := gt_main_data(i).div_dispatch ;
+-- E 2008/10/15 1.11 MOD BY Y.Yamamoto -------------------------------------------------------- E --
       -- 摘要
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'description' ;

@@ -7,7 +7,7 @@ AS
  * Description      : 請求運賃チェックリスト
  * MD.050/070       : 運賃計算（トランザクション）  (T_MD050_BPO_734)
  *                    請求運賃チェックリスト        (T_MD070_BPO_73G)
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/07/25    1.7   Masayuki Nomura  ST障害対応#456
  *  2008/07/28    1.8   Masayuki Nomura  変更要求結合テスト障害対応
  *  2008/08/19    1.9   Takao Ohashi     T_TE080_BPO_730 指摘10対応
+ *  2008/10/15    1.10  Yasuhisa Yamamoto 統合障害#300,331
  *
  *****************************************************************************************/
 --
@@ -167,7 +168,10 @@ AS
      ,ship_to_name      VARCHAR2(30)      -- 配送先名称
      ,distance_1        VARCHAR2(4)       -- 距離１
      ,distance_2        VARCHAR2(4)       -- 距離２
-     ,qty               VARCHAR2(4)       -- 数量
+-- S 2008/10/15 1.10 MOD BY Y.Yamamoto -------------------------------------------------------- S --
+--     ,qty               VARCHAR2(4)       -- 数量
+     ,qty               VARCHAR2(9)       -- 数量
+-- E 2008/10/15 1.10 MOD BY Y.Yamamoto -------------------------------------------------------- E --
 -- S 2008/07/24 1.6 MOD BY S.Takemoto---------------------------------------------------------- S --
 --     ,weight            VARCHAR2(5)       -- 重量
      ,weight            VARCHAR2(6)       -- 重量
@@ -704,8 +708,11 @@ AS
       ORDER BY xcat.segment1
               ,xcar.party_number
               ,xd1.judgement_date
-              ,NVL( xdl.whs_code, xd1.whs_code )
+-- S 2008/10/15 1.10 MOD BY Y.Yamamoto -------------------------------------------------------- S --
+              ,xd1.whs_code
               ,TO_NUMBER( xd1.delivery_no )
+              ,NVL( xdl.whs_code, xd1.whs_code )
+-- E 2008/10/15 1.10 MOD BY Y.Yamamoto -------------------------------------------------------- E --
               ,TO_NUMBER( xdl.request_no  )
     ;
 --
