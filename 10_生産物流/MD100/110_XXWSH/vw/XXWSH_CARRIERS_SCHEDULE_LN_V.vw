@@ -91,10 +91,10 @@ SELECT xoha.rowid                       row_id
       ,xilv.description                 deliver_from_name           -- “E—v
       ,xoha.deliver_to                  deliver_to                  -- o‰×æ
       ,xoha.vendor_site_code            vendor_site_code            -- æˆøæƒTƒCƒg
-      ,xpsv.party_site_full_name        deliver_to_name             -- o‰×æ³®–¼Ì
+      ,xcasv.party_site_full_name       deliver_to_name             -- o‰×æ³®–¼Ì
       ,xvsv.vendor_site_short_name      vendor_site_code_name       -- æˆøæƒTƒCƒg—ªÌ
       ,xoha.head_sales_branch           head_sales_branch           -- ŠÇŠ‹’“_
-      ,xpv.party_short_name             head_sales_branch_name      -- ŠÇŠ‹’“_—ªÌ
+      ,xcav.party_short_name            head_sales_branch_name      -- ŠÇŠ‹’“_—ªÌ
       ,xoha.vendor_code                 vendor_code                 -- æˆøæ
       ,xvv.vendor_short_name            vendor_short_name           -- æˆøæ—ªÌ
       ,xoha.based_weight                based_weight                -- Šî–{d—Ê
@@ -121,7 +121,7 @@ SELECT xoha.rowid                       row_id
       ,xlvv3.attribute6                 result_shipping_kubun_code  -- DFF¬Œû‹æ•ª_ÀÑ
       ,xlvv3.attribute9                 result_mixed_class_code     -- DFF¬Ú‹æ•ª_ÀÑ
       ,xoha.result_deliver_to           result_deliver_to           -- o‰×æ_ÀÑ
-      ,xpsv2.party_site_full_name       result_deliver_to_name      -- o‰×æ_ÀÑ–¼Ì
+      ,xcasv2.party_site_full_name      result_deliver_to_name      -- o‰×æ_ÀÑ–¼Ì
       ,xoha.shipped_date                shipped_date                -- o‰×“ú
       ,xoha.arrival_date                arrival_date                -- ’…‰×“ú
       --
@@ -147,10 +147,10 @@ FROM   xxwsh_order_headers_all      xoha   -- ó’ƒwƒbƒ_[
       ,xxcmn_lookup_values_v        xlvv2
       ,xxcmn_lookup_values_v        xlvv3
       ,xxcmn_item_locations_v       xilv
-      ,xxcmn_party_sites_v xpsv
-      ,xxcmn_party_sites_v xpsv2
+      ,xxcmn_cust_acct_sites_v      xcasv
+      ,xxcmn_cust_acct_sites_v      xcasv2
       ,xxcmn_vendor_sites_v         xvsv
-      ,xxcmn_parties_v              xpv
+      ,xxcmn_cust_accounts_v        xcav
       ,xxcmn_vendors_v              xvv
 WHERE xlvv1.lookup_type(+)        = 'XXWSH_PROCESS_TYPE'
 AND   xlvv1.lookup_code(+)        = xottv.shipping_shikyu_class       -- ˆ—í•Ê
@@ -159,11 +159,11 @@ AND   xlvv2.lookup_code(+)        = xoha.shipping_method_code         -- ”z‘—‹æ•
 AND   xlvv3.lookup_type(+)        = 'XXCMN_SHIP_METHOD'
 AND   xlvv3.lookup_code(+)        = xoha.result_shipping_method_code  -- ”z‘—‹æ•ª_ÀÑ
 AND   xilv.segment1(+)            = xoha.deliver_from                 -- o‰×Œ³•ÛŠÇêŠ–¼Ìæ“¾
-AND   xpsv.party_site_id(+)       = xoha.deliver_to_id                -- o‰×æ–¼Ì
-AND   xpsv2.party_site_id(+)      = xoha.result_deliver_to_id         -- o‰×æ_ÀÑ–¼Ì
+AND   xcasv.party_site_id(+)      = xoha.deliver_to_id                -- o‰×æ–¼Ì
+AND   xcasv2.party_site_id(+)     = xoha.result_deliver_to_id         -- o‰×æ_ÀÑ–¼Ì
 AND   xvsv.vendor_site_id(+)      = xoha.vendor_site_id               -- æˆøæƒTƒCƒg–¼Ì
-AND   xpv.party_number(+)         = xoha.head_sales_branch            -- ŠÇŠ‹’“_–¼Ì
-AND   xpv.customer_class_code(+)  = '1'                               -- ŒÚ‹q‹æ•ª
+AND   xcav.party_number(+)        = xoha.head_sales_branch            -- ŠÇŠ‹’“_–¼Ì
+AND   xcav.customer_class_code(+) = '1'                               -- ŒÚ‹q‹æ•ª
 AND   xvv.segment1(+)             = xoha.vendor_code                  -- æˆøæ–¼Ì
 AND   xcs.default_line_number (+) = xoha.request_no
 AND   xcs.delivery_no (+)         = xoha.delivery_no
@@ -196,10 +196,10 @@ SELECT xoha.rowid                       row_id
       ,xilv.description                 deliver_from_name           -- “E—v
       ,xoha.deliver_to                  deliver_to                  -- o‰×æ
       ,xoha.vendor_site_code            vendor_site_code            -- æˆøæƒTƒCƒg
-      ,xpsv.party_site_full_name        deliver_to_name             -- o‰×æ³®–¼Ì
+      ,xcasv.party_site_full_name       deliver_to_name             -- o‰×æ³®–¼Ì
       ,xvsv.vendor_site_short_name      vendor_site_code_name       -- æˆøæƒTƒCƒg—ªÌ
       ,xoha.head_sales_branch           head_sales_branch           -- ŠÇŠ‹’“_
-      ,xpv.party_short_name             head_sales_branch_name      -- ŠÇŠ‹’“_—ªÌ
+      ,xcav.party_short_name            head_sales_branch_name      -- ŠÇŠ‹’“_—ªÌ
       ,xoha.vendor_code                 vendor_code                 -- æˆøæ
       ,xvv.vendor_short_name            vendor_short_name           -- æˆøæ—ªÌ
       ,xoha.based_weight                based_weight                -- Šî–{d—Ê
@@ -226,7 +226,7 @@ SELECT xoha.rowid                       row_id
       ,xlvv3.attribute6                 result_shipping_kubun_code  -- DFF¬Œû‹æ•ª_ÀÑ
       ,xlvv3.attribute9                 result_mixed_class_code     -- DFF¬Ú‹æ•ª_ÀÑ
       ,xoha.result_deliver_to           result_deliver_to           -- o‰×æ_ÀÑ
-      ,xpsv2.party_site_full_name       result_deliver_to_name      -- o‰×æ_ÀÑ–¼Ì
+      ,xcasv2.party_site_full_name      result_deliver_to_name      -- o‰×æ_ÀÑ–¼Ì
       ,xoha.shipped_date                shipped_date                -- o‰×“ú
       ,xoha.arrival_date                arrival_date                -- ’…‰×“ú
       --
@@ -252,10 +252,10 @@ FROM   xxwsh_order_headers_all      xoha   -- ó’ƒwƒbƒ_[
       ,xxcmn_lookup_values_v        xlvv2
       ,xxcmn_lookup_values_v        xlvv3
       ,xxcmn_item_locations_v       xilv
-      ,xxcmn_party_sites_v xpsv
-      ,xxcmn_party_sites_v xpsv2
+      ,xxcmn_cust_acct_sites_v      xcasv
+      ,xxcmn_cust_acct_sites_v      xcasv2
       ,xxcmn_vendor_sites_v         xvsv
-      ,xxcmn_parties_v              xpv
+      ,xxcmn_cust_accounts_v        xcav
       ,xxcmn_vendors_v              xvv
 WHERE xlvv1.lookup_type(+)        = 'XXWSH_PROCESS_TYPE'
 AND   xlvv1.lookup_code(+)        = xottv.shipping_shikyu_class       -- ˆ—í•Ê
@@ -264,11 +264,11 @@ AND   xlvv2.lookup_code(+)        = xoha.shipping_method_code         -- ”z‘—‹æ•
 AND   xlvv3.lookup_type(+)        = 'XXCMN_SHIP_METHOD'
 AND   xlvv3.lookup_code(+)        = xoha.result_shipping_method_code  -- ”z‘—‹æ•ª_ÀÑ
 AND   xilv.segment1(+)            = xoha.deliver_from                 -- o‰×Œ³•ÛŠÇêŠ–¼Ìæ“¾
-AND   xpsv.party_site_id(+)       = xoha.deliver_to_id                -- o‰×æ–¼Ì
-AND   xpsv2.party_site_id(+)      = xoha.result_deliver_to_id         -- o‰×æ_ÀÑ–¼Ì
+AND   xcasv.party_site_id(+)      = xoha.deliver_to_id                -- o‰×æ–¼Ì
+AND   xcasv2.party_site_id(+)     = xoha.result_deliver_to_id         -- o‰×æ_ÀÑ–¼Ì
 AND   xvsv.vendor_site_id(+)      = xoha.vendor_site_id               -- æˆøæƒTƒCƒg–¼Ì
-AND   xpv.party_number(+)         = xoha.head_sales_branch            -- ŠÇŠ‹’“_–¼Ì
-AND   xpv.customer_class_code(+)  = '1'                               -- ŒÚ‹q‹æ•ª
+AND   xcav.party_number(+)        = xoha.head_sales_branch            -- ŠÇŠ‹’“_–¼Ì
+AND   xcav.customer_class_code(+) = '1'                               -- ŒÚ‹q‹æ•ª
 AND   xvv.segment1(+)             = xoha.vendor_code                  -- æˆøæ–¼Ì
 AND   xcs.default_line_number (+) = xoha.request_no
 -- 2008/09/02 PT1-1_4 Mod D.Nihei Start

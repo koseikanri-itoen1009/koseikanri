@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcmn_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : T_MD050_BPO_000_共通関数（補足資料）.xls
- * Version                : 1.2
+ * Version                : 1.3
  *
  * Program List
  *  --------------------        ---- ----- --------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2007/12/07   1.0   marushita       新規作成
  *  2008/05/07   1.1   marushita       WF起動関数のWF起動時パラメータにWFオーナーを追加
  *  2008/09/18   1.2   Oracle 山根 一浩T_S_453対応(WFファイルコピー)
+ *  2008/09/30   1.3   Yuko Kawano      OPM在庫会計期間CLOSE年月取得関数 T_S_500対応
  *
  *****************************************************************************************/
 --
@@ -509,14 +510,26 @@ AS
     END IF ;
 --
     -- OPM在庫会計期間で最新のCLOSE日付を取得
+--2008/09/26 Y.Kawano Mod Start
+--    SELECT 
+--      NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(MAX(oap.period_name), 'MON-RR'), 'YYYYMM'), lv_min_date)
+--    INTO   lv_return_date
+--    FROM   org_acct_periods       oap,
+--           ic_whse_mst            iwm
+--    WHERE  iwm.whse_code        = FND_PROFILE.VALUE('XXCMN_COST_PRICE_WHSE_CODE')
+--    AND    oap.organization_id  = iwm.mtl_organization_id
+--    AND    oap.open_flag        = 'N';
+    --
     SELECT 
-      NVL(TO_CHAR(FND_DATE.STRING_TO_DATE(MAX(oap.period_name), 'MON-RR'), 'YYYYMM'), lv_min_date)
-    INTO   lv_return_date
-    FROM   org_acct_periods       oap,
-           ic_whse_mst            iwm
-    WHERE  iwm.whse_code        = FND_PROFILE.VALUE('XXCMN_COST_PRICE_WHSE_CODE')
-    AND    oap.organization_id  = iwm.mtl_organization_id
-    AND    oap.open_flag        = 'N';
+      NVL(TO_CHAR(MAX(icd.period_end_date), 'YYYYMM'), lv_min_date)
+    INTO  lv_return_date
+    FROM  ic_cldr_dtl            icd
+         ,ic_whse_sts            iws
+    WHERE iws.whse_code        = FND_PROFILE.VALUE('XXCMN_COST_PRICE_WHSE_CODE')
+    AND   icd.period_id        = iws.period_id
+    AND   iws.close_whse_ind  <> 1
+    ;
+--2008/09/26 Y.Kawano Mod End
 --
     RETURN lv_return_date;
 --
