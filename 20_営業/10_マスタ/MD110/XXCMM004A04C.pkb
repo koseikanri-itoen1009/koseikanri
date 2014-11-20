@@ -57,6 +57,8 @@ AS
  *  2009/07/07    1.9   H.Yoshikawa      障害対応(0000364) 標準原価_コンポーネント区分不足対応
  *                                       障害対応(0000365) 新規適用時の旧値(定価・営業原価・政策群)設定対応
  *  2009/07/15    1.10  H.Yoshikawa      障害対応(0000463) 保管棚管理の設定値に『管理なし』を設定
+ *  2009/08/10    1.11  Y.Kuboshima      障害対応(0000862) 標準原価チェック処理を追加
+ *                                       障害対応(0000894) 日付項目の修正(SYSDATE -> 業務日付)
  *
  *****************************************************************************************/
 --
@@ -179,6 +181,9 @@ AS
   cv_msg_xxcmm_00432           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00432';   -- 標準原価0円エラー
   cv_msg_xxcmm_00433           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00433';   -- 営業原価エラー
 -- End1.9
+-- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
+  cv_msg_xxcmm_00491           CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00491';   -- 標準原価小数エラー
+-- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
   --
   -- トークン
   cv_tkn_param_name            CONSTANT VARCHAR2(100) := 'PARAM_NAME';
@@ -240,6 +245,164 @@ AS
   cv_lookup_item_status        CONSTANT VARCHAR2(20)  := 'XXCMM_ITM_STATUS';   -- 品目ステータス
   cv_lookup_cost_cmpt          CONSTANT VARCHAR2(20)  := 'XXCMM1_COST_CMPT';   -- 標準原価コンポーネント
   --
+-- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
+  -- 資材品目
+  cv_leaf_material             CONSTANT VARCHAR2(1)   := '5';                  -- 資材品目(リーフ)
+  cv_drink_material            CONSTANT VARCHAR2(1)   := '6';                  -- 資材品目(ドリンク)
+-- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+-- 2009/08/10 Ver1.11 障害0000894 move start by Y.Kuboshima
+-- この位置ではgd_process_dateはまだ定義されていないため、カーソルを下へ移動します。
+--
+--  -- 変更適用品目抽出カーソル
+--  CURSOR update_item_cur(
+--    pd_apply_date        DATE )
+--  IS
+--    SELECT      xsibh.item_hst_id                                       -- 品目変更履歴ID
+--               ,1                     AS  item_div                      -- 親子区分（1:親品目）
+--               ,xoiv.inventory_item_id                                  -- Disc品目ID
+--               ,xoiv.item_id                                            -- OPM品目ID
+--               ,xoiv.parent_item_id                                     -- 親商品ID
+--               ,xoiv.item_no                                            -- 品目コード
+--               ,xoiv.item_status      AS  b_item_status                 -- 変更前品目ステータス
+--               ,xoiv.item_um                                            -- 基準単位        （OPM品目）
+--               ,xoiv.num_of_cases                                       -- ケース入数      （OPM品目）
+--               ,xoiv.sales_div                                          -- 売上対象区分    （OPM品目）
+--               ,xoiv.net                                                -- NET             （OPM品目）
+--               ,xoiv.unit                                               -- 重量            （OPM品目）
+--               ,xoiv.crowd_code_new                                     -- 新・政策群コード（OPM品目）
+--               ,xoiv.price_new                                          -- 新・定価        （OPM品目）
+--               ,xoiv.opt_cost_new                                       -- 新・営業原価    （OPM品目）
+--               ,xoiv.item_name_alt                                      -- カナ名          （OPM品目アドオン）
+--               ,xoiv.rate_class                                         -- 率区分          （OPM品目アドオン）
+--               ,xoiv.palette_max_cs_qty                                 -- 配数            （OPM品目アドオン）
+--               ,xoiv.palette_max_step_qty                               -- 段数            （OPM品目アドオン）
+--               ,xoiv.nets                                               -- 内容量          （Disc品目アドオン）
+--               ,xoiv.nets_uom_code                                      -- 内容量単位      （Disc品目アドオン）
+--               ,xoiv.inc_num                                            -- 内訳入数        （Disc品目アドオン）
+--               ,xoiv.baracha_div                                        -- バラ茶区分      （Disc品目アドオン）
+--               ,xoiv.sp_supplier_code                                   -- 専門店仕入先    （Disc品目アドオン）
+--               ,xsibh.apply_date                                        -- 適用日（適用開始日）
+--               ,xsibh.apply_flag                                        -- 適用有無
+--               ,xsibh.item_status                                       -- 品目ステータス
+--               ,xsibh.policy_group                                      -- 群コード（政策群コード）
+--               ,xsibh.fixed_price                                       -- 定価
+--               ,xsibh.discrete_cost                                     -- 営業原価
+--               ,xsibh.first_apply_flag                                  -- 初回適用フラグ
+--               ,xoiv.purchasing_item_flag                               -- 購買品目
+--               ,xoiv.shippable_item_flag                                -- 出荷可能
+--               ,xoiv.customer_order_flag                                -- 顧客受注
+--               ,xoiv.purchasing_enabled_flag                            -- 購買可能
+--               ,xoiv.internal_order_enabled_flag                        -- 社内発注
+--               ,xoiv.so_transactions_flag                               -- OE 取引可能
+--               ,xoiv.reservable_type                                    -- 予約可能
+--    FROM        xxcmm_system_items_b_hst  xsibh                         -- Disc品目変更履歴アドオン
+--               ,xxcmm_opmmtl_items_v      xoiv                          -- 品目ビュー
+--    WHERE       xsibh.apply_date       <= pd_apply_date                 -- 適用日(起動日付で対象とならない日があるかも)
+--    AND         xsibh.apply_flag        = cv_no                         -- 未適用
+--    AND         xoiv.item_no            = xsibh.item_code               -- 品目コード
+--    AND         xoiv.start_date_active <= TRUNC( SYSDATE )              -- 適用開始日
+--    AND         xoiv.end_date_active   >= TRUNC( SYSDATE )              -- 適用終了日
+--    AND         xoiv.start_date_active <= gd_process_date               -- 適用開始日
+--    AND         xoiv.end_date_active   >= gd_process_date               -- 適用終了日
+--    AND         xoiv.item_id            = xoiv.parent_item_id           -- 親品目
+--    --
+--    UNION ALL
+--    --
+--    SELECT      xsibh.item_hst_id                                       -- 品目変更履歴ID
+--               ,2                     AS  item_div                      -- 親子区分（2:子品目）
+--               ,xoiv.inventory_item_id                                  -- Disc品目ID
+--               ,xoiv.item_id                                            -- OPM品目ID
+--               ,xoiv.parent_item_id                                     -- 親商品ID
+--               ,xoiv.item_no                                            -- 品目コード
+--               ,xoiv.item_status      AS  b_item_status                 -- 変更前品目ステータス
+--               ,xoiv.item_um                                            -- 基準単位        （OPM品目）
+--               ,xoiv.num_of_cases                                       -- ケース入数      （OPM品目）
+--               ,xoiv.sales_div                                          -- 売上対象区分    （OPM品目）
+--               ,xoiv.net                                                -- NET             （OPM品目）
+--               ,xoiv.unit                                               -- 重量            （OPM品目）
+--               ,xoiv.crowd_code_new                                     -- 新・政策群コード（OPM品目）
+--               ,xoiv.price_new                                          -- 新・定価        （OPM品目）
+--               ,xoiv.opt_cost_new                                       -- 新・営業原価    （OPM品目）
+--               ,xoiv.item_name_alt                                      -- カナ名          （OPM品目アドオン）
+--               ,xoiv.rate_class                                         -- 率区分          （OPM品目アドオン）
+--               ,xoiv.palette_max_cs_qty                                 -- 配数            （OPM品目アドオン）
+--               ,xoiv.palette_max_step_qty                               -- 段数            （OPM品目アドオン）
+--               ,xoiv.nets                                               -- 内容量          （Disc品目アドオン）
+--               ,xoiv.nets_uom_code                                      -- 内容量単位      （Disc品目アドオン）
+--               ,xoiv.inc_num                                            -- 内訳入数        （Disc品目アドオン）
+--               ,xoiv.baracha_div                                        -- バラ茶区分      （Disc品目アドオン）
+--               ,xoiv.sp_supplier_code                                   -- 専門店仕入先    （Disc品目アドオン）
+--               ,xsibh.apply_date                                        -- 適用日（適用開始日）
+--               ,xsibh.apply_flag                                        -- 適用有無
+--               ,xsibh.item_status                                       -- 品目ステータス
+--               ,xsibh.policy_group                                      -- 群コード（政策群コード）
+--               ,xsibh.fixed_price                                       -- 定価
+--               ,xsibh.discrete_cost                                     -- 営業原価
+--               ,xsibh.first_apply_flag                                  -- 初回適用フラグ
+--               ,xoiv.purchasing_item_flag                               -- 購買品目
+--               ,xoiv.shippable_item_flag                                -- 出荷可能
+--               ,xoiv.customer_order_flag                                -- 顧客受注
+--               ,xoiv.purchasing_enabled_flag                            -- 購買可能
+--               ,xoiv.internal_order_enabled_flag                        -- 社内発注
+--               ,xoiv.so_transactions_flag                               -- OE 取引可能
+--               ,xoiv.reservable_type                                    -- 予約可能
+--    FROM        xxcmm_system_items_b_hst  xsibh                         -- Disc品目変更履歴アドオン
+--               ,xxcmm_opmmtl_items_v      xoiv                          -- 品目ビュー
+--    WHERE       xsibh.apply_date       <= pd_apply_date                 -- 適用日(起動日付で対象とならない日があるかも)
+--    AND         xsibh.apply_flag        = cv_no                         -- 未適用
+--    AND         xoiv.item_no            = xsibh.item_code               -- 品目コード
+--    AND         xoiv.start_date_active <= TRUNC( SYSDATE )              -- 適用開始日
+--    AND         xoiv.end_date_active   >= TRUNC( SYSDATE )              -- 適用終了日
+---- Ver1.1 2009/01/14 MOD テストシナリオ 4-3
+----    AND         xoiv.item_id           != xoiv.parent_item_id           -- 親品目
+--    AND      (  xoiv.item_id           != xoiv.parent_item_id           -- 親品目でない
+--             OR xoiv.parent_item_id    IS NULL )                        -- 親品目が未設定
+---- Ver1.1 MOD END
+--    ORDER BY    item_div
+--               ,apply_date
+--               ,first_apply_flag
+--               ,item_no;
+  --
+  -- ===============================
+  -- ユーザー定義グローバル変数
+  -- ===============================
+  gv_boot_flag                 VARCHAR2(1);                                    -- 起動種別
+  gn_bus_org_id                mtl_parameters.organization_id%TYPE;            -- 営業組織ID[S01]
+  gn_cost_org_id               mtl_parameters.cost_organization_id%TYPE;       -- 原価組織ID[ZZZ]
+  gn_master_org_id             mtl_parameters.master_organization_id%TYPE;     -- マスター在庫組織ID[ZZZ]
+  --
+-- Ver1.5 2009/02/20 Add 検索対象更新日に業務日付を設定するよう修正
+  gd_process_date              DATE;                                           -- 業務日付
+--
+  gd_apply_date                DATE;                                           -- 適用日
+  gv_inherit_kbn               VARCHAR2(1);                                    -- 親値継承情報区分【'0'：履歴情報による更新、'1'：親品目変更による更新】
+  --
+  gn_item_status_cnt           NUMBER;                                         -- ステータス更新件数
+  gn_policy_group_cnt          NUMBER;                                         -- 政策群更新件数  （変更履歴ベース）
+  gn_fixed_price_cnt           NUMBER;                                         -- 定価更新件数    （変更履歴ベース）
+  gn_discrete_cost_cnt         NUMBER;                                         -- 営業原価更新件数（変更履歴ベース）
+  --
+  -- ===============================
+  -- ユーザー定義グローバル型
+  -- ===============================
+  --
+  -- 品目ステータス反映
+  TYPE item_status_rtype IS RECORD
+  (
+    item_id                        ic_item_mst_b.item_id%TYPE                             -- 品目ID
+   ,apply_date                     xxcmm_system_items_b_hst.apply_date%TYPE               -- 適用日
+   ,item_status                    xxcmm_system_items_b_hst.item_status%TYPE              -- 品目ステータス
+   ,inventory_item_id              mtl_system_items_b.inventory_item_id%TYPE              -- Disc品目ID
+   ,organization_id                mtl_system_items_b.organization_id%TYPE                -- 組織ID
+   ,purchasing_item_flag           mtl_system_items_b.purchasing_item_flag%TYPE           -- 購買品目
+   ,shippable_item_flag            mtl_system_items_b.shippable_item_flag%TYPE            -- 出荷可能
+   ,customer_order_flag            mtl_system_items_b.customer_order_flag%TYPE            -- 顧客受注
+   ,purchasing_enabled_flag        mtl_system_items_b.purchasing_enabled_flag%TYPE        -- 購買可能
+   ,internal_order_enabled_flag    mtl_system_items_b.internal_order_enabled_flag%TYPE    -- 社内発注
+   ,so_transactions_flag           mtl_system_items_b.so_transactions_flag%TYPE           -- OE 取引可能
+   ,reservable_type                mtl_system_items_b.reservable_type%TYPE                -- 予約可能
+  );
+  --
   -- 変更適用品目抽出カーソル
   CURSOR update_item_cur(
     pd_apply_date        DATE )
@@ -287,8 +450,12 @@ AS
     WHERE       xsibh.apply_date       <= pd_apply_date                 -- 適用日(起動日付で対象とならない日があるかも)
     AND         xsibh.apply_flag        = cv_no                         -- 未適用
     AND         xoiv.item_no            = xsibh.item_code               -- 品目コード
-    AND         xoiv.start_date_active <= TRUNC( SYSDATE )              -- 適用開始日
-    AND         xoiv.end_date_active   >= TRUNC( SYSDATE )              -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--    AND         xoiv.start_date_active <= TRUNC( SYSDATE )              -- 適用開始日
+--    AND         xoiv.end_date_active   >= TRUNC( SYSDATE )              -- 適用終了日
+    AND         xoiv.start_date_active <= gd_process_date               -- 適用開始日
+    AND         xoiv.end_date_active   >= gd_process_date               -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
     AND         xoiv.item_id            = xoiv.parent_item_id           -- 親品目
     --
     UNION ALL
@@ -336,8 +503,12 @@ AS
     WHERE       xsibh.apply_date       <= pd_apply_date                 -- 適用日(起動日付で対象とならない日があるかも)
     AND         xsibh.apply_flag        = cv_no                         -- 未適用
     AND         xoiv.item_no            = xsibh.item_code               -- 品目コード
-    AND         xoiv.start_date_active <= TRUNC( SYSDATE )              -- 適用開始日
-    AND         xoiv.end_date_active   >= TRUNC( SYSDATE )              -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--    AND         xoiv.start_date_active <= TRUNC( SYSDATE )              -- 適用開始日
+--    AND         xoiv.end_date_active   >= TRUNC( SYSDATE )              -- 適用終了日
+    AND         xoiv.start_date_active <= gd_process_date               -- 適用開始日
+    AND         xoiv.end_date_active   >= gd_process_date               -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
 -- Ver1.1 2009/01/14 MOD テストシナリオ 4-3
 --    AND         xoiv.item_id           != xoiv.parent_item_id           -- 親品目
     AND      (  xoiv.item_id           != xoiv.parent_item_id           -- 親品目でない
@@ -347,47 +518,6 @@ AS
                ,apply_date
                ,first_apply_flag
                ,item_no;
-  --
-  -- ===============================
-  -- ユーザー定義グローバル変数
-  -- ===============================
-  gv_boot_flag                 VARCHAR2(1);                                    -- 起動種別
-  gn_bus_org_id                mtl_parameters.organization_id%TYPE;            -- 営業組織ID[S01]
-  gn_cost_org_id               mtl_parameters.cost_organization_id%TYPE;       -- 原価組織ID[ZZZ]
-  gn_master_org_id             mtl_parameters.master_organization_id%TYPE;     -- マスター在庫組織ID[ZZZ]
-  --
--- Ver1.5 2009/02/20 Add 検索対象更新日に業務日付を設定するよう修正
-  gd_process_date              DATE;                                           -- 業務日付
---
-  gd_apply_date                DATE;                                           -- 適用日
-  gv_inherit_kbn               VARCHAR2(1);                                    -- 親値継承情報区分【'0'：履歴情報による更新、'1'：親品目変更による更新】
-  --
-  gn_item_status_cnt           NUMBER;                                         -- ステータス更新件数
-  gn_policy_group_cnt          NUMBER;                                         -- 政策群更新件数  （変更履歴ベース）
-  gn_fixed_price_cnt           NUMBER;                                         -- 定価更新件数    （変更履歴ベース）
-  gn_discrete_cost_cnt         NUMBER;                                         -- 営業原価更新件数（変更履歴ベース）
-  --
-  -- ===============================
-  -- ユーザー定義グローバル型
-  -- ===============================
-  --
-  -- 品目ステータス反映
-  TYPE item_status_rtype IS RECORD
-  (
-    item_id                        ic_item_mst_b.item_id%TYPE                             -- 品目ID
-   ,apply_date                     xxcmm_system_items_b_hst.apply_date%TYPE               -- 適用日
-   ,item_status                    xxcmm_system_items_b_hst.item_status%TYPE              -- 品目ステータス
-   ,inventory_item_id              mtl_system_items_b.inventory_item_id%TYPE              -- Disc品目ID
-   ,organization_id                mtl_system_items_b.organization_id%TYPE                -- 組織ID
-   ,purchasing_item_flag           mtl_system_items_b.purchasing_item_flag%TYPE           -- 購買品目
-   ,shippable_item_flag            mtl_system_items_b.shippable_item_flag%TYPE            -- 出荷可能
-   ,customer_order_flag            mtl_system_items_b.customer_order_flag%TYPE            -- 顧客受注
-   ,purchasing_enabled_flag        mtl_system_items_b.purchasing_enabled_flag%TYPE        -- 購買可能
-   ,internal_order_enabled_flag    mtl_system_items_b.internal_order_enabled_flag%TYPE    -- 社内発注
-   ,so_transactions_flag           mtl_system_items_b.so_transactions_flag%TYPE           -- OE 取引可能
-   ,reservable_type                mtl_system_items_b.reservable_type%TYPE                -- 予約可能
-  );
-  --
 --
   /**********************************************************************************
    * Procedure Name   : proc_comp_apply_update
@@ -574,8 +704,12 @@ AS
                                ,ic_item_mst_b           iimb          -- OPM品目
                                ,xxcmm_system_items_b    parent_xsib   -- Disc品目アドオン
                     WHERE       xoiv.item_no            = i_update_item_rec.item_no
-                    AND         xoiv.start_date_active <= TRUNC( SYSDATE )
-                    AND         xoiv.end_date_active   >= TRUNC( SYSDATE )
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--                    AND         xoiv.start_date_active <= TRUNC( SYSDATE )
+--                    AND         xoiv.end_date_active   >= TRUNC( SYSDATE )
+                    AND         xoiv.start_date_active <= gd_process_date
+                    AND         xoiv.end_date_active   >= gd_process_date
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
                     AND         iimb.item_id            = xoiv.parent_item_id
                     AND         parent_xsib.item_code   = iimb.item_no )
         WHERE       item_code = i_update_item_rec.item_no;
@@ -918,8 +1052,12 @@ AS
                  ,xxcmn_item_mst_b    ximb
       WHERE       iimb.item_id            = in_item_id
       AND         ximb.item_id            = iimb.item_id
-      AND         ximb.start_date_active <= TRUNC( SYSDATE )
-      AND         ximb.end_date_active   >= TRUNC( SYSDATE )
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--      AND         ximb.start_date_active <= TRUNC( SYSDATE )
+--      AND         ximb.end_date_active   >= TRUNC( SYSDATE )
+      AND         ximb.start_date_active <= gd_process_date
+      AND         ximb.end_date_active   >= gd_process_date
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
       AND         parent_iimb.item_id     = ximb.parent_item_id
       FOR UPDATE OF iimb.item_id NOWAIT;
       --
@@ -1411,8 +1549,12 @@ AS
       FROM        xxcmm_opmmtl_items_v      xoiv                  -- 品目ビュー
       WHERE       xoiv.parent_item_id     = pn_item_id            -- 親商品ID
       AND         xoiv.item_id           != xoiv.parent_item_id   -- 親品目以外
-      AND         xoiv.start_date_active <= TRUNC( SYSDATE )      -- 適用開始日
-      AND         xoiv.end_date_active   >= TRUNC( SYSDATE );     -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--      AND         xoiv.start_date_active <= TRUNC( SYSDATE )      -- 適用開始日
+--      AND         xoiv.end_date_active   >= TRUNC( SYSDATE );     -- 適用終了日
+      AND         xoiv.start_date_active <= gd_process_date       -- 適用開始日
+      AND         xoiv.end_date_active   >= gd_process_date;      -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
     --
     -- Disc品目アドオンロックカーソル
     CURSOR xxcmm_item_lock_cur(
@@ -1901,8 +2043,12 @@ AS
                  ,lv_policy_group
       FROM        xxcmm_opmmtl_items_v      xoiv                        -- 品目ビュー
       WHERE       xoiv.item_id            = i_update_item_rec.item_id   -- 品目ID
-      AND         xoiv.start_date_active <= TRUNC( SYSDATE )            -- 適用開始日
-      AND         xoiv.end_date_active   >= TRUNC( SYSDATE );           -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--      AND         xoiv.start_date_active <= TRUNC( SYSDATE )            -- 適用開始日
+--      AND         xoiv.end_date_active   >= TRUNC( SYSDATE );           -- 適用終了日
+      AND         xoiv.start_date_active <= gd_process_date             -- 適用開始日
+      AND         xoiv.end_date_active   >= gd_process_date;            -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
       --
       IF ( lv_policy_group IS NULL
         OR i_update_item_rec.b_item_status = cn_itm_status_no_use ) THEN
@@ -1914,8 +2060,12 @@ AS
         INTO        lv_policy_group_parent
         FROM        xxcmm_opmmtl_items_v      xoiv                               -- 品目ビュー
         WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id   -- 親品目ID
-        AND         xoiv.start_date_active <= TRUNC( SYSDATE )                   -- 適用開始日
-        AND         xoiv.end_date_active   >= TRUNC( SYSDATE );                  -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--        AND         xoiv.start_date_active <= TRUNC( SYSDATE )                   -- 適用開始日
+--        AND         xoiv.end_date_active   >= TRUNC( SYSDATE );                  -- 適用終了日
+        AND         xoiv.start_date_active <= gd_process_date                    -- 適用開始日
+        AND         xoiv.end_date_active   >= gd_process_date;                   -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
         --
         IF ( lv_policy_group = lv_policy_group_parent ) THEN
           -- 変更されていない場合政策群の更新をしない
@@ -1938,8 +2088,12 @@ AS
           INTO        ln_fixed_price_parent
           FROM        xxcmm_opmmtl_items_v      xoiv                               -- 品目ビュー
           WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id   -- 親品目ID
-          AND         xoiv.start_date_active <= TRUNC( SYSDATE )                   -- 適用開始日
-          AND         xoiv.end_date_active   >= TRUNC( SYSDATE );                  -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--          AND         xoiv.start_date_active <= TRUNC( SYSDATE )                   -- 適用開始日
+--          AND         xoiv.end_date_active   >= TRUNC( SYSDATE );                  -- 適用終了日
+          AND         xoiv.start_date_active <= gd_process_date                    -- 適用開始日
+          AND         xoiv.end_date_active   >= gd_process_date;                   -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
           --
           IF ( ln_fixed_price = ln_fixed_price_parent ) THEN
             -- 変更されていない場合定価の更新をしない
@@ -2042,8 +2196,12 @@ AS
           INTO        ln_discrete_cost_parent
           FROM        xxcmm_opmmtl_items_v      xoiv                               -- 品目ビュー
           WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id   -- 親品目ID
-          AND         xoiv.start_date_active <= TRUNC( SYSDATE )                   -- 適用開始日
-          AND         xoiv.end_date_active   >= TRUNC( SYSDATE );                  -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--          AND         xoiv.start_date_active <= TRUNC( SYSDATE )                   -- 適用開始日
+--          AND         xoiv.end_date_active   >= TRUNC( SYSDATE );                  -- 適用終了日
+          AND         xoiv.start_date_active <= gd_process_date                    -- 適用開始日
+          AND         xoiv.end_date_active   >= gd_process_date;                   -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
           --
           IF ( ln_discrete_cost = ln_discrete_cost_parent ) THEN
             -- 変更されていない場合営業原価の更新をしない
@@ -2479,6 +2637,10 @@ AS
     disc_cost_chk_expt         EXCEPTION;    -- 営業原価エラー
 -- End1.9
     --
+-- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
+    cost_decimal_chk_expt      EXCEPTION;    -- 標準原価小数エラー
+-- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
+    --
   BEGIN
     --
 --##################  固定ステータス初期化部 START   ###################
@@ -2499,8 +2661,12 @@ AS
       FROM        xxcmm_opmmtl_items_v      xoiv                                -- 品目ビュー
       WHERE       xoiv.parent_item_id     = i_update_item_rec.item_id           -- 親品目ID
       AND         xoiv.item_id           != i_update_item_rec.item_id           -- 親品目以外
-      AND         xoiv.start_date_active <= TRUNC( SYSDATE )                    -- 適用開始日
-      AND         xoiv.end_date_active   >= TRUNC( SYSDATE )                    -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--      AND         xoiv.start_date_active <= TRUNC( SYSDATE )                    -- 適用開始日
+--      AND         xoiv.end_date_active   >= TRUNC( SYSDATE )                    -- 適用終了日
+      AND         xoiv.start_date_active <= gd_process_date                     -- 適用開始日
+      AND         xoiv.end_date_active   >= gd_process_date                     -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
       AND         NVL( xoiv.item_status, cn_itm_status_num_tmp )
                                          != cn_itm_status_no_use                -- Ｄ以外
       AND         ROWNUM = 1;
@@ -2520,8 +2686,12 @@ AS
       INTO        ln_exists_cnt
       FROM        xxcmm_opmmtl_items_v      xoiv                                -- 品目ビュー
       WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id    -- 親品目
-      AND         xoiv.start_date_active <= TRUNC( SYSDATE )                    -- 適用開始日
-      AND         xoiv.end_date_active   >= TRUNC( SYSDATE )                    -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--      AND         xoiv.start_date_active <= TRUNC( SYSDATE )                    -- 適用開始日
+--      AND         xoiv.end_date_active   >= TRUNC( SYSDATE )                    -- 適用終了日
+      AND         xoiv.start_date_active <= gd_process_date                     -- 適用開始日
+      AND         xoiv.end_date_active   >= gd_process_date                     -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
       AND         xoiv.item_status        = cn_itm_status_no_use                -- Ｄ以外
       AND         ROWNUM = 1;
       --
@@ -2854,6 +3024,24 @@ AS
         -- 標準原価 = 0 の場合エラー
         ELSIF ( ln_cmpnt_cost_sum = 0 ) THEN
           RAISE opm_cost_chk_expt;
+-- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
+        ELSE
+          -- 資材品目の場合
+          IF ( SUBSTRB( i_update_item_rec.item_no, 1, 1 ) IN ( cv_leaf_material, cv_drink_material )  ) THEN
+            -- 標準原価が小数点三桁以上の場合
+            IF ( ln_cmpnt_cost_sum <> TRUNC( ln_cmpnt_cost_sum, 2 ) ) THEN
+              -- 標準原価エラー
+              RAISE cost_decimal_chk_expt;
+            END IF;
+          -- 資材品目以外の場合
+          ELSE
+            -- 標準原価が整数以外の場合
+            IF ( ln_cmpnt_cost_sum <> TRUNC( ln_cmpnt_cost_sum ) ) THEN
+              -- 標準原価エラー
+              RAISE cost_decimal_chk_expt;
+            END IF;
+          END IF;
+-- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
         END IF;
         --
       END IF;
@@ -2932,6 +3120,23 @@ AS
       ov_retcode := cv_status_error;
       --
 -- End
+--
+-- 2009/08/10 Ver1.11 障害0000862 add start by Y.Kuboshima
+    -- *** 標準原価小数チェック例外ハンドラ ***
+    WHEN cost_decimal_chk_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
+                     ,iv_name         => cv_msg_xxcmm_00491                    -- メッセージコード
+                     ,iv_token_name1  => cv_tkn_opm_cost                       -- トークンコード1
+                     ,iv_token_value1 => TO_CHAR( ln_cmpnt_cost_sum )          -- トークン値1
+                     ,iv_token_name2  => cv_tkn_item_code                      -- トークンコード2
+                     ,iv_token_value2 => i_update_item_rec.item_no             -- トークン値2
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_cont || lv_step || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+      --
+-- 2009/08/10 Ver1.11 障害0000862 add end by Y.Kuboshima
 --
     -- *** データチェック例外ハンドラ ***
     WHEN data_validate_expt THEN
@@ -3048,8 +3253,12 @@ AS
       SELECT      'x'
       FROM        xxcmn_item_mst_b
       WHERE       item_id            = pn_item_id
-      AND         start_date_active <= TRUNC(SYSDATE)
-      AND         end_date_active   >= TRUNC(SYSDATE)
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--      AND         start_date_active <= TRUNC(SYSDATE)
+--      AND         end_date_active   >= TRUNC(SYSDATE)
+      AND         start_date_active <= gd_process_date
+      AND         end_date_active   >= gd_process_date
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
       FOR UPDATE NOWAIT;
       --
 -- Ver1.9  2009/07/06  Add  障害対応(0000364)
@@ -3194,8 +3403,12 @@ AS
 -- Ver1.1 2009/01/14 MOD テストシナリオ 5-6
 --          AND         active_flag             = cv_yes
 -- Ver1.1 End
-          AND         start_date_active      <= TRUNC( SYSDATE )
-          AND         end_date_active        >= TRUNC( SYSDATE );
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--          AND         start_date_active      <= TRUNC( SYSDATE )
+--          AND         end_date_active        >= TRUNC( SYSDATE );
+          AND         start_date_active      <= gd_process_date
+          AND         end_date_active        >= gd_process_date;
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
           --
         ELSE
           -- 親品目設定時、かつ、品目ステータスがＤ以外の場合、
@@ -3234,14 +3447,22 @@ AS
                                  ,cd_program_update_date
                       FROM        xxcmn_item_mst_b    ximb
                       WHERE       ximb.item_id            = i_update_item_rec.parent_item_id
-                      AND         ximb.start_date_active <= TRUNC( SYSDATE )
-                      AND         ximb.end_date_active   >= TRUNC( SYSDATE ) )
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--                      AND         ximb.start_date_active <= TRUNC( SYSDATE )
+--                      AND         ximb.end_date_active   >= TRUNC( SYSDATE ) )
+                      AND         ximb.start_date_active <= gd_process_date
+                      AND         ximb.end_date_active   >= gd_process_date )
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
           WHERE       item_id                 = i_update_item_rec.item_id
 -- Ver1.1 2009/01/14 MOD テストシナリオ 5-6
 --          AND         active_flag             = cv_yes
 -- Ver1.1 End
-          AND         start_date_active      <= TRUNC( SYSDATE )
-          AND         end_date_active        >= TRUNC( SYSDATE );
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--          AND         start_date_active      <= TRUNC( SYSDATE )
+--          AND         end_date_active        >= TRUNC( SYSDATE );
+          AND         start_date_active      <= gd_process_date
+          AND         end_date_active        >= gd_process_date;
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
           --
         END IF;
         --
@@ -3636,7 +3857,7 @@ AS
     -- ===============================
     -- ローカル定数
     -- ===============================
-    cv_uom_class_conv_from       CONSTANT VARCHAR2(10) := '本';
+    cv_uom_class_conv_from       CONSTANT VARCHAR2(10) := 'kg';
     cv_uom_class_conv_to         CONSTANT VARCHAR2(10) := 'CS';
     --
     -- ===============================
@@ -3721,6 +3942,7 @@ AS
     --==============================================================
     lv_step := 'STEP-04010';
     -- 区分間換算登録判定
+-- 基準単位が「本」以外の場合、単位換算を行う
     IF  ( i_update_item_rec.item_um = cv_uom_class_conv_from )
     AND ( NVL( i_update_item_rec.num_of_cases, 0 ) > 0 ) THEN
       --==============================================================
@@ -3768,8 +3990,12 @@ AS
       FROM        xxcmm_system_items_b_hst  xsibh                              -- Disc品目変更履歴アドオン
                  ,xxcmm_opmmtl_items_v      xoiv                               -- 品目ビュー
       WHERE       xoiv.item_id            = i_update_item_rec.parent_item_id   -- 親品目ID
-      AND         xoiv.start_date_active <= TRUNC( SYSDATE )                   -- 適用開始日
-      AND         xoiv.end_date_active   >= TRUNC( SYSDATE )                   -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify start by Y.Kuboshima
+--      AND         xoiv.start_date_active <= TRUNC( SYSDATE )                   -- 適用開始日
+--      AND         xoiv.end_date_active   >= TRUNC( SYSDATE )                   -- 適用終了日
+      AND         xoiv.start_date_active <= gd_process_date                    -- 適用開始日
+      AND         xoiv.end_date_active   >= gd_process_date                    -- 適用終了日
+-- 2009/08/10 Ver1.11 障害0000894 modify end by Y.Kuboshima
       AND         xsibh.item_code         = xoiv.item_no                       -- 品目コード
       AND         xsibh.apply_date       <= gd_apply_date                      -- 適用日
 -- Ver1.1 2009/01/16 MOD テストシナリオ 4-5

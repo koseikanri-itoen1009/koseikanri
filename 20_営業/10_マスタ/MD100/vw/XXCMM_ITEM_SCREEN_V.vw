@@ -169,8 +169,12 @@ FROM     ic_item_mst_b      iimb        -- OPM品目マスタ
                      ,cm_cldr_dtl ccc                -- OPM原価カレンダ
           WHERE       ccd.calendar_code  = ccc.calendar_code
           AND         ccd.period_code    = ccc.period_code
-          AND         ccc.start_date    <= xxccp_common_pkg2.get_working_day(SYSDATE, 0, NULL)
-          AND         ccc.end_date      >= xxccp_common_pkg2.get_working_day(SYSDATE, 0, NULL)
+-- 2009/08/20 modify start by Yutaka.Kuboshima
+--          AND         ccc.start_date    <= xxccp_common_pkg2.get_working_day(SYSDATE, 0, NULL)
+--          AND         ccc.end_date      >= xxccp_common_pkg2.get_working_day(SYSDATE, 0, NULL)
+          AND         ccc.start_date    <= xxccp_common_pkg2.get_process_date
+          AND         ccc.end_date      >= xxccp_common_pkg2.get_process_date
+-- 2009/08/20 modify end by Yutaka.Kuboshima
           GROUP BY    ccd.item_id
                      ,ccd.calendar_code
                      ,ccd.period_code
@@ -301,8 +305,12 @@ FROM     ic_item_mst_b      iimb        -- OPM品目マスタ
           WHERE       flv_sen.lookup_type  = 'XXCMM_ITM_SENMONTEN_SHIIRESAKI'
         ) sen    -- 専門店仕入先用
 WHERE   iimb.item_id                 = ximb.item_id
-AND     ximb.start_date_active(+)   <= TRUNC(SYSDATE)
-AND     ximb.end_date_active(+)     >= TRUNC(SYSDATE)
+-- 2009/08/20 modify start by Yutaka.Kuboshima
+--AND     ximb.start_date_active(+)   <= TRUNC(SYSDATE)
+--AND     ximb.end_date_active(+)     >= TRUNC(SYSDATE)
+AND     ximb.start_date_active(+)   <= xxccp_common_pkg2.get_process_date
+AND     ximb.end_date_active(+)     >= xxccp_common_pkg2.get_process_date
+-- 2009/08/20 modify end by Yutaka.Kuboshima
 AND     iimb.item_no                 = disc.item_code(+)            -- 外部結合
 -- 2009/05/12 障害T1_0317 modify start by Yutaka.Kuboshima
 --AND     iimb.item_no                 = xsib.item_code(+)
@@ -310,13 +318,21 @@ AND     iimb.item_no                 = xsib.item_code
 -- 2009/05/12 障害T1_0317 modify end by Yutaka.Kuboshima
 AND     iimb.item_id                 = t.item_id(+)
 AND     ximb.parent_item_id          = ximbp.item_id(+)          -- xxcmn_item_mst_b(子)  xxcmn_item_mst_b(親)
-AND     ximbp.start_date_active(+)  <= TRUNC(SYSDATE)
-AND     ximbp.end_date_active(+)    >= TRUNC(SYSDATE)
+-- 2009/08/20 modify start by Yutaka.Kuboshima
+--AND     ximbp.start_date_active(+)  <= TRUNC(SYSDATE)
+--AND     ximbp.end_date_active(+)    >= TRUNC(SYSDATE)
+AND     ximbp.start_date_active(+)  <= xxccp_common_pkg2.get_process_date
+AND     ximbp.end_date_active(+)    >= xxccp_common_pkg2.get_process_date
+-- 2009/08/20 modify end by Yutaka.Kuboshima
 AND     ximb.parent_item_id          = iimbp.item_id(+)
 AND     xsib.renewal_item_code       = iimbr.item_no(+)
 AND     iimbr.item_id                = ximbr.item_id(+)
-AND     ximbr.start_date_active(+)  <= TRUNC(SYSDATE)
-AND     ximbr.end_date_active(+)    >= TRUNC(SYSDATE)
+-- 2009/08/20 modify start by Yutaka.Kuboshima
+--AND     ximbr.start_date_active(+)  <= TRUNC(SYSDATE)
+--AND     ximbr.end_date_active(+)    >= TRUNC(SYSDATE)
+AND     ximbr.start_date_active(+)  <= xxccp_common_pkg2.get_process_date
+AND     ximbr.end_date_active(+)    >= xxccp_common_pkg2.get_process_date
+-- 2009/08/20 modify end by Yutaka.Kuboshima
 AND     iimb.item_id                 = ipc.item_id
 AND     iimb.item_id                 = ho.item_id(+)
 AND     iimb.item_id                 = se.item_id(+)

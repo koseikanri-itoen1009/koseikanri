@@ -49,6 +49,7 @@ AS
  *                                       OPM標準原価 ロック取得エラー修正
  *  2009/05/14    1.2   H.Yoshikawa      障害T1_0569 対応
  *  2009/07/07    1.3   H.Yoshikawa      障害0000364対応(未設定標準原価0円登録、08～10の登録を追加)
+ *  2009/08/19    1.4   Y.Kuboshima      障害0000862,0000894対応(業務日付対応、標準原価小数点対応)
  *
  *****************************************************************************************/
 --
@@ -191,6 +192,11 @@ AS
   cv_tkn_input_line_no       CONSTANT VARCHAR2(20)  := 'INPUT_LINE_NO';      -- インタフェースの行番号
   cv_tkn_input_item_code     CONSTANT VARCHAR2(20)  := 'INPUT_ITEM_CODE';    -- インタフェースの品名コード
   cv_table_flv               CONSTANT VARCHAR2(30)  := 'LOOKUP表';           -- FND_LOOKUP_VALUES_VL
+-- 2009/08/19 Ver1.5 add start by Y.Kuboshima
+  -- 資材品目
+  cv_leaf_material       CONSTANT VARCHAR2(1)   := '5';                      -- 資材品目(リーフ)
+  cv_drink_material      CONSTANT VARCHAR2(1)   := '6';                      -- 資材品目(ドリンク)
+-- 2009/08/19 Ver1.5 add end by Y.Kuboshima
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -445,8 +451,12 @@ AS
       FROM      xxcmm_opmmtl_items_v      xoiv                             -- 品目ビュー
       WHERE     xoiv.parent_item_id     = p_item_id                        -- 品目ID
       AND       xoiv.item_id            = xoiv.parent_item_id              -- 親品目であること
-      AND       xoiv.start_date_active <= TRUNC( SYSDATE )                 -- 適用開始日
-      AND       xoiv.end_date_active   >= TRUNC( SYSDATE )                 -- 適用終了日
+-- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
+--      AND       xoiv.start_date_active <= TRUNC( SYSDATE )                 -- 適用開始日
+--      AND       xoiv.end_date_active   >= TRUNC( SYSDATE )                 -- 適用終了日
+      AND       xoiv.start_date_active <= gd_process_date                  -- 適用開始日
+      AND       xoiv.end_date_active   >= gd_process_date                  -- 適用終了日
+-- 2009/08/19 Ver1.4 modify end by Y.Kuboshima
 -- 2009/01/16 Mod
       AND       NVL( xoiv.item_status, cn_itm_status_num_tmp )
                                        != cn_itm_status_no_use             -- Ｄ以外
@@ -462,8 +472,12 @@ AS
       FROM      xxcmm_opmmtl_items_v      xoiv                             -- 品目ビュー
       WHERE     xoiv.parent_item_id     = p_item_id                        -- 親品目ID
       AND       xoiv.item_id           != xoiv.parent_item_id              -- 親品目でないこと
-      AND       xoiv.start_date_active <= TRUNC( SYSDATE )                 -- 適用開始日
-      AND       xoiv.end_date_active   >= TRUNC( SYSDATE )                 -- 適用終了日
+-- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
+--      AND       xoiv.start_date_active <= TRUNC( SYSDATE )                 -- 適用開始日
+--      AND       xoiv.end_date_active   >= TRUNC( SYSDATE )                 -- 適用終了日
+      AND       xoiv.start_date_active <= gd_process_date                  -- 適用開始日
+      AND       xoiv.end_date_active   >= gd_process_date                  -- 適用終了日
+-- 2009/08/19 Ver1.4 modify end by Y.Kuboshima
 --Ver1.3  2009/07/07  Add  0000364対応  標準原価の子品目継承は仮登録以降Ｄ’までに変更
 --      AND       xoiv.item_status       IN ( cn_itm_status_regist           -- 本登録
       AND       xoiv.item_status       IN ( cn_itm_status_pre_reg          -- 仮登録
@@ -914,8 +928,12 @@ AS
         FROM      xxcmm_opmmtl_items_v       xoiv                      -- 品目ビュー
         WHERE     xoiv.item_id             = l_opm_cost_rec.item_id    -- 品目ID
         AND       xoiv.item_id             = xoiv.parent_item_id       -- 親品目
-        AND       xoiv.start_date_active  <= TRUNC( SYSDATE )          -- 適用開始日
-        AND       xoiv.end_date_active    >= TRUNC( SYSDATE );         -- 適用終了日
+-- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
+--        AND       xoiv.start_date_active  <= TRUNC( SYSDATE )          -- 適用開始日
+--        AND       xoiv.end_date_active    >= TRUNC( SYSDATE );         -- 適用終了日
+        AND       xoiv.start_date_active  <= gd_process_date           -- 適用開始日
+        AND       xoiv.end_date_active    >= gd_process_date;          -- 適用終了日
+-- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
         --
         l_opm_cost_rec.item_no       := lv_item_no;
         --
@@ -1078,7 +1096,16 @@ AS
       --==============================================================
       lv_step := 'A-4.6';
       IF ( l_opm_cost_rec.cmpntcost_total < 0 )
-      OR ( l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total ) ) THEN
+-- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
+--      OR ( l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total ) ) THEN
+        -- 資材品目(頭一桁目が'5','6')の場合、小数点３桁以上はエラー
+        -- または資材品目以外の場合、小数点以下が設定されている場合はエラー
+        OR ( (  SUBSTRB( i_opm_cost_rec.item_no, 1, 1 ) IN ( cv_leaf_material, cv_drink_material)
+            AND l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total, 2 ) )
+          OR (  SUBSTRB( i_opm_cost_rec.item_no, 1, 1 ) NOT IN ( cv_leaf_material, cv_drink_material)
+            AND l_opm_cost_rec.cmpntcost_total <> TRUNC( l_opm_cost_rec.cmpntcost_total ) ) )
+      THEN
+-- 2009/08/19 Ver1.4 modify start by Y.Kuboshima
         -- 標準原価チェックエラー
         lv_errmsg  :=  xxccp_common_pkg.get_msg(
                          iv_application   =>  cv_appl_name_xxcmm              -- アプリケーション短縮名

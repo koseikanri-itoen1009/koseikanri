@@ -29,6 +29,7 @@ AS
  *  2009/04/08    1.2   H.Yoshikawa      障害No.T1_0184 対応
  *  2009/05/29    1.3   H.Yoshikawa      障害No.T1_0317 対応
  *  2009/07/08    1.4   H.Yoshikawa      障害No.0000364 対応
+ *  2009/08/19    1.5   Y.Kuboshima      障害No.0000862,0000894 対応
  *
  *****************************************************************************************/
 --
@@ -119,7 +120,7 @@ AS
 --End1.4
   cv_n                  CONSTANT VARCHAR2(1)   := 'N';          -- 適用フラグ
   cv_apply_date         CONSTANT VARCHAR2(10)  := '9999/99/99'; -- デフォルト日付
-  cv_date_fmt_std        CONSTANT VARCHAR2(10) := xxcmm_004common_pkg.cv_date_fmt_std; -- デフォルト日付
+  cv_date_fmt_std       CONSTANT VARCHAR2(10)  := xxcmm_004common_pkg.cv_date_fmt_std; -- デフォルト日付
   cv_space_1            CONSTANT VARCHAR2(1)   := ' ';          -- スペース1つ
   cv_space_2            CONSTANT VARCHAR2(2)   := '  ';         -- スペース2つ
   cv_sep_com            CONSTANT VARCHAR2(1)   := ',';          -- CSV形式データ区切り文字
@@ -130,6 +131,11 @@ AS
 --  cv_item_code_to       CONSTANT VARCHAR2(7)   := '3999999';    -- 品名コード終了
 -- End1.3
 --
+-- 2009/08/19 Ver1.5 add start by Y.Kuboshima
+  -- 資材品目
+  cv_leaf_material       CONSTANT VARCHAR2(1)   := '5';         -- 資材品目(リーフ)
+  cv_drink_material      CONSTANT VARCHAR2(1)   := '6';         -- 資材品目(ドリンク)
+-- 2009/08/19 Ver1.5 add end by Y.Kuboshima
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -510,8 +516,12 @@ AS
 -- Ver1.3  Del 2009/05/29  T1_0317対応  不要なため削除(登録したデータは出力可能)
 --      AND       xoiv.item_no BETWEEN cv_item_code_from AND cv_item_code_to
 -- End1.3
-      AND       xoiv.start_date_active  <= TRUNC( SYSDATE )
-      AND       xoiv.end_date_active    >= TRUNC( SYSDATE )
+-- 2009/08/19 Ver1.5 modify start by Y.Kuboshima
+--      AND       xoiv.start_date_active  <= TRUNC( SYSDATE )
+--      AND       xoiv.end_date_active    >= TRUNC( SYSDATE )
+      AND       xoiv.start_date_active  <= gd_process_date
+      AND       xoiv.end_date_active    >= gd_process_date
+-- 2009/08/19 Ver1.5 modify end by Y.Kuboshima
       ORDER BY  se.seisakugun,
                 xoiv.item_no;
 --
@@ -568,7 +578,9 @@ AS
                              MIN(xsibh.apply_date)    apply_date
                     FROM     xxcmm_system_items_b_hst xsibh
                     WHERE    item_id           =  lr_item_csv_rec.item_id
-                    AND      xsibh.apply_date  >= gd_process_date
+-- 2009/08/19 Ver1.5 delete start by Y.Kuboshima
+--                    AND      xsibh.apply_date  >= gd_process_date
+-- 2009/08/19 Ver1.5 delete end by Y.Kuboshima
                     AND      xsibh.apply_flag  =  cv_n
                     GROUP BY xsibh.item_code
                   ) hst
@@ -628,9 +640,23 @@ AS
       -- 標準原価が小数点以下の数値を持っていれば、警告に'*'をセットする
       lv_step      := 'A-3.4';
       lv_msg_token := '標準原価小数点チェック';
-      IF ( l_cost_rec.cmpnt_cost <> TRUNC( l_cost_rec.cmpnt_cost, 0 ) ) THEN
-        g_item_mst_tab(ln_c).v_emargency_flag := cv_emargency_flag;
+-- 2009/08/19 Ver1.5 modify start by Y.Kuboshima
+--      IF ( l_cost_rec.cmpnt_cost <> TRUNC( l_cost_rec.cmpnt_cost, 0 ) ) THEN
+--        g_item_mst_tab(ln_c).v_emargency_flag := cv_emargency_flag;
+--      END IF;
+      -- 資材品目(品名コードの一桁目が'5','6')の場合
+      IF ( SUBSTRB( lr_item_csv_rec.item_no, 1, 1 ) IN ( cv_leaf_material, cv_drink_material ) ) THEN
+        -- 標準原価合計値が小数点三桁以上の場合
+        IF ( l_cost_rec.cmpnt_cost <> TRUNC( l_cost_rec.cmpnt_cost, 2 ) ) THEN
+          g_item_mst_tab(ln_c).v_emargency_flag := cv_emargency_flag;
+        END IF;
+      ELSE
+        -- 小数点が含まれている場合
+        IF ( l_cost_rec.cmpnt_cost <> TRUNC( l_cost_rec.cmpnt_cost, 0 ) ) THEN
+          g_item_mst_tab(ln_c).v_emargency_flag := cv_emargency_flag;
+        END IF;
       END IF;
+-- 2009/08/19 Ver1.5 modify end by Y.Kuboshima
       -- ===============================
       -- 更新区分設定
       -- ===============================

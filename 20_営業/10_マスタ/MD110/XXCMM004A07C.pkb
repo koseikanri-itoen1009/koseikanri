@@ -49,6 +49,7 @@ AS
  *  2009/02/04    1.07  R.Takigawa       SQLのデータ型修正
  *  2009/02/09    1.08  R.Takigawa       ロックエラー時のメッセージ変更
  *  2009/05/15    1.1   H.Yoshikawa      障害T1_0569,T1_0588 対応
+ *  2009/08/11    1.2   Y.Kuboshima      障害0000894 対応
  *
  *****************************************************************************************/
 --
@@ -948,8 +949,12 @@ AS
         AND       flvv.lookup_code         = TO_CHAR( NVL( xoiv.item_status, cn_itm_status_num_tmp ))
                                                                           -- 品目ステータス
 -- End
-        AND       xoiv.start_date_active  <= TRUNC( SYSDATE )             -- 適用開始日
-        AND       xoiv.end_date_active    >= TRUNC( SYSDATE );            -- 適用終了日
+-- 2009/08/11 Ver1.2 modify start by Y.Kuboshima
+--        AND       xoiv.start_date_active  <= TRUNC( SYSDATE )             -- 適用開始日
+--        AND       xoiv.end_date_active    >= TRUNC( SYSDATE );            -- 適用終了日
+        AND       xoiv.start_date_active  <= gd_process_date              -- 適用開始日
+        AND       xoiv.end_date_active    >= gd_process_date;             -- 適用終了日
+-- 2009/08/11 Ver1.2 modify end by Y.Kuboshima
         --
         l_disc_hst_rec.item_code     := lv_item_no;
         --
@@ -976,7 +981,7 @@ AS
       --
 -- Ver1.1  2009/05/15  Add  T1_0588 対応
       -- 品目ステータス：仮採番、または、Ｄの場合エラー。
-      --   仮採番：営業組織(S01)に品目割当されていないため
+      --   仮採番：営業組織(Z99)に品目割当されていないため
       --   Ｄ    ：品目情報変更不可のため
       IF ( ln_item_status IN ( cn_itm_status_num_tmp, cn_itm_status_no_use ) ) THEN
         -- 営業原価チェックエラー
@@ -1012,8 +1017,12 @@ AS
         INTO      ln_inventory_item_id
         FROM      xxcmm_opmmtl_items_v            xoiv                      -- Disc品目マスタ
         WHERE     xoiv.item_no         = lv_item_no                         -- 品目コード
-        AND       xoiv.start_date_active  <= TRUNC( SYSDATE )               -- 適用開始日
-        AND       xoiv.end_date_active    >= TRUNC( SYSDATE );              -- 適用終了日
+-- 2009/08/11 Ver1.2 modify start by Y.Kuboshima
+--        AND       xoiv.start_date_active  <= TRUNC( SYSDATE )               -- 適用開始日
+--        AND       xoiv.end_date_active    >= TRUNC( SYSDATE );              -- 適用終了日
+        AND       xoiv.start_date_active  <= gd_process_date                -- 適用開始日
+        AND       xoiv.end_date_active    >= gd_process_date;               -- 適用終了日
+-- 2009/08/11 Ver1.2 modify end by Y.Kuboshima
         --
       EXCEPTION
         WHEN OTHERS THEN

@@ -45,6 +45,7 @@ AS
  *  2009/04/14    1.6   H.Yoshikawa      障害T1_0214対応  Disc品目アドオン「内容量」「内訳入数」桁数変更
  *  2009/05/26    1.7   H.Yoshikawa      障害T1_0317対応  品目コードの不要な範囲設定を削除
  *  2009/07/13    1.8   H.Yoshikawa      障害0000366対応  コンポーネント原価(01:01GEN～07:07KEI)を追加
+ *  2009/08/12    1.9   Y.Kuboshima      障害0000894対応  日付項目の修正(SYSDATE -> 業務日付)
  *
  *****************************************************************************************/
 --
@@ -931,8 +932,12 @@ AS
       AND       xoiv.item_id            =  se.item_id(+)                --政策群
       AND       xoiv.item_id            =  ipc.item_id(+)               --商品製品区分
       AND       xoiv.item_id            =  hpc.item_id(+)               --本社商品区分
-      AND       xoiv.start_date_active  <= TRUNC( SYSDATE )
-      AND       xoiv.end_date_active    >= TRUNC( SYSDATE )
+-- 2009/08/12 Ver1.9 modify start by Y.Kuboshima
+--      AND       xoiv.start_date_active  <= TRUNC( SYSDATE )
+--      AND       xoiv.end_date_active    >= TRUNC( SYSDATE )
+      AND       xoiv.start_date_active  <= gd_process_date
+      AND       xoiv.end_date_active    >= gd_process_date
+-- 2009/08/12 Ver1.9 modify end by Y.Kuboshima
 -- Ver1.4 2009/02/12  期間未指定時は全件取得するよう修正
 --      AND     ( TRUNC( xoiv.search_update_date ) >= gd_date_from        --検索対象日時に変更 2009/02/03
 --      AND       TRUNC( xoiv.search_update_date ) <= gd_date_to )        --対象期間
@@ -997,8 +1002,12 @@ AS
       AND       xsibh.item_status       = isn.item_status(+)                    -- 品目ステータス
       AND       xsibh.item_hst_id       = se.item_hst_id(+)                     -- 政策群
       AND       xsibh.apply_flag        = cv_no                                 -- 適用フラグ
-      AND       xoiv.start_date_active  <= TRUNC( SYSDATE )
-      AND       xoiv.end_date_active    >= TRUNC( SYSDATE )
+-- 2009/08/12 Ver1.9 modify start by Y.Kuboshima
+--      AND       xoiv.start_date_active  <= TRUNC( SYSDATE )
+--      AND       xoiv.end_date_active    >= TRUNC( SYSDATE )
+      AND       xoiv.start_date_active  <= gd_process_date
+      AND       xoiv.end_date_active    >= gd_process_date
+-- 2009/08/12 Ver1.9 modify end by Y.Kuboshima
 -- Ver1.4 2009/02/12  期間未指定時は全件取得するよう修正
 --      AND     ( TRUNC( xsibh.apply_date ) >= gd_date_from                       -- 適用日に変更 2009/02/03
 --      AND       TRUNC( xsibh.apply_date ) <= gd_date_to )                       -- 対象期間

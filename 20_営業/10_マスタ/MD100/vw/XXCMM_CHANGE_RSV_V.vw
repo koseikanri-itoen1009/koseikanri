@@ -59,8 +59,14 @@ FROM        xxcmm_system_items_b_hst xsibh,
 -- 2009/06/29 delete end by Yutaka.Kuboshima
 WHERE       xsibh.item_code          = xoiv.item_code
 AND         xsibh.item_status        = itm.lookup_code(+)
-AND         xoiv.start_date_active   <= TRUNC( SYSDATE )
-AND         xoiv.end_date_active     >= TRUNC( SYSDATE )
+--
+-- 2009/08/10 modify start by Yutaka.Kuboshima
+--AND         xoiv.start_date_active   <= TRUNC( SYSDATE )
+--AND         xoiv.end_date_active     >= TRUNC( SYSDATE )
+AND         xoiv.start_date_active   <= xxccp_common_pkg2.get_process_date
+AND         xoiv.end_date_active     >= xxccp_common_pkg2.get_process_date
+-- 2009/08/10 modify end by Yutaka.Kuboshima
+--
 -- 2009/06/29 delete start by Yutaka.Kuboshima
 --AND         xoiv.item_id             =  cmp.item_id(+)
 --AND         cmp.calendar_code        =  ccc.calendar_code(+)
