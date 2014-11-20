@@ -11,33 +11,34 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/02/06    1.0  SCS.Tsuboi        新規作成
  *  2009/04/30    1.1  T.Nakamura       バックスラッシュ、テーブルコメントを追加
+ *  2009/05/29    1.2  H.Sasaki         [T1_1113]伝票番号の桁数変更(9 → 12)
  *
  ************************************************************************/
-  CREATE TABLE "XXCOI"."XXCOI_REP_KURAGAE_SHIP_LIST" 
-   ( "TARGET_TERM"                VARCHAR2(8 BYTE) NOT NULL ENABLE, 
-     "SHIP_BASE_CODE"             VARCHAR2(4 BYTE), 
-     "SHIP_BASE_NAME"             VARCHAR2(20 BYTE), 
-     "TRANSACTION_TYPE_ID"        NUMBER, 
-     "TRANSACTION_TYPE_ID_SUB"    NUMBER, 
-     "TRANSACTION_TYPE_NAME"      VARCHAR2(20 BYTE), 
-     "STORE_BASE_CODE"            VARCHAR2(4 BYTE), 
-     "STORE_BASE_NAME"            VARCHAR2(20 BYTE), 
-     "TRANSACTION_DATE"           VARCHAR2(8 BYTE), 
-     "ITEM_CODE"                  VARCHAR2(7 BYTE), 
-     "ITEM_NAME"                  VARCHAR2(20 BYTE), 
-     "SLIP_NO"                    VARCHAR2(9 BYTE), 
-     "TRANSACTION_QTY"            NUMBER, 
-     "TRADING_COST"               NUMBER, 
-     "DLV_COST"                   NUMBER, 
-     "NODATA_MSG"                 VARCHAR2(50 BYTE), 
-     "CREATED_BY"                 NUMBER, 
-     "CREATION_DATE"              DATE, 
-     "LAST_UPDATED_BY"            NUMBER, 
-     "LAST_UPDATE_DATE"           DATE, 
-     "LAST_UPDATE_LOGIN"          NUMBER, 
-     "REQUEST_ID"                 NUMBER, 
-     "PROGRAM_APPLICATION_ID"     NUMBER, 
-     "PROGRAM_ID"                 NUMBER, 
+  CREATE TABLE "XXCOI"."XXCOI_REP_KURAGAE_SHIP_LIST"
+   ( "TARGET_TERM"                VARCHAR2(8 BYTE) NOT NULL ENABLE,
+     "SHIP_BASE_CODE"             VARCHAR2(4 BYTE),
+     "SHIP_BASE_NAME"             VARCHAR2(20 BYTE),
+     "TRANSACTION_TYPE_ID"        NUMBER,
+     "TRANSACTION_TYPE_ID_SUB"    NUMBER,
+     "TRANSACTION_TYPE_NAME"      VARCHAR2(20 BYTE),
+     "STORE_BASE_CODE"            VARCHAR2(4 BYTE),
+     "STORE_BASE_NAME"            VARCHAR2(20 BYTE),
+     "TRANSACTION_DATE"           VARCHAR2(8 BYTE),
+     "ITEM_CODE"                  VARCHAR2(7 BYTE),
+     "ITEM_NAME"                  VARCHAR2(20 BYTE),
+     "SLIP_NO"                    VARCHAR2(12 BYTE),
+     "TRANSACTION_QTY"            NUMBER,
+     "TRADING_COST"               NUMBER,
+     "DLV_COST"                   NUMBER,
+     "NODATA_MSG"                 VARCHAR2(50 BYTE),
+     "CREATED_BY"                 NUMBER,
+     "CREATION_DATE"              DATE,
+     "LAST_UPDATED_BY"            NUMBER,
+     "LAST_UPDATE_DATE"           DATE,
+     "LAST_UPDATE_LOGIN"          NUMBER,
+     "REQUEST_ID"                 NUMBER,
+     "PROGRAM_APPLICATION_ID"     NUMBER,
+     "PROGRAM_ID"                 NUMBER,
      "PROGRAM_UPDATE_DATE"        DATE
    ) PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING
   STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645

@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009/05/21    1.5   T.Nakamura       [障害T1_0987] 営業原価額を四捨五入し整数値に変換するよう修正
  *                                       [障害T1_1030] 倉替データ取得時の取得条件を追加
  *  2009/05/22    1.6   H.Sasaki         [障害T1_1162] 運送費算出処理の実行条件を追加（倉替のみ）
+ *  2009/05/29    1.7   H.Sasaki         [T1_1113]伝票番号の桁数を修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -132,6 +133,9 @@ AS
   cv_msg_xxcoi10017  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10017';   -- 設定単価複数件エラー
   cv_msg_xxcoi10292  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10292';   -- ケース入数取得エラー
   cv_msg_xxcoi10293  CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10293';   -- 営業原価取得失敗エラー
+-- == 2009/05/29 V1.7 Added START ===============================================================
+  cv_msg_xxcoi10381  CONSTANT VARCHAR2(30) := 'APP-XXCOI1-10381';   -- 伝票№マスク取得エラーメッセージ
+-- == 2009/05/29 V1.7 Added END   ===============================================================
 --
   -- トークン名
   cv_token_pro                CONSTANT VARCHAR2(30) := 'PRO_TOK';
@@ -148,6 +152,7 @@ AS
   cv_token_location_code      CONSTANT VARCHAR2(20) := 'LOCATION_CODE';          -- 拠点コード
   cv_token_base_major         CONSTANT VARCHAR2(20) := 'BASE_MAJOR_DIVISION';    -- 拠点大分類
 --
+  --
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -186,6 +191,9 @@ AS
   -- 
   gr_param                  gr_param_rec;
   gt_base_num_tab           gt_base_num_ttype;
+-- == 2009/05/13 V1.1 Added START ===============================================================
+  gn_slip_number_mask       NUMBER;                                           -- 伝票№マスク(990000000000)
+-- == 2009/05/13 V1.1 Added END   ===============================================================
 --
   /**********************************************************************************
    * Procedure Name   : del_work
@@ -1069,8 +1077,8 @@ AS
              ,mmt.transaction_quantity       transaction_qty            -- 取引数量
       FROM    mtl_material_transactions mmt                             -- 資材取引
              ,mtl_transaction_types      mtt                            -- 取引タイプマスタ
-             ,mtl_secondary_inventories  msi1                            -- 保管場所マスタ1
-             ,mtl_secondary_inventories  msi2                            -- 保管場所マスタ2
+             ,mtl_secondary_inventories  msi1                           -- 保管場所マスタ1
+             ,mtl_secondary_inventories  msi2                           -- 保管場所マスタ2
              ,hz_cust_accounts           hca1                           -- 顧客マスタ１
              ,hz_cust_accounts           hca2                           -- 顧客マスタ２
              ,mtl_system_items_b         msib                           -- 品目マスタ
@@ -1105,21 +1113,21 @@ AS
       --廃却
       SELECT  mmt.transaction_id
              ,DECODE(mmt.transaction_type_id,ln_haikyaku_b,ln_haikyaku
-                     ,mmt.transaction_type_id ) transaction_type_id      -- 取引タイプID
-             ,mmt.transaction_type_id         transaction_type_id_sub    -- 取引タイプIDサブ
+                     ,mmt.transaction_type_id ) transaction_type_id     -- 取引タイプID
+             ,mmt.transaction_type_id         transaction_type_id_sub   -- 取引タイプIDサブ
              ,DECODE(mmt.transaction_type_id,ln_haikyaku
                     ,mtt.transaction_type_name,lv_tran_type_haikyaku)
-                     transaction_type_name                               -- 取引タイプ名
-             ,msi.attribute7                  out_base_code              -- 出庫拠点 
-             ,SUBSTRB(hca.account_name,1,8)   out_base_name              -- 出庫拠点名
-             ,NULL                            in_base_code               -- 入庫拠点 
-             ,NULL                            in_base_name               -- 入庫拠点名
-             ,mmt.transaction_date            transaction_date           -- 取引日
-             ,mmt.attribute1                 slip_no                     -- 伝票No
-             ,mmt.inventory_item_id           inventory_item_id          -- 品目ID
-             ,msib.segment1                   item_no                    -- 品目コード
-             ,ximb.item_short_name            item_short_name            -- 略称
-             ,mmt.transaction_quantity        transaction_qty            -- 取引数量
+                     transaction_type_name                              -- 取引タイプ名
+             ,msi.attribute7                  out_base_code             -- 出庫拠点 
+             ,SUBSTRB(hca.account_name,1,8)   out_base_name             -- 出庫拠点名
+             ,NULL                            in_base_code              -- 入庫拠点 
+             ,NULL                            in_base_name              -- 入庫拠点名
+             ,mmt.transaction_date            transaction_date          -- 取引日
+             ,mmt.attribute1                  slip_no                   -- 伝票No
+             ,mmt.inventory_item_id           inventory_item_id         -- 品目ID
+             ,msib.segment1                   item_no                   -- 品目コード
+             ,ximb.item_short_name            item_short_name           -- 略称
+             ,mmt.transaction_quantity        transaction_qty           -- 取引数量
       FROM    mtl_material_transactions  mmt                            -- 資材取引
              ,mtl_transaction_types      mtt                            -- 取引タイプマスタ
              ,mtl_secondary_inventories  msi                            -- 保管場所マスタ
@@ -1162,7 +1170,11 @@ AS
              ,mmt.attribute2                 in_base_code               -- 入庫拠点(工場) 
              ,SUBSTRB(flv.description,1,8)   in_base_name               -- 入庫拠点名
              ,mmt.transaction_date           transaction_date           -- 取引日
-             ,mmt.attribute1                 slip_no                    -- 伝票No
+-- == 2009/05/29 V1.7 Modified START ===============================================================
+--             ,mmt.attribute1                 slip_no                    -- 伝票No
+             ,TO_CHAR(gn_slip_number_mask + mmt.transaction_set_id)
+                                             slip_no                    -- 伝票No
+-- == 2009/05/29 V1.7 Modified END   ===============================================================
              ,mmt.inventory_item_id          inventory_item_id          -- 品目ID
              ,msib.segment1                  item_no                    -- 品目コード
              ,ximb.item_short_name           item_short_name            -- 略称
@@ -1887,11 +1899,14 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     -- 定数
-    cv_01              CONSTANT VARCHAR2(2)    := '01';                           -- 妥当性チェック用(1月)
-    cv_12              CONSTANT VARCHAR2(2)    := '12';                           -- 妥当性チェック用(12月)
-    cv_mstorg_code     CONSTANT VARCHAR2(30)   := 'XXCOI1_MST_ORGANIZATION_CODE'; -- プロファイル名(マスタ組織コード)
-    cv_profile_name    CONSTANT VARCHAR2(24)   := 'XXCOI1_ORGANIZATION_CODE';     -- プロファイル名(在庫組織コード)
-    cv_item_div_h      CONSTANT VARCHAR2(30)   := 'XXCOS1_ITEM_DIV_H';            -- XXCOS:本社商品区分
+    cv_01                   CONSTANT VARCHAR2(2)    := '01';                            -- 妥当性チェック用(1月)
+    cv_12                   CONSTANT VARCHAR2(2)    := '12';                            -- 妥当性チェック用(12月)
+    cv_mstorg_code          CONSTANT VARCHAR2(30)   := 'XXCOI1_MST_ORGANIZATION_CODE';  -- プロファイル名(マスタ組織コード)
+    cv_profile_name         CONSTANT VARCHAR2(24)   := 'XXCOI1_ORGANIZATION_CODE';      -- プロファイル名(在庫組織コード)
+    cv_item_div_h           CONSTANT VARCHAR2(30)   := 'XXCOS1_ITEM_DIV_H';             -- XXCOS:本社商品区分
+-- == 2009/05/29 V1.7 Added START ===============================================================
+    cv_prf_slip_number_mask CONSTANT VARCHAR2(30)   := 'XXCOI1_SLIP_NUMBER_MASK';       -- プロファイル名（伝票番号マスク）
+-- == 2009/05/29 V1.7 Added END   ===============================================================
 --
     -- *** ローカル変数 ***
     lv_organization_code mtl_parameters.organization_code%TYPE;      -- 在庫組織コード
@@ -2063,7 +2078,7 @@ AS
     END IF;
 --
     -- =====================================
-    -- 本社商品区分名取得                       
+    -- 本社商品区分名取得
     -- =====================================
     gv_item_div_h := FND_PROFILE.VALUE( cv_item_div_h );
     IF ( gv_item_div_h IS NULL ) THEN
@@ -2074,8 +2089,6 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;    
-
-
     --==============================================================
     -- コンカレント入力パラメータ出力
     --==============================================================
@@ -2122,6 +2135,24 @@ AS
     , buff   => gv_out_msg
     );
 --
+-- == 2009/05/13 V1.1 Added START ===============================================================
+    -- ===============================
+    -- 伝票№マスク取得
+    -- ===============================
+    gn_slip_number_mask  :=  TO_NUMBER(fnd_profile.value( cv_prf_slip_number_mask ));
+    -- 共通関数の戻り値がNULLの場合、またはパラメータ.在庫組織コードと相違する場合
+    IF (gn_slip_number_mask IS NULL) THEN
+      -- 伝票№マスク取得エラーメッセージ
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_app_name
+                     , iv_name         => cv_msg_xxcoi10381
+                     , iv_token_name1  => cv_token_pro
+                     , iv_token_value1 => cv_prf_slip_number_mask
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- == 2009/05/13 V1.1 Added END   ===============================================================
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
