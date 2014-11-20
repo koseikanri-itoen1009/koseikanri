@@ -76,6 +76,9 @@ SELECT pla.po_line_id         line_id                  -- 明細ID
       ,ilm.attribute15        rank2                    -- ランク2 
       ,ilm.attribute15        base_rank2               -- ランク2(DB) 
 -- 2008/11/04 D.Nihei Add End
+-- 2008/12/06 H.Itou Add Start
+      ,NVL(pla.cancel_flag ,'N') cancel_flag           -- 削除フラグ
+-- 2008/12/06 H.Itou Add End
 FROM   po_headers_all pha           -- 発注ヘッダ
       ,(SELECT pla1.po_line_id
               ,pla1.po_header_id
@@ -96,6 +99,9 @@ FROM   po_headers_all pha           -- 発注ヘッダ
               ,pla1.last_updated_by
               ,pla1.last_update_date
               ,pla1.last_update_login
+-- 2008/12/06 H.Itou Add Start
+              ,pla1.cancel_flag
+-- 2008/12/06 H.Itou Add End
               ,xcimv1.item_id x_item_id
               ,xcimv1.item_no
               ,xcimv1.item_short_name
@@ -783,6 +789,16 @@ WHERE  pha.po_header_id  = pla.po_header_id
       ColumnType="VARCHAR2"
       AliasName="BaseRank2"
       Expression="BaseRank2"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="CancelFlag"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CANCEL_FLAG"
+      Expression="CANCEL_FLAG"
       SQLType="VARCHAR" >
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">

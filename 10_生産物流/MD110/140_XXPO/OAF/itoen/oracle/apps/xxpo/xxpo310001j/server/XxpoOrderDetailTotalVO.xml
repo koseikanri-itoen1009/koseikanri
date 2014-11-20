@@ -16,6 +16,9 @@ SELECT TO_CHAR(SUM(NVL(pla.attribute11, 0)), 'FM999,999,990.000') total_order_am
 FROM po_headers_all pha
     ,po_lines_all pla
 WHERE pha.po_header_id = pla.po_header_id
+-- 2008/12/06 H.Itou Add Start
+  AND NVL(pla.cancel_flag,'N') = 'N'
+-- 2008/12/06 H.Itou Add End
   AND pha.segment1     = :0
    ]]></SQLQuery>
    <DesignTime>

@@ -90,6 +90,9 @@ FROM po_headers_all pha                          -- 発注ヘッダ
             ,pla.last_update_date
             ,pla.last_update_login
             ,pla.unit_price
+-- 2008/12/06 H.Itou Add Start
+            ,pla.cancel_flag
+-- 2008/12/06 H.Itou Add End
             ,xcimv.item_id opm_item_id            -- OPM品目ID
             ,xcimv.item_no opm_item_no            -- 品目コード
             ,xcimv.item_short_name opm_item_name  -- 品目名
@@ -124,6 +127,9 @@ WHERE pha.po_header_id = pla.po_header_id
   AND xlvv3.lookup_type(+) = 'XXCMN_L06'
   AND xlvv4.lookup_code(+) = ilm.attribute13
   AND xlvv4.lookup_type(+) = 'XXCMN_L08'
+-- 2008/12/06 H.Itou Add Start
+  AND NVL(pla.cancel_flag,'N') = 'N' -- 削除した明細は表示しない
+-- 2008/12/06 H.Itou Add End
   AND pha.segment1     = :1
    ]]></SQLQuery>
    <DesignTime>

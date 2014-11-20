@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoSupplierResultsAMImpl
 * 概要説明   : 仕入先出荷実績入力:検索アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2008-07-11 1.2  伊藤ひとみ   内部変更#153 納入日の未来日チェック追加
 * 2008-10-22 1.3  吉元強樹     T_S_599対応
 * 2008-11-04 1.4  二瓶大輔     統合障害#51,103、104対応
+* 2008-12-06 1.5  伊藤ひとみ   本番障害#528対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo320001j.server;
@@ -567,6 +568,19 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
 
       OARow row = (OARow)rows[i];
 
+// 2008-12-06 T.Yoshimoto Add Start 
+      // *************************************************** //
+      // * 処理:発注明細取消済みチェック                   * //
+      // *************************************************** //
+      String cancelFlag = (String)row.getAttribute("CancelFlag");
+
+      if (XxcmnConstants.STRING_Y.equals(cancelFlag))
+      {
+         // エラーあり
+         continue;   
+      }
+// 2008-12-06 T.Yoshimoto Add End
+
       // ヘッダーID
       params.put("HeaderId",          headerId.toString());
       // 明細ID
@@ -816,6 +830,9 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
       String prodClassCode = null;
       // 入出庫換算単位
       String convUnit      = null;
+// 2008-12-06 H.Itou Mod Start
+      String cancelFlag = null; // 取消フラグ
+// 2008-12-06 H.Itou Mod End
       
       // 1行目
       resultsMakeDetailsVO.first();
@@ -828,9 +845,16 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
         itemClassCode     = (String)resultsMakeDetailsVORow.getAttribute("ItemClassCode");
         prodClassCode     = (String)resultsMakeDetailsVORow.getAttribute("ProdClassCode");
         convUnit          = (String)resultsMakeDetailsVORow.getAttribute("ConvUnit");
+// 2008-12-06 H.Itou Mod Start
+        cancelFlag = (String)resultsMakeDetailsVORow.getAttribute("CancelFlag");
+// 2008-12-06 H.Itou Mod End
         
-        // 金額確定フラグが"Y"(承諾済)の場合、ReadOnly処理
-        if (XxpoConstants.MONEY_DECISION_FLAG_Y.equals(moneyDecisionFlag))
+        // 金額確定フラグが"Y"(承諾済)の場合もReadOnly処理
+// 2008-12-06 H.Itou Mod Start 取消フラグがYの場合、ReadOnly
+//        if (XxpoConstants.MONEY_DECISION_FLAG_Y.equals(moneyDecisionFlag))
+        if (XxpoConstants.MONEY_DECISION_FLAG_Y.equals(moneyDecisionFlag)
+         || XxcmnConstants.STRING_Y.equals(cancelFlag))
+// 2008-12-06 H.Itou Mod End
         {
           readOnlyChangedMoneyFlag(resultsMakeDetailsVORow);
 
@@ -1466,7 +1490,16 @@ public class XxpoSupplierResultsAMImpl extends XxcmnOAApplicationModuleImpl
     {
 
       makeDetailsVORow = (OARow)makeDetailsVO.getCurrentRow();
-
+// 2008-12-06 H.Itou Mod Start
+      // 明細削除フラグYの場合、登録処理を行わない
+      String cancelFlag = (String)makeDetailsVORow.getAttribute("CancelFlag");
+      if (XxcmnConstants.STRING_Y.equals(cancelFlag))
+      {
+        // VOを次行へ移動
+        makeDetailsVO.next();
+        continue;
+      }
+// 2008-12-06 H.Itou Mod End
 
       if ((!XxcmnUtility.isEquals(makeDetailsVORow.getAttribute("ItemAmount"),               
                                  makeDetailsVORow.getAttribute("BaseItemAmount")))      // 入数：在庫入数(DB)

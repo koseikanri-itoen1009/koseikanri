@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2008/06/11    1.7   Oracle 山根 一浩 不具合ログ#440_63対応
  *  2008/10/24    1.8   Oracle 吉元 強樹 内部変更No174対応
  *  2008/12/04    1.9   Oracle 吉元 強樹 本番障害No420対応
+ *  2008/12/06    1.10  Oracle 伊藤 ひとみ 本番障害No528対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4492,6 +4493,9 @@ AS
                     ,pla.attribute10 as l_attribute10  -- 発注単位
                     ,pla.unit_meas_lookup_code
                     ,pla.quantity
+-- 2008/12/06 H.Itou Add Start
+                    ,pla.cancel_flag                   -- 削除フラグ
+-- 2008/12/06 H.Itou Add End
               FROM  po_headers_all pha,                -- 発注ヘッダ
                     po_lines_all  pla                  -- 発注明細
               WHERE pha.po_header_id = pla.po_header_id) xxpo
@@ -4503,6 +4507,9 @@ AS
       AND   xxpo.segment1     = xrt.source_document_number(+)
       AND   xxpo.line_num     = xrt.source_document_line_num(+)
       AND   TO_CHAR(xrt.txns_id) = rsl.attribute1(+)
+-- 2008/12/06 H.Itou Add Start
+      AND   NVL(xxpo.cancel_flag, 'N') = 'N'            -- 削除済みの明細は対象外
+-- 2008/12/06 H.Itou Add End
       AND   xxpo.segment1     = gv_header_number;
 --
     -- *** ローカル・レコード ***

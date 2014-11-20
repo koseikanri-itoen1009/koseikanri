@@ -41,6 +41,7 @@ AS
  *                                       結合テスト不具合ログ#300_3対応
  *  2008/10/27    1.5   Oracle 吉元 強樹 内部変更No216対応
  *  2008/12/04    1.6   Oracle 吉元 強樹 本番障害No420対応
+ *  2008/12/06    1.7   Oracle 伊藤 ひとみ 本番障害No528対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -887,6 +888,9 @@ AS
                    ,pla.attribute7  as l_attribute7   -- 受入数量
                    ,pla.attribute10 as l_attribute10  -- 発注単位
                    ,pla.attribute11 as l_attribute11  -- 発注数量
+-- 2008/12/06 H.Itou Add Start
+                   ,pla.cancel_flag as cancel_flag    -- 削除フラグ
+-- 2008/12/06 H.Itou Add End
              FROM   po_headers_all pha                -- 発注ヘッダ
                    ,po_lines_all pla                  -- 発注明細
              WHERE  pha.po_header_id = pla.po_header_id) xxpo
@@ -903,6 +907,9 @@ AS
       AND   xxpo.vendor_id    = xsv.vendor_id(+)
       AND   xxpo.l_attribute2 = xsv.vendor_site_code(+)
       AND   xxpo.h_segment1   = gv_header_number
+-- 2008/12/06 H.Itou Add Start
+      AND   NVL(xxpo.cancel_flag,'N')  = 'N'     -- 削除フラグ
+-- 2008/12/06 H.Itou Add End
       ORDER BY xxpo.line_num;
 --
     -- *** ローカル・レコード ***
