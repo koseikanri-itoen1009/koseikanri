@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -63,6 +63,7 @@ AS
  *  2008/12/12    1.26  N.Yoshida        本番障害669対応
  *  2008/12/12    1.27  A.Shiina         本番障害685対応
  *  2008/12/15    1.28  N.Yoshida        本番障害725対応
+ *  2008/12/17    1.29  A.Shiina         本番障害774対応
  *
  *****************************************************************************************/
 --
@@ -18781,6 +18782,8 @@ AS
       -- 差異金額
       ln_amount := ln_amount - ln_end_inv_amt ;
       prc_set_xml('N', 'amount' ,TO_CHAR(ROUND(ln_amount, gn_amount_decml )));
+-- 2008/12/17 v1.29 DELETE START
+/*
 -- 2008/11/25 v1.18 ADD START
       -- 当月受払・月首・棚卸の数量・金額が全てゼロの場合
       IF (
@@ -18799,7 +18802,29 @@ AS
       END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+*/
+-- 2008/12/17 v1.29 DELETE END
     END IF;
+-- 2008/12/17 v1.29 ADD START
+--
+    -- 当月受払・月首・棚卸の数量・金額が全てゼロの場合
+    IF (
+          (lb_zero = TRUE)
+            AND (ln_first_inv_qty = 0)
+              AND (ln_first_inv_amt = 0)
+                AND (ln_end_inv_qty = 0)
+                  AND (ln_end_inv_amt = 0)
+        ) THEN
+    ------------------------------
+    -- 出力判定用タグ
+    ------------------------------
+      prc_set_xml('Z', 'flg', '1');
+    ELSE
+      prc_set_xml('Z', 'flg', '0');
+    END IF;
+--
+-- 2008/12/17 v1.29 ADD END
+
 -- 2008/12/12 v1.27 ADD START
     -- 変数の初期化
     ln_first_inv_qty   := 0;
