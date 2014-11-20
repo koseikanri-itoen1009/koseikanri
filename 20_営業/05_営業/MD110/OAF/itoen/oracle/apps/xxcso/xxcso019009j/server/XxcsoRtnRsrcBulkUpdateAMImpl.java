@@ -9,7 +9,8 @@
 * 2008-01-16 1.0  SCS富尾和基  新規作成
 * 2009-03-05 1.1  SCS柳平直人  [CT1-034]重複営業員エラー対応
 * 2009-04-02 1.2  SCS阿部大輔  [T1_0092]担当営業員の顧客対応
-* 2009-04-02 1.2  SCS阿部大輔  [T1_0125]担当営業員の行追加対応
+* 2009-04-02 1.3  SCS阿部大輔  [T1_0125]担当営業員の行追加対応
+* 2009-05-07 1.4  SCS柳平直人  [T1_0603]登録前検証処理方法修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso019009j.server;
@@ -30,6 +31,10 @@ import com.sun.java.util.collections.List;
 import com.sun.java.util.collections.ArrayList;
 import java.sql.SQLException;
 import oracle.jbo.domain.Date;
+// 2009-05-07 [T1_0708] Add Start
+import oracle.apps.fnd.framework.server.OAPlsqlEntityImpl;
+// 2009-05-07 [T1_0708] Add End
+
 
 /*******************************************************************************
  * ルートNo/担当営業員一括更新画面のアプリケーション・モジュールクラス
@@ -732,6 +737,12 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       XxcsoUtils.debug(txn, "ISRSVFLG            ："
                               + registRow.getIsRsvFlg()                       );
 
+// 2009-05-07 [T1_0708] Add Start
+      byte rowState = registRow.getXxcsoRtnRsrcVEO().getEntityState();
+      if ( rowState == OAPlsqlEntityImpl.STATUS_MODIFIED )
+      {
+// 2009-05-07 [T1_0708] Add End
+
       //画面項目「新担当」同一拠点内存在チェック
       if ( registRow.getNextResource() != null
         && ! registRow.getNextResource().equals("")
@@ -813,6 +824,9 @@ public class XxcsoRtnRsrcBulkUpdateAMImpl extends OAApplicationModuleImpl
       {
         isRsvAccount = true;
       }
+// 2009-05-07 [T1_0708] Add Start
+      }
+// 2009-05-07 [T1_0708] Add End
 
       /* 20090402_abe_T1_0125 START*/
       //追加ボタンで未入力の場合は行を削除
