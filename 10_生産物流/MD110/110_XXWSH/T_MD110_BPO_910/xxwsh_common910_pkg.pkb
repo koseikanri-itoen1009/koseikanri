@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common910_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.29
+ * Version                : 1.30
  *
  * Program List
  *  -------------------- ---- ----- --------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2008/12/23   1.27  ORACLE北寒寺正夫 [積載効率チェック(合計値算出)] 本番指摘#781対応
  *  2009/01/22   1.28  SCS   伊藤ひとみ [ロット逆転防止チェック(依頼No指定あり)] 本番障害#1000対応
  *  2009/01/23   1.29  SCS   伊藤ひとみ [鮮度条件合格製造日取得] 本番障害#936対応
+ *  2009/01/26   1.30  SCS   二瓶大輔   [ロット逆転防止チェック] 本番障害#936対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3062,7 +3063,10 @@ AS
     IF ( ( ld_check_manufact_date <= ld_max_manufact_date )
       OR ( ld_check_manufact_date IS NULL                ) ) THEN
       on_result         :=  ln_result_success;                     -- 処理結果
-      on_reversal_date  :=  NULL;                                  -- 逆転日付
+-- 2009/01/26 D.Nihei Mod Start 本番#936対応 正常の場合も逆転日付を返却するように修正
+--      on_reversal_date  :=  NULL;                                  -- 逆転日付
+      on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付
+-- 2009/01/26 D.Nihei Mod End
     ELSE
       on_result         :=  ln_result_error;                       -- 処理結果
       on_reversal_date  :=  ld_check_manufact_date;                -- 逆転日付

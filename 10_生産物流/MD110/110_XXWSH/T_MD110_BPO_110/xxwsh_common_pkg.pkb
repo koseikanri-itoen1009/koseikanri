@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.40
+ * Version                : 1.41
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -92,6 +92,7 @@ AS
  *  2009/01/08   1.38  SCS    伊藤ひとみ[物流構成存在チェック関数]本番#894対応
  *  2009/01/14   1.39  SCS    山本恭久  [引当解除関数]本番#991対応
  *  2009/01/21   1.40  SCS    伊藤ひとみ[締めステータスチェック関数]本番#1053対応
+ *  2009/01/27   1.41  SCS    北寒寺正夫[締めステータスチェック関数]本番#1089対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1887,6 +1888,16 @@ AS
                 WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
                 AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
                 AND     xtc.sales_branch          =  cv_all
+-- Ver1.41 M.Hokkanji Start
+                AND    ((xtc.sales_branch_category = cv_all) OR
+                        (xtc.sales_branch_category = ( SELECT  DECODE(iv_prod_class
+                                                                    , cv_prod_class_2, xcav.drink_base_category
+                                                                    , cv_prod_class_1, xcav.leaf_base_category)
+                                                         FROM  xxcmn_cust_accounts2_v xcav
+                                                        WHERE xcav.party_number      =  iv_sales_branch
+                                                          AND xcav.start_date_active <= id_ship_date
+                                                          AND xcav.end_date_active   >= id_ship_date)))
+-- Ver1.41 M.Hokkanji End
                 AND     xtc.lead_time_day         =  in_lead_time_day
                 AND     xtc.schedule_ship_date    =  id_ship_date
                 AND     xtc.prod_class            =  iv_prod_class
@@ -1998,8 +2009,11 @@ AS
 -- Ver1.13 End
         WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
         AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch          =  cv_all
-        AND     xtc.sales_branch_category =  cv_all
+-- Ver1.41 M.Hokkanji Start
+-- 入力パラメータより小さい値で締め解除されている場合は締め解除を返す（大きい単位での上書きをさせないため）
+--        AND     xtc.sales_branch          =  cv_all
+--        AND     xtc.sales_branch_category =  cv_all
+-- Ver1.41 M.Hokkanji End
         AND     xtc.lead_time_day         =  in_lead_time_day
         AND     xtc.schedule_ship_date    =  id_ship_date
         AND     xtc.prod_class            =  iv_prod_class
@@ -2072,6 +2086,16 @@ AS
                 WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
                 AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
                 AND     xtc.sales_branch          =   cv_all
+-- Ver1.41 M.Hokkanji Start
+                AND    ((xtc.sales_branch_category = cv_all) OR
+                        (xtc.sales_branch_category = ( SELECT  DECODE(iv_prod_class
+                                                                    , cv_prod_class_2, xcav.drink_base_category
+                                                                    , cv_prod_class_1, xcav.leaf_base_category)
+                                                         FROM  xxcmn_cust_accounts2_v xcav
+                                                        WHERE xcav.party_number      =  iv_sales_branch
+                                                          AND xcav.start_date_active <= id_ship_date
+                                                          AND xcav.end_date_active   >= id_ship_date)))
+-- Ver1.41 M.Hokkanji End
                 AND     xtc.lead_time_day         =  in_lead_time_day
                 AND     xtc.schedule_ship_date    =  id_ship_date
                 AND     xtc.prod_class            =  iv_prod_class
@@ -2179,8 +2203,10 @@ AS
         FROM    xxwsh_tightening_control  xtc
         WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
         AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch          =  cv_all
-        AND     xtc.sales_branch_category =  cv_all
+-- Ver1.41 M.Hokkanji Start
+--        AND     xtc.sales_branch          =  cv_all
+--        AND     xtc.sales_branch_category =  cv_all
+-- Ver1.41 M.Hokkanji End
         AND     xtc.lead_time_day         =  in_lead_time_day
         AND     xtc.schedule_ship_date    =  id_ship_date
         AND     xtc.prod_class            =  iv_prod_class
@@ -2252,6 +2278,16 @@ AS
                 WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
                 AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
                 AND     xtc.sales_branch          =  cv_all
+-- Ver1.41 M.Hokkanji Start
+                AND    ((xtc.sales_branch_category = cv_all) OR
+                        (xtc.sales_branch_category = ( SELECT  DECODE(iv_prod_class
+                                                                    , cv_prod_class_2, xcav.drink_base_category
+                                                                    , cv_prod_class_1, xcav.leaf_base_category)
+                                                         FROM  xxcmn_cust_accounts2_v xcav
+                                                        WHERE xcav.party_number      =  iv_sales_branch
+                                                          AND xcav.start_date_active <= id_ship_date
+                                                          AND xcav.end_date_active   >= id_ship_date)))
+-- Ver1.41 M.Hokkanji End
                 AND     xtc.lead_time_day         =  in_lead_time_day
                 AND     xtc.schedule_ship_date    =  id_ship_date
                 AND     xtc.prod_class            =  iv_prod_class
@@ -2359,8 +2395,10 @@ AS
         FROM    xxwsh_tightening_control  xtc
         WHERE   xtc.order_type_id         IN (NVL(in_order_type_id, cn_all), cn_all)
         AND     xtc.deliver_from          IN (NVL(iv_deliver_from, cv_all), cv_all)
-        AND     xtc.sales_branch          =  cv_all
-        AND     xtc.sales_branch_category =  cv_all
+-- Ver1.41 M.Hokkanji Start
+--        AND     xtc.sales_branch          =  cv_all
+--        AND     xtc.sales_branch_category =  cv_all
+-- Ver1.41 M.Hokkanji End
         AND     xtc.lead_time_day         =  in_lead_time_day
         AND     xtc.schedule_ship_date    =  id_ship_date
         AND     xtc.prod_class            =  iv_prod_class

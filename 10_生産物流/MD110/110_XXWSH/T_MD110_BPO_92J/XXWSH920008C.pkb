@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD050_BPO_920
  * MD.070           : 出荷・引当/配車：生産物流共通（出荷・移動仮引当） T_MD070_BPO_92J
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,8 @@ AS
  *  2008/12/19   1.5   SCS伊藤           本番障害#648対応（I5実績未取在庫数 I6 実績未取在庫数 抽出項目を実績数－前回数に変更）
  *  2008/12/25   1.6   SCS北寒寺         本番障害#859対応 (ログのオーバーフローによりコンカレントエラーとなるため余分なログを出力しないように変更)
  *  2009/01/19   1.7   SCS二瓶           本番障害#949対応（PT対応）
+ *  2009/01/26   1.8   SCS二瓶           本番障害#936対応（鮮度条件・ロット逆転PT対応）
+ *                                       本番障害#332対応（条件：出庫元不備対応）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -3576,12 +3578,18 @@ AS
         lv_fwd_sql11 := 'AND ((il.distribution_block IN ( ' || '''' || iv_block1 || '''' || ',' ||
                                                                '''' || iv_block2 || '''' || ',' ||
                                                                '''' || iv_block3 || '''' || '))';
-        lv_fwd_sql12 := '  OR (oh.deliver_from = ' || in_deliver_from_id || ')) ';
+-- 2009/01/26 D.Nihei Mod Start 本番#332対応
+--        lv_fwd_sql12 := '  OR (oh.deliver_from = ' || in_deliver_from_id || ')) ';
+        lv_fwd_sql12 := '  OR (oh.deliver_from = ''' || in_deliver_from_id || ''')) ';
+-- 2009/01/26 D.Nihei Mod End
         -- sql変数の合体2
         lv_fwd_sql := lv_fwd_sql || lv_fwd_sql11 || lv_fwd_sql12;
       --WHEN 6 は条件追加なし
       WHEN 7 THEN
-        lv_fwd_sql12 := 'AND oh.deliver_from   = ' || in_deliver_from_id ;
+-- 2009/01/26 D.Nihei Mod Start 本番#332対応
+--        lv_fwd_sql12 := 'AND oh.deliver_from   = ' || in_deliver_from_id ;
+        lv_fwd_sql12 := 'AND oh.deliver_from   = ''' || in_deliver_from_id || '''';
+-- 2009/01/26 D.Nihei Mod End
         -- sql変数の合体2
         lv_fwd_sql := lv_fwd_sql || lv_fwd_sql12;
       WHEN 8 THEN
@@ -3594,11 +3602,17 @@ AS
     END CASE;
 --
     -- ORDER句の合体3
-    lv_fwd_sql := lv_fwd_sql || ' ORDER BY ol.shipping_item_code, oh.schedule_ship_date,' ||
-                                ' oh.schedule_arrival_date, il.distribution_block, '      ||
-                                'oh.deliver_from, NVL(ol.designated_production_date,TO_DATE(''' || gv_min_default_date || ''',''YYYY/MM/DD'')) DESC, ' ||
-                                ' p.reserve_order, oh.head_sales_branch, oh.deliver_to,oh.arrival_time_from, ' ||
-                                ' oh.request_no ';
+    lv_fwd_sql := lv_fwd_sql || ' ORDER BY ol.shipping_item_code'    ||
+                                '        , oh.schedule_ship_date'    ||
+                                '        , oh.schedule_arrival_date' ||
+                                '        , il.distribution_block'    ||
+                                '        , oh.deliver_from'          ||
+                                '        , NVL(ol.designated_production_date, TO_DATE(''' || gv_min_default_date || ''', ''YYYY/MM/DD'')) DESC' ||
+                                '        , p.reserve_order'          ||
+                                '        , oh.head_sales_branch'     ||
+                                '        , oh.deliver_to'            ||
+                                '        , oh.arrival_time_from'     ||
+                                '        , oh.request_no ';
     -- FOR句の合体4
 -- 2008/11/29 v1.2 mod start
 --    lv_fwd_sql := lv_fwd_sql || ' FOR UPDATE OF ol.order_line_id NOWAIT';
@@ -3733,12 +3747,18 @@ AS
         lv_mov_sql11 := 'AND ((il.distribution_block IN ( ' || '''' || iv_block1 || '''' || ',' ||
                                                                '''' || iv_block2 || '''' || ',' ||
                                                                '''' || iv_block3 || '''' || '))';
-        lv_mov_sql12 := '  OR (ih.shipped_locat_id = ' || in_deliver_from_id || ')) ';
+-- 2009/01/26 D.Nihei Mod Start 本番#332対応
+--        lv_mov_sql12 := '  OR (ih.shipped_locat_id = ' || in_deliver_from_id || ')) ';
+        lv_mov_sql12 := '  OR (ih.shipped_locat_code = ''' || in_deliver_from_id || ''')) ';
+-- 2009/01/26 D.Nihei Mod End
         -- sql変数の合体2
         lv_mov_sql := lv_mov_sql || lv_mov_sql11 || lv_mov_sql12;
       --WHEN 6 は条件追加なし
       WHEN 7 THEN
-         lv_mov_sql12 := 'AND ih.shipped_locat_code   = ' || in_deliver_from_id ;
+-- 2009/01/26 D.Nihei Mod Start 本番#332対応
+--         lv_mov_sql12 := 'AND ih.shipped_locat_code   = ' || in_deliver_from_id ;
+         lv_mov_sql12 := 'AND ih.shipped_locat_code   = ''' || in_deliver_from_id || '''';
+-- 2009/01/26 D.Nihei Mod End
         -- sql変数の合体2
         lv_mov_sql := lv_mov_sql || lv_mov_sql12;
       WHEN 8 THEN
@@ -3750,10 +3770,14 @@ AS
       ELSE NULL;
     END CASE;
 --
-    lv_mov_sql := lv_mov_sql || ' ORDER BY ml.item_code, ih.schedule_ship_date,' ||
-                                ' ih.schedule_arrival_date, il.distribution_block, '      ||
-                                ' ih.shipped_locat_code, NVL(ml.designated_production_date,TO_DATE(''' || gv_min_default_date || ''',''YYYY/MM/DD'')) DESC, ' ||
-                                ' ih.arrival_time_from, ih.mov_num ';
+    lv_mov_sql := lv_mov_sql || ' ORDER BY ml.item_code'             ||
+                                '        , ih.schedule_ship_date'    ||
+                                '        , ih.schedule_arrival_date' ||
+                                '        , il.distribution_block'    ||
+                                '        , ih.shipped_locat_code'    ||
+                                '        , NVL(ml.designated_production_date, TO_DATE(''' || gv_min_default_date || ''', ''YYYY/MM/DD'')) DESC' ||
+                                '        , ih.arrival_time_from'     ||
+                                '        , ih.mov_num ';
     -- FOR句の合体4
 -- 2008/11/29 v1.2 mod start
 --    lv_mov_sql := lv_mov_sql || ' FOR UPDATE OF ml.mov_line_id NOWAIT';
@@ -4644,8 +4668,12 @@ AS
     THEN
       IF ( ( gr_demand_tbl(in_d_cnt).conv_unit IS NOT NULL )
        AND ( ( gr_demand_tbl(in_d_cnt).document_type_code = gv_cons_biz_t_deliv )   -- 出荷依頼
-          OR ( gr_demand_tbl(in_d_cnt).document_type_code = gv_cons_biz_t_move  ) ) -- 移動指示
-       AND ( iv_item_class = gv_cons_id_drink) )
+-- 2009/01/26 D.Nihei Mod Start 本番#936対応
+--          OR ( gr_demand_tbl(in_d_cnt).document_type_code = gv_cons_biz_t_move  ) ) -- 移動指示
+--       AND ( iv_item_class = gv_cons_id_drink) )
+          OR (  ( gr_demand_tbl(in_d_cnt).document_type_code = gv_cons_biz_t_move )   -- 移動指示
+            AND ( iv_item_class = gv_cons_id_drink) ) ) )
+-- 2009/01/26 D.Nihei Mod End
       THEN
         gr_move_tbl(gn_move_rec_cnt).actual_quantity :=
           (FLOOR(gr_supply_tbl(in_s_cnt).r_quantity / gr_demand_tbl(in_d_cnt).num_of_cases))
@@ -5352,6 +5380,10 @@ AS
     lv_dist_block  xxcmn_item_locations2_v.distribution_block%TYPE;    -- ブロック
     lv_delv_from   xxwsh_order_headers_all.deliver_from%TYPE;          -- 出庫元
     lv_delv_to     xxwsh_order_headers_all.deliver_to%TYPE;            -- 配送先
+-- 2009/01/26 D.Nihei Mod Start 本番#936対応
+    lv_fresh_retcode     VARCHAR2(1);      -- 鮮度条件チェック用リターン・コード
+    ld_manufacture_date  DATE;             -- 鮮度条件合格製造日
+-- 2009/01/26 D.Nihei Mod End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -5599,6 +5631,10 @@ AS
       gr_check_tbl(1).max_lot_no     := NULL;
 -- Ver1.01 M.Hokkanji End
       lv_no_meisai_flg               := gv_cons_flg_yes;
+-- 2009/01/26 D.Nihei Add Start 本番#936対応
+      ld_reversal_date               := NULL;
+      lv_fresh_retcode               := NULL;      -- 鮮度条件チェック用リターン・コード
+-- 2009/01/26 D.Nihei Add End
       -- 供給情報ループ
       <<supply_inf_loop>>
       FOR ln_s_cnt IN 1..ln_s_max LOOP
@@ -5639,55 +5675,68 @@ AS
               lv_lot_biz_class := gv_cons_t_move;
               gv_request_type  := gv_request_name_move;
             END IF;
-            -- =========================================
-            -- ロット逆転防止チェック 共通関数
-            -- =========================================
-            xxwsh_common910_pkg.check_lot_reversal(
-                           lv_lot_biz_class                              -- 1.ロット逆転処理種別
-                         , gr_demand_tbl(ln_d_cnt).shipping_item_code    -- 2.品目コード
-                         , gr_supply_tbl(ln_s_cnt).lot_no                -- 3.ロットNo
-                         , gr_demand_tbl(ln_d_cnt).deliver_to_id         -- 4.配送先ID/取引先サイトID/入庫先ID
-                         , gr_demand_tbl(ln_d_cnt).schedule_arrival_date -- 5.着日
-                         , gr_demand_tbl(ln_d_cnt).schedule_ship_date    -- 6.基準日(適用日基準日)
-                         , lv_retcode                                    -- 7.リターン・コード
-                         , lv_errbuf                                     -- 8.エラー・メッセージ
-                         , lv_errmsg                                     -- 9.ユーザー・エラー・メッセージ 
-                         , ln_result                                     -- 10.処理結果
-                         , ld_reversal_date                              -- 11.逆転日付
-                           );
-            -- 共通関数のエラー
-            IF (lv_retcode = gv_cons_error) THEN
-              -- メッセージのセット
-              lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh   -- 'XXWSH'
-                                     , gv_msg_92a_006    -- 共通関数エラー
-                                     , gv_tkn_request_type -- トークン'REQUEST_TYPE'
-                                     , gv_request_type
-                                     , gv_tkn_request_no   -- トークン'REQUEST_NO'
-                                     , gr_demand_tbl(ln_d_cnt).request_no
-                                     , gv_tkn_p_date       -- トークン'P_DATE'
-                                     , gr_supply_tbl(ln_s_cnt).p_date
-                                     , gv_tkn_use_by_date  -- トークン'USE_BY_DATE'
-                                     , gr_supply_tbl(ln_s_cnt).use_by_date
-                                     , gv_tkn_fix_no       -- トークン'FIX_NO'
-                                     , gr_supply_tbl(ln_s_cnt).fix_no
-                                     , gv_tkn_err_code   -- トークン'ERR_CODE'
-                                     , lv_errbuf         -- エラーメッセージ
-                                     , gv_tkn_err_msg    -- トークン'ERR_MSG'
-                                     , lv_errmsg)        -- ユーザー・エラー・メッセージ
-                                     , 1
-                                     , 5000
-                                       );
-              -- 後続処理は中止する
-              gn_error_cnt := 1;
-              RAISE global_process_expt;
+-- 2009/01/26 D.Nihei Add Start 本番#936対応
+            IF ( ld_reversal_date IS NULL ) THEN
+-- 2009/01/26 D.Nihei Add End
+              -- =========================================
+              -- ロット逆転防止チェック 共通関数
+              -- =========================================
+              xxwsh_common910_pkg.check_lot_reversal(
+                             lv_lot_biz_class                              -- 1.ロット逆転処理種別
+                           , gr_demand_tbl(ln_d_cnt).shipping_item_code    -- 2.品目コード
+                           , gr_supply_tbl(ln_s_cnt).lot_no                -- 3.ロットNo
+                           , gr_demand_tbl(ln_d_cnt).deliver_to_id         -- 4.配送先ID/取引先サイトID/入庫先ID
+                           , gr_demand_tbl(ln_d_cnt).schedule_arrival_date -- 5.着日
+                           , gr_demand_tbl(ln_d_cnt).schedule_ship_date    -- 6.基準日(適用日基準日)
+                           , lv_retcode                                    -- 7.リターン・コード
+                           , lv_errbuf                                     -- 8.エラー・メッセージ
+                           , lv_errmsg                                     -- 9.ユーザー・エラー・メッセージ 
+                           , ln_result                                     -- 10.処理結果
+                           , ld_reversal_date                              -- 11.逆転日付
+                             );
+              -- 共通関数のエラー
+              IF (lv_retcode = gv_cons_error) THEN
+                -- メッセージのセット
+                lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh   -- 'XXWSH'
+                                       , gv_msg_92a_006    -- 共通関数エラー
+                                       , gv_tkn_request_type -- トークン'REQUEST_TYPE'
+                                       , gv_request_type
+                                       , gv_tkn_request_no   -- トークン'REQUEST_NO'
+                                       , gr_demand_tbl(ln_d_cnt).request_no
+                                       , gv_tkn_p_date       -- トークン'P_DATE'
+                                       , gr_supply_tbl(ln_s_cnt).p_date
+                                       , gv_tkn_use_by_date  -- トークン'USE_BY_DATE'
+                                       , gr_supply_tbl(ln_s_cnt).use_by_date
+                                       , gv_tkn_fix_no       -- トークン'FIX_NO'
+                                       , gr_supply_tbl(ln_s_cnt).fix_no
+                                       , gv_tkn_err_code   -- トークン'ERR_CODE'
+                                       , lv_errbuf         -- エラーメッセージ
+                                       , gv_tkn_err_msg    -- トークン'ERR_MSG'
+                                       , lv_errmsg)        -- ユーザー・エラー・メッセージ
+                                       , 1
+                                       , 5000
+                                         );
+                -- 後続処理は中止する
+                gn_error_cnt := 1;
+                RAISE global_process_expt;
+              END IF;
+-- 2009/01/26 D.Nihei Add Start 本番#936対応
             END IF;
+-- 2009/01/26 D.Nihei Add End
 --
-            -- ロットの逆転があった場合
-            IF (ln_result = 1) THEN
+-- 2009/01/26 D.Nihei Add Start 本番#936対応
+--            -- ロットの逆転があった場合
+--            IF (ln_result = 1) THEN
+--              -- チェック処理結果を格納する
+--              IF ( (gr_check_tbl(1).warnning_date IS NULL)
+--                OR (gr_check_tbl(1).warnning_date <= ld_reversal_date ))
+--              THEN
+            -- ロット製造日 < 逆転日付の場合
+            IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_reversal_date ) THEN
               -- チェック処理結果を格納する
-              IF ( (gr_check_tbl(1).warnning_date IS NULL)
-                OR (gr_check_tbl(1).warnning_date <= ld_reversal_date ))
-              THEN
+              IF ( ( gr_check_tbl(1).warnning_date IS NULL )
+                OR ( gr_check_tbl(1).warnning_date <= ld_reversal_date ) ) THEN
+-- 2009/01/26 D.Nihei Add End
                 ln_k_cnt := ln_k_cnt + 1;
                 gr_check_tbl(1).warnning_class := gv_cons_wrn_reversal;           -- 警告区分
                 gr_check_tbl(1).warnning_date  := ld_reversal_date;               -- 警告日付
@@ -5709,69 +5758,104 @@ AS
           -- 処理対象の需要が「出荷」の場合
           IF (gr_demand_tbl(ln_d_cnt).document_type_code = gv_cons_biz_t_deliv)
           THEN
-            -- =======================================
-            -- 鮮度条件チェック 共通関数
-            -- =======================================
-            xxwsh_common910_pkg.check_fresh_condition(
-                gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
-              , gr_supply_tbl(ln_s_cnt).lot_id                 -- 2.ロットID
-              , gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷日
-              , gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.出庫予定日
-              , lv_retcode                                     -- 5.リターン・コード
-              , lv_errbuf                                      -- 6.エラー・メッセージ
-              , lv_errmsg                                      -- 7.ユーザー・エラー・メッセージ
-              , ln_result                                      -- 8.処理結果
-              , ld_standard_date                               -- 9.基準日付
-                );
-            -- 共通関数のエラー
-            IF (lv_retcode = gv_cons_error) THEN
-              -- メッセージのセット
-              lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
-                                       gv_cons_msg_kbn_wsh    -- 'XXWSH'
-                                     , gv_msg_92a_006         -- 共通関数エラー
-                                     , gv_tkn_request_type    -- トークン'REQUEST_TYPE'
-                                     , gv_request_name_ship
-                                     , gv_tkn_request_no      -- トークン'REQUEST_NO'
-                                     , gr_demand_tbl(ln_d_cnt).request_no
-                                     , gv_tkn_p_date          -- トークン'P_DATE'
-                                     , gr_supply_tbl(ln_s_cnt).p_date
-                                     , gv_tkn_use_by_date     -- トークン'USE_BY_DATE'
-                                     , gr_supply_tbl(ln_s_cnt).use_by_date
-                                     , gv_tkn_fix_no          -- トークン'FIX_NO'
-                                     , gr_supply_tbl(ln_s_cnt).fix_no
-                                     , gv_tkn_err_code        -- トークン'ERR_CODE'
-                                     , lv_errbuf              -- エラーメッセージ
-                                     , gv_tkn_err_msg         -- トークン'ERR_MSG'
-                                     , lv_errmsg)             -- ユーザー・エラー・メッセージ
-                                     , 1
-                                     , 5000
-                                       );
-              -- 後続処理は中止する
-              gn_error_cnt := 1;
-              RAISE global_process_expt;
-            END IF;
---
-            -- 鮮度条件異常の場合
-            IF ( ln_result = 1 ) THEN
-              -- チェック処理結果を格納する
-              IF ( ( gr_check_tbl(1).warnning_date IS NULL )
-                OR ( gr_check_tbl(1).warnning_date <= ld_standard_date ))
-              THEN
-                gr_check_tbl(1).warnning_class := gv_cons_wrn_fresh;                   -- 警告区分
-                gr_check_tbl(1).warnning_date  := ld_standard_date;                    -- 警告日付
-                gr_check_tbl(1).lot_no         := gr_supply_tbl(ln_s_cnt).lot_no;      -- ロットNo
-                gr_check_tbl(1).p_date         := gr_supply_tbl(ln_s_cnt).p_date;      -- 製造年月日
-                gr_check_tbl(1).fix_no         := gr_supply_tbl(ln_s_cnt).fix_no;      -- 固有番号
-                gr_check_tbl(1).use_by_date    := gr_supply_tbl(ln_s_cnt).use_by_date; -- 賞味期限
+-- 2009/01/26 D.Nihei Mod Start 本番#936対応
+--            -- =======================================
+--            -- 鮮度条件チェック 共通関数
+--            -- =======================================
+--            xxwsh_common910_pkg.check_fresh_condition(
+--                gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
+--              , gr_supply_tbl(ln_s_cnt).lot_id                 -- 2.ロットID
+--              , gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷日
+--              , gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.出庫予定日
+--              , lv_retcode                                     -- 5.リターン・コード
+--              , lv_errbuf                                      -- 6.エラー・メッセージ
+--              , lv_errmsg                                      -- 7.ユーザー・エラー・メッセージ
+--              , ln_result                                      -- 8.処理結果
+--              , ld_standard_date                               -- 9.基準日付
+--                );
+--            -- 共通関数のエラー
+--            IF (lv_retcode = gv_cons_error) THEN
+            IF ( lv_fresh_retcode IS NULL ) THEN
+              -- =======================================
+              -- 鮮度条件合格製造日取得 共通関数
+              -- =======================================
+              xxwsh_common910_pkg.get_fresh_pass_date(
+                 gr_demand_tbl(ln_d_cnt).deliver_to_id          -- 1.配送先ID
+               , gr_demand_tbl(ln_d_cnt).shipping_item_code     -- 2.品目コード
+               , gr_demand_tbl(ln_d_cnt).schedule_arrival_date  -- 3.着荷日
+               , gr_demand_tbl(ln_d_cnt).schedule_ship_date     -- 4.出庫予定日
+               , ld_manufacture_date                            -- 5.鮮度条件合格製造日
+               , lv_fresh_retcode                               -- 6.リターン・コード
+               , lv_errbuf                                      -- 7.エラー・メッセージ
+              );
+              -- 共通関数のエラー
+              IF ( lv_fresh_retcode = gv_cons_error ) THEN
+-- 2009/01/26 D.Nihei Mod End
+                -- メッセージのセット
+                lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(
+                                         gv_cons_msg_kbn_wsh    -- 'XXWSH'
+                                       , gv_msg_92a_006         -- 共通関数エラー
+                                       , gv_tkn_request_type    -- トークン'REQUEST_TYPE'
+                                       , gv_request_name_ship
+                                       , gv_tkn_request_no      -- トークン'REQUEST_NO'
+                                       , gr_demand_tbl(ln_d_cnt).request_no
+                                       , gv_tkn_p_date          -- トークン'P_DATE'
+                                       , gr_supply_tbl(ln_s_cnt).p_date
+                                       , gv_tkn_use_by_date     -- トークン'USE_BY_DATE'
+                                       , gr_supply_tbl(ln_s_cnt).use_by_date
+                                       , gv_tkn_fix_no          -- トークン'FIX_NO'
+                                       , gr_supply_tbl(ln_s_cnt).fix_no
+                                       , gv_tkn_err_code        -- トークン'ERR_CODE'
+                                       , lv_errbuf              -- エラーメッセージ
+                                       , gv_tkn_err_msg         -- トークン'ERR_MSG'
+                                       , lv_errmsg)             -- ユーザー・エラー・メッセージ
+                                       , 1
+                                       , 5000
+                                         );
+                -- 後続処理は中止する
+                gn_error_cnt := 1;
+                RAISE global_process_expt;
               END IF;
---
-              -- 後続の他のチェックをパスするためにフラグON
-              lv_no_check_flg := gv_cons_flg_yes;
-              -- 警告終了
+-- 2009/01/26 D.Nihei Add Start 本番#936対応
             END IF;
-            -- ループの間一度でもここを通ればA-11はコールする
-            lv_no_meisai_flg := gv_cons_flg_yes;
+-- 2009/01/26 D.Nihei Add End
 --
+-- 2009/01/26 D.Nihei Mod Start 本番#936対応
+--            -- 鮮度条件異常の場合
+--            IF ( ln_result = 1 ) THEN
+--              -- チェック処理結果を格納する
+--              IF ( ( gr_check_tbl(1).warnning_date IS NULL )
+--                OR ( gr_check_tbl(1).warnning_date <= ld_standard_date ))
+--                THEN
+            -- 正常の場合
+            IF ( lv_fresh_retcode = gv_status_normal ) THEN
+              -- ロット製造日 < 鮮度条件合格製造日の場合
+              IF ( FND_DATE.STRING_TO_DATE(gr_supply_tbl(ln_s_cnt).p_date, 'YYYY/MM/DD') < ld_manufacture_date ) THEN
+                -- チェック処理結果を格納する
+                IF ( ( gr_check_tbl(1).warnning_date IS NULL )
+                  OR ( gr_check_tbl(1).warnning_date <= ld_manufacture_date ) ) THEN
+-- 2009/01/26 D.Nihei Mod End
+                  gr_check_tbl(1).warnning_class := gv_cons_wrn_fresh;                   -- 警告区分
+-- 2009/01/26 D.Nihei Mod Start 本番#936対応
+--                  gr_check_tbl(1).warnning_date  := ld_standard_date;                    -- 警告日付
+                  gr_check_tbl(1).warnning_date  := ld_manufacture_date;                 -- 警告日付
+-- 2009/01/26 D.Nihei Mod End
+                  gr_check_tbl(1).lot_no         := gr_supply_tbl(ln_s_cnt).lot_no;      -- ロットNo
+                  gr_check_tbl(1).p_date         := gr_supply_tbl(ln_s_cnt).p_date;      -- 製造年月日
+                  gr_check_tbl(1).fix_no         := gr_supply_tbl(ln_s_cnt).fix_no;      -- 固有番号
+                  gr_check_tbl(1).use_by_date    := gr_supply_tbl(ln_s_cnt).use_by_date; -- 賞味期限
+                END IF;
+--
+                -- 後続の他のチェックをパスするためにフラグON
+                lv_no_check_flg := gv_cons_flg_yes;
+                -- 警告終了
+              END IF;
+              -- ループの間一度でもここを通ればA-11はコールする
+              lv_no_meisai_flg := gv_cons_flg_yes;
+--
+-- 2009/01/26 D.Nihei Add Start 本番#936対応
+            END IF;
+-- 2009/01/26 D.Nihei Add End
           END IF;
 --
           IF ( lv_no_check_flg = gv_cons_flg_no ) THEN
@@ -6006,7 +6090,7 @@ AS
     gn_login_user       := FND_GLOBAL.LOGIN_ID;         -- ログインID
     gn_created_by       := FND_GLOBAL.USER_ID;          -- ログインユーザID
     gn_conc_request_id  := FND_GLOBAL.CONC_REQUEST_ID;  -- 要求ID
-    gn_prog_appl_id     := FND_GLOBAL.PROG_APPL_ID; -- コンカレント・プログラム・アプリケーションID
+    gn_prog_appl_id     := FND_GLOBAL.PROG_APPL_ID;     -- コンカレント・プログラム・アプリケーションID
     gn_conc_program_id  := FND_GLOBAL.CONC_PROGRAM_ID;  -- コンカレント・プログラムID
 --
     -- グローバル変数の初期化
