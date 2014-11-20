@@ -48,6 +48,7 @@ AS
  *  2007/08/28   11.5.10.2.10C  AR通貨有効日の比較対象は請求書日付とする修正
  *  2007/10/29   11.5.10.2.10D  通貨の精度チェック(入力可能精度か桁チェック)追加
  *  2010/01/14   11.5.10.2.11   障害「E_本稼動_01066」対応
+ *  2010/02/16   11.5.10.2.12   障害「E_本稼動_01408」対応
  *
  *****************************************************************************************/
 --
@@ -173,6 +174,10 @@ AS
     ln_amount_precision    NUMBER(1)    := 0;      -- 伝票での金額の精度
     cv_precision_char      VARCHAR2(1)  := '.';    -- 小数点記号
     -- ver 11.5.10.2.10D Add End
+--
+-- ver 11.5.10.2.12 Modify Start
+    cn_if_line_attribute_length CONSTANT NUMBER := '30'; -- INTERFACE_LINE_ATTRIBUTE列桁数
+-- ver 11.5.10.2.12 Modify End
 --
     -- *** ローカル・カーソル ***
     -- 処理対象データ取得カーソル
@@ -594,7 +599,12 @@ AS
     --取引タイプチェック
     CURSOR xx03_trans_type_name_cur
     IS
-    SELECT COUNT(1) exist_check
+    -- ver 11.5.10.2.12 Modify Start
+    --SELECT COUNT(1) exist_check
+    SELECT xrs.slip_type
+          ,rct.type
+          ,rct.attribute5
+    -- ver 11.5.10.2.12 Modify End
     FROM   XX03_RECEIVABLE_SLIPS XRS
           ,RA_CUST_TRX_TYPES_ALL RCT
           ,FND_LOOKUP_VALUES     FVL
@@ -704,6 +714,22 @@ AS
                       AND   SYSDATE BETWEEN NVL(flvv.start_date_active,SYSDATE) AND NVL(flvv.end_date_active,SYSDATE));
 -- ver 11.5.10.2.11 Add Start
 --
+-- ver 11.5.10.2.12 Modify Start
+    -- 文字列バイトチェック
+    CURSOR xx03_length_chk_cur
+    IS
+    SELECT xrsl.line_number
+          ,xrsl.slip_line_reciept_no
+          ,xrsl.slip_description
+    FROM   xx03_receivable_slips xrs
+          ,xx03_receivable_slips_line xrsl
+    WHERE xrs.receivable_id = in_receivable_id
+    AND   xrsl.receivable_id = xrs.receivable_id
+    AND   (LENGTHB(xrsl.slip_line_reciept_no) > cn_if_line_attribute_length OR
+           LENGTHB(xrsl.slip_description) > cn_if_line_attribute_length)
+    ORDER BY xrsl.line_number;
+-- ver 11.5.10.2.12 Modify Emd
+--
     -- 共通エラーチェック結果取得カーソル
     CURSOR xx03_errchk_result_cur
     IS
@@ -768,7 +794,10 @@ AS
     -- 勘定科目チェックカーソル
     xx03_account_chk_rec xx03_account_chk_cur%ROWTYPE;
 -- ver 11.5.10.2.11 Add End
-
+-- ver 11.5.10.2.12 Modify Start
+    -- 文字列バイトチェックレコード型
+    xx03_length_chk_rec xx03_length_chk_cur%ROWTYPE;
+-- ver 11.5.10.2.12 Modify End
 --
     -- 相互検証用パラメータ
     lb_retcode          BOOLEAN;
@@ -1345,16 +1374,68 @@ AS
 -- ver 11.5.10.1.6G Add End
           OPEN xx03_trans_type_name_cur;
           FETCH xx03_trans_type_name_cur INTO xx03_trans_type_name_rec;
-          IF xx03_trans_type_name_rec.exist_check = 0 THEN
+          -- ver 11.5.10.2.12 Modify Start
+          --IF xx03_trans_type_name_rec.exist_check = 0 THEN
+          IF xx03_trans_type_name_cur%NOTFOUND THEN
+          -- ver 11.5.10.2.12 Modify End
             -- 取引タイプチェックエラー
             errflg_tbl(ln_err_cnt) := 'E';
             errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XX03', 'APP-XX03-13060','SLIP_NUM','');
             ln_err_cnt := ln_err_cnt + 1;
+          -- ver 11.5.10.2.12 Add Start
+          ELSIF (xx03_trans_type_name_rec.type = 'INV')
+            AND (   (xx03_trans_type_name_rec.attribute5 IS NULL)
+                 OR (xx03_trans_type_name_rec.attribute5 <> xx03_trans_type_name_rec.slip_type))
+          THEN
+            -- 取引タイプチェックエラー
+            errflg_tbl(ln_err_cnt) := 'E';
+            errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XX03', 'APP-XX03-13060','SLIP_NUM','');
+            ln_err_cnt := ln_err_cnt + 1;
+          -- ver 11.5.10.2.12 Add End
           END IF;
           CLOSE xx03_trans_type_name_cur;
 -- ver 11.5.10.1.6G Add Start
         END IF;
 -- ver 11.5.10.1.6G Add End
+--
+-- ver 11.5.10.2.12 Modify Start
+        -- 文字列バイトチェック(納品書番号、請求明細備考)
+        OPEN  xx03_length_chk_cur;
+        <<length_chk_loop>>
+        LOOP
+          FETCH xx03_length_chk_cur INTO xx03_length_chk_rec;
+          EXIT WHEN xx03_length_chk_cur%NOTFOUND;
+          IF xx03_length_chk_cur%FOUND THEN
+            IF LENGTHB(xx03_length_chk_rec.slip_line_reciept_no) > cn_if_line_attribute_length THEN
+              -- 納品書番号バイトチェックエラー
+              errflg_tbl(ln_err_cnt) := 'E';
+              errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR',
+                                                                 'APP-XXCFR1-00093',
+                                                                 'LINE_NUM',
+                                                                 xx03_length_chk_rec.line_number,
+                                                                 'ITEM_NAME',
+                                                                 '納品書番号',
+                                                                 'BYTE',
+                                                                 TO_CHAR(cn_if_line_attribute_length));
+              ln_err_cnt := ln_err_cnt + 1;
+            END IF;
+            IF LENGTHB(xx03_length_chk_rec.slip_description) > cn_if_line_attribute_length THEN
+              -- 請求明細備考バイトチェックエラー
+              errflg_tbl(ln_err_cnt) := 'E';
+              errmsg_tbl(ln_err_cnt) := xx00_message_pkg.get_msg('XXCFR',
+                                                                 'APP-XXCFR1-00093',
+                                                                 'LINE_NUM',
+                                                                 xx03_length_chk_rec.line_number,
+                                                                 'ITEM_NAME',
+                                                                 '備考(請求明細)',
+                                                                 'BYTE',
+                                                                 TO_CHAR(cn_if_line_attribute_length));
+              ln_err_cnt := ln_err_cnt + 1;
+            END IF;
+          END IF;
+        END LOOP length_chk_loop;
+        CLOSE xx03_length_chk_cur;
+-- ver 11.5.10.2.12 Modify End
 --
 -- 2006/02/18 Ver11.5.10.1.6E Add END
 --
