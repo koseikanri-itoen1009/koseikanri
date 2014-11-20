@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.6
+ * Version          : 1.7
  *
  * -------------------------------------------------------------------------------------
  * 注意事項！    HHT(xxwsh930002c)をどのように作ったか
@@ -78,6 +78,7 @@ AS
  *  2008/06/23    1.4  Oracle 宮田 隆史  ST不具合#230対応
  *  2008/06/24    1.5  Oracle 宮田 隆史  ST不具合#230対応(2)
  *  2008/06/27    1.6  Oracle 宮田 隆史  ST不具合#299対応
+ *  2008/07/01    1.7  Oracle 宮田 隆史  ST不具合#333対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -9376,6 +9377,12 @@ AS
     ln_order_line_seq           NUMBER;  --受注L.明細IDseq
     ln_line_number              NUMBER;  --明細番号
     ln_sum_actual_quantity      xxinv_mov_lot_details.actual_quantity%TYPE;
+--
+    ln_order_header_id          xxwsh_order_headers_all.order_header_id%TYPE;        --訂正前の受注ヘッダアドオンID
+    ln_based_request_quantity   xxwsh_order_lines_all.based_request_quantity%TYPE;   --拠点依頼数量
+    ln_reserved_quantity        xxwsh_order_lines_all.reserved_quantity%TYPE;        --引当数
+    lv_automanual_reserve_class xxwsh_order_lines_all.automanual_reserve_class%TYPE; --自動手動引当区分
+--
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -9467,6 +9474,55 @@ AS
              := gr_interface_info_rec(in_idx).shiped_quantity;
     END IF;
 --
+    -- 初期クリア　NULLセット
+    gr_order_l_rec.based_request_quantity   := 0;        --拠点依頼数量
+    gr_order_l_rec.reserved_quantity        := 0;        --引当数
+    gr_order_l_rec.automanual_reserve_class := NULL;     --自動手動引当区分
+--
+    -- 訂正（同品目）の場合、ＩＦにない項目の値を訂正前レコードより受け継ぐ
+    IF (iv_cnt_kbn = gv_cnt_kbn_4) THEN
+--
+      BEGIN
+        -- 実績計上済みのMAXヘッダID取得
+        SELECT    MAX(xoha.order_header_id) order_header_id
+        INTO      ln_order_header_id       -- ヘッダID
+        FROM      xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
+        WHERE     NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(gr_interface_info_rec(in_idx).delivery_no,gv_delivery_no_null)
+        AND       xoha.request_no = gr_interface_info_rec(in_idx).order_source_ref
+        AND       actual_confirm_class = gv_yesno_y
+        GROUP BY  xoha.delivery_no                 --配送No
+                 ,xoha.order_source_ref            --受注ソース参照
+        ;
+--
+        -- 訂正前の明細情報を取得
+        SELECT   xola.based_request_quantity
+                ,xola.reserved_quantity
+                ,xola.automanual_reserve_class
+        INTO     ln_based_request_quantity                      -- 拠点依頼数量
+                ,ln_reserved_quantity                           -- 引当数
+                ,lv_automanual_reserve_class                    -- 自動手動引当区分
+        FROM    xxwsh_order_lines_all     xola                  -- 受注明細(アドオン)
+        WHERE   xola.order_header_id = ln_order_header_id       -- 受注ヘッダアドオンID
+        AND     xola.shipping_item_code = gr_interface_info_rec(in_idx).orderd_item_code -- 出荷品目
+        AND     ((xola.delete_flag = gv_yesno_n) OR (xola.delete_flag IS NULL))
+        ;
+--
+        -- 取得した値をセット
+        gr_order_l_rec.based_request_quantity   := ln_based_request_quantity;   --拠点依頼数量
+        gr_order_l_rec.reserved_quantity        := ln_reserved_quantity;        --引当数
+        gr_order_l_rec.automanual_reserve_class := lv_automanual_reserve_class; --自動手動引当区分
+--
+      EXCEPTION
+--
+        WHEN NO_DATA_FOUND THEN
+          gr_order_l_rec.based_request_quantity   := 0;        --拠点依頼数量
+          gr_order_l_rec.reserved_quantity        := 0;        --引当数
+          gr_order_l_rec.automanual_reserve_class := NULL;     --自動手動引当区分
+--
+      END;
+--
+    END IF;
+--
     -- **************************************************
     -- *** 受注明細(アドオン)登録を行う
     -- **************************************************
@@ -9482,6 +9538,9 @@ AS
       ,request_item_id                             -- 依頼品目ID
       ,request_item_code                           -- 依頼品目
       ,shipped_quantity                            -- 出庫実績数量
+      ,based_request_quantity                      -- 拠点依頼数量
+      ,reserved_quantity                           -- 引当数
+      ,automanual_reserve_class                    -- 自動手動引当区分
       ,delete_flag                                 -- 削除フラグ
       ,rm_if_flg                                   -- 倉替返品インタフェース済フラグ
       ,shipping_request_if_flg                     -- 出荷依頼インタフェース済フラグ
@@ -9508,6 +9567,9 @@ AS
       ,gr_order_l_rec.request_item_id              --依頼品目ID
       ,gr_order_l_rec.request_item_code            --依頼品目
       ,gr_order_l_rec.shipped_quantity             --出庫実績数量
+      ,gr_order_l_rec.based_request_quantity       --拠点依頼数量
+      ,gr_order_l_rec.reserved_quantity            --引当数
+      ,gr_order_l_rec.automanual_reserve_class     --自動手動引当区分
       ,gv_yesno_n                                  --削除フラグ
       ,gv_yesno_n                                  --倉替返品インタフェース済フラグ
       ,gv_yesno_n                                  --出荷依頼インタフェース済フラグ
@@ -13249,11 +13311,11 @@ AS
 --
           -- 受注明細アドオン 指示品目≠実績品目 (A-8-6)実施 (INSERT)
           order_lines_ins(
-            in_idx,                 -- データindex
-            ln_cnt_kbn,             -- データ件数カウント区分
-            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-            lv_retcode,             -- リターン・コード             --# 固定 #
-            lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+            in_idx,                                   -- データindex
+            ln_cnt_kbn,                               -- データ件数カウント区分
+            lv_errbuf,                                -- エラー・メッセージ           --# 固定 #
+            lv_retcode,                               -- リターン・コード             --# 固定 #
+            lv_errmsg                                 -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
           IF (lv_retcode = gv_status_error) THEN
@@ -13285,9 +13347,9 @@ AS
           order_movlot_detail_ins(
             in_idx,                 -- データindex
             ln_cnt_kbn,             -- データ件数カウント区分
-            lv_errbuf,                -- エラー・メッセージ           --# 固定 #
-            lv_retcode,               -- リターン・コード             --# 固定 #
-            lv_errmsg                 -- ユーザー・エラー・メッセージ --# 固定 #
+            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+            lv_retcode,             -- リターン・コード             --# 固定 #
+            lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
           );
 --
           IF (lv_retcode = gv_status_error) THEN
