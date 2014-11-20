@@ -1715,21 +1715,34 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       // 顧客タイプチェック
       validateAccount();
 
-      /* 20090414_abe_T1_0442 START*/
-      //if ( getTransaction().isDirty() )
-      //{
-      /* 20090414_abe_T1_0442 END*/
+// 2009-05-29 【T1_1249】 Mod Start
+//      /* 20090414_abe_T1_0442 START*/
+//      //if ( getTransaction().isDirty() )
+//      //{
+//      /* 20090414_abe_T1_0442 END*/
+//        // 問屋帳合先用見積の存在チェックを行う
+//        validateReference();
+//
+//        // 画面項目の入力チェック
+//        validateFixed();
+//
+//        // 保存処理を実行します。
+//        commit();
+//      /* 20090414_abe_T1_0442 START*/
+//      //}
+//      /* 20090414_abe_T1_0442 END*/
+      if ( getTransaction().isDirty() )
+      {
         // 問屋帳合先用見積の存在チェックを行う
         validateReference();
+      }
+      // 画面項目の入力チェック
+      validateFixed();
 
-        // 画面項目の入力チェック
-        validateFixed();
+      // 保存処理を実行します。
+      commit();
+// 2009-05-29 【T1_1249】 Mod End
 
-        // 保存処理を実行します。
-        commit();
-      /* 20090414_abe_T1_0442 START*/
-      //}
-      /* 20090414_abe_T1_0442 END*/
     }
     else
     {
