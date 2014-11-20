@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A03C(body)
  * Description      : ベンダ納品実績情報作成
  * MD.050           : ベンダ納品実績情報作成 MD050_COS_003_A03
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List     
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/02/24   1.1    T.Nakamura       [障害COS_130] メッセージ出力、ログ出力への出力内容の追加・修正
  *  2009/06/10   1.2    T.Tominaga       [障害T1_1408] エラーメッセージの納品日の書式を’YYYY/MM/DD’に変更
  *  2009/12/11   1.3    N.Yoshida        [本稼動_00399] 訂正・取消データ時はマイナス金額を設定するよう修正
+ *  2009/12/28   1.4    S.Miyakoshi      [本稼動_00125] 販売金額の桁あふれ対応
  *
  *****************************************************************************************/
 --
@@ -99,11 +100,21 @@ AS
   cv_tkn_key_data         CONSTANT VARCHAR2(20) := 'KEY_DATA';
   cv_flag_off             CONSTANT VARCHAR2(1)  := 'N';
   cv_flag_on              CONSTANT VARCHAR2(1)  := 'Y';
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+  cv_flag_skip            CONSTANT VARCHAR2(1)  := 'S';            -- 処理対象外フラグ
+  cn_max_amount           CONSTANT NUMBER       := 999999;         -- 合計金額の最大値
+  cn_min_amount           CONSTANT NUMBER       := -999999;        -- 合計金額の最小値
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
 -- 2009/12/11 N.Yoshida Ver.1.3 Add Start
   cv_flag_red             CONSTANT VARCHAR2(1)  := '0';            -- 赤黒フラグ(赤)
   cn_num_conv             CONSTANT NUMBER       := -1;             -- マイナス値算出用
 -- 2009/12/11 N.Yoshida Ver.1.3 Add End
   cv_tkn_lock             CONSTANT VARCHAR2(20) := 'TABLE';               -- ロックエラー
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+  cv_tkn_invoice_no       CONSTANT VARCHAR2(20) := 'invoice_no';          -- 伝票No.
+  cv_tkn_cust             CONSTANT VARCHAR2(20) := 'cust_code';           -- 顧客コード
+  cv_tkn_deli_date        CONSTANT VARCHAR2(20) := 'dlv_date';            -- 納品日
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
   cn_lock_error_code      CONSTANT NUMBER       := -54;
   cv_msg_lock             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00001';    -- ロック取得エラー
   cv_msg_pro              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00004';    -- プロファイル取得エラー
@@ -126,7 +137,11 @@ AS
   cv_tkn_vd_column_l      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10755';    -- VDコラム別取引ヘッダテーブル
   cv_tkn_order_no_hht     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10756';    -- 受注No.（HHT)
   cv_tkn_digestion_ln_no  CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10757';    -- 枝番
-  cv_tkn_sub_main_cur     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10758';    --顧客マスタおよび、VDコラムマスタ
+  cv_tkn_sub_main_cur     CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10758';    -- 顧客マスタおよび、VDコラムマスタ
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+  cv_tkn_max_amount_err   CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10759';    -- 販売金額桁あふれエラー
+  cv_tkn_max_total_err    CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10760';    -- 合計金額桁あふれエラー
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
 
   cv_tkn_profile          CONSTANT VARCHAR2(20) := 'PROFILE';             -- プロファイル名
   cv_tkn_org_code_tok     CONSTANT VARCHAR2(20) := 'ORG_CODE_TOK';        -- 在庫組織コード
@@ -191,6 +206,9 @@ AS
           ,xvch.order_no_hht        order_no_hht          --受注No.（HHT）
           ,xvch.digestion_ln_number digestion_ln_number   --枝番
           ,xvch.base_code           base_code             --拠点コード
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+          ,xvch.hht_invoice_no      hht_invoice_no        --HHT伝票No.
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
     FROM   xxcos_vd_column_headers xvch
           ,fnd_lookup_values       flvl
     WHERE  xvch.vd_results_forward_flag = cv_flag_off
@@ -233,7 +251,11 @@ AS
     TYPE g_rec_key_rtype IS RECORD
     (
       order_no_hht         main_rec.order_no_hht%TYPE,        -- 受注No.（HHT)
-      digestion_ln_number  main_rec.digestion_ln_number%TYPE  -- 枝番
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi MOD START  ******************************************
+--      digestion_ln_number  main_rec.digestion_ln_number%TYPE  -- 枝番
+      digestion_ln_number  main_rec.digestion_ln_number%TYPE, -- 枝番
+      forward_flag         xxcos_vd_column_headers.vd_results_forward_flag%TYPE  -- ベンダ納品実績情報連携済フラグ
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi MOD END    ******************************************
     );
     
     TYPE g_tab_key_ttype IS TABLE OF g_rec_key_rtype INDEX BY PLS_INTEGER;
@@ -436,6 +458,10 @@ AS
     -- *** ローカル変数 ***
     lv_visit_time     xxcos_vd_deliv_headers.visit_time%TYPE;
     lv_set_visit_time xxcos_vd_deliv_headers.visit_time%TYPE;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+    lv_total_amount   xxcos_vd_deliv_headers.total_amount%TYPE;
+    lv_dlv_date       VARCHAR2(10);     -- 納品日
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -451,14 +477,50 @@ AS
 --###########################  固定部 END   ############################
 --
     BEGIN
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi MOD START  ******************************************
+--      SELECT  visit_time
+--      INTO    lv_visit_time
       SELECT  visit_time
+             ,total_amount
+             ,TO_CHAR( dlv_date, 'YYYY/MM/DD' )
       INTO    lv_visit_time
+             ,lv_total_amount
+             ,lv_dlv_date
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi MOD END    ******************************************
       FROM    xxcos_vd_deliv_headers xvdh
       WHERE   xvdh.customer_number = main_rec.customer_number
       AND     xvdh.dlv_date        = main_rec.dlv_date       
       FOR UPDATE NOWAIT
       ;
       
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+      --合計金額が桁あふれする場合の分岐
+      IF ( lv_total_amount + main_rec.total_amount > cn_max_amount )
+         OR
+         ( lv_total_amount + main_rec.total_amount < cn_min_amount ) THEN
+--
+        --処理対象外フラグを設定
+        gt_key(gn_main_loop_cnt).forward_flag := cv_flag_skip;
+        gn_skip_cnt := gn_skip_cnt + 1;
+        gn_warn_cnt := gn_warn_cnt + 1;
+--
+        --対象外メッセージ出力
+        lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                            , cv_tkn_max_total_err
+                                            , cv_tkn_invoice_no
+                                            , main_rec.hht_invoice_no
+                                            , cv_tkn_cust
+                                            , main_rec.customer_number
+                                            , cv_tkn_deli_date
+                                            , lv_dlv_date
+                                            );
+        FND_FILE.PUT_LINE(
+                          which  => FND_FILE.OUTPUT
+                         ,buff   => lv_errmsg --エラーメッセージ
+                         );
+--
+      ELSE
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
       -- ===============================
       --ベンダ納品実績情報ヘッダテーブル更新
       -- ===============================
@@ -519,6 +581,9 @@ AS
           RAISE update_error_expt;
 
       END;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+      END IF;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
       
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -1101,7 +1166,10 @@ AS
         -- ================================================
         BEGIN
           UPDATE xxcos_vd_column_headers
-          SET    vd_results_forward_flag    = cv_flag_on
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi MOD START  ******************************************
+--          SET    vd_results_forward_flag    = cv_flag_on
+          SET    vd_results_forward_flag    = gt_key(i).forward_flag
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi MOD END    ******************************************
                 ,last_updated_by            = cn_last_updated_by       
                 ,last_update_date           = cd_last_update_date      
                 ,last_update_login          = cn_last_update_login     
@@ -1250,6 +1318,9 @@ AS
 --
     -- *** ローカル変数 ***
     lv_message_code          VARCHAR2(20);
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+    lv_rowid VARCHAR2(100);
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
 --
   BEGIN
 --
@@ -1263,7 +1334,128 @@ AS
     FOR l_main_rec IN main_cur LOOP 
       main_rec := l_main_rec;
       gn_target_cnt := gn_target_cnt + 1;
-      
+--
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+      IF ( main_rec.total_amount > cn_max_amount ) OR ( main_rec.total_amount < cn_min_amount ) THEN
+        BEGIN
+          --VDコラム別取引ヘッダテーブルレコードロック
+          SELECT ROWID
+          INTO   lv_rowid
+          FROM   xxcos_vd_column_headers xvch
+          WHERE  xvch.order_no_hht        = main_rec.order_no_hht
+          AND    xvch.digestion_ln_number = main_rec.digestion_ln_number
+          FOR UPDATE NOWAIT;
+--
+          --VDコラム別取引ヘッダテーブルステータス更新
+          BEGIN
+            UPDATE xxcos_vd_column_headers
+            SET    vd_results_forward_flag = cv_flag_skip        --'S'
+                  ,last_updated_by         = cn_last_updated_by
+                  ,last_update_date        = cd_last_update_date
+                  ,last_update_login       = cn_last_update_login
+                  ,request_id              = cn_request_id
+                  ,program_application_id  = cn_program_application_id
+                  ,program_id              = cn_program_id
+                  ,program_update_date     = cd_program_update_date
+            WHERE  order_no_hht            = main_rec.order_no_hht
+            AND    digestion_ln_number     = main_rec.digestion_ln_number
+            ;
+          EXCEPTION
+            WHEN OTHERS THEN
+              ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+              xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                    --エラー・メッセージ
+                                              ,ov_retcode     => lv_retcode                   --リターン・コード
+                                              ,ov_errmsg      => lv_errmsg                    --ユーザー・エラー・メッセージ
+                                              ,ov_key_info    => gv_key_info                  --キー情報
+                                              ,iv_item_name1  => gv_msg_tkn_order_no_hht      --項目名称1
+                                              ,iv_data_value1 => main_rec.order_no_hht        --データの値1
+                                              ,iv_item_name2  => gv_msg_tkn_digestion_ln_no   --項目名称2
+                                              ,iv_data_value2 => main_rec.digestion_ln_number --データの値2
+                                              );
+--
+              ov_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                                  , cv_msg_update_err
+                                                  , cv_tkn_table_name
+                                                  , gv_msg_tkn_vd_column_h
+                                                  , cv_tkn_key_data
+                                                  , gv_key_info
+                                                  );
+--
+              FND_FILE.PUT_LINE(
+                                which  => FND_FILE.LOG
+                               ,buff   => ov_errbuf --エラーメッセージ
+                               );
+              FND_FILE.PUT_LINE(
+                                which  => FND_FILE.OUTPUT
+                               ,buff   => ov_errmsg --エラーメッセージ
+                               );
+              RAISE update_error_expt;
+          END;
+--
+        --対象外メッセージ出力
+        lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                            , cv_tkn_max_amount_err
+                                            , cv_tkn_invoice_no
+                                            , main_rec.hht_invoice_no
+                                            , cv_tkn_cust
+                                            , main_rec.customer_number
+                                            );
+        FND_FILE.PUT_LINE(
+                          which  => FND_FILE.OUTPUT
+                         ,buff   => lv_errmsg --エラーメッセージ
+                         );
+--
+        --スキップ件数の加算
+        gn_warn_cnt := gn_warn_cnt + 1;
+--
+        --終了ステータス更新
+        ov_retcode := cv_status_warn;
+--
+        EXCEPTION
+          WHEN update_error_expt THEN
+            RAISE global_api_others_expt;
+          WHEN OTHERS THEN
+            lv_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+            IF (SQLCODE = cn_lock_error_code) THEN
+              lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                                  , cv_msg_lock
+                                                  , cv_tkn_lock
+                                                  , gv_msg_tkn_vd_column_h
+                                                   );
+            ELSE
+              xxcos_common_pkg.makeup_key_info(ov_errbuf      => lv_errbuf                    --エラー・メッセージ
+                                              ,ov_retcode     => lv_retcode                   --リターン・コード
+                                              ,ov_errmsg      => lv_errmsg                    --ユーザー・エラー・メッセージ
+                                              ,ov_key_info    => gv_key_info                  --キー情報
+                                              ,iv_item_name1  => gv_msg_tkn_order_no_hht      --項目名称1
+                                              ,iv_data_value1 => main_rec.order_no_hht        --データの値1
+                                              ,iv_item_name2  => gv_msg_tkn_digestion_ln_no   --項目名称2
+                                              ,iv_data_value2 => main_rec.digestion_ln_number --データの値2
+                                              );
+--
+              lv_errmsg := xxccp_common_pkg.get_msg(cv_application
+                                                  , cv_msg_select_err
+                                                  , cv_tkn_table_name
+                                                  , gv_msg_tkn_vd_column_h
+                                                  , cv_tkn_key_data
+                                                  , gv_key_info
+                                                  );
+            END IF;
+--
+            FND_FILE.PUT_LINE(
+                              which  => FND_FILE.LOG
+                             ,buff   => lv_errbuf --エラーメッセージ
+                             );
+            FND_FILE.PUT_LINE(
+                              which  => FND_FILE.OUTPUT
+                             ,buff   => lv_errmsg --エラーメッセージ
+                             );
+            ov_retcode := cv_status_warn;
+            gn_warn_cnt := gn_warn_cnt + 1;
+        END;
+--
+      ELSE
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
       BEGIN
       -- ==================================================
       --A-9．VDコラム別取引ヘッダテーブルステータス更新
@@ -1305,6 +1497,9 @@ AS
         gn_main_loop_cnt := gn_main_loop_cnt + 1;
         gt_key(gn_main_loop_cnt).order_no_hht        := main_rec.order_no_hht;       
         gt_key(gn_main_loop_cnt).digestion_ln_number := main_rec.digestion_ln_number;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+        gt_key(gn_main_loop_cnt).forward_flag        := cv_flag_on;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
 
         -- ===============================
         --顧客コードブレイク判定
@@ -1328,6 +1523,12 @@ AS
           RAISE global_api_others_expt;
         END IF;
                   
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+        IF ( gt_key(gn_main_loop_cnt).forward_flag = cv_flag_skip ) THEN
+          --終了ステータス更新
+          ov_retcode := cv_status_warn;
+        ELSE
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
         -- ===============================
         --A-5．VDコラム別取引明細テーブルデータ抽出
         -- ===============================
@@ -1395,6 +1596,9 @@ AS
                            );                           
           RAISE tran_in_exp;
         END IF;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+        END IF;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
         
       EXCEPTION
         WHEN tran_in_exp THEN
@@ -1402,6 +1606,9 @@ AS
           gn_warn_tran_count := gn_warn_tran_count + 1;
           ov_retcode := cv_status_warn;
       END;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD START  ******************************************
+      END IF;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi ADD END    ******************************************
     END LOOP main_loop;
     IF gn_tran_count > 0 THEN
       proc_status_update(
@@ -1425,7 +1632,10 @@ AS
         ov_errbuf := NULL;
       ELSE
         COMMIT;
-        gn_normal_cnt := gn_normal_cnt + gn_tran_count;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi MOD START  ******************************************
+--        gn_normal_cnt := gn_normal_cnt + gn_tran_count;
+        gn_normal_cnt := gn_normal_cnt + gn_tran_count - gn_skip_cnt;
+-- ******************** 2009/12/28 Var.1.4 S.Miyakoshi MOD END    ******************************************
       END IF;
     END IF;
 
