@@ -7,13 +7,14 @@ AS
  * Description      : 引当解除処理
  * MD.050/070       : 生産物流共通(出荷･移動仮引当)(T_MD050_BPO_920)
  *                    引当解除処理                 (T_MD070_BPO_92D)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
  *  pro_param_chk          入力パラメータチェック           (G-1)
+ *  pro_get_item_code_list 品目リスト取得                   (G-X)
  *  pro_get_h_o_all        出荷依頼対象データ抽出           (G-2)
  *  pro_get_mov_req        移動指示対象データ抽出           (G-3)
  *  pro_del_mov_lot        移動ロッド詳細(アドオン)削除     (G-4)
@@ -33,6 +34,7 @@ AS
  *  2008/06/13    1.3   Masao Hokkanji    抽出条件変更対応
  *  2008/12/01    1.4   SCS Miyata        ロック対応
  *  2009/01/27    1.5   SCS Itou          本番障害#1028対応
+ *  2009/05/01    1.6   SCS Itou          本番障害#1447対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -65,6 +67,10 @@ AS
 -- 2009/01/27 H.Itou Add Start 本番障害#1028対応
      ,instruction_dept xxwsh_order_headers_all.instruction_dept%TYPE -- 指示部署
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Mod Start 本番障害#1447対応
+     ,item_code        xxcmn_item_mst_v.item_no%TYPE -- 品目コード
+     ,item_code_list   VARCHAR2(4000)                -- 入力パラメータ.品目コードの親子リスト
+-- 2009/05/01 H.Itou Add End
     );
 --
   -- 出荷依頼対象データ格納用レコード変数
@@ -184,6 +190,9 @@ AS
 -- 2009/01/27 H.Itou Add Start 本番障害#1028対応
   gv_sql_in_para_5     VARCHAR2(1000);      -- 入力Ｐ任意部分5（指示部署 入力有）
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Add Start 本番障害#1447対応
+  gv_sql_in_para_6     VARCHAR2(1000);      -- 入力Ｐ任意部分6（品目コード 入力有）
+-- 2009/05/01 H.Itou Add End
 --
   gr_param             rec_param_data;      -- 入力パラメータ
   gt_order_line        tab_data_order_line; -- 出荷依頼対象取得データ
@@ -359,6 +368,99 @@ AS
 --
   END pro_param_chk;
 --
+-- 2009/05/01 H.Itou Add Start 本番障害#1447
+  /**********************************************************************************
+   * Procedure Name   : pro_get_item_code_list
+   * Description      : 品目リスト取得  (G-X)
+   ***********************************************************************************/
+  PROCEDURE pro_get_item_code_list(
+    iv_item_code       IN  VARCHAR2,            -- 品目コード
+    ov_errbuf          OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode         OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg          OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'pro_get_item_code_list'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+    cn_max_cnt  CONSTANT NUMBER := 100; -- MAXCOUNT
+    cn_cnt_0    CONSTANT NUMBER := 0;   -- 対象品目件数0
+--
+    -- *** ローカル変数 ***
+    ln_cnt      NUMBER := 0;            -- 件数カウント用
+--
+    -- *** ローカル・カーソル ***
+    CURSOR cur_item_list 
+    IS
+      SELECT ximv.item_no
+      FROM   xxcmn_item_mst_v ximv
+      WHERE  LEVEL           <= 2            -- 子階層まで抽出
+      START WITH ximv.item_no = iv_item_code -- 親品目から検索
+      CONNECT BY NOCYCLE PRIOR ximv.item_id = ximv.parent_item_id
+    ;
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    gr_param.item_code_list := NULL;
+    FOR rec_item_list IN cur_item_list LOOP
+      ln_cnt := ln_cnt + 1;
+      IF ( gr_param.item_code_list IS NULL ) THEN
+        gr_param.item_code_list := '''' || rec_item_list.item_no || '''';
+      ELSE
+        gr_param.item_code_list := gr_param.item_code_list || ',' || '''' || rec_item_list.item_no || '''';
+      END IF;
+    END LOOP;
+--
+    -- 対象品目が100件より大きい場合
+    IF ( ln_cnt > cn_max_cnt ) THEN
+      -- エラーメッセージ定義
+      lv_errmsg := '品目対象件数が100件を超えています。';
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END pro_get_item_code_list;
+-- 2009/05/01 H.Itou Add End
   /**********************************************************************************
    * Procedure Name   : pro_get_h_o_all
    * Description      : 出荷依頼対象データ抽出  (G-2)
@@ -489,6 +591,10 @@ AS
     -- 入力Ｐ任意部分5（指示部署 入力有）
     gv_sql_in_para_5 := ' AND xoha.instruction_dept         = ''' || gr_param.instruction_dept || '''';   -- 入力Ｐ「指示部署」
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Add Start 本番障害#1028対応
+    -- 入力Ｐ任意部分6（品目コード 入力有）
+    gv_sql_in_para_6 := ' AND xola.shipping_item_code       IN (' || gr_param.item_code_list || ')';   -- 品目コードリスト
+-- 2009/05/01 H.Itou Add End
 --
     -------------------------------------------------------------
     -- データ抽出用SQL作成
@@ -527,6 +633,12 @@ AS
     END IF;
 -- 2009/01/27 H.Itou Add End
 --
+-- 2009/05/01 H.Itou Add Start 本番障害#1447対応
+    -- 入力Ｐ「品目コード」の入力チェック
+    IF (gr_param.item_code IS NOT NULL) THEN
+      gv_sql_sel := gv_sql_sel || gv_sql_in_para_6;  -- 入力Ｐ任意部分6結合
+    END IF;
+-- 2009/05/01 H.Itou Add End
     ---------------------------------
     -- 作成SQL文実行
     ---------------------------------
@@ -865,6 +977,10 @@ AS
     -- 入力Ｐ任意部分5（指示部署 入力有）
     gv_sql_in_para_5 := ' AND xmrih.instruction_post_code = ''' || gr_param.instruction_dept || '''';   -- 入力Ｐ「指示部署」
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Add Start 本番障害#1028対応
+    -- 入力Ｐ任意部分6（品目コード 入力有）
+    gv_sql_in_para_6 := ' AND xmril.item_code            IN (' || gr_param.item_code_list || ')';   -- 品目コードリスト
+-- 2009/05/01 H.Itou Add End
 --
     -------------------------------------------------------------
     -- データ抽出用SQL作成
@@ -897,6 +1013,12 @@ AS
       gv_sql_sel := gv_sql_sel || gv_sql_in_para_5;  -- 入力Ｐ任意部分5結合
     END IF;
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Add Start 本番障害#1447対応
+    -- 入力Ｐ「品目コード」の入力チェック
+    IF (gr_param.item_code IS NOT NULL) THEN
+      gv_sql_sel := gv_sql_sel || gv_sql_in_para_6;  -- 入力Ｐ任意部分6結合
+    END IF;
+-- 2009/05/01 H.Itou Add End
 --
     ---------------------------------
     -- 作成SQL文実行
@@ -1397,6 +1519,9 @@ AS
 -- 2009/01/27 H.Itou Add Start 本番障害#1028対応
      ,iv_instruction_dept    IN  VARCHAR2   -- 10.指示部署
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Mod Start 本番障害#1447対応
+     ,iv_item_code           IN  VARCHAR2   -- 11.品目コード
+-- 2009/05/01 H.Itou Add End
      ,ov_errbuf              OUT VARCHAR2   --   エラー・メッセージ           --# 固定 #
      ,ov_retcode             OUT VARCHAR2   --   リターン・コード             --# 固定 #
      ,ov_errmsg              OUT VARCHAR2   --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1442,6 +1567,9 @@ AS
 -- 2009/01/27 H.Itou Add Start 本番障害#1028対応
     gr_param.instruction_dept := iv_instruction_dept;    -- 指示部署
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Mod Start 本番障害#1447対応
+    gr_param.item_code    := iv_item_code;               -- 品目コード
+-- 2009/05/01 H.Itou Add End
 --
     -- 開始時のシステム現在日付を代入
     gd_sysdate             := SYSDATE;
@@ -1472,6 +1600,22 @@ AS
     IF (lv_retcode = gv_status_error) THEN
       RAISE global_process_expt;
     END IF;
+--
+-- 2009/05/01 H.Itou Add Start 本番障害#1447
+    -- =====================================================
+    --  品目リスト取得  (G-X)
+    -- =====================================================
+    pro_get_item_code_list
+      (
+        iv_item_code      => iv_item_code   -- 品目コード
+       ,ov_errbuf         => lv_errbuf      -- エラー・メッセージ           --# 固定 #
+       ,ov_retcode        => lv_retcode     -- リターン・コード             --# 固定 #
+       ,ov_errmsg         => lv_errmsg      -- ユーザー・エラー・メッセージ --# 固定 #
+      );
+    IF (lv_retcode = gv_status_error) THEN
+      RAISE global_process_expt;
+    END IF;
+-- 2009/05/01 H.Itou Add End
 --
     -- 入力Ｐ「処理種別」が『出荷依頼』か『指定なし(ALL)』の場合､実行
     IF ((gr_param.action_type = gv_s_req)
@@ -1614,6 +1758,9 @@ AS
 -- 2009/01/27 H.Itou Add Start 本番障害#1028対応
      ,iv_instruction_dept   IN  VARCHAR2      -- 10.指示部署
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Mod Start 本番障害#1447対応
+     ,iv_item_code          IN  VARCHAR2      -- 11.品目コード
+-- 2009/05/01 H.Itou Add End
     )
 --
 --###########################  固定部 START   ###########################
@@ -1715,6 +1862,12 @@ AS
     gv_out_msg := '指示部署： ' || iv_instruction_dept;
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
 -- 2009/01/27 H.Itou Add End
+--
+-- 2009/05/01 H.Itou Mod Start 本番障害#1447対応
+    -- 入力パラメータ「品目コード」出力
+    gv_out_msg := '品目コード： ' || iv_item_code;
+    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_out_msg);
+-- 2009/05/01 H.Itou Add End
     --区切り文字列出力
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_sep_msg);
 --
@@ -1735,6 +1888,9 @@ AS
 -- 2009/01/27 H.Itou Add Start 本番障害#1028対応
        ,iv_instruction_dept  => iv_instruction_dept   -- 10.指示部署
 -- 2009/01/27 H.Itou Add End
+-- 2009/05/01 H.Itou Mod Start 本番障害#1447対応
+       ,iv_item_code         => iv_item_code          -- 11.品目コード
+-- 2009/05/01 H.Itou Add End
        ,ov_errbuf            => lv_errbuf             -- エラー・メッセージ           --# 固定 #
        ,ov_retcode           => lv_retcode            -- リターン・コード             --# 固定 #
        ,ov_errmsg            => lv_errmsg             -- ユーザー・エラー・メッセージ --# 固定 #
