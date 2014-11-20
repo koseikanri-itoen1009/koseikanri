@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.26
+* バージョン : 1.27
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -34,6 +34,7 @@
 * 2009-02-18 1.24 伊藤ひとみ   本番障害#1096対応
 * 2009-02-27 1.25 伊藤ひとみ   本番障害#32対応
 * 2009-05-13 1.26 吉元強樹     本番障害#1282対応
+* 2009-07-08 1.27 伊藤ひとみ   本番障害#1566対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -57,7 +58,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.25
+ * @version 1.27
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -1605,7 +1606,10 @@ public class XxpoUtility
       cstmt.setString(3, itemUm);                                   // 単位
       cstmt.setString(4, lotNo);                                    // ロット番号
       cstmt.setString(5, fromLocation);                             // 保管場所コード
-      cstmt.setInt(6, XxcmnUtility.intValue(quantity));             // 数量
+// 2009-07-08 H.Itou Mod Start 本番障害#1566対応 小数点も計算に入れる。
+//      cstmt.setInt(6, XxcmnUtility.intValue(quantity));             // 数量
+      cstmt.setDouble(6, XxcmnUtility.doubleValue(quantity));             // 数量
+// 2009-07-08 H.Itou Mod End
       cstmt.setString(7, processFlag);                              // 処理フラグ
       cstmt.setString(8, productedQuantity);                        // 出来高数量
       cstmt.setInt(9, XxcmnUtility.intValue(conversionFactor));     // 換算入数
