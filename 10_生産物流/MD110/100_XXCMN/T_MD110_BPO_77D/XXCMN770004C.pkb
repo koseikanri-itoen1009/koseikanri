@@ -7,7 +7,7 @@ AS
  * Description      : Žó•¥‚»‚Ì‘¼ŽÀÑƒŠƒXƒg
  * MD.050/070       : ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD050_BPO_770)
  *                    ŒŽŽŸYØˆ—’ •[Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -57,6 +57,7 @@ AS
  *  2008/12/19    1.20  A.Shiina         –{”ÔáŠQ812‘Î‰ž
  *                                       ŽÀÛŒ´‰¿‚ÌŽæ“¾æ•ÏX uxxcmn_lot_cost.unit_plocevË
  *                                                            uic_lots_mst.attribute7v 
+ *  2008/12/22    1.21  A.Shiina         –{”ÔáŠQ719‘Î‰ž
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -4383,8 +4384,8 @@ AS
       ORDER BY reason_code,item_code,whse_code,lot_no
       ;
 --
-    --NDA:301/302/303/304/305/306/307/308/309/310/311/312/317/318/319
-    --DD :3nn(PROD)
+    --NDA:301/302/303/304/305/306/307/308/309/310/311/312/317/318/319/503
+    --DD :3nn(PROD)/502(ADJI)
     CURSOR get_data3nn_cur (iv_div_type IN VARCHAR2) IS
       SELECT /*+ leading (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */
              TO_CHAR(xrpm.line_type)    div_tocode
@@ -4485,6 +4486,90 @@ AS
       AND    xlv1.language           = 'JA'
       AND    xlv1.source_lang        = 'JA'
       AND    xlv1.enabled_flag       = 'Y'
+-- 2008/12/22 v1.21 ADD START
+      UNION ALL -- ADJI
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,ilm.attribute7             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code        = cv_reason_952
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+-- 2008/12/22 v1.21 ADD END
       ORDER BY reason_code,item_code,whse_code,lot_no
       ;
 --
@@ -5049,7 +5134,9 @@ AS
                                       ,cv_reason_931
                                       ,cv_reason_932
 -- 2008/11/19 v1.12 ADD START
-                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE START
+--                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE END
                                       ,cv_reason_953
                                       ,cv_reason_954
                                       ,cv_reason_955
@@ -5166,7 +5253,9 @@ AS
                                       ,cv_reason_931
                                       ,cv_reason_932
 -- 2008/11/19 v1.12 ADD START
-                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE START
+--                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE END
                                       ,cv_reason_953
                                       ,cv_reason_954
                                       ,cv_reason_955
@@ -5399,7 +5488,9 @@ AS
                                       ,cv_reason_931
                                       ,cv_reason_932
 -- 2008/11/19 v1.12 ADD START
-                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE START
+--                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE END
                                       ,cv_reason_953
                                       ,cv_reason_954
                                       ,cv_reason_955
@@ -9510,8 +9601,8 @@ AS
       ORDER BY reason_code,item_code,whse_code,lot_no
       ;
 --
-    --NDA:301/302/303/304/305/306/307/308/309/310/311/312/317/318/319
-    --DD :3nn(PROD)
+    --NDA:301/302/303/304/305/306/307/308/309/310/311/312/317/318/319/503
+    --DD :3nn(PROD)/502(ADJI)
     CURSOR get_data3nn_r_cur (iv_div_type IN VARCHAR2) IS
       SELECT /*+ leading (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) use_nl (trn gmd gbh grb xrpm gic1 mcb1 gic2 mcb2) */
              TO_CHAR(xrpm.line_type)    div_tocode
@@ -9613,6 +9704,91 @@ AS
       AND    xlv1.source_lang        = 'JA'
       AND    xlv1.enabled_flag       = 'Y'
       AND    xrpm.reason_code        = ir_param.reason_code
+-- 2008/12/22 v1.21 ADD START
+      UNION ALL -- ADJI
+      SELECT /*+ leading (xrpm trn gic1 mcb1 gic2 mcb2) use_nl (xrpm trn gic1 mcb1 gic2 mcb2) */
+             NULL                       div_tocode
+            ,NULL                       div_toname
+            ,xrpm.reason_code           reason_code
+            ,srct.reason_desc1          reason_name
+            ,NULL                       post_code
+            ,NULL                       post_name
+            ,trn.trans_date             trans_date
+            ,xrpm.new_div_account       new_div_account
+            ,xlv1.meaning               div_name
+            ,trn.item_id                item_id
+            ,iimb.item_no               item_code
+            ,ximb.item_short_name       item_name
+            ,trn.whse_code              whse_code
+            ,iwm.whse_name              whse_name
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute1) wip_date
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.lot_no) lot_no
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute2) original_char
+            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
+            ,iimb.attribute15           cost_mng_clss
+            ,iimb.lot_ctl               lot_ctl
+            ,ilm.attribute7             actual_unit_price
+            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,DECODE(xrpm.use_div_invent_dis
+                   ,cv_yes, ijm.attribute2
+                   ,NULL)               lot_desc
+      FROM   ic_tran_cmp                trn
+            ,ic_adjs_jnl                iaj
+            ,ic_jrnl_mst                ijm
+            ,ic_item_mst_b              iimb
+            ,xxcmn_item_mst_b           ximb
+            ,ic_lots_mst                ilm
+            ,xxcmn_lot_cost             xlc
+            ,gmi_item_categories        gic1
+            ,mtl_categories_b           mcb1
+            ,gmi_item_categories        gic2
+            ,mtl_categories_b           mcb2
+            ,sy_reas_cds_tl             srct
+            ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
+            ,xxcmn_lookup_values2_v     xlv1
+      WHERE  trn.doc_type            = xrpm.doc_type
+      AND    trn.reason_code         = xrpm.reason_code
+      AND    trn.trans_date         >= FND_DATE.STRING_TO_DATE(lv_start_date,gc_char_dt_format)
+      AND    trn.trans_date         <= FND_DATE.STRING_TO_DATE(lv_end_date,gc_char_dt_format)
+      AND    iaj.trans_type          = trn.doc_type
+      AND    iaj.doc_id              = trn.doc_id
+      AND    iaj.doc_line            = trn.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+      AND    ilm.item_id             = trn.item_id
+      AND    ilm.lot_id              = trn.lot_id
+      AND    iimb.item_id            = ilm.item_id
+      AND    xlc.item_id(+)          = ilm.item_id
+      AND    xlc.lot_id (+)          = ilm.lot_id
+      AND    ximb.item_id            = iimb.item_id
+      AND    ximb.start_date_active <= TRUNC(trn.trans_date)
+      AND    ximb.end_date_active   >= TRUNC(trn.trans_date)
+      AND    gic1.item_id            = trn.item_id
+      AND    gic1.category_set_id    = cn_prod_class_id
+      AND    gic1.category_id        = mcb1.category_id
+      AND    mcb1.segment1           = ir_param.goods_class
+      AND    gic2.item_id            = trn.item_id
+      AND    gic2.category_set_id    = cn_item_class_id
+      AND    gic2.category_id        = mcb2.category_id
+      AND    mcb2.segment1           = ir_param.item_class
+      AND    xrpm.new_div_account    = iv_div_type
+      AND    xrpm.doc_type           = cv_doc_type_adji
+      AND    xrpm.reason_code        = cv_reason_952
+      AND    xrpm.reason_code        = srct.reason_code(+)
+      AND    xrpm.break_col_04       IS NOT NULL
+      AND    srct.language(+)        = gc_ja
+      AND    trn.whse_code           = iwm.whse_code
+      AND    xlv1.lookup_type        = cv_div_type
+      AND    xrpm.new_div_account    = xlv1.lookup_code
+      AND    (xlv1.start_date_active IS NULL
+             OR xlv1.start_date_active <= TRUNC(trn.trans_date))
+      AND    (xlv1.end_date_active   IS NULL
+             OR xlv1.end_date_active   >= TRUNC(trn.trans_date))
+      AND    xlv1.language           = 'JA'
+      AND    xlv1.source_lang        = 'JA'
+      AND    xlv1.enabled_flag       = 'Y'
+      AND    xrpm.reason_code        = ir_param.reason_code
+-- 2008/12/22 v1.21 ADD END
       ORDER BY reason_code,item_code,whse_code,lot_no
       ;
 --
@@ -10181,7 +10357,9 @@ AS
                                       ,cv_reason_931
                                       ,cv_reason_932
 -- 2008/11/19 v1.12 ADD START
-                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE START
+--                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE END
                                       ,cv_reason_953
                                       ,cv_reason_954
                                       ,cv_reason_955
@@ -10299,7 +10477,9 @@ AS
                                       ,cv_reason_931
                                       ,cv_reason_932
 -- 2008/11/19 v1.12 ADD START
-                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE START
+--                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE END
                                       ,cv_reason_953
                                       ,cv_reason_954
                                       ,cv_reason_955
@@ -10540,7 +10720,9 @@ AS
                                       ,cv_reason_931
                                       ,cv_reason_932
 -- 2008/11/19 v1.12 ADD START
-                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE START
+--                                      ,cv_reason_952
+-- 2008/12/22 v1.21 DELETE END
                                       ,cv_reason_953
                                       ,cv_reason_954
                                       ,cv_reason_955
