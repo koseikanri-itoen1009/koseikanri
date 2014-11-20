@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -87,6 +87,7 @@ AS
  *  2008/12/22    1.18  Oracle 椎名 昭圭 本番#830対応
  *  2009/01/09    1.19  Oracle 佐久間尚豊 本番#950対応
  *  2009/01/28    1.20  Oracle 椎名 昭圭 本番#1090対応
+ *  2009/02/18    1.21  Oracle 丸下 博宣 本番#1090対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4539,9 +4540,12 @@ AS
             ,attribute13            = ir_masters_rec.sale_start_days
             ,attribute16            = lv_attribute16
             ,attribute21            = ir_masters_rec.jan_code
--- 2009/01/28 v1.20 ADD START
-            ,attribute23            = lv_attribute23
--- 2009/01/28 v1.20 ADD END
+-- 2009/02/18 v1.21 MOD START
+            ,attribute23            = NVL(attribute23,lv_attribute23)
+---- 2009/01/28 v1.20 ADD START
+--            ,attribute23            = lv_attribute23
+---- 2009/01/28 v1.20 ADD END
+-- 2009/02/18 v1.21 MOD END
             ,attribute25            = lv_attribute25
             ,attribute26            = ir_masters_rec.sale_obj_code
 -- 2009/01/09 H.Sakuma Add Start 本番#950
