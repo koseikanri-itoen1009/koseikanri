@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/06/22    1.17  T.Yoshimoto      本番障害#1516(再)※v1.15対応時の障害
  *  2009/08/10    1.18  T.Yoshimoto      本番障害#1596
  *  2009/09/24    1.19  T.Yoshimoto      本番障害#1523
+ *  2012/08/16    1.20  T.Makuta         E_本稼動_09898
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1583,11 +1584,13 @@ AS
     lv_to_date              VARCHAR2(2); -- 期間終了：日
     lv_to_year_yy           VARCHAR2(2); -- 期間終了：年(YY)
 --
-    lv_postal_code      xxcmn_locations2_v.zip%TYPE;           -- 郵便番号
-    lv_address          xxcmn_locations2_v.address_line1%TYPE; -- 住所
-    lv_tel_num          xxcmn_locations2_v.phone%TYPE;         -- 電話番号
-    lv_fax_num          xxcmn_locations2_v.fax%TYPE;           -- FAX番号
-    lv_dept_formal_name xxcmn_locations2_v.location_name%TYPE; -- 部署正式名
+-- Del Start 1.20
+--- lv_postal_code      xxcmn_locations2_v.zip%TYPE;           -- 郵便番号
+--- lv_address          xxcmn_locations2_v.address_line1%TYPE; -- 住所
+--- lv_tel_num          xxcmn_locations2_v.phone%TYPE;         -- 電話番号
+--- lv_fax_num          xxcmn_locations2_v.fax%TYPE;           -- FAX番号
+--- lv_dept_formal_name xxcmn_locations2_v.location_name%TYPE; -- 部署正式名
+-- Del End 1.20
 --
     ln_quantity                   NUMBER; -- 数量
     ln_purchase_amount            NUMBER; -- 仕入金額
@@ -1823,38 +1826,54 @@ AS
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
         ot_xml_data_table(lt_xml_idx).tag_value :=
           SUBSTR(it_data_rec(i).fax,gn_one,gn_15) ;
+--
         -- 部署情報の取得
-        xxcmn_common_pkg.get_dept_info(
-          iv_dept_cd          => it_data_rec(i).attribute10  -- 部署コード(事業所CD)
-         ,id_appl_date        => ir_param.d_deliver_from -- 基準日
-         ,ov_postal_code      => lv_postal_code      -- 郵便番号
-         ,ov_address          => lv_address          -- 住所
-         ,ov_tel_num          => lv_tel_num          -- 電話番号
-         ,ov_fax_num          => lv_fax_num          -- FAX番号
-         ,ov_dept_formal_name => lv_dept_formal_name -- 部署正式名
-         ,ov_errbuf           => lv_errbuf
-         ,ov_retcode          => lv_retcode
-         ,ov_errmsg           => lv_errmsg);
+-- Del Start 1.20
+------- xxcmn_common_pkg.get_dept_info(
+-------   iv_dept_cd          => it_data_rec(i).attribute10  -- 部署コード(事業所CD)
+-------  ,id_appl_date        => ir_param.d_deliver_from -- 基準日
+-------  ,ov_postal_code      => lv_postal_code      -- 郵便番号
+-------  ,ov_address          => lv_address          -- 住所
+-------  ,ov_tel_num          => lv_tel_num          -- 電話番号
+-------  ,ov_fax_num          => lv_fax_num          -- FAX番号
+-------  ,ov_dept_formal_name => lv_dept_formal_name -- 部署正式名
+-------  ,ov_errbuf           => lv_errbuf
+-------  ,ov_retcode          => lv_retcode
+-------  ,ov_errmsg           => lv_errmsg);
+-- Del End 1.20
+--
         -- 送付元住所
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'from_address' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(lv_address,gn_one,gn_15) ;
+-- Mod Start 1.20
+------- ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(lv_address,gn_one,gn_15) ;
+        ot_xml_data_table(lt_xml_idx).tag_value := NULL;
+-- Mod End 1.20
         -- 送付元TEL
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'from_telephone_number' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(lv_tel_num,gn_one,gn_15) ;
+-- Mod Start 1.20
+------- ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(lv_tel_num,gn_one,gn_15) ;
+        ot_xml_data_table(lt_xml_idx).tag_value := NULL ;
+-- Mod End 1.20
         -- 送付元FAX
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'from_fax_number' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(lv_fax_num,gn_one,gn_15) ;
+-- Mod Start 1.20
+------- ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(lv_fax_num,gn_one,gn_15) ;
+        ot_xml_data_table(lt_xml_idx).tag_value := NULL;
+-- Mod End 1.20
         -- 送付元部署
         lt_xml_idx := ot_xml_data_table.COUNT + 1 ;
         ot_xml_data_table(lt_xml_idx).tag_name  := 'from_dept_name' ;
         ot_xml_data_table(lt_xml_idx).tag_type  := 'D' ;
-        ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(lv_dept_formal_name,gn_one,gn_15) ;
+-- Mod Start 1.20
+------- ot_xml_data_table(lt_xml_idx).tag_value := SUBSTR(lv_dept_formal_name,gn_one,gn_15) ;
+        ot_xml_data_table(lt_xml_idx).tag_value := NULL;
+-- Mod End 1.20
         ------------------------------
         -- 斡旋者ヘッダ
         ------------------------------
