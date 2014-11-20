@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKY_物流構成表_現在_V FOR APPS.XXSKY_物流構成表_現在_V
+/

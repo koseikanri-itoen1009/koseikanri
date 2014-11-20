@@ -1,0 +1,2 @@
+CREATE SYNONYM XXSKY.XXSKY_受注出荷明細_基本_V FOR APPS.XXSKY_受注出荷明細_基本_V
+/
