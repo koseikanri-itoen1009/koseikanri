@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS002A032C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS002A032C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A032C (body)
  * Description      : 営業成績表集計
  * MD.050           : 営業成績表集計 MD050_COS_002_A03
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *                                       [T1_0718]新規獲得ポイント条件追加対応
  *                                       [T1_1146]群コード取得条件不正対応
  *  2009/05/26    1.5   K.Kiriu          [T1_1213]顧客軒数カウント条件マスタ結合条件修正
+ *  2009/08/31    1.6   K.Kiriu          [0000929]訪問軒数/有効訪問件数のカウント方法変更
  *
  *****************************************************************************************/
 --
@@ -3427,7 +3428,9 @@ AS
                           END
                           )                                     AS  total_mc_visit
               FROM    xxcos_rs_info_v               xrsi,
-                      xxcos_salesreps_v             xsal,
+/* 2009/08/31 Ver1.6 Del Start */
+--                      xxcos_salesreps_v             xsal,
+/* 2009/08/31 Ver1.6 Del Start */
 /* 2009/04/28 Ver1.4 Mod Start */
 --                      jtf_tasks_b                   task,
                       xxcso_visit_actual_v          task,
@@ -3447,15 +3450,17 @@ AS
               AND     xrsi.per_effective_end_date   >=      TRUNC(task.actual_end_date)
               AND     xrsi.paa_effective_start_date <=      TRUNC(task.actual_end_date)
               AND     xrsi.paa_effective_end_date   >=      TRUNC(task.actual_end_date)
-              AND     xsal.resource_id              =       task.owner_id
+/* 2009/08/31 Ver1.6 Del Start */
+--              AND     xsal.resource_id              =       task.owner_id
 /* 2009/04/28 Ver1.4 Mod Start */
---              AND     xsal.party_id                 =       task.source_object_id
-              AND     xsal.party_id                 =       task.party_id
+----              AND     xsal.party_id                 =       task.source_object_id
+--              AND     xsal.party_id                 =       task.party_id
 /* 2009/04/28 Ver1.4 Mod End   */
-              AND     NVL(xsal.effective_start_date,  TRUNC(task.actual_end_date))
-                                                    <=      TRUNC(task.actual_end_date)
-              AND     NVL(xsal.effective_end_date,    TRUNC(task.actual_end_date))
-                                                    >=      TRUNC(task.actual_end_date)
+--              AND     NVL(xsal.effective_start_date,  TRUNC(task.actual_end_date))
+--                                                    <=      TRUNC(task.actual_end_date)
+--              AND     NVL(xsal.effective_end_date,    TRUNC(task.actual_end_date))
+--                                                    >=      TRUNC(task.actual_end_date)
+/* 2009/08/31 Ver1.6 Del End   */
               AND     xlvm.lookup_type(+)           =       ct_qct_mc_cust_status_type
               AND     xlvm.lookup_code(+)           LIKE    ct_qcc_mc_cust_status_code
               AND     xlvm.meaning(+)               =       task.attribute14
@@ -3621,7 +3626,9 @@ AS
                       COUNT(DISTINCT  task.party_id)            AS  count_valid
 /* 2009/04/28 Ver1.4 Mod End   */
               FROM    xxcos_rs_info_v               xrsi,
-                      xxcos_salesreps_v             xsal,
+/* 2009/08/31 Ver1.6 Del Start */
+--                      xxcos_salesreps_v             xsal,
+/* 2009/08/31 Ver1.6 Del End   */
 /* 2009/04/28 Ver1.4 Mod Start */
 --                      jtf_tasks_b                   task
                       xxcso_visit_actual_v          task
@@ -3641,15 +3648,17 @@ AS
               AND     xrsi.per_effective_end_date   >=      TRUNC(task.actual_end_date)
               AND     xrsi.paa_effective_start_date <=      TRUNC(task.actual_end_date)
               AND     xrsi.paa_effective_end_date   >=      TRUNC(task.actual_end_date)
-              AND     xsal.resource_id              =       task.owner_id
+/* 2009/08/31 Ver1.6 Del Start */
+--              AND     xsal.resource_id              =       task.owner_id
 /* 2009/04/28 Ver1.4 Mod Start */
---              AND     xsal.party_id                 =       task.source_object_id
-              AND     xsal.party_id                 =       task.party_id
+----              AND     xsal.party_id                 =       task.source_object_id
+--              AND     xsal.party_id                 =       task.party_id
 /* 2009/04/28 Ver1.4 Mod End   */
-              AND     NVL(xsal.effective_start_date,  TRUNC(task.actual_end_date))
-                                                    <=      TRUNC(task.actual_end_date)
-              AND     NVL(xsal.effective_end_date,    TRUNC(task.actual_end_date))
-                                                    >=      TRUNC(task.actual_end_date)
+--              AND     NVL(xsal.effective_start_date,  TRUNC(task.actual_end_date))
+--                                                    <=      TRUNC(task.actual_end_date)
+--              AND     NVL(xsal.effective_end_date,    TRUNC(task.actual_end_date))
+--                                                    >=      TRUNC(task.actual_end_date)
+/* 2009/08/31 Ver1.6 Del End   */
               GROUP BY
                       xrsi.base_code,
                       xrsi.employee_number
