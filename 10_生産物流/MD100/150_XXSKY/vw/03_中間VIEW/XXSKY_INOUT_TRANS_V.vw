@@ -2023,7 +2023,10 @@ UNION ALL
      AND  xoha_in_po_e_rma.arrival_date                >= xcst_in_po_e_rma.start_date_active --適用開始日
      AND  xoha_in_po_e_rma.arrival_date                <= xcst_in_po_e_rma.end_date_active   --適用終了日
      -- 配送先取得
-     AND  xoha_in_po_e_rma.result_deliver_to_id         = xpas_in_po_e_rma.party_site_id
+-- 2010/01/28 M.Miyagawa MOD Start 本番障害#1694
+     AND  xoha_in_po_e_rma.result_deliver_to            = xpas_in_po_e_rma.party_site_number --配送先コード
+--     AND  xoha_in_po_e_rma.result_deliver_to_id         = xpas_in_po_e_rma.party_site_id   --配送先ID
+-- 2010/01/28 M.Miyagawa MOD End
      AND  xoha_in_po_e_rma.arrival_date                >= xpas_in_po_e_rma.start_date_active
      AND  xoha_in_po_e_rma.arrival_date                <= xpas_in_po_e_rma.end_date_active
      -- 部署名取得
@@ -3321,7 +3324,10 @@ UNION ALL
      AND  xoha_out_om3_e.shipped_date                  >= xcst_out_om3_e.start_date_active --適用開始日
      AND  xoha_out_om3_e.shipped_date                  <= xcst_out_om3_e.end_date_active   --適用終了日
      --配送先取得
-     AND  xoha_out_om3_e.result_deliver_to_id           = xpas_out_om3_e.party_site_id
+-- 2010/01/28 M.Miyagawa MOD Start 本番障害#1694
+     AND  xoha_out_om3_e.result_deliver_to              = xpas_out_om3_e.party_site_number  --配送先コード
+--     AND  xoha_out_om3_e.result_deliver_to_id           = xpas_out_om3_e.party_site_id    --配送先ID
+-- 2010/01/28 M.Miyagawa MOD End
      AND  xoha_out_om3_e.shipped_date                  >= xpas_out_om3_e.start_date_active --適用開始日
      AND  xoha_out_om3_e.shipped_date                  <= xpas_out_om3_e.end_date_active   --適用終了日
      --部署名取得

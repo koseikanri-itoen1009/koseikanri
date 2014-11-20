@@ -232,7 +232,10 @@ SELECT
            AND  DELV.arrival_date >= XCRV.start_date_active(+)
            AND  DELV.arrival_date <= XCRV.end_date_active(+)
            -- 出荷_配送先名取得条件
-           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- 2010/03/01 M.Miyagawa MOD Start 本番障害#1694
+           AND  DELV.deliver_to = XPSV.party_site_number(+)
+--           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- 2010/03/01 M.Miyagawa MOD End
            AND  DELV.arrival_date >= XPSV.start_date_active(+)
            AND  DELV.arrival_date <= XPSV.end_date_active(+)
            -- 出庫元名取得条件
@@ -436,7 +439,10 @@ SELECT
            AND  DELV.arrival_date >= XCRV.start_date_active(+)
            AND  DELV.arrival_date <= XCRV.end_date_active(+)
            -- 出荷_配送先名取得条件
-           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- 2010/03/01 M.Miyagawa MOD Start 本番障害#1694
+           AND  DELV.deliver_to = XPSV.party_site_number(+)
+--           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- 2010/03/01 M.Miyagawa MOD End
            AND  DELV.arrival_date >= XPSV.start_date_active(+)
            AND  DELV.arrival_date <= XPSV.end_date_active(+)
            -- 出庫元名取得条件
@@ -677,7 +683,7 @@ SELECT
                                        AND XOHA11.arrival_date <= ITEM11.end_date_active(+)
                                    )
                             GROUP BY request_no
-                           )     　                          XCS2                      --依頼NO単位積載重量合計
+                           )                               XCS2                      --依頼NO単位積載重量合計
                     WHERE
                       -- 出荷データ取得条件
                            OTTA2.attribute1 = '1'                                     --'1:出荷'
@@ -716,7 +722,10 @@ SELECT
            AND  DELV.arrival_date >= XCRV.start_date_active(+)
            AND  DELV.arrival_date <= XCRV.end_date_active(+)
            -- 出荷_配送先名取得条件
-           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- 2010/03/01 M.Miyagawa MOD Start 本番障害#1694
+           AND  DELV.deliver_to = XPSV.party_site_number(+)
+--           AND  DELV.deliver_to_id = XPSV.party_site_id(+)
+-- 2010/03/01 M.Miyagawa MOD End
            AND  DELV.arrival_date >= XPSV.start_date_active(+)
            AND  DELV.arrival_date <= XPSV.end_date_active(+)
            -- 出庫元名取得条件

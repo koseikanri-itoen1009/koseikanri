@@ -232,7 +232,10 @@ SELECT
               ,xxsky_party_sites2_v               PSITE               -- SKYLINK用中間VIEW 配送先情報VIEW2(出庫元保管場所名取得用)
           WHERE
             -- 出庫元保管場所名取得
-                 KRHN.ship_from_id                = PSITE.party_site_id(+)
+-- 2010/01/28 M.Miyagawa MOD Start 本番障害#1694
+                 KRHN.ship_from                   = PSITE.party_site_number(+)   --配送先コード
+--                 KRHN.ship_from_id                = PSITE.party_site_id(+)     --配送先ID
+-- 2010/01/28 M.Miyagawa MOD End
             AND  KRHN.arrival_date               >= PSITE.start_date_active(+)
             AND  KRHN.arrival_date               <= PSITE.end_date_active(+)
           --[ 倉替返品 入庫実績データ  END ]

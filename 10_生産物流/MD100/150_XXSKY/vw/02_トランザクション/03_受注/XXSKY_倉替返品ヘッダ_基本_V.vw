@@ -150,7 +150,10 @@ SELECT
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XCA2V01.start_date_active(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XCA2V01.end_date_active(+)
    --出荷先名取得
-   AND  XOHA.deliver_to_id = XPS2V01.party_site_id(+)
+-- 2010/01/28 M.Miyagawa MOD Start 本番障害#1694
+   AND  XOHA.deliver_to = XPS2V01.party_site_number(+)         --配送先コード
+--   AND  XOHA.deliver_to_id = XPS2V01.party_site_id(+)        --配送先ID
+-- 2010/01/28 M.Miyagawa MOD ENd
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XPS2V01.start_date_active(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XPS2V01.end_date_active(+)
    --価格表名取得
@@ -167,7 +170,10 @@ SELECT
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XCA2V03.start_date_active(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XCA2V03.end_date_active(+)
    --出荷先_実績名取得
-   AND  XOHA.result_deliver_to_id = XPS2V02.party_site_id(+)
+-- 2010/01/28 M.Miyagawa MOD Start 本番障害#1694
+   AND  XOHA.result_deliver_to = XPS2V02.party_site_number(+)  --配送先コード
+--   AND  XOHA.result_deliver_to_id = XPS2V02.party_site_id(+) --配送先ID
+-- 2010/01/28 M.Miyagawa MOD End
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XPS2V02.start_date_active(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XPS2V02.end_date_active(+)
    --成績管理部署名取得
