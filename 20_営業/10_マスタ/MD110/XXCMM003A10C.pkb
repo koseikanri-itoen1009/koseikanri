@@ -7,7 +7,7 @@ AS
  * Description     : 未取引客チェックリスト
  * MD.050          : MD050_CMM_003_A10_未取引客チェックリスト
  * MD.070          : MD050_CMM_003_A10_未取引客チェックリスト
- * Version         : 1.3
+ * Version         : 1.4
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -36,6 +36,8 @@ AS
  *                                      ・職責に紐付くアプリケーションではなく、ARの会計期間を取得するよう修正
  *                                      ・担当営業員コード、担当営業員名の取得処理を追加
  *                                      ・顧客に紐付く物件コードの表示方法を修正
+ *  2011/05/09    1.4  S.Niki           障害E_本稼動_01956追加対応
+ *                                      ・担当営業員の適用終了日について日付書式を修正
  *
  ************************************************************************/
 --
@@ -900,7 +902,10 @@ AS
            xsv.cust_account_id = in_cust_account_id
     AND
            gd_process_date BETWEEN xsv.effective_start_date
-                           AND     NVL(xsv.effective_end_date,cv_max_date);
+-- 2011/05/09 Ver1.4 E_本稼動_01956追加対応 modify start by Shigeto.Niki
+--                           AND     NVL(xsv.effective_end_date,cv_max_date);
+                           AND     NVL(xsv.effective_end_date, TO_DATE(cv_max_date, cv_format_date_ymd));
+-- 2011/05/09 Ver1.4 E_本稼動_01956追加対応 modify end by Shigeto.Niki
 --
   EXCEPTION
     -- 対象データ無し：正常
