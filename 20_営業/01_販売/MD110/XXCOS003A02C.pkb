@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *                                       [障害0000451] 単価の桁あふれ対応
  *  2009/10/15   1.9    N.Maeda          [障害0001524] 出力金額取得方法修正
  *  2009/12/13   1.10   K.Atsushiba      [E_本稼動_00290] 納品VD顧客の単価が連携されない
+ *  2009/12/17   1.11   N.Maeda          [E_本稼動_00489] 処理対象基準数量桁数条件追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -163,6 +164,9 @@ AS
   cv_tkn_lookup_type1      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00077';    -- クイックコード.タイプ
   cv_tkn_sales_cls_vd      CONSTANT VARCHAR2(20) := 'APP-XXCOS1-10709';    -- ベンダ売上
 /* 2009/12/13 Ver1.10 Add End */
+--****************************** 2009/12/17 1.11 N.Maeda ADD START ****************************--
+  cn_max_standard_qty      CONSTANT NUMBER := 5;                           -- 基準数量取得最大桁数
+--****************************** 2009/12/17 1.11 N.Maeda ADD START ****************************--
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -322,6 +326,9 @@ AS
                                               AND NVL(flvl.end_date_active, TRUNC(SYSDATE))
              AND     flvl.enabled_flag        = cv_flag_on
              AND xsel.item_code = lookup_code )
+--****************************** 2009/12/17 1.11 N.Maeda ADD START ****************************--
+    AND LENGTH( ABS( xsel.standard_qty ) )  <= cn_max_standard_qty
+--****************************** 2009/12/17 1.11 N.Maeda ADD START ****************************--
     UNION
 --****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
 --    SELECT  xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
@@ -450,6 +457,9 @@ AS
                                                         AND NVL(flvl.end_date_active, TRUNC(SYSDATE))
                        AND     flvl.enabled_flag        = cv_flag_on
                        AND xsel.item_code = lookup_code )
+--****************************** 2009/12/17 1.11 N.Maeda ADD START ****************************--
+    AND LENGTH( ABS( xsel.standard_qty ) )  <= cn_max_standard_qty
+--****************************** 2009/12/17 1.11 N.Maeda ADD START ****************************--
     ORDER BY sales_exp_header_id
     ;
   -- ===============================
