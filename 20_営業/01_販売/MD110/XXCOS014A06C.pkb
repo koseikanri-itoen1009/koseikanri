@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A06C (body)
  * Description      : 納品予定プルーフリスト作成 
  * MD.050           : 納品予定プルーフリスト作成 MD050_COS_014_A06
- * Version          : 1.24
+ * Version          : 1.25
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2011/09/29    1.22  A.Shirakawa      [E_本稼動_07906] EDIの流通BMS対応
  *  2012/01/06    1.23  K.Kiriu          [E_本稼動_08891] 顧客品目二重出力障害対応
  *  2013/07/26    1.24  R.Watanabe       [E_本稼動_10904] 消費税率の取得基準日についての対応
+ *  2014/04/01    1.25  K.Kiriu          [E_本稼動_11726] 消費税率取得の障害対応
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -4985,9 +4986,14 @@ AS
               --税コードマスタ抽出条件
               AND   xlvv2.lookup_type(+)            = ct_qc_consumption_tax_class
               AND   xlvv2.attribute3(+)             = ooha.tax_div
-              AND   ooha.request_date
-                BETWEEN NVL(xlvv2.start_date_active, ooha.request_date)
-                AND     NVL(xlvv2.end_date_active, ooha.request_date)
+-- 2014/04/01 K.Kiriu Ver1.25 Mod Start
+--              AND   ooha.request_date
+--                BETWEEN NVL(xlvv2.start_date_active, ooha.request_date)
+--                AND     NVL(xlvv2.end_date_active, ooha.request_date)
+              AND   TRUNC(ooha.request_date)
+                BETWEEN NVL(xlvv2.start_date_active, TRUNC(ooha.request_date))
+                AND     NVL(xlvv2.end_date_active,   TRUNC(ooha.request_date))
+-- 2014/04/01 K.Kiriu Ver1.25 Mod End
               --税率マスタ抽出条件
               AND   avtab.tax_code(+)               = xlvv2.attribute2
               AND   avtab.set_of_books_id(+)        = i_prf_rec.set_of_books_id
@@ -5032,14 +5038,19 @@ AS
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
               AND   avtab.org_id                    = i_prf_rec.org_id                                                 --MO:営業単位
               AND   avtab.enabled_flag              = cv_enabled_flag                                                  --使用可能フラグ
--- 2013/07/26 v1.24 R.Watanabe Mod Start E_本稼動_10904
---              AND   i_other_rec.process_date
---                BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
---                AND     NVL( avtab.end_date   ,i_other_rec.process_date )
-              AND   ooha.request_date
-                BETWEEN NVL(avtab.start_date , ooha.request_date)
-                AND     NVL(avtab.end_date , ooha.request_date)
--- 2013/07/26 v1.24 R.Watanabe Mod End E_本稼動_10904
+-- 2014/04/01 K.Kiriu Ver1.25 Mod Start
+---- 2013/07/26 v1.24 R.Watanabe Mod Start E_本稼動_10904
+----              AND   i_other_rec.process_date
+----                BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
+----                AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+--              AND   ooha.request_date
+--                BETWEEN NVL(avtab.start_date , ooha.request_date)
+--                AND     NVL(avtab.end_date , ooha.request_date)
+--2013/07/26 v1.24 R.Watanabe Mod End E_本稼動_10904
+              AND   TRUNC(ooha.request_date)
+                BETWEEN NVL(avtab.start_date , TRUNC(ooha.request_date))
+                AND     NVL(avtab.end_date ,   TRUNC(ooha.request_date))
+-- 2014/04/01 K.Kiriu Ver1.25 Mod Start
               AND   ooha.org_id                     = i_prf_rec.org_id
               AND   oola.org_id                     = ooha.org_id
 --******************************************* 2009/04/02 1.9 T.Kitajima ADD START *************************************
