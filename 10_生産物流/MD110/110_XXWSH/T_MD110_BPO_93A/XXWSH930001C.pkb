@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -72,6 +72,7 @@ AS
  *  2008/06/27    1.6  Oracle 宮田 隆史  ST不具合#299対応
  *  2008/07/01    1.7  Oracle 宮田 隆史  ST不具合#333対応
  *  2008/07/02    1.8  Oracle 宮田 隆史  ST不具合#365対応
+ *  2008/07/03    1.9  Oracle 宮田 隆史  ST不具合#392対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -8235,6 +8236,7 @@ AS
        ,deliver_from                                -- 出荷元保管場所
        ,head_sales_branch                           -- 管轄拠点
        ,prod_class                                  -- 商品区分
+       ,no_cont_freight_class                       -- 契約外運賃区分
        ,arrival_time_from                           -- 着荷時間from
        ,arrival_time_to                             -- 着荷時間to
        ,based_weight                                -- 基本重量
@@ -8298,6 +8300,7 @@ AS
        ,gr_order_h_rec.deliver_from                 -- 出荷元保管場所
        ,gr_order_h_rec.head_sales_branch            -- 管轄拠点
        ,gr_order_h_rec.prod_class                   -- 商品区分
+       ,gv_include_exclude_0                        -- 物流担当確認依頼区分
        ,gr_order_h_rec.arrival_time_from            -- 着荷時間from
        ,gr_order_h_rec.arrival_time_to              -- 着荷時間to
        ,gr_order_h_rec.based_weight                 -- 基本重量

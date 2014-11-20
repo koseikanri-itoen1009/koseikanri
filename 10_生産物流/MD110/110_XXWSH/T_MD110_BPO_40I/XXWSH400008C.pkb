@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2008/06/19    1.1   Yasuhisa Yamamoto     システムテスト障害対応
  *  2008/06/26    1.2   ToshikazuIshiwata     システムテスト障害対応(#309)
  *  2008/07/02    1.3   Naoki Fukuda          ST不具合対応(#373)
+ *  2008/07/02    1.4   Satoshi Yunba         禁則文字「'」「"」「<」「>」「&」対応
  *
  *****************************************************************************************/
 --
@@ -435,7 +436,7 @@ AS
 --
     --データの場合
     IF (ic_type = 'D') THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>';
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;

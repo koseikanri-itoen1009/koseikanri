@@ -7,7 +7,7 @@ AS
  * Description      : 半製品原価計算処理
  * MD.050           : ロット別実際原価計算 T_MD050_BPO_790
  * MD.070           : 半製品原価計算処理 T_MD070_BPO_79B
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/2/13     1.0   Y.Kanami         新規作成
  *  2008/04/25    1.2   Marushita        TE080_BPO_790 不具合ID 1
  *  2008/06/03    1.3   Marushita        TE080_BPO_790 不具合ID 1
+ *  2008/07/03    1.4   Marushita        ST不具合314対応
  *
  *****************************************************************************************/
 --
@@ -361,13 +362,18 @@ AS
             , itp.lot_id
             , xtlc.unit_price
       UNION ALL
-      SELECT  ximv.item_id              item_id             -- 品目ID
-            , itp.lot_id                lot_id              -- ロットID
-            , SUM(itp.trans_qty)        trans_qty           -- 投入数量
-            , ccd.cmpnt_cost            unit_price          -- 単価
+      SELECT  ximv.item_id                item_id           -- 品目ID
+            , itp.lot_id                  lot_id            -- ロットID
+            , NVL(SUM(itp.trans_qty),0)   trans_qty         -- 投入数量
+            , ccd.cmpnt_cost              unit_price        -- 単価
       FROM    ic_tran_pnd               itp                 -- 保留在庫トランザクション
             , xxcmn_item_mst_v          ximv                -- OPM品目情報View
-            , cm_cmpt_dtl               ccd                 -- 標準原価マスタ
+            , (SELECT cc.calendar_code          calendar_code
+                     ,cc.item_id                item_id
+                     ,NVL(SUM(cc.cmpnt_cost),0) cmpnt_cost
+               FROM  cm_cmpt_dtl cc
+               WHERE cc.whse_code =   gt_whse_code
+               GROUP BY calendar_code,item_id ) ccd         -- 標準原価マスタ
             , cm_cldr_hdr_b             clh                 -- 原価カレンダヘッダ
             , cm_cldr_dtl               cll                 -- 原価カレンダ明細
             , xxcmn_item_categories4_v  xic                 -- OPM品目カテゴリ割当情報VIEW4
@@ -383,8 +389,6 @@ AS
       AND   clh.calendar_code     =   cll.calendar_code     -- 原価カレンダーコード
       AND   itp.trans_date        >=  cll.start_date        -- 期間（自）
       AND   itp.trans_date        <=  cll.end_date          -- 期間（至）
-      AND   ccd.whse_code         =   gt_whse_code          -- 原価用倉庫コード
-      AND   ccd.cost_cmpntcls_id  =   gn_cmpcls_material    -- コンポーネント区分：原料
       AND   itp.item_id           =   xic.item_id           -- 品目ID
       AND   xic.item_class_code   <>  cv_item_div_material  -- 品目区分：資材以外
       GROUP BY
@@ -1206,7 +1210,12 @@ AS
   CURSOR by_product_price_cur(batch_id ic_tran_pnd.doc_id%TYPE) IS
     SELECT  ccd.cmpnt_cost        cmpnt_cost              -- コンポーネント原価
     FROM    ic_tran_pnd           itp                     -- 保留在庫トランザクション
-          , cm_cmpt_dtl           ccd                     -- 標準原価マスタ
+          ,(SELECT cc.calendar_code          calendar_code
+                  ,cc.item_id                item_id
+                  ,NVL(SUM(cc.cmpnt_cost),0) cmpnt_cost
+            FROM  cm_cmpt_dtl cc
+            WHERE cc.whse_code =   gt_whse_code
+            GROUP BY calendar_code,item_id ) ccd          -- 標準原価マスタ
           , cm_cldr_hdr_b         clh                     -- 原価カレンダヘッダ
           , cm_cldr_dtl           cll                     -- 原価カレンダ明細
     WHERE   itp.doc_type          =   gv_doc_type_prod    -- 文書タイプ：生産
@@ -1219,8 +1228,6 @@ AS
     AND     clh.calendar_code     =   cll.calendar_code   -- 原価カレンダーコード
     AND     itp.trans_date        >=  cll.start_date      -- 期間（自）
     AND     itp.trans_date        <=  cll.end_date        -- 期間（至）
-    AND     ccd.whse_code         =   gt_whse_code        -- 原価用倉庫コード
-    AND     ccd.cost_cmpntcls_id  =   gn_cmpcls_material  -- コンポーネント区分：原料
   ;
 --
   -- 副産物取引数量取得
