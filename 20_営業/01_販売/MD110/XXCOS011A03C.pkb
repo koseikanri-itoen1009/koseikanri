@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -70,6 +70,7 @@ AS
  *  2010/04/15    1.20  N.Abe            [E_本稼動_01618]エラー品目時の数量取得元変更(Ver1.9の全コメント化)
  *  2010/06/11    1.21  S.Niki           [E_本稼動_03075]拠点選択対応
  *  2010/07/08    1.22  S.Niki           [E_本稼動_02637]顧客品目重複登録対応
+ *  2011/02/15    1.23  N.Horigome       [E_本稼動_02155]クイック受注の伝票番号の修正対応
  *
  *****************************************************************************************/
 --
@@ -838,7 +839,10 @@ AS
           ,xeh.other_party_department_code      other_party_department_code    -- EDIヘッダ情報.相手先部門コード
           ,xeh.other_party_order_number         other_party_order_number       -- EDIヘッダ情報.相手先発注番号
           ,xeh.check_digit_class                check_digit_class              -- EDIヘッダ情報.チェックデジット有無区分
-          ,xeh.invoice_number                   invoice_number                 -- EDIヘッダ情報.伝票番号
+/* 2011/02/15 Ver1.23 N.Horigome Mod START */
+--          ,xeh.invoice_number                   invoice_number                 -- EDIヘッダ情報.伝票番号
+          ,ooha.cust_po_number                   invoice_number                 -- 受注ヘッダ.顧客発注番号
+/* 2011/02/15 Ver1.23 N.Horigome Mod END   */
           ,xeh.check_digit                      check_digit                    -- EDIヘッダ情報.チェックデジット
           ,xeh.close_date                       close_date                     -- EDIヘッダ情報.月限
           ,ooha.order_number                    order_number                   -- 受注ヘッダ.受注番号
@@ -1380,7 +1384,10 @@ AS
 --          ,xel.line_no                        -- EDI明細情報.行Ｎｏ
            xeh.delivery_center_code            --1.EDIヘッダ情報.納入センターコード
           ,xeh.shop_code                       --2.EDIヘッダ情報.店コード
-          ,xeh.invoice_number                  --3.EDIヘッダ情報.伝票番号
+--/* 2011/02/15 Ver1.23 N.Horigome Mod START */
+--          ,xeh.invoice_number                  --3.EDIヘッダ情報.伝票番号
+          ,ooha.cust_po_number                 --3.受注ヘッダ.受注ヘッダ.顧客発注番号
+--/* 2011/02/15 Ver1.23 N.Horigome Mod END   */
 -- ********* 2009/09/25 1.13 N.Maeda ADD START ********* --
           ,xeh.edi_header_info_id              -- EDIヘッダ情報.EDIヘッダ情報ID
 -- ********* 2009/09/25 1.13 N.Maeda ADD  END  ********* --
