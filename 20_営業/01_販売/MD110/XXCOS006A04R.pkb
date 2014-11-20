@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (body)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,9 @@ AS
  *  2009/10/01    1.6   S.Miyakoshi      【SCS障害No.0001378対応】
  *                                       帳票ワークテーブルの桁あふれ対応
  *                                       クイックコード取得時のパフォーマンス対応
+ *  2013/03/26    1.7   T.Ishiwata       【E_本稼動_10343対応】
+ *                                        パラメータ「出力区分」追加、文言、タイトル変更
+ *
  *
  *****************************************************************************************/
 --
@@ -174,6 +177,9 @@ AS
   cv_tkn_param1             CONSTANT  VARCHAR2(100) := 'PARAM1';                --第１入力パラメータ
   cv_tkn_param2             CONSTANT  VARCHAR2(100) := 'PARAM2';                --第２入力パラメータ
   cv_tkn_param3             CONSTANT  VARCHAR2(100) := 'PARAM3';                --第３入力パラメータ
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+  cv_tkn_param4             CONSTANT  VARCHAR2(100) := 'PARAM4';                --第４入力パラメータ
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
   cv_tkn_request            CONSTANT  VARCHAR2(100) := 'REQUEST';               --要求ＩＤ
   --プロファイル名称
   ct_prof_org_id            CONSTANT  fnd_profile_options.profile_option_name%TYPE
@@ -182,6 +188,12 @@ AS
                                       := 'XXCOS1_MAX_DATE';
   ct_prof_company_name      CONSTANT  fnd_profile_options.profile_option_name%TYPE
                                       := 'XXCOS1_COMPANY_NAME';
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+  ct_prof_dlv_cont_name     CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                      := 'XXCOS1_DELIVERY_CONTRACTOR_NAME';          -- XXCOS:運送請負者名
+  ct_prof_dlv_cont_address  CONSTANT  fnd_profile_options.profile_option_name%TYPE
+                                      := 'XXCOS1_DELIVERY_CONTRACTOR_ADDRESS';       -- XXCOS:運送請負者住所
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
   --クイックコードタイプ
   ct_qct_order_type         CONSTANT  fnd_lookup_types.lookup_type%TYPE
                                       := 'XXCOS1_TRAN_TYPE_MST_006_A04';
@@ -232,6 +244,9 @@ AS
 /* 2009/07/09 Ver1.5 Add Start */
   ct_info_class_01          CONSTANT  VARCHAR2(2)   := '01';          --情報区分：「01」
 /* 2009/07/09 Ver1.5 Add End */
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+  cv_output_code_01         CONSTANT  VARCHAR2(1)   := '0';           --出力区分：「0」
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
 -- ************************ 2009/10/01 S.Miyakoshi Var1.6 ADD START ************************ --
   --言語コード
   ct_lang            CONSTANT fnd_lookup_values.language%TYPE
@@ -262,6 +277,11 @@ AS
   gn_org_id                           NUMBER;                         -- 営業単位
   gd_max_date                         DATE;                           -- MAX日付
   gv_company_name                     VARCHAR2(30);                   -- 会社名
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+  gt_output_code                      xxcos_rep_deli_req.output_code%TYPE;          --出力区分
+  gt_dlv_cont_name                    xxcos_rep_deli_req.dlv_contractor_info%TYPE;  --運送請負者名
+  gt_dlv_cont_address                 xxcos_rep_deli_req.dlv_contractor_info%TYPE;  --運送請負者住所
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
   --帳票ワーク内部テーブル
   g_rpt_data_tab                      g_rpt_data_ttype;
 --
@@ -273,6 +293,9 @@ AS
     iv_ship_from_subinv_code  IN      VARCHAR2,       -- 1.出荷元倉庫
     iv_ordered_date_from      IN      VARCHAR2,       -- 2.受注日（From）
     iv_ordered_date_to        IN      VARCHAR2,       -- 3.受注日（To）
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+    iv_output_code            IN      VARCHAR2,       -- 4.出力区分
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -321,7 +344,12 @@ AS
                                    iv_token_name2        => cv_tkn_param2,
                                    iv_token_value2       => iv_ordered_date_from,
                                    iv_token_name3        => cv_tkn_param3,
-                                   iv_token_value3       => iv_ordered_date_to
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata Start
+--                                   iv_token_value3       => iv_ordered_date_to
+                                   iv_token_value3       => iv_ordered_date_to,
+                                   iv_token_name4        => cv_tkn_param4,
+                                   iv_token_value4       => iv_output_code
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
                                  );
     --
     FND_FILE.PUT_LINE(
@@ -340,6 +368,9 @@ AS
     gt_ship_from_subinv_code  := iv_ship_from_subinv_code;
     gd_ordered_date_from      := TO_DATE( iv_ordered_date_from, cv_fmt_datetime );
     gd_ordered_date_to        := TO_DATE( iv_ordered_date_to, cv_fmt_datetime );
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+    gt_output_code            := iv_output_code;
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
 --
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
@@ -483,6 +514,34 @@ AS
       RAISE global_date_reversal_expt;
     END IF;
 --
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+    --==================================
+    -- 6.XXCOS:運送請負者名
+    --==================================
+    gt_dlv_cont_name     := FND_PROFILE.VALUE( ct_prof_dlv_cont_name );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( gt_dlv_cont_name IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_profile_name         := ct_prof_dlv_cont_name;
+      --
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    --==================================
+    -- 7.XXCOS:運送請負者住所
+    --==================================
+    gt_dlv_cont_address   := FND_PROFILE.VALUE( ct_prof_dlv_cont_address );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( gt_dlv_cont_address IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_profile_name         := ct_prof_dlv_cont_address;
+      --
+      RAISE global_get_profile_expt;
+    END IF;
+--
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
   EXCEPTION
     -- *** 業務日付取得例外ハンドラ ***
     WHEN global_proc_date_err_expt THEN
@@ -569,6 +628,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+    cv_space_char    CONSTANT VARCHAR2(2) := '　'; -- 全角スペース
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
 --
     -- *** ローカル変数 ***
     ln_idx           NUMBER;
@@ -578,6 +640,11 @@ AS
     CURSOR data_cur
     IS
       SELECT
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+       /*+ INDEX(ooha XXCOS_OE_ORDER_HEADERS_ALL_N10)
+          USE_NL(ooha oola oos otta ottt hla xla hca xca hcsua hcasa hps hp hl msib mucc msi)
+       */
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
         oola.subinventory                   subinventory,                 --保管場所
         msi.description                     deliver_from_locat_name,      --出荷元保管場所名称
         xca.delivery_base_code              delivery_base_code,           --納品拠点コード
@@ -626,6 +693,9 @@ AS
         mtl_system_items_b                  msib,                         --品目マスタ
         mtl_uom_class_conversions           mucc,                         --単位変換マスタ
         mtl_secondary_inventories           msi                           --保管場所マスタ
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+        ,xxcos_login_base_info_v       xlbiv
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
       WHERE
         ooha.header_id                      = oola.header_id
       AND ooha.order_type_id                = otta.transaction_type_id
@@ -701,7 +771,10 @@ AS
           )
       AND ooha.flow_status_code             = ct_hdr_status_booked
       AND oola.flow_status_code             NOT IN ( ct_ln_status_closed, ct_ln_status_cancelled )
-      AND TRUNC( ooha.ordered_date )        >= gd_ordered_date_from
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata Start
+--      AND TRUNC( ooha.ordered_date )        >= gd_ordered_date_from
+      AND ooha.ordered_date         >= gd_ordered_date_from
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
       AND TRUNC( ooha.ordered_date )        <= NVL( gd_ordered_date_to, gd_max_date )
       AND oola.subinventory                 = msi.secondary_inventory_name
       AND oola.ship_from_org_id             = msi.organization_id
@@ -744,15 +817,18 @@ AS
       AND hca.party_id                      = hp.party_id
       AND xca.delivery_base_code            = hla.location_code
       AND hla.location_id                   = xla.location_id
-      AND EXISTS(
-            SELECT
-              cv_exists_flag_yes            exists_flag
-            FROM
-              xxcos_login_base_info_v       xlbiv
-            WHERE
-              xlbiv.base_code               = xca.delivery_base_code
-            AND ROWNUM                      = 1
-          )
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata Start
+--      AND EXISTS(
+--            SELECT
+--              cv_exists_flag_yes            exists_flag
+--            FROM
+--              xxcos_login_base_info_v       xlbiv
+--            WHERE
+--              xlbiv.base_code               = xca.delivery_base_code
+--            AND ROWNUM                      = 1
+--          )
+      AND xlbiv.base_code                   = xca.delivery_base_code
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
       AND oola.ship_to_org_id               = hcsua.site_use_id
       AND hcsua.site_use_code               = ct_site_use_code_ship_to
       AND hcsua.cust_acct_site_id           = hcasa.cust_acct_site_id
@@ -954,6 +1030,14 @@ AS
       g_rpt_data_tab(ln_idx).program_id                   := cn_program_id;
       g_rpt_data_tab(ln_idx).program_update_date          := cd_program_update_date;
       --
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+      IF( gt_output_code = cv_output_code_01 ) THEN
+        g_rpt_data_tab(ln_idx).dlv_contractor_info        := SUBSTRB(gt_dlv_cont_name || cv_space_char || gt_dlv_cont_address,1,160);
+      ELSE
+        g_rpt_data_tab(ln_idx).dlv_contractor_info        := NULL;
+      END IF;
+      g_rpt_data_tab(ln_idx).output_code                  := gt_output_code;
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
     END LOOP loop_get_data;
 --
     IF ( g_rpt_data_tab.COUNT = 0 ) THEN
@@ -1391,6 +1475,9 @@ AS
     iv_ship_from_subinv_code  IN      VARCHAR2,       -- 1.出荷元倉庫
     iv_ordered_date_from      IN      VARCHAR2,       -- 2.受注日（From）
     iv_ordered_date_to        IN      VARCHAR2,       -- 3.受注日（To）
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+    iv_output_code            IN      VARCHAR2,       -- 4.出力区分
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
     ov_errbuf     OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -1437,6 +1524,9 @@ AS
       iv_ship_from_subinv_code  => iv_ship_from_subinv_code,    -- 1.出荷元倉庫
       iv_ordered_date_from      => iv_ordered_date_from,        -- 2.受注日（From）
       iv_ordered_date_to        => iv_ordered_date_to,          -- 3.受注日（To）
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+      iv_output_code            => iv_output_code,              -- 4.出力区分
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
       ov_errbuf                 => lv_errbuf,                   -- エラー・メッセージ
       ov_retcode                => lv_retcode,                  -- リターン・コード
       ov_errmsg                 => lv_errmsg                    -- ユーザー・エラー・メッセージ
@@ -1574,7 +1664,11 @@ AS
     retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
     iv_ship_from_subinv_code  IN      VARCHAR2,       -- 1.出荷元倉庫
     iv_ordered_date_from      IN      VARCHAR2,       -- 2.受注日（From）
-    iv_ordered_date_to        IN      VARCHAR2        -- 3.受注日（To）
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata Start
+--    iv_ordered_date_to        IN      VARCHAR2        -- 3.受注日（To）
+    iv_ordered_date_to        IN      VARCHAR2,         -- 3.受注日（To）
+    iv_output_code            IN      VARCHAR2          -- 4.出力区分
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
   )
 --
 --
@@ -1632,6 +1726,9 @@ AS
       iv_ship_from_subinv_code,          -- 1.出荷元倉庫
       iv_ordered_date_from,              -- 2.受注日（From）
       iv_ordered_date_to,                -- 3.受注日（To）
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata Start
+      iv_output_code,                    -- 4.出力区分
+-- 2013/03/26 Ver.1.7 Add T.Ishiwata End
       lv_errbuf,   -- エラー・メッセージ           --# 固定 #
       lv_retcode,  -- リターン・コード             --# 固定 #
       lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #

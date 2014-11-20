@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS006A04R (spec)
  * Description      : 出荷依頼書
  * MD.050           : 出荷依頼書 MD050_COS_006_A04
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *  2009/10/01    1.6   S.Miyakoshi      【SCS障害No.0001378対応】
  *                                       帳票ワークテーブルの桁あふれ対応
  *                                       クイックコード取得時のパフォーマンス対応
+ *  2013/03/26    1.7   T.Ishiwata       【E_本稼動_10343対応】
+ *                                        パラメータ「出力区分」追加、文言、タイトル変更
  *
  *****************************************************************************************/
 --
@@ -44,7 +46,11 @@ AS
     retcode       OUT    VARCHAR2,         --   エラーコード     #固定#
     iv_ship_from_subinv_code  IN      VARCHAR2,         -- 1.出荷元倉庫
     iv_ordered_date_from      IN      VARCHAR2,         -- 2.受注日（From）
-    iv_ordered_date_to        IN      VARCHAR2          -- 3.受注日（To）
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata Start
+--    iv_ordered_date_to        IN      VARCHAR2          -- 3.受注日（To）
+    iv_ordered_date_to        IN      VARCHAR2,         -- 3.受注日（To）
+    iv_output_code            IN      VARCHAR2          -- 4.出力区分
+-- 2013/03/26 Ver.1.7 Mod T.Ishiwata End
   );
 END XXCOS006A04R;
 /

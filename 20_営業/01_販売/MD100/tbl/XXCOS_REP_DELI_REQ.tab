@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOS_REP_DELI_REQ
  * Description : 出荷依頼書帳票ワークテーブル
- * Version     : 1.2
+ * Version     : 1.3
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -15,6 +15,7 @@
  *  2009/10/01    1.2   SCS S.Miyakoshi  [0001378]桁あふれ対応 ORDER_LINE_NUMBER(NUMBER(3,0)→NUMBER)
  *                                                             CONTENT(NUMBER(4,0)→NUMBER)
  *                                                             SHIPMENT_QUANTITY(NUMBER(7,0)→NUMBER)
+ *  2013/03/26    1.3   SCSK T.Ishiwata [E_本稼動_10343]運送請負者情報、出力区分の追加
  *
  ****************************************************************************************/
 CREATE TABLE XXCOS.XXCOS_REP_DELI_REQ
@@ -46,6 +47,10 @@ CREATE TABLE XXCOS.XXCOS_REP_DELI_REQ
     SHIPMENT_QUANTITY              NUMBER,                           --出荷数量
     SHIPMENT_UOM                   VARCHAR2(3),                      --出荷単位
     REMARKS_COLUMN                 VARCHAR2(20),                     --備考
+-- 2013/03/26 Ver1.3 Add T.Ishiwata Start
+    DLV_CONTRACTOR_INFO            VARCHAR2(160),                    --運送請負者情報
+    OUTPUT_CODE                    VARCHAR2(01),                     --出力区分
+-- 2013/03/26 Ver1.3 Add T.Ishiwata End
     CREATED_BY                     NUMBER(15,0)   NOT NULL,          --作成者
     CREATION_DATE                  DATE           NOT NULL,          --作成日
     LAST_UPDATED_BY                NUMBER(15,0)   NOT NULL,          --最終更新者
@@ -86,6 +91,10 @@ COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.CONTENT                        IS '入
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.SHIPMENT_QUANTITY              IS '出荷数量';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.SHIPMENT_UOM                   IS '出荷単位';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.REMARKS_COLUMN                 IS '備考';
+-- 2013/03/26 Ver1.3 Add T.Ishiwata Start
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.DLV_CONTRACTOR_INFO            IS  '運送請負者情報';
+COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.OUTPUT_CODE                    IS  '出力区分';
+-- 2013/03/26 Ver1.3 Add T.Ishiwata End
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.CREATED_BY                     IS '作成者';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.CREATION_DATE                  IS '作成日';
 COMMENT ON COLUMN XXCOS.XXCOS_REP_DELI_REQ.LAST_UPDATED_BY                IS '最終更新者';
