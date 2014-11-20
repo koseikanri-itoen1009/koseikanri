@@ -3,7 +3,7 @@
  * Table Name      : xxcff_cont_lines_work
  * Description     : リース契約明細ワーク
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/01/23    1.0  SCS 奥河美樹  初回作成
  *  2009/02/06    1.1  SCS 奥河美樹  物件コード9桁→10桁へ変更
+ *  2009/05/14    1.2  SCS 松中俊樹  【T1_0721】初回設置場所の桁数を50→600へ変更
  ************************************************************************/
 CREATE TABLE xxcff.xxcff_cont_lines_work (
      seqno                          NUMBER(5)     NOT NULL
@@ -29,7 +30,10 @@ CREATE TABLE xxcff.xxcff_cont_lines_work (
     ,object_header_id               NUMBER
     ,lease_kind                     VARCHAR2(1)   NOT NULL
     ,asset_category                 VARCHAR2(30)
-    ,first_installation_address     VARCHAR2(50)
+    --【T1_0721】MOD START Matsunaka
+    --,first_installation_address     VARCHAR2(50)
+    ,first_installation_address     VARCHAR2(600)
+    --【T1_0721】MOD END   Matsunaka
     ,first_installation_place       VARCHAR2(50)
     ,file_id                        NUMBER        NOT NULL
     ,created_by                     NUMBER(15)    NOT NULL

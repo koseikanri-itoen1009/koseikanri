@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF003A07C(body)
  * Description      : リース契約・物件アップロード
  * MD.050           : MD050_CFF_003_A07_リース契約・物件アップロード.doc
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,9 @@ AS
  *  2009/03/02    1.2   SCS礒崎祐次     [障害CFF_068] 業務エラーメッセージは
  *                                      出力ファイルに出力する。
  *  2009/05/14    1.3   SCS礒崎祐次     [障害T1_0783]数量がNULLの場合は、1を設定する。
+ *  2009/05/18    1.4   SCS松中俊樹     [障害T1_0721]デリミタ文字分割後データ格納配列の
+ *                                      桁数を変更
+ *                                      初回設置場所と初回設置先の格納変数を修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -286,7 +289,10 @@ AS
   -- ユーザー定義グローバル型
   -- ===============================
   -- 配列変数
-  TYPE load_data_rtype  IS TABLE OF VARCHAR2(200)
+  --[障害T1_0721]MOD START
+  --TYPE load_data_rtype  IS TABLE OF VARCHAR2(200)
+  TYPE load_data_rtype  IS TABLE OF VARCHAR2(600)
+  --[障害T1_0721]MOD END
     INDEX BY binary_integer;       
   TYPE load_name_rtype  IS TABLE OF VARCHAR2(50)
     INDEX BY binary_integer;       
@@ -1509,7 +1515,10 @@ AS
           );            
         ELSE
           --変数に格納する。
-          gv_first_inst_address := gr_lord_data_tab(15);
+          --[障害T1_0721]MOD START
+          --gv_first_inst_address := gr_lord_data_tab(15);
+          gv_first_inst_place := gr_lord_data_tab(15);
+          --[障害T1_0721]MOD END
         END IF;
       END IF;  
 --
@@ -1565,7 +1574,10 @@ AS
           );            
         ELSE
           --変数に格納する。
-          gv_first_inst_place  := gr_lord_data_tab(16);
+          --[障害T1_0721]MOD START
+          --gv_first_inst_place  := gr_lord_data_tab(16);
+          gv_first_inst_address  := gr_lord_data_tab(16);
+          --[障害T1_0721]MOD END
         END IF;
       END IF;  
 --      
