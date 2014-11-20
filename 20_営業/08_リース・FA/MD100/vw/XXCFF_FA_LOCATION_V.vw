@@ -15,42 +15,48 @@ START_DATE_ACTIVE,       -- 開始日
 END_DATE_ACTIVE          -- 終了日
 )
 AS
-  SELECT  FL.LOCATION_ID       AS LOCATION_ID
-         ,FL.SEGMENT1          AS SEGMENT1
-         ,FF1.DESCRIPTION      AS SEGMENT1_DESC
-         ,FL.SEGMENT2          AS SEGMENT2
-         ,FF2.DESCRIPTION      AS SEGMENT2_DESC
-         ,FL.SEGMENT3          AS SEGMENT3
-         ,FF3.DESCRIPTION      AS SEGMENT3_DESC
-         ,FL.SEGMENT4          AS SEGMENT4
-         ,FL.SEGMENT5          AS SEGMENT5
-         ,FF5.DESCRIPTION      AS SEGMENT5_DESC
-         ,FL.ENABLED_FLAG      AS ENABLED_FLAG
-         ,FL.START_DATE_ACTIVE AS START_DATE_ACTIVE
-         ,FL.END_DATE_ACTIVE   AS END_DATE_ACTIVE
-FROM
-          FA_LOCATIONS        FL
-         ,FND_FLEX_VALUES_VL  FF1
-         ,FND_FLEX_VALUE_SETS FS1
-         ,FND_FLEX_VALUES_VL  FF2
-         ,FND_FLEX_VALUE_SETS FS2
-         ,FND_FLEX_VALUES_VL  FF3
-         ,FND_FLEX_VALUE_SETS FS3
-         ,FND_FLEX_VALUES_VL  FF5
-         ,FND_FLEX_VALUE_SETS FS5
-WHERE
-          FS1.FLEX_VALUE_SET_NAME ='XXCFF_DCLR_PLACE'
-and       FS1.FLEX_VALUE_SET_ID   = FF1.FLEX_VALUE_SET_ID
-and       FL.SEGMENT1             = FF1.FLEX_VALUE
-and       FS2.FLEX_VALUE_SET_NAME ='XX03_DEPARTMENT'
-and       FS2.FLEX_VALUE_SET_ID   = FF2.FLEX_VALUE_SET_ID
-and       FL.SEGMENT2             = FF2.FLEX_VALUE
-and       FS3.FLEX_VALUE_SET_NAME ='XXCFF_MNG_PLACE'
-and       FS3.FLEX_VALUE_SET_ID   = FF3.FLEX_VALUE_SET_ID
-and       FL.SEGMENT3             = FF3.FLEX_VALUE
-and       FS5.FLEX_VALUE_SET_NAME ='XXCFF_OWNER_COMPANY'
-and       FS5.FLEX_VALUE_SET_ID   = FF5.FLEX_VALUE_SET_ID
-and       FL.SEGMENT5             = FF5.FLEX_VALUE
+SELECT FLC.LOCATION_ID                                                  AS LOCATION_ID
+      ,FLC.SEGMENT1                                                     AS SEGMENT1
+      ,(SELECT  FLV1.DESCRIPTION
+        FROM     FND_FLEX_VALUES_VL      FLV1
+                ,FND_ID_FLEX_SEGMENTS_VL FIS1
+        WHERE  FLV1.FLEX_VALUE_SET_ID        = FIS1.FLEX_VALUE_SET_ID
+        AND    FIS1.ID_FLEX_CODE             = 'LOC#'
+        AND    FIS1.APPLICATION_COLUMN_NAME  = 'SEGMENT1'
+        AND    FLC.SEGMENT1                  = FLV1.FLEX_VALUE
+       )                                                                AS SEGMENT1_DESC
+      ,FLC.SEGMENT2                                                     AS SEGMENT2
+      ,(SELECT  FLV2.DESCRIPTION
+        FROM    FND_FLEX_VALUES_VL       FLV2
+               ,FND_ID_FLEX_SEGMENTS_VL  FIS2
+        WHERE   FLV2.FLEX_VALUE_SET_ID       = FIS2.FLEX_VALUE_SET_ID
+        AND     FIS2.ID_FLEX_CODE            = 'LOC#'
+        AND     FIS2.APPLICATION_COLUMN_NAME = 'SEGMENT2'
+        AND     FLC.SEGMENT2                 = FLV2.FLEX_VALUE
+        )                                                               AS SEGMENT2_DESC
+       ,FLC.SEGMENT3                                                    AS SEGMENT3
+       ,(SELECT  FLV3.DESCRIPTION
+         FROM    FND_FLEX_VALUES_VL       FLV3
+                ,FND_ID_FLEX_SEGMENTS_VL  FIS3
+         WHERE   FLV3.FLEX_VALUE_SET_ID       = FIS3.FLEX_VALUE_SET_ID
+         AND     FIS3.ID_FLEX_CODE            = 'LOC#'
+         AND     FIS3.APPLICATION_COLUMN_NAME = 'SEGMENT3'
+         AND     FLC.SEGMENT3                 = FLV3.FLEX_VALUE
+       )                                                                AS SEGMENT3_DESC
+       ,FLC.SEGMENT4                                                    AS SEGMENT4
+      ,FLC.SEGMENT5                                                     AS SEGMENT5
+      ,(SELECT  FLV5.DESCRIPTION
+         FROM    FND_FLEX_VALUES_VL       FLV5
+                ,FND_ID_FLEX_SEGMENTS_VL  FIS5
+         WHERE   FLV5.FLEX_VALUE_SET_ID       = FIS5.FLEX_VALUE_SET_ID
+         AND     FIS5.ID_FLEX_CODE            = 'LOC#'
+         AND     FIS5.APPLICATION_COLUMN_NAME = 'SEGMENT5'
+         AND     FLC.SEGMENT5                 = FLV5.FLEX_VALUE
+      )                                                                 AS SEGMENT5_DESC
+      ,FLC.ENABLED_FLAG                                                 AS ENABLED_FLAG
+      ,FLC.START_DATE_ACTIVE                                            AS START_DATE_ACTIVE
+      ,FLC.END_DATE_ACTIVE                                              AS END_DATE_ACTIVE
+FROM  FA_LOCATIONS    FLC
 ;
 COMMENT ON COLUMN XXCFF_FA_LOCATION_V.LOCATION_ID IS '事業所ID';
 COMMENT ON COLUMN XXCFF_FA_LOCATION_V.SEGMENT1 IS 'ロケ_申告地コード';

@@ -80,7 +80,23 @@ CREATION_DATE,                 --作成日
 LAST_UPDATE_LOGIN              --最終更新ログイン
 )
 AS 
-SELECT MAIN.ASSET_ID                AS ASSET_ID--資産ID
+-- Modify 2009.08.19 Ver1.1 Start
+--  SELECT MAIN.ASSET_ID                AS ASSET_ID--資産ID
+  SELECT /*+   
+           LEADING(MAIN.B)
+           USE_NL(MAIN C FC D FA FL CC)
+           INDEX(FBC      FA_BOOK_CONTROLS_U1)
+           INDEX(C.B      FA_ADDITIONS_B_U1)
+           INDEX(C.T      FA_ADDITIONS_TL_U1)
+           INDEX(D        FA_DISTRIBUTION_HISTORY_N2)
+           INDEX(FA       FA_ASSET_KEYWORDS_U1)
+           INDEX(CC.GCC   GL_CODE_COMBINATIONS_U1) 
+           INDEX(FC.FCB.T FA_CATEGORIES_TL_U1)
+           INDEX(FC.FCB.B FA_CATEGORIES_B_U1)
+           INDEX(FL.FLC   FA_LOCATIONS_U1)
+         */
+       MAIN.ASSET_ID                AS ASSET_ID--資産ID
+-- Modify 2009.08.19 Ver1.1 End
       ,C.ASSET_NUMBER               AS ASSET_NUMBER--資産番号
       ,MAIN.BOOK_TYPE_CODE          AS BOOK_TYPE_CODE--台帳名
       ,MAIN.COST                    AS COST--取得価額
@@ -88,7 +104,10 @@ SELECT MAIN.ASSET_ID                AS ASSET_ID--資産ID
       ,MAIN.DEPRN_RESERVE           AS DEPRN_RESERVE--純帳簿価額
       ,MAIN.YTD_DEPRN               AS YTD_DEPRN--年償却累計額
       ,MAIN.TOTAL_AMOUNT            AS TOTAL_AMOUNT--償却累計額
-      ,FDP.PERIOD_NAME              AS PERIOD_NAME--減価償却対象期間
+-- Modify 2009.08.19 Ver1.1 Start
+--      ,FDP.PERIOD_NAME              AS PERIOD_NAME--減価償却対象期間
+      ,MAIN.PERIOD_NAME             AS PERIOD_NAME--減価償却対象期間
+-- Modify 2009.08.19 Ver1.1 End
       ,MAIN.ORIGINAL_COST           AS ORIGINAL_COST--当初取得価額
       ,MAIN.SALVAGE_VALUE           AS SALVAGE_VALUE--残存価額
       ,MAIN.DATE_PLACED_IN_SERVICE  AS DATE_PLACED_IN_SERVICE--事業供用日
@@ -158,15 +177,26 @@ SELECT MAIN.ASSET_ID                AS ASSET_ID--資産ID
       ,C.CREATED_BY                 AS CREATED_BY--作成者
       ,C.CREATION_DATE              AS CREATION_DATE--作成日
       ,C.LAST_UPDATE_LOGIN          AS LAST_UPDATE_LOGIN--最終更新ログイン
-FROM   FA_BOOK_CONTROLS          FBC  -- 資産台帳      
-      ,FA_ADDITIONS              C    -- 資産詳細
+-- Modify 2009.08.19 Ver1.1 Start
+--FROM   FA_BOOK_CONTROLS          FBC  -- 資産台帳
+--      ,FA_ADDITIONS              C    -- 資産詳細
+FROM   FA_ADDITIONS              C    -- 資産詳細
+-- Modify 2009.08.19 Ver1.1 End
       ,FA_DISTRIBUTION_HISTORY   D    -- 資産割当
-      ,FA_DEPRN_PERIODS          FDP  -- 減価償却期間
+-- Modify 2009.08.19 Ver1.1 Start
+--      ,FA_DEPRN_PERIODS          FDP  -- 減価償却期間
+-- Modify 2009.08.19 Ver1.1 End
       ,XXCFF_FA_CATEGORY_V       FC   -- 資産カテゴリマスタ
       ,XXCFF_FA_LOCATION_V       FL   -- 事業所マスタ
       ,XXCFF_FA_CCID_V           CC   -- 勘定科目体系マスタ
       ,FA_ASSET_KEYWORDS         FA
-      ,(SELECT  B.ASSET_ID                     AS ASSET_ID--資産ID
+-- Modify 2009.08.19 Ver1.1 Start
+--      ,(SELECT  B.ASSET_ID                     AS ASSET_ID--資産ID
+      ,(SELECT  /*+ USE_NL(FBC B FDP FDS FDS_MAX)
+                    INDEX( FDP FA_DEPRN_PERIODS_U3)
+                */
+                B.ASSET_ID                     AS ASSET_ID--資産ID
+-- Modify 2009.08.19 Ver1.1 End
                ,B.BOOK_TYPE_CODE               AS BOOK_TYPE_CODE--台帳名
                ,B.COST                         AS COST--取得価額
                ,B.ADJUSTED_RECOVERABLE_COST    AS ADJUSTED_RECOVERABLE_COST--償却対象額
@@ -180,6 +210,9 @@ FROM   FA_BOOK_CONTROLS          FBC  -- 資産台帳
                ,NVL(TRUNC(B.LIFE_IN_MONTHS/12),0)  AS LIFE_IN_YEAR--耐用年数_年
                ,NVL(  MOD(B.LIFE_IN_MONTHS,12),0)  AS LIFE_IN_MONTHS--耐用年数_月
                ,FDS.PERIOD_COUNTER           AS PERIOD_COUNTER
+-- Modify 2009.08.19 Ver1.1 Start
+               ,FDP.PERIOD_NAME              AS PERIOD_NAME
+-- Modify 2009.08.19 Ver1.1 End
         FROM    FA_BOOKS                  B    -- 資産台帳情報
               ,(SELECT  FDSY.DEPRN_RESERVE
                        ,FDSY.YTD_DEPRN                  AS YTD_DEPRN--年償却累計額
@@ -195,19 +228,35 @@ FROM   FA_BOOK_CONTROLS          FBC  -- 資産台帳
                 FROM   FA_DEPRN_SUMMARY  FDSY
                 GROUP BY FDSY.ASSET_ID
                         ,FDSY.BOOK_TYPE_CODE) FDS_MAX
+-- Modify 2009.08.19 Ver1.1 Start
+              ,FA_BOOK_CONTROLS          FBC  -- 資産台帳マスタ
+              ,FA_DEPRN_PERIODS          FDP  -- 減価償却期間
+-- Modify 2009.08.19 Ver1.1 End
         WHERE  B.BOOK_TYPE_CODE        = FDS_MAX.BOOK_TYPE_CODE-- 台帳名
         AND    B.TRANSACTION_HEADER_ID_OUT IS NULL  -- 最新の台帳データ
         AND    B.ASSET_ID              = FDS_MAX.ASSET_ID -- 資産ID
+-- Modify 2009.08.19 Ver1.1 Start
+        AND   B.PERIOD_COUNTER_FULLY_RETIRED IS NULL  -- 除・売却済みの固定資産は対象外
+        AND   FBC.BOOK_TYPE_CODE           = B.BOOK_TYPE_CODE
+        AND   FBC.DISTRIBUTION_SOURCE_BOOK = FND_PROFILE.VALUE('XXCFF1_FIXED_ASSETS_BOOKS')        
+        AND   FBC.BOOK_TYPE_CODE           = FDP.BOOK_TYPE_CODE
+        AND   FBC.LAST_PERIOD_COUNTER      = FDP.PERIOD_COUNTER
+-- Modify 2009.08.19 Ver1.1 End
         AND   FDS.PERIOD_COUNTER(+)    =  FDS_MAX.PERIOD_COUNTER
         AND   FDS.ASSET_ID(+)          =  FDS_MAX.ASSET_ID
         AND   FDS.BOOK_TYPE_CODE(+)    =  FDS_MAX.BOOK_TYPE_CODE) MAIN -- 償却
-WHERE  FBC.DISTRIBUTION_SOURCE_BOOK    =  FND_PROFILE.VALUE('XXCFF1_FIXED_ASSETS_BOOKS')
-AND    FBC.BOOK_TYPE_CODE              = MAIN.BOOK_TYPE_CODE -- 台帳名
-AND    MAIN.ASSET_ID                   = C.ASSET_ID -- 	資産ID
+-- Modify 2009.08.19 Ver1.1 Start
+--WHERE  FBC.DISTRIBUTION_SOURCE_BOOK    =  FND_PROFILE.VALUE('XXCFF1_FIXED_ASSETS_BOOKS')
+--AND    FBC.BOOK_TYPE_CODE              = MAIN.BOOK_TYPE_CODE -- 台帳名
+--AND    MAIN.ASSET_ID                   = C.ASSET_ID -- 	資産ID
+WHERE  MAIN.ASSET_ID           = C.ASSET_ID -- 資産ID
+-- Modify 2009.08.19 Ver1.1 End
 AND    D.TRANSACTION_HEADER_ID_OUT IS NULL  -- 最新の割当データ
 AND    MAIN.ASSET_ID           = D.ASSET_ID -- 資産ID
-AND    FBC.LAST_PERIOD_COUNTER = FDP.PERIOD_COUNTER -- カレンダID
-AND    FBC.BOOK_TYPE_CODE      = FDP.BOOK_TYPE_CODE -- 台帳名
+-- Modify 2009.08.19 Ver1.1 Start
+--AND    FBC.LAST_PERIOD_COUNTER = FDP.PERIOD_COUNTER -- カレンダID
+--AND    FBC.BOOK_TYPE_CODE      = FDP.BOOK_TYPE_CODE -- 台帳名
+-- Modify 2009.08.19 Ver1.1 End
 AND    C.ASSET_CATEGORY_ID     = FC.CATE_CCID -- 資産カテゴリID
 AND    D.LOCATION_ID           = FL.LOCATION_ID -- 事業所ID
 AND    D.CODE_COMBINATION_ID   = CC.CCID-- 会計セグメントID
