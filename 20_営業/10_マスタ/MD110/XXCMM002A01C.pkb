@@ -101,6 +101,8 @@ AS
  *                                         (資格名(新・旧)、職位名(新・旧)、職種名(新・旧)、職務名(新・旧)、適用労働名(新・旧)は除く)
  *                                       ・管理者の導出元を変更
  *                                         (勤務地拠点コード(新) -> 所属コード(新))
+ *  2009/12/11    1.14 SCS 久保島 豊     障害E_本番_00148 対応 
+ *  2010/01/29    1.15 SCS 仁木 重人     障害E_本稼動_01216 対応 
  *
  *****************************************************************************************/
 --
@@ -3433,7 +3435,10 @@ AS
                     ,iv_token_name1  => cv_tkn_ng_user
                     ,iv_token_value1 => ir_masters_rec.employee_number
                     ,iv_token_name2  => cv_tkn_ng_err
-                    ,iv_token_value2 => lv_post_order_nm_old
+-- 2010/01/29 Ver1.15 E_本稼動_01216 modify start by Shigeto.Niki
+--                    ,iv_token_value2 => lv_post_order_nm_old
+                    ,iv_token_value2 => lv_post_order_nm
+-- 2010/01/29 Ver1.15 E_本稼動_01216 modify end by Shigeto.Niki
                    );
         RAISE global_process_expt;
       END IF;
@@ -3450,7 +3455,10 @@ AS
                     ,iv_token_name1  => cv_tkn_ng_user
                     ,iv_token_value1 => ir_masters_rec.employee_number
                     ,iv_token_name2  => cv_tkn_ng_err
-                    ,iv_token_value2 => lv_post_order_nm_old
+-- 2010/01/29 Ver1.15 E_本稼動_01216 modify start by Shigeto.Niki
+--                    ,iv_token_value2 => lv_post_order_nm_old
+                    ,iv_token_value2 => lv_post_order_nm
+-- 2010/01/29 Ver1.15 E_本稼動_01216 modify end by Shigeto.Niki
                    );
         RAISE global_process_expt;
       END IF;
