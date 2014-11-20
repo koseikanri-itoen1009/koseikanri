@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.35
+ * Version          : 1.36
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -130,6 +130,7 @@ AS
  *  2008/12/15    1.34 Oracle 福田 直樹  本番障害対応#648(42A出荷実績登録処理ship_results_regist_processを行わないようにする)
  *  2008/12/16    1.35 Oracle 福田 直樹  本番障害対応#759(出荷の外部倉庫指示なし実績計上時、受注ヘッダの実績計上済区分に何もセットされていない)
  *  2008/12/16    1.35 Oracle 福田 直樹  本番障害対応#758(移動の出庫倉庫と入庫倉庫が同じ場合はエラーにする)
+ *  2008/12/19    1.36 Oracle 福田 直樹  本番障害対応#648(移動ロット詳細の新規追加列before_actual_quantity対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -11587,6 +11588,8 @@ AS
     ln_order_header_id        xxwsh_order_headers_all.order_header_id%TYPE;  -- 訂正前の受注ヘッダアドオンID
     lr_movlot_detail_ins      movlot_detail_rec;
     lr_movlot_detail_ins_ini  movlot_detail_rec;
+    lt_mov_lot_dtl_id         xxinv_mov_lot_details.mov_lot_dtl_id%TYPE;     -- 2008/12/19 本番障害#648 Add
+    lt_actual_quantity        xxinv_mov_lot_details.actual_quantity%TYPE;    -- 2008/12/19 本番障害#648 Add
 --
     -- *** ローカル・カーソル ***
 --
@@ -11611,8 +11614,7 @@ AS
       -- 初期化
       lr_movlot_detail_ins := lr_movlot_detail_ins_ini;
 --
-      BEGIN 
---
+      BEGIN
         -- 実績計上済みのMAXヘッダID取得
         SELECT    MAX(xoha.order_header_id) order_header_id
         INTO      ln_order_header_id       -- ヘッダID
@@ -11635,7 +11637,7 @@ AS
               , xmld.mov_line_id                  -- 明細ID
               , xmld.document_type_code           -- 文書タイプ
               , xmld.record_type_code             -- レコードタイプ
-              , xmld.item_id                      -- opm品目ID
+              , xmld.item_id                      -- OPM品目ID
               , xmld.item_code                    -- 品目
               , xmld.lot_id                       -- ロットID
               , xmld.lot_no                       -- ロットNO
@@ -11651,25 +11653,52 @@ AS
         AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))
         AND     xola.order_line_id        = xmld.mov_line_id
         AND     xmld.document_type_code  IN (gv_document_type_10,gv_document_type_30)
-        AND     xmld.record_type_code     = gv_record_type_10
+        AND     xmld.record_type_code     = gv_record_type_10   -- 出荷指示ロット
         AND     xmld.item_id              = gr_interface_info_rec(in_idx).item_id
         AND     NVL(xmld.lot_no,'X')      = NVL(gr_interface_info_rec(in_idx).lot_no,'X')
         ;
 --
       EXCEPTION
---
         WHEN NO_DATA_FOUND THEN
-        lr_movlot_detail_ins.mov_lot_dtl_id := NULL;
-        --********** debug_log ********** START ***
-        debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット取得できず');
-        --********** debug_log ********** END   ***
---
+          lr_movlot_detail_ins.mov_lot_dtl_id := NULL;
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット(指示)取得できず');
+          --********** debug_log ********** END   ***
       END;
+--
+      -- 2008/12/19 本番障害#648 Add Start -----------------------------------------------
+      -- 訂正前の移動ロット情報（実績）を取得する。
+      BEGIN
+        SELECT  xmld.mov_lot_dtl_id               -- ロット詳細ID
+              , xmld.actual_quantity              -- 実績数量
+        INTO    lt_mov_lot_dtl_id
+              , lt_actual_quantity
+        FROM    xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
+              , xxwsh_order_lines_all     xola    -- 受注明細(アドオン)
+              , xxinv_mov_lot_details     xmld    -- 移動ロット詳細(アドオン)
+        WHERE   xoha.order_header_id      = ln_order_header_id
+        AND     xoha.order_header_id      = xola.order_header_id
+        AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))
+        AND     xola.order_line_id        = xmld.mov_line_id
+        AND     xmld.document_type_code  IN (gv_document_type_10,gv_document_type_30)
+        AND     xmld.record_type_code     = gv_record_type_20    -- 出荷実績ロット
+        AND     xmld.item_id              = gr_interface_info_rec(in_idx).item_id
+        AND     NVL(xmld.lot_no,'X')      = NVL(gr_interface_info_rec(in_idx).lot_no,'X')
+        ;
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          lt_actual_quantity := NULL;
+          --********** debug_log ********** START ***
+          debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット(実績)取得できず');
+          --********** debug_log ********** END   ***
+      END;
+      -- 2008/12/19 本番障害#648 Add End --------------------------------------------------
 --
       -- 訂正前の移動ロット詳細があった場合
       IF (lr_movlot_detail_ins.mov_lot_dtl_id IS NOT NULL) THEN
         --********** debug_log ********** START ***
-        debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット取得完了');
+        debug_log(FND_FILE.LOG,'(A-8-7)訂正前移動ロット(指示)取得完了');
         --********** debug_log ********** END   ***
 --
         -- ロット詳細ID取得
@@ -11691,7 +11720,7 @@ AS
           ,mov_line_id                                      -- 明細ID
           ,document_type_code                               -- 文書タイプ
           ,record_type_code                                 -- レコードタイプ
-          ,item_id                                          -- opm品目ID
+          ,item_id                                          -- OPM品目ID
           ,item_code                                        -- 品目
           ,lot_id                                           -- ロットID
           ,lot_no                                           -- ロットNO
@@ -11712,10 +11741,10 @@ AS
           ,lr_movlot_detail_ins.mov_line_id                 -- 明細ID
           ,lr_movlot_detail_ins.document_type_code          -- 文書タイプ
           ,lr_movlot_detail_ins.record_type_code            -- レコードタイプ
-          ,lr_movlot_detail_ins.item_id                     -- opm品目id
+          ,lr_movlot_detail_ins.item_id                     -- OPM品目id
           ,lr_movlot_detail_ins.item_code                   -- 品目
           ,lr_movlot_detail_ins.lot_id                      -- ロットID
-          ,lr_movlot_detail_ins.lot_no                      -- ロットno
+          ,lr_movlot_detail_ins.lot_no                      -- ロットNO
           ,lr_movlot_detail_ins.actual_date                 -- 実績日
           ,lr_movlot_detail_ins.actual_quantity             -- 実績数量
           ,gt_user_id                                       -- 作成者
@@ -11846,6 +11875,7 @@ AS
         ,program_application_id                           -- アプリケーションID
         ,program_id                                       -- コンカレント・プログラムID
         ,program_update_date                              -- プログラム更新日
+        ,before_actual_quantity                           -- 訂正前実績数量     2008/12/19 本番障害#648 Add
         )
       VALUES
         (gr_movlot_detail_rec.mov_lot_dtl_id              -- ロット詳細ID
@@ -11867,6 +11897,7 @@ AS
         ,gt_prog_appl_id                                  -- アプリケーションID
         ,gt_conc_program_id                               -- コンカレント・プログラムID
         ,gt_sysdate                                       -- プログラム更新日
+        ,lt_actual_quantity                               -- 訂正前実績数量       2008/12/19 本番障害#648 Add
        );
 --
 --********** 2008/07/07 ********** DELETE START ***
