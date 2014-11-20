@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS013A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS013A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (body)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/02/20    1.3   H.Ri             パラメータのログファイル出力対応
  *  2009/04/28    1.4   N.Maeda          資材取引OIFデータの集約条件に部門コードを追加
  *  2009/05/13    1.5   K.Kiriu          [T1_0984]製品、商品判定の追加
+ *  2009/06/17    1.6   K.Kiriu          [T1_1472]取引数量0のデータ対応
  *
  *****************************************************************************************/
 --
@@ -1982,6 +1983,10 @@ AS
       FOR l IN g_mtl_txn_oif_ins_tab.FIRST .. g_mtl_txn_oif_ins_tab.LAST LOOP
         IF ( g_mtl_txn_oif_ins_tab.EXISTS( l ) ) THEN
 --************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
+/* 2009/06/17 Ver1.6 Add Start */
+          --取引数量が0以外の場合作成する
+          IF ( g_mtl_txn_oif_ins_tab(l).transaction_quantity <> 0 ) THEN
+/* 2009/06/17 Ver1.6 Add End   */
           INSERT INTO 
             mtl_transactions_interface(
               source_code,                   --ソースコード
@@ -2068,6 +2073,9 @@ AS
 --************************************* 2009/04/28 N.Maeda Var1.4 MOD  END  *********************************************
           )
           ;
+/* 2009/06/17 Ver1.6 Add Start */
+          END IF;
+/* 2009/06/17 Ver1.6 Add End   */
         END IF;
       END LOOP insert_loop;
     EXCEPTION

@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE XXCOS013A02C
+CREATE OR REPLACE PACKAGE APPS.XXCOS013A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A02C (spec)
  * Description      : INVへの販売実績データ連携
  * MD.050           : INVへの販売実績データ連携 MD050_COS_013_A02
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -24,6 +24,7 @@ AS
  *  2009/02/20    1.3   H.Ri             パラメータのログファイル出力対応
  *  2009/04/28    1.4   N.Maeda          資材取引OIFデータの集約条件に部門コードを追加
  *  2009/05/13    1.5   K.Kiriu          [T1_0984]製品、商品判定の追加
+ *  2009/06/17    1.6   K.Kiriu          [T1_1472]取引数量0のデータ対応
  *
  *****************************************************************************************/
 --
