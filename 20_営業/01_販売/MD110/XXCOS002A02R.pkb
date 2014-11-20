@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS002A02R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS002A02R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : 営業報告日報
  * MD.050           : 営業報告日報 MD050_COS_002_A02
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,15 @@ AS
  *  2009/05/01    1.4   K.Kiriu          [T1_0481]訪問データ抽出条件統一対応
  *  2009/06/03    1.5   T.Kitajima       [T1_1172]集約キーに顧客コード追加
  *  2009/06/03    1.5   T.Kitajima       [T1_1301]納品伝票番号分類で集約するように変更
+ *  2009/06/19    1.6   K.Kiriu          [T1_1437]データパージ不具合対応
+ *  2009/07/08    1.7   T.Tominaga       [0000477]伝票合計金額算出処理削除
+ *                                                A-3.納品実績データ挿入処理のkey brake追加
+ *                                                A-2,A-3後、税込入金を合計金額で更新する処理を追加
+ *                                                納品実績情報カーソルの入金額取得変更
+ *                                                納品実績情報カーソルのソートに販売実績ヘッダ.HHT納品入力日時を追加
+ *  2009/07/15    1.7   T.Tominaga       [0000659]納品実績情報カーソルの本体金額を売上金額に変更（aftertax_sale, sale_discount）
+ *                                       [0000665]納品実績情報カーソルの商品名をOPM品目アドオンの略称に変更
+ *  2009/07/22    1.7   T.Tominaga       入金額の取得を納品実績情報カーソルからA-3.納品実績データ挿入処理内で別途取得に変更
  *
  *****************************************************************************************/
 --
@@ -166,6 +175,11 @@ AS
   cv_str_profile_nm             CONSTANT  VARCHAR2(100)                                   :=  'profile_name';       --  プロファイル名
   cv_str_hht_no_nm              CONSTANT  VARCHAR2(100)                                   :=  'hht_invoice_no';     --  伝票番号
   cv_str_employee_num           CONSTANT  VARCHAR2(100)                                   :=  'employee_num';       --  営業員(納品担当)
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD START  ******************************************
+  cv_str_dlv_date               CONSTANT  VARCHAR2(100)                                   :=  'dlv_date';           --  納品日
+  cv_str_party_num              CONSTANT  VARCHAR2(100)                                   :=  'party_num';          --  顧客コード
+  cv_str_visit_time             CONSTANT  VARCHAR2(100)                                   :=  'visit_time';         --  訪問時間
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD END    ******************************************
 --
   --  トークン
   cv_tkn_para_date              CONSTANT  VARCHAR2(100)                                   :=  'PARA_DATE';          --  処理日付
@@ -209,6 +223,12 @@ AS
   cv_task_dff12_only_visit      CONSTANT  VARCHAR2(1)                                     :=  '1';                  --  訪問のみ
   --  明細番号初期値
   cn_line_no_default            CONSTANT  PLS_INTEGER                                     :=  1;
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+  cv_red_black_flag_red         CONSTANT  xxcos_sales_exp_lines.red_black_flag%TYPE       := '0';
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
+--****************************** 2009/07/15 1.7 T.Tominaga ADD START ******************************--
+  cv_obsolete_class_one         CONSTANT VARCHAR2(1)   := '1';
+--****************************** 2009/07/15 1.7 T.Tominaga ADD END   ******************************--
 --
   --  ===============================
   --  ユーザー定義プライベート変数
@@ -255,18 +275,37 @@ AS
             hzpc.party_name               AS  party_name,
             saeh.results_employee_code    AS  performance_by_code,
             rsir.employee_name            AS  performance_by_name,
-            SUM(sael.pure_amount)         AS  aftertax_sale,
+--****************************** 2009/07/15 1.7 T.Tominaga MOD START ******************************--
+--            SUM(sael.pure_amount)         AS  aftertax_sale,
+            SUM(sael.sale_amount)         AS  aftertax_sale,
+--****************************** 2009/07/15 1.7 T.Tominaga MOD END   ******************************--
             SUM(
                 CASE  sael.item_code
-                  WHEN  xlvd.lookup_code  THEN  sael.pure_amount
+--****************************** 2009/07/15 1.7 T.Tominaga MOD START ******************************--
+--                  WHEN  xlvd.lookup_code  THEN  sael.pure_amount
+                  WHEN  xlvd.lookup_code  THEN  sael.sale_amount
+--****************************** 2009/07/15 1.7 T.Tominaga MOD END   ******************************--
                   ELSE  0
                 END
                 )                         AS  sale_discount,
-            SUM(paym.payment_amount)      AS  pretax_payment,
+--****************************** 2009/07/22 1.7 T.Tominaga DEL START ******************************--
+----****************************** 2009/07/08 1.7 T.Tominaga MOD START ******************************--
+----            SUM(paym.payment_amount)      AS  pretax_payment,
+--            SUM(
+--                CASE  sael.red_black_flag
+--                  WHEN cv_red_black_flag_red THEN ( paym.payment_amount * -1 )
+--                  ELSE paym.payment_amount
+--                END
+--            ) AS  pretax_payment,
+----****************************** 2009/07/08 1.7 T.Tominaga MOD END   ******************************--
+--****************************** 2009/07/22 1.7 T.Tominaga DEL END   ******************************--
             SUM(sael.standard_qty)        AS  standard_qty,
             saeh.hht_dlv_input_date       AS  visit_time,
             sael.item_code                AS  item_code,
-            iimb.item_desc1               AS  item_name
+--****************************** 2009/07/15 1.7 T.Tominaga MOD START ******************************--
+--            iimb.item_desc1               AS  item_name
+            ximb.item_short_name          AS  item_name
+--****************************** 2009/07/15 1.7 T.Tominaga MOD  END  ******************************--
     FROM    xxcos_sales_exp_headers   saeh,
             xxcos_sales_exp_lines     sael,
             xxcos_rs_info_v           rsid,
@@ -276,7 +315,12 @@ AS
             hz_cust_accounts          base,
             hz_parties                hzpb,
             ic_item_mst_b             iimb,
-            xxcos_payment             paym,
+--****************************** 2009/07/15 1.7 T.Tominaga ADD START ******************************--
+            xxcmn_item_mst_b          ximb,
+--****************************** 2009/07/15 1.7 T.Tominaga ADD  END  ******************************--
+--****************************** 2009/07/22 1.7 T.Tominaga DEL START ******************************--
+--            xxcos_payment             paym,
+--****************************** 2009/07/22 1.7 T.Tominaga DEL  END  ******************************--
             xxcos_lookup_values_v     xlvm,
             xxcos_lookup_values_v     xlvd,
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
@@ -308,10 +352,18 @@ AS
     AND     base.customer_class_code  =       ct_cust_class_base
     AND     hzpb.party_id             =       base.party_id
     AND     iimb.item_no              =       sael.item_code
-    AND     paym.base_code(+)         =       icp_delivery_base_code
-    AND     paym.customer_number(+)   =       saeh.ship_to_customer_code
-    AND     paym.payment_date(+)      =       saeh.delivery_date
-    AND     paym.hht_invoice_no(+)    =       saeh.dlv_invoice_number
+--****************************** 2009/07/15 1.7 T.Tominaga ADD START ******************************--
+    AND     iimb.item_id              =       ximb.item_id
+    AND     ximb.obsolete_class       <>      cv_obsolete_class_one
+    AND     ximb.start_date_active    <=      saeh.delivery_date
+    AND     ximb.end_date_active      >=      saeh.delivery_date
+--****************************** 2009/07/15 1.7 T.Tominaga ADD END   ******************************--
+--****************************** 2009/07/22 1.7 T.Tominaga DEL START ******************************--
+--    AND     paym.base_code(+)         =       icp_delivery_base_code
+--    AND     paym.customer_number(+)   =       saeh.ship_to_customer_code
+--    AND     paym.payment_date(+)      =       saeh.delivery_date
+--    AND     paym.hht_invoice_no(+)    =       saeh.dlv_invoice_number
+--****************************** 2009/07/22 1.7 T.Tominaga DEL END   ******************************--
     AND     xlvm.lookup_type          =       ct_qct_org_cls_type
     AND     xlvm.lookup_code          LIKE    ct_qcc_org_cls_type
     AND     icp_delivery_date         BETWEEN NVL(xlvm.start_date_active, icp_delivery_date)
@@ -347,17 +399,49 @@ AS
             rsir.employee_name,
             saeh.hht_dlv_input_date,
             sael.item_code,
-            iimb.item_desc1
-    HAVING  SUM(sael.pure_amount)     <>      0
+--****************************** 2009/07/15 1.7 T.Tominaga MOD START ******************************--
+--            iimb.item_desc1
+--    HAVING  SUM(sael.pure_amount)     <>      0
+            ximb.item_short_name
+    HAVING  SUM(sael.sale_amount)     <>      0
+--****************************** 2009/07/15 1.7 T.Tominaga MOD END   ******************************--
     OR      SUM(sael.standard_qty)    <>      0
-    OR      SUM(paym.payment_amount)  <>      0
+--****************************** 2009/07/22 1.7 T.Tominaga DEL START ******************************--
+--    OR      SUM(paym.payment_amount)  <>      0
+--****************************** 2009/07/22 1.7 T.Tominaga DEL START ******************************--
     ORDER BY
             saeh.dlv_invoice_number,
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
             saeh.ship_to_customer_code,
 --****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
-           sael.dlv_invoice_line_number
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+            saeh.hht_dlv_input_date,
+--****************************** 2009/07/08 1.7 T.Tominaga ADD  END  ******************************--
+            sael.dlv_invoice_line_number
     ;
+--
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD START  ******************************************
+    --  合計入金額算出
+    CURSOR  payment_total_cur
+    IS
+      SELECT
+              rbre.request_id               AS  request_id,
+              rbre.employee_num             AS  employee_num,
+              rbre.dlv_date                 AS  dlv_date,
+              rbre.party_num                AS  party_num,
+              rbre.visit_time               AS  visit_time,
+              SUM(rbre.pretax_payment)      AS  total_payment
+      FROM    xxcos_rep_bus_report          rbre
+      WHERE   rbre.request_id               =   cn_request_id
+      GROUP BY
+              rbre.request_id,
+              rbre.employee_num,
+              rbre.dlv_date,
+              rbre.party_num,
+              rbre.visit_time
+      HAVING  SUM(rbre.pretax_payment)      <>  0
+      ;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD END    ******************************************
 --
     --  各種合計金額算出
     CURSOR  calculation_cur
@@ -406,30 +490,32 @@ AS
               rbre.dlv_date
       ;
 --
-    --  伝票合計金額算出
-    CURSOR  invoice_total_cur
-    IS
-      SELECT
-              rbre.request_id               AS  request_id,
-              rbre.employee_num             AS  employee_num,
-              rbre.dlv_date                 AS  dlv_date,
-              rbre.hht_invoice_no           AS  hht_invoice_no,
---****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
-              rbre.party_num                as  party_num,
---****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
-              SUM(rbre.aftertax_sale)       AS  invoice_total_sale
-      FROM    xxcos_rep_bus_report          rbre
-      WHERE   rbre.request_id               =   cn_request_id
-      GROUP BY
-              rbre.request_id,
-              rbre.employee_num,
-              rbre.dlv_date,
-              rbre.hht_invoice_no,
---****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
-              rbre.party_num
---****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
-     HAVING  COUNT(rbre.hht_invoice_no)    >   1
-      ;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga DEL START  ******************************************
+--    --  伝票合計金額算出
+--    CURSOR  invoice_total_cur
+--    IS
+--      SELECT
+--              rbre.request_id               AS  request_id,
+--              rbre.employee_num             AS  employee_num,
+--              rbre.dlv_date                 AS  dlv_date,
+--              rbre.hht_invoice_no           AS  hht_invoice_no,
+----****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+--              rbre.party_num                as  party_num,
+----****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+--              SUM(rbre.aftertax_sale)       AS  invoice_total_sale
+--      FROM    xxcos_rep_bus_report          rbre
+--      WHERE   rbre.request_id               =   cn_request_id
+--      GROUP BY
+--              rbre.request_id,
+--              rbre.employee_num,
+--              rbre.dlv_date,
+--              rbre.hht_invoice_no,
+----****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+--              rbre.party_num
+----****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+--     HAVING  COUNT(rbre.hht_invoice_no)    >   1
+--      ;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga DEL END    ******************************************
 --
   --  営業実績カウント
   CURSOR  business_performance_cur(
@@ -479,8 +565,12 @@ AS
   TYPE  g_delivery_data_ttype           IS  TABLE OF  delivery_cur%ROWTYPE              INDEX BY  PLS_INTEGER;
   --  合計金額情報 テーブルタイプ
   TYPE  g_calculation_ttype             IS  TABLE OF  calculation_cur%ROWTYPE           INDEX BY  PLS_INTEGER;
-  --  合計金額情報 テーブルタイプ
-  TYPE  g_invoice_total_ttype           IS  TABLE OF  invoice_total_cur%ROWTYPE         INDEX BY  PLS_INTEGER;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga MOD START  ******************************************
+--  --  合計金額情報 テーブルタイプ
+--  TYPE  g_invoice_total_ttype           IS  TABLE OF  invoice_total_cur%ROWTYPE         INDEX BY  PLS_INTEGER;
+  --  合計入金額情報 テーブルタイプ
+  TYPE  g_payment_total_ttype           IS  TABLE OF  payment_total_cur%ROWTYPE         INDEX BY  PLS_INTEGER;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga MOD END    ******************************************
   --  営業実績 テーブルタイプ
   TYPE  g_business_performance_ttype    IS  TABLE OF  business_performance_cur%ROWTYPE  INDEX BY  PLS_INTEGER;
 --
@@ -637,17 +727,28 @@ AS
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
     lt_party_num                          xxcos_rep_bus_report.party_num%TYPE;
 --****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+    lt_visit_time                         xxcos_sales_exp_headers.hht_dlv_input_date%TYPE;
+    ln_pretax_payment                     xxcos_payment.payment_amount%TYPE;
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
     --  配列index定義
     lp_idx                                PLS_INTEGER;
     lp_idx_rep                            PLS_INTEGER;
     lp_idx_err                            PLS_INTEGER;
     lp_idx_err_data                       PLS_INTEGER;
     lp_item_count                         PLS_INTEGER;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD START  ******************************************
+    lp_idx_pay                            PLS_INTEGER;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD END    ******************************************
 --
     lp_line_count                         PLS_INTEGER;
 --
     -- 納品実績情報 テーブル型
     l_delivery_data_tab                   g_delivery_data_ttype;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD START  ******************************************
+    --  合計入金額情報 テーブル型
+    l_payment_total_tab                   g_payment_total_ttype;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD END    ******************************************
 --
     -- ===============================
     -- ローカル・カーソル
@@ -696,6 +797,10 @@ AS
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
     lt_party_num              :=  NULL;
 --****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+    lt_visit_time             :=  NULL;
+    ln_pretax_payment         :=  NULL;
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
     lp_line_count             :=  cn_line_no_default - 1;
 --
     --  0件の場合登録処理をスキップ
@@ -710,6 +815,9 @@ AS
         IF  (lt_hht_invoice_no <>  l_delivery_data_tab(lp_idx).hht_invoice_no  )
         OR  (lt_party_num      <>  l_delivery_data_tab(lp_idx).party_num       )
 --****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+        OR  (lt_visit_time     <>  l_delivery_data_tab(lp_idx).visit_time      )
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
         OR  ( lp_item_count     =   cn_limit_item_max )
         THEN
           lp_idx_rep          :=  lp_idx_rep + 1;
@@ -719,10 +827,17 @@ AS
 --          IF  ( lt_hht_invoice_no = l_delivery_data_tab(lp_idx).hht_invoice_no  ) THEN
           IF  ( lt_hht_invoice_no = l_delivery_data_tab(lp_idx).hht_invoice_no  )
           AND (lt_party_num       =  l_delivery_data_tab(lp_idx).party_num      )
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+          AND (lt_visit_time      =  l_delivery_data_tab(lp_idx).visit_time     )
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
           THEN
 --****************************** 2009/06/03 1.5 T.Kitajima MOD  END  ******************************--
             --  明細カウントアップ
             lp_line_count     :=  lp_line_count + 1;
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+            --  入金額初期化
+            ln_pretax_payment :=  NULL;
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
           ELSE
             --  明細カウント初期化＆Key情報退避
             lp_line_count     :=  1;
@@ -730,6 +845,27 @@ AS
 --****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
             lt_party_num      :=  l_delivery_data_tab(lp_idx).party_num;
 --****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+            lt_visit_time     :=  l_delivery_data_tab(lp_idx).visit_time;
+--****************************** 2009/07/22 1.7 T.Tominaga MOD START ******************************--
+--            ln_pretax_payment :=  l_delivery_data_tab(lp_idx).pretax_payment;
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
+            -- 入金額の取得
+            BEGIN
+              SELECT SUM(paym.payment_amount)
+              INTO   ln_pretax_payment
+              FROM   xxcos_payment  paym
+              WHERE  paym.base_code           = l_delivery_data_tab(lp_idx).base_code
+              AND    paym.customer_number     = l_delivery_data_tab(lp_idx).party_num
+              AND    paym.payment_date        = l_delivery_data_tab(lp_idx).dlv_date
+              AND    paym.hht_invoice_no      = l_delivery_data_tab(lp_idx).hht_invoice_no
+              HAVING SUM(paym.payment_amount) <>  0;
+--
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                ln_pretax_payment := NULL;
+            END;
+--****************************** 2009/07/22 1.7 T.Tominaga MOD END   ******************************--
           END IF;
 --
           --  新レコード用にIDを取得
@@ -764,7 +900,10 @@ AS
           l_xxcos_rep_bus_report_tab(lp_idx_rep).performance_by_name          :=  SUBSTRB(l_delivery_data_tab(lp_idx).performance_by_name,
                                                                                           1,  cn_limit_employee_name);
           l_xxcos_rep_bus_report_tab(lp_idx_rep).aftertax_sale                :=  l_delivery_data_tab(lp_idx).aftertax_sale;
-          l_xxcos_rep_bus_report_tab(lp_idx_rep).pretax_payment               :=  l_delivery_data_tab(lp_idx).pretax_payment;
+--****************************** 2009/07/08 1.7 T.Tominaga MOD START ******************************--
+--          l_xxcos_rep_bus_report_tab(lp_idx_rep).pretax_payment               :=  l_delivery_data_tab(lp_idx).pretax_payment;
+          l_xxcos_rep_bus_report_tab(lp_idx_rep).pretax_payment               :=  ln_pretax_payment;
+--****************************** 2009/07/08 1.7 T.Tominaga MOD START ******************************--
           l_xxcos_rep_bus_report_tab(lp_idx_rep).sale_discount                :=  l_delivery_data_tab(lp_idx).sale_discount;
           --  商品情報セット
           l_xxcos_rep_bus_report_tab(lp_idx_rep).item_name1                   :=  SUBSTRB(l_delivery_data_tab(lp_idx).item_name,
@@ -889,6 +1028,81 @@ AS
         RAISE global_insert_data_expt;
     END;
 --
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+    -- ===============================
+    -- 税込入金を合計入金額（顧客コード・訪問時間単位）で更新する
+    -- ===============================
+    --  カーソルオープン
+    OPEN  payment_total_cur;
+--
+    --  レコード読み込み
+    FETCH payment_total_cur BULK COLLECT  INTO  l_payment_total_tab;
+--
+    --  カーソルクローズ
+    CLOSE payment_total_cur;
+--
+    --  更新対象データがない場合は処理をスキップ
+    IF  ( l_payment_total_tab.COUNT <>  0 ) THEN
+      BEGIN
+        <<payment_total_update>>
+        FOR lp_idx_pay IN  l_payment_total_tab.FIRST..l_payment_total_tab.LAST  LOOP
+          --  error index 退避
+          lp_idx_err                          :=  lp_idx_pay;
+--
+          UPDATE  xxcos_rep_bus_report  rbre
+          SET     pretax_payment              =   l_payment_total_tab(lp_idx_pay).total_payment,
+                  last_updated_by             =   cn_last_updated_by,
+                  last_update_date            =   cd_last_update_date,
+                  last_update_login           =   cn_last_update_login,
+                  program_update_date         =   cd_program_update_date
+          WHERE   rbre.request_id             =   l_payment_total_tab(lp_idx_pay).request_id
+          AND     rbre.employee_num           =   l_payment_total_tab(lp_idx_pay).employee_num
+          AND     rbre.dlv_date               =   l_payment_total_tab(lp_idx_pay).dlv_date
+          AND     rbre.party_num              =   l_payment_total_tab(lp_idx_pay).party_num
+          AND     rbre.visit_time             =   l_payment_total_tab(lp_idx_pay).visit_time
+          ;
+        END LOOP  payment_total_update;
+      EXCEPTION
+        WHEN OTHERS THEN
+          xxcos_common_pkg.makeup_key_info(
+                                           ov_errbuf      => lv_errbuf           -- エラー・メッセージ
+                                          ,ov_retcode     => lv_retcode          -- リターン・コード
+                                          ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
+                                          ,ov_key_info    => lv_key_info         -- キー情報
+                                          ,iv_item_name1  => cv_str_employee_num
+                                          ,iv_data_value1 => l_payment_total_tab(lp_idx_err).employee_num
+                                          ,iv_item_name2  => cv_str_dlv_date
+                                          ,iv_data_value2 => l_payment_total_tab(lp_idx_err).dlv_date
+                                          ,iv_item_name3  => cv_str_party_num
+                                          ,iv_data_value3 => l_payment_total_tab(lp_idx_err).party_num
+                                          ,iv_item_name4  => cv_str_visit_time
+                                          ,iv_data_value4 => l_payment_total_tab(lp_idx_err).visit_time
+                                          );
+          --  共通関数ステータスチェック
+          IF  ( lv_retcode  <>  cv_status_normal ) THEN
+            RAISE global_api_expt;
+          END IF;
+--
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application => ct_xxcos_appl_short_name,
+                       iv_name        => ct_msg_rpt_wrk_tbl
+                      );
+--
+          ov_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application => ct_xxcos_appl_short_name,
+                       iv_name        => ct_msg_insert_data_err,
+                       iv_token_name1 => cv_tkn_table,
+                       iv_token_value1=> lv_errmsg,
+                       iv_token_name2 => cv_tkn_key_data,
+                       iv_token_value2=> lv_key_info
+                      );
+        --  後続データの処理は中止となる為、当箇所でのエラー発生時は常に１件
+        gn_error_cnt  :=  1;
+        lv_errbuf     :=  SQLERRM;
+        RAISE global_update_data_expt;
+      END;
+    END IF;
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
 --
 --
     --==============================================================
@@ -900,6 +1114,12 @@ AS
     WHEN global_insert_data_expt THEN
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
+    --*** データ更新例外ハンドラ ***
+--****************************** 2009/07/08 1.7 T.Tominaga ADD START ******************************--
+    WHEN global_update_data_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+--****************************** 2009/07/08 1.7 T.Tominaga ADD END   ******************************--
 --
 --#################################  固定例外処理部 START   ####################################
 --
@@ -1495,8 +1715,10 @@ AS
 --
     --  合計金額情報 テーブル型
     l_calculation_tab                   g_calculation_ttype;
-    --  伝票合計金額情報 テーブル型
-    l_invoice_total_tab                 g_invoice_total_ttype;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga DEL START  ******************************************
+--    --  伝票合計金額情報 テーブル型
+--    l_invoice_total_tab                 g_invoice_total_ttype;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga DEL END    ******************************************
     --  ===============================
     --  ローカル・カーソル
     --  ===============================
@@ -1589,77 +1811,78 @@ AS
       END;
     END IF;
 --
-    --  カーソルオープン
-    OPEN  invoice_total_cur;
---
-    --  レコード読み込み
-    FETCH invoice_total_cur BULK COLLECT  INTO  l_invoice_total_tab;
---
-    --  カーソルクローズ
-    CLOSE invoice_total_cur;
---
-    --  更新対象データがない場合は処理をスキップ
-    IF  ( l_invoice_total_tab.COUNT <>  0 ) THEN
-      --  伝票合計金額更新（SVFのグルーピング制御用）
-      --  本処理によりaftertax_saleの金額は、営業報告日報上の明細数次第で多重計上となるが
-      --  営業員フッタ用の金額項目は直近の処理にて集計済みであるため
-      --  帳票に出力される金額には問題なし。（１明細目の金額のみ帳票明細に出力される）
-      BEGIN
-        <<invoice_total_update>>
-        FOR lp_idx IN  l_invoice_total_tab.FIRST..l_invoice_total_tab.LAST  LOOP
-          --  error index 退避
-          lp_idx_err                          :=  lp_idx;
---
-          UPDATE  xxcos_rep_bus_report  rbre
-          SET     aftertax_sale               =   l_invoice_total_tab(lp_idx).invoice_total_sale,
-                  last_updated_by             =   cn_last_updated_by,
-                  last_update_date            =   cd_last_update_date,
-                  last_update_login           =   cn_last_update_login,
-                  program_update_date         =   cd_program_update_date
-          WHERE   rbre.request_id             =   l_invoice_total_tab(lp_idx).request_id
-          AND     rbre.employee_num           =   l_invoice_total_tab(lp_idx).employee_num
-          AND     rbre.dlv_date               =   l_invoice_total_tab(lp_idx).dlv_date
-          AND     rbre.hht_invoice_no         =   l_invoice_total_tab(lp_idx).hht_invoice_no
---****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
-          AND     rbre.party_num              =   l_invoice_total_tab(lp_idx).party_num
---****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
-          ;
-        END LOOP  invoice_total_update;
-      EXCEPTION
-        WHEN OTHERS THEN
-          xxcos_common_pkg.makeup_key_info(
-                                           ov_errbuf      => lv_errbuf           -- エラー・メッセージ
-                                          ,ov_retcode     => lv_retcode          -- リターン・コード
-                                          ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
-                                          ,ov_key_info    => lv_key_info         -- キー情報
-                                          ,iv_item_name1  => cv_str_hht_no_nm
-                                          ,iv_data_value1 => l_invoice_total_tab(lp_idx_err).hht_invoice_no
-                                          );
-          --  共通関数ステータスチェック
-          IF  ( lv_retcode  <>  cv_status_normal ) THEN
-            RAISE global_api_expt;
-          END IF;
---
-          lv_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application => ct_xxcos_appl_short_name,
-                       iv_name        => ct_msg_rpt_wrk_tbl
-                      );
---
-          ov_errmsg := xxccp_common_pkg.get_msg(
-                       iv_application => ct_xxcos_appl_short_name,
-                       iv_name        => ct_msg_insert_data_err,
-                       iv_token_name1 => cv_tkn_table,
-                       iv_token_value1=> lv_errmsg,
-                       iv_token_name2 => cv_tkn_key_data,
-                       iv_token_value2=> lv_key_info
-                      );
-        --  後続データの処理は中止となる為、当箇所でのエラー発生時は常に１件
-        gn_error_cnt  :=  1;
-        lv_errbuf     :=  SQLERRM;
-        RAISE global_update_data_expt;
-      END;
-    END IF;
-
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga DEL START  ******************************************
+--    --  カーソルオープン
+--    OPEN  invoice_total_cur;
+----
+--    --  レコード読み込み
+--    FETCH invoice_total_cur BULK COLLECT  INTO  l_invoice_total_tab;
+----
+--    --  カーソルクローズ
+--    CLOSE invoice_total_cur;
+----
+--    --  更新対象データがない場合は処理をスキップ
+--    IF  ( l_invoice_total_tab.COUNT <>  0 ) THEN
+--      --  伝票合計金額更新（SVFのグルーピング制御用）
+--      --  本処理によりaftertax_saleの金額は、営業報告日報上の明細数次第で多重計上となるが
+--      --  営業員フッタ用の金額項目は直近の処理にて集計済みであるため
+--      --  帳票に出力される金額には問題なし。（１明細目の金額のみ帳票明細に出力される）
+--      BEGIN
+--        <<invoice_total_update>>
+--        FOR lp_idx IN  l_invoice_total_tab.FIRST..l_invoice_total_tab.LAST  LOOP
+--          --  error index 退避
+--          lp_idx_err                          :=  lp_idx;
+----
+--          UPDATE  xxcos_rep_bus_report  rbre
+--          SET     aftertax_sale               =   l_invoice_total_tab(lp_idx).invoice_total_sale,
+--                  last_updated_by             =   cn_last_updated_by,
+--                  last_update_date            =   cd_last_update_date,
+--                  last_update_login           =   cn_last_update_login,
+--                  program_update_date         =   cd_program_update_date
+--          WHERE   rbre.request_id             =   l_invoice_total_tab(lp_idx).request_id
+--          AND     rbre.employee_num           =   l_invoice_total_tab(lp_idx).employee_num
+--          AND     rbre.dlv_date               =   l_invoice_total_tab(lp_idx).dlv_date
+--          AND     rbre.hht_invoice_no         =   l_invoice_total_tab(lp_idx).hht_invoice_no
+----****************************** 2009/06/03 1.5 T.Kitajima ADD START ******************************--
+--          AND     rbre.party_num              =   l_invoice_total_tab(lp_idx).party_num
+----****************************** 2009/06/03 1.5 T.Kitajima ADD  END  ******************************--
+--          ;
+--        END LOOP  invoice_total_update;
+--      EXCEPTION
+--        WHEN OTHERS THEN
+--          xxcos_common_pkg.makeup_key_info(
+--                                           ov_errbuf      => lv_errbuf           -- エラー・メッセージ
+--                                          ,ov_retcode     => lv_retcode          -- リターン・コード
+--                                          ,ov_errmsg      => lv_errmsg           -- ユーザー・エラー・メッセージ
+--                                          ,ov_key_info    => lv_key_info         -- キー情報
+--                                          ,iv_item_name1  => cv_str_hht_no_nm
+--                                          ,iv_data_value1 => l_invoice_total_tab(lp_idx_err).hht_invoice_no
+--                                          );
+--          --  共通関数ステータスチェック
+--          IF  ( lv_retcode  <>  cv_status_normal ) THEN
+--            RAISE global_api_expt;
+--          END IF;
+----
+--          lv_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application => ct_xxcos_appl_short_name,
+--                       iv_name        => ct_msg_rpt_wrk_tbl
+--                      );
+----
+--          ov_errmsg := xxccp_common_pkg.get_msg(
+--                       iv_application => ct_xxcos_appl_short_name,
+--                       iv_name        => ct_msg_insert_data_err,
+--                       iv_token_name1 => cv_tkn_table,
+--                       iv_token_value1=> lv_errmsg,
+--                       iv_token_name2 => cv_tkn_key_data,
+--                       iv_token_value2=> lv_key_info
+--                      );
+--        --  後続データの処理は中止となる為、当箇所でのエラー発生時は常に１件
+--        gn_error_cnt  :=  1;
+--        lv_errbuf     :=  SQLERRM;
+--        RAISE global_update_data_expt;
+--      END;
+--    END IF;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga DEL END    ******************************************
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -2178,6 +2401,11 @@ AS
     lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
     lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+/* 2009/06/19 Ver1.6 Add Start */
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+/* 2009/06/19 Ver1.6 Add End   */
 --
 --###########################  固定部 END   ####################################
 --
@@ -2246,10 +2474,15 @@ AS
       IF  ( delivery_cur%ISOPEN ) THEN
         CLOSE delivery_cur;
       END IF;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD START  ******************************************
+      --  データカーソルクローズ
+      IF  ( payment_total_cur%ISOPEN  ) THEN
+        CLOSE payment_total_cur;
+      END IF;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga ADD END    ******************************************
       RAISE global_process_expt;
     END IF;
 --
-
     --  ===============================
     --  訪問のみデータ抽出、訪問のみデータ挿入(A-4,A-5)
     --  ===============================
@@ -2301,10 +2534,12 @@ AS
         CLOSE calculation_cur;
       END IF;
 --
-      --  データカーソルクローズ
-      IF  ( invoice_total_cur%ISOPEN  ) THEN
-        CLOSE calculation_cur;
-      END IF;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga DEL START  ******************************************
+--      --  データカーソルクローズ
+--      IF  ( invoice_total_cur%ISOPEN  ) THEN
+--        CLOSE calculation_cur;
+--      END IF;
+-- ******************** 2009/07/08 Var.1.7 T.Tominaga DEL END    ******************************************
 --
       RAISE global_process_expt;
     END IF;
@@ -2344,10 +2579,16 @@ AS
       ,lv_errmsg   -- ユーザー・エラー・メッセージ --# 固定 #
     );
 --
-    IF  ( lv_retcode = cv_status_error  ) THEN
-      --(エラー処理)
-      RAISE global_process_expt;
-    END IF;
+/* 2009/06/19 Ver1.6 Mod Start */
+--    IF  ( lv_retcode = cv_status_error  ) THEN
+--      --(エラー処理)
+--      RAISE global_process_expt;
+--    END IF;
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+/* 2009/06/19 Ver1.6 Mod End   */
 --
     -- ===============================
     -- 帳票ワークテーブル削除(A-11)
@@ -2368,6 +2609,19 @@ AS
 --
       RAISE global_process_expt;
     END IF;
+--
+/* 2009/06/19 Ver1.6 Add Start */
+    --エラーの場合、ロールバックするのでここでコミット
+    COMMIT;
+--
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+/* 2009/06/19 Ver1.6 Add Start */
 --
     --  帳票は対象件数＝正常件数とする
     gn_normal_cnt :=  gn_target_cnt;
