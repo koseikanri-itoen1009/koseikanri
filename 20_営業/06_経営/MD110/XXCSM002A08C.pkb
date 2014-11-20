@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A08C(body)
  * Description      : 月別商品計画(営業原価)チェックリスト出力
  * MD.050           : 月別商品計画(営業原価)チェックリスト出力 MD050_CSM_002_A08
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *                                      [障害CT_048]  ヘッダ出力不具合の対応
  *  2009/02/27    1.5   SCS T.Tsukino   [障害CT_070]  対象0件時のヘッダ出力不具合対応
  *  2009/05/07    1.6   SCS M.Ohtsuki   [障害T1_0858] 共通関数修正に伴うパラメータの追加
+ *  2009/05/21    1.7   SCS M.Ohtsuki   [障害T1_1101] 売上金額不正(値引額含む)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2931,6 +2932,9 @@ AS
     ln_credit_4                NUMBER;         --4月掛率
     ln_h_standard              NUMBER;         --H基準
     ln_month_no                NUMBER;         --月
+--//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
+    ln_discount                NUMBER;         --値引額
+--//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
 --
 --  ===============================
 --  ローカル・カーソル
@@ -2944,6 +2948,9 @@ AS
              ,SUM(xipl.amount * xcgv.now_unit_price)  credit_bunbo   --掛率分母
              ,SUM(xipl.amount * xcgv.now_item_cost) h_standard       --H基準算出用減数
              ,xipl.year_month                                        --年月
+--//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
+             ,xiph.item_plan_header_id              haeder_id        --ヘッダID
+--//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
       FROM    xxcsm_item_plan_lines       xipl                       --商品計画明細テーブル
              ,xxcsm_item_plan_headers     xiph                       --商品計画ヘッダテーブル
              ,xxcsm_commodity_group3_v    xcgv                       --政策群コード３ビュー
@@ -2956,6 +2963,9 @@ AS
 --//+UPD END 2009/02/13 CT015 S.Son
       AND     xipl.item_no = xcgv.item_cd
       GROUP BY xipl.year_month
+--//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
+             ,xiph.item_plan_header_id
+--//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
       ORDER BY xipl.year_month
     ;
     kyoten_month_cur_rec kyoten_month_cur%ROWTYPE;
@@ -2981,13 +2991,27 @@ AS
     ln_year_credit          := 0;              --年間拠点別掛率
     ln_year_h_standard      := 0;
     ln_h_standard           := 0;              --H基準
+--//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
+    ln_discount             := 0;              --値引額
+--//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
 --
     OPEN kyoten_month_cur;
     <<kyoten_month_loop>>
     LOOP
       FETCH kyoten_month_cur INTO kyoten_month_cur_rec;
       EXIT WHEN kyoten_month_cur%NOTFOUND;
-        ln_month_sale_budget    :=  kyoten_month_cur_rec.sales_budget_sum;                          --月別拠点合計売上
+--//+ADD START 2009/05/21 T1_1101 M.Ohtsuki
+        SELECT (xiplb.sales_discount + xiplb.receipt_discount)  discount                            --(売上値引 + 入金値引)
+        INTO   ln_discount
+        FROM   xxcsm_item_plan_loc_bdgt    xiplb                                                    -- 商品計画拠点別予算テーブル
+        WHERE  xiplb.item_plan_header_id  = kyoten_month_cur_rec.haeder_id                          -- ヘッダID
+        AND    xiplb.year_month           = kyoten_month_cur_rec.year_month;                        -- 年月
+--//+ADD END   2009/05/21 T1_1101 M.Ohtsuki
+--//+UPD START 2009/05/21 T1_1101 M.Ohtsuki
+--        ln_month_sale_budget    :=  kyoten_month_cur_rec.sales_budget_sum;                          --月別拠点合計売上
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+        ln_month_sale_budget    :=  (kyoten_month_cur_rec.sales_budget_sum + ln_discount);          --月別拠点合計売上
+--//+UPD END   2009/05/21 T1_1101 M.Ohtsuki
         ln_month_amount         :=  kyoten_month_cur_rec.amount_sum;                                --月別拠点合計数量
         ln_month_sub_margin     :=  kyoten_month_cur_rec.sub_margin;
         ln_month_credit_bunbo   :=  kyoten_month_cur_rec.credit_bunbo;
