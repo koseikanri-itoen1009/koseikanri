@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/11/05    1.7   M.Sano          [E_T4_00088]伝票区分の算出方法変更
  *                                      [E_T4_00142]顧客使用目的（請求先）のセット項目修正
  *  2009/11/24    1.8   K.Atsushiba     [E_本番_00348]PT対応
+ *  2009/11/27    1.9   K.Kiriu         [E_本番_00114]相手先発注番号設定対応
  *
  *****************************************************************************************/
 --
@@ -640,6 +641,9 @@ AS
     sales_base_code              xxcos_sales_exp_headers.sales_base_code%TYPE,              --拠点(部門)コード
     sales_base_name              hz_parties.party_name%TYPE,                                --拠点名(正式名)
     sales_base_phonetic          hz_parties.organization_name_phonetic%TYPE,                --拠点名(カナ)
+/* 2009/11/27 Ver1.9 Add Start */
+    order_invoice_number         xxcos_sales_exp_headers.order_invoice_number%TYPE,         --相手先発注番号
+/* 2009/11/27 Ver1.9 Add End   */
     ship_to_customer_code        xxcos_sales_exp_headers.ship_to_customer_code%TYPE,        --顧客コード
     customer_name                hz_parties.party_name%TYPE,                                --顧客名(漢字)
     customer_phonetic            hz_parties.organization_name_phonetic%TYPE,                --顧客名(カナ)
@@ -1973,6 +1977,9 @@ AS
              ,xseh.sales_base_code                    sales_base_code              --売上拠点コード
              ,hcam.sales_base_name                    sales_base_name              --売上拠点名
              ,hcam.sales_base_phonetic                sales_base_phonetic          --売上拠点名カナ
+/* 2009/11/27 Ver1.9 Add Start */
+             ,xseh.order_invoice_number               order_invoice_number         --注文伝票番号
+/* 2009/11/27 Ver1.9 Add End   */
              ,xseh.ship_to_customer_code              ship_to_customer_code        --顧客【納品先】
              ,xcchv.ship_account_name                 ship_account_name            --納品先顧客名
              ,hcan.organization_name_phonetic         organization_name_phonetic   --納品先顧客名カナ
@@ -2730,7 +2737,10 @@ AS
       l_data_tab(cv_big_classif_code)         := gt_edi_sales_data(i).invoice_classification_code; -- 大分類コード
       l_data_tab(cv_big_classif_name)         := TO_CHAR(NULL);
       l_data_tab(cv_op_department_code)       := TO_CHAR(NULL);
-      l_data_tab(cv_op_order_number)          := TO_CHAR(NULL);
+/* 2009/11/27 Ver1.9 Mod Start */
+--      l_data_tab(cv_op_order_number)          := TO_CHAR(NULL);
+      l_data_tab(cv_op_order_number)          := gt_edi_sales_data(i).order_invoice_number;  --相手先発注番号
+/* 2009/11/27 Ver1.9 Mod End */
       l_data_tab(cv_check_digit_class)        := TO_CHAR(NULL);
       l_data_tab(cv_invc_number)              := gt_edi_sales_data(i).dlv_invoice_number;  --伝票番号
       l_data_tab(cv_check_digit)              := TO_CHAR(NULL);
