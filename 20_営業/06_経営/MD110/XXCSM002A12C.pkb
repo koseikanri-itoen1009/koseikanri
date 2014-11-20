@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A12C(body)
  * Description      : 商品計画リスト(時系列)出力
  * MD.050           : 商品計画リスト(時系列)出力 MD050_CSM_002_A12
- * Version          : 1.0
+ * Version          : 1.6
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -34,7 +34,8 @@ AS
  *  2009/02/10    1.2   T.Shimoji       ［障害CT_009］類似機能動作統一による修正
  *  2009/02/13    1.3   S.Son           ［障害CT_016］新商品対応
  *  2009/02/17    1.4   M.Ohtsuki       ［障害CT_025］SQL条件不備の修正
- *  2009/02/20    1.1   T.Tsukino        [障害CT_052] CSV出力の日付フォーマット不正対応
+ *  2009/02/20    1.5   T.Tsukino        [障害CT_052] CSV出力の日付フォーマット不正対応
+ *  2009/05/07    1.6   M.Ohtsuki        [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *
  *****************************************************************************************/
 --
@@ -1999,6 +2000,9 @@ AS
     xxcsm_common_pkg.get_kyoten_cd_lv6(                                                             -- 営業部門配下の拠点リスト取得
                                      iv_kyoten_cd      => gv_kyotencd                               -- 拠点(部門)コード
                                     ,iv_kaisou         => gv_kaisou                                 -- 階層
+--//ADD START 2009/05/07 T1_0858 M.Ohtsuki
+                                    ,iv_subject_year   => gn_taisyoyear                             -- 対象年度
+--//ADD END   2009/05/07 T1_0858 M.Ohtsuki
                                     ,o_kyoten_list_tab => lv_get_loc_tab                            -- 拠点コードリスト
                                     ,ov_retcode        => lv_retcode                                -- エラー・メッセージ
                                     ,ov_errbuf         => lv_errbuf                                 -- リターン・コード

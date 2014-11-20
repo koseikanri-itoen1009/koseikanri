@@ -6,7 +6,7 @@ IS
  * Package Name           : xxcsm_common_pkg(spec)
  * Description            :
  * MD.070                 : MD070_IPO_CSM_共通関数
- * Version                : 1.0
+ * Version                : 1.1
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -18,12 +18,14 @@ IS
  *  get_login_user_foothold    P          ログインユーザー在籍拠点コード取得関数
  *  year_item_plan_security    P          年間商品計画セキュリティ制御用関数
  *  get_year_month             P          年度算出関数
+ *  get_kyoten_cd_lv6          P          営業部門配布した拠点リストの取得
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
  *  Date         Ver.  Editor           Description
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008-11-27    1.0  T.Tsukino       新規作成
+ *  2009-05-07    1.1  M.Ohtsuki     ［障害T1_0858］拠点リスト取得関数のパラメータ追加
  *****************************************************************************************/
 --
     -- ==============================
@@ -124,6 +126,9 @@ IS
   PROCEDURE get_kyoten_cd_lv6(
                iv_kyoten_cd         IN VARCHAR2
               ,iv_kaisou            IN VARCHAR2
+--//+ADD START 2009/05/07 T1_0858 M.Ohtsuki
+              ,iv_subject_year      IN VARCHAR2
+--//+ADD END   2009/05/07 T1_0858 M.Ohtsuki
               ,o_kyoten_list_tab    OUT g_kyoten_ttype
               ,ov_retcode           OUT NOCOPY VARCHAR2
               ,ov_errbuf            OUT NOCOPY VARCHAR2

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A09C(body)
  * Description      : 年間商品計画（営業原価）チェックリスト出力
  * MD.050           : 年間商品計画（営業原価）チェックリスト出力 MD050_CSM_002_A09
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008-12-11    1.0   K.Yamada         新規作成
  *  2009-02-10    1.1   M.Ohtsuki       ［障害CT_006］類似機能動作統一修正
  *  2009-02-20    1.2   M.Ohtsuki       ［障害CT_053］マイナス商品の不具合の対応
+ *  2009-05-12    1.3   M.Ohtsuki       ［障害T1_0858］拠点コード抽出条件の不備の対応
  *
  *****************************************************************************************/
 --
@@ -2171,6 +2172,14 @@ AS
                   ,cv_lvl2, lvv.cd_level2) = nmv.base_code
       AND
          nmv.base_code = DECODE(iv_p_kyoten_cd, it_allkyoten_cd, nmv.base_code, iv_p_kyoten_cd)
+--// ADD START 2009/05/07 T1_0858 M.Ohtsuki
+      AND EXISTS
+          (SELECT 'X'
+           FROM   xxcsm_item_plan_result   xipr                                                     -- 商品計画用販売実績
+           WHERE  (xipr.subject_year = (TO_NUMBER(iv_p_yyyy) - 1)                                   -- 入力パラメータの1年前のデータ
+                OR xipr.subject_year = (TO_NUMBER(iv_p_yyyy) - 2))                                  -- 入力パラメータの2年前のデータ
+           AND     xipr.location_cd  = nmv.base_code)
+--// ADD END   2009/05/07 T1_0858 M.Ohtsuki
       ORDER BY
          nmv.base_code    --部門コード
       ;

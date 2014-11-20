@@ -6,7 +6,7 @@ AS
  * Package Name           : xxcsm_common_pkg(body)
  * Description            :
  * MD.070                 : MD070_IPO_CSM_共通関数
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  *  --------------------      ---- ----- --------------------------------------------------
@@ -26,6 +26,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008-11-27    1.0  T.Tsukino       新規作成
  *  2009-04-09    1.1  M.Ohtsuki      ［障害T1_0416］業務日付とシステム日付比較の不具合
+ *  2009-05-07    1.2  M.Ohtsuki      ［障害T1_0858］拠点コードリスト取得条件不備
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -921,6 +922,9 @@ AS
   PROCEDURE get_kyoten_cd_lv6(
                iv_kyoten_cd         IN VARCHAR2
               ,iv_kaisou            IN VARCHAR2
+--//+ADD START 2009/05/07 T1_0858 M.Ohtsuki
+              ,iv_subject_year      IN VARCHAR2
+--//+ADD END   2009/05/07 T1_0858 M.Ohtsuki
               ,o_kyoten_list_tab    OUT g_kyoten_ttype
               ,ov_retcode           OUT NOCOPY VARCHAR2
               ,ov_errbuf            OUT NOCOPY VARCHAR2
@@ -1036,6 +1040,14 @@ AS
                                    ,cv_level_2,xlllv.cd_level2
                                    ,cv_level_1,xlllv.cd_level1
                                    ,NULL)
+--// ADD START 2009/05/07 T1_0858 M.Ohtsuki
+      AND EXISTS
+          (SELECT 'X'
+           FROM   xxcsm_item_plan_result   xipr                                                     -- 商品計画用販売実績
+           WHERE  (xipr.subject_year = (TO_NUMBER(iv_subject_year) - 1)                             -- 入力パラメータの1年前のデータ
+                OR xipr.subject_year = (TO_NUMBER(iv_subject_year) - 2))                            -- 入力パラメータの2年前のデータ
+           AND     xipr.location_cd  = xlnlv.base_code)
+--// ADD END   2009/05/07 T1_0858 M.Ohtsuki
     ;
     -- 抽出コードの件数が0件の場合
     IF (l_get_loc_tab.COUNT = 0) THEN

@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  * Package Name     : XXCSM002A13C(spec)
  * Description      : 商品計画リスト(時系列_本数単位)出力
  * MD.050           : 商品計画リスト(時系列_本数単位)出力 MD050_CSM_002_A13
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -52,6 +52,7 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
  *                                      [障害CT_042] 小数点出力の不具合対応
  *  2009/02/24    1.5   Kenji.Sai       [障害CT_054] 入金値引年計の不具合対応
  *  2009/02/25    1.6   T.Tsukino       [障害CT_062] CSVファイル商品群出力不具合対応
+ *  2009/05/07    1.7   M.Ohtsuki       [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *
  *****************************************************************************************/
 --
@@ -3113,6 +3114,9 @@ CREATE OR REPLACE PACKAGE BODY      XXCSM002A13C AS
   -- ================================================
   xxcsm_common_pkg.get_kyoten_cd_lv6(gv_kyotencd
                                      ,gv_kaisou
+--//ADD START 2009/05/07 T1_0858 M.Ohtsuki
+                                     ,gn_taisyoym
+--//ADD END   2009/05/07 T1_0858 M.Ohtsuki
                                      ,lv_get_loc_tab
                                      ,lv_retcode
                                      ,lv_errbuf
