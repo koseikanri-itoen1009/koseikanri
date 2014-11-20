@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO019A10C(body)
  * Description      : 訪問売上計画管理表（随時実行の帳票）用にサマリテーブルを作成します。
  * MD.050           :  MD050_CSO_019_A10_訪問売上計画管理集計バッチ
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2009-05-25    1.4   T.Mori           業務処理日付、会計期間開始日がNULLである場合、
  *                                       エラーメッセージが出力されず、エラー終了しない
  *  2009-08-28    1.5   Daisuke.Abe      【0001194】パフォーマンス対応
+ *  2009-11-06    1.6   Kazuo.Satomura   【E_T4_00135(I_E_636)】
  *
  *****************************************************************************************/
 --
@@ -117,6 +118,9 @@ AS
   cv_tkn_number_09    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90001';  -- 成功件数メッセージ
   cv_tkn_number_10    CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90002';  -- エラー件数メッセージ
   cv_tkn_number_11    CONSTANT VARCHAR2(100) := '';  -- スキップ件数メッセージ
+  /* 2009.11.06 K.Satomura E_T4_00135対応 START*/
+  cv_tkn_number_12    CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00580';  -- 顧客CD／売上担当拠点CDエラー
+  /* 2009.11.06 K.Satomura E_T4_00135対応 END */
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MSG';
   cv_tkn_errmessage       CONSTANT VARCHAR2(20) := 'ERR_MESSAGE';
@@ -124,6 +128,12 @@ AS
   cv_tkn_processing_name  CONSTANT VARCHAR2(20) := 'PROCESSING_NAME';
   cv_tkn_table            CONSTANT VARCHAR2(20) := 'TABLE';
   cv_tkn_count            CONSTANT VARCHAR2(20) := 'COUNT';
+  /* 2009.11.06 K.Satomura E_T4_00135対応 START*/
+  cv_tkn_sum_org_code     CONSTANT VARCHAR2(20) := 'SUM_ORG_CODE';
+  cv_tkn_group_base_code  CONSTANT VARCHAR2(20) := 'GROUP_BASE_CODE';
+  cv_tkn_sales_date       CONSTANT VARCHAR2(20) := 'SALES_DATE';
+  cv_tkn_sqlerrm          CONSTANT VARCHAR2(20) := 'SQLERRM';
+  /* 2009.11.06 K.Satomura E_T4_00135対応 END */
 --
   cb_true                 CONSTANT BOOLEAN := TRUE;
   cv_true                 CONSTANT VARCHAR2(10) := 'TRUE';
@@ -2326,15 +2336,49 @@ AS
       ln_extrct_cnt := g_get_day_acct_data_cur%ROWCOUNT;
       EXIT WHEN g_get_day_acct_data_cur%NOTFOUND
       OR  g_get_day_acct_data_cur%ROWCOUNT = 0;
-      -- 訪問売上計画管理表サマリテーブルに登録 (A-5)
-      insert_day_acct_dt(
-        ov_errbuf      =>  lv_errbuf             -- エラー・メッセージ
-       ,ov_retcode     =>  lv_retcode            -- リターン・コード
-       ,ov_errmsg      =>  lv_errmsg             -- ユーザー・エラー・メッセージ
-      );
-      IF (lv_retcode = cv_status_error) THEN
-        RAISE prog_error_expt;
+      /* 2009.11.06 K.Satomura E_T4_00135対応 START */
+      IF (g_get_day_acct_data_rec.sum_org_code IS NOT NULL
+        AND g_get_day_acct_data_rec.group_base_code IS NOT NULL)
+      THEN
+      /* 2009.11.06 K.Satomura E_T4_00135対応 END */
+        -- 訪問売上計画管理表サマリテーブルに登録 (A-5)
+        insert_day_acct_dt(
+          ov_errbuf      =>  lv_errbuf             -- エラー・メッセージ
+         ,ov_retcode     =>  lv_retcode            -- リターン・コード
+         ,ov_errmsg      =>  lv_errmsg             -- ユーザー・エラー・メッセージ
+        );
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE prog_error_expt;
+        END IF;
+      /* 2009.11.06 K.Satomura E_T4_00135対応 START */
+      ELSE
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                             -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_12                        -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_sum_org_code                     -- トークンコード1
+                       ,iv_token_value1 => g_get_day_acct_data_rec.sum_org_code    -- トークン値1
+                       ,iv_token_name2  => cv_tkn_group_base_code                  -- トークンコード2
+                       ,iv_token_value2 => g_get_day_acct_data_rec.group_base_code -- トークン値2
+                       ,iv_token_name3  => cv_tkn_sales_date                       -- トークンコード3
+                       ,iv_token_value3 => g_get_day_acct_data_rec.sales_date      -- トークン値3
+                     );
+        --
+        lv_errbuf   := lv_errmsg;
+        lv_retcode  := cv_status_warn;
+        gn_warn_cnt := gn_warn_cnt + 1;
+        --
+        fnd_file.put_line(
+           which  => fnd_file.output
+          ,buff   => lv_errmsg || CHR(10) || ''
+        );
+        --
+        fnd_file.put_line(
+           which  => fnd_file.log
+          ,buff   => lv_errmsg || CHR(10) || ''
+        );
+        --
       END IF;
+      /* 2009.11.06 K.Satomura E_T4_00135対応 END */
     END LOOP;
     -- *** DEBUG_LOG ***
     -- 日別顧客別取得登録をログ出力
@@ -6797,6 +6841,9 @@ AS
     gn_target_cnt := 0;
     gn_normal_cnt := 0;
     gn_error_cnt  := 0;
+    /* 2009.11.06 K.Satomura E_T4_00135対応 START */
+    gn_warn_cnt   := 0;
+    /* 2009.11.06 K.Satomura E_T4_00135対応 END */
 --
     -- ========================================
     -- A-1.初期処理 
@@ -6970,6 +7017,12 @@ AS
 ----
 /* 20090828_abe_0001194 END*/
 --
+    /* 2009.11.06 K.Satomura E_T4_00135対応 START */
+    IF (gn_warn_cnt > 0) THEN
+      ov_retcode := cv_status_warn;
+      --
+    END IF;
+    /* 2009.11.06 K.Satomura E_T4_00135対応 END */
   EXCEPTION
 --#################################  固定例外処理部 START   ####################################
 --
@@ -7118,7 +7171,10 @@ AS
                      iv_application  => cv_appl_short_name
                     ,iv_name         => cv_skip_rec_msg
                     ,iv_token_name1  => cv_cnt_token
-                    ,iv_token_value1 => TO_CHAR(0)
+                    /* 2009.11.06 K.Satomura E_T4_00135対応 START */
+                    --,iv_token_value1 => TO_CHAR(0)
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                    /* 2009.11.06 K.Satomura E_T4_00135対応 END */
                    );
     fnd_file.put_line(
        which  => FND_FILE.OUTPUT
@@ -7130,6 +7186,10 @@ AS
       lv_message_code := cv_normal_msg;
     ELSIF(lv_retcode = cv_status_error) THEN
       lv_message_code := cv_error_msg;
+    /* 2009.11.06 K.Satomura E_T4_00135対応 START */
+    ELSIF(lv_retcode = cv_status_warn) THEN
+      lv_message_code := cv_warn_msg;
+    /* 2009.11.06 K.Satomura E_T4_00135対応 END */
     END IF;
     --
     gv_out_msg := xxccp_common_pkg.get_msg(
