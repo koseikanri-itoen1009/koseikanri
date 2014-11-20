@@ -7,7 +7,7 @@ AS
  * Description      : 自販機管理システムから連携されたリース物件に関連する作業の情報を、
  *                    リースアドオンに反映します。
  * MD.050           :  MD050_CSO_013_A02_CSI→FAインタフェース：（OUT）リース資産情報
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009-04-01    1.1   Kazuo.Satomura   T1_0148,0149対応
  *  2009-04-03    1.2   Kazuo.Satomura   T1_0269対応
  *  2009-04-07    1.3   Daisuke.Abe      T1_0339対応
+ *  2009-04-07    1.4   Kazuo.Satomura   T1_0378対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -2073,6 +2074,10 @@ AS
     --
     <<loop_get_xxcso_ib_info>>
     LOOP
+      /* 2009.04.07 K.Satomura T1_0378対応 START */
+      lv_change_flg := NULL;
+      lv_retcode    := cv_status_normal;
+      /* 2009.04.07 K.Satomura T1_0378対応 END */
       BEGIN
         FETCH get_xxcso_ib_info_h_cur INTO g_get_xxcso_ib_info_h_rec;
       EXCEPTION
@@ -2190,8 +2195,11 @@ AS
             -- A-6.物件関連情報変更チェック処理 
             -- ========================================
             /* 2009.04.01 K.Satomura T1_0148対応 START */
-            IF (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes) THEN
-              -- 連携済フラグがY以外の場合
+            /* 2009.04.07 K.Satomura T1_0378対応 START */
+            --IF (g_get_xxcso_ib_info_h_rec.interface_flag <> cv_yes) THEN
+            IF (g_get_xxcso_ib_info_h_rec.interface_flag = cv_yes) THEN
+            /* 2009.04.07 K.Satomura T1_0378対応 END */
+              -- 連携済フラグがYの場合
             /* 2009.04.01 K.Satomura T1_0148対応 END */
               ib_info_change_chk(
                  ov_change_flg => lv_change_flg    -- 変更チェックフラグ
@@ -2207,43 +2215,49 @@ AS
               RAISE global_process_expt;
             END IF;
             --
-            IF (lv_change_flg = cv_no) THEN
-              -- スキップ件数
-              gn_warn_cnt   := gn_warn_cnt + 1;
-            ELSE
-              -- 項目が変更されている場合
---
-              -- ========================================
-              -- A-7.自販機SH物件インタフェース存在チェック 
-              -- ========================================
-              xxcff_vd_object_if_chk(
-                 ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
-                ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
-                ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
-              );
---
-              IF (lv_retcode = cv_status_error) THEN
-                RAISE global_process_expt;
-              ELSIF (lv_retcode = cv_status_warn) THEN
+            /* 2009.04.07 K.Satomura T1_0378対応 START */
+            IF (lv_change_flg IS NOT NULL) THEN
+            /* 2009.04.07 K.Satomura T1_0378対応 END */
+              IF (lv_change_flg = cv_no) THEN
                 -- スキップ件数
                 gn_warn_cnt   := gn_warn_cnt + 1;
-                -- 固定ステータス設定（警告）
-                ov_retcode := cv_status_warn;
-                --警告出力
-                fnd_file.put_line(
-                   which  => FND_FILE.OUTPUT
-                  ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
+              ELSE
+                -- 項目が変更されている場合
+--
+                -- ========================================
+                -- A-7.自販機SH物件インタフェース存在チェック 
+                -- ========================================
+                xxcff_vd_object_if_chk(
+                   ov_errbuf  => lv_errbuf           -- エラー・メッセージ            --# 固定 #
+                  ,ov_retcode => lv_retcode          -- リターン・コード              --# 固定 #
+                  ,ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ  --# 固定 #
                 );
-                fnd_file.put_line(
-                   which  => FND_FILE.LOG
-                  ,buff   => lv_errmsg                  --警告メッセージ
-                );
-            /* 2009.04.01 K.Satomura T1_0148対応 START */
-              --ELSE
+--
+                IF (lv_retcode = cv_status_error) THEN
+                  RAISE global_process_expt;
+                ELSIF (lv_retcode = cv_status_warn) THEN
+                  -- スキップ件数
+                  gn_warn_cnt   := gn_warn_cnt + 1;
+                  -- 固定ステータス設定（警告）
+                  ov_retcode := cv_status_warn;
+                  --警告出力
+                  fnd_file.put_line(
+                     which  => FND_FILE.OUTPUT
+                    ,buff   => lv_errmsg                  --ユーザー・警告メッセージ
+                  );
+                  fnd_file.put_line(
+                     which  => FND_FILE.LOG
+                    ,buff   => lv_errmsg                  --警告メッセージ
+                  );
+              /* 2009.04.01 K.Satomura T1_0148対応 START */
+                --ELSE
+                END IF;
               END IF;
-            END IF;
-            /* 2009.04.01 K.Satomura T1_0148対応 END */
+              /* 2009.04.01 K.Satomura T1_0148対応 END */
                 -- 自販機SH物件インタフェースに登録対象物件が存在しない場合
+            /* 2009.04.07 K.Satomura T1_0378対応 START */
+            END IF;
+            /* 2009.04.07 K.Satomura T1_0378対応 END */
 --
             /* 2009.04.01 K.Satomura T1_0148対応 START */
             IF (((NVL(lv_change_flg, cv_yes) <> cv_no)
