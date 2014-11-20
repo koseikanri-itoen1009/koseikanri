@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2008/06/19    1.3   ORACLE石渡賢和   フラグのデフォルト値をセット
  *  2008/08/07    1.4   ORACLE山根一浩   課題#32,課題#67変更#174対応
  *  2008/10/10    1.5   ORACLE平福正明   T_S_474対応
+ *  2008/11/25    1.6   ORACLE吉元強樹   本番問合せ#243対応
  *
  *****************************************************************************************/
 --
@@ -1360,7 +1361,10 @@ AS
     cv_inbound        CONSTANT VARCHAR2(1) := '1';  -- 変換区分：拠点からのInBound用
     -- 2008/10/10 v1.5 M.Hirafuku ADD ST
     cv_lot_no       CONSTANT VARCHAR2(10) := '9999999999';                 -- ロットNo
-    cv_attribute1   CONSTANT VARCHAR2(10) := '2000/01/01';                 -- 製造年月日
+-- 2008/11/25 v1.6 T.Yoshimoto Mod Start 本番#243
+    --cv_attribute1   CONSTANT VARCHAR2(10) := '2000/01/01';                 -- 製造年月日
+    cv_attribute1   CONSTANT VARCHAR2(10) := '1900/01/01';                 -- 製造年月日
+-- 2008/11/25 v1.6 T.Yoshimoto Mod End 本番#243
     cv_attribute2   CONSTANT VARCHAR2(4)  := 'ZZZZ';                       -- 固有記号
     cv_attribute3   CONSTANT VARCHAR2(10) := '2099/12/31';                 -- 賞味期限
     cv_attribute23  CONSTANT VARCHAR2(2)  := '50';                         -- ロットステータス
