@@ -7,7 +7,7 @@ AS
  * Description      : 営業員別払日別入金予定表
  * MD.050           : MD050_CFR_009_A01_営業員別払日別入金予定表
  * MD.070           : MD050_CFR_009_A01_営業員別払日別入金予定表
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/04/14    1.3  SCS M.OKAWA      [障害T1_0533] 出力ファイル名変数文字列オーバーフロー対応
  *  2009/04/24    1.4  SCS S.KAYAHARA   [障害T1_0633] 組織プロファイル結合条件対応
  *  2009/07/15    1.5  SCS M.HIROSE     [障害0000481] パフォーマンス改善
+ *  2009/09/29    1.6  SCS T.KANEDA     [共通課題IE542] 拠点並び順変更
  *
  *****************************************************************************************/
 --
@@ -639,7 +640,13 @@ AS
 -- Modify 2009.07.15 Ver1.5 End
         cv_pkg_name                                 report_id,            -- 帳票ＩＤ
         TO_CHAR( cd_creation_date, cv_format_date_ymdhns ) output_date,   -- 出力日
-        xdev.attribute9                             receipt_area_code,    -- 入金拠点エリアコード（本部コード）
+-- Modify 2009.09.29 Ver1.6 Start
+--        xdev.attribute9                             receipt_area_code,    -- 入金拠点エリアコード（本部コード）
+        CASE 
+          WHEN TO_DATE(xdev.attribute6,'yyyymmdd') > TRUNC ( SYSDATE ) THEN xdev.attribute7
+          ELSE xdev.attribute9
+        END                                           receipt_area_code,    -- 入金拠点エリアコード（本部コード）
+-- Modify 2009.09.29 Ver1.6 End
         NVL( xca.receiv_base_code, xca.sale_base_code ) receipt_dept_code, -- 入金拠点コード
         xdev.description                            receipt_dept_name,    -- 入金拠点名
         hopeb.c_ext_attr1                           sales_rep_code,       -- 営業担当者コード
@@ -867,7 +874,13 @@ AS
         AND ( flv.end_date_active       IS NULL
            OR flv.end_date_active       >= TRUNC ( SYSDATE ) )
       GROUP BY
-        xdev.attribute9,                    -- 入金拠点エリアコード（本部コード）
+-- Modify 2009.09.29 Ver1.6 Start
+--        xdev.attribute9,                    -- 入金拠点エリアコード（本部コード）
+        CASE 
+          WHEN TO_DATE(xdev.attribute6,'yyyymmdd') > TRUNC ( SYSDATE ) THEN xdev.attribute7
+          ELSE xdev.attribute9
+        END,                                  -- 入金拠点エリアコード（本部コード）
+-- Modify 2009.09.29 Ver1.6 End
         NVL( xca.receiv_base_code, xca.sale_base_code ), -- 入金拠点コード
         xdev.description,                   -- 入金拠点名
         hopeb.c_ext_attr1,                  -- 営業担当者コード
