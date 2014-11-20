@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI008A02C(body)
  * Description      : 情報系システムへの連携の為、EBSの資材取引（標準）をCSVファイルに出力
  * MD.050           : 入出庫情報系連携 <MD050_COI_008_A02>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/15    1.0   S.Kanda          新規作成
+ *  2009/04/02    1.1   T.Nakamura       [障害T1_0226]IF項目の順序を修正
  *
  *****************************************************************************************/
 --
@@ -618,8 +619,11 @@ AS
                           lv_transaction_date                                            || cv_csv_com || -- 取引日
                           ir_material_tran_cur.transaction_set_id                        || cv_csv_com || -- 取引ヘッダ
       cv_file_encloser || ir_material_tran_cur.transfer_subinventory || cv_file_encloser || cv_csv_com || -- 移動先保管場所コード
-      cv_file_encloser || ir_material_tran_cur.segment1              || cv_file_encloser || cv_csv_com || -- 品目コード
+-- == 2009/04/02 V1.1 Moded START ===============================================================
+--      cv_file_encloser || ir_material_tran_cur.segment1              || cv_file_encloser || cv_csv_com || -- 品目コード
       cv_file_encloser || ir_material_tran_cur.attribute7            || cv_file_encloser || cv_csv_com || -- 拠点コード
+      cv_file_encloser || ir_material_tran_cur.segment1              || cv_file_encloser || cv_csv_com || -- 品目コード
+-- == 2009/04/02 V1.1 Moded END   ===============================================================
                           lv_process_date;                                                                -- 連携日時
 --
 --

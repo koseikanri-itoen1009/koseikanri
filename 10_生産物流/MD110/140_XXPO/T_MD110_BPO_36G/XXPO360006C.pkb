@@ -7,7 +7,7 @@ AS
  * Description      : 仕入取引明細表
  * MD.050           : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  * MD.070           : 有償支給帳票Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.22
+ * Version          : 1.23
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -58,6 +58,7 @@ AS
  *  2008/12/07    1.20  N.Yoshida        本番障害#533対応
  *  2009/01/09    1.21  N.Yoshida        本番障害#984対応
  *  2009/03/30    1.22  A.Shiina         本番障害#1346対応
+ *  2009/04/02    1.23  A.Shiina         本番障害#1370対応
  *
  *****************************************************************************************/
 --
@@ -1041,6 +1042,8 @@ AS
         || ',DECODE(xrart.txns_type,'  || cv_type_hen  || ', xrart.rcv_rtn_quantity * -1 '
         || ', xrart.rcv_rtn_quantity))  quantity '  --受入返品数量
        -- 2008/12/02 MOD END
+-- 2009/04/02 v1.23 UPDATE START
+/*
 -- 2008/12/05 v1.19 UPDATE START
 --        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.unit_price '
 --        ||                          ','|| cv_type_hen  || ', xrart.unit_price '
@@ -1049,6 +1052,11 @@ AS
         ||                          ','|| cv_type_hen  || ', xrart.kobki_converted_price '
         ||       ' , pl.unit_price)           unit_price '   --単価'
 -- 2008/12/05 v1.19 UPDATE END
+*/
+        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.unit_price '
+        ||                          ','|| cv_type_hen  || ', xrart.unit_price '
+        ||       ' , pl.attribute8)           unit_price '   --単価'
+-- 2009/04/02 v1.23 UPDATE END
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', flv_u_kosen.lookup_code '
         ||                          ','|| cv_type_hen  || ', flv_u_kosen.lookup_code '
         ||       ' , flv_p_kosen.lookup_code) kousen_name '  --口銭区分
