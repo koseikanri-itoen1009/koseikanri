@@ -67,8 +67,13 @@ SELECT
              AND  XRART.source_document_line_num            = PLA.line_num
              AND  PHA.po_header_id                          = PLA.po_header_id
              --品目カテゴリ情報取得
-             AND  XRART.item_id                             = PRODC.item_id(+)  --商品区分情報取得
-             AND  XRART.item_id                             = ITEMC.item_id(+)  --品目区分情報取得
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+             --AND  XRART.item_id                             = PRODC.item_id(+)  --商品区分情報取得
+             --AND  XRART.item_id                             = ITEMC.item_id(+)  --品目区分情報取得
+             AND  XRART.item_id                             = PRODC.item_id     --商品区分情報取得
+             AND  XRART.item_id                             = ITEMC.item_id     --品目区分情報取得
+             AND  PRODC.item_id                             = ITEMC.item_id
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
           --[ 発注・受入データ  END ]--
         UNION ALL
           -------------------------------------------------------------------
@@ -103,8 +108,13 @@ SELECT
              AND  XRART.source_document_line_num            = PLA.line_num
              AND  PHA.po_header_id                          = PLA.po_header_id
              --品目カテゴリ情報取得
-             AND  XRART.item_id                             = PRODC.item_id(+)  --商品区分情報取得
-             AND  XRART.item_id                             = ITEMC.item_id(+)  --品目区分情報取得
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+             --AND  XRART.item_id                             = PRODC.item_id(+)  --商品区分情報取得
+             --AND  XRART.item_id                             = ITEMC.item_id(+)  --品目区分情報取得
+             AND  XRART.item_id                             = PRODC.item_id     --商品区分情報取得
+             AND  XRART.item_id                             = ITEMC.item_id     --品目区分情報取得
+             AND  PRODC.item_id                             = ITEMC.item_id
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
           --[ 発注あり返品データ  END ]--
         UNION ALL
           -------------------------------------------------------------------
@@ -131,15 +141,23 @@ SELECT
                   XRART.txns_type                           = '3'               --'3:発注無し返品'
              AND  XRART.quantity                           <> 0
              --品目カテゴリ情報取得
-             AND  XRART.item_id                             = PRODC.item_id(+)  --商品区分情報取得
-             AND  XRART.item_id                             = ITEMC.item_id(+)  --品目区分情報取得
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+             --AND  XRART.item_id                             = PRODC.item_id(+)  --商品区分情報取得
+             --AND  XRART.item_id                             = ITEMC.item_id(+)  --品目区分情報取得
+             AND  XRART.item_id                             = PRODC.item_id     --商品区分情報取得
+             AND  XRART.item_id                             = ITEMC.item_id     --品目区分情報取得
+             AND  PRODC.item_id                             = ITEMC.item_id
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
           --[ 発注無し返品データ  END ]--
         UNION ALL
           -------------------------------------------------------------------
           -- 有償支給データ（原料<資材以外> or 資材 の金額【単価×数量】を取得する）
           -------------------------------------------------------------------
           SELECT
-                  TO_CHAR( NVL( XOHA.arrival_date, XOHA.shipped_date ), 'YYYYMM' )
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+                  --TO_CHAR( NVL( XOHA.arrival_date, XOHA.shipped_date ), 'YYYYMM' )
+                  TO_CHAR( XOHA.arrival_date, 'YYYYMM' )
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
                                                             yyyymm              --年月（着荷日がNULL時は出荷日）
                  ,XOHA.performance_management_dept          department_code     --成績管理部署
                  ,XOHA.vendor_code                          vendor_code         --取引先コード
@@ -183,8 +201,16 @@ SELECT
              AND  XMLD.record_type_code                     = '20'              --出庫実績
              AND  XOLA.order_line_id                        = XMLD.mov_line_id
              --品目カテゴリ情報取得
-             AND  XMLD.item_id                              = PRODC.item_id(+)  --商品区分情報取得
-             AND  XMLD.item_id                              = ITEMC.item_id(+)  --品目区分情報取得
+-- 2010/01/08 T.Yoshimoto Mod Start E_本稼動#716
+             --AND  XMLD.item_id                              = PRODC.item_id(+)  --商品区分情報取得
+             --AND  XMLD.item_id                              = ITEMC.item_id(+)  --品目区分情報取得
+             AND  XMLD.item_id                              = PRODC.item_id     --商品区分情報取得
+             AND  XMLD.item_id                              = ITEMC.item_id     --品目区分情報取得
+             AND  PRODC.item_id                             = ITEMC.item_id
+-- 2010/01/08 T.Yoshimoto Mod End E_本稼動#716
+-- 2010/01/08 T.Yoshimoto Add Start E_本稼動#716
+             AND  XOHA.arrival_date IS NOT NULL
+-- 2010/01/08 T.Yoshimoto Add End E_本稼動#716
           --[ 有償支給データ  END ]--
        )                      XRO
        ,xxsky_locations2_v    XLV                           --部署名取得用
