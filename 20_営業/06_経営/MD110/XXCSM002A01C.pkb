@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A01C(body)
  * Description      : 商品計画用過年度販売実績集計
  * MD.050           : 商品計画用過年度販売実績集計 MD050_CSM_002_A01
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/03/18    1.4   S.Son            仕様変更対応
  *  2009/05/01    1.5   M.Ohtsuki       [障害T1_0861] 特殊品目の処理対象除外 
  *  2009/06/03    1.6   M.Ohtsuki       [障害T1_1174] センター納品の不具合の対応 
+ *  2009/08/03    1.7   T.Tsukino       [障害管理番号0000479]性能改善対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -86,6 +87,15 @@ AS
   --
   cv_language_ja            CONSTANT VARCHAR2(2)   := USERENV('LANG');           --言語(日本語)
   cv_flg_y                  CONSTANT VARCHAR2(1)   := 'Y';                       --フラグY
+--
+--//+ADD START 2009/08/03 0000479 T.Tsukino
+  cv_flg_n                  CONSTANT VARCHAR2(1)   := 'N';
+  cv_lookup_type_01         CONSTANT VARCHAR2(30)  := 'XXCSM1_SUM_PASS_SALES_THREAD'; -- 商品計画用過年度販売実績集計パラレルリスト
+  cv_lookup_type_02         CONSTANT VARCHAR2(30)  := 'XXCMM_ITM_STATUS';             -- 品目ステータスリスト
+  cn_inv_application_id     CONSTANT NUMBER        := 401;                            -- アプリケーションID（INV）
+  cv_id_flex_code_mcat      CONSTANT VARCHAR2(30)  := 'MCAT';                         -- KFFコード（品目カテゴリ）
+  cv_id_flex_str_code_sgum  CONSTANT VARCHAR2(30)  := 'XXCMN_SGUN_CODE';              -- 体系コード（政策群）
+--//+ADD END 2009/08/03 0000479 T.Tsukino
 --
 --################################  固定部 END   ##################################
 --
@@ -146,7 +156,9 @@ AS
 --
   gv_calendar_name         VARCHAR2(100);                                --年間販売計画カレンダー名
   gv_parallel_value_no     VARCHAR2(100);                                --入力パラメータパラレル番号
-  gv_parallel_cnt          VARCHAR2(100);                                --入力パラメータパラレル数
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--  gv_parallel_cnt          VARCHAR2(100);                                --入力パラメータパラレル数
+--//+DEL END 2009/08/03 0000479 T.Tsukino
   gv_location_cd           VARCHAR2(4);                                  --入力パラメータ拠点コード
   gv_item_no               VARCHAR2(32);                                 --入力パラメータ品目コード
   gv_bks_id                NUMBER;                                       --会計帳簿ID
@@ -157,7 +169,7 @@ AS
 --//ADD START 2009/03/04 CT_075 S.Son
   gv_discount_cd           VARCHAR2(10);         --値引き用品目政策群コードプロファイル名
 --//ADD END   2009/03/04 CT_075 S.Son
-
+--  
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -186,6 +198,7 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    cv_parallel_value_no CONSTANT NUMBER      := 0;
 --
     -- *** ローカル変数 ***
 --
@@ -229,16 +242,18 @@ AS
       AND     year_view.period_set_name = gp.period_set_name
       ;
       startdate_cur2_rec startdate_cur2%ROWTYPE;
-    /** 顧客コード抽出 **/
-    CURSOR cust_select_cur
-    IS
-      SELECT hca.account_number
-      FROM   hz_cust_accounts    hca
-      WHERE  hca.customer_class_code = '1'
-      ORDER  BY hca.account_number
-      ;
-    TYPE cust_tbl_type IS TABLE OF cust_select_cur%ROWTYPE INDEX BY BINARY_INTEGER;
-    cust_tbl  cust_tbl_type;
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--    /** 顧客コード抽出 **/
+--    CURSOR cust_select_cur
+--    IS
+--      SELECT hca.account_number
+--      FROM   hz_cust_accounts    hca
+--      WHERE  hca.customer_class_code = '1'
+--      ORDER  BY hca.account_number
+--      ;
+--    TYPE cust_tbl_type IS TABLE OF cust_select_cur%ROWTYPE INDEX BY BINARY_INTEGER;
+--    cust_tbl  cust_tbl_type;
+--//+DEL END 2009/08/03 0000479 T.Tsukino
 --
   BEGIN
 --##################  固定ステータス初期化部 START   ###################
@@ -262,15 +277,17 @@ AS
                                             );
     FND_FILE.PUT_LINE(FND_FILE.LOG,lv_pram_op_1);
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_pram_op_1);
-    --パラレル数
-    lv_pram_op_2 := xxccp_common_pkg.get_msg(
-                                            iv_application  => cv_xxcsm
-                                           ,iv_name         => cv_msg_00113
-                                           ,iv_token_name1  => cv_tkn_cd_parallel_cnt
-                                           ,iv_token_value1 => gv_parallel_cnt
-                                           );
-    FND_FILE.PUT_LINE(FND_FILE.LOG,lv_pram_op_2);
-    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_pram_op_2);
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--    --パラレル数
+--    lv_pram_op_2 := xxccp_common_pkg.get_msg(
+--                                            iv_application  => cv_xxcsm
+--                                           ,iv_name         => cv_msg_00113
+--                                           ,iv_token_name1  => cv_tkn_cd_parallel_cnt
+--                                           ,iv_token_value1 => gv_parallel_cnt
+--                                           );
+--    FND_FILE.PUT_LINE(FND_FILE.LOG,lv_pram_op_2);
+--    FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_pram_op_2);
+--//+DEL END 2009/08/03 0000479 T.Tsukino
     --拠点コード
     lv_pram_op_3 := xxccp_common_pkg.get_msg(
                                             iv_application  => cv_xxcsm
@@ -290,32 +307,86 @@ AS
     FND_FILE.PUT_LINE(FND_FILE.LOG,lv_pram_op_4);
     FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_pram_op_4);
 --②入力パラメータチェック
-    IF (gv_parallel_value_no IS NULL) AND (gv_parallel_cnt IS NOT NULL) THEN
+--//+UPD START 2009/08/03 0000479 T.Tsukino
+--    IF (gv_parallel_value_no IS NULL) AND (gv_parallel_cnt IS NOT NULL) THEN
+    IF (gv_parallel_value_no IS NULL) THEN
+      IF(gv_location_cd IS NULL) AND (gv_item_no IS NULL) THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
                                               iv_application  => cv_xxcsm
                                              ,iv_name         => cv_chk_err_00114
                                              );
       lv_errbuf := lv_errmsg;
       RAISE parameter_expt;
-    ELSIF (gv_parallel_value_no IS NOT NULL) AND (gv_parallel_cnt IS NULL) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                                              iv_application  => cv_xxcsm
-                                             ,iv_name         => cv_chk_err_00114
-                                             );
-      lv_errbuf := lv_errmsg;
-      RAISE parameter_expt;
-    ELSIF (gv_parallel_value_no >= gv_parallel_cnt) THEN
-      lv_errmsg := xxccp_common_pkg.get_msg(
-                                              iv_application  => cv_xxcsm
-                                             ,iv_name         => cv_chk_err_00114
-                                             );
-      lv_errbuf := lv_errmsg;
-      RAISE parameter_expt;
+--    ELSIF (gv_parallel_value_no IS NOT NULL) AND (gv_parallel_cnt IS NULL) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                                              iv_application  => cv_xxcsm
+--                                             ,iv_name         => cv_chk_err_00114
+--                                             );
+--      lv_errbuf := lv_errmsg;
+--      RAISE parameter_expt;
+--    ELSIF (gv_parallel_value_no >= gv_parallel_cnt) THEN
+--      lv_errmsg := xxccp_common_pkg.get_msg(
+--                                              iv_application  => cv_xxcsm
+--                                             ,iv_name         => cv_chk_err_00114
+--                                             );
+--      lv_errbuf := lv_errmsg;
+--      RAISE parameter_expt;
+      END IF;
+      gv_parallel_value_no := cv_parallel_value_no;
+      INSERT INTO xxcsm_tmp_cust_accounts(
+        cust_account_id
+       ,account_number
+      )
+      SELECT  TO_NUMBER(gv_parallel_value_no)
+             ,xabv.base_code
+      FROM   xxcso_aff_base_v2	     xabv
+      WHERE  xabv.summary_flag  = cv_flg_n
+      ;
+    ELSIF (gv_parallel_value_no IS NOT NULL) THEN
+      INSERT INTO xxcsm_tmp_cust_accounts(
+        cust_account_id
+       ,account_number
+      )
+      SELECT  TO_NUMBER(gv_parallel_value_no)
+             ,xabv.base_code
+      FROM    fnd_lookup_values_vl  flvv
+             ,xxcso_aff_base_v2     xabv
+      WHERE   flvv.lookup_type   = cv_lookup_type_01
+        AND   flvv.enabled_flag  = cv_flg_y
+        AND   cd_process_date    BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                     AND NVL(flvv.end_date_active,cd_process_date)
+        AND   flvv.attribute1    = gv_parallel_value_no
+        AND   xabv.base_code     = flvv.lookup_code
+        AND   xabv.summary_flag  = cv_flg_n
+      UNION ALL
+      SELECT  TO_NUMBER(gv_parallel_value_no)
+             ,xablv.child_base_code
+      FROM    xxcso_aff_base_level_v2  xablv
+             ,xxcso_aff_base_v2        xabv
+      WHERE   xabv.base_code     = xablv.child_base_code
+        AND   xabv.summary_flag  = cv_flg_n
+      START WITH
+              xablv.base_code IN
+              (
+               SELECT  flvv.lookup_code
+               FROM    fnd_lookup_values_vl  flvv
+               WHERE   flvv.lookup_type   = cv_lookup_type_01
+                 AND   flvv.enabled_flag  = cv_flg_y
+                 AND   cd_process_date    BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                              AND NVL(flvv.end_date_active,cd_process_date)
+                 AND   flvv.attribute1    = gv_parallel_value_no
+              )
+      CONNECT BY PRIOR
+              xablv.child_base_code = xablv.base_code
+      ;
     END IF;
-    IF (gv_parallel_value_no IS NULL) AND (gv_parallel_cnt IS NULL) THEN
-      gv_parallel_value_no := 0;
-      gv_parallel_cnt := 1;
-    END IF;
+--//+UPD END 2009/08/03 0000479 T.Tsukino
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--    IF (gv_parallel_value_no IS NULL) AND (gv_parallel_cnt IS NULL) THEN
+--      gv_parallel_value_no := 0;
+--      gv_parallel_cnt := 1;
+--//+DEL END 2009/08/03 0000479 T.Tsukino
+--    END IF;
 --③ プロファイル値取得
     --年間販売計画カレンダー名取得
     gv_calendar_name := FND_PROFILE.VALUE(gv_calendar_profile);
@@ -375,9 +446,13 @@ AS
         RAISE calendar_check_expt;
       END IF;  
     END;
+--//+UPD START 2009/08/03 0000479 T.Tsukino
 --⑤ 年間販売計画カレンダー有効年度取得
     xxcsm_common_pkg.get_yearplan_calender(
-                                           id_comparison_date  => cd_creation_date
+--                                           id_comparison_date  => cd_creation_date
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+                                           id_comparison_date  => cd_process_date  -- 業務日付
+--//+UPD END 2009/08/03 0000479 T.Tsukino                                           
                                           ,ov_status           => lv_result
                                           ,on_active_year      => gt_active_year
                                           ,ov_retcode          => ln_retcode
@@ -408,24 +483,26 @@ AS
         gt_start_date := startdate_cur1_rec.start_date;
       END IF;
     CLOSE startdate_cur1;
+--//+DEL START 2009/08/03 0000479 T.Tsukino
 --⑧ 顧客コード抽出
-    OPEN cust_select_cur;
-      FETCH cust_select_cur BULK COLLECT INTO cust_tbl;
-      FOR i IN 1..cust_tbl.COUNT LOOP
-        INSERT INTO xxcsm_tmp_cust_accounts(
-          cust_account_id
-         ,account_number
-        )
-        VALUES(
+--    OPEN cust_select_cur;
+--      FETCH cust_select_cur BULK COLLECT INTO cust_tbl;
+--      FOR i IN 1..cust_tbl.COUNT LOOP
+--        INSERT INTO xxcsm_tmp_cust_accounts(
+--          cust_account_id
+--         ,account_number
+--        )
+--        VALUES(
 --//+UPD START 2009/02/26 CT057 S.Son
-        --i
-          MOD(i,TO_NUMBER(gv_parallel_cnt)) 
---//+UPD END 2009/02/26 CT057 S.Son
-         ,cust_tbl(i).account_number
-        );
-      END LOOP;
-    CLOSE cust_select_cur;
-
+--        --i
+--          MOD(i,TO_NUMBER(gv_parallel_cnt)) 
+----//+UPD END 2009/02/26 CT057 S.Son
+--         ,cust_tbl(i).account_number
+--        );
+--      END LOOP;
+--    CLOSE cust_select_cur;
+--//+DEL END 2009/08/03 0000479 T.Tsukino
+--
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================
@@ -1540,7 +1617,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
 --
-    cv_sales_class   CONSTANT VARCHAR2(100) := 'XXCSM1_EXCLUSION_SALES_CLASS';     --販売実績集計除外売上区分
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--    cv_sales_class   CONSTANT VARCHAR2(100) := 'XXCSM1_EXCLUSION_SALES_CLASS';     --販売実績集計除外売上区分
+--//+DEL END 2009/08/03 0000479 T.Tsukino
 --//ADD START 2009/05/01 T1_0861 M.Ohtsuki
     cv_sp_item_cd        CONSTANT VARCHAR2(100) := 'XXCSM1_SPECIAL_ITEM';          --特殊品目コード
 --//ADD END   2009/05/01 T1_0861 M.Ohtsuki
@@ -1769,121 +1848,500 @@ AS
 --            ,xse.year_month;                                                                        -- 年月
 --//+UPD END   2009/03/18  仕様変更  S.Son
 --↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-   SELECT  xse.year_month                                        year_month                         -- 年月
-          ,xse.month                                             month                              -- 月
-          ,xse.sale_base_code                                    sale_base_code                     -- 売上拠点コード
-          ,xse.item_code                                         item_code                          -- 品目コード
-          ,SUM(xse.month_sumary_qty)                             month_sumary_qty                   -- 売上金額
-          ,SUM(xse.month_sumary_pure_amount)                     month_sumary_pure_amount           -- 数量
-          ,SUM(xse.month_sumary_margin)                          month_sumary_margin                -- 粗利益算出用
-   FROM   (
-          --実績振替
-          SELECT  xcai.selling_date                              year_month                         -- 売上計上日(年月)
-                 ,substrb(xcai.selling_date,5,2)                 month                              -- 売上計上日(月)
-                 ,xcai.sale_base_code                            sale_base_code                     -- 売上拠点コード
-                 ,xcai.item_code                                 item_code                          -- 品目コード
-                 ,SUM(xcai.qty)                                  month_sumary_qty                   -- 基準数量
-                 ,SUM(xcai.selling_amt)                          month_sumary_pure_amount           -- 本体金額
-                 ,SUM(xcai.qty * NVL(xcai.trading_cost,0))       month_sumary_margin                -- 粗利益算出用
-          FROM   (SELECT DISTINCT xsti.cust_code                 cust_code                          -- 顧客コード
-                        ,xsti.item_code                          item_code                          -- 品目コード
-                        ,TO_CHAR(xsti.selling_date,'YYYYMM')     selling_date                       -- 売上計上日
-                        ,DECODE(xca.rsv_sale_base_act_date                                          -- 予約売上拠点有効開始日
-                               ,gt_start_date                                                       -- 予算年度開始日
-                               ,xca.rsv_sale_base_code                                              -- 予約売上拠点コード
-                               ,xca.sale_base_code                                                  -- 売上拠点コード
-                               )                                 sale_base_code
-                        ,xsti.qty                                qty                                -- 数量
-                        ,xsti.selling_amt                        selling_amt                        -- 本体金額
-                        ,xsti.trading_cost                       trading_cost                       -- 営業原価
-                  FROM   xxcok_selling_trns_info                 xsti                               -- 実績振替テーブル
-                        ,xxcmm_cust_accounts                     xca                                -- 追加顧客情報テーブル
-                  WHERE  xsti.cust_code = xca.customer_code                                         -- 顧客コードで紐付け
-                  AND    xsti.item_code = NVL(gv_item_no,xsti.item_code)                            -- 入力パラメータ品目コードNULLの場合
-                  AND   (xsti.report_decision_flag = cv_flg_on                                         -- 速報確定フラグ = 確定
-                    OR  (TRUNC(xsti.selling_date,'MM')   = TRUNC(ADD_MONTHS(cd_process_date,-1),'MM')  -- 業務日付前月
-                           AND xsti.report_decision_flag = cv_flg_off                                           -- 速報確定フラグ = 速報
-                           AND xsti.correction_flag      = cv_flg_off)                                          -- 振戻フラグ = 0 (最新のデータ)
-                        )
-                  AND    TRUNC(xsti.selling_date,'MM')   >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')  -- 予算作成年度開始月－24ヶ月
-                  AND    TRUNC(xsti.selling_date,'MM')   <  TRUNC(gt_start_date,'MM')                  -- 年度開始日より前のデータ
-                  AND    TRUNC(xsti.selling_date,'MM')   <  TRUNC(cd_process_date,'MM')                -- コンカレント起動年月前のデータを対象とする
-                  )   xcai                                                                          -- 実績振替インラインビュー
-                 ,xxcsm_tmp_cust_accounts                       xtca                                -- 顧客情報ワークテーブル（拠点のデータのみ）
-                 ,xxcsm_commodity_group4_v                      xcg4v                               -- 商品群４ビュー
-          WHERE   xcai.sale_base_code  = xtca.account_number                                        -- 売上拠点コード = 顧客コード
-          AND     xtca.cust_account_id = TO_NUMBER(gv_parallel_value_no)                            -- 拠点のIDにてパラレル
-          AND     xcai.sale_base_code  = NVL(gv_location_cd,xcai.sale_base_code)                    -- 入力パラメータ拠点コードNULLの場合
-          AND     xcai.item_code       = xcg4v.item_cd                                              -- 品目コード紐付け
-          AND     xcg4v.group4_cd     <> gv_discount_cd                                             -- 値引用品目(DAAE)以外
-          AND     NOT EXISTS (SELECT 'X'
-                             FROM   fnd_lookup_values flv                                           -- クイックコード値
-                             WHERE  flv.lookup_type = cv_sp_item_cd                                 -- 処理対象外特殊品目
-                             AND    flv.enabled_flag = cv_flg_y                                     -- 有効フラグ
-                             AND    flv.language = cv_language_ja                                   -- 言語
-                             AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  -- 開始日
-                             AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  -- 終了日
-                             AND    flv.lookup_code = xcai.item_code)                               -- ルックアップコード=品目コード
-          GROUP BY xcai.sale_base_code                                                              -- 売上拠点コード
-                  ,xcai.item_code                                                                   -- 品目コード
-                  ,xcai.selling_date                                                                -- 納品年月
-                  ,substrb(xcai.selling_date,5,2)                                                   -- 納品月
-        UNION ALL
-          --販売実績
-          SELECT  xsh.year_month                                 year_month                         -- 年月
-                 ,xsh.month                                      month                              -- 月
-                 ,xsh.sale_base_code                             sale_base_code                     -- 売上拠点コード
-                 ,xselv.item_code                                item_code                          -- 品目コード
-                 ,SUM(xselv.standard_qty)                        month_sumary_qty                   -- 基準数量
-                 ,SUM(xselv.pure_amount)                         month_sumary_pure_amount           -- 本体金額
-                 ,SUM(xselv.standard_qty * NVL(xselv.business_cost,0))
-                                                                 month_sumary_margin                -- 粗利益算出用
-          FROM   (SELECT xsehv.sales_exp_header_id               sales_exp_header_id                -- 販売実績ヘッダID
-                        ,xsehv.ship_to_customer_code             ship_to_customer_code              -- 顧客コード
-                        ,TO_CHAR(xsehv.delivery_date,'YYYYMM')   year_month                         -- 納品日(年月)
-                        ,TO_CHAR(xsehv.delivery_date,'MM')       month                              -- 納品日(月)
-                        ,DECODE(xca.rsv_sale_base_act_date                                          -- 予約売上拠点有効開始日
-                               ,gt_start_date                                                       -- 予算年度開始日
-                               ,xca.rsv_sale_base_code                                              -- 予約売上拠点コード
-                               ,xca.sale_base_code                                                  -- 売上拠点コード
-                               )                                 sale_base_code                     -- 年次切替拠点の場合、対象年度に適用される拠点を導出
-                  FROM   xxcsm_sales_exp_headers_v               xsehv                              -- 販売実績ヘッダテーブルビュー
-                        ,xxcmm_cust_accounts      xca                                               -- 顧客追加情報
-                  WHERE  TRUNC(xsehv.delivery_date,'MM') >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')  -- 予算作成年度開始月－24ヶ月
-                  AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(gt_start_date,'MM')                -- 年度開始日前のデータが対象
-                  AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(cd_process_date,'MM')              -- コンカレント起動年月前のデータを対象とする
-                  AND    xsehv.ship_to_customer_code = xca.customer_code                            -- 顧客【納品先】=顧客コード(顧客追加情報)
-                 )                                               xsh                                -- 販売実績インラインビュー
-                 ,xxcsm_sales_exp_lines_v                        xselv                              -- 販売実績明細テーブルビュー
-                 ,xxcsm_tmp_cust_accounts                        xtca                               -- 顧客情報ワークテーブル（拠点のデータのみ）
-                 ,xxcsm_commodity_group4_v                       xcg4v                              -- 商品群４ビュー
-          WHERE   xsh.sales_exp_header_id = xselv.sales_exp_header_id                               -- 販売実績ヘッダIDの紐付け
-          AND     xsh.sale_base_code      = xtca.account_number                                     -- 売上拠点コード=顧客コード
-          AND     xtca.cust_account_id    = TO_NUMBER(gv_parallel_value_no)                         -- 拠点のIDにてパラレル
-          AND     xsh.sale_base_code      = NVL(gv_location_cd,xsh.sale_base_code)                  -- 入力パラメータ拠点コードNULLの場合全件
-          AND     xselv.item_code         = NVL(gv_item_no,xselv.item_code)                         -- 入力パラメータ品目コードNULLの場合全件
-          AND     xcg4v.item_cd           =  xselv.item_code                                        -- 商品群４ビューを紐付く
-          AND     xcg4v.group4_cd        <> gv_discount_cd                                          -- 値引用品目(DAAE)以外
-          AND    NOT EXISTS (SELECT 'X'
-                             FROM   fnd_lookup_values flv                                           --クイックコード値
-                             WHERE  flv.lookup_type = cv_sp_item_cd                                 --処理対象外特殊品目
-                             AND    flv.enabled_flag = cv_flg_y                                     --有効フラグ
-                             AND    flv.language = cv_language_ja                                   --言語
-                             AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  --開始日
-                             AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  --終了日
-                             AND    flv.lookup_code = xselv.item_code)                              --ルックアップコード=品目コード
-          GROUP BY  xsh.sale_base_code                                                              -- 売上拠点コード
-                   ,xselv.item_code                                                                 -- 品目コード
-                   ,xsh.year_month                                                                  -- 納品年月
-                   ,xsh.month                                                                       -- 納品月
-          ) xse
-   GROUP BY  xse.year_month                                                                         -- 年月
-            ,xse.sale_base_code                                                                     -- 売上拠点コード
-            ,xse.item_code                                                                          -- 品目コード
-            ,xse.month                                                                              -- 月
-   ORDER BY  xse.sale_base_code                                                                     -- 売上拠点コード
-            ,xse.item_code                                                                          -- 品目コード
-            ,xse.year_month;                                                                        -- 年月
+--//+UPD START 2009/08/03 0000479 T.Tsukino
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--   SELECT  xse.year_month                                        year_month                         -- 年月
+--          ,xse.month                                             month                              -- 月
+--          ,xse.sale_base_code                                    sale_base_code                     -- 売上拠点コード
+--          ,xse.item_code                                         item_code                          -- 品目コード
+--          ,SUM(xse.month_sumary_qty)                             month_sumary_qty                   -- 売上金額
+--          ,SUM(xse.month_sumary_pure_amount)                     month_sumary_pure_amount           -- 数量
+--          ,SUM(xse.month_sumary_margin)                          month_sumary_margin                -- 粗利益算出用
+--   FROM   (
+--          --実績振替
+--          SELECT  xcai.selling_date                              year_month                         -- 売上計上日(年月)
+--                 ,substrb(xcai.selling_date,5,2)                 month                              -- 売上計上日(月)
+--                 ,xcai.sale_base_code                            sale_base_code                     -- 売上拠点コード
+--                 ,xcai.item_code                                 item_code                          -- 品目コード
+--                 ,SUM(xcai.qty)                                  month_sumary_qty                   -- 基準数量
+--                 ,SUM(xcai.selling_amt)                          month_sumary_pure_amount           -- 本体金額
+--                 ,SUM(xcai.qty * NVL(xcai.trading_cost,0))       month_sumary_margin                -- 粗利益算出用
+--          FROM   (SELECT DISTINCT xsti.cust_code                 cust_code                          -- 顧客コード
+--                        ,xsti.item_code                          item_code                          -- 品目コード
+--                        ,TO_CHAR(xsti.selling_date,'YYYYMM')     selling_date                       -- 売上計上日
+--                        ,DECODE(xca.rsv_sale_base_act_date                                          -- 予約売上拠点有効開始日
+--                               ,gt_start_date                                                       -- 予算年度開始日
+--                               ,xca.rsv_sale_base_code                                              -- 予約売上拠点コード
+--                              ,xca.sale_base_code                                                  -- 売上拠点コード
+--                               )                                 sale_base_code
+--                        ,xsti.qty                                qty                                -- 数量
+--                        ,xsti.selling_amt                        selling_amt                        -- 本体金額
+--                        ,xsti.trading_cost                       trading_cost                       -- 営業原価
+--                  FROM   xxcok_selling_trns_info                 xsti                               -- 実績振替テーブル
+--                        ,xxcmm_cust_accounts                     xca                                -- 追加顧客情報テーブル
+--                  WHERE  xsti.cust_code = xca.customer_code                                         -- 顧客コードで紐付け
+--                  AND    xsti.item_code = NVL(gv_item_no,xsti.item_code)                            -- 入力パラメータ品目コードNULLの場合
+--                  AND   (xsti.report_decision_flag = cv_flg_on                                         -- 速報確定フラグ = 確定
+--                    OR  (TRUNC(xsti.selling_date,'MM')   = TRUNC(ADD_MONTHS(cd_process_date,-1),'MM')  -- 業務日付前月
+--                           AND xsti.report_decision_flag = cv_flg_off                                           -- 速報確定フラグ = 速報
+--                           AND xsti.correction_flag      = cv_flg_off)                                          -- 振戻フラグ = 0 (最新のデータ)
+--                        )
+--                  AND    TRUNC(xsti.selling_date,'MM')   >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')  -- 予算作成年度開始月－24ヶ月
+--                  AND    TRUNC(xsti.selling_date,'MM')   <  TRUNC(gt_start_date,'MM')                  -- 年度開始日より前のデータ
+--                  AND    TRUNC(xsti.selling_date,'MM')   <  TRUNC(cd_process_date,'MM')                -- コンカレント起動年月前のデータを対象とする
+--                  )   xcai                                                                          -- 実績振替インラインビュー
+--                 ,xxcsm_tmp_cust_accounts                       xtca                                -- 顧客情報ワークテーブル（拠点のデータのみ）
+--                 ,xxcsm_commodity_group4_v                      xcg4v                               -- 商品群４ビュー
+--          WHERE   xcai.sale_base_code  = xtca.account_number                                        -- 売上拠点コード = 顧客コード
+--          AND     xtca.cust_account_id = TO_NUMBER(gv_parallel_value_no)                            -- 拠点のIDにてパラレル
+--          AND     xcai.sale_base_code  = NVL(gv_location_cd,xcai.sale_base_code)                    -- 入力パラメータ拠点コードNULLの場合
+--          AND     xcai.item_code       = xcg4v.item_cd                                              -- 品目コード紐付け
+--          AND     xcg4v.group4_cd     <> gv_discount_cd                                             -- 値引用品目(DAAE)以外
+--          AND     NOT EXISTS (SELECT 'X'
+--                             FROM   fnd_lookup_values flv                                           -- クイックコード値
+--                             WHERE  flv.lookup_type = cv_sp_item_cd                                 -- 処理対象外特殊品目
+--                             AND    flv.enabled_flag = cv_flg_y                                     -- 有効フラグ
+--                             AND    flv.language = cv_language_ja                                   -- 言語
+--                             AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  -- 開始日
+--                             AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  -- 終了日
+--                             AND    flv.lookup_code = xcai.item_code)                               -- ルックアップコード=品目コード
+--          GROUP BY xcai.sale_base_code                                                              -- 売上拠点コード
+--                  ,xcai.item_code                                                                   -- 品目コード
+--                 ,xcai.selling_date                                                                -- 納品年月
+--                  ,substrb(xcai.selling_date,5,2)                                                   -- 納品月
+--        UNION ALL
+--          --販売実績
+--          SELECT  xsh.year_month                                 year_month                         -- 年月
+--                 ,xsh.month                                      month                              -- 月
+--                 ,xsh.sale_base_code                             sale_base_code                     -- 売上拠点コード
+--                 ,xselv.item_code                                item_code                          -- 品目コード
+--                 ,SUM(xselv.standard_qty)                        month_sumary_qty                   -- 基準数量
+--                 ,SUM(xselv.pure_amount)                         month_sumary_pure_amount           -- 本体金額
+--                 ,SUM(xselv.standard_qty * NVL(xselv.business_cost,0))
+--                                                                 month_sumary_margin                -- 粗利益算出用
+--          FROM   (SELECT xsehv.sales_exp_header_id               sales_exp_header_id                -- 販売実績ヘッダID
+--                        ,xsehv.ship_to_customer_code             ship_to_customer_code              -- 顧客コード
+--                        ,TO_CHAR(xsehv.delivery_date,'YYYYMM')   year_month                         -- 納品日(年月)
+--                        ,TO_CHAR(xsehv.delivery_date,'MM')       month                              -- 納品日(月)
+--                        ,DECODE(xca.rsv_sale_base_act_date                                          -- 予約売上拠点有効開始日
+--                               ,gt_start_date                                                       -- 予算年度開始日
+--                               ,xca.rsv_sale_base_code                                              -- 予約売上拠点コード
+--                               ,xca.sale_base_code                                                  -- 売上拠点コード
+--                               )                                 sale_base_code                     -- 年次切替拠点の場合、対象年度に適用される拠点を導出
+--                  FROM   xxcsm_sales_exp_headers_v               xsehv                              -- 販売実績ヘッダテーブルビュー
+--                        ,xxcmm_cust_accounts      xca                                               -- 顧客追加情報
+--                  WHERE  TRUNC(xsehv.delivery_date,'MM') >= TRUNC(ADD_MONTHS(gt_start_date,-24),'MM')  -- 予算作成年度開始月－24ヶ月
+--                  AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(gt_start_date,'MM')                -- 年度開始日前のデータが対象
+--                  AND    TRUNC(xsehv.delivery_date,'MM') < TRUNC(cd_process_date,'MM')              -- コンカレント起動年月前のデータを対象とする
+--                  AND    xsehv.ship_to_customer_code = xca.customer_code                            -- 顧客【納品先】=顧客コード(顧客追加情報)
+--                 )                                               xsh                                -- 販売実績インラインビュー
+--                 ,xxcsm_sales_exp_lines_v                        xselv                              -- 販売実績明細テーブルビュー
+--                 ,xxcsm_tmp_cust_accounts                        xtca                               -- 顧客情報ワークテーブル（拠点のデータのみ）
+--                 ,xxcsm_commodity_group4_v                       xcg4v                              -- 商品群４ビュー
+--          WHERE   xsh.sales_exp_header_id = xselv.sales_exp_header_id                               -- 販売実績ヘッダIDの紐付け
+--          AND     xsh.sale_base_code      = xtca.account_number                                     -- 売上拠点コード=顧客コード
+--          AND     xtca.cust_account_id    = TO_NUMBER(gv_parallel_value_no)                         -- 拠点のIDにてパラレル
+--          AND     xsh.sale_base_code      = NVL(gv_location_cd,xsh.sale_base_code)                  -- 入力パラメータ拠点コードNULLの場合全件
+--          AND     xselv.item_code         = NVL(gv_item_no,xselv.item_code)                         -- 入力パラメータ品目コードNULLの場合全件
+--          AND     xcg4v.item_cd           =  xselv.item_code                                        -- 商品群４ビューを紐付く
+--          AND     xcg4v.group4_cd        <> gv_discount_cd                                          -- 値引用品目(DAAE)以外
+--          AND    NOT EXISTS (SELECT 'X'
+--                             FROM   fnd_lookup_values flv                                           --クイックコード値
+--                             WHERE  flv.lookup_type = cv_sp_item_cd                                 --処理対象外特殊品目
+--                             AND    flv.enabled_flag = cv_flg_y                                     --有効フラグ
+--                             AND    flv.language = cv_language_ja                                   --言語
+--                             AND    NVL(flv.start_date_active,cd_process_date)  <= cd_process_date  --開始日
+--                             AND    NVL(flv.end_date_active,cd_process_date)    >= cd_process_date  --終了日
+--                             AND    flv.lookup_code = xselv.item_code)                              --ルックアップコード=品目コード
+--          GROUP BY  xsh.sale_base_code                                                              -- 売上拠点コード
+--                   ,xselv.item_code                                                                 -- 品目コード
+--                   ,xsh.year_month                                                                  -- 納品年月
+--                   ,xsh.month                                                                       -- 納品月
+--          ) xse
+--   GROUP BY  xse.year_month                                                                         -- 年月
+--            ,xse.sale_base_code                                                                     -- 売上拠点コード
+--            ,xse.item_code                                                                          -- 品目コード
+--            ,xse.month                                                                              -- 月
+--   ORDER BY  xse.sale_base_code                                                                     -- 売上拠点コード
+--            ,xse.item_code                                                                          -- 品目コード
+--            ,xse.year_month;                                                                        -- 年月
+--//+DEL END 2009/08/03 0000479 T.Tsukino
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    SELECT  inn_v.year_month         year_month
+           ,inn_v.month              month
+           ,inn_v.sale_base_code     sale_base_code
+           ,inn_v.item_code          item_code
+           ,SUM(inn_v.qty)           month_sumary_qty
+           ,SUM(inn_v.pure_amount)   month_sumary_pure_amount
+           ,SUM(inn_v.trading_cost)  month_sumary_margin
+    FROM    (
+             --------------------------------------
+             -- 実績振替（売上拠点）
+             --------------------------------------
+             SELECT  /*+ LEADING(xtca) USE_NL(xca xsti) */
+                     TO_CHAR(xsti.selling_date,'YYYYMM')     year_month
+                    ,TO_CHAR(xsti.selling_date,'MM')         month
+                    ,xca.sale_base_code                      sale_base_code
+                    ,xsti.item_code                          item_code
+                    ,xsti.qty                                qty
+                    ,xsti.selling_amt                        pure_amount
+                    ,xsti.trading_cost                       trading_cost
+             FROM    xxcsm_tmp_cust_accounts  xtca
+                    ,xxcmm_cust_accounts      xca
+                    ,xxcok_selling_trns_info  xsti
+             WHERE   xca.sale_base_code              = xtca.account_number
+               AND   (
+                      (xca.rsv_sale_base_act_date IS NULL)
+                      OR
+                      (xca.rsv_sale_base_act_date <> gt_start_date)
+                     )
+               AND   xsti.cust_code                  = xca.customer_code
+               AND   xsti.selling_date  >= ADD_MONTHS(gt_start_date,-24)
+               AND   xsti.selling_date   < gt_start_date
+               AND   xsti.selling_date   < cd_process_date
+               AND   (
+                      (xsti.report_decision_flag   = cv_flg_on)
+                      OR
+                      (    (xsti.selling_date = (cd_process_date-1))
+                       AND (xsti.report_decision_flag     = cv_flg_off)
+                       AND (xsti.correction_flag          = cv_flg_off)
+                      )
+                     )
+               AND   (
+                      (gv_location_cd IS NULL)
+                      OR
+                      (    (gv_location_cd IS NOT NULL)
+                       AND (xca.sale_base_code = gv_location_cd)
+                      )
+                     )
+               AND   (
+                      (gv_item_no IS NULL)
+                      OR
+                      (
+                       (gv_item_no IS NOT NULL)
+                       AND
+                       (xsti.item_code = gv_item_no)
+                      )
+                     )
+               AND   EXISTS (
+                       -- 値引用品目以外
+                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+                               'X'
+                       FROM    ic_item_mst_b           iimb
+                              ,fnd_lookup_values_vl    flvv
+                              ,xxcmm_system_items_b    xsib
+                              ,gmi_item_categories     gic
+                              ,mtl_categories_b        mcb
+                              ,mtl_category_sets_b     mcsb
+                              ,fnd_id_flex_structures  fifs
+                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                       WHERE   iimb.item_no                           = xsti.item_code
+                         AND   flvv.lookup_type                       = cv_lookup_type_02
+                         AND   flvv.enabled_flag                      = cv_flg_y
+                         AND   cd_process_date                        BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                                          AND NVL(flvv.end_date_active,cd_process_date)
+                         AND   flvv.attribute3                        = cv_flg_y
+                         AND   xsib.item_code                         = iimb.item_no
+                         AND   xsib.item_status                       = flvv.lookup_code
+                         AND   gic.item_id                            = iimb.item_id
+                         AND   mcb.category_id                        = gic.category_id
+                         AND   mcb.enabled_flag                       = cv_flg_y
+                         AND   NVL(mcb.disable_date,cd_process_date) <= cd_process_date
+                         AND   mcb.segment1                          <> gv_discount_cd
+                         AND   mcsb.category_set_id                   = gic.category_set_id
+                         AND   mcsb.structure_id                      = mcb.structure_id
+                         AND   fifs.application_id                    = cn_inv_application_id
+                         AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
+                         AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
+                         AND   mcsb.structure_id                      = fifs.id_flex_num
+                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+                         AND   ROWNUM                                 = 1
+                     )
+               AND   NOT EXISTS (
+                       -- 特殊品目は対象外
+                       SELECT  'X'
+                       FROM    fnd_lookup_values_vl flvv
+                       WHERE   flvv.lookup_type          = cv_sp_item_cd
+                         AND   flvv.enabled_flag         = cv_flg_y
+                         AND   cd_process_date           BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                             AND NVL(flvv.end_date_active,cd_process_date)
+                         AND   flvv.lookup_code          = xsti.item_code
+                         AND   ROWNUM                    = 1
+                     )
+             --------------------------------------
+             -- 実績振替（予約売上拠点）
+             --------------------------------------
+             UNION ALL
+             SELECT  /*+ LEADING(xtca) USE_NL(xca xsti) */
+                     TO_CHAR(xsti.selling_date,'YYYYMM')     year_month
+                    ,TO_CHAR(xsti.selling_date,'MM')         month
+                    ,xca.rsv_sale_base_code                  sale_base_code
+                    ,xsti.item_code                          item_code
+                    ,xsti.qty                                qty
+                    ,xsti.selling_amt                        pure_amount
+                    ,xsti.trading_cost                       trading_cost
+             FROM    xxcsm_tmp_cust_accounts  xtca
+                    ,xxcmm_cust_accounts      xca
+                    ,xxcok_selling_trns_info  xsti
+             WHERE   xca.rsv_sale_base_code          = xtca.account_number
+               AND   xca.rsv_sale_base_act_date      = gt_start_date
+               AND   xsti.cust_code                  = xca.customer_code
+               AND   xsti.selling_date  >= ADD_MONTHS(gt_start_date,-24)
+               AND   xsti.selling_date   < gt_start_date
+               AND   xsti.selling_date   < cd_process_date
+               AND   (
+                      (xsti.report_decision_flag   = cv_flg_on)
+                      OR
+                      (    (xsti.selling_date = (cd_process_date-1))
+                       AND (xsti.report_decision_flag     = cv_flg_off)
+                       AND (xsti.correction_flag          = cv_flg_off)
+                      )
+                     )
+               AND   (
+                      (gv_location_cd IS NULL)
+                      OR
+                      (    (gv_location_cd IS NOT NULL)
+                       AND (xca.rsv_sale_base_code = gv_location_cd)
+                      )
+                     )
+               AND   (
+                      (gv_item_no IS NULL)
+                      OR
+                      (
+                       (gv_item_no IS NOT NULL)
+                       AND
+                       (xsti.item_code = gv_item_no)
+                      )
+                     )
+               AND   EXISTS (
+                       -- 値引用品目以外
+                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+                               'X'
+                       FROM    ic_item_mst_b           iimb
+                              ,fnd_lookup_values_vl    flvv
+                              ,xxcmm_system_items_b    xsib
+                              ,gmi_item_categories     gic
+                              ,mtl_categories_b        mcb
+                              ,mtl_category_sets_b     mcsb
+                              ,fnd_id_flex_structures  fifs
+                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                       WHERE   iimb.item_no                           = xsti.item_code
+                         AND   flvv.lookup_type                       = cv_lookup_type_02
+                         AND   flvv.enabled_flag                      = cv_flg_y
+                         AND   cd_process_date                        BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                                          AND NVL(flvv.end_date_active,cd_process_date)
+                         AND   flvv.attribute3                        = cv_flg_y
+                         AND   xsib.item_code                         = iimb.item_no
+                         AND   xsib.item_status                       = flvv.lookup_code
+                         AND   gic.item_id                            = iimb.item_id
+                         AND   mcb.category_id                        = gic.category_id
+                         AND   mcb.enabled_flag                       = cv_flg_y
+                         AND   NVL(mcb.disable_date,cd_process_date) <= cd_process_date
+                         AND   mcb.segment1                          <> gv_discount_cd
+                         AND   mcsb.category_set_id                   = gic.category_set_id
+                         AND   mcsb.structure_id                      = mcb.structure_id
+                         AND   fifs.application_id                    = cn_inv_application_id
+                         AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
+                         AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
+                         AND   mcsb.structure_id                      = fifs.id_flex_num
+                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+                         AND   ROWNUM                                 = 1
+                     )
+               AND   NOT EXISTS (
+                       -- 特殊品目は対象外
+                       SELECT  'X'
+                       FROM    fnd_lookup_values_vl flvv
+                       WHERE   flvv.lookup_type          = cv_sp_item_cd
+                         AND   flvv.enabled_flag         = cv_flg_y
+                         AND   cd_process_date           BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                             AND NVL(flvv.end_date_active,cd_process_date)
+                         AND   flvv.lookup_code          = xsti.item_code
+                         AND   ROWNUM                    = 1
+                     )
+             --------------------------------------
+             -- 販売実績（売上拠点）
+             --------------------------------------
+             UNION ALL
+             SELECT  /*+ LEADING(xtca) USE_NL(xca xseh xsel) */
+                     TO_CHAR(xseh.delivery_date,'YYYYMM')             year_month
+                    ,TO_CHAR(xseh.delivery_date,'MM')                 month
+                    ,xca.sale_base_code                               sale_base_code
+                    ,xsel.item_code                                   item_code
+                    ,xsel.standard_qty                                qty
+                    ,xsel.pure_amount                                 pure_amount
+                    ,(xsel.standard_qty * NVL(xsel.business_cost,0))  trading_cost
+             FROM    xxcsm_tmp_cust_accounts  xtca
+                    ,xxcmm_cust_accounts      xca
+                    ,xxcos_sales_exp_headers  xseh
+                    ,xxcos_sales_exp_lines    xsel
+             WHERE   xca.sale_base_code              = xtca.account_number
+               AND   (
+                      (xca.rsv_sale_base_act_date IS NULL)
+                      OR
+                      (xca.rsv_sale_base_act_date <> gt_start_date)
+                     )
+               AND   xseh.ship_to_customer_code       = xca.customer_code
+               AND   xseh.delivery_date  >= ADD_MONTHS(gt_start_date,-24)
+               AND   xseh.delivery_date   < gt_start_date
+               AND   xseh.delivery_date   < cd_process_date
+               AND   xsel.sales_exp_header_id         = xseh.sales_exp_header_id
+               AND   (
+                      (gv_location_cd IS NULL)
+                      OR
+                      (    (gv_location_cd IS NOT NULL)
+                       AND (xca.sale_base_code = gv_location_cd)
+                      )
+                     )
+               AND   (
+                      (gv_item_no IS NULL)
+                      OR
+                      (
+                       (gv_item_no IS NOT NULL)
+                       AND
+                       (xsel.item_code = gv_item_no)
+                      )
+                     )
+               AND   EXISTS (
+                       -- 値引用品目以外
+                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+                               'X'
+                       FROM    ic_item_mst_b           iimb
+                              ,fnd_lookup_values_vl    flvv
+                              ,xxcmm_system_items_b    xsib
+                              ,gmi_item_categories     gic
+                              ,mtl_categories_b        mcb
+                              ,mtl_category_sets_b     mcsb
+                              ,fnd_id_flex_structures  fifs
+                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                       WHERE   iimb.item_no                           = xsel.item_code
+                         AND   flvv.lookup_type                       = cv_lookup_type_02
+                         AND   flvv.enabled_flag                      = cv_flg_y
+                         AND   cd_process_date                        BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                                          AND NVL(flvv.end_date_active,cd_process_date)
+                         AND   flvv.attribute3                        = cv_flg_y
+                         AND   xsib.item_code                         = iimb.item_no
+                         AND   xsib.item_status                       = flvv.lookup_code
+                         AND   gic.item_id                            = iimb.item_id
+                         AND   mcb.category_id                        = gic.category_id
+                         AND   mcb.enabled_flag                       = cv_flg_y
+                         AND   NVL(mcb.disable_date,cd_process_date) <= cd_process_date
+                         AND   mcb.segment1                          <> gv_discount_cd
+                         AND   mcsb.category_set_id                   = gic.category_set_id
+                         AND   mcsb.structure_id                      = mcb.structure_id
+                         AND   fifs.application_id                    = cn_inv_application_id
+                         AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
+                         AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
+                         AND   mcsb.structure_id                      = fifs.id_flex_num
+                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+                         AND   ROWNUM                                 = 1
+                     )
+               AND   NOT EXISTS (
+                       -- 特殊品目は対象外
+                       SELECT  'X'
+                       FROM    fnd_lookup_values_vl flvv
+                       WHERE   flvv.lookup_type          = cv_sp_item_cd
+                         AND   flvv.enabled_flag         = cv_flg_y
+                         AND   cd_process_date           BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                             AND NVL(flvv.end_date_active,cd_process_date)
+                         AND   flvv.lookup_code          = xsel.item_code
+                         AND   ROWNUM                    = 1
+                     )
+             --------------------------------------
+             -- 販売実績（予約売上拠点）
+             --------------------------------------
+             UNION ALL
+             SELECT  /*+ LEADING(xtca) USE_NL(xca xseh xsel) */
+                     TO_CHAR(xseh.delivery_date,'YYYYMM')             year_month
+                    ,TO_CHAR(xseh.delivery_date,'MM')                 month
+                    ,xca.rsv_sale_base_code                           sale_base_code
+                    ,xsel.item_code                                   item_code
+                    ,xsel.standard_qty                                qty
+                    ,xsel.pure_amount                                 pure_amount
+                    ,(xsel.standard_qty * NVL(xsel.business_cost,0))  trading_cost
+             FROM    xxcsm_tmp_cust_accounts  xtca
+                    ,xxcmm_cust_accounts      xca
+                    ,xxcos_sales_exp_headers  xseh
+                    ,xxcos_sales_exp_lines    xsel
+             WHERE   xca.rsv_sale_base_code           = xtca.account_number
+               AND   xca.rsv_sale_base_act_date       = gt_start_date
+               AND   xseh.ship_to_customer_code       = xca.customer_code
+               AND   xseh.delivery_date  >= ADD_MONTHS(gt_start_date,-24)
+               AND   xseh.delivery_date   < gt_start_date
+               AND   xseh.delivery_date   < cd_process_date
+               AND   xsel.sales_exp_header_id         = xseh.sales_exp_header_id
+               AND   (
+                      (gv_location_cd IS NULL)
+                      OR
+                      (    (gv_location_cd IS NOT NULL)
+                       AND (xca.rsv_sale_base_code = gv_location_cd)
+                      )
+                     )
+               AND   (
+                      (gv_item_no IS NULL)
+                      OR
+                      (
+                       (gv_item_no IS NOT NULL)
+                       AND
+                       (xsel.item_code = gv_item_no)
+                      )
+                     )
+               AND   EXISTS (
+                       -- 値引用品目以外
+                       SELECT  /*+ LEADING(iimb) USE_NL(iimb gic mcb mcsb fifs) */
+                               'X'
+                       FROM    ic_item_mst_b           iimb
+                              ,fnd_lookup_values_vl    flvv
+                              ,xxcmm_system_items_b    xsib
+                              ,gmi_item_categories     gic
+                              ,mtl_categories_b        mcb
+                              ,mtl_category_sets_b     mcsb
+                              ,fnd_id_flex_structures  fifs
+                              ,xxcsm_item_group_1_nm_v   xig1v    --商品群1桁名称
+                       WHERE   iimb.item_no                           = xsel.item_code
+                         AND   flvv.lookup_type                       = cv_lookup_type_02
+                         AND   flvv.enabled_flag                      = cv_flg_y
+                         AND   cd_process_date                        BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                                          AND NVL(flvv.end_date_active,cd_process_date)
+                         AND   flvv.attribute3                        = cv_flg_y
+                         AND   xsib.item_code                         = iimb.item_no
+                         AND   xsib.item_status                       = flvv.lookup_code
+                         AND   gic.item_id                            = iimb.item_id
+                         AND   mcb.category_id                        = gic.category_id
+                         AND   mcb.enabled_flag                       = cv_flg_y
+                         AND   NVL(mcb.disable_date,cd_process_date) <= cd_process_date
+                         AND   mcb.segment1                          <> gv_discount_cd
+                         AND   mcsb.category_set_id                   = gic.category_set_id
+                         AND   mcsb.structure_id                      = mcb.structure_id
+                         AND   fifs.application_id                    = cn_inv_application_id
+                         AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
+                         AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
+                         AND   mcsb.structure_id                      = fifs.id_flex_num
+                         AND   mcb.segment1                           LIKE REPLACE(xig1v.item_group_cd,'*','_')
+                         AND   ROWNUM                                 = 1
+                     )
+               AND   NOT EXISTS (
+                       -- 特殊品目は対象外
+                       SELECT  'X'
+                       FROM    fnd_lookup_values_vl flvv
+                       WHERE   flvv.lookup_type          = cv_sp_item_cd
+                         AND   flvv.enabled_flag         = cv_flg_y
+                         AND   cd_process_date           BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                             AND NVL(flvv.end_date_active,cd_process_date)
+                         AND   flvv.lookup_code          = xsel.item_code
+                         AND   ROWNUM                    = 1
+                     )
+             ) inn_v
+    GROUP BY inn_v.year_month
+            ,inn_v.month
+            ,inn_v.sale_base_code
+            ,inn_v.item_code
+    ORDER BY inn_v.sale_base_code
+            ,inn_v.item_code
+            ,inn_v.year_month
+    ;
+--↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+--//+UPD END 2009/08/03 0000479 T.Tsukino
 --//+UPD END   2009/06/03 T1_1174 M.Ohtsuki
     --テーブル型を定義
     TYPE sales_result_type IS TABLE OF sales_result_cur%ROWTYPE INDEX BY BINARY_INTEGER;
@@ -1895,14 +2353,50 @@ AS
                                  it_item_no  xxcsm_item_plan_result.item_no%TYPE
                                  )
     IS
-      SELECT   xcg4v.group4_cd           group_cd                  --商品群コード(4桁)
-              ,xcg4v.now_business_cost   now_business_cost         --営業原価
-              ,iimb.item_no              opm_item_no               --OPM品目マスタ品目コード
-              ,iimb.attribute13          start_day                 --発売日
-      FROM     xxcsm_commodity_group4_v  xcg4v                     --商品群４ビュー
-              ,ic_item_mst_b             iimb                      --OPM品目マスタ
-      WHERE   xcg4v.item_cd(+) = iimb.item_no
-      AND     iimb.item_no = it_item_no                         --OPM品目マスタの品目コード紐付け
+--//+UPD START 2009/08/03 0000479 T.Tsukino
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+--      SELECT   xcg4v.group4_cd           group_cd                  --商品群コード(4桁)
+--              ,xcg4v.now_business_cost   now_business_cost         --営業原価
+--              ,iimb.item_no              opm_item_no               --OPM品目マスタ品目コード
+--              ,iimb.attribute13          start_day                 --発売日
+--      FROM     xxcsm_commodity_group4_v  xcg4v                     --商品群４ビュー
+--              ,ic_item_mst_b             iimb                      --OPM品目マスタ
+--      WHERE   xcg4v.item_cd(+) = iimb.item_no
+--      AND     iimb.item_no = it_item_no                         --OPM品目マスタの品目コード紐付け
+--↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+--//+DEL END 2009/08/03 0000479 T.Tsukino
+      SELECT  /*+ LEADING(iimb) USE_NL(flvv xsib gic mcb mcsb fifs) */
+              mcb.segment1                 group_cd
+             ,NVL(iimb.attribute8,0)       now_business_cost
+             ,iimb.item_no                 opm_item_no
+             ,iimb.attribute13             start_day
+      FROM    ic_item_mst_b           iimb
+             ,fnd_lookup_values_vl    flvv
+             ,xxcmm_system_items_b    xsib
+             ,gmi_item_categories     gic
+             ,mtl_categories_b        mcb
+             ,mtl_category_sets_b     mcsb
+             ,fnd_id_flex_structures  fifs
+      WHERE   iimb.item_no                           = it_item_no
+        AND   flvv.lookup_type                       = cv_lookup_type_02
+        AND   flvv.enabled_flag                      = cv_flg_y
+        AND   cd_process_date                        BETWEEN NVL(flvv.start_date_active,cd_process_date)
+                                                         AND NVL(flvv.end_date_active,cd_process_date)
+        AND   flvv.attribute3                        = cv_flg_y
+        AND   xsib.item_code                         = iimb.item_no
+        AND   xsib.item_status                       = flvv.lookup_code
+        AND   gic.item_id                            = iimb.item_id
+        AND   mcb.category_id                        = gic.category_id
+        AND   mcb.enabled_flag                       = cv_flg_y
+        AND   NVL(mcb.disable_date,cd_process_date) <= cd_process_date
+        AND   mcsb.category_set_id                   = gic.category_set_id
+        AND   mcsb.structure_id                      = mcb.structure_id
+        AND   fifs.application_id                    = cn_inv_application_id
+        AND   fifs.id_flex_code                      = cv_id_flex_code_mcat
+        AND   fifs.id_flex_structure_code            = cv_id_flex_str_code_sgum
+        AND   mcsb.structure_id                      = fifs.id_flex_num
+--//+UPD END 2009/08/03 0000479 T.Tsukino
     ;
     group4v_start_date_cur_rec group4v_start_date_cur%ROWTYPE;
 --
@@ -2426,7 +2920,9 @@ AS
     errbuf                   OUT NOCOPY VARCHAR2,      -- エラー・メッセージ
     retcode                  OUT NOCOPY VARCHAR2,      -- リターン・コード
     iv_parallel_value_no     IN  VARCHAR2,             -- パラレル番号
-    iv_parallel_cnt          IN  VARCHAR2,             -- パラレル数
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--    iv_parallel_cnt          IN  VARCHAR2,             -- パラレル数
+--//+DEL END 2009/08/03 0000479 T.Tsukino
     iv_location_cd           IN  VARCHAR2,             -- 拠点コード
     iv_item_no               IN  VARCHAR2              -- 品目コード
       )
@@ -2482,7 +2978,9 @@ AS
 --
     --入力パラメータ
     gv_parallel_value_no := iv_parallel_value_no;       --パラレル番号
-    gv_parallel_cnt      := iv_parallel_cnt;            --パラレル数
+--//+DEL START 2009/08/03 0000479 T.Tsukino
+--    gv_parallel_cnt      := iv_parallel_cnt;            --パラレル数
+--//+DEL END 2009/08/03 0000479 T.Tsukino
     gv_location_cd       := iv_location_cd;             --拠点コード
     gv_item_no           := iv_item_no;                 --品目コード
     -- ===============================================
