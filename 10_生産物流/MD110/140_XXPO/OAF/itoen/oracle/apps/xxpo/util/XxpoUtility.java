@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.18
+* バージョン : 1.20
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -27,6 +27,7 @@
 * 2008-12-05 1.17 伊藤ひとみ   本番障害#481対応
 * 2008-12-06 1.18 吉元強樹     本番障害#788対応
 * 2008-12-24 1.19 二瓶大輔     本番障害#743対応
+* 2008-12-26 1.20 伊藤ひとみ   本番障害#809対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -48,7 +49,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.17
+ * @version 1.20
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -1527,6 +1528,9 @@ public class XxpoUtility
     sb.append("  lr_qty_in.reason_code    := FND_PROFILE.VALUE('XXPO_CTPTY_INV_RCV_RSN'); " ); // 事由コード
     sb.append("  lr_qty_in.user_name      := FND_GLOBAL.USER_NAME; "                        ); // ユーザー名
     sb.append("  lr_qty_in.attribute1     := TO_CHAR(:13); "                                ); // ソース文書ID
+// 2008-12-26 H.Itou Add Start 発注(相手先在庫仕入)と区別するため、外注出来高の場合はDFF4にYを立てる。
+    sb.append("  lr_qty_in.attribute4     := 'Y'; "                                         );
+// 2008-12-26 H.Itou Add End
                  // API:完了在庫トランザクション実行 
     sb.append("  GMIPAPI.INVENTORY_POSTING(  "                                              );
     sb.append("     p_api_version      => ln_api_version_number "                           ); // IN:APIのバージョン番号
