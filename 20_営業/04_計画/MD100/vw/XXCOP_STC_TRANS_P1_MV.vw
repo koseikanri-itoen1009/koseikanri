@@ -3,21 +3,25 @@
  *
  * View Name       : XXCOP_STC_TRANS_P1_MV
  * Description     : 計画_入出庫情報マテリアライズドビュー
- * Version         : 1.0
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009-03-04    1.0   SCS.Goto         新規作成(2009/01/23生産入出庫情報ビュー)
- *  2009-03-25     1.1   S.Kayahara       1408行目のセミコロン削除
+ *  2009-03-25    1.1   S.Kayahara       1408行目のセミコロン削除
+ *  2009-06-08    1.2   SCS.Goto         T1_1365対応
  *
  ************************************************************************/
 CREATE MATERIALIZED VIEW APPS.XXCOP_STC_TRANS_P1_MV
-  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING
-  STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
-  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
-  TABLESPACE "APPS_TS_TX_DATA"
+--20090608_Ver1.2_T1_1365_SCS.Goto_MOD_START
+--ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 NOCOMPRESS LOGGING
+--STORAGE(INITIAL 131072 NEXT 131072 MINEXTENTS 1 MAXEXTENTS 2147483645
+--PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1 BUFFER_POOL DEFAULT)
+--TABLESPACE "APPS_TS_TX_DATA"
+  TABLESPACE "XXDATA2"
+--20090608_Ver1.2_T1_1365_SCS.Goto_MOD_END
   BUILD IMMEDIATE
   USING INDEX
   REFRESH COMPLETE ON DEMAND START WITH SYSDATE+0 NEXT SYSDATE + 1/24/60*10
@@ -252,7 +256,10 @@ FROM
    ,xrpm.new_div_invent       reason_code
    ,xrpm.meaning              reason_code_name
    ,xmrih.mov_num             voucher_no
-   ,mil2.description          deliver_to_name
+--20090608_Ver1.2_T1_1365_SCS.Goto_MOD_START
+-- ,mil2.description          deliver_to_name
+   ,mil2.description          ukebaraisaki_name
+--20090608_Ver1.2_T1_1365_SCS.Goto_MOD_END
    ,NULL                      deliver_to_name
    ,xmld.actual_quantity      stock_quantity
    ,0                         leaving_quantity
@@ -311,7 +318,10 @@ FROM
    ,xrpm.new_div_invent       reason_code
    ,xrpm.meaning              reason_code_name
    ,xmrih.mov_num             voucher_no
-   ,mil2.description          deliver_to_name
+--20090608_Ver1.2_T1_1365_SCS.Goto_MOD_START
+-- ,mil2.description          deliver_to_name
+   ,mil2.description          ukebaraisaki_name
+--20090608_Ver1.2_T1_1365_SCS.Goto_MOD_END
    ,NULL                      deliver_to_name
    ,xmld.actual_quantity      stock_quantity
    ,0                         leaving_quantity
@@ -852,318 +862,320 @@ FROM
     AND hcsa.party_id                       = xp.party_id
     AND xp.start_date_active               <= TRUNC(SYSDATE)
     AND xp.end_date_active                 >= TRUNC(SYSDATE)
-  UNION ALL
-  -- 有償出荷予定
-  SELECT
-    iwm.attribute1            ownership_code
-   ,iwm.whse_code             whse_code
-   ,mil.organization_id       organization_id
-   ,xmld.item_code            item_no
-   ,mil.inventory_location_id inventory_location_id
-   ,xmld.item_id              item_id
-   ,ilm.lot_id                lot_id
-   ,ilm.lot_no                lot_no
-   ,ilm.attribute1            manufacture_date
-   ,ilm.attribute2            uniqe_sign
-   ,ilm.attribute3            expiration_date
-   ,NVL(TRUNC(xoha.schedule_arrival_date)
-       ,TRUNC(xoha.schedule_ship_date)) arrival_date
-   ,TRUNC(xoha.schedule_ship_date)      leaving_date
-   ,'1'                       status
-   ,xrpm.new_div_invent       reason_code
-   ,xrpm.meaning              reason_code_name
-   ,xoha.request_no           voucher_no
-   ,xvsa.vendor_site_name     ukebaraisaki_name
-   ,NULL                      vendor_site_name
-   ,0                         stock_quantity
-   ,CASE
-      WHEN ( xrpm.new_div_invent = '104' AND otta.order_category_code = 'RETURN' )
-    THEN
-      ABS(xmld.actual_quantity) * -1
-    ELSE
-      xmld.actual_quantity
-    END                       leaving_quantity
-  FROM
-    xxwsh_order_headers_all   xoha
-   ,xxwsh_order_lines_all     xola
-   ,xxinv_mov_lot_details     xmld
-   ,oe_transaction_types_all  otta
-   ,ic_whse_mst               iwm
-   ,mtl_item_locations        mil
-   ,ic_item_mst_b             iimb
-   ,mtl_system_items_b        msib
-   ,ic_item_mst_b             iimb2
-   ,mtl_system_items_b        msib2
-   ,ic_lots_mst               ilm
-   ,gmi_item_categories       gic
-   ,mtl_categories_b          mcb
-   ,gmi_item_categories       gic2
-   ,mtl_categories_b          mcb2
-   ,xxcmn_vendor_sites_all    xvsa
-   ,(
-    SELECT
-      xrpm.new_div_invent
-     ,flv.meaning
-     ,xrpm.shipment_provision_div
-     ,xrpm.ship_prov_rcv_pay_category
-     ,xrpm.item_div_origin
-     ,xrpm.item_div_ahead
-    FROM
-      fnd_lookup_values flv
-     ,xxcmn_rcv_pay_mst xrpm
-    WHERE flv.lookup_type     = 'XXCMN_NEW_DIVISION'
-      AND flv.language        = 'JA'
-      AND flv.lookup_code     = xrpm.new_div_invent
-      AND xrpm.doc_type       = 'OMSO'
-      AND xrpm.use_div_invent = 'Y'
-      AND xrpm.shipment_provision_div = '2'
-      AND xrpm.item_div_origin        = '5'
-      AND xrpm.item_div_ahead         = '5'
-      AND xrpm.prod_div_origin       IS NOT NULL
-      AND xrpm.prod_div_ahead        IS NOT NULL
-    ) xrpm
-  WHERE xoha.order_header_id                = xola.order_header_id
-    AND xoha.deliver_from_id                = mil.inventory_location_id
-    AND iwm.mtl_organization_id             = mil.organization_id
-    AND xola.shipping_inventory_item_id    <> xola.request_item_id
-    AND xola.request_item_id                = msib.inventory_item_id
-    AND iimb.item_no                        = msib.segment1
-    AND msib.organization_id                = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-    AND xola.shipping_inventory_item_id     = msib2.inventory_item_id
-    AND iimb2.item_no                       = msib2.segment1
-    AND msib2.organization_id               = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-    AND xmld.mov_line_id                    = xola.order_line_id
-    AND xmld.document_type_code             = '30'
-    AND xmld.record_type_code               = '10'
-    AND ilm.item_id                         = iimb2.item_id
-    AND xmld.lot_id                         = ilm.lot_id
-    AND xoha.req_status                     = '07'
-    AND NVL(xoha.actual_confirm_class, 'N') = 'N'
-    AND xoha.latest_external_flag           = 'Y'
-    AND xola.delete_flag                    = 'N'
-    AND xoha.order_type_id                  = otta.transaction_type_id
-    AND xrpm.shipment_provision_div         = otta.attribute1
-    AND gic.item_id                         = iimb.item_id
-    AND gic.category_id                     = mcb.category_id
-    AND gic.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
-    AND mcb.segment1                        = '5'
-    AND gic2.item_id                        = iimb2.item_id
-    AND gic2.category_id                    = mcb2.category_id
-    AND gic2.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
-    AND mcb2.segment1                       = '5'
-    AND ( xrpm.ship_prov_rcv_pay_category   = otta.attribute11
-      OR  xrpm.ship_prov_rcv_pay_category  IS NULL )
-    AND xrpm.item_div_origin                = mcb2.segment1
-    AND xrpm.item_div_ahead                 = mcb.segment1
-    AND xvsa.vendor_site_id                 = xoha.vendor_site_id
-    AND xvsa.start_date_active             <= TRUNC(SYSDATE)
-    AND xvsa.end_date_active               >= TRUNC(SYSDATE)
-  UNION ALL
-  SELECT
-    iwm.attribute1            ownership_code
-   ,iwm.whse_code             whse_code
-   ,mil.organization_id       organization_id
-   ,xmld.item_code            item_no
-   ,mil.inventory_location_id inventory_location_id
-   ,xmld.item_id              item_id
-   ,ilm.lot_id                lot_id
-   ,ilm.lot_no                lot_no
-   ,ilm.attribute1            manufacture_date
-   ,ilm.attribute2            uniqe_sign
-   ,ilm.attribute3            expiration_date
-   ,NVL(TRUNC(xoha.schedule_arrival_date)
-       ,TRUNC(xoha.schedule_ship_date)) arrival_date
-   ,TRUNC(xoha.schedule_ship_date)      leaving_date
-   ,'1'                       status
-   ,xrpm.new_div_invent       reason_code
-   ,xrpm.meaning              reason_code_name
-   ,xoha.request_no           voucher_no
-   ,xvsa.vendor_site_name     ukebaraisaki_name
-   ,NULL                      vendor_site_name
-   ,0                         stock_quantity
-   ,CASE
-      WHEN ( xrpm.new_div_invent = '104' AND otta.order_category_code = 'RETURN' )
-    THEN
-      ABS(xmld.actual_quantity) * -1
-    ELSE
-      xmld.actual_quantity
-    END                       leaving_quantity
-  FROM
-    xxwsh_order_headers_all   xoha
-   ,xxwsh_order_lines_all     xola
-   ,xxinv_mov_lot_details     xmld
-   ,oe_transaction_types_all  otta
-   ,ic_whse_mst               iwm
-   ,mtl_item_locations        mil
-   ,ic_item_mst_b             iimb
-   ,mtl_system_items_b        msib
-   ,ic_item_mst_b             iimb2
-   ,mtl_system_items_b        msib2
-   ,ic_lots_mst               ilm
-   ,gmi_item_categories       gic
-   ,mtl_categories_b          mcb
-   ,gmi_item_categories       gic2
-   ,mtl_categories_b          mcb2
-   ,xxcmn_vendor_sites_all    xvsa
-   ,(
-    SELECT
-      xrpm.new_div_invent
-     ,flv.meaning
-     ,xrpm.shipment_provision_div
-     ,xrpm.ship_prov_rcv_pay_category
-     ,xrpm.item_div_origin
-     ,DECODE(xrpm.item_div_ahead, '5', '5', 'Dummy') item_div_ahead
-    FROM
-      fnd_lookup_values flv
-     ,xxcmn_rcv_pay_mst xrpm
-    WHERE flv.lookup_type     = 'XXCMN_NEW_DIVISION'
-      AND flv.language        = 'JA'
-      AND flv.lookup_code     = xrpm.new_div_invent
-      AND xrpm.doc_type       = 'OMSO'
-      AND xrpm.use_div_invent = 'Y'
-      AND xrpm.shipment_provision_div = '2'
-      AND xrpm.item_div_origin        = '5'
-      AND xrpm.prod_div_origin       IS NULL
-      AND xrpm.prod_div_ahead        IS NULL
-    ) xrpm
-  WHERE xoha.order_header_id                = xola.order_header_id
-    AND xoha.deliver_from_id                = mil.inventory_location_id
-    AND iwm.mtl_organization_id             = mil.organization_id
-    AND xola.shipping_inventory_item_id    <> xola.request_item_id
-    AND xola.request_item_id                = msib.inventory_item_id
-    AND iimb.item_no                        = msib.segment1
-    AND msib.organization_id                = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-    AND xola.shipping_inventory_item_id     = msib2.inventory_item_id
-    AND iimb2.item_no                       = msib2.segment1
-    AND msib2.organization_id               = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-    AND xmld.mov_line_id                    = xola.order_line_id
-    AND xmld.document_type_code             = '30'
-    AND xmld.record_type_code               = '10'
-    AND ilm.item_id                         = iimb2.item_id
-    AND xmld.lot_id                         = ilm.lot_id
-    AND xoha.req_status                     = '07'
-    AND NVL(xoha.actual_confirm_class, 'N') = 'N'
-    AND xoha.latest_external_flag           = 'Y'
-    AND xola.delete_flag                    = 'N'
-    AND xoha.order_type_id                  = otta.transaction_type_id
-    AND xrpm.shipment_provision_div         = otta.attribute1
-    AND gic.item_id                         = iimb.item_id
-    AND gic.category_id                     = mcb.category_id
-    AND gic.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
-    AND mcb.segment1                        = '5'
-    AND gic2.item_id                        = iimb2.item_id
-    AND gic2.category_id                    = mcb2.category_id
-    AND gic2.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
-    AND xrpm.item_div_origin                = DECODE(mcb2.segment1, '5', '5', 'Dummy')
-    AND xrpm.item_div_ahead                 = mcb.segment1
-    AND ( xrpm.ship_prov_rcv_pay_category   = otta.attribute11
-      OR  xrpm.ship_prov_rcv_pay_category   IS NULL )
-    AND xvsa.vendor_site_id                 = xoha.vendor_site_id
-    AND xvsa.start_date_active             <= TRUNC(SYSDATE)
-    AND xvsa.end_date_active               >= TRUNC(SYSDATE)
-  UNION ALL
-  SELECT
-    iwm.attribute1            ownership_code
-   ,iwm.whse_code             whse_code
-   ,mil.organization_id       organization_id
-   ,xmld.item_code            item_no
-   ,mil.inventory_location_id inventory_location_id
-   ,xmld.item_id              item_id
-   ,ilm.lot_id                lot_id
-   ,ilm.lot_no                lot_no
-   ,ilm.attribute1            manufacture_date
-   ,ilm.attribute2            uniqe_sign
-   ,ilm.attribute3            expiration_date
-   ,NVL(TRUNC(xoha.schedule_arrival_date)
-       ,TRUNC(xoha.schedule_ship_date)) arrival_date
-   ,TRUNC(xoha.schedule_ship_date)      leaving_date
-   ,'1'                       status
-   ,xrpm.new_div_invent       reason_code
-   ,xrpm.meaning              reason_code_name
-   ,xoha.request_no           voucher_no
-   ,xvsa.vendor_site_name     ukebaraisaki_name
-   ,NULL                      vendor_site_name
-   ,0                         stock_quantity
-   ,CASE
-      WHEN ( xrpm.new_div_invent = '104' AND otta.order_category_code = 'RETURN' )
-    THEN
-      ABS(xmld.actual_quantity) * -1
-    ELSE
-      xmld.actual_quantity
-    END                       leaving_quantity
-  FROM
-    xxwsh_order_headers_all   xoha
-   ,xxwsh_order_lines_all     xola
-   ,xxinv_mov_lot_details     xmld
-   ,oe_transaction_types_all  otta
-   ,ic_whse_mst               iwm
-   ,mtl_item_locations        mil
-   ,ic_item_mst_b             iimb
-   ,mtl_system_items_b        msib
-   ,ic_item_mst_b             iimb2
-   ,mtl_system_items_b        msib2
-   ,ic_lots_mst               ilm
-   ,gmi_item_categories       gic
-   ,mtl_categories_b          mcb
-   ,gmi_item_categories       gic2
-   ,mtl_categories_b          mcb2
-   ,xxcmn_vendor_sites_all    xvsa
-   ,(
-    SELECT
-      xrpm.new_div_invent
-     ,flv.meaning
-     ,xrpm.shipment_provision_div
-     ,xrpm.ship_prov_rcv_pay_category
-     ,xrpm.item_div_origin
-     ,DECODE(xrpm.item_div_ahead, '5', '5', 'Dummy') item_div_ahead
-    FROM
-      fnd_lookup_values flv
-     ,xxcmn_rcv_pay_mst xrpm
-    WHERE flv.lookup_type     = 'XXCMN_NEW_DIVISION'
-      AND flv.language        = 'JA'
-      AND flv.lookup_code     = xrpm.new_div_invent
-      AND xrpm.doc_type       = 'OMSO'
-      AND xrpm.use_div_invent = 'Y'
-      AND xrpm.shipment_provision_div = '2'
-      AND xrpm.item_div_origin        = '5'
-      AND xrpm.prod_div_origin       IS NULL
-      AND xrpm.prod_div_ahead        IS NULL
-    ) xrpm
-  WHERE xoha.order_header_id                = xola.order_header_id
-    AND xoha.deliver_from_id                = mil.inventory_location_id
-    AND iwm.mtl_organization_id             = mil.organization_id
-    AND xola.shipping_inventory_item_id     = xola.request_item_id
-    AND xola.request_item_id                = msib.inventory_item_id
-    AND iimb.item_no                        = msib.segment1
-    AND msib.organization_id                = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-    AND xola.shipping_inventory_item_id     = msib2.inventory_item_id
-    AND iimb2.item_no                       = msib2.segment1
-    AND msib2.organization_id               = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
-    AND xmld.mov_line_id                    = xola.order_line_id
-    AND xmld.document_type_code             = '30'
-    AND xmld.record_type_code               = '10'
-    AND ilm.item_id                         = iimb2.item_id
-    AND xmld.lot_id                         = ilm.lot_id
-    AND xoha.req_status                     = '07'
-    AND NVL(xoha.actual_confirm_class, 'N') = 'N'
-    AND xoha.latest_external_flag           = 'Y'
-    AND xola.delete_flag                    = 'N'
-    AND xoha.order_type_id                  = otta.transaction_type_id
-    AND xrpm.shipment_provision_div         = otta.attribute1
-    AND gic.item_id                         = iimb.item_id
-    AND gic.category_id                     = mcb.category_id
-    AND gic.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
-    AND mcb.segment1                        = '5'
-    AND gic2.item_id                        = iimb2.item_id
-    AND gic2.category_id                    = mcb2.category_id
-    AND gic2.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
-    AND ( xrpm.ship_prov_rcv_pay_category   = otta.attribute11
-      OR  xrpm.ship_prov_rcv_pay_category  IS NULL )
-    AND xrpm.item_div_origin                = DECODE(mcb2.segment1, '5', '5', 'Dummy')
-    AND xrpm.item_div_ahead                 = mcb.segment1
-    AND xvsa.vendor_site_id                 = xoha.vendor_site_id
-    AND xvsa.start_date_active             <= TRUNC(SYSDATE)
-    AND xvsa.end_date_active               >= TRUNC(SYSDATE)
+--20090608_Ver1.2_T1_1365_SCS.Goto_DEL_START
+--UNION ALL
+---- 有償出荷予定
+--SELECT
+--  iwm.attribute1            ownership_code
+-- ,iwm.whse_code             whse_code
+-- ,mil.organization_id       organization_id
+-- ,xmld.item_code            item_no
+-- ,mil.inventory_location_id inventory_location_id
+-- ,xmld.item_id              item_id
+-- ,ilm.lot_id                lot_id
+-- ,ilm.lot_no                lot_no
+-- ,ilm.attribute1            manufacture_date
+-- ,ilm.attribute2            uniqe_sign
+-- ,ilm.attribute3            expiration_date
+-- ,NVL(TRUNC(xoha.schedule_arrival_date)
+--     ,TRUNC(xoha.schedule_ship_date)) arrival_date
+-- ,TRUNC(xoha.schedule_ship_date)      leaving_date
+-- ,'1'                       status
+-- ,xrpm.new_div_invent       reason_code
+-- ,xrpm.meaning              reason_code_name
+-- ,xoha.request_no           voucher_no
+-- ,xvsa.vendor_site_name     ukebaraisaki_name
+-- ,NULL                      vendor_site_name
+-- ,0                         stock_quantity
+-- ,CASE
+--    WHEN ( xrpm.new_div_invent = '104' AND otta.order_category_code = 'RETURN' )
+--  THEN
+--    ABS(xmld.actual_quantity) * -1
+--  ELSE
+--    xmld.actual_quantity
+--  END                       leaving_quantity
+--FROM
+--  xxwsh_order_headers_all   xoha
+-- ,xxwsh_order_lines_all     xola
+-- ,xxinv_mov_lot_details     xmld
+-- ,oe_transaction_types_all  otta
+-- ,ic_whse_mst               iwm
+-- ,mtl_item_locations        mil
+-- ,ic_item_mst_b             iimb
+-- ,mtl_system_items_b        msib
+-- ,ic_item_mst_b             iimb2
+-- ,mtl_system_items_b        msib2
+-- ,ic_lots_mst               ilm
+-- ,gmi_item_categories       gic
+-- ,mtl_categories_b          mcb
+-- ,gmi_item_categories       gic2
+-- ,mtl_categories_b          mcb2
+-- ,xxcmn_vendor_sites_all    xvsa
+-- ,(
+--  SELECT
+--    xrpm.new_div_invent
+--   ,flv.meaning
+--   ,xrpm.shipment_provision_div
+--   ,xrpm.ship_prov_rcv_pay_category
+--   ,xrpm.item_div_origin
+--   ,xrpm.item_div_ahead
+--  FROM
+--    fnd_lookup_values flv
+--   ,xxcmn_rcv_pay_mst xrpm
+--  WHERE flv.lookup_type     = 'XXCMN_NEW_DIVISION'
+--    AND flv.language        = 'JA'
+--    AND flv.lookup_code     = xrpm.new_div_invent
+--    AND xrpm.doc_type       = 'OMSO'
+--    AND xrpm.use_div_invent = 'Y'
+--    AND xrpm.shipment_provision_div = '2'
+--    AND xrpm.item_div_origin        = '5'
+--    AND xrpm.item_div_ahead         = '5'
+--    AND xrpm.prod_div_origin       IS NOT NULL
+--    AND xrpm.prod_div_ahead        IS NOT NULL
+--  ) xrpm
+--WHERE xoha.order_header_id                = xola.order_header_id
+--  AND xoha.deliver_from_id                = mil.inventory_location_id
+--  AND iwm.mtl_organization_id             = mil.organization_id
+--  AND xola.shipping_inventory_item_id    <> xola.request_item_id
+--  AND xola.request_item_id                = msib.inventory_item_id
+--  AND iimb.item_no                        = msib.segment1
+--  AND msib.organization_id                = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--  AND xola.shipping_inventory_item_id     = msib2.inventory_item_id
+--  AND iimb2.item_no                       = msib2.segment1
+--  AND msib2.organization_id               = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--  AND xmld.mov_line_id                    = xola.order_line_id
+--  AND xmld.document_type_code             = '30'
+--  AND xmld.record_type_code               = '10'
+--  AND ilm.item_id                         = iimb2.item_id
+--  AND xmld.lot_id                         = ilm.lot_id
+--  AND xoha.req_status                     = '07'
+--  AND NVL(xoha.actual_confirm_class, 'N') = 'N'
+--  AND xoha.latest_external_flag           = 'Y'
+--  AND xola.delete_flag                    = 'N'
+--  AND xoha.order_type_id                  = otta.transaction_type_id
+--  AND xrpm.shipment_provision_div         = otta.attribute1
+--  AND gic.item_id                         = iimb.item_id
+--  AND gic.category_id                     = mcb.category_id
+--  AND gic.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+--  AND mcb.segment1                        = '5'
+--  AND gic2.item_id                        = iimb2.item_id
+--  AND gic2.category_id                    = mcb2.category_id
+--  AND gic2.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+--  AND mcb2.segment1                       = '5'
+--  AND ( xrpm.ship_prov_rcv_pay_category   = otta.attribute11
+--    OR  xrpm.ship_prov_rcv_pay_category  IS NULL )
+--  AND xrpm.item_div_origin                = mcb2.segment1
+--  AND xrpm.item_div_ahead                 = mcb.segment1
+--  AND xvsa.vendor_site_id                 = xoha.vendor_site_id
+--  AND xvsa.start_date_active             <= TRUNC(SYSDATE)
+--  AND xvsa.end_date_active               >= TRUNC(SYSDATE)
+--UNION ALL
+--SELECT
+--  iwm.attribute1            ownership_code
+-- ,iwm.whse_code             whse_code
+-- ,mil.organization_id       organization_id
+-- ,xmld.item_code            item_no
+-- ,mil.inventory_location_id inventory_location_id
+-- ,xmld.item_id              item_id
+-- ,ilm.lot_id                lot_id
+-- ,ilm.lot_no                lot_no
+-- ,ilm.attribute1            manufacture_date
+-- ,ilm.attribute2            uniqe_sign
+-- ,ilm.attribute3            expiration_date
+-- ,NVL(TRUNC(xoha.schedule_arrival_date)
+--     ,TRUNC(xoha.schedule_ship_date)) arrival_date
+-- ,TRUNC(xoha.schedule_ship_date)      leaving_date
+-- ,'1'                       status
+-- ,xrpm.new_div_invent       reason_code
+-- ,xrpm.meaning              reason_code_name
+-- ,xoha.request_no           voucher_no
+-- ,xvsa.vendor_site_name     ukebaraisaki_name
+-- ,NULL                      vendor_site_name
+-- ,0                         stock_quantity
+-- ,CASE
+--    WHEN ( xrpm.new_div_invent = '104' AND otta.order_category_code = 'RETURN' )
+--  THEN
+--    ABS(xmld.actual_quantity) * -1
+--  ELSE
+--    xmld.actual_quantity
+--  END                       leaving_quantity
+--FROM
+--  xxwsh_order_headers_all   xoha
+-- ,xxwsh_order_lines_all     xola
+-- ,xxinv_mov_lot_details     xmld
+-- ,oe_transaction_types_all  otta
+-- ,ic_whse_mst               iwm
+-- ,mtl_item_locations        mil
+-- ,ic_item_mst_b             iimb
+-- ,mtl_system_items_b        msib
+-- ,ic_item_mst_b             iimb2
+-- ,mtl_system_items_b        msib2
+-- ,ic_lots_mst               ilm
+-- ,gmi_item_categories       gic
+-- ,mtl_categories_b          mcb
+-- ,gmi_item_categories       gic2
+-- ,mtl_categories_b          mcb2
+-- ,xxcmn_vendor_sites_all    xvsa
+-- ,(
+--  SELECT
+--    xrpm.new_div_invent
+--   ,flv.meaning
+--   ,xrpm.shipment_provision_div
+--   ,xrpm.ship_prov_rcv_pay_category
+--   ,xrpm.item_div_origin
+--   ,DECODE(xrpm.item_div_ahead, '5', '5', 'Dummy') item_div_ahead
+--  FROM
+--    fnd_lookup_values flv
+--   ,xxcmn_rcv_pay_mst xrpm
+--  WHERE flv.lookup_type     = 'XXCMN_NEW_DIVISION'
+--    AND flv.language        = 'JA'
+--    AND flv.lookup_code     = xrpm.new_div_invent
+--    AND xrpm.doc_type       = 'OMSO'
+--    AND xrpm.use_div_invent = 'Y'
+--    AND xrpm.shipment_provision_div = '2'
+--    AND xrpm.item_div_origin        = '5'
+--    AND xrpm.prod_div_origin       IS NULL
+--    AND xrpm.prod_div_ahead        IS NULL
+--  ) xrpm
+--WHERE xoha.order_header_id                = xola.order_header_id
+--  AND xoha.deliver_from_id                = mil.inventory_location_id
+--  AND iwm.mtl_organization_id             = mil.organization_id
+--  AND xola.shipping_inventory_item_id    <> xola.request_item_id
+--  AND xola.request_item_id                = msib.inventory_item_id
+--  AND iimb.item_no                        = msib.segment1
+--  AND msib.organization_id                = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--  AND xola.shipping_inventory_item_id     = msib2.inventory_item_id
+--  AND iimb2.item_no                       = msib2.segment1
+--  AND msib2.organization_id               = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--  AND xmld.mov_line_id                    = xola.order_line_id
+--  AND xmld.document_type_code             = '30'
+--  AND xmld.record_type_code               = '10'
+--  AND ilm.item_id                         = iimb2.item_id
+--  AND xmld.lot_id                         = ilm.lot_id
+--  AND xoha.req_status                     = '07'
+--  AND NVL(xoha.actual_confirm_class, 'N') = 'N'
+--  AND xoha.latest_external_flag           = 'Y'
+--  AND xola.delete_flag                    = 'N'
+--  AND xoha.order_type_id                  = otta.transaction_type_id
+--  AND xrpm.shipment_provision_div         = otta.attribute1
+--  AND gic.item_id                         = iimb.item_id
+--  AND gic.category_id                     = mcb.category_id
+--  AND gic.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+--  AND mcb.segment1                        = '5'
+--  AND gic2.item_id                        = iimb2.item_id
+--  AND gic2.category_id                    = mcb2.category_id
+--  AND gic2.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+--  AND xrpm.item_div_origin                = DECODE(mcb2.segment1, '5', '5', 'Dummy')
+--  AND xrpm.item_div_ahead                 = mcb.segment1
+--  AND ( xrpm.ship_prov_rcv_pay_category   = otta.attribute11
+--    OR  xrpm.ship_prov_rcv_pay_category   IS NULL )
+--  AND xvsa.vendor_site_id                 = xoha.vendor_site_id
+--  AND xvsa.start_date_active             <= TRUNC(SYSDATE)
+--  AND xvsa.end_date_active               >= TRUNC(SYSDATE)
+--UNION ALL
+--SELECT
+--  iwm.attribute1            ownership_code
+-- ,iwm.whse_code             whse_code
+-- ,mil.organization_id       organization_id
+-- ,xmld.item_code            item_no
+-- ,mil.inventory_location_id inventory_location_id
+-- ,xmld.item_id              item_id
+-- ,ilm.lot_id                lot_id
+-- ,ilm.lot_no                lot_no
+-- ,ilm.attribute1            manufacture_date
+-- ,ilm.attribute2            uniqe_sign
+-- ,ilm.attribute3            expiration_date
+-- ,NVL(TRUNC(xoha.schedule_arrival_date)
+--     ,TRUNC(xoha.schedule_ship_date)) arrival_date
+-- ,TRUNC(xoha.schedule_ship_date)      leaving_date
+-- ,'1'                       status
+-- ,xrpm.new_div_invent       reason_code
+-- ,xrpm.meaning              reason_code_name
+-- ,xoha.request_no           voucher_no
+-- ,xvsa.vendor_site_name     ukebaraisaki_name
+-- ,NULL                      vendor_site_name
+-- ,0                         stock_quantity
+-- ,CASE
+--    WHEN ( xrpm.new_div_invent = '104' AND otta.order_category_code = 'RETURN' )
+--  THEN
+--    ABS(xmld.actual_quantity) * -1
+--  ELSE
+--    xmld.actual_quantity
+--  END                       leaving_quantity
+--FROM
+--  xxwsh_order_headers_all   xoha
+-- ,xxwsh_order_lines_all     xola
+-- ,xxinv_mov_lot_details     xmld
+-- ,oe_transaction_types_all  otta
+-- ,ic_whse_mst               iwm
+-- ,mtl_item_locations        mil
+-- ,ic_item_mst_b             iimb
+-- ,mtl_system_items_b        msib
+-- ,ic_item_mst_b             iimb2
+-- ,mtl_system_items_b        msib2
+-- ,ic_lots_mst               ilm
+-- ,gmi_item_categories       gic
+-- ,mtl_categories_b          mcb
+-- ,gmi_item_categories       gic2
+-- ,mtl_categories_b          mcb2
+-- ,xxcmn_vendor_sites_all    xvsa
+-- ,(
+--  SELECT
+--    xrpm.new_div_invent
+--   ,flv.meaning
+--   ,xrpm.shipment_provision_div
+--   ,xrpm.ship_prov_rcv_pay_category
+--   ,xrpm.item_div_origin
+--   ,DECODE(xrpm.item_div_ahead, '5', '5', 'Dummy') item_div_ahead
+--  FROM
+--    fnd_lookup_values flv
+--   ,xxcmn_rcv_pay_mst xrpm
+--  WHERE flv.lookup_type     = 'XXCMN_NEW_DIVISION'
+--    AND flv.language        = 'JA'
+--    AND flv.lookup_code     = xrpm.new_div_invent
+--    AND xrpm.doc_type       = 'OMSO'
+--    AND xrpm.use_div_invent = 'Y'
+--    AND xrpm.shipment_provision_div = '2'
+--    AND xrpm.item_div_origin        = '5'
+--    AND xrpm.prod_div_origin       IS NULL
+--    AND xrpm.prod_div_ahead        IS NULL
+--  ) xrpm
+--WHERE xoha.order_header_id                = xola.order_header_id
+--  AND xoha.deliver_from_id                = mil.inventory_location_id
+--  AND iwm.mtl_organization_id             = mil.organization_id
+--  AND xola.shipping_inventory_item_id     = xola.request_item_id
+--  AND xola.request_item_id                = msib.inventory_item_id
+--  AND iimb.item_no                        = msib.segment1
+--  AND msib.organization_id                = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--  AND xola.shipping_inventory_item_id     = msib2.inventory_item_id
+--  AND iimb2.item_no                       = msib2.segment1
+--  AND msib2.organization_id               = FND_PROFILE.VALUE('XXCMN_MASTER_ORG_ID')
+--  AND xmld.mov_line_id                    = xola.order_line_id
+--  AND xmld.document_type_code             = '30'
+--  AND xmld.record_type_code               = '10'
+--  AND ilm.item_id                         = iimb2.item_id
+--  AND xmld.lot_id                         = ilm.lot_id
+--  AND xoha.req_status                     = '07'
+--  AND NVL(xoha.actual_confirm_class, 'N') = 'N'
+--  AND xoha.latest_external_flag           = 'Y'
+--  AND xola.delete_flag                    = 'N'
+--  AND xoha.order_type_id                  = otta.transaction_type_id
+--  AND xrpm.shipment_provision_div         = otta.attribute1
+--  AND gic.item_id                         = iimb.item_id
+--  AND gic.category_id                     = mcb.category_id
+--  AND gic.category_set_id                 = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+--  AND mcb.segment1                        = '5'
+--  AND gic2.item_id                        = iimb2.item_id
+--  AND gic2.category_id                    = mcb2.category_id
+--  AND gic2.category_set_id                = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+--  AND ( xrpm.ship_prov_rcv_pay_category   = otta.attribute11
+--    OR  xrpm.ship_prov_rcv_pay_category  IS NULL )
+--  AND xrpm.item_div_origin                = DECODE(mcb2.segment1, '5', '5', 'Dummy')
+--  AND xrpm.item_div_ahead                 = mcb.segment1
+--  AND xvsa.vendor_site_id                 = xoha.vendor_site_id
+--  AND xvsa.start_date_active             <= TRUNC(SYSDATE)
+--  AND xvsa.end_date_active               >= TRUNC(SYSDATE)
+--20090608_Ver1.2_T1_1365_SCS.Goto_DEL_END
   UNION ALL
   -- 生産原料投入予定
   SELECT
