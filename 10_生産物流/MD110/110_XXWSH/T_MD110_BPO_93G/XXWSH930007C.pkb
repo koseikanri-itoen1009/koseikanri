@@ -7,7 +7,7 @@ AS
  * Description      : 外部倉庫入出庫実績インタフェースラッピングプログラム
  * MD.050           : 出荷・移動インタフェース                             T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェースラッピングプログラム T_MD070_BPO_93G
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -21,7 +21,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/10/09    1.0   Y.Suzuki         新規作成
- *
+ *  2008/11/13    1.1   N.Fukuda         統合指摘#589対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -136,7 +136,8 @@ AS
     -- ローカル・カーソル
     -- ===============================
     CURSOR get_loct_cur IS
-      SELECT DISTINCT xshi.location_code
+      SELECT /*+ INDEX ( xshi xxwsh_sh_n04 ) */           -- 2008/11/13 統合指摘#589 Add
+             DISTINCT xshi.location_code
       FROM   xxwsh_shipping_headers_if xshi
       WHERE  xshi.data_type        = iv_process_object_info
       AND    xshi.report_post_code = iv_report_post
