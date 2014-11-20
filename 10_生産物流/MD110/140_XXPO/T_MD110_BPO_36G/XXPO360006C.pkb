@@ -7,7 +7,7 @@ AS
  * Description      : édì¸éÊà¯ñæç◊ï\
  * MD.050           : óLèûéxããí†ï[Issue1.0(T_MD050_BPO_360)
  * MD.070           : óLèûéxããí†ï[Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.16
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -52,6 +52,8 @@ AS
  *                                       Ç≥ÇÍÇ»Ç¢åªè€Ç÷ÇÃëŒâû
  *  2008/07/23    1.15  Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_VÅ®XXCMN_ITEM_CATEGORIES6_VïœçX
  *  2008/11/06    1.16  Y.Yamamoto       ìùçáéwìE#471ëŒâûÅAT_S_430ëŒâû
+ *  2008/12/02    1.17  H.Marushita      ñ{î‘è·äQ#348ëŒâû
+ *  2008/12/03    1.18  H.Marushita      ñ{î‘è·äQ#374ëŒâû
  *
  *****************************************************************************************/
 --
@@ -188,6 +190,9 @@ AS
      ,fukakin         xxpo_rcv_and_rtn_txns.fukakin_rate_or_unit_price%TYPE --ïäâ€ã‡
      ,zeiritu         fnd_lookup_values.lookup_code%TYPE                    --ê≈ó¶
      ,order1          fnd_lookup_values.lookup_code%TYPE                    --ï\é¶èá
+     ,gaku            NUMBER                                                --ã‡äz(ï≤à¯å„íPâø*éÛì¸ï‘ïiêîó )
+     ,siire_tax       NUMBER                                                --édì¸ã‡äzÅiè¡îÔê≈äzÅj
+     ,kousen_tax      NUMBER                                                --å˚ëKÅiè¡îÔê≈äzÅj
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -859,11 +864,22 @@ AS
         || ' , NULL item_sht '
         || ' , NULL futai_code '
         || ' , NULL kobiki_rate '
-        || ' , AVG(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi
-        ||                                  ' , xrart.kobki_converted_unit_price'
-        ||                                  ' , ' || cv_type_hen
-        ||                                  ' , xrart.kobki_converted_unit_price'
-        ||                                  ' , pll.attribute2), 0)) kobikigo'
+        -- 2008/12/02 MOD START 
+--        || ' , AVG(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi
+--        ||                                  ' , xrart.kobki_converted_unit_price'
+--        ||                                  ' , ' || cv_type_hen
+--        ||                                  ' , xrart.kobki_converted_unit_price'
+--        ||                                  ' , pll.attribute2), 0)) kobikigo'
+        || ' , ROUND(SUM(ROUND(NVL(DECODE(xrart.txns_type , ' 
+        ||                 cv_type_nasi || ' , xrart.kobki_converted_unit_price , ' 
+        ||                 cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+        || '          *  NVL(DECODE(xrart.txns_type , ' 
+        ||                 cv_type_nasi ||' ,xrart.quantity * -1, ' 
+        ||                 cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0),0) ) '
+        || '      /  SUM(NVL(DECODE(xrart.txns_type , ' 
+        ||                 cv_type_nasi ||' ,xrart.quantity * -1, '
+        ||                 cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0)),2) kobikigo '
+        -- 2008/12/02 MOD END
         || ' , SUM(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi ||' ,xrart.kousen_price * -1'
         ||                                  ' , ' || cv_type_hen  ||' ,xrart.kousen_price * -1'
         ||                                  ' , pll.attribute5) , 0)) kousen_price '
@@ -871,9 +887,14 @@ AS
         ||                                  ' , ' || cv_type_hen  ||' ,xrart.fukakin_price * -1'
         ||                                  ' , pll.attribute8) , 0)) fukakin_price '
         || ' , NULL lot_no '
-        || ' , SUM(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi ||' ,xrart.quantity * -1'
-        ||                                  ' , ' || cv_type_hen  ||' ,xrart.quantity * -1'
-        ||                                  ' , xrart.quantity) , 0)) quantity '
+-- 2008/12/03 MOD START
+--        || ' , SUM(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi ||' ,xrart.quantity * -1'
+--        ||                                  ' , ' || cv_type_hen  ||' ,xrart.quantity * -1'
+--        ||                                  ' , xrart.quantity) , 0)) quantity '
+        || ' , SUM(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi ||' ,xrart.rcv_rtn_quantity * -1'
+        ||                                  ' , ' || cv_type_hen  ||' ,xrart.rcv_rtn_quantity * -1'
+        ||                                  ' , xrart.rcv_rtn_quantity) , 0)) quantity '
+-- 2008/12/03 MOD END
         || ' , NULL unit_price '
         || ' , NULL kousen_type '
         || ' , NULL kousen_name '
@@ -885,6 +906,29 @@ AS
         || ' , MAX(NVL(DECODE(xrart.txns_type,' || cv_type_nasi || ',NVL(flv_u_tax.lookup_code,0) '
         ||                               ' , flv_p_tax.lookup_code) , 0))  zeiritu '
         || ' , NULL  order1 '
+        -- 2008/12/02 ADD START ã‡äzéZèoí«â¡
+        || ' , SUM(ROUND(NVL(DECODE(xrart.txns_type , ' 
+        ||           cv_type_nasi || ' , xrart.kobki_converted_unit_price , ' 
+        ||           cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+        || '    *  NVL(DECODE(xrart.txns_type , ' 
+        ||           cv_type_nasi ||' ,xrart.quantity * -1,' 
+        ||           cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0),0) ) gaku '
+        -- 2008/12/02 ADD END
+        -- 2008/12/02 ADD START è¡îÔê≈åvéZí«â¡
+        || ' , SUM(ROUND(ROUND(NVL(DECODE(xrart.txns_type , ' 
+        ||           cv_type_nasi || ' , xrart.kobki_converted_unit_price , ' 
+        ||           cv_type_hen  || ' , xrart.kobki_converted_unit_price , pll.attribute2), 0) '
+        || '    *  NVL(DECODE(xrart.txns_type , ' 
+        ||           cv_type_nasi ||' ,xrart.quantity * -1,' 
+        ||           cv_type_hen  ||' ,xrart.quantity * -1, xrart.quantity) , 0),0)  '
+        || '    *  NVL(DECODE(xrart.txns_type,' || cv_type_nasi || ',NVL(flv_u_tax.lookup_code,0) '
+        ||           ' , flv_p_tax.lookup_code) , 0) / 100 ,0) ) siire_tax '
+        || ' , SUM(ROUND(NVL(DECODE(xrart.txns_type , ' || cv_type_nasi ||' ,xrart.kousen_price * -1'
+        ||                                  ' , ' || cv_type_hen  ||' ,xrart.kousen_price * -1'
+        ||                                  ' , pll.attribute5) , 0) '
+        || '    *  NVL(DECODE(xrart.txns_type,' || cv_type_nasi || ',NVL(flv_u_tax.lookup_code,0) '
+        ||           ' , flv_p_tax.lookup_code) , 0) / 100 ,0) ) kousen_tax '
+        -- 2008/12/02 ADD END
         ;
     ELSE
       lv_select := 'SELECT '
@@ -952,9 +996,14 @@ AS
         ||                          ',' || cv_type_hen   || ', xrart.fukakin_price * -1 '
         ||       ', pll.attribute8)           fukakin_price ' --ïäâ€ã‡äz
         || ',DECODE(ximv.lot_ctl,'   || gv_lot_n_div || ',NULL,ilm.lot_no) AS lot_no '-- ÉçÉbÉgNO
-        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 '
-        || ',DECODE(xrart.txns_type,'  || cv_type_hen  || ', xrart.quantity * -1 '
-        || ', xrart.quantity))  quantity '  --éÛì¸ï‘ïiêîó 
+       -- 2008/12/02 MOD START
+--        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 '
+--        || ',DECODE(xrart.txns_type,'  || cv_type_hen  || ', xrart.quantity * -1 '
+--        || ', xrart.quantity))  quantity '  --éÛì¸ï‘ïiêîó 
+        || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.rcv_rtn_quantity * -1 '
+        || ',DECODE(xrart.txns_type,'  || cv_type_hen  || ', xrart.rcv_rtn_quantity * -1 '
+        || ', xrart.rcv_rtn_quantity))  quantity '  --éÛì¸ï‘ïiêîó 
+       -- 2008/12/02 MOD END
         || ',DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.unit_price '
         ||                          ','|| cv_type_hen  || ', xrart.unit_price '
         ||       ' , pl.attribute8)           unit_price '   --íPâø'
@@ -982,6 +1031,29 @@ AS
         || ',DECODE( xic6.item_class_code '
         ||       ' , '|| cv_item_class || ', ilm.attribute1||ilm.attribute2 '
         ||       ' ,ilm.lot_no )              order1 '       --ï\é¶èá'
+        -- 2008/12/02 ADD START
+        -- éÛì¸ï‘ïiêîó Å~íPâø=ã‡äz
+        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+        ||                                cv_type_hen  || ', xrart.quantity * -1  '
+        ||                                                ', xrart.quantity)  *  '
+        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xrart.kobki_converted_unit_price '
+        ||                          ','|| cv_type_hen  ||', xrart.kobki_converted_unit_price '
+        ||       ' , pll.attribute2),0) gaku '
+        -- è¡îÔê≈äzåvéZ
+        || ',ROUND(ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.quantity * -1 ,'
+        ||                                cv_type_hen  || ', xrart.quantity * -1  '
+        ||                                                ', xrart.quantity)  *  '
+        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', xrart.kobki_converted_unit_price '
+        ||                          ','|| cv_type_hen  ||', xrart.kobki_converted_unit_price '
+        ||       ' , pll.attribute2),0)  * '
+        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
+        || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   siire_tax '
+        || ',ROUND(DECODE( xrart.txns_type ,'|| cv_type_nasi || ', xrart.kousen_rate_or_unit_price '
+        ||                          ','|| cv_type_hen  || ', xrart.kousen_rate_or_unit_price '
+        ||       ' , pll.attribute4) * '
+        || ' DECODE( xrart.txns_type ,'|| cv_type_nasi ||', NVL(flv_u_tax.lookup_code, 0) '
+        || '   , NVL(flv_p_tax.lookup_code, 0)) / 100,0)   kousen_tax '
+        -- 2008/12/02 ADD END
         ;
     END IF;
 --
@@ -1267,6 +1339,7 @@ AS
     -- ÇrÇpÇkê∂ê¨
     -- ====================================================
     lv_sql := lv_select || lv_from || lv_where || lv_group_by || lv_order_by ;
+--    FND_FILE.PUT_LINE(FND_FILE.LOG,lv_sql) ;
 --
     -- ====================================================
     -- ÉfÅ[É^íäèo
@@ -1711,12 +1784,15 @@ AS
                                , gt_main_data(ln_loop_index).kobikigo);
 --
       --édì¸ã‡äz
+-- 2008/12/02 MOD START
 -- 2008/11/06 v1.16 Y.Yamamoto update start
 --      ln_siire :=  NVL(gt_main_data(ln_loop_index).quantity, 0)
 --                 * NVL(gt_main_data(ln_loop_index).kobikigo, 0);
-      ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).quantity, 0)
-                        * NVL(gt_main_data(ln_loop_index).kobikigo, 0) );
+--      ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).quantity, 0)
+--                        * NVL(gt_main_data(ln_loop_index).kobikigo, 0) );
 -- 2008/11/06 v1.16 Y.Yamamoto update start
+        ln_siire :=  TRUNC( NVL(gt_main_data(ln_loop_index).gaku, 0));
+-- 2008/12/02 MOD END
       lb_ret := fnc_set_xml('Z', 'purchase_amount', ln_siire);
 --
       --å˚ëKã‡äz
@@ -1731,8 +1807,8 @@ AS
 --
       --ç∑à¯ã‡äz
       ln_sasihiki :=  ln_siire
-                    - gt_main_data(ln_loop_index).kousen_price
-                    - gt_main_data(ln_loop_index).fukakin_price;
+                    - NVL(gt_main_data(ln_loop_index).kousen_price,0)
+                    - NVL(gt_main_data(ln_loop_index).fukakin_price,0);
       lb_ret := fnc_set_xml('Z', 'deduction_amount', ln_sasihiki);
 --
       --ì¸å…ëçêî
@@ -1748,15 +1824,21 @@ AS
       lb_ret := fnc_set_xml('N', 'commission', gt_main_data(ln_loop_index).kousen);
 --
       --è¡îÔê≈(édì¸ã‡äz)
--- 2008/11/06 v1.16 Y.Yamamoto update start
---      ln_tax_siire := ln_siire * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100;
-      ln_tax_siire := ROUND((ln_siire * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100),0);
--- 2008/11/06 v1.16 Y.Yamamoto update start
+-- 2008/12/02 MOD START
+---- 2008/11/06 v1.16 Y.Yamamoto update start
+----      ln_tax_siire := ln_siire * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100;
+      --ln_tax_siire := ROUND((ln_siire * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100),0);
+---- 2008/11/06 v1.16 Y.Yamamoto update start
+      ln_tax_siire := NVL(gt_main_data(ln_loop_index).siire_tax,0);
+-- 2008/12/02 MOD END
       lb_ret := fnc_set_xml('Z', 'purchase_amount_tax', ln_tax_siire);
 --
       --è¡îÔê≈(å˚ëKã‡äz)
-      ln_tax_kousen :=  gt_main_data(ln_loop_index).kousen_price
-                      * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100;
+-- 2008/12/02 MOD START
+--      ln_tax_kousen :=  gt_main_data(ln_loop_index).kousen_price
+--                      * NVL(gt_main_data(ln_loop_index).zeiritu, 0) / 100;
+      ln_tax_kousen := NVL(gt_main_data(ln_loop_index).kousen_tax,0);
+-- 2008/12/02 MOD END
       lb_ret := fnc_set_xml('Z', 'commission_unit_price_rate_tax', ln_tax_kousen);
 --
       --è¡îÔê≈(ç∑à¯ã‡äz)
@@ -1788,7 +1870,7 @@ AS
                             , gt_main_data(ln_loop_index).fukakin_price);
 --
       --èÉç∑à¯ã‡äz
-      ln_jun_sasihiki := ln_jun_siire - ln_jun_kosen - gt_main_data(ln_loop_index).fukakin_price;
+      ln_jun_sasihiki := NVL(ln_jun_siire,0) - NVL(ln_jun_kosen,0) - NVL(gt_main_data(ln_loop_index).fukakin_price,0);
       lb_ret := fnc_set_xml('Z', 'pure_deduction_amount', ln_jun_sasihiki);
 --
 --
