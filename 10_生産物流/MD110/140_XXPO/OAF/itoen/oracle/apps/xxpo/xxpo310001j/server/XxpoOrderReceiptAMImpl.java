@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.9
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2008-11-05 1.7  伊藤ひとみ   統合テスト指摘71,103,104対応
 * 2008-12-05 1.8  伊藤ひとみ   本番障害#481対応
 * 2009-01-16 1.9  吉元強樹     本番障害#1006対応
+* 2009-01-27 1.10 吉元強樹     本番障害#1092対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -1619,152 +1620,152 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     // 全受ON有無フラグがTrueの場合
     if (allReceiptFlag)
     {
-	    // 発注受入詳細:発注ヘッダVO取得
-	    OAViewObject orderHeaderVO = getXxpoOrderHeaderVO1();
-	    OARow orderHeaderVORow = (OARow)orderHeaderVO.first();
-	    
-	    // 納入日(納入予定日)を取得
-	    Date deliveryDate = (Date)orderHeaderVORow.getAttribute("DeliveryDate");
-	    
-	    // ************************************ //
-	    // * 処理3-1:納入日クローズチェック   * //
-	    // ************************************ //
-	    // 納入日が納入日クローズの場合はエラー
-	    if (XxpoUtility.chkStockClose(
-	      getOADBTransaction(),
-	      deliveryDate))
-	    {
-	      // エラーメッセージを追加
-	      exceptions.add( new OAAttrValException(
-	                            OAAttrValException.TYP_VIEW_OBJECT,
-	                            orderHeaderVO.getName(),
-	                            orderHeaderVORow.getKey(),
-	                            "DeliveryDate",
-	                            deliveryDate,
-	                            XxcmnConstants.APPL_XXPO,
-	                            XxpoConstants.XXPO10205));
-	    }
-	
-	    // ************************************************** //
-	    // * 処理3-1:未来日チェック                         * //
-	    // ************************************************** //
-	    // システム日付を取得
-	    Date sysDate = XxpoUtility.getSysdate(getOADBTransaction());
-	
-	    // 納入予定日が未来日の場合
-	    if (XxcmnUtility.chkCompareDate(1, deliveryDate, sysDate))
-	    {
-	      // ************************ //
-	      // * エラーメッセージ出力 * //
-	      // ************************ //
-	      exceptions.add( new OAAttrValException(
-	                            OAAttrValException.TYP_VIEW_OBJECT,
-	                            orderHeaderVO.getName(),
-	                            orderHeaderVORow.getKey(),
-	                            "DeliveryDate",
-	                            deliveryDate,
-	                            XxcmnConstants.APPL_XXPO,
-	                            XxpoConstants.XXPO10204,
-	                            null));
-	    }
-	
-	    // 例外があった場合、例外メッセージを出力し、処理終了
-	    if (exceptions.size() > 0)
-	    {
-	      OAException.raiseBundledOAException(exceptions);
-	    }
-	
-	    // *************************************** //
-	    // * 処理3-2:受入日後倒しの確認          * //
-	    // *************************************** //
-	    for (int i = 0; i < rows.length; i++)
-	    {
-	
-	      orderDetailsTabVORow = (OARow)rows[i];
-	
-	      // 納入日過去日付チェックフラグ
-	      boolean dateOfPastFlag = false;
-	
-	      // ************************************ //
-	      // * 換算有無チェック                 * //
-	      // ************************************ //
-	      boolean conversionFlag = false;
-	      String prodClassCode = (String)orderDetailsTabVORow.getAttribute("ProdClassCode");
-	      String itemClassCode = (String)orderDetailsTabVORow.getAttribute("ItemClassCode");
-	      String convUnit      = (String)orderDetailsTabVORow.getAttribute("ConvUnit");
-	
-	      // 換算有無チェックを実施
-	      conversionFlag = chkConversion(
-	                         prodClassCode,  // 商品区分
-	                         itemClassCode,  // 品目区分
-	                         convUnit);      // 入出庫換算単位
-	
-	      // ************************************ //
-	      // * 受入作成済みチェック             * //
-	      // ************************************ //
-	      // 数量確定フラグを取得
-	      String decisionAmountFlag = (String)orderDetailsTabVORow.getAttribute("DecisionAmountFlag");
-	      
-	      // 発注明細の数量確定フラグが'Y'の場合
-	      if (!XxcmnConstants.STRING_Y.equals(decisionAmountFlag))
-	      {
-	
-	        // 納入日予定日が過去日付の場合(SYSDATE > 納入予定日)
-	        if (XxcmnUtility.chkCompareDate(1, sysDate, deliveryDate))
-	        {
-	
-	          String locationCode = (String)orderHeaderVORow.getAttribute("LocationCode");
-	          Number opmItemId    = (Number)orderDetailsTabVORow.getAttribute("OpmItemId");
-	          Number lotId        = (Number)orderDetailsTabVORow.getAttribute("LotId");
-	
-	          // ************************************* //
-	          // * 引当可能数量を取得                * //
-	          // *   paramsRet(0) : 有効日引当可能数 * //
-	          // *   paramsRet(1) : 総引当可能数     * //
-	          // ************************************* //
+      // 発注受入詳細:発注ヘッダVO取得
+      OAViewObject orderHeaderVO = getXxpoOrderHeaderVO1();
+      OARow orderHeaderVORow = (OARow)orderHeaderVO.first();
+      
+      // 納入日(納入予定日)を取得
+      Date deliveryDate = (Date)orderHeaderVORow.getAttribute("DeliveryDate");
+      
+      // ************************************ //
+      // * 処理3-1:納入日クローズチェック   * //
+      // ************************************ //
+      // 納入日が納入日クローズの場合はエラー
+      if (XxpoUtility.chkStockClose(
+        getOADBTransaction(),
+        deliveryDate))
+      {
+        // エラーメッセージを追加
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              orderHeaderVO.getName(),
+                              orderHeaderVORow.getKey(),
+                              "DeliveryDate",
+                              deliveryDate,
+                              XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO10205));
+      }
+  
+      // ************************************************** //
+      // * 処理3-1:未来日チェック                         * //
+      // ************************************************** //
+      // システム日付を取得
+      Date sysDate = XxpoUtility.getSysdate(getOADBTransaction());
+  
+      // 納入予定日が未来日の場合
+      if (XxcmnUtility.chkCompareDate(1, deliveryDate, sysDate))
+      {
+        // ************************ //
+        // * エラーメッセージ出力 * //
+        // ************************ //
+        exceptions.add( new OAAttrValException(
+                              OAAttrValException.TYP_VIEW_OBJECT,
+                              orderHeaderVO.getName(),
+                              orderHeaderVORow.getKey(),
+                              "DeliveryDate",
+                              deliveryDate,
+                              XxcmnConstants.APPL_XXPO,
+                              XxpoConstants.XXPO10204,
+                              null));
+      }
+  
+      // 例外があった場合、例外メッセージを出力し、処理終了
+      if (exceptions.size() > 0)
+      {
+        OAException.raiseBundledOAException(exceptions);
+      }
+  
+      // *************************************** //
+      // * 処理3-2:受入日後倒しの確認          * //
+      // *************************************** //
+      for (int i = 0; i < rows.length; i++)
+      {
+  
+        orderDetailsTabVORow = (OARow)rows[i];
+  
+        // 納入日過去日付チェックフラグ
+        boolean dateOfPastFlag = false;
+  
+        // ************************************ //
+        // * 換算有無チェック                 * //
+        // ************************************ //
+        boolean conversionFlag = false;
+        String prodClassCode = (String)orderDetailsTabVORow.getAttribute("ProdClassCode");
+        String itemClassCode = (String)orderDetailsTabVORow.getAttribute("ItemClassCode");
+        String convUnit      = (String)orderDetailsTabVORow.getAttribute("ConvUnit");
+  
+        // 換算有無チェックを実施
+        conversionFlag = chkConversion(
+                           prodClassCode,  // 商品区分
+                           itemClassCode,  // 品目区分
+                           convUnit);      // 入出庫換算単位
+  
+        // ************************************ //
+        // * 受入作成済みチェック             * //
+        // ************************************ //
+        // 数量確定フラグを取得
+        String decisionAmountFlag = (String)orderDetailsTabVORow.getAttribute("DecisionAmountFlag");
+        
+        // 発注明細の数量確定フラグが'Y'の場合
+        if (!XxcmnConstants.STRING_Y.equals(decisionAmountFlag))
+        {
+  
+          // 納入日予定日が過去日付の場合(SYSDATE > 納入予定日)
+          if (XxcmnUtility.chkCompareDate(1, sysDate, deliveryDate))
+          {
+  
+            String locationCode = (String)orderHeaderVORow.getAttribute("LocationCode");
+            Number opmItemId    = (Number)orderDetailsTabVORow.getAttribute("OpmItemId");
+            Number lotId        = (Number)orderDetailsTabVORow.getAttribute("LotId");
+  
+            // ************************************* //
+            // * 引当可能数量を取得                * //
+            // *   paramsRet(0) : 有効日引当可能数 * //
+            // *   paramsRet(1) : 総引当可能数     * //
+            // ************************************* //
 // 20080630 yoshimoto mod Start
-	          HashMap paramsRet = XxpoUtility.getReservedQuantity(
-	                                            getOADBTransaction(),
-	                                            opmItemId,            // OPM品目ID
-	                                            locationCode,         // 納入先コード
-	                                            lotId,                // ロットID
+            HashMap paramsRet = XxpoUtility.getReservedQuantity(
+                                              getOADBTransaction(),
+                                              opmItemId,            // OPM品目ID
+                                              locationCode,         // 納入先コード
+                                              lotId,                // ロットID
                                               "");
 // 20080630 yoshimoto mod End
-	
-	          // 発注数量を取得
-	          String orderAmount = (String)orderDetailsTabVORow.getAttribute("OrderAmount");
-	          // カンマ及び小数点を除去
-	          String sOrderAmount = XxcmnUtility.commaRemoval(orderAmount);
-	
-	          // 在庫入数
-	          String itemAmount = (String)orderDetailsTabVORow.getAttribute("ItemAmount");
-	          // カンマ及び小数点を除去
-	          String sItemAmount = XxcmnUtility.commaRemoval(itemAmount);
-	
-	          // 換算が必要な場合は、在庫入数で乗算
-	          if (conversionFlag)
-	          {
-	            double dOrderAmount = Double.parseDouble(sOrderAmount) * Double.parseDouble(sItemAmount);
-	            sOrderAmount = Double.toString(dOrderAmount);
-	          }
-	
-	          // ************************************ //
-	          // * 受入後倒しチェック               * //
-	          // ************************************ //
-	          // 有効日ベース引当可能数
-	          Object inTimeQty = paramsRet.get("InTimeQty");
-	          // 総引当可能数
-	          Object totalQty  = paramsRet.get("TotalQty");
-	
-	          // 『発注数量 > 有効日ベース引当可能数』または、『発注数量 > 総引当可能数』
-	          if ((XxcmnUtility.chkCompareNumeric(1, sOrderAmount, inTimeQty.toString()))
-	            || (XxcmnUtility.chkCompareNumeric(1, sOrderAmount, totalQty.toString())))
-	          {
-	
-	            // 受入日後倒しの確認(警告)
-	            // lineIdを設定
-	            lineIdList.add(orderDetailsTabVORow.getAttribute("LineId"));
-	
+  
+            // 発注数量を取得
+            String orderAmount = (String)orderDetailsTabVORow.getAttribute("OrderAmount");
+            // カンマ及び小数点を除去
+            String sOrderAmount = XxcmnUtility.commaRemoval(orderAmount);
+  
+            // 在庫入数
+            String itemAmount = (String)orderDetailsTabVORow.getAttribute("ItemAmount");
+            // カンマ及び小数点を除去
+            String sItemAmount = XxcmnUtility.commaRemoval(itemAmount);
+  
+            // 換算が必要な場合は、在庫入数で乗算
+            if (conversionFlag)
+            {
+              double dOrderAmount = Double.parseDouble(sOrderAmount) * Double.parseDouble(sItemAmount);
+              sOrderAmount = Double.toString(dOrderAmount);
+            }
+  
+            // ************************************ //
+            // * 受入後倒しチェック               * //
+            // ************************************ //
+            // 有効日ベース引当可能数
+            Object inTimeQty = paramsRet.get("InTimeQty");
+            // 総引当可能数
+            Object totalQty  = paramsRet.get("TotalQty");
+  
+            // 『発注数量 > 有効日ベース引当可能数』または、『発注数量 > 総引当可能数』
+            if ((XxcmnUtility.chkCompareNumeric(1, sOrderAmount, inTimeQty.toString()))
+              || (XxcmnUtility.chkCompareNumeric(1, sOrderAmount, totalQty.toString())))
+            {
+  
+              // 受入日後倒しの確認(警告)
+              // lineIdを設定
+              lineIdList.add(orderDetailsTabVORow.getAttribute("LineId"));
+  
             }
           }
         }
@@ -3930,22 +3931,26 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
         // グループIDを退避
         groupId = (Number)retHashMap.get("GroupId");
         retGroupId = groupId.toString();
+// 2009-01-27 v1.10 T.Yoshimoto Del Start
+      //}
+// 2009-01-27 v1.10 T.Yoshimoto Del End
+
+        // ************************************ //
+        // * 処理5-8:在庫数量API起動処理      * //
+        // ************************************ //
+        // 発注区分を取得
+        String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
+  
+        // 発注区分が相手先在庫である場合
+        if (XxpoConstants.PO_TYPE_3.equals(orderDivision))
+        {
+          insIcTranCmp2(XxcmnConstants.STRING_ZERO, // 処理モード(0:初回受入)
+                        txnsId,                     // 取引ID
+                        receiptDetailsVORow);       // 受入明細
+        }
+// 2009-01-27 v1.10 T.Yoshimoto Add Start
       }
-
-
-      // ************************************ //
-      // * 処理5-8:在庫数量API起動処理      * //
-      // ************************************ //
-      // 発注区分を取得
-      String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
-
-      // 発注区分が相手先在庫である場合
-      if (XxpoConstants.PO_TYPE_3.equals(orderDivision))
-      {
-        insIcTranCmp2(XxcmnConstants.STRING_ZERO, // 処理モード(0:初回受入)
-                      txnsId,                     // 取引ID
-                      receiptDetailsVORow);       // 受入明細
-      }
+// 2009-01-27 v1.10 T.Yoshimoto Add End
 
       receiptDetailsVO.next();
     }
@@ -4126,22 +4131,26 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
           groupId[0] = (Number)retHashMap.get("GroupId");
           retGroupId[0] = groupId[0].toString();
 
+// 2009-01-27 v1.10 T.Yoshimoto Del Start
+        //}
+// 2009-01-27 v1.10 T.Yoshimoto Del End
+
+          // ************************************ //
+          // * 処理5-8:在庫数量API起動処理      * //
+          // ************************************ //
+          // 発注区分を取得
+          String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
+  
+          // 発注区分が相手先在庫である場合
+          if (XxpoConstants.PO_TYPE_3.equals(orderDivision))
+          {
+            insIcTranCmp2(XxcmnConstants.STRING_ZERO, // 処理モード(0:初回受入)
+                          txnsId,                     // 取引ID
+                          receiptDetailsVORow);       // 受入明細
+          }
+// 2009-01-27 v1.10 T.Yoshimoto Add Start
         }
-
-
-        // ************************************ //
-        // * 処理5-8:在庫数量API起動処理      * //
-        // ************************************ //
-        // 発注区分を取得
-        String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
-
-        // 発注区分が相手先在庫である場合
-        if (XxpoConstants.PO_TYPE_3.equals(orderDivision))
-        {
-          insIcTranCmp2(XxcmnConstants.STRING_ZERO, // 処理モード(0:初回受入)
-                        txnsId,                     // 取引ID
-                        receiptDetailsVORow);       // 受入明細
-        }
+// 2009-01-27 v1.10 T.Yoshimoto Add End
 
       // 更新レコードの場合
       } else
@@ -4313,25 +4322,30 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
             return retHashMap;
           }
         }
-      }
-
-      // 訂正前受入数量と受入数量に差分が無い場合は、在庫数量API起動処理は行わない
-      if (!"0".equals(chkSubflag)) 
-      {
-        // ************************************ //
-        // * 処理6-7:在庫数量API起動処理      * //
-        // ************************************ //
-        // 発注区分を取得
-        String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
-
-        // 発注区分が相手先在庫である場合
-        if (XxpoConstants.PO_TYPE_3.equals(orderDivision))
+// 2009-01-27 v1.10 T.Yoshimoto Del Start
+      //}
+// 2009-01-27 v1.10 T.Yoshimoto Del End
+  
+        // 訂正前受入数量と受入数量に差分が無い場合は、在庫数量API起動処理は行わない
+        if (!"0".equals(chkSubflag)) 
         {
-          insIcTranCmp2(XxcmnConstants.STRING_ONE, // 処理モード(1:訂正処理)
-                        txnsId,                    // 取引ID
-                        receiptDetailsVORow);      // 受入明細
+          // ************************************ //
+          // * 処理6-7:在庫数量API起動処理      * //
+          // ************************************ //
+          // 発注区分を取得
+          String orderDivision = (String)orderDetailsVORow.getAttribute("OrderDivision");
+  
+          // 発注区分が相手先在庫である場合
+          if (XxpoConstants.PO_TYPE_3.equals(orderDivision))
+          {
+            insIcTranCmp2(XxcmnConstants.STRING_ONE, // 処理モード(1:訂正処理)
+                          txnsId,                    // 取引ID
+                          receiptDetailsVORow);      // 受入明細
+          }
         }
+// 2009-01-27 v1.10 T.Yoshimoto Add Start
       }
+// 2009-01-27 v1.10 T.Yoshimoto Add End
 
       // ********************************************** //
       // * 処理8:受入取引処理を起動                   * //
