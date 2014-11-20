@@ -41,6 +41,9 @@ AS
  *  2009-03-19    1.1   Tomoko.Mori      【障害対応073】
  *                                       日別顧客別売上計画情報（月別売上計画）取得の抽出条件不具合
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
+ *  2009-05-01    1.3   Daisuke.Abe      【売上計画出力対応】T1_0689,T1_0692,T1_0694,T1_0695
+ *  2009-05-01    1.3   Daisuke.Abe      【売上計画出力対応】T1_0734,T1_0739,T1_0744,T1_0745
+ *  2009-05-01    1.3   Daisuke.Abe      【売上計画出力対応】T1_0751
  *
  *****************************************************************************************/
 --
@@ -1670,15 +1673,98 @@ AS
        ,g_get_day_acct_data_rec.cust_new_num               --顧客件数（新規）
        ,g_get_day_acct_data_rec.cust_vd_new_num            --顧客件数（VD：新規）
        ,g_get_day_acct_data_rec.cust_other_new_num         --顧客件数（VD以外：新規）
-       ,g_get_day_acct_data_rec.rslt_amt                   --売上実績
-       ,g_get_day_acct_data_rec.rslt_new_amt               --売上実績（新規）
-       ,g_get_day_acct_data_rec.rslt_vd_new_amt            --売上実績（VD：新規）
-       ,g_get_day_acct_data_rec.rslt_vd_amt                --売上実績（VD）
-       ,g_get_day_acct_data_rec.rslt_other_new_amt         --売上実績（VD以外：新規）
-       ,g_get_day_acct_data_rec.rslt_other_amt             --売上実績（VD以外）
-       ,g_get_day_acct_data_rec.rslt_center_amt            --内他拠点＿売上実績
-       ,g_get_day_acct_data_rec.rslt_center_vd_amt         --内他拠点＿売上実績（VD）
-       ,g_get_day_acct_data_rec.rslt_center_other_amt      --内他拠点＿売上実績（VD以外）
+       /* 20090501_abe_売上計画出力対応 START*/
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --売上実績
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_new_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_new_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_new_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --売上実績（新規）
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_vd_new_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_vd_new_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_vd_new_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --売上実績（VD：新規）
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_vd_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_vd_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_vd_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --売上実績（VD）
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_other_new_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_other_new_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_other_new_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --売上実績（VD以外：新規）
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_other_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_other_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_other_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --売上実績（VD以外）
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_center_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_center_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_center_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --内他拠点＿売上実績
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_center_vd_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_center_vd_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_center_vd_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --内他拠点＿売上実績（VD）
+       ,(CASE 
+           WHEN NVL(g_get_day_acct_data_rec.rslt_center_other_amt  ,0) >= 500
+             THEN ROUND(g_get_day_acct_data_rec.rslt_center_other_amt   / 1000)
+           WHEN NVL(g_get_day_acct_data_rec.rslt_center_other_amt  ,0) >= 1
+             THEN 1
+           ELSE
+             NULL
+         END
+        )                                                  --内他拠点＿売上実績（VD以外）
+       --,g_get_day_acct_data_rec.rslt_amt                   --売上実績
+       --,g_get_day_acct_data_rec.rslt_new_amt               --売上実績（新規）
+       --,g_get_day_acct_data_rec.rslt_vd_new_amt            --売上実績（VD：新規）
+       --,g_get_day_acct_data_rec.rslt_vd_amt                --売上実績（VD）
+       --,g_get_day_acct_data_rec.rslt_other_new_amt         --売上実績（VD以外：新規）
+       --,g_get_day_acct_data_rec.rslt_other_amt             --売上実績（VD以外）
+       --,g_get_day_acct_data_rec.rslt_center_amt            --内他拠点＿売上実績
+       --,g_get_day_acct_data_rec.rslt_center_vd_amt         --内他拠点＿売上実績（VD）
+       --,g_get_day_acct_data_rec.rslt_center_other_amt      --内他拠点＿売上実績（VD以外）
+       /* 20090501_abe_売上計画出力対応 END*/
        ,g_get_day_acct_data_rec.tgt_amt                    --売上計画
        ,NULL                                               --売上計画（新規）
        ,NULL                                               --売上計画（VD：新規）
