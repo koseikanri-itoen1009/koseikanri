@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.16
+* バージョン : 1.17
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -24,6 +24,7 @@
 * 2008-10-22 1.14 吉元強樹     統合テスト指摘426対応
 * 2008-10-23 1.15 伊藤ひとみ   T_TE080_BPO_340 指摘5
 * 2008-11-04 1.16 二瓶大輔     統合障害#51,103、104対応
+* 2008-12-05 1.17 伊藤ひとみ   本番障害#481対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -45,7 +46,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.16
+ * @version 1.17
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -5656,6 +5657,9 @@ public class XxpoUtility
     String quantity = (String)params.get("RcvRtnQuantity");   // 訂正数量
     Number lotCtl   = (Number)params.get("LotCtl");           // ロット対象(2)、非対称(1)フラグ
     String processCode = (String)params.get("ProcessCode");   // 受入訂正(0)、搬送訂正(1)
+// 2008-12-05 H.Itou Add Start 本番障害#481対応
+    Date   txnsDate = (Date)params.get("TxnsDate"); // 取引日
+// 2008-12-05 H.Itou Add End
 
     // OUTパラメータ用
     HashMap retHashMap = new HashMap();
@@ -5866,7 +5870,10 @@ public class XxpoUtility
     sb.append("     ,FND_GLOBAL.USER_ID ");
     sb.append("     ,FND_GLOBAL.LOGIN_ID ");
     sb.append("     ,'CORRECT' ");
-    sb.append("     ,SYSDATE ");
+// 2008-12-05 H.Itou Add Start 本番障害#481対応
+//    sb.append("     ,SYSDATE ");
+    sb.append("     ,:" + (count++) +" ");                                // 取引日：transaction_date
+// 2008-12-05 H.Itou Add End
     sb.append("     ,'PENDING' ");
     sb.append("     ,'BATCH' ");
     sb.append("     ,'PENDING' ");
@@ -5947,7 +5954,9 @@ public class XxpoUtility
       {
         cstmt.setLong(count++, XxcmnUtility.longValue(groupId));  // groupId
       }
-
+// 2008-12-05 H.Itou Add Start 本番障害#481対応
+      cstmt.setDate(count++, XxcmnUtility.dateValue(txnsDate)); // 受入明細.取引日
+// 2008-12-05 H.Itou Add End
       cstmt.setDouble(count++, Double.parseDouble(quantity));    // 訂正数量
       cstmt.setDouble(count++, Double.parseDouble(quantity));    // 訂正数量
       cstmt.setInt(count++, XxcmnUtility.intValue(headerId));    // 発注ヘッダID

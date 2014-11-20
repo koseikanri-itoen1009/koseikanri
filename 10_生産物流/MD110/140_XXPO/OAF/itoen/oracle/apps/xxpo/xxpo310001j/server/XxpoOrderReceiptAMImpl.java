@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoOrderReceiptAMImpl
 * 概要説明   : 受入実績作成:受入実績作成アプリケーションモジュール
-* バージョン : 1.7
+* バージョン : 1.8
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -14,6 +14,7 @@
 * 2008-08-25 1.5  伊藤ひとみ   変更要求#205対応
 * 2008-11-04 1.6  吉元強樹     統合指摘#546対応
 * 2008-11-05 1.7  伊藤ひとみ   統合テスト指摘71,103,104対応
+* 2008-12-05 1.8  伊藤ひとみ   本番障害#481対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo310001j.server;
@@ -5089,7 +5090,10 @@ public class XxpoOrderReceiptAMImpl extends XxcmnOAApplicationModuleImpl
     setParams.put("LotCtl",       orderDetailsVORow.getAttribute("LotCtl"));
     // 処理区分
     setParams.put("ProcessCode",  processCode);
-
+// 2008-12-05 H.Itou Add Start 本番障害#481対応
+    // 取引日
+    setParams.put("TxnsDate",  receiptDetailsVORow.getAttribute("TxnsDate"));
+// 2008-12-05 H.Itou Add End
 
     // 換算が必要な場合
     if (conversionFlag) 
