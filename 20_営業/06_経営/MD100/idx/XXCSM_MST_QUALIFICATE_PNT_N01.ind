@@ -1,0 +1,1 @@
+CREATE INDEX xxcsm.xxcsm_mst_qualificate_pnt_n01 ON xxcsm.xxcsm_mst_qualificate_pnt (post_cd) TABLESPACE xxidx2;

@@ -1,0 +1,1 @@
+CREATE INDEX xxcsm.xxcsm_item_plan_result_n02 ON xxcsm.xxcsm_item_plan_result (year_month,location_cd,item_no) TABLESPACE xxidx2;

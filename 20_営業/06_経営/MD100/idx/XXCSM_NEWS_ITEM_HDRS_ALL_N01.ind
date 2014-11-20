@@ -1,0 +1,1 @@
+CREATE INDEX xxcsm.xxcsm_news_item_hdrs_all_n01 ON xxcsm.xxcsm_news_item_headers_all( subject_year, year_month, indication_order, news_division_code ) TABLESPACE xxidx2;

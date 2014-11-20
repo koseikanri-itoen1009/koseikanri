@@ -1,0 +1,1 @@
+CREATE INDEX xxcsm.xxcsm_news_item_lines_all_n01 ON xxcsm.xxcsm_news_item_lines_all( item_group_kbn, item_group_cd ) TABLESPACE xxidx2;
