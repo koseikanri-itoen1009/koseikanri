@@ -5,7 +5,7 @@
 -- Description   : HHT納品データ取込（ヘッダ） SQL*Loader処理
 -- MD.050        : 
 -- MD.070        : なし
--- Version       : 1.0
+-- Version       : 1.1
 --
 -- Target Table  : XXCOS_DLV_HEADERS_WORK
 --
@@ -14,6 +14,7 @@
 --  Date          Ver.    Editor           Description
 -- ------------- ------- ---------------- ---------------------------------------------------------
 --  2008/10/29    1.0     宮越 翔平        新規作成
+--  2011/03/16    1.1     落合 峻平        [E_本稼動_06590] オーダーNo追加
 --
 -- ************************************************************************************************
 LOAD DATA
@@ -48,6 +49,9 @@ TRAILING NULLCOLS
     TAX_INCLUDE                  INTEGER EXTERNAL,                  -- 税込金額
     KEEP_IN_CODE                 CHAR,                              -- 預け先コード
     DEPARTMENT_SCREEN_CLASS      CHAR,                              -- 百貨店画面種別
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD Start
+    ORDER_NUMBER                 CHAR,                              --オーダーNo
+-- 2011/03/16 Ver.1.1 S.Ochiai ADD End
     RECEIVE_DATE                 DATE(19) "yyyy/mm/dd hh24:mi:ss",  -- 受信日時
     CREATED_BY                   CONSTANT "-1",                     -- 作成者
     CREATION_DATE                SYSDATE,                           -- 作成日
