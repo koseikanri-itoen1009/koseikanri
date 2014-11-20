@@ -53,7 +53,7 @@ INSERT INTO XXWIP_DELIVERYS_CTRL(
             2, 
             '2',
             'êøãÅçXêV', 
-            TO_DATE('1900/01/01 00:00:00', 'YYYY/MM/DD HH24:MI:SS'), 
+            TO_DATE('2008/11/25 00:00:00', 'YYYY/MM/DD HH24:MI:SS'), 
             FND_GLOBAL.USER_ID,
             SYSDATE,
             FND_GLOBAL.USER_ID,
