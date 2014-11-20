@@ -1,0 +1,15 @@
+/*****************************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * INDEX Name  : XXCOS_JTF_TASKS_B_N02
+ * Description : 
+ * Version     : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2011/07/06    1.0   SCS K.Kubo       êVãKçÏê¨
+ *
+ ****************************************************************************************/
+CREATE INDEX XXCOS.XXCOS_JTF_TASKS_B_N02 ON XXCOS.XXCOS_JTF_TASKS_B ( SOURCE_OBJECT_ID, TRUNC(ACTUAL_END_DATE) ) TABLESPACE xxidx2;
