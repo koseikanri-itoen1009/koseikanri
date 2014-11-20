@@ -9,6 +9,10 @@
 ##        作成者  ：   Oracle 杉山           2008/03/27 1.0.1                 ##
 ##        更新履歴：   Oracle 杉山           2008/03/27 1.0.1                 ##
 ##                       初版                                                 ##
+##                     SCSK   戸谷田         2012/05/14 1.0.2                 ##
+##                       障害番号#08434対応                                   ##
+##                       ・DBインスタンス起動後にNLS_LANGUAGEパラメータの     ##
+##                         設定ロジックを追加                                 ##
 ##                                                                            ##
 ##   [戻り値]                                                                 ##
 ##      0 : 正常                                                              ##
@@ -195,6 +199,34 @@ trap 'L_shuryo 8' 1 2 3 15
 
   L_rogushuturyoku "データベースの起動を確認しました。"
 
+## 日付書式設定(障害番号#08766対応)
+
+  L_rogushuturyoku "日付書式「NLS_LANGUAGE」を設定します"
+
+  . ${ORACLE_HOME}/${ORACLE_SID}_${TE_ZCZZHOSUTOMEI}.env
+  L_rogushuturyoku "ORA_NLS10 : `echo $ORA_NLS10`"
+
+  ${ORACLE_HOME}/bin/sqlplus -s apps/apps << EOF 1> ${L_ZCZZHYOUJUNSHUTURYOKU} 2> ${L_ZCZZHYOUJUNERA}
+  WHENEVER OSERROR EXIT FAILURE
+  WHENEVER SQLERROR EXIT FAILURE
+
+  alter session set nls_language=JAPANESE;
+  exit
+EOF
+
+  L_dashutu=${?}
+
+## 戻り値から、SQLの実行結果を判定
+  if [ ${L_dashutu} -eq 0 ]
+    then
+      L_rogushuturyoku "${TE_ZCZZ01700}"
+    else
+      L_rogushuturyoku "${TE_ZCZZ01701}"
+      echo "${TE_ZCZZ00601}" 1>&2
+      L_shuryo ${L_ijou}
+    fi
+
+    L_rogushuturyoku "日付書式「NLS_LANGUAGE」の設定が完了しました"
 
 ### APPSリスナー起動 ###
 
