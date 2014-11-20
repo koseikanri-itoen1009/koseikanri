@@ -1,0 +1,1 @@
+CREATE INDEX xxinv.xxinv_mril_n03 ON xxinv.xxinv_mov_req_instr_lines(po_num,item_code) TABLESPACE xxidx ;

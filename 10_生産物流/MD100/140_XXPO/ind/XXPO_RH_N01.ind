@@ -1,0 +1,1 @@
+CREATE INDEX xxpo.xxpo_rh_n01 ON xxpo.xxpo_requisition_headers (status) TABLESPACE xxidx ;

@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2008/08/04    1.4   Oracle 山根 一浩 ST#103対応
  *  2008/08/22    1.5   Oracle 山根 一浩 T_S_597対応
  *  2008/09/04    1.6   Oracle 山根 一浩 PT 3-3_23 指摘37対応
+ *  2008/09/18    1.7   Oracle 伊藤 ひとみ T_TE080_BPO_400 指摘79,T_S_630対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -44,6 +45,9 @@ AS
   gv_status_normal CONSTANT VARCHAR2(1) := '0';
   gv_status_warn   CONSTANT VARCHAR2(1) := '1';
   gv_status_error  CONSTANT VARCHAR2(1) := '2';
+-- 2008/09/18 1.17 Add ↓ T_TE080_BPO_400 指摘79
+  gv_status_skip   CONSTANT VARCHAR2(1) := '3';
+-- 2008/09/18 1.17 Add ↑
   gv_sts_cd_normal CONSTANT VARCHAR2(1) := 'C';
   gv_sts_cd_warn   CONSTANT VARCHAR2(1) := 'G';
   gv_sts_cd_error  CONSTANT VARCHAR2(1) := 'E';
@@ -130,6 +134,11 @@ AS
   gv_max_date          CONSTANT VARCHAR2(6)  := '999999';
   gv_tran_type_name    CONSTANT VARCHAR2(20) := '出荷依頼';
   gv_category_code     CONSTANT VARCHAR2(20) := 'ORDER';
+-- 2008/09/18 1.17 Add ↓ T_TE080_BPO_400 指摘79
+  gv_shipping_shikyu_class_1 CONSTANT VARCHAR2(1)  := '1';         -- 出荷支給区分:出荷依頼
+  gv_cust_class_code_10      CONSTANT VARCHAR2(2)  := '10';        -- 顧客区分:顧客配送
+  gv_dummy_cust_code         CONSTANT VARCHAR2(9)  := '000000000'; -- 顧客コード(ダミー)
+-- 2008/09/18 1.17 Add ↑
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -175,6 +184,9 @@ AS
     v_arrival_date        VARCHAR2(10),                                   -- 着荷日
     v_shipped_date        VARCHAR2(10),                                   -- 出荷日
 --
+-- 2008/09/18 1.17 Add ↓ T_S_630
+    customer_class_code  xxcmn_cust_accounts2_v.customer_class_code%TYPE, -- 顧客情報VIEW.顧客区分
+-- 2008/09/18 1.17 Add ↑
     exec_flg              NUMBER                                    -- 処理フラグ
   );
   -- 各マスタへ反映するデータを格納する結合配列
@@ -467,6 +479,9 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+-- 2008/09/18 1.17 Add ↓ T_TE080_BPO_400 指摘79 出荷区分情報VIEW.依頼区分と出荷区分情報VIEW.顧客区分を取得し、両方NULLの場合はCSV出力しない。
+    lt_customer_class   xxwsh_shipping_class_v.customer_class%TYPE; -- 出荷区分情報VIEWの顧客区分
+-- 2008/09/18 1.17 Add ↑
 --
     -- *** ローカル・カーソル ***
 --
@@ -481,30 +496,56 @@ AS
 --#####################################  固定部 END   #############################################
 --
     BEGIN
-      SELECT xscv.request_class                     -- 依頼区分
+-- 2008/09/18 1.17 Mod ↓ T_TE080_BPO_400 指摘79 出荷区分情報VIEW.依頼区分と出荷区分情報VIEW.顧客区分を取得し、両方NULLの場合はCSV出力しないように変更
+--                        T_S_630                顧客情報VIEW.顧客区分は別箇所での取得となったので、依頼区分の取得に顧客情報VIEWの結合は不要となった
+--      SELECT xscv.request_class                     -- 依頼区分
+--      INTO   ir_mst_rec.request_class
+--      FROM   xxwsh_oe_transaction_types2_v xottv        -- 受注タイプ情報VIEW2
+--            ,xxwsh_shipping_class_v        xscv         -- 出荷区分情報VIEW
+----            ,hz_parties                    hp           -- パーティマスタ
+----            ,hz_party_sites                hps          -- パーティサイトマスタ
+----            ,hz_cust_accounts              hca          -- 顧客マスタ
+--            ,xxcmn_cust_accounts2_v          xcav       -- 顧客情報View2
+--            ,xxcmn_cust_acct_sites2_v        xcasv      -- 顧客サイト情報View2
+--      WHERE  xscv.order_transaction_type_name = xottv.transaction_type_name
+----      AND    hp.party_id                      = hps.party_id
+----      AND    hca.party_id                     = hp.party_id
+----      AND    hca.customer_class_code          = xscv.customer_class(+)
+----      AND    hps.party_site_number            = ir_mst_rec.deliver_to
+--      AND    xcav.customer_class_code         = xscv.customer_class(+)
+--      AND    xcav.start_date_active          <= ir_mst_rec.shipped_date
+--      AND    xcav.end_date_active            >= ir_mst_rec.shipped_date
+--      AND    xcasv.party_id                   = xcav.party_id
+--      AND    xcasv.start_date_active         <= ir_mst_rec.shipped_date
+--      AND    xcasv.end_date_active           >= ir_mst_rec.shipped_date
+--      AND    xcasv.party_site_number          = ir_mst_rec.deliver_to
+--      AND    xottv.transaction_type_id        = ir_mst_rec.order_type_id
+--      AND    xottv.shipping_shikyu_class      = '1'                        -- 出荷依頼
+--      AND    ROWNUM                           = 1;
+--
+      SELECT xscv.request_class         request_class   -- 依頼区分
+            ,xscv.customer_class        customer_class  -- 顧客区分
       INTO   ir_mst_rec.request_class
+            ,lt_customer_class
       FROM   xxwsh_oe_transaction_types2_v xottv        -- 受注タイプ情報VIEW2
             ,xxwsh_shipping_class_v        xscv         -- 出荷区分情報VIEW
---            ,hz_parties                    hp           -- パーティマスタ
---            ,hz_party_sites                hps          -- パーティサイトマスタ
---            ,hz_cust_accounts              hca          -- 顧客マスタ
-            ,xxcmn_cust_accounts2_v          xcav       -- 顧客情報View2
-            ,xxcmn_cust_acct_sites2_v        xcasv      -- 顧客サイト情報View2
-      WHERE  xscv.order_transaction_type_name = xottv.transaction_type_name
---      AND    hp.party_id                      = hps.party_id
---      AND    hca.party_id                     = hp.party_id
---      AND    hca.customer_class_code          = xscv.customer_class(+)
---      AND    hps.party_site_number            = ir_mst_rec.deliver_to
-      AND    xcav.customer_class_code         = xscv.customer_class(+)
-      AND    xcav.start_date_active          <= ir_mst_rec.shipped_date
-      AND    xcav.end_date_active            >= ir_mst_rec.shipped_date
-      AND    xcasv.party_id                   = xcav.party_id
-      AND    xcasv.start_date_active         <= ir_mst_rec.shipped_date
-      AND    xcasv.end_date_active           >= ir_mst_rec.shipped_date
-      AND    xcasv.party_site_number          = ir_mst_rec.deliver_to
-      AND    xottv.transaction_type_id        = ir_mst_rec.order_type_id
-      AND    xottv.shipping_shikyu_class      = '1'                        -- 出荷依頼
+      WHERE  -- *** 結合条件 受注タイプ情報VIEW2 AND 出荷区分情報VIEW *** --
+             xscv.order_transaction_type_name = xottv.transaction_type_name
+             -- *** 抽出条件 *** --
+      AND    NVL(xscv.customer_class, ir_mst_rec.customer_class_code)
+                                              = ir_mst_rec.customer_class_code  -- 出荷区分情報VIEW.顧客区分(出荷区分情報VIEW.顧客区分がNULLの場合は顧客区分を条件としない)
+      AND    xottv.transaction_type_id        = ir_mst_rec.order_type_id        -- 受注タイプ
+      AND    xottv.shipping_shikyu_class      = gv_shipping_shikyu_class_1      -- 出荷支給区分「1：出荷依頼」
       AND    ROWNUM                           = 1;
+-- 2008/09/18 1.17 Mod ↑
+--
+-- 2008/09/18 1.17 Add ↓ T_TE080_BPO_400 指摘79
+    -- 出荷区分情報VIEW.依頼区分と出荷区分情報VIEW.顧客区分を取得し、両方NULLの場合はCSV出力しない。
+    IF ((ir_mst_rec.request_class IS NULL)
+    AND (lt_customer_class IS NULL)) THEN
+      ov_retcode := gv_status_skip;
+    END IF;
+-- 2008/09/18 1.17 Add ↑
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
@@ -579,6 +620,10 @@ AS
              xoha.arrival_date                   -- 着荷日
 -- 2008/09/04 Mod ↑
             ,xoha.head_sales_branch              -- 管轄拠点
+-- 2008/09/18 1.17 Add ↓ T_S_630
+            ,xoha.order_type_id                  -- 受注タイプID
+            ,xoha.shipped_date                   -- 出荷日
+-- 2008/09/18 1.17 Add ↑
             ,xoha.result_deliver_to              -- 出荷先_実績
             ,xoha.customer_code                  -- 顧客
             ,xoha.request_no                     -- 依頼No
@@ -647,7 +692,10 @@ AS
 -- 2008/09/04 Del ↑
 -- 2008/07/14 1.3 Update End
       AND    xoha.req_status            = gv_req_status_04                  -- 出荷実績計上済
-      AND    otta.transaction_type_name = gv_tran_type_name                 -- 出荷依頼
+-- 2008/09/18 1.17 Mod ↓ T_TE080_BPO_400 指摘79 出荷依頼以外の出荷データも抽出対象とする。
+--      AND    otta.transaction_type_name = gv_tran_type_name               -- 出荷依頼
+      AND    otta.shipping_shikyu_class = gv_shipping_shikyu_class_1        -- 出荷支給区分が「1：出荷依頼」
+-- 2008/09/18 1.17 Mod ↑
       AND    otta.order_category_code   = gv_category_code                  -- 受注
       AND    NVL(otta.adjs_class,gv_adjs_class_req) <> gv_adjs_class_adj    -- 在庫調整以外
       AND    NVL(xola.shipping_result_if_flg, gv_flag_off )  = gv_flag_off  -- 出力済み以外
@@ -675,8 +723,38 @@ AS
 --
       mst_rec.arrival_date      := lr_mst_data_rec.arrival_date;       -- 着荷日
       mst_rec.head_sales_branch := lr_mst_data_rec.head_sales_branch;  -- 管轄拠点
+-- 2008/09/18 1.17 Add ↓ T_S_630
+      mst_rec.order_type_id     := lr_mst_data_rec.order_type_id;      -- 受注タイプID
+      mst_rec.shipped_date      := lr_mst_data_rec.shipped_date;       -- 出荷日
+-- 2008/09/18 1.17 Add ↑
       mst_rec.deliver_to        := lr_mst_data_rec.result_deliver_to;  -- 出荷先_実績
-      mst_rec.customer_code     := lr_mst_data_rec.customer_code;      -- 顧客
+-- 2008/09/18 1.17 Mod ↓ T_S_630 顧客区分により顧客コードを決定
+--      mst_rec.customer_code     := lr_mst_data_rec.customer_code;      -- 顧客
+--
+      -- 顧客区分取得
+      SELECT xcav.customer_class_code                   -- 顧客区分
+      INTO   mst_rec.customer_class_code
+      FROM   xxcmn_cust_accounts2_v          xcav       -- 顧客情報View2
+            ,xxcmn_cust_acct_sites2_v        xcasv      -- 顧客サイト情報View2
+      WHERE  xcasv.party_id                   = xcav.party_id
+      AND    xcav.start_date_active          <= lr_mst_data_rec.shipped_date
+      AND    xcav.end_date_active            >= lr_mst_data_rec.shipped_date
+      AND    xcasv.start_date_active         <= lr_mst_data_rec.shipped_date
+      AND    xcasv.end_date_active           >= lr_mst_data_rec.shipped_date
+      AND    xcasv.party_site_number          = lr_mst_data_rec.result_deliver_to
+      AND    ROWNUM                           = 1;
+--
+     -- 顧客配送先への出荷の場合
+     IF (mst_rec.customer_class_code = gv_cust_class_code_10) THEN
+       -- 受注ヘッダアドオンから取得した顧客コード
+       mst_rec.customer_code := lr_mst_data_rec.customer_code;
+--
+     -- 顧客配送先への出荷でない場合
+     ELSE
+       -- ダミー「000000000」をセット
+       mst_rec.customer_code := gv_dummy_cust_code;
+     END IF;
+-- 2008/09/18 1.17 Mod ↑
       mst_rec.request_no        := lr_mst_data_rec.request_no;         -- 依頼No
       mst_rec.request_item_code := lr_mst_data_rec.request_item_code;  -- 依頼品目
       mst_rec.shipped_quantity  := lr_mst_data_rec.shipped_quantity;   -- 出荷実績数量
@@ -871,7 +949,10 @@ AS
       AND    xoha.req_status           >= gv_req_status_03                --「締め済み」以上
       AND    xoha.req_status           <> gv_req_status_99                --「取消」以外
       AND    NVL(xoha.latest_external_flag,gv_flag_off) = gv_flag_on      -- 最新のみ
-      AND    otta.transaction_type_name = gv_tran_type_name               -- 出荷依頼
+-- 2008/09/18 1.17 Mod ↓ T_TE080_BPO_400 指摘79 出荷依頼以外の出荷データも抽出対象とする。
+--      AND    otta.transaction_type_name = gv_tran_type_name               -- 出荷依頼
+      AND    otta.shipping_shikyu_class = gv_shipping_shikyu_class_1        -- 出荷支給区分が「1：出荷依頼」
+-- 2008/09/18 1.17 Mod ↑
       AND    otta.order_category_code   = gv_category_code                -- 受注
       AND    NVL(otta.adjs_class,gv_adjs_class_req) <> gv_adjs_class_adj  -- 在庫調整以外
       AND    NVL(xola.delete_flag,gv_flag_off)      <> gv_flag_on         -- 削除以外
@@ -901,7 +982,33 @@ AS
       mst_rec.deliver_from       := lr_mst_data_rec.deliver_from;        -- 出荷元
       mst_rec.head_sales_branch  := lr_mst_data_rec.head_sales_branch;   -- 管轄拠点
       mst_rec.order_type_id      := lr_mst_data_rec.order_type_id;       -- 受注タイプID
-      mst_rec.customer_code      := lr_mst_data_rec.customer_code;       -- 顧客
+-- 2008/09/18 1.17 Mod ↓ T_S_630 顧客区分により顧客コードを決定
+--      mst_rec.customer_code      := lr_mst_data_rec.customer_code;       -- 顧客
+--
+      -- 顧客区分取得
+      SELECT xcav.customer_class_code                   -- 顧客区分
+      INTO   mst_rec.customer_class_code
+      FROM   xxcmn_cust_accounts2_v          xcav       -- 顧客情報View2
+            ,xxcmn_cust_acct_sites2_v        xcasv      -- 顧客サイト情報View2
+      WHERE  xcasv.party_id                   = xcav.party_id
+      AND    xcav.start_date_active          <= lr_mst_data_rec.shipped_date
+      AND    xcav.end_date_active            >= lr_mst_data_rec.shipped_date
+      AND    xcasv.start_date_active         <= lr_mst_data_rec.shipped_date
+      AND    xcasv.end_date_active           >= lr_mst_data_rec.shipped_date
+      AND    xcasv.party_site_number          = lr_mst_data_rec.deliver_to
+      AND    ROWNUM                           = 1;
+--
+     -- 顧客配送先への出荷の場合
+     IF (mst_rec.customer_class_code = gv_cust_class_code_10) THEN
+       -- 受注ヘッダアドオンから取得した顧客コード
+       mst_rec.customer_code := lr_mst_data_rec.customer_code;
+--
+     -- 顧客配送先への出荷でない場合
+     ELSE
+       -- ダミー「000000000」をセット
+       mst_rec.customer_code := gv_dummy_cust_code;
+     END IF;
+-- 2008/09/18 1.17 Mod ↑
       mst_rec.request_no         := lr_mst_data_rec.request_no;          -- 依頼No
       mst_rec.cust_po_number     := lr_mst_data_rec.cust_po_number;      -- 顧客発注番号
       mst_rec.arrival_time_from  := lr_mst_data_rec.arrival_time_from;   -- 着荷時間From
@@ -957,13 +1064,24 @@ AS
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
         ov_retcode := gv_status_warn;
         gn_warn_cnt := gn_warn_cnt + 1;
+--
+-- 2008/09/18 1.17 Mod ↓ T_TE080_BPO_400 指摘79
+--      END IF;
+      -- 出荷区分情報VIEW.依頼区分と出荷区分情報VIEW.顧客区分を取得し、両方NULLの場合(荒茶出荷,庭先出荷)はCSV出力しない。
+      ELSIF (lv_retcode = gv_status_skip) THEN
+        NULL;
+--
+      -- 正常の場合のみCSV出力
+      ELSE
+-- 2008/09/18 1.17 Mod ↑
+        gt_master_tbl(ln_cnt) := mst_rec;
+--
+        gt_order_line_id(ln_cnt) := mst_rec.order_line_id;
+--
+        ln_cnt := ln_cnt + 1;
+-- 2008/09/18 1.17 Add ↓ T_TE080_BPO_400 指摘79
       END IF;
---
-      gt_master_tbl(ln_cnt) := mst_rec;
---
-      gt_order_line_id(ln_cnt) := mst_rec.order_line_id;
---
-      ln_cnt := ln_cnt + 1;
+-- 2008/09/18 1.17 Add ↑
 --
     END LOOP mst_data_loop;
 --
