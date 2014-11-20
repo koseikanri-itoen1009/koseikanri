@@ -6,12 +6,13 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : 消化ＶＤ納品データ作成
  * MD.050           : 消化ＶＤ納品データ作成 MD050_COS_004_A04
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
  * ---------------------- ----------------------------------------------------------
+ *  roundup                切上関数
  *  init                   初期処理(A-0)
  *  pram_chk               パラメータチェック(A-1)
  *  get_common_data        共通データ取得(A-2)
@@ -46,6 +47,9 @@ AS
  *                                       データ登録値の修正
  *  2009/05/07   1.14  T.kitajima        [T1_0888]納品拠点取得方法変更
  *                                       [T1_0911]売上区分クイックコード化
+ *  2009/05/25   1.15  T.kitajima        [T1_1151]金額マイナス対応
+ *                                       [T1_1122]切上対応
+ *                                       [T1_1208]単価四捨五入
  *
  *****************************************************************************************/
 --
@@ -463,6 +467,26 @@ AS
   gv_sales_class_vd                   VARCHAR2(1);                           --消化・VD消化(売上区分)
 --****************************** 2009/05/07 1.14 T.Kitajima ADD  END  ******************************--
 --
+--****************************** 2009/05/25 1.15 T.Kitajima ADD START ******************************--
+  /**********************************************************************************
+   * Procedure Name   : roundup
+   * Description      : 切上関数
+   ***********************************************************************************/
+  FUNCTION roundup(in_number IN NUMBER, in_place IN INTEGER := 0)
+  RETURN NUMBER
+  IS
+    ln_base NUMBER;
+  BEGIN
+    IF (in_number = 0)
+      OR (in_number IS NULL)
+    THEN
+      RETURN 0;
+    END IF;
+--
+    ln_base := 10 ** in_place ;
+    RETURN CEIL( ABS( in_number ) * ln_base ) / ln_base * SIGN( in_number );
+  END;
+--****************************** 2009/05/25 1.15 T.Kitajima ADD  END  ******************************--
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-0)
@@ -638,7 +662,7 @@ AS
     AND    fa.application_short_name                       = ct_xxcos_appl_short_name
     AND    flv.lookup_type                                 = ct_qct_regular_type
     AND    flv.lookup_code                                 = iv_exec_div
-    AND    flv.start_date_active                          <= gd_business_date 
+    AND    flv.start_date_active                          <= gd_business_date
     AND    NVL( flv.end_date_active, gd_business_date )   >= gd_business_date
     AND    flv.enabled_flag                                = ct_enabled_flag_yes
     AND    flv.language                                    = USERENV( 'LANG' )
@@ -782,7 +806,7 @@ AS
       AND    fa.application_short_name                       = ct_xxcos_appl_short_name
       AND    flv.lookup_type                                 = ct_qct_making_type
       AND    flv.lookup_code                                 = ct_qcc_digestion_code
-      AND    flv.start_date_active                          <= gd_business_date 
+      AND    flv.start_date_active                          <= gd_business_date
       AND    NVL( flv.end_date_active, gd_business_date )   >= gd_business_date
       AND    flv.enabled_flag                                = ct_enabled_flag_yes
       AND    flv.language                                    = USERENV( 'LANG' )
@@ -972,7 +996,7 @@ AS
       AND    fa.application_short_name                       = ct_xxcos_appl_short_name
       AND    flv.lookup_type                                 = ct_qct_sales_type
       AND    flv.lookup_code                                 = ct_qcc_sales_code
-      AND    flv.start_date_active                          <= gd_business_date 
+      AND    flv.start_date_active                          <= gd_business_date
       AND    NVL( flv.end_date_active, gd_business_date )   >= gd_business_date
       AND    flv.enabled_flag                                = ct_enabled_flag_yes
       AND    flv.language                                    = USERENV( 'LANG' )
@@ -1699,7 +1723,7 @@ AS
     lv_err_work            := cv_status_normal;
     ln_delete_start_index  := cn_1;
     ln_index               := cn_1;
-    ln_amount_work_max     := cn_0;
+    ln_amount_work_max     := null;
     ln_err_line_flag       := cn_0;
     ln_line_index          := 1;
     --ヘッダシーケンス取得
@@ -2368,9 +2392,13 @@ AS
         ln_tax_work := ln_amount_work - ( ln_amount_work / ( cn_1 + gt_tab_work_data(ln_i).tax_rate / cn_100 ) );
         --
         IF ( gt_tab_work_data(ln_i).tax_rounding_rule = cv_tax_rounding_rule_UP ) THEN         --切上げ
-          gt_tab_sales_exp_lines(ln_m).tax_amount                 := CEIL( ln_tax_work );                                --消費税金額
---          gt_tab_sales_exp_lines(ln_m).pure_amount                := ln_amount_work - CEIL( ln_tax_work );               --本体金額
-          ln_amount_data                                          := ln_amount_work - CEIL( ln_tax_work );               --本体金額
+--****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
+--          gt_tab_sales_exp_lines(ln_m).tax_amount                 := CEIL( ln_tax_work );                                --消費税金額
+----          gt_tab_sales_exp_lines(ln_m).pure_amount                := ln_amount_work - CEIL( ln_tax_work );               --本体金額
+--          ln_amount_data                                          := ln_amount_work - CEIL( ln_tax_work );               --本体金額
+          gt_tab_sales_exp_lines(ln_m).tax_amount                 := roundup( ln_tax_work );                             --消費税金額
+          ln_amount_data                                          := ln_amount_work - roundup( ln_tax_work );            --本体金額
+--****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
           gt_tab_sales_exp_lines(ln_m).pure_amount                := ln_amount_data;
         ELSIF ( gt_tab_work_data(ln_i).tax_rounding_rule = cv_tax_rounding_rule_DOWN ) THEN    --切捨て
           gt_tab_sales_exp_lines(ln_m).tax_amount                 := TRUNC( ln_tax_work );                               --消費税金額
@@ -2386,11 +2414,18 @@ AS
           RAISE global_api_others_expt;
         END IF;
         --
+--****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
+--        gt_tab_sales_exp_lines(ln_m).dlv_unit_price               :=
+--                                                        TRUNC ( ( ln_amount_work / gt_tab_work_data(ln_i).sales_quantity ) , 2 );  --納品単価
+--        gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded :=
+--                                                            TRUNC ( ( ln_amount_data / gt_tab_work_data(ln_i).sales_quantity ) , 2 );  --税抜基準単価
+--        gt_tab_sales_exp_lines(ln_m).standard_unit_price          := TRUNC ( ( ln_amount_work / ln_after_quantity ) , 2 ); --基準単価
         gt_tab_sales_exp_lines(ln_m).dlv_unit_price               :=
-                                                        TRUNC ( ( ln_amount_work / gt_tab_work_data(ln_i).sales_quantity ) , 2 );  --納品単価
+                                                        ROUND ( ( ln_amount_work / gt_tab_work_data(ln_i).sales_quantity ) , 2 );  --納品単価
         gt_tab_sales_exp_lines(ln_m).standard_unit_price_excluded :=
-                                                            TRUNC ( ( ln_amount_data / gt_tab_work_data(ln_i).sales_quantity ) , 2 );  --税抜基準単価
-        gt_tab_sales_exp_lines(ln_m).standard_unit_price          := TRUNC ( ( ln_amount_work / ln_after_quantity ) , 2 ); --基準単価
+                                                            ROUND ( ( ln_amount_data / gt_tab_work_data(ln_i).sales_quantity ) , 2 );  --税抜基準単価
+        gt_tab_sales_exp_lines(ln_m).standard_unit_price          := ROUND ( ( ln_amount_work / ln_after_quantity ) , 2 ); --基準単価
+--****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
 --**************************** 2009/04/27 1.13 N.Maeda MOD  END  *********************************************************************
         --赤黒フラグ取得
         IF ( gt_tab_sales_exp_lines(ln_m).sale_amount < cn_0 ) THEN
@@ -2426,8 +2461,14 @@ AS
         --消化計算掛率済み品目別販売金額の合計額計算
         ln_amount_work_total     := ln_amount_work_total     + ln_amount_work;
         --最大の消化計算掛率済み品目別販売金額と読み込んだテーブルインデックスと書き出したテーブルインデックスを保存
-        IF ( ln_amount_work_max <= ln_amount_work ) THEN
+
+--****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
+--        IF ( ln_amount_work_max <= ln_amount_work ) THEN
+        IF   ( ln_amount_work_max <= ln_amount_work )
+          OR ( ln_amount_work_max IS NULL )
+        THEN
           ln_amount_work_max := ln_amount_work; --最大の消化計算掛率済み品目別販売金額
+--****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
           ln_i_max := ln_i; --現在の読込テーブルインデックス
           ln_m_max := ln_m; --現在の書出テーブルインデックス
         END IF;
@@ -2444,7 +2485,7 @@ AS
       --次のレコードが無い または 次のレコードでキーブレイクする場合
       IF ( gt_tab_work_data.COUNT < ln_i + cn_1 )
         OR
-         ( ( gt_tab_work_data(ln_i).vd_digestion_hdr_id <> gt_tab_work_data(ln_i + cn_1).vd_digestion_hdr_id ) 
+         ( ( gt_tab_work_data(ln_i).vd_digestion_hdr_id <> gt_tab_work_data(ln_i + cn_1).vd_digestion_hdr_id )
           OR ( gt_tab_work_data(ln_i).digestion_due_date <> gt_tab_work_data(ln_i + cn_1).digestion_due_date ) )
       THEN
         --１ヘッダの中でエラー明細が１件でも存在したか？
@@ -2461,7 +2502,7 @@ AS
 --****************************** 2009/04/27 1.13 T.Kitajima ADD  END  ******************************--
 --**************************** 2009/03/30 1.10 T.kitajima ADD START ****************************
           --納品明細番号初期化
-          ln_line_index := 1; 
+          ln_line_index := 1;
 --**************************** 2009/03/30 1.10 T.kitajima ADD  END  ****************************
         ELSE --存在しなかった
           --ヘッダデータ設定
@@ -2548,8 +2589,12 @@ AS
             --
             --消費税額の小数点を端数処理し、消費税金額と本体金額を再計算し、出力変数へ再びセットし直す。
             IF ( gt_tab_work_data(ln_i_max).tax_rounding_rule    = cv_tax_rounding_rule_UP )      THEN    --切上げ
-              gt_tab_sales_exp_lines(ln_m_max).tax_amount     := CEIL( ln_tax_work );                       --消費税金額
-              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - CEIL( ln_tax_work );  --本体金額
+--****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
+--             gt_tab_sales_exp_lines(ln_m_max).tax_amount     := CEIL( ln_tax_work );                       --消費税金額
+--              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - CEIL( ln_tax_work );  --本体金額
+             gt_tab_sales_exp_lines(ln_m_max).tax_amount     := roundup( ln_tax_work );                       --消費税金額
+              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - roundup( ln_tax_work );  --本体金額
+--****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
             ELSIF ( gt_tab_work_data(ln_i_max).tax_rounding_rule = cv_tax_rounding_rule_DOWN )    THEN    --切捨て
               gt_tab_sales_exp_lines(ln_m_max).tax_amount     := TRUNC( ln_tax_work );                      --消費税金額
               gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - TRUNC( ln_tax_work ); --本体金額
@@ -2559,6 +2604,15 @@ AS
             ELSE
               RAISE global_api_others_expt;
             END IF;
+--****************************** 2009/05/25 1.15 T.Kitajima MOD START  ******************************--
+            --調整後単価計算
+            gt_tab_sales_exp_lines(ln_m_max).dlv_unit_price               :=
+              ROUND ( ( gt_tab_sales_exp_lines(ln_m_max).sale_amount / gt_tab_sales_exp_lines(ln_m_max).dlv_qty ) , 2 );  --納品単価
+            gt_tab_sales_exp_lines(ln_m_max).standard_unit_price_excluded :=
+              ROUND ( ( gt_tab_sales_exp_lines(ln_m_max).pure_amount / gt_tab_sales_exp_lines(ln_m_max).dlv_qty ) , 2 );  --税抜基準単価
+            gt_tab_sales_exp_lines(ln_m_max).standard_unit_price          :=
+              ROUND ( ( gt_tab_sales_exp_lines(ln_m_max).sale_amount / gt_tab_sales_exp_lines(ln_m_max).standard_qty ) , 2 );  --基準単価
+--****************************** 2009/05/25 1.15 T.Kitajima MOD  END   ******************************--
           END IF;
 --
 --****************************** 2009/04/27 1.13 N.Maeda    ADD START ******************************--
@@ -2572,9 +2626,12 @@ AS
           ln_amount_work_data        := 0;
           -- 明細カウント取得
           ln_count_data              := ln_m;
-          ln_amount_work_max         := cn_0; 
-          ln_i_max                   := cn_0; 
-          ln_m_max                   := cn_0; 
+--****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
+--          ln_amount_work_max         := cn_0;
+          ln_amount_work_max         := NULL;
+--****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
+          ln_i_max                   := cn_0;
+          ln_m_max                   := cn_0;
 --****************************** 2009/04/27 1.13 N.Maeda    ADD  END  ******************************--
 --
           --消化計算掛率済み品目別販売合計金額の初期化
@@ -2585,7 +2642,7 @@ AS
           ln_h := ln_h + cn_1;
 --**************************** 2009/03/30 1.10 T.kitajima ADD START ****************************
           --納品明細番号初期化
-          ln_line_index := 1; 
+          ln_line_index := 1;
 --**************************** 2009/03/30 1.10 T.kitajima ADD  END  ****************************
           --ヘッダシーケンス取得
           SELECT xxcos_sales_exp_headers_s01.nextval
@@ -3031,7 +3088,7 @@ AS
     -- ========================================
     BEGIN
       UPDATE xxcos_vd_column_headers
-         SET 
+         SET
              forward_flag               = ct_make_flag_yes,
              forward_date               = gd_business_date,
              last_updated_by            = cn_last_updated_by,
@@ -3220,7 +3277,7 @@ AS
       RAISE global_common_expt;
     END IF;
     -- ===============================
-    -- A-6．販売実績ヘッダ作成 
+    -- A-6．販売実績ヘッダ作成
     -- ===============================
     set_headers(
       lv_errbuf,          -- エラー・メッセージ           --# 固定 #
@@ -3231,7 +3288,7 @@ AS
       RAISE global_common_expt;
     END IF;
     -- ========================================
-    -- A-7．消化ＶＤ用消化計算テーブル更新処理 
+    -- A-7．消化ＶＤ用消化計算テーブル更新処理
     -- ========================================
     update_digestion(
       iv_base_code,       -- 拠点コード
