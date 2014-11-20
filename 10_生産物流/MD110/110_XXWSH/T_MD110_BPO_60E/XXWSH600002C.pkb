@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/06/27    1.11  M.NOMURA         システムテスト不具合対応#303
  *  2008/07/04    1.12  M.NOMURA         システムテスト不具合対応#390
  *  2008/07/16    1.13  Oracle 山根 一浩 I_S_192,T_S_443,指摘240対応
+ *  2008/08/04    1.14  M.NOMURA         追加結合不具合対応
  *
  *****************************************************************************************/
 --
@@ -2186,9 +2187,9 @@ AS
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
     END IF ;
 --
-    -- ============================================================================================
+    -- =============================================================================================
     -- 出荷依頼データ作成
-    -- ============================================================================================
+    -- =============================================================================================
     lv_eos_csv_output := lv_eos_shipped_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
     -------------------------------------------------------
     -- データタイプ：出荷
@@ -2395,17 +2396,9 @@ AS
         -- 移動入庫の作成
         -------------------------------------------------------
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-        -- EOS宛先（入庫倉庫）が設定されている場合、またはEOS宛先（運送業者）が設定されている場合
-        IF ((gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL)
-         OR (gt_main_data(in_idx).eos_freight_carrier IS NOT NULL)) THEN   -- 2008/07/16 Add
---
-          -- 2008/07/16 Add
-          IF (gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL) THEN
-            lv_eos_csv_output := lv_eos_shipped_to_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
-          ELSE
-            lv_eos_csv_output := lv_eos_freight_carrier ;    -- ＥＯＳ宛先（ＣＳＶ）
-          END IF;
-          lv_eos_wrk := lv_eos_csv_output;
+        -- EOS宛先（入庫倉庫）が設定されている場合
+        IF (gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL) THEN
+          lv_eos_csv_output := lv_eos_shipped_to_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
           lv_pallet_sum_quantity := gt_main_data(in_idx).pallet_sum_quantity_in ;
           prc_cre_head_data
@@ -2414,7 +2407,7 @@ AS
              ,iv_data_class           => gc_data_class_mov_n      -- データ種別
              ,iv_pallet_sum_quantity  => lv_pallet_sum_quantity   -- パレット使用枚数
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-             ,iv_eos_shipped_locat    => lv_eos_wrk               -- EOS宛先
+             ,iv_eos_shipped_locat    => lv_eos_shipped_to_locat  -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
              ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
              ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
@@ -2446,7 +2439,7 @@ AS
              ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
              ,iv_item_quantity        => lv_item_quantity         -- 品目数量
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-             ,iv_eos_shipped_locat    => lv_eos_shipped_locat     -- EOS宛先
+             ,iv_eos_shipped_locat      => lv_eos_shipped_locat     -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
              ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
              ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
@@ -2463,16 +2456,9 @@ AS
         -- 明細データの作成（移動入庫）
         -------------------------------------------------------
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-        -- EOS宛先（入庫倉庫）が設定されている場合、またはEOS宛先（運送業者）が設定されている場合
-        IF ((gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL)
-         OR (gt_main_data(in_idx).eos_freight_carrier IS NOT NULL)) THEN     -- 2008/07/16 Add
---
-          IF (gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL) THEN
-            lv_eos_csv_output := lv_eos_shipped_to_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
-          ELSE
-            lv_eos_csv_output := lv_eos_freight_carrier ;    -- ＥＯＳ宛先（ＣＳＶ）
-          END IF;
-          lv_eos_wrk := lv_eos_csv_output;
+        -- EOS宛先（入庫倉庫）が設定されている場合
+        IF (gt_main_data(in_idx).eos_shipped_to_locat IS NOT NULL) THEN
+          lv_eos_csv_output := lv_eos_shipped_to_locat ;   -- ＥＯＳ宛先（ＣＳＶ）
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
           prc_cre_dtl_data
             (
@@ -2481,7 +2467,7 @@ AS
              ,iv_item_uom_code        => lv_item_uom_code         -- 品目単位
              ,iv_item_quantity        => lv_item_quantity         -- 品目数量
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
-             ,iv_eos_shipped_locat    => lv_eos_wrk               -- EOS宛先
+             ,iv_eos_shipped_locat    => lv_eos_shipped_to_locat  -- EOS宛先
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
              ,iv_eos_csv_output       => lv_eos_csv_output        -- ＥＯＳ宛先（ＣＳＶ）
              ,ov_errbuf               => lv_errbuf                -- エラー・メッセージ
@@ -2498,9 +2484,9 @@ AS
 --
     END IF ;
 --
-    -- ============================================================================================
+    -- =============================================================================================
     -- 配送依頼データ作成
-    -- ============================================================================================
+    -- =============================================================================================
     lv_eos_csv_output := lv_eos_freight_carrier ;   -- ＥＯＳ宛先（ＣＳＶ）
     IF (   ( lv_eos_freight_carrier IS NOT NULL             )
 -- ##### 20080623 Ver.1.9 EOS宛先対応 START #####
@@ -2509,6 +2495,7 @@ AS
 ***/
        AND ( lv_eos_freight_carrier <> NVL(lv_eos_shipped_locat   ,lv_eos_shipped_to_locat))
        AND ( lv_eos_freight_carrier <> NVL(lv_eos_shipped_to_locat, lv_eos_shipped_locat))) THEN
+
 -- ##### 20080623 Ver.1.9 EOS宛先対応 END   #####
       -------------------------------------------------------
       -- データタイプ：出荷
@@ -2524,18 +2511,18 @@ AS
                                 ,gt_main_data(in_idx).item_uom_code ) ;
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
 --
-        -- 入出庫換算単位≠NULLの場合
-        IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
+      -- 入出庫換算単位≠NULLの場合
+      IF (gt_main_data(in_idx).conv_unit IS NOT NULL) THEN
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
-          lv_item_quantity := gt_main_data(in_idx).item_quantity
-                            / gt_main_data(in_idx).case_quantity ;
-          lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
+        lv_item_quantity := gt_main_data(in_idx).item_quantity
+                          / gt_main_data(in_idx).case_quantity ;
+        lv_item_quantity := TRUNC( lv_item_quantity, 3 ) ;
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 START #####
 --
-        -- 入出庫換算単位＝NULLの場合
-        ELSE
-          lv_item_quantity       := gt_main_data(in_idx).item_quantity ;  -- 品目数量
-        END IF;
+      -- 入出庫換算単位＝NULLの場合
+      ELSE
+        lv_item_quantity       := gt_main_data(in_idx).item_quantity ;  -- 品目数量
+      END IF;
 -- ##### 20080627 Ver.1.11 ロット数量換算対応 END   #####
 --
         -------------------------------------------------------
