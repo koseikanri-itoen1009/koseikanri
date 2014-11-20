@@ -7,7 +7,7 @@ AS
  * Description      : 出荷依頼情報抽出
  * MD.050           : 出荷依頼         T_MD050_BPO_401
  * MD.070           : 出荷依頼情報抽出 T_MD070_BPO_40F
- * Version          : 2.0
+ * Version          : 2.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/11/06    1.8   Oracle 伊藤 ひとみ 統合テスト指摘560対応
  *  2008/12/01    1.9   Oracle 吉田 夏樹 本番#291対応
  *  2008/12/03    2.0   Oracle 宮田      本番#255対応
+ *  2008/12/24    2.1   Oracle 椎名 昭圭 本番#827対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -172,7 +173,10 @@ AS
     shipped_date          xxwsh_order_headers_all.shipped_date%TYPE,      -- 出荷日
     arrival_time_from     xxwsh_order_headers_all.arrival_time_from%TYPE, -- 着荷時間From
     item_no               xxcmn_item_mst_v.item_no%TYPE,                  -- 親品目
-    new_crowd_code        xxcmn_item_mst2_v.new_crowd_code%TYPE,          -- 新・群コード
+-- 2008/12/24 v2.1 UPDATE START
+--    new_crowd_code        xxcmn_item_mst2_v.new_crowd_code%TYPE,          -- 新・群コード
+    crowd_code            VARCHAR2(240),                                    -- 群コード
+-- 2008/12/24 v2.1 UPDATE END
     shipped_quantity      xxwsh_order_lines_all.shipped_quantity%TYPE,    -- 出荷実績数量
 --
     request_class         xxwsh_shipping_class_v.request_class%TYPE,      -- 依頼区分
@@ -226,6 +230,10 @@ AS
   gn_program_id               NUMBER;                     -- プログラムID
   gd_program_update_date      DATE;                       -- プログラム更新日
 --
+-- 2008/12/24 ADD START
+  gv_sysdate                  VARCHAR2(240);  -- システム現在日付
+--
+-- 2008/12/24 ADD END
   /***********************************************************************************
    * Function Name    : cutoff_str
    * Description      : 文字列を末尾から切り取る
@@ -641,7 +649,15 @@ AS
 -- 2008/12/01 1.9  Mod ↑
             ,xola.delete_flag                    -- 削除フラグ
             ,ximv1.item_no                       -- 親品目
-            ,ximv2.new_crowd_code                -- 新・群コード
+-- 2008/12/24 v2.1 UPDATE START
+--            ,ximv2.new_crowd_code                -- 新・群コード
+            ,CASE
+              WHEN NVL(ximv2.crowd_start_date, gv_sysdate) <= gv_sysdate THEN
+                ximv2.new_crowd_code             -- 新・群コード
+              ELSE
+                ximv2.old_crowd_code             -- 旧・群コード
+             END crowd_code
+-- 2008/12/24 v2.1 UPDATE END
             ,ximv2.num_of_cases                  -- ケース入数
 -- 2008/07/14 1.3 Update Start
 --            ,xic4.prod_class_code                -- 商品区分
@@ -777,7 +793,10 @@ AS
       mst_rec.shipped_quantity  := lr_mst_data_rec.shipped_quantity;   -- 出荷実績数量
       mst_rec.delete_flag       := lr_mst_data_rec.delete_flag;        -- 削除フラグ
       mst_rec.item_no           := lr_mst_data_rec.item_no;            -- 親品目
-      mst_rec.new_crowd_code    := lr_mst_data_rec.new_crowd_code;     -- 新・群コード
+-- 2008/12/24 v2.1 UPDATE START
+--      mst_rec.new_crowd_code    := lr_mst_data_rec.new_crowd_code;     -- 新・群コード
+      mst_rec.crowd_code        := lr_mst_data_rec.crowd_code;         -- 群コード
+-- 2008/12/24 v2.1 UPDATE END
       mst_rec.num_of_cases      := lr_mst_data_rec.num_of_cases;       -- ケース入数
 -- 2008/07/14 1.3 Update Start
 --      mst_rec.prod_class_code   := lr_mst_data_rec.prod_class_code;    -- 商品区分
@@ -1697,7 +1716,10 @@ AS
               lv_data := lv_data || cv_sep_com || mst_rec.item_no;
             END IF;
 --
-            lv_data := lv_data || cv_sep_com || mst_rec.new_crowd_code;     -- 群コード
+-- 2008/12/24 v2.1 UPDATE START
+--            lv_data := lv_data || cv_sep_com || mst_rec.new_crowd_code;     -- 群コード
+            lv_data := lv_data || cv_sep_com || mst_rec.crowd_code;         -- 群コード
+-- 2008/12/24 v2.1 UPDATE END
 --
             -- ケース数
             IF (NVL(mst_rec.delete_flag,gv_flag_off) = gv_flag_on) THEN
@@ -1842,6 +1864,11 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+-- 2008/12/24 v2.1 ADD START
+    -- 群コード適用日付
+    gv_sysdate    := TO_CHAR(SYSDATE, 'YYYY/MM/DD');
+--
+-- 2008/12/24 v2.1 ADD END
     -- グローバル変数の初期化
     gn_target_cnt := 0;
     gn_normal_cnt := 0;

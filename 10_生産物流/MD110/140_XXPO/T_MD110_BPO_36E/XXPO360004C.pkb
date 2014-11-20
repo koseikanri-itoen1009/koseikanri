@@ -7,7 +7,7 @@ AS
  * Description      : 仕入明細表
  * MD.050/070       : 有償支給帳票Issue1.0(T_MD050_BPO_360)
  *                  : 有償支給帳票Issue1.0(T_MD070_BPO_36E)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2008/11/04    1.17  Y.Yamamoto       統合障害#470
  *  2008/12/08    1.18  H.Itou           本番障害#551
  *  2008/12/09    1.19  T.Yoshimoto      本番障害#579
+ *  2008/12/24    1.20  A.Shiina         本番障害#827
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -143,7 +144,10 @@ AS
    vend_shrt_nm   xxcmn_vendors.vendor_short_name%TYPE,                   -- 取引先名
    category_cd2   mtl_categories_b.segment1%TYPE,                         -- 品目区分コード
    category_desc2 mtl_categories_b.description%TYPE,                      -- 品目区分名
-   old_crw_cd     ic_item_mst_b.attribute1%TYPE,                          -- 群
+-- 2008/12/24 v1.20 UPDATE START
+--   old_crw_cd     ic_item_mst_b.attribute1%TYPE,                          -- 群
+   crw_cd         VARCHAR2(240),                                          -- 群
+-- 2008/12/24 v1.20 UPDATE END
    item_no        ic_item_mst_b.item_no%TYPE,                             -- 品目(品目コード
    item_sht_nm    xxcmn_item_mst_b.item_short_name%TYPE,                  -- 品目(品目名)
    po_attr3       po_lines_all.attribute3%TYPE,                           -- 付帯
@@ -184,6 +188,9 @@ AS
   gn_user_id                fnd_user.user_id%TYPE DEFAULT FND_GLOBAL.USER_ID; -- ユーザーＩＤ
   gn_user_vendor_id         po_vendors.vendor_id%TYPE;
 --
+-- 2008/12/24 v1.20 ADD START
+  gv_sysdate                VARCHAR2(240) ;  -- システム現在日付
+-- 2008/12/24 v1.20 ADD END
   ------------------------------
   -- ＸＭＬ用
   ------------------------------
@@ -667,7 +674,16 @@ AS
               || ' xvv.vendor_short_name      AS  vend_shrt_nm, '    -- 取引先名
               || ' ctgi.category_code         AS  category_cd2, '    -- 品目区分コード
               || ' ctgi.category_description  AS  category_desc2,'   -- 品目区分名
-              || ' ximv.old_crowd_code        AS  old_crw_cd, '      -- 群
+-- 2008/12/24 v1.20 UPDATE START
+--              || ' ximv.old_crowd_code        AS  old_crw_cd, '      -- 群
+              || ' CASE '
+              || '   WHEN NVL(ximv.crowd_start_date, ''' || gv_sysdate || ''' ) '
+              || '          <= ''' || gv_sysdate || ''' THEN '
+              || '     ximv.new_crowd_code ' -- 新・群コード
+              || '   ELSE '
+              || '     ximv.old_crowd_code ' -- 旧・群コード
+              || ' END AS crw_cd, '                                  -- 群
+-- 2008/12/24 v1.20 UPDATE END
               || ' ximv.item_no               AS  item_no, '         -- 品目(品目コード
               || ' ximv.item_short_name       AS  item_sht_nm, '     -- 品目(品目名)
               || ' pla.attribute3             AS  po_attr3, '        -- 付帯
@@ -940,7 +956,17 @@ AS
                 || ' xvv.vendor_short_name      AS  vend_shrt_nm,'
                 || ' ctgi.category_code         AS  category_cd2,'
                 || ' ctgi.category_description  AS  category_desc2,'
-                || ' ximv.old_crowd_code        AS  old_crw_cd,'
+-- 2008/12/24 v1.20 UPDATE START
+--                || ' ximv.old_crowd_code        AS  old_crw_cd, '
+              || ' CASE '
+              || '   WHEN NVL(ximv.crowd_start_date, ''' || gv_sysdate || ''' ) '
+              || '          <= ''' || gv_sysdate || ''' THEN '
+              || '     ximv.new_crowd_code ' -- 新・群コード
+              || '   ELSE '
+              || '     ximv.old_crowd_code ' -- 旧・群コード
+              || ' END AS crw_cd, '
+-- 2008/12/24 v1.20 UPDATE END
+
                 || ' ximv.item_no               AS  item_no,'
                 || ' ximv.item_short_name       AS  item_sht_nm,'
                 || ' rcrt.futai_code            AS  po_attr3,'
@@ -1118,7 +1144,10 @@ AS
       lv_order := lv_order
                || ' xv_seg1       ASC, '       -- 取引先
                || ' category_cd2  ASC, '       -- 品目区分
-               || ' old_crw_cd    ASC, '       -- 群
+-- 2008/12/24 v1.20 UPDATE START
+--               || ' old_crw_cd    ASC, '       -- 群
+               || ' crw_cd        ASC, '       -- 群
+-- 2008/12/24 v1.20 UPDATE END
                || ' item_no       ASC, '       -- 品目コード
                || ' po_attr3      ASC, '       -- 付帯
                || ' txns_date     ASC, '       -- 納入日
@@ -1133,7 +1162,10 @@ AS
                || ' order_loc_cd  ASC, '       -- 部署
                || ' xv_seg1       ASC, '       -- 取引先
                || ' category_cd2  ASC, '       -- 品目区分
-               || ' old_crw_cd    ASC, '       -- 群
+-- 2008/12/24 v1.20 UPDATE START
+--               || ' old_crw_cd    ASC, '       -- 群
+               || ' crw_cd        ASC, '       -- 群
+-- 2008/12/24 v1.20 UPDATE END
                || ' item_no       ASC, '       -- 品目コード
                || ' po_attr3      ASC, '       -- 付帯
                || ' txns_date     ASC, '       -- 納入日
@@ -2013,7 +2045,10 @@ AS
       -- 群コードブレイク
       -- =====================================================
       -- 群コードが切り替わった場合
-      IF ( NVL( gt_main_data(i).old_crw_cd, lc_break_null ) <> lv_crw_cd ) THEN
+-- 2008/12/24 v1.20 UPDATE START
+--      IF ( NVL( gt_main_data(i).old_crw_cd, lc_break_null ) <> lv_crw_cd ) THEN
+      IF ( NVL( gt_main_data(i).crw_cd, lc_break_null ) <> lv_crw_cd ) THEN
+-- 2008/12/24 v1.20 UPDATE END
         -- -----------------------------------------------------
         -- 終了タグ出力
         -- -----------------------------------------------------
@@ -2098,13 +2133,19 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'crow_id' ;
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTRB(gt_main_data(i).old_crw_cd,1,4);
+-- 2008/12/24 v1.20 UPDATE START
+--        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTRB(gt_main_data(i).old_crw_cd,1,4);
+        gt_xml_data_table(gl_xml_idx).tag_value := SUBSTRB(gt_main_data(i).crw_cd,1,4);
+-- 2008/12/24 v1.20 UPDATE END
 --
         -- -----------------------------------------------------
         -- キーブレイク時の初期処理
         -- -----------------------------------------------------
         -- キーブレイク用変数退避
-        lv_crw_cd  := NVL( gt_main_data(i).old_crw_cd, lc_break_null )  ;
+-- 2008/12/24 v1.20 UPDATE START
+--        lv_crw_cd  := NVL( gt_main_data(i).old_crw_cd, lc_break_null )  ;
+        lv_crw_cd  := NVL( gt_main_data(i).crw_cd, lc_break_null )  ;
+-- 2008/12/24 v1.20 UPDATE END
         lv_item_no := lc_break_init ;
       END IF;
 --
@@ -2714,6 +2755,10 @@ AS
     -- =====================================================
     -- 初期処理
     -- =====================================================
+-- 2008/12/24 v1.20 ADD START
+    -- 群コード適用日付
+    gv_sysdate                  := TO_CHAR(SYSDATE, 'YYYY/MM/DD');
+-- 2008/12/24 v1.20 ADD END
     -- 帳票出力値格納
     gv_report_id                := 'XXPO360004T';      -- 帳票ID
     gd_exec_date                := SYSDATE;            -- 実施日
