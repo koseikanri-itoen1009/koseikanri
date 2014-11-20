@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫配送計画情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60E_入出庫配送計画情報抽出処理
- * Version          : 1.20
+ * Version          : 1.22
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -18,6 +18,7 @@ AS
  *  prc_del_temp_data      テーブル削除                   (E-03)
  *  prc_ins_temp_table     中間テーブル登録
  *  prc_get_main_data      メインデータ抽出               (E-04)
+ *  prc_get_can_data       取消データ抽出                 -- TE080_600指摘#27対応 追加
  *  prc_cre_head_data      ヘッダデータ作成
  *  prc_cre_dtl_data       明細データ作成
  *  prc_create_ins_data    通知済情報作成処理             (E-05)
@@ -60,6 +61,7 @@ AS
  *  2008/09/25    1.19  M.Nomura         TE080_600指摘#31対応
  *  2008/09/25    1.20  M.Nomura         統合#26対応
  *  2008/10/06    1.21  M.Nomura         統合#306対応
+ *  2008/10/07    1.21  M.Nomura         TE080_600指摘#27対応
  *
  *****************************************************************************************/
 --
@@ -400,6 +402,17 @@ AS
     ) ;
   TYPE tab_main_data IS TABLE OF rec_main_data INDEX BY BINARY_INTEGER ;
   gt_main_data  tab_main_data ;
+--
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+--
+  TYPE rec_can_data  IS RECORD
+    (
+      request_no                xxwsh_stock_delivery_info_tmp2.request_no%TYPE
+    ) ;
+  TYPE tab_can_data IS TABLE OF rec_can_data INDEX BY BINARY_INTEGER ;
+  gt_can_data  tab_can_data ;
+--
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
 --
   --------------------------------------------------
   -- 通知済情報格納用
@@ -2465,6 +2478,224 @@ AS
 --##### 固定例外処理部 END   #######################################################################
   END prc_get_main_data ;
 --
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+--   取消データ取得処理 追加
+--     メインデータ抽出処理にて条件に変更があった場合は取り消しデータ抽出にも変更が必要となります
+--
+  /************************************************************************************************
+   * Procedure Name   : prc_get_can_data
+   * Description      : 取消データ抽出
+   ************************************************************************************************/
+  PROCEDURE prc_get_can_data
+    (
+      ov_errbuf   OUT NOCOPY VARCHAR2   -- エラー・メッセージ
+     ,ov_retcode  OUT NOCOPY VARCHAR2   -- リターン・コード
+     ,ov_errmsg   OUT NOCOPY VARCHAR2   -- ユーザー・エラー・メッセージ
+    )
+  IS
+    -- ==================================================
+    -- 固定ローカル定数
+    -- ==================================================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'prc_get_can_data' ; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--###########################  固定部 END   ####################################
+--
+    -- ==================================================
+    -- 定数宣言
+    -- ==================================================
+    lc_msg_code       CONSTANT VARCHAR2(30) := 'APP-XXWSH-11856' ;
+--
+    -- ==================================================
+    -- 変数宣言
+    -- ==================================================
+    lv_sql            VARCHAR2(32000) ;
+    lv_select         VARCHAR2(32000) ;
+    lv_from           VARCHAR2(32000) ;
+    lv_where          VARCHAR2(32000) ;
+    lv_order          VARCHAR2(32000) ;
+--
+    -- ==================================================
+    -- ＲＥＦカーソル宣言
+    -- ==================================================
+    TYPE ref_cursor IS REF CURSOR ;
+    cu_ref      ref_cursor ;
+--
+    -- ==================================================
+    -- 例外宣言
+    -- ==================================================
+    ex_no_data        EXCEPTION ;
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+--##### 固定ステータス初期化部 START #################################
+    ov_retcode := gv_status_normal;
+--##### 固定ステータス初期化部 END   #################################
+--
+    -- ====================================================
+    -- ＳＥＬＥＣＴ句
+    -- ====================================================
+    lv_select := ' SELECT '
+              ||    ' wsdit2.request_no '   -- 依頼No
+              ;
+    -- ====================================================
+    -- ＦＲＯＭ句
+    -- ====================================================
+    lv_from := ' FROM xxwsh_stock_delivery_info_tmp2 wsdit2, ' 
+             || ' ( SELECT   mov_lot_dtl_id as mov_lot_dtl_id '
+             || '          , mov_line_id    as mov_line_id '
+             || '   FROM   xxinv_mov_lot_details '
+             || '   WHERE  document_type_code     IN ( '
+             ||                 gc_doc_type_ship  || ',' 
+             ||                 gc_doc_type_move  || ',' 
+             ||                 gc_doc_type_prov  || ')'
+             || ' ) imld '
+              ;
+--
+    -- ====================================================
+    -- ＷＨＥＲＥ句
+    -- ====================================================
+    lv_where := ' WHERE '
+        || ' (   wsdit2.notif_status      = ''' || gc_notif_status_c || ''''  -- 確定通知済
+        || ' AND wsdit2.prev_notif_status = ''' || gc_notif_status_r || ''''  -- 再通知要
+        || ' )'
+        ;
+--
+    -------------------------------------------------------
+    -- EOS宛先条件（入庫・出庫・運送業者のEOS宛先全てがNULLの場合）
+    -------------------------------------------------------
+    lv_where := lv_where
+            || ' AND  wsdit2.eos_shipped_to_locat IS NULL  '  -- EOS宛先（入庫倉庫）
+            || ' AND  wsdit2.eos_shipped_locat    IS NULL  '  -- EOS宛先（出庫倉庫）
+            || ' AND  wsdit2.eos_freight_carrier  IS NULL  '  -- EOS宛先（運送業者）
+            ;
+--
+    -------------------------------------------------------
+    -- 移動ロット詳細と結合
+    -------------------------------------------------------
+    lv_where := lv_where
+             || ' AND wsdit2.line_id = imld.mov_line_id (+) '
+             ;
+--
+    -------------------------------------------------------
+    -- パラメータ．部署
+    -------------------------------------------------------
+    lv_where := lv_where
+             || ' AND ((wsdit2.report_dept = ''' || gr_param.dept_code_01 || ''')';
+--
+    IF (gr_param.dept_code_02 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_02 || ''')';
+    END IF;
+    IF (gr_param.dept_code_03 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_03 || ''')';
+    END IF;
+    IF (gr_param.dept_code_04 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_04 || ''')';
+    END IF;
+    IF (gr_param.dept_code_05 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_05 || ''')';
+    END IF;
+    IF (gr_param.dept_code_06 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_06 || ''')';
+    END IF;
+    IF (gr_param.dept_code_07 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_07 || ''')';
+    END IF;
+    IF (gr_param.dept_code_08 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_08 || ''')';
+    END IF;
+    IF (gr_param.dept_code_09 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_09 || ''')';
+    END IF;
+    IF (gr_param.dept_code_10 IS NOT NULL) THEN
+      lv_where := lv_where
+             || '  OR  (wsdit2.report_dept = ''' || gr_param.dept_code_10 || ''')';
+    END IF;
+--
+    lv_where := lv_where || ')';
+--
+    -- ====================================================
+    -- ＯＲＤＥＲ ＢＹ句
+    -- ====================================================
+    lv_order  := ' ORDER BY '
+              || '   wsdit2.data_type'
+              || '  ,wsdit2.request_no'
+              || '  ,wsdit2.line_number'
+              ;
+--
+    -- ====================================================
+    -- ＳＱＬ文生成
+    -- ====================================================
+    lv_sql := lv_select || lv_from || lv_where || lv_order ;
+--
+    -- ====================================================
+    -- データ抽出
+    -- ====================================================
+    OPEN cu_ref FOR lv_sql ;
+    FETCH cu_ref BULK COLLECT INTO gt_can_data ;
+    CLOSE cu_ref ;
+--
+    IF ( gt_can_data.COUNT = 0 ) THEN
+      RAISE ex_no_data ;
+    END IF ;
+--
+  EXCEPTION
+    -- =============================================================================================
+    -- 対象データなし
+    -- =============================================================================================
+    WHEN ex_no_data THEN
+      lv_errmsg := xxcmn_common_pkg.get_msg
+                    ( iv_application    => gc_appl_sname_wsh
+                     ,iv_name           => lc_msg_code
+                    ) ;
+      ov_errmsg  := lv_errmsg ;
+      ov_errbuf  := lv_errmsg ;
+      ov_retcode := gv_status_warn ;
+--
+--##### 固定例外処理部 START #######################################################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF cu_ref%ISOPEN THEN
+        CLOSE cu_ref ;
+      END IF ;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF cu_ref%ISOPEN THEN
+        CLOSE cu_ref ;
+      END IF ;
+      ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF cu_ref%ISOPEN THEN
+        CLOSE cu_ref ;
+      END IF ;
+      ov_errbuf  := gc_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--##### 固定例外処理部 END   #######################################################################
+  END prc_get_can_data ;
+--
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
+--
+
   /************************************************************************************************
    * Procedure Name   : prc_cre_head_data
    * Description      : ヘッダデータ作成
@@ -4645,12 +4876,21 @@ AS
     -- ==================================================
     cv_prg_name   CONSTANT VARCHAR2(100) := 'submain'; -- プログラム名
 --
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+    lc_msg_code       CONSTANT VARCHAR2(30) := 'APP-XXWSH-11856' ;
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
+--
     -- ==================================================
     -- ローカル変数
     -- ==================================================
     lv_temp_request_no    xxwsh_stock_delivery_info_tmp2.request_no%TYPE := '*' ;
     lv_break_flg          VARCHAR2(1) := gc_yes_no_n ;
     lv_error_flg          VARCHAR2(1) := gc_yes_no_n ;
+--
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+    lv_main_data_flg      VARCHAR2(1) := gc_yes_no_n ;
+    lv_can_data_flg       VARCHAR2(1) := gc_yes_no_n ;
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
 --
     lv_errbuf             VARCHAR2(5000);  -- エラー・メッセージ
     lv_retcode            VARCHAR2(1);     -- リターン・コード
@@ -4793,9 +5033,60 @@ AS
     -- 警告発生時
     ELSIF ( lv_retcode = gv_status_warn ) THEN
       gn_warn_cnt := gn_warn_cnt + 1 ;
-      RAISE ex_worn ;
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+--      RAISE ex_worn ;
+      lv_main_data_flg := gc_yes_no_y;
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
 --
     END IF ;
+--
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+--
+    -- 予定確定区分：確定 の場合
+    IF ( gr_param.fix_class = gc_fix_class_k ) THEN
+      -- ===========================================================================================
+      --  取消データ抽出
+      -- ===========================================================================================
+      prc_get_can_data
+        (
+          ov_errbuf   => lv_errbuf
+         ,ov_retcode  => lv_retcode
+         ,ov_errmsg   => lv_errmsg
+        ) ;
+      -- エラー発生時
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1 ;
+        RAISE global_process_expt;
+      -- 警告発生時
+      ELSIF ( lv_retcode = gv_status_warn ) THEN
+        gn_warn_cnt := gn_warn_cnt + 1 ;
+        -- 取消データ抽出 データなし
+        lv_can_data_flg := gc_yes_no_y;
+      END IF ;
+--
+    -- 予定確定区分：予定 の場合
+    ELSE
+      -- 予定の場合は抽出しないので、データ無を無条件に設定
+      lv_can_data_flg := gc_yes_no_y;
+    END IF ;
+--
+    -- メインデータ抽出、取消データ抽出で共にデータが存在しない場合
+    IF ((lv_main_data_flg = gc_yes_no_y) 
+      AND (lv_can_data_flg = gc_yes_no_y)) THEN
+      -- データなしメッセージ
+      lv_errmsg := xxcmn_common_pkg.get_msg
+                    ( iv_application    => gc_appl_sname_wsh
+                      ,iv_name          => lc_msg_code
+                    ) ;
+      lv_errbuf  := lv_errmsg;
+      RAISE ex_worn ;
+    END IF;
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
+--
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+    -- メインデータが存在した場合のみ通知情報作成する
+    IF (lv_main_data_flg = gc_yes_no_n) THEN
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
 --
     <<main_loop>>
     FOR i IN 1..gt_main_data.COUNT LOOP
@@ -4874,6 +5165,52 @@ AS
       END IF ;
 --
     END LOOP main_loop ;
+--
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+    END IF;
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
+--
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 START #####
+--
+    -- 取消データが存在した場合のみ取消データ作成処理を実行する
+    IF (( gr_param.fix_class  =   gc_fix_class_k)       -- 予定確定区分：確定
+      AND  ( lv_can_data_flg  =   gc_yes_no_n )) THEN   -- 取消データが存在する場合
+--
+      -- ===========================================================================================
+      -- E-06 変更前情報取消データ作成処理（取消データ抽出での対象データ）
+      -- ===========================================================================================
+      <<can_loop>>
+      FOR i IN 1..gt_can_data.COUNT LOOP
+--
+        prc_create_can_data
+          (
+            iv_request_no           => gt_can_data(i).request_no -- 依頼No
+            ,iv_eos_shipped_locat   => NULL                      -- 使用しないためNULL
+            ,iv_eos_freight_carrier => NULL                      -- 使用しないためNULL
+            ,ov_errbuf              => lv_errbuf
+            ,ov_retcode             => lv_retcode
+            ,ov_errmsg              => lv_errmsg
+          ) ;
+        IF ( lv_retcode = gv_status_error ) THEN
+          gn_error_cnt := gn_error_cnt + 1 ;
+          RAISE global_process_expt;
+        END IF ;
+--
+      END LOOP can_loop ;
+--
+    END IF ;
+--
+    -- 抽出データが存在しても、通知データが存在しない場合、ワーニングで終了とする
+    IF ( gn_cre_idx = 0 ) THEN
+      -- データなしメッセージ
+      lv_errmsg := xxcmn_common_pkg.get_msg
+                    ( iv_application    => gc_appl_sname_wsh
+                      ,iv_name          => lc_msg_code
+                    ) ;
+      lv_errbuf  := lv_errmsg;
+      RAISE ex_worn ;
+    END IF;
+-- ##### 20081007 Ver.1.22 TE080_600指摘#27対応 END   #####
 --
     -- =============================================================================================
     -- E-07 一括登録処理

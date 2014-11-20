@@ -7,7 +7,7 @@ AS
  * Description      : ＨＨＴ入出庫配車確定情報抽出処理
  * MD.050           : T_MD050_BPO_601_配車配送計画
  * MD.070           : T_MD070_BPO_60F_ＨＨＴ入出庫配車確定情報抽出処理
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2008/09/09    1.13  N.Fukuda         TE080_600指摘#30対応
  *  2008/09/10    1.13  N.Fukuda         参照Viewの変更(パーティから顧客に変更)
  *  2008/09/25    1.14  M.Nomura         統合#26対応
+ *  2008/10/07    1.15  M.Nomura         TE080_600指摘#27対応
  *
  *****************************************************************************************/
 --
@@ -178,6 +179,9 @@ AS
   gc_sp_class_move      CONSTANT VARCHAR2(1)  := '3' ;    -- 移動（プログラム内限定）
   -- 内外倉庫区分
   gc_whse_io_div_i      CONSTANT VARCHAR2(1)  := '1' ;    -- 内部倉庫
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 START #####
+  gc_whse_io_div_o      CONSTANT VARCHAR2(1)  := '2' ;    -- 外部倉庫
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 END   #####
   -- 移動ステータス
   gc_mov_status_req       CONSTANT VARCHAR2(2)  := '01' ;   -- 依頼中
   gc_mov_status_cmp       CONSTANT VARCHAR2(2)  := '02' ;   -- 依頼済
@@ -1028,8 +1032,13 @@ AS
                END                                AS line_delete_flag
               ,imld.mov_lot_dtl_id                AS mov_lot_dtl_id
 -- ##### 20080619 1.5 ST不具合#193 START #####
-              ,NULL                                 AS out_whse_inout_div   -- 内外倉庫区分：出
-              ,NULL                                 AS in_whse_inout_div    -- 内外倉庫区分：入
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 START #####
+--              ,NULL                                 AS out_whse_inout_div   -- 内外倉庫区分：出
+--              ,NULL                                 AS in_whse_inout_div    -- 内外倉庫区分：入
+--   出庫元倉庫の内外倉庫区分は設定する
+              ,xil.whse_inside_outside_div          AS out_whse_inout_div   -- 内外倉庫区分：出
+              ,gc_whse_io_div_o                     AS in_whse_inout_div    -- 内外倉庫区分：入（デフォルト外部とする）
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 END   #####
 -- ##### 20080619 1.5 ST不具合#193 END   #####
               -- 2008/07/22 I_S_001 Add Start ------------------------------------------
               ,CASE xottv.transaction_type_name
@@ -1111,7 +1120,10 @@ AS
 -- M.HOKKANJI Ver1.2 END
         -------------------------------------------------------------------------------------------
         -- 保管場所
-        AND   xil.whse_inside_outside_div = gc_whse_io_div_i            -- 内部倉庫
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 START #####
+--    内外区分は条件から取り除く
+--        AND   xil.whse_inside_outside_div = gc_whse_io_div_i            -- 内部倉庫
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 END   #####
         AND   xoha.deliver_from_id        = xil.inventory_location_id
         -------------------------------------------------------------------------------------------
         -- 受注タイプ
@@ -1328,12 +1340,16 @@ AS
         AND   xmrih.shipped_locat_id = xil1.inventory_location_id
         -------------------------------------------------------------------------------------------
 -- ##### 20080619 1.5 ST不具合#193 START #####
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 START #####
+/***** 内外倉庫区分の条件を取り除く
         AND
         (
           (xil2.whse_inside_outside_div = gc_whse_io_div_i)
           OR
           (xil1.whse_inside_outside_div = gc_whse_io_div_i)
         )
+*****/
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 END   #####
 -- ##### 20080619 1.5 ST不具合#193 END   #####
         -------------------------------------------------------------------------------------------
 --
@@ -3301,15 +3317,24 @@ AS
       -- F-05 通知済情報作成処理
       -- ==========================================================================================
       --IF ( gt_main_data(i).line_delete_flag = gc_delete_flag_n ) THEN              -- 2008/08/27 TE080_600指摘#28 Del
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 START #####
+/*****
       IF ( gt_main_data(i).data_type IN( gc_data_type_syu_ins         -- 出荷：登録  -- 2008/08/29 TE080_600指摘#27(1) Add
                                         ,gc_data_type_mov_ins) ) THEN -- 移動：登録  -- 2008/08/29 TE080_600指摘#27(1) Add
+*****/
+      -- 出荷、移動のデータ且つ、出庫又は、入庫の内外倉庫区分が内の場合、通知情報を作成
+      IF ( gt_main_data(i).data_type IN( gc_data_type_syu_ins ,gc_data_type_mov_ins )) -- 出荷、移動登録
+        AND ((gt_main_data(i).out_whse_inout_div = gc_whse_io_div_i ) 
+          OR (gt_main_data(i).in_whse_inout_div    = gc_whse_io_div_i )) THEN
+-- ##### 20081007 Ver.1.15 TE080_600指摘#27対応 END   #####
+--
         prc_create_ins_data
           (
             in_idx        => i
-           ,iv_break_flg  => lv_break_flg
-           ,ov_errbuf     => lv_errbuf
-           ,ov_retcode    => lv_retcode
-           ,ov_errmsg     => lv_errmsg
+            ,iv_break_flg  => lv_break_flg
+            ,ov_errbuf     => lv_errbuf
+            ,ov_retcode    => lv_retcode
+            ,ov_errmsg     => lv_errmsg
           ) ;
         IF ( lv_retcode = gv_status_error ) THEN
           gn_error_cnt := gn_error_cnt + 1 ;
