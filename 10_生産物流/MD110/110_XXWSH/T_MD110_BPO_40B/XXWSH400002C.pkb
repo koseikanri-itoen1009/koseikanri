@@ -7,7 +7,7 @@ AS
  * Description      : 顧客発注からの出荷依頼自動作成
  * MD.050/070       : 出荷依頼                        (T_MD050_BPO_400)
  *                    顧客発注からの出荷依頼自動作成  (T_MD070_BPO_40B)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -54,6 +54,9 @@ AS
  *  2008/06/27    1.11  石渡  賢和       ST不具合#318対応
  *  2008/07/01    1.12  椎名  昭圭       ST不具合#247④対応
  *  2008/07/04    1.13  上原  正好       ST不具合#392対応
+ *  2008/07/07    1.14  上原  正好       ST不具合#401対応
+ *                                       積載効率チェックでのパレット最大枚数超過チェックの対象を
+ *                                       ドリンク製品のみとする。
  *
  *****************************************************************************************/
 --
@@ -3479,34 +3482,38 @@ AS
 --
 --###########################  固定部 END   ############################
 --
-    -- 「パレット最大枚数」と「パレット合計枚数」の比較
-    --  出荷方法(アドオン)のパレット最大枚数を超えた場合エラーとする
-    IF (gn_prt_max < gn_pallet_t_c_am) THEN
-      pro_err_list_make
-        (
-          iv_kind         => gv_msg_war                     --  in 種別   '警告'
-         ,iv_dec          => gv_msg_err                     --  in 種別   'エラー'
-         ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
-         ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
-         ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
-         ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
-         ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
-         ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
-                                                            --  in 出庫日
-         ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
-                                                            --  in 着日
-         ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
-         ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
-         ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
-         ,iv_err_msg      => gv_msg_38                      --  in エラーメッセージ
-         ,iv_err_clm      => gn_pallet_t_c_am               --  in エラー項目  パレット合計枚数
-         ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
-         ,ov_retcode      => lv_retcode                     -- out リターン・コード
-         ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
-        );
-      -- 共通エラーメッセージ 終了STの判定
-      IF (gv_err_sts <> gv_status_error) THEN
-        gv_err_sts := gv_status_warn;
+    -- 商品区分「ドリンク」かつ品目区分「製品」の場合
+    IF (gr_item_skbn  = gv_2)
+    AND (gr_item_kbn   = gv_5) THEN
+      -- 「パレット最大枚数」と「パレット合計枚数」の比較
+      --  出荷方法(アドオン)のパレット最大枚数を超えた場合エラーとする
+      IF (gn_prt_max < gn_pallet_t_c_am) THEN
+        pro_err_list_make
+          (
+            iv_kind         => gv_msg_war                     --  in 種別   '警告'
+           ,iv_dec          => gv_msg_err                     --  in 種別   'エラー'
+           ,iv_req_no       => gv_new_order_no                --  in 依頼No(12桁)
+           ,iv_kyoten       => gt_head_line(gn_i).h_s_branch  --  in 管轄拠点
+           ,iv_ship_to      => gt_head_line(gn_i).p_s_code    --  in 出荷先
+           ,iv_description  => gt_head_line(gn_i).ship_ins    --  in 摘要
+           ,iv_cust_pono    => gt_head_line(gn_i).c_po_num    --  in 顧客発注番号
+           ,iv_ship_date    => TO_CHAR(gt_head_line(gn_i).ship_date,'YYYY/MM/DD')
+                                                              --  in 出庫日
+           ,iv_arrival_date => TO_CHAR(gt_head_line(gn_i).arr_date,'YYYY/MM/DD')
+                                                              --  in 着日
+           ,iv_ship_from    => gt_head_line(gn_i).lo_code     --  in 出荷元
+           ,iv_item         => gt_head_line(gn_i).ord_i_code  --  in 品目
+           ,in_qty          => gt_head_line(gn_i).ord_quant   --  in 数量
+           ,iv_err_msg      => gv_msg_38                      --  in エラーメッセージ
+           ,iv_err_clm      => gn_pallet_t_c_am               --  in エラー項目  パレット合計枚数
+           ,ov_errbuf       => lv_errbuf                      -- out エラー・メッセージ
+           ,ov_retcode      => lv_retcode                     -- out リターン・コード
+           ,ov_errmsg       => lv_errmsg                      -- out ユーザー・エラー・メッセージ
+          );
+        -- 共通エラーメッセージ 終了STの判定
+        IF (gv_err_sts <> gv_status_error) THEN
+          gv_err_sts := gv_status_warn;
+        END IF;
       END IF;
     END IF;
 --
