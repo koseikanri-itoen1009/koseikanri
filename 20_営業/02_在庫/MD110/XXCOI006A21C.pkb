@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A21C(body)
  * Description      : 棚卸結果作成
  * MD.050           : HHT棚卸結果データ取込 <MD050_COI_A21>
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/02/18    1.1   N.Abe            [障害COI_014] ログ出力不備対応
  *  2009/02/18    1.2   N.Abe            [障害COI_018] 良品区分値の不備対応
  *  2009/04/21    1.3   H.Sasaki         [T1_0654]取込データの前後スペース削除
+ *  2009/05/07    1.4   T.Nakamura       [T1_0556]品目存在チェックエラー処理を追加
  *
  *****************************************************************************************/
 --
@@ -111,6 +112,9 @@ AS
   pre_month_expt           EXCEPTION;     -- 前月棚卸データ取得エラー
   date_expt                EXCEPTION;     -- 日付変換エラー
   subinv_div_expt          EXCEPTION;     -- 保管場所棚卸対象外エラー
+-- == 2009/05/07 V1.4 Added START ==================================================================
+  chk_item_exist_expt      EXCEPTION;     -- 品目存在チェックエラー
+-- == 2009/05/07 V1.4 Added END   ==================================================================
 --
   PRAGMA EXCEPTION_INIT(lock_expt, -54);
 --
@@ -368,6 +372,9 @@ AS
     cv_xxcoi1_msg_10129   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10129';  --保管場所マスタ取得エラー
     cv_xxcoi1_msg_10299   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10299';  --前月棚卸データ取得エラー
     cv_xxcoi1_msg_10356   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10356';  --保管場所棚卸対象外エラー
+-- == 2009/05/07 V1.4 Added START ==================================================================
+    cv_xxcoi1_msg_10227   CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10227';  -- 品目存在チェックエラー
+-- == 2009/05/07 V1.4 Added END   ==================================================================
     --トークン
     cv_tkn_item_code      CONSTANT VARCHAR2(9)  := 'ITEM_CODE';
     cv_tkn_ivt_type       CONSTANT VARCHAR2(8)  := 'IVT_TYPE';
@@ -501,7 +508,10 @@ AS
          ,ov_errmsg               =>  lv_errmsg             -- 12.ユーザー・エラーメッセージ
         );
     IF (lv_retcode <> cv_status_normal) THEN
-      RAISE global_api_others_expt;
+-- == 2009/05/07 V1.4 Modified START ===============================================================
+--      RAISE global_api_others_expt;
+      RAISE chk_item_exist_expt;
+-- == 2009/05/07 V1.4 Modified END   ===============================================================
     END IF;
 --
     --===========================
@@ -724,6 +734,19 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_retcode := cv_status_warn;                     --# 任意 #
 --
+-- == 2009/05/07 V1.4 Added START ==================================================================
+    --*** 品目存在チェックエラー ***
+    WHEN chk_item_exist_expt THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                  iv_application  => cv_xxcoi_short_name
+                 ,iv_name         => cv_xxcoi1_msg_10227
+                 ,iv_token_name1  => cv_tkn_item_code
+                 ,iv_token_value1 => it_item_code
+                );
+      ov_errmsg  := lv_errmsg;
+      ov_retcode := cv_status_warn;                     --# 任意 #
+--
+-- == 2009/05/07 V1.4 Added END   ==================================================================
     --*** 品目ステータス有効チェックエラー ***
     WHEN chk_item_expt THEN
       lv_errmsg := xxccp_common_pkg.get_msg(
