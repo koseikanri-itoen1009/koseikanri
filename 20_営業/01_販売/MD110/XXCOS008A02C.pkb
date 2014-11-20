@@ -62,6 +62,8 @@ AS
  *  2009/12/16    1.18  M.Sano           [E_本稼動_00373] 販売実績単位チェックを品目ごとに行うように変更
  *                                                        納品予定日のチェックを全データに対して行うように修正
  *  2009/12/25    1.19  M.Sano           [E_本稼動_00568] デバック処理追加（数量不一致でもクローズされる理由の調査）
+ *  2009/12/28    1.20  N.Maeda          [E_本稼動_00568] 基準数量算出関数の引数初期化処理追加
+ *                                                        Ver1.19(デバック処理の削除)
  *
  *****************************************************************************************/
 --
@@ -2856,10 +2858,12 @@ AS
     ld_request_date       xxcos_sales_exp_headers.delivery_date%TYPE;       -- 最終履歴納品予定日
     lv_base_uom           xxcos_sales_exp_lines.standard_uom_code%TYPE;     -- 基準単位
     ln_base_quantity      xxcos_sales_exp_lines.standard_qty%TYPE;          -- 基準数量 
-/* 2009/12/25 Ver1.19 Add Start */
-    lv_log_msg            VARCHAR2(10000);  -- デバック出力用文字列
-    lv_base_order_num     VARCHAR2(10000);  -- 合計基準数量の対象の受注番号(デバック用)
-/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL START *******--
+--/* 2009/12/25 Ver1.19 Add Start */
+--    lv_log_msg            VARCHAR2(10000);  -- デバック出力用文字列
+--    lv_base_order_num     VARCHAR2(10000);  -- 合計基準数量の対象の受注番号(デバック用)
+--/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL  END  *******--
 --
     -- *** ローカル・カーソル ***
 --
@@ -2869,9 +2873,11 @@ AS
       , request_date    xxcos_sales_exp_headers.delivery_date%TYPE    -- 納品予定日
       , quantity_uom    xxcos_sales_exp_lines.standard_uom_code%TYPE  -- 受注単位
       , quantity        xxcos_sales_exp_lines.standard_qty%TYPE       -- 受注数量
-/* 2009/12/25 Ver1.19 Add Start */
-      , order_number    oe_order_headers_all.order_number%TYPE        -- 受注番号
-/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL START *******--
+--/* 2009/12/25 Ver1.19 Add Start */
+--      , order_number    oe_order_headers_all.order_number%TYPE        -- 受注番号
+--/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL  END  *******--
     );
     TYPE quantity_ttype IS TABLE OF quantity_rtype INDEX BY BINARY_INTEGER;
     -- ＯＭ受注の依頼No／品目の単位のPL/SQL表
@@ -2910,12 +2916,14 @@ AS
     lv_now   := g_order_req_tab.first;  -- 作成したPL/SQL表の始めのレコードの添え字を取得
     lv_bfr   := NULL;                   -- 現在処理中のPL/SQL表の1つ前のレコードの添え字の初期化
 --
-/* 2009/12/25 Ver1.19 Add Start */
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.LOG
-          , buff   => '*** 出荷依頼対象データチェック(A-6) ***'
-        );
-/* 2009/12/25 Ver1.19 Add End  */
+-- ******* 2009/12/28 1.20 DEL START *******--
+--/* 2009/12/25 Ver1.19 Add Start */
+--        FND_FILE.PUT_LINE(
+--            which  => FND_FILE.LOG
+--          , buff   => '*** 出荷依頼対象データチェック(A-6) ***'
+--        );
+--/* 2009/12/25 Ver1.19 Add End  */
+-- ******* 2009/12/28 1.20 DEL  END  *******--
     -- 作成したPL/SQL表の添え字がNULLになるまでループする
     WHILE lv_now IS NOT NULL LOOP
 --
@@ -2934,9 +2942,11 @@ AS
         , oola.order_quantity_uom                                         AS quantity_uom -- 受注単位
         , oola.ordered_quantity
           * DECODE( otta.order_category_code, ct_order_category, -1, 1 )  AS quantity     -- 受注数量
-/* 2009/12/25 Ver1.19 Add Start */
-        , ooha.order_number                                               AS order_number -- 受注番号
-/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL START *******--
+--/* 2009/12/25 Ver1.19 Add Start */
+--        , ooha.order_number                                               AS order_number -- 受注番号
+--/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL  END  *******--
         BULK COLLECT INTO
           quantity_tab
         FROM
@@ -2967,13 +2977,24 @@ AS
           , oola.line_id;
 --
         ln_base_quantity_sum := 0;              -- 基準数量合計の初期化
-/* 2009/12/25 Ver1.19 Add Start */
-        lv_base_order_num    := '';
-/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL START *******--
+--/* 2009/12/25 Ver1.19 Add Start */
+--        lv_base_order_num    := '';
+--/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL  END  *******--
+--
 --
         -- 取得した依頼No／品目の単位のPL/SQL表の添え字がNULLになるまでループする
         FOR i IN 1..quantity_tab.COUNT LOOP
 --
+-- ********* 2009/12/28 1.20 N.Maeda ADD START ********* --
+          lv_organization_code := NULL;
+          lv_item_id           := NULL;
+          ln_organization_id   := NULL;
+          lv_base_uom          := NULL;
+          ln_base_quantity     := NULL;
+          ln_content           := NULL;
+-- ********* 2009/12/28 1.20 N.Maeda ADD  END  ********* --
           --==================================
           -- 基準数量算出
           --==================================
@@ -2991,6 +3012,11 @@ AS
             , ov_retcode            => lv_retcode                           --リターン・コード               #固定#
             , ov_errmsg             => lv_errmsg                            --ユーザー・エラー・メッセージ   #固定#
           );
+-- ********* 2009/12/28 1.20 N.Maeda ADD START ********* --
+          IF ( lv_retcode != cv_status_normal ) THEN
+            RAISE global_api_expt;
+          END IF;
+-- ********* 2009/12/28 1.20 N.Maeda ADD  END  ********* --
 --
           -- 基準数量合計の算出
           ln_base_quantity_sum  := ln_base_quantity_sum + ln_base_quantity;
@@ -3069,9 +3095,11 @@ AS
           END IF;
 /* 2009/12/16 Ver1.18 Add End   */
 --
-/* 2009/12/25 Ver1.19 Add Start */
-          lv_base_order_num := lv_base_order_num || quantity_tab(i).order_number || ' ';
-/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL START *******--
+--/* 2009/12/25 Ver1.19 Add Start */
+--          lv_base_order_num := lv_base_order_num || quantity_tab(i).order_number || ' ';
+--/* 2009/12/25 Ver1.19 Add End   */
+-- ******* 2009/12/28 1.20 DEL  END  *******--
         END LOOP;
 --
         -- ユーザ・エラーメッセージの初期化
@@ -3160,36 +3188,40 @@ AS
             ,buff   => lv_errmsg     --エラーメッセージ
           );
         END IF;
-/* 2009/12/25 Ver1.19 Add Start */
-        lv_log_msg := ' ステータス：'  || g_order_req_tab( lv_now ).check_status
-                   || ' 依頼No:'       || g_order_req_tab( lv_now ).request_no
-                   || ' 品目:'         || g_order_req_tab( lv_now ).shipping_item_code
-                   || ' 着荷日:'       || TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)
-                   || ' 明細ID:'       || g_order_req_tab( lv_now ).line_id
-                   || ' 出荷実績数量:' || NVL(TO_CHAR(g_order_req_tab( lv_now ).shipped_quantity),'NULL')
-                   || ' 基準数量合計:' || NVL(TO_CHAR(ln_base_quantity_sum),'NULL')
-                   || ' 受注番号:'     || lv_base_order_num;
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.LOG
-          , buff   => lv_log_msg
-        );
-/* 2009/12/25 Ver1.19 Add End  */
+-- ******* 2009/12/28 1.20 DEL START *******--
+--/* 2009/12/25 Ver1.19 Add Start */
+--        lv_log_msg := ' ステータス：'  || g_order_req_tab( lv_now ).check_status
+--                   || ' 依頼No:'       || g_order_req_tab( lv_now ).request_no
+--                   || ' 品目:'         || g_order_req_tab( lv_now ).shipping_item_code
+--                   || ' 着荷日:'       || TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)
+--                   || ' 明細ID:'       || g_order_req_tab( lv_now ).line_id
+--                   || ' 出荷実績数量:' || NVL(TO_CHAR(g_order_req_tab( lv_now ).shipped_quantity),'NULL')
+--                   || ' 基準数量合計:' || NVL(TO_CHAR(ln_base_quantity_sum),'NULL')
+--                   || ' 受注番号:'     || lv_base_order_num;
+--        FND_FILE.PUT_LINE(
+--            which  => FND_FILE.LOG
+--          , buff   => lv_log_msg
+--        );
+--/* 2009/12/25 Ver1.19 Add End  */
+-- ******* 2009/12/28 1.20 DEL  END  *******--
 --
       ELSE
         -- 同じ依頼No／品目単位のステータスを引き継ぐ
         g_order_req_tab( lv_now ).check_status := g_order_req_tab( lv_bfr ).check_status;
-/* 2009/12/25 Ver1.19 Add Start */
-        lv_log_msg := ' ステータス：'  || g_order_req_tab( lv_now ).check_status
-                   || ' 依頼No:'       || g_order_req_tab( lv_now ).request_no
-                   || ' 品目:'         || g_order_req_tab( lv_now ).shipping_item_code
-                   || ' 着荷日:'       || TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)
-                   || ' 明細ID:'       || g_order_req_tab( lv_now ).line_id
-                   || ' 出荷実績数量:' || NVL(TO_CHAR(g_order_req_tab( lv_now ).shipped_quantity),'NULL');
-        FND_FILE.PUT_LINE(
-            which  => FND_FILE.LOG
-          , buff   => lv_log_msg
-        );
-/* 2009/12/25 Ver1.19 Add End  */
+-- ******* 2009/12/28 1.20 DEL START *******--
+--/* 2009/12/25 Ver1.19 Add Start */
+--        lv_log_msg := ' ステータス：'  || g_order_req_tab( lv_now ).check_status
+--                   || ' 依頼No:'       || g_order_req_tab( lv_now ).request_no
+--                   || ' 品目:'         || g_order_req_tab( lv_now ).shipping_item_code
+--                   || ' 着荷日:'       || TO_CHAR(g_order_req_tab( lv_now ).arrival_date, cv_fmt_date)
+--                   || ' 明細ID:'       || g_order_req_tab( lv_now ).line_id
+--                   || ' 出荷実績数量:' || NVL(TO_CHAR(g_order_req_tab( lv_now ).shipped_quantity),'NULL');
+--        FND_FILE.PUT_LINE(
+--            which  => FND_FILE.LOG
+--          , buff   => lv_log_msg
+--        );
+--/* 2009/12/25 Ver1.19 Add End  */
+-- ******* 2009/12/28 1.20 DEL  END  *******--
       END IF;
 --
       lv_bfr := lv_now;                         -- 現在処理中のインデックスを保存する
