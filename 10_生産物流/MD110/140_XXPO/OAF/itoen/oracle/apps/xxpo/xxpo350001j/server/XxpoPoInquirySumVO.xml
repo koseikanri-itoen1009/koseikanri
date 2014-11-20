@@ -59,6 +59,9 @@ FROM (
 -- 2009/02/19 D.Nihei ADD START –{”ÔáŠQ#1136‘Î‰ž
   AND    ximv.item_id     = xicv.item_id
 -- 2009/02/19 D.Nihei ADD END
+-- 2009/02/24 D.Nihei Add Start –{”ÔáŠQ#784‘Î‰ž
+  AND NVL(pla.cancel_flag, 'N') = 'N'
+-- 2009/02/24 D.Nihei Add End
   AND    pla.po_header_id = :4
 ) subsql
    ]]></SQLQuery>

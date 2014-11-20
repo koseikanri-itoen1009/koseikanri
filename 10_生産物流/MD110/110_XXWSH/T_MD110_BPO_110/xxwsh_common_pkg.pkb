@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.42
+ * Version                : 1.43
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -95,6 +95,9 @@ AS
  *  2009/01/21   1.40  SCS    伊藤ひとみ[締めステータスチェック関数]本番#1053対応
  *  2009/01/27   1.41  SCS    北寒寺正夫[締めステータスチェック関数]本番#1089対応
  *  2009/02/10   1.42  SCS    伊藤ひとみ[配車解除関数]本番#863対応
+ *  2009/02/20   1.43  SCS    二瓶大輔  [配車解除関数]本番#863対応(混載対応)
+ *                                      [配車解除関数]本番#1034対応
+ *                                      [配車解除関数]本番#1210対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5643,6 +5646,23 @@ AS
     cur_ship_data     ref_cursor ;  -- 出荷データ
     cur_supply_data   ref_cursor ;  -- 支給データ
 -- 2008/09/03 H.Itou Add End
+-- 2009/02/20 D.Nihei Add Start 本番障害#1034対応
+      -- 受注ヘッダアドオンのロック取得
+    CURSOR  ship_lock_cur IS
+      SELECT 1
+      FROM   xxwsh_order_headers_all     xoha       -- 受注ヘッダアドオン
+      WHERE  NVL(xoha.delivery_no, xoha.mixed_no)       =  lv_delivery_no
+      AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
+      FOR UPDATE OF xoha.order_header_id NOWAIT
+    ;
+      -- 移動依頼ヘッダアドオンのロック取得
+    CURSOR  mov_lock_cur IS
+      SELECT 1
+      FROM   xxinv_mov_req_instr_headers mrih       -- 移動依頼/指示ヘッダ(アドオン)
+      WHERE  mrih.delivery_no =  lv_delivery_no
+      FOR UPDATE OF mrih.mov_hdr_id NOWAIT
+    ;
+-- 2009/02/20 D.Nihei Add End
 --
     -- *** ローカル・レコード ***
 -- 2008/12/15 D.Nihei Add Start
@@ -5805,6 +5825,17 @@ EXCEPTION
 END;
 -- 2008/12/13 D.Nihei Add End   ================================================
     END IF;
+-- 2009/02/20 D.Nihei Add Start 本番障害#1034対応
+    -- 配送(混載元)Noが取得できた場合、配送No単位でロックを取得する。
+    IF ( lv_delivery_no IS NOT NULL ) THEN
+      -- 受注ヘッダアドオンのロック取得
+      OPEN  ship_lock_cur;
+      CLOSE ship_lock_cur;
+      -- 移動依頼ヘッダアドオンのロック取得
+      OPEN  mov_lock_cur;
+      CLOSE mov_lock_cur;
+    END IF;
+-- 2009/02/20 D.Nihei Add End
 --
     -- **************************************************
     -- *** 2.配車解除可否チェック(出荷)
@@ -5962,9 +5993,12 @@ END;
           IF (lv_msg_ship_err IS NULL) THEN
             lv_msg_ship_err := lt_chk_ship_tbl(i).request_no;
           ELSE
-            lv_msg_ship_err := lv_msg_ship_err
-                               || cv_msg_com
-                               || lt_chk_ship_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--            lv_msg_ship_err := lv_msg_ship_err
+--                               || cv_msg_com
+--                               || lt_chk_ship_tbl(i).request_no;
+            lv_msg_ship_err := SUBSTRB( lv_msg_ship_err || cv_msg_com || lt_chk_ship_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
 -- Ver1.20 M.Hokkanji END
           END IF;
 --
@@ -5976,12 +6010,15 @@ END;
             lv_msg_ship_err := lt_chk_ship_tbl(i).request_no;
 -- Ver1.20 M.Hokkanji END
           ELSE
--- Ver1.20 M.Hokkanji START
-            lv_msg_ship_err := lv_msg_ship_err
-                               || cv_msg_com
-                               || lt_chk_ship_tbl(i).request_no;
---                               || iv_request_no;
--- Ver1.20 M.Hokkanji END
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+---- Ver1.20 M.Hokkanji START
+--            lv_msg_ship_err := lv_msg_ship_err
+--                               || cv_msg_com
+--                               || lt_chk_ship_tbl(i).request_no;
+----                               || iv_request_no;
+---- Ver1.20 M.Hokkanji END
+            lv_msg_ship_err := SUBSTRB( lv_msg_ship_err || cv_msg_com || lt_chk_ship_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
           END IF;
           ln_no_count     := ln_no_count + 1;
 --
@@ -6019,9 +6056,12 @@ END;
               IF (lv_msg_ship_max_err IS NULL) THEN
                 lv_msg_ship_max_err := lt_chk_ship_tbl(i).request_no;
               ELSE
-                lv_msg_ship_max_err := lv_msg_ship_max_err
-                                   || cv_msg_com
-                                   || lt_chk_ship_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                lv_msg_ship_max_err := lv_msg_ship_max_err
+--                                   || cv_msg_com
+--                                   || lt_chk_ship_tbl(i).request_no;
+                lv_msg_ship_max_err := SUBSTRB( lv_msg_ship_max_err || cv_msg_com || lt_chk_ship_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
               END IF;
               ln_no_count     := ln_no_count + 1;
               lv_err_chek     := '1';
@@ -6059,9 +6099,12 @@ END;
                   IF (lv_msg_ship_small_err IS NULL) THEN
                     lv_msg_ship_small_err := lt_chk_ship_tbl(i).request_no;
                   ELSE
-                    lv_msg_ship_small_err := lv_msg_ship_small_err
-                                           || cv_msg_com
-                                           || lt_chk_ship_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                    lv_msg_ship_small_err := lv_msg_ship_small_err
+--                                           || cv_msg_com
+--                                           || lt_chk_ship_tbl(i).request_no;
+                    lv_msg_ship_small_err := SUBSTRB( lv_msg_ship_small_err || cv_msg_com || lt_chk_ship_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
                   END IF;
                   ln_no_count     := ln_no_count + 1;
                   lv_err_chek     := '1';
@@ -6101,9 +6144,12 @@ END;
                 IF (lv_msg_ship_wei_err IS NULL) THEN
                   lv_msg_ship_wei_err := lt_chk_ship_tbl(i).request_no;
                 ELSE
-                  lv_msg_ship_wei_err := lv_msg_ship_wei_err
-                                           || cv_msg_com
-                                           || lt_chk_ship_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                  lv_msg_ship_wei_err := lv_msg_ship_wei_err
+--                                           || cv_msg_com
+--                                           || lt_chk_ship_tbl(i).request_no;
+                  lv_msg_ship_wei_err := SUBSTRB( lv_msg_ship_wei_err || cv_msg_com || lt_chk_ship_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
                 END IF;
                 ln_no_count     := ln_no_count + 1;
                 lv_err_chek     := '1';
@@ -6138,9 +6184,12 @@ END;
                 IF (lv_msg_ship_cap_err IS NULL) THEN
                   lv_msg_ship_cap_err := lt_chk_ship_tbl(i).request_no;
                 ELSE
-                  lv_msg_ship_cap_err := lv_msg_ship_cap_err
-                                           || cv_msg_com
-                                           || lt_chk_ship_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                  lv_msg_ship_cap_err := lv_msg_ship_cap_err
+--                                           || cv_msg_com
+--                                           || lt_chk_ship_tbl(i).request_no;
+                  lv_msg_ship_cap_err := SUBSTRB( lv_msg_ship_cap_err || cv_msg_com || lt_chk_ship_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
                 END IF;
                 ln_no_count     := ln_no_count + 1;
                 lv_err_chek     := '1';
@@ -6311,9 +6360,12 @@ END;
           IF ( lv_msg_move_err IS NULL ) THEN
             lv_msg_move_err := lt_chk_move_tbl(i).mov_num;
           ELSE
-            lv_msg_move_err := lv_msg_move_err
-                               || cv_msg_com
-                               || lt_chk_move_tbl(i).mov_num;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--            lv_msg_move_err := lv_msg_move_err
+--                               || cv_msg_com
+--                               || lt_chk_move_tbl(i).mov_num;
+            lv_msg_move_err := SUBSTRB( lv_msg_move_err || cv_msg_com || lt_chk_move_tbl(i).mov_num, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
           END IF;
 -- Ver1.20 M.Hokkanji END
 --
@@ -6325,12 +6377,15 @@ END;
 --            lv_msg_move_err := iv_request_no;
 -- Ver1.20 M.Hokkanji END
           ELSE
--- Ver1.20 M.Hokkanji START
-            lv_msg_move_err := lv_msg_move_err
-                               || cv_msg_com
-                               || lt_chk_move_tbl(i).mov_num;
---                               || iv_request_no;
--- Ver1.20 M.Hokkanji END
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+---- Ver1.20 M.Hokkanji START
+--            lv_msg_move_err := lv_msg_move_err
+--                               || cv_msg_com
+--                               || lt_chk_move_tbl(i).mov_num;
+----                               || iv_request_no;
+---- Ver1.20 M.Hokkanji END
+            lv_msg_move_err := SUBSTRB( lv_msg_move_err || cv_msg_com || lt_chk_move_tbl(i).mov_num, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
           END IF;
           ln_no_count     := ln_no_count + 1;
 -- Ver1.20 M.Hokkanji START
@@ -6367,9 +6422,12 @@ END;
               IF ( lv_msg_move_max_err IS NULL ) THEN
                 lv_msg_move_max_err := lt_chk_move_tbl(i).mov_num;
               ELSE
-                lv_msg_move_max_err := lv_msg_move_max_err
-                                   || cv_msg_com
-                                   || lt_chk_move_tbl(i).mov_num;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                lv_msg_move_max_err := lv_msg_move_max_err
+--                                   || cv_msg_com
+--                                   || lt_chk_move_tbl(i).mov_num;
+                lv_msg_move_max_err := SUBSTRB( lv_msg_move_max_err || cv_msg_com || lt_chk_move_tbl(i).mov_num, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
               END IF;
               ln_no_count     := ln_no_count + 1;
               lv_err_chek     := '1';
@@ -6407,9 +6465,12 @@ END;
                   IF ( lv_msg_move_small_err IS NULL ) THEN
                     lv_msg_move_small_err := lt_chk_move_tbl(i).mov_num;
                   ELSE
-                    lv_msg_move_small_err := lv_msg_move_small_err
-                                           || cv_msg_com
-                                           || lt_chk_move_tbl(i).mov_num;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                    lv_msg_move_small_err := lv_msg_move_small_err
+--                                           || cv_msg_com
+--                                           || lt_chk_move_tbl(i).mov_num;
+                    lv_msg_move_small_err := SUBSTRB( lv_msg_move_small_err || cv_msg_com || lt_chk_move_tbl(i).mov_num, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
                   END IF;
                   ln_no_count     := ln_no_count + 1;
                   lv_err_chek     := '1';
@@ -6455,9 +6516,12 @@ END;
                 IF ( lv_msg_move_wei_err IS NULL ) THEN
                   lv_msg_move_wei_err := lt_chk_move_tbl(i).mov_num;
                 ELSE
-                  lv_msg_move_wei_err := lv_msg_move_wei_err
-                                           || cv_msg_com
-                                           || lt_chk_move_tbl(i).mov_num;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                  lv_msg_move_wei_err := lv_msg_move_wei_err
+--                                           || cv_msg_com
+--                                           || lt_chk_move_tbl(i).mov_num;
+                  lv_msg_move_wei_err := SUBSTRB( lv_msg_move_wei_err || cv_msg_com || lt_chk_move_tbl(i).mov_num, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
                 END IF;
                 ln_no_count     := ln_no_count + 1;
                 lv_err_chek     := '1';
@@ -6492,9 +6556,12 @@ END;
                 IF ( lv_msg_move_cap_err IS NULL ) THEN
                   lv_msg_move_cap_err := lt_chk_move_tbl(i).mov_num;
                 ELSE
-                  lv_msg_move_cap_err := lv_msg_move_cap_err
-                                           || cv_msg_com
-                                           || lt_chk_move_tbl(i).mov_num;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                  lv_msg_move_cap_err := lv_msg_move_cap_err
+--                                           || cv_msg_com
+--                                           || lt_chk_move_tbl(i).mov_num;
+                  lv_msg_move_cap_err := SUBSTRB( lv_msg_move_cap_err || cv_msg_com || lt_chk_move_tbl(i).mov_num, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
                 END IF;
                 ln_no_count     := ln_no_count + 1;
                 lv_err_chek     := '1';
@@ -6647,9 +6714,12 @@ END;
           IF ( lv_msg_supply_err IS NULL ) THEN
             lv_msg_supply_err := lt_chk_supply_tbl(i).request_no;
           ELSE
-            lv_msg_supply_err := lv_msg_supply_err
-                                 || cv_msg_com
-                                 || lt_chk_supply_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--            lv_msg_supply_err := lv_msg_supply_err
+--                                 || cv_msg_com
+--                                 || lt_chk_supply_tbl(i).request_no;
+            lv_msg_supply_err := SUBSTRB( lv_msg_supply_err || cv_msg_com || lt_chk_supply_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
           END IF;
 -- Ver1.20 M.Hokkanji END
 --
@@ -6661,13 +6731,16 @@ END;
             lv_msg_supply_err := lt_chk_supply_tbl(i).request_no;
 -- Ver1.20 M.Hokkanji END
           ELSE
--- Ver1.20 M.Hokkanji START
-            lv_msg_supply_err := lv_msg_supply_err
-                                 || cv_msg_com
-                                 || lt_chk_supply_tbl(i).request_no;
---                                 || iv_request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+---- Ver1.20 M.Hokkanji START
+--            lv_msg_supply_err := lv_msg_supply_err
+--                                 || cv_msg_com
+--                                 || lt_chk_supply_tbl(i).request_no;
+----                                 || iv_request_no;
+---- Ver1.20 M.Hokkanji END
+            lv_msg_supply_err := SUBSTRB( lv_msg_supply_err || cv_msg_com || lt_chk_supply_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
           END IF;
--- Ver1.20 M.Hokkanji END
           ln_no_count       := ln_no_count + 1;
 --
 -- Ver1.20 M.Hokkanji START
@@ -6704,9 +6777,12 @@ END;
               IF ( lv_msg_supply_max_err IS NULL ) THEN
                 lv_msg_supply_max_err := lt_chk_supply_tbl(i).request_no;
               ELSE
-                lv_msg_supply_max_err := lv_msg_supply_max_err
-                                   || cv_msg_com
-                                   || lt_chk_supply_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                lv_msg_supply_max_err := lv_msg_supply_max_err
+--                                   || cv_msg_com
+--                                   || lt_chk_supply_tbl(i).request_no;
+                lv_msg_supply_max_err := SUBSTRB( lv_msg_supply_max_err || cv_msg_com || lt_chk_supply_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
               END IF;
               ln_no_count     := ln_no_count + 1;
               lv_err_chek     := '1';
@@ -6754,9 +6830,12 @@ END;
                 IF ( lv_msg_supply_wei_err IS NULL ) THEN
                   lv_msg_supply_wei_err := lt_chk_supply_tbl(i).request_no;
                 ELSE
-                  lv_msg_supply_wei_err := lv_msg_supply_wei_err
-                                           || cv_msg_com
-                                           || lt_chk_supply_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                  lv_msg_supply_wei_err := lv_msg_supply_wei_err
+--                                           || cv_msg_com
+--                                           || lt_chk_supply_tbl(i).request_no;
+                  lv_msg_supply_wei_err := SUBSTRB( lv_msg_supply_wei_err || cv_msg_com || lt_chk_supply_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
                 END IF;
                 ln_no_count     := ln_no_count + 1;
                 lv_err_chek     := '1';
@@ -6791,9 +6870,12 @@ END;
                 IF ( lv_msg_supply_cap_err IS NULL ) THEN
                   lv_msg_supply_cap_err := lt_chk_supply_tbl(i).request_no;
                 ELSE
-                  lv_msg_supply_cap_err := lv_msg_supply_cap_err
-                                           || cv_msg_com
-                                           || lt_chk_supply_tbl(i).request_no;
+-- 2009/02/20 D.Nihei Mod Start 本番障害#1210対応
+--                  lv_msg_supply_cap_err := lv_msg_supply_cap_err
+--                                           || cv_msg_com
+--                                           || lt_chk_supply_tbl(i).request_no;
+                  lv_msg_supply_cap_err := SUBSTRB( lv_msg_supply_cap_err || cv_msg_com || lt_chk_supply_tbl(i).request_no, 1, 493 );
+-- 2009/02/20 D.Nihei Mod End
                 END IF;
                 ln_no_count     := ln_no_count + 1;
                 lv_err_chek     := '1';
@@ -6835,7 +6917,10 @@ END;
                      ,xoha.sum_capacity               sum_capacity
                      ,NVL(xoha.sum_pallet_weight, 0)  sum_pallet_weight
               FROM    xxwsh_order_headers_all         xoha
-              WHERE   xoha.delivery_no                            =  lv_delivery_no
+-- 2009/02/20 D.Nihei Mod Start 本番障害#863対応
+--              WHERE   xoha.delivery_no                            =  lv_delivery_no
+              WHERE   NVL(xoha.delivery_no, xoha.mixed_no)        =  lv_delivery_no
+-- 2009/02/20 D.Nihei Mod End
               AND     NVL(xoha.latest_external_flag, cv_flag_no)  =  cv_flag_yes
               -- 移動データ
               UNION ALL
@@ -7964,8 +8049,19 @@ END;
 --
   EXCEPTION 
     WHEN lock_expt THEN
+-- 2009/02/20 D.Nihei Add Start 本番障害#1034対応
+      IF (ship_lock_cur%ISOPEN) THEN
+        CLOSE ship_lock_cur;
+      END IF;
+      IF (mov_lock_cur%ISOPEN) THEN
+        CLOSE mov_lock_cur;
+      END IF;
+-- 2009/02/20 D.Nihei Add End
       -- ロック処理エラー
-      ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_lock_err);
+-- 2009/02/20 D.Nihei Add Start 本番障害#1034対応
+--      ov_errmsg := xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_lock_err);
+      ov_errmsg := '依頼No/移動番号:' || iv_request_no || ' ' || '配送No:' || lv_delivery_no || ' ' || xxcmn_common_pkg.get_msg(cv_app_name_xxwsh, cv_msg_lock_err);
+-- 2009/02/20 D.Nihei Add End
       RETURN cv_career_cancel_err;                             -- 配車解除失敗
 --
 --###############################  固定例外処理部 START   ###################################
