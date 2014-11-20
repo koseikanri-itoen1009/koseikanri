@@ -5,7 +5,7 @@ CREATE GLOBAL TEMPORARY TABLE xxcfo.xxcfo_tmp_standard_data_po
  * Description     : 発注書データ出力ワークテーブル
  * MD.050          : MD.050_LDM_CFO_001
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -13,6 +13,7 @@ CREATE GLOBAL TEMPORARY TABLE xxcfo.xxcfo_tmp_standard_data_po
  * ------------- ----- ------------ -------------------------------------
  *  2008/11/21    1.0  SCS 山口 優    初回作成
  *  2009/02/09    1.1  SCS 嵐田勇人  [障害CFO_002]出力桁数対応
+ *  2013/02/20    1.2  SCSK 桐生和幸 [E_本稼動_10434]項目追加対応
  ************************************************************************/
 ( 
   po_num                         VARCHAR2(20)                  ,-- 発注番号
@@ -141,6 +142,9 @@ CREATE GLOBAL TEMPORARY TABLE xxcfo.xxcfo_tmp_standard_data_po
   special_info_item98            VARCHAR2(300)                 ,-- 特別情報項目98
   special_info_item99            VARCHAR2(300)                 ,-- 特別情報項目99
   special_info_item100           VARCHAR2(300)                 ,-- 特別情報項目100
+-- 2013/02/20 Ver1.2 E_本稼動_10434 Add Start
+  remove_install_code            VARCHAR2(150)                 ,-- 引揚物件コード
+-- 2013/02/20 Ver1.2 E_本稼動_10434 Add End
   org_id                         NUMBER              NOT NULL  ,-- 組織のID
   created_by                     NUMBER              NOT NULL  ,-- 作成者
   created_date                   DATE                NOT NULL  ,-- 作成日
@@ -152,7 +156,9 @@ CREATE GLOBAL TEMPORARY TABLE xxcfo.xxcfo_tmp_standard_data_po
   program_id                     NUMBER                        ,-- コンカレント・プログラムID
   program_update_date            DATE                           -- プログラム更新日
 )ON COMMIT PRESERVE ROWS ;
-;
+-- 2013/02/20 Ver1.2 E_本稼動_10434 Del Start
+--;
+-- 2013/02/20 Ver1.2 E_本稼動_10434 Del Start
 --
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.po_num                     IS '発注番号';
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.revision_num               IS '発注毎の改訂番号';
@@ -280,6 +286,9 @@ COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item97        IS
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item98        IS '特別情報項目98';
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item99        IS '特別情報項目99';
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.special_info_item100       IS '特別情報項目100';
+-- 2013/02/20 Ver1.2 E_本稼動_10434 Add Start
+COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.remove_install_code        IS '引揚物件コード';
+-- 2013/02/20 Ver1.2 E_本稼動_10434 Add End
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.org_id                     IS '組織のID';
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.created_by                 IS '作成者';
 COMMENT ON COLUMN xxcfo.xxcfo_tmp_standard_data_po.created_date               IS '作成日';

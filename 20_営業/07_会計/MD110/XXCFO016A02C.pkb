@@ -7,7 +7,7 @@ AS
  * Description     : 発注書データ出力処理
  * MD.050          : MD050_CFO_016_A02_発注書データ出力処理
  * MD.070          : MD050_CFO_016_A02_発注書データ出力処理
- * Version         : 1.8
+ * Version         : 1.9
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2009-11-25    1.6  SCS 寺内真紀  [障害E_本稼動_00063]顧客情報取得エラー対応
  *  2009-12-24    1.7  SCS 寺内真紀  [障害E_本稼動_00592]納品場所変更対応
  *  2010-01-19    1.8  SCS 寺内真紀  [障害E_本稼動_01183]従業員マスタ抽出条件変更対応
+ *  2013-02-20    1.9  SCSK 桐生和幸 [障害E_本稼動_10434]新台代替の引揚物件コード表示対応
   ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -111,6 +112,9 @@ AS
   gv_file_type_log         CONSTANT VARCHAR2(10)  := 'LOG';            -- ログ出力
   gv_format_date_ymdhms    CONSTANT VARCHAR2(21)  := 'YYYY/MM/DD HH24:MI:SS';
                                                                        -- 日付フォーマット（年月日時分秒）
+--ADD_Ver.1.9_2013/02/20_START
+  gv_category_type         CONSTANT VARCHAR2(2)   := '20';             -- カテゴリタイプ（新台代替）
+--ADD_Ver.1.9_2013/02/20_END
                                                                                 -- エラーメッセージ出力用参照タイプコード
   gt_lookup_code_000A00002 CONSTANT fnd_lookup_values.lookup_code%TYPE := 'CFO000A00002';
                                                                                 -- 「発注作成日From」
@@ -168,6 +172,9 @@ AS
   gv_lookup_type2    CONSTANT VARCHAR2(100) := 'AUTHORIZATION STATUS';               -- 承認ステータス
   gv_lookup_type3    CONSTANT VARCHAR2(100) := 'XXCFO1_SEARCH_LONG_TEXT';            -- 長い文書検索文字列
   gv_lookup_type4    CONSTANT VARCHAR2(100) := 'XXCFO1_PO_DATA_OUT_HEAD_ITEM';       -- 発注書データ出力ヘッダ項目
+--ADD_Ver.1.9_2013/02/20_START
+  gv_lookup_type5    CONSTANT VARCHAR2(100) := 'XXCSO1_PO_CATEGORY_TYPE';            -- 品目カテゴリ（営業）
+--ADD_Ver.1.9_2013/02/20_END
 --
   --===============================================================
   -- グローバル変数
@@ -266,6 +273,9 @@ AS
           ,l_xla.address_line1                    address_line1              -- 納品場所住所
           ,pha.org_id                             org_id                     -- 組織ID
           ,pha.creation_date                      creation_date              -- 発注作成日
+--ADD_Ver.1.9_2013/02/20_START
+          ,pr.remove_install_code                 remove_install_code        -- 引揚物件コード
+--ADD_Ver.1.9_2013/02/20_END
       FROM po_headers_all          pha,                  -- 発注ヘッダテーブル
            po_lines_all            pla,                  -- 発注明細テーブル
            po_line_locations_all   plla,                 -- 発注納入明細テーブル
@@ -289,6 +299,19 @@ AS
                   ,prda.distribution_id         distribution_id                     -- 購買依頼搬送明細ID
                   ,xla.location_short_name      location_short_name                 -- 申請拠点
                   ,hl.location_code             location_code                       -- 申請拠点コード
+--ADD_Ver.1.9_2013/02/20_START
+                  ,DECODE(
+                           ( SELECT flvv.attribute1  category_type
+                             FROM   mtl_categories_b     mcb
+                                   ,fnd_lookup_values_vl flvv
+                             WHERE  mcb.category_id  = prla.category_id
+                             AND    mcb.segment1     = flvv.meaning
+                             AND    flvv.lookup_type = gv_lookup_type5
+                           )
+                          ,gv_category_type, prla.attribute2 --新台代替系のみ引揚物件コード取得
+                          ,''
+                   )                            remove_install_code   -- 引揚物件コード
+--ADD_Ver.1.9_2013/02/20_END
               FROM po_requisition_headers_all   prha,          -- 購買依頼ヘッダテーブル
                    po_requisition_lines_all     prla,          -- 購買依頼明細テーブル
                    po_req_distributions_all     prda,          -- 購買依頼搬送明細テーブル
@@ -1392,6 +1415,9 @@ AS
       ,special_info_item98
       ,special_info_item99
       ,special_info_item100
+--ADD_Ver.1.9_2013/02/20_START
+      ,remove_install_code
+--ADD_Ver.1.9_2013/02/20_END
       ,org_id
       ,created_by
       ,created_date
@@ -1545,6 +1571,9 @@ AS
       ,CASE WHEN 98  <= gn_special_info_cnt THEN SUBSTRB( gt_special_info_item(98) ,1 ,240 )  ELSE NULL END
       ,CASE WHEN 99  <= gn_special_info_cnt THEN SUBSTRB( gt_special_info_item(99) ,1 ,240 )  ELSE NULL END
       ,CASE WHEN 100 <= gn_special_info_cnt THEN SUBSTRB( gt_special_info_item(100) ,1 ,240 ) ELSE NULL END
+--ADD_Ver.1.9_2013/02/20_START
+      ,g_xxcfo_po_data_rec.remove_install_code
+--ADD_Ver.1.9_2013/02/20_END
       ,gn_org_id
       ,cn_created_by
       ,cd_creation_date
@@ -1774,7 +1803,7 @@ AS
       ,COL125                   -- 特別情報項目98
       ,COL126                   -- 特別情報項目99
       ,COL127                   -- 特別情報項目100
-      ,COL128
+      ,COL128                   -- 引揚物件コード
       ,COL129
       ,COL130
       ,COL131
@@ -1927,7 +1956,10 @@ AS
            ,special_info_item98                                -- 特別情報項目98
            ,special_info_item99                                -- 特別情報項目99
            ,special_info_item100                               -- 特別情報項目100
-           ,NULL
+--MOD_Ver.1.9_2013/02/20_START
+--           ,NULL
+           ,remove_install_code                                -- 引揚物件コード
+--MOD_Ver.1.9_2013/02/20_END
            ,NULL
            ,NULL
            ,NULL
@@ -2079,6 +2111,9 @@ AS
                    ,xtsdp1.special_info_item98             special_info_item98             -- 特別情報項目98
                    ,xtsdp1.special_info_item99             special_info_item99             -- 特別情報項目99
                    ,xtsdp1.special_info_item100            special_info_item100            -- 特別情報項目100
+--ADD_Ver.1.9_2013/02/20_START
+                   ,xtsdp1.remove_install_code             remove_install_code             -- 引揚物件コード
+--ADD_Ver.1.9_2013/02/20_END
                FROM xxcfo_tmp_standard_data_po        xtsdp1        -- 発注書データ出力ワークテーブル
                    ,(SELECT xtsdp2.po_num                    po_num
                            ,xtsdp2.org_id                    org_id
@@ -2214,6 +2249,9 @@ AS
                       ,xtsdp1.special_info_item98
                       ,xtsdp1.special_info_item99
                       ,xtsdp1.special_info_item100
+--ADD_Ver.1.9_2013/02/20_START
+                      ,xtsdp1.remove_install_code
+--ADD_Ver.1.9_2013/02/20_END
             )
     );
 --
