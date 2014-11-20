@@ -1,0 +1,62 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Sequence Name   : XXINV_MOV_INSTR_HEADERS_IF
+ * Description     : 移動指示ヘッダインタフェース
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2011/03/02    1.0   Y.Kanami         新規作成
+ ************************************************************************/
+CREATE TABLE xxinv.xxinv_mov_instr_headers_if(
+    mov_hdr_if_id           NUMBER	      NOT NULL
+  , temp_ship_num           VARCHAR2(256) NOT NULL
+  , mov_type                VARCHAR2(2)   NOT NULL
+  , instruction_post_code   VARCHAR2(4)   NOT NULL
+  , shipped_locat_code      VARCHAR2(4)   NOT NULL
+  , ship_to_locat_code      VARCHAR2(4)   NOT NULL
+  , schedule_ship_date      DATE	        NOT NULL
+  , schedule_arrival_date   DATE	        NOT NULL
+  , freight_charge_class    VARCHAR2(1)   NOT NULL
+  , freight_carrier_code    VARCHAR2(4)   
+  , weight_capacity_class   VARCHAR2(1)   NOT NULL
+  , product_flg             VARCHAR2(1)   NOT NULL
+  , created_by              NUMBER(15,0)  NOT NULL
+  , creation_date           DATE	        NOT NULL
+  , last_updated_by         NUMBER(15,0)  NOT NULL
+  , last_update_date        DATE	        NOT NULL
+  , last_update_login       NUMBER(15,0)
+  , request_id              NUMBER(15,0)
+  , program_application_id	NUMBER(15,0)
+  , program_id              NUMBER(15,0)
+  , program_update_date     DATE
+  , CONSTRAINT xxinv_mov_instr_headers_if_pk PRIMARY KEY(mov_hdr_if_id)
+    USING INDEX TABLESPACE xxidx
+);
+--
+COMMENT ON TABLE  xxinv.xxinv_mov_instr_headers_if IS '移動指示ヘッダインタフェース(アドオン)';
+--
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.mov_hdr_if_id          IS '移動ヘッダIF_ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.temp_ship_num          IS '仮伝票番号';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.mov_type               IS '移動タイプ';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.instruction_post_code  IS '指示部署';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.shipped_locat_code     IS '出庫元保管場所';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.ship_to_locat_code     IS '入庫先保管場所';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.schedule_ship_date     IS '出庫予定日';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.schedule_arrival_date  IS '入庫予定日';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.freight_charge_class   IS '運賃区分';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.freight_carrier_code   IS '運送業者';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.weight_capacity_class  IS '重量容積区分';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.product_flg            IS '製品識別区分';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.created_by             IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.creation_date          IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.last_updated_by        IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.last_update_date       IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.last_update_login      IS '最終更新ログイン';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.request_id             IS '要求ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.program_application_id IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.program_id             IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_headers_if.program_update_date    IS 'プログラム更新日';

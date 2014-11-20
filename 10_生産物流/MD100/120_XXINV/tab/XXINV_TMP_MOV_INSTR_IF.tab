@@ -1,0 +1,55 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Sequence Name   : XXINV_TMP_MOV_INSTR_IF
+ * Description     : 移動指示インタフェース一時表
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2011/03/02    1.0   Y.Kanami         新規作成
+ ************************************************************************/
+CREATE TABLE xxinv.xxinv_tmp_mov_instr_if(
+    file_id                     VARCHAR2(12)  NOT NULL
+  , record_id                   NUMBER        NOT NULL
+  , temp_ship_num               VARCHAR2(512)
+  , product_flg                 VARCHAR2(256)
+  , instruction_post_code       VARCHAR2(256)
+  , mov_type                    VARCHAR2(256)
+  , shipped_locat_code          VARCHAR2(256)
+  , ship_to_locat_code          VARCHAR2(256)
+  , schedule_ship_date          VARCHAR2(256)
+  , schedule_arrival_date       VARCHAR2(256)
+  , freight_charge_class        VARCHAR2(256)
+  , freight_carrier_code        VARCHAR2(256)
+  , weight_capacity_class       VARCHAR2(256)
+  , item_code                   VARCHAR2(256)
+  , designated_production_date  VARCHAR2(256)
+  , first_instruct_qty          VARCHAR2(256)
+  , line                        VARCHAR2(2000)
+  , CONSTRAINT xxinv_tmp_mov_instr_if_pk PRIMARY KEY (file_id, record_id)
+    USING INDEX TABLESPACE xxidx
+);
+--
+COMMENT ON TABLE xxinv.xxinv_tmp_mov_instr_if IS '移動指示インタフェース一時表';
+--
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.file_id                    IS  'ファイルID';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.record_id                  IS  'レコードID';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.temp_ship_num              IS  '仮伝票番号';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.product_flg                IS  '製品識別区分';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.instruction_post_code      IS  '移動指示部署コード';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.mov_type                   IS  '移動タイプコード';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.shipped_locat_code         IS  '出庫元コード';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.ship_to_locat_code         IS  '入庫先コード';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.schedule_ship_date         IS  '出庫日';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.schedule_arrival_date      IS  '着日';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.freight_charge_class       IS  '運賃区分';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.freight_carrier_code       IS  '運送業者コード';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.weight_capacity_class      IS  '重量容積区分';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.item_code                  IS  '品目コード';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.designated_production_date IS  '指定製造日';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.first_instruct_qty         IS  '指示総数';
+COMMENT ON COLUMN xxinv.xxinv_tmp_mov_instr_if.line                       IS  '行内容';
+

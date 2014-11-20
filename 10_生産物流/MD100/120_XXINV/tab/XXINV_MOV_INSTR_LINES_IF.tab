@@ -1,0 +1,50 @@
+/************************************************************************
+ * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
+ *
+ * Sequence Name   : XXINV_MOV_INSTR_LINES_IF
+ * Description     : 移動指示明細インタフェース
+ * Version         : 1.0
+ *
+ * Change Record
+ * ------------- ----- ---------------- ---------------------------------
+ *  Date          Ver.  Editor           Description
+ * ------------- ----- ---------------- ---------------------------------
+ *  2011/03/02    1.0   Y.Kanami         新規作成
+ ************************************************************************/
+CREATE TABLE xxinv.xxinv_mov_instr_lines_if(
+    mov_line_if_id              NUMBER        NOT NULL
+  , mov_hdr_if_id               NUMBER        NOT NULL
+  , item_code                   VARCHAR2(7)   NOT NULL
+  , designated_production_date  DATE          NOT NULL
+  , first_instruct_qty          NUMBER        NOT NULL
+  , created_by                  NUMBER(15,0)  NOT NULL
+  , creation_date               DATE          NOT NULL
+  , last_updated_by             NUMBER(15,0)  NOT NULL
+  , last_update_date            DATE          NOT NULL
+  , last_update_login           NUMBER(15,0)
+  , request_id                  NUMBER(15,0)
+  , program_application_id      NUMBER(15,0)
+  , program_id                  NUMBER(15,0)
+  , program_update_date         DATE
+  , CONSTRAINT xxinv_mov_instr_lines_if_pk PRIMARY KEY (mov_line_if_id)
+    USING INDEX TABLESPACE xxidx
+);
+--
+COMMENT ON TABLE  xxinv.xxinv_mov_instr_lines_if IS '移動指示明細インタフェース(アドオン)';
+--
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.mov_line_if_id              IS '移動明細IF_ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.mov_hdr_if_id               IS '移動ヘッダIF_ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.item_code                   IS '品目';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.designated_production_date  IS '指定製造日';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.first_instruct_qty          IS '初回指示数量';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.created_by                  IS '作成者';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.creation_date               IS '作成日';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.last_updated_by             IS '最終更新者';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.last_update_date            IS '最終更新日';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.last_update_login           IS '最終更新ログイン';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.request_id                  IS '要求ID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.program_application_id      IS 'コンカレント・プログラム・アプリケーションID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.program_id                  IS 'コンカレント・プログラムID';
+COMMENT ON COLUMN xxinv.xxinv_mov_instr_lines_if.program_update_date         IS 'プログラム更新日';
+
+                              
