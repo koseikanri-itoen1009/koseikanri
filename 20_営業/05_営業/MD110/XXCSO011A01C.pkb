@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -73,6 +73,7 @@ AS
  *  2009-09-10    1.17  K.Satomura       【0001335】顧客チェックを顧客区分によって変更するよう修正
  *  2009-11-25    1.18  K.Satomura       【E_本稼動_00027】MC、MC候補をエラーとするよう修正
  *  2009-11-30    1.19  K.Satomura       【E_本稼動_00204】作業希望日のチェックを一時的に外す
+ *  2009-11-30    1.20  T.Maruyama       【E_本稼動_00119】チェック強化対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -211,6 +212,12 @@ AS
   /* 2009.09.10 K.Satomura 0001335対応 START */
   cv_tkn_number_55  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00579';  -- 顧客ステータスチェックエラーメッセージ
   /* 2009.09.10 K.Satomura 0001335対応 END */
+  /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+  cv_tkn_number_56  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00582';  -- 作業希望日妥当性チェックエラーメッセージ
+  cv_tkn_number_57  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00583';  -- 書式チェックエラーメッセージ
+  cv_tkn_number_58  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00584';  -- 作業会社メーカーチェックエラーメッセージ
+  cv_tkn_number_59  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00585';  -- 引揚先入力不可チェックエラーメッセージ
+  /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
 
   --
   -- トークンコード
@@ -246,6 +253,10 @@ AS
   cv_tkn_hazard_state1    CONSTANT VARCHAR2(20) := 'HAZARD_STATE1';
   cv_tkn_hazard_state2    CONSTANT VARCHAR2(20) := 'HAZARD_STATE2';
   cv_tkn_hazard_state3    CONSTANT VARCHAR2(20) := 'HAZARD_STATE3';
+  /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+  cv_tkn_colname        CONSTANT VARCHAR2(20) := 'COLNAME';
+  cv_tkn_format         CONSTANT VARCHAR2(20) := 'FORMAT';    
+  /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */  
   --
   cv_machinery_status       CONSTANT VARCHAR2(100) := '物件データワークテーブルの機器状態'; 
 /* 20090511_abe_ST965 END*/
@@ -301,6 +312,10 @@ AS
 /*20090413_yabuki_ST170_ST171 START*/
   cv_input_chk_kbn_10  CONSTANT VARCHAR2(2) := '10';  -- 引揚関連情報入力チェック２
 /*20090413_yabuki_ST170_ST171 END*/
+/* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+  cv_input_chk_kbn_11  CONSTANT VARCHAR2(2) := '11';  -- 作業会社メーカーチェック
+  cv_input_chk_kbn_12  CONSTANT VARCHAR2(2) := '12';  -- 引揚先入力不可チェック
+/* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
   --
   -- リース物件ステータスチェック処理内のチェック区分番号
   cv_obj_sts_chk_kbn_01  CONSTANT VARCHAR2(2) := '01';  -- チェック対象：設置用物件
@@ -314,7 +329,12 @@ AS
   cv_jotai_kbn1_operate     CONSTANT VARCHAR2(1) := '1';  -- 機器状態１（稼動状態）「稼動」
   cv_jotai_kbn1_hold        CONSTANT VARCHAR2(1) := '2';  -- 機器状態１（稼動状態）「滞留」
   cv_jotai_kbn3_non_schdl   CONSTANT VARCHAR2(1) := '0';  -- 機器状態３（廃棄情報）「予定無」
+  /* 2009.11.25 K.Satomura E_本稼動_00027対応 START */
+  cv_jotai_kbn3_ablsh_pln   CONSTANT VARCHAR2(1) := '1';  -- 機器状態３（廃棄情報）「廃棄予定」  
+  /* 2009.11.25 K.Satomura E_本稼動_00027対応 END */
   cv_jotai_kbn3_ablsh_appl  CONSTANT VARCHAR2(1) := '2';  -- 機器状態３（廃棄情報）「廃棄申請中」
+
+  
 /* 20090511_abe_ST965 START*/
   cn_num0                  CONSTANT NUMBER        := 0;
   cn_num1                  CONSTANT NUMBER        := 1;
@@ -1167,6 +1187,11 @@ AS
 /*20090413_yabuki_ST170 START*/
     cv_date_fmt                  CONSTANT VARCHAR2(8)  := 'YYYYMMDD';
     cv_date_fmt2                 CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';
+    /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+    cv_date_yymm_fmt             CONSTANT VARCHAR2(8)  := 'YYYYMM';
+    cv_date_yymm_fmt_fx          CONSTANT VARCHAR2(10) := 'FXYYYYMMDD';
+    cv_maker_prefix              CONSTANT VARCHAR2(2)  := '11';   --作業会社CDの頭2桁メーカーを表す
+    /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
 /*20090413_yabuki_ST170 END*/
 /*20090413_yabuki_ST171 START*/
     cv_inst_place_type_exterior  CONSTANT VARCHAR2(1) := '1';  -- 設置場所区分=「屋外」
@@ -1182,9 +1207,20 @@ AS
     cv_tkn_val_wthdrw_cmpny_cd   CONSTANT VARCHAR2(100) := '引揚会社コード';
     cv_tkn_val_wthdrw_loc_cd     CONSTANT VARCHAR2(100) := '引揚事業所コード';
     cv_tkn_val_ablsh_inst_cd     CONSTANT VARCHAR2(100) := '廃棄_物件コード';
+    /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+    cv_tkn_val_inst_plc_flr      CONSTANT VARCHAR2(100) := '設置場所階数';
+    cv_tkn_val_ele_maguchi       CONSTANT VARCHAR2(100) := 'エレベータ間口';
+    cv_tkn_val_ele_okuyuki       CONSTANT VARCHAR2(100) := 'エレベータ奥行き';
+    cv_tkn_val_hankaku_3_fmt     CONSTANT VARCHAR2(100) := '半角英数3文字以内';
+    cv_tkn_val_num_3_fmt         CONSTANT VARCHAR2(100) := '半角数字3文字以内';    
+    /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
     --
     -- *** ローカル変数 ***
     lv_errbuf2     VARCHAR2(5000);  -- エラー・メッセージ
+    
+    /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+    ld_wk_date     DATE;
+    /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
     --
     -- *** ローカル例外 ***
     --
@@ -1331,6 +1367,61 @@ AS
         --
       END IF;
       --
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+      -- 作業希望日の妥当性チェック
+      IF (i_requisition_rec.work_hope_year  ||
+          i_requisition_rec.work_hope_month ||
+          i_requisition_rec.work_hope_day) IS NOT NULL
+      THEN
+        BEGIN
+          -- 1.日付の妥当性チェック
+          SELECT TO_DATE(i_requisition_rec.work_hope_year
+                      || i_requisition_rec.work_hope_month
+                      || i_requisition_rec.work_hope_day, cv_date_yymm_fmt_fx)
+          INTO   ld_wk_date
+          FROM   DUAL
+          ;
+          --
+          -- 2.２ヶ月以内チェック
+          IF TO_CHAR(ADD_MONTHS(xxccp_common_pkg2.get_process_date,2),cv_date_yymm_fmt)
+             < TO_CHAR(ld_wk_date,cv_date_yymm_fmt)
+          THEN
+            lv_errbuf2 := xxccp_common_pkg.get_msg(
+                              iv_application => cv_sales_appl_short_name -- アプリケーション短縮名
+                            , iv_name        => cv_tkn_number_56         -- メッセージコード
+                          );
+            --
+            lv_errbuf  := CASE
+                            WHEN (lv_errbuf IS NULL) THEN
+                              lv_errbuf2
+                            ELSE
+                              SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                          END;
+            --
+            ov_retcode := cv_status_warn;
+            --
+          END IF;
+          --
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errbuf2 := xxccp_common_pkg.get_msg(
+                              iv_application => cv_sales_appl_short_name -- アプリケーション短縮名
+                            , iv_name        => cv_tkn_number_56         -- メッセージコード
+                          );
+            --
+            lv_errbuf  := CASE
+                            WHEN (lv_errbuf IS NULL) THEN
+                              lv_errbuf2
+                            ELSE
+                              SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                          END;
+            --
+            ov_retcode := cv_status_warn;
+            --
+        END;
+        --
+      END IF;
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
 /*20090413_yabuki_ST170 START*/
       /* 2009.11.30 K.Satomura E_本稼動_00204対応 START */
       -- 依頼日 ＞ 作業希望日（作業希望年||作業希望月||作業希望日）の場合
@@ -1390,6 +1481,31 @@ AS
           --
         END IF;
         --
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+        -- 設置場所階数書式チェック(半角英数・3バイト)
+        IF (xxccp_common_pkg.chk_alphabet_number_only(i_requisition_rec.install_place_floor) = FALSE) 
+          OR LENGTHB(i_requisition_rec.install_place_floor) > 3
+        THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                          ,iv_token_value1 => cv_tkn_val_inst_plc_flr  -- トークン値1
+                          ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                          ,iv_token_value2 => cv_tkn_val_hankaku_3_fmt -- トークン値2
+                        );
+          --
+          lv_errbuf  := CASE
+                          WHEN (lv_errbuf IS NULL) THEN
+                            lv_errbuf2
+                          ELSE
+                            SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                        END;
+          --
+          ov_retcode := cv_status_warn;
+          --
+        END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
       END IF;
       --
       -- エレベータ間口、エレベータ奥行きのどちらか一方のみ入力されている場合
@@ -1406,6 +1522,64 @@ AS
         ov_retcode := cv_status_warn;
         --
       END IF;
+      
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+      -- エレベータ間口書式チェック(半角数字・3バイト)
+      IF (i_requisition_rec.elevator_frontage IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_number(i_requisition_rec.elevator_frontage) = FALSE)
+            OR
+              (LENGTHB(i_requisition_rec.elevator_frontage) > 3)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_ele_maguchi   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_num_3_fmt     -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- エレベータ奥行書式チェック(半角数字・3バイト)
+      IF (i_requisition_rec.elevator_depth IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_number(i_requisition_rec.elevator_depth) = FALSE)
+            OR
+              (LENGTHB(i_requisition_rec.elevator_depth) > 3)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_ele_okuyuki   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_num_3_fmt     -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
       --
       -- 延長コード区分が入力されている場合
       IF ( i_requisition_rec.extension_code_type IS NOT NULL ) THEN
@@ -1474,6 +1648,42 @@ AS
 /*20090413_yabuki_ST170_ST171 START*/
     -- チェック区分が「引揚関連情報入力チェック２」の場合
     ELSIF ( iv_chk_kbn = cv_input_chk_kbn_10 ) THEN
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */ 
+      -- 引揚の場合も作業会社・作業事業所は指定する必要有。
+      -- 作業会社コードが未入力の場合
+      IF (i_requisition_rec.work_company_code IS NULL) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_09         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_item              -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_wk_company_cd -- トークン値1
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 事業所コードが未入力の場合
+      IF (i_requisition_rec.work_location_code IS NULL) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_09          -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_item               -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_wk_location_cd -- トークン値1
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN 
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
       -- 引揚会社コードが未入力の場合
       IF ( i_requisition_rec.withdraw_company_code IS NULL ) THEN
         lv_errbuf2 := xxccp_common_pkg.get_msg(
@@ -1523,6 +1733,59 @@ AS
         --
       END IF;
       --
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+      -- 作業希望日の妥当性チェック
+      IF (i_requisition_rec.work_hope_year || i_requisition_rec.work_hope_month
+         || i_requisition_rec.work_hope_day ) IS NOT NULL
+      THEN
+        BEGIN
+          -- 1.日付の妥当性チェック
+          SELECT TO_DATE(i_requisition_rec.work_hope_year || i_requisition_rec.work_hope_month
+                         || i_requisition_rec.work_hope_day, cv_date_yymm_fmt_fx)
+          INTO   ld_wk_date
+          FROM   DUAL;
+          --
+          -- 2.２ヶ月以内チェック
+          IF TO_CHAR(ADD_MONTHS(xxccp_common_pkg2.get_process_date,2),cv_date_yymm_fmt) 
+             < TO_CHAR(ld_wk_date,cv_date_yymm_fmt)
+          THEN
+            lv_errbuf2 := xxccp_common_pkg.get_msg(
+                              iv_application => cv_sales_appl_short_name -- アプリケーション短縮名
+                            , iv_name        => cv_tkn_number_56         -- メッセージコード
+                          );
+            --
+            lv_errbuf  := CASE
+                            WHEN (lv_errbuf IS NULL) THEN
+                              lv_errbuf2
+                            ELSE
+                              SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                          END;
+            --
+            ov_retcode := cv_status_warn;
+            --
+          END IF;
+          --
+        EXCEPTION
+          WHEN OTHERS THEN
+            lv_errbuf2 := xxccp_common_pkg.get_msg(
+                             iv_application => cv_sales_appl_short_name -- アプリケーション短縮名
+                            ,iv_name        => cv_tkn_number_56         -- メッセージコード
+                          );
+            --
+            lv_errbuf  := CASE
+                            WHEN (lv_errbuf IS NULL) THEN
+                              lv_errbuf2
+                            ELSE
+                              SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                          END;
+            --
+            ov_retcode := cv_status_warn;
+            --
+        END;
+        -- 
+      END IF;
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+
       -- 依頼日 ＞ 作業希望日（作業希望年||作業希望月||作業希望日）の場合
       /* 2009.11.30 K.Satomura E_本稼動_00204対応 START */
       --IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
@@ -1577,6 +1840,31 @@ AS
           ov_retcode := cv_status_warn;
           --
         END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+        -- 設置場所階数書式チェック(半角英数・3バイト)
+        IF (xxccp_common_pkg.chk_alphabet_number_only(i_requisition_rec.install_place_floor) = FALSE)
+          OR LENGTHB(i_requisition_rec.install_place_floor) > 3
+        THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                          ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                          ,iv_token_value1 => cv_tkn_val_inst_plc_flr  -- トークン値1
+                          ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                          ,iv_token_value2 => cv_tkn_val_hankaku_3_fmt -- トークン値2
+                        );
+          --
+          lv_errbuf  := CASE
+                          WHEN (lv_errbuf IS NULL) THEN
+                            lv_errbuf2
+                          ELSE
+                            SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                        END;
+          --
+          ov_retcode := cv_status_warn;
+          --
+        END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
         --
       END IF;
       --
@@ -1594,6 +1882,64 @@ AS
         ov_retcode := cv_status_warn;
         --
       END IF;
+      
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+      -- エレベータ間口書式チェック(半角数字・3バイト)
+      IF (i_requisition_rec.elevator_frontage IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_number(i_requisition_rec.elevator_frontage) = FALSE)
+            OR
+              (LENGTHB(i_requisition_rec.elevator_frontage) > 3)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_ele_maguchi   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_num_3_fmt     -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- エレベータ奥行書式チェック(半角数字・3バイト)
+      IF (i_requisition_rec.elevator_depth IS NOT NULL)
+        AND (
+              (xxccp_common_pkg.chk_number(i_requisition_rec.elevator_depth) = FALSE)
+            OR
+              (LENGTHB(i_requisition_rec.elevator_depth) > 3)
+            )
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name         => cv_tkn_number_57         -- メッセージコード
+                        ,iv_token_name1  => cv_tkn_colname           -- トークンコード1
+                        ,iv_token_value1 => cv_tkn_val_ele_okuyuki   -- トークン値1
+                        ,iv_token_name2  => cv_tkn_format            -- トークンコード2
+                        ,iv_token_value2 => cv_tkn_val_num_3_fmt     -- トークン値2
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
       --
       -- 延長コード区分が入力されている場合
       IF ( i_requisition_rec.extension_code_type IS NOT NULL ) THEN
@@ -1614,6 +1960,51 @@ AS
       END IF;
 /*20090413_yabuki_ST170_ST171 END*/
       --
+    /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+    -- チェック区分が「作業会社メーカーチェック」の場合
+    ELSIF (iv_chk_kbn = cv_input_chk_kbn_11) THEN
+      -- 新台設置・新台代替の場合に実施
+      -- 作業会社がメーカーでない場合エラー＝作業会社CD頭２桁が11がメーカー
+      IF SUBSTRB(i_requisition_rec.work_company_code,1,2) <>  cv_maker_prefix THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name        => cv_tkn_number_58         -- メッセージコード
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+    -- チェック区分が「引揚先入力不可チェック」の場合
+    ELSIF (iv_chk_kbn = cv_input_chk_kbn_12) THEN
+      -- 新台設置/旧台設置/店内移動の場合に実施
+      -- 引揚先は入力不可
+      IF (i_requisition_rec.withdraw_company_code IS NOT NULL) 
+        OR (i_requisition_rec.withdraw_location_code IS NOT NULL)
+      THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                         iv_application => cv_sales_appl_short_name -- アプリケーション短縮名
+                        ,iv_name        => cv_tkn_number_59         -- メッセージコード
+                      );
+        --
+        lv_errbuf  := CASE
+                        WHEN (lv_errbuf IS NULL) THEN
+                          lv_errbuf2
+                        ELSE
+                          SUBSTRB(lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000)
+                      END;
+        --
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+    /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
     END IF;
     --
     ov_errbuf := lv_errbuf;
@@ -1845,9 +2236,16 @@ AS
       --
     END IF;
     --
-    -- 機器状態３（廃棄情報）がNULLまたは「予定無」以外の場合
+    -- 機器状態３（廃棄情報）がNULLまたは「0:予定無」および「1:廃棄予定」以外の場合
     IF ( i_instance_rec.jotai_kbn3 IS NULL )
-      OR ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_non_schdl )
+      /* 2009.11.25 K.Satomura E_本稼動_00027対応 START */
+      OR (   
+           ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_non_schdl )
+           AND
+           ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_ablsh_pln )
+           )
+      --OR ( i_instance_rec.jotai_kbn3 <> cv_jotai_kbn3_non_schdl )
+      /* 2009.11.25 K.Satomura E_本稼動_00027対応 END */
     THEN
       lv_errbuf2 := xxccp_common_pkg.get_msg(
                         iv_application  => cv_sales_appl_short_name   -- アプリケーション短縮名
@@ -5239,6 +5637,54 @@ AS
           --
         END IF;
         --
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+        ------------------------------
+        -- 作業会社CDメーカーチェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_11 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := lv_errbuf2;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+        ------------------------------
+        -- 引揚先入力不可チェックチェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_12 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := lv_errbuf2;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
           -- リターンコードに「異常」を設定
@@ -5376,6 +5822,29 @@ AS
           --
         END IF;
         --
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+        ------------------------------
+        -- 作業会社CDメーカーチェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_11 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := lv_errbuf2;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
         ------------------------------
         -- 引揚関連情報入力チェック
         ------------------------------
@@ -5631,6 +6100,30 @@ AS
           END IF;
           --
         END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+        ------------------------------
+        -- 引揚先入力不可チェックチェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_12 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := lv_errbuf2;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
@@ -6158,20 +6651,23 @@ AS
         -- A-11. 所属マスタ存在チェック処理
         -- ========================================
 /*20090413_yabuki_ST527 START*/
---        ----------------------------------------
---        -- チェック対象：設置作業会社、事業所
---        ----------------------------------------
---        check_syozoku_mst(
---            iv_work_company_code  => l_requisition_rec.work_company_code   -- 作業会社コード
---          , iv_work_location_code => l_requisition_rec.work_location_code  -- 事業所コード
---          , ov_errbuf             => lv_errbuf                             -- エラー・メッセージ  --# 固定 #
---          , ov_retcode            => lv_retcode                            -- リターン・コード    --# 固定 #
---        );
---        --
---        IF ( lv_retcode <> cv_status_normal ) THEN
---          RAISE global_process_expt;
---          --
---        END IF;
+         /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+         -- 引揚時も作業会社は指定する必要があるためチェックを復活させる
+        ----------------------------------------
+        -- チェック対象：設置作業会社、事業所
+        ----------------------------------------
+        check_syozoku_mst(
+           iv_work_company_code  => l_requisition_rec.work_company_code  -- 作業会社コード
+          ,iv_work_location_code => l_requisition_rec.work_location_code -- 事業所コード
+          ,ov_errbuf             => lv_errbuf                            -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode            => lv_retcode                           -- リターン・コード    --# 固定 #
+        );
+        --
+        IF (lv_retcode <> cv_status_normal) THEN
+          RAISE global_process_expt;
+          --
+        END IF;
+         /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
 /*20090413_yabuki_ST527 END*/
         --
         ----------------------------------------
@@ -6595,6 +7091,30 @@ AS
           END IF;
           --
         END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 START */
+        ------------------------------
+        -- 引揚先入力不可チェックチェック
+        ------------------------------
+        input_check(
+           iv_chk_kbn        => cv_input_chk_kbn_12 -- チェック区分
+          ,i_requisition_rec => l_requisition_rec   -- 発注依頼情報
+          ,ov_errbuf         => lv_errbuf2          -- エラー・メッセージ  --# 固定 #
+          ,ov_retcode        => lv_retcode2         -- リターン・コード    --# 固定 #
+        );
+        --
+        -- 正常終了でない場合
+        IF (lv_retcode2 <> cv_status_normal) THEN
+          lv_errbuf  := lv_errbuf2;
+          lv_retcode := lv_retcode2;
+          --
+          -- 異常終了の場合
+          IF (lv_retcode2 = cv_status_error) THEN
+            RAISE input_check_expt;
+            --
+          END IF;
+          --
+        END IF;
+        /* 2009.11.25 K.Satomura E_本稼動_00119対応 END */
         --
         -- 入力チェック処理が警告終了（チェックエラーあり）の場合
         IF ( lv_retcode = cv_status_warn ) THEN
