@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A14R(body)
  * Description      : 受払残高表（営業員）
  * MD.050           : 受払残高表（営業員） <MD050_COI_A14>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -25,6 +25,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/26    1.0   N.Abe            新規作成
+ *  2009/07/14    1.1   N.Abe            [0000462]群コード取得方法修正
  *
  *****************************************************************************************/
 --
@@ -118,6 +119,9 @@ AS
   -- ユーザー定義グローバル変数
   -- ===============================
   gd_process_date       DATE;                                   -- 業務処理日付
+-- == 2009/07/14 V1.1 Added START ===============================================================
+  gd_target_date        DATE;
+-- == 2009/07/14 V1.1 Added END   ===============================================================
   -- ===============================
   -- ユーザー定義カーソル
   -- ===============================
@@ -131,7 +135,16 @@ AS
     SELECT    papf.employee_number                emp_no              -- 1.営業員コード
              ,papf.per_information18 || papf.per_information19
                                                   emp_name            -- 2.営業員名称（漢字姓＋漢字名）
-             ,SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
+-- == 2009/07/14 V1.1 Modified START ===============================================================
+--             ,SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
+             ,SUBSTR(
+                (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                        THEN iimb.attribute1                          --   群コード(旧)
+                        ELSE iimb.attribute2                          --   群コード(新)
+                      END
+                ), 1, 3
+              )                                   policy_group        -- 3.群コード
+-- == 2009/07/14 V1.1 Modified END   ===============================================================
              ,iimb.item_no                        item_no             -- 4.品目コード
              ,ximb.item_short_name                item_short_name     -- 5.略称（商品）
              ,xird.operation_cost                 operation_cost      -- 6.営業原価
@@ -200,7 +213,16 @@ AS
     SELECT    papf.employee_number                emp_no              -- 1.営業員コード
              ,papf.per_information18 || papf.per_information19
                                                   emp_name            -- 2.営業員名称（漢字姓＋漢字名）
-             ,SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
+-- == 2009/07/14 V1.1 Modified START ===============================================================
+--             ,SUBSTR(iimb.attribute2, 1, 3)       policy_group        -- 3.群コード
+             ,SUBSTR(
+                (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                        THEN iimb.attribute1                          --   群コード(旧)
+                        ELSE iimb.attribute2                          --   群コード(新)
+                      END
+                ), 1, 3
+              )                                   policy_group        -- 3.群コード
+-- == 2009/07/14 V1.1 Modified END   ===============================================================
              ,iimb.item_no                        item_no             -- 4.品目コード
              ,ximb.item_short_name                item_short_name     -- 5.略称（商品）
              ,xirm.operation_cost                 operation_cost      -- 6.営業原価
@@ -469,6 +491,9 @@ AS
         WHEN OTHERS THEN
           RAISE inv_date_type_expt;
       END;
+-- == 2009/07/14 V1.1 Added START ===============================================================
+      gd_target_date := ld_inv_date;
+-- == 2009/07/14 V1.1 Added END   ===============================================================
     END IF;
     --====================================
     --4.棚卸月チェック（NULLチェック）
@@ -479,6 +504,9 @@ AS
       IF (iv_inventory_month IS NULL) THEN
         RAISE inv_month_null_expt;
       END IF;
+-- == 2009/07/14 V1.1 Added START ===============================================================
+      gd_target_date := LAST_DAY(TO_DATE(iv_inventory_month, cv_ym_sla));
+-- == 2009/07/14 V1.1 Added END   ===============================================================
     END IF;
     --====================================
     --5.拠点略称取得

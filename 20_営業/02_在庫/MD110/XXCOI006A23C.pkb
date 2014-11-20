@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A23C(body)
  * Description      : VD受払情報を元に、CSVデータを作成します。
  * MD.050           : VD受払CSV作成<MD050_COI_006_A23>
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/02/10    1.0   H.Sasaki         初版作成
+ *  2009/07/14    1.1   N.Abe            [0000462]群コード取得方法修正
  *
  *****************************************************************************************/
 --
@@ -153,6 +154,9 @@ AS
   gd_f_process_date           DATE;               -- 業務処理日付
   gt_output_name              fnd_lookup_values.meaning%TYPE;     -- 受払表出力区分名
   gt_cost_kbn_name            fnd_lookup_values.meaning%TYPE;     -- 原価区分名
+-- == 2009/07/13 V1.1 Added START ===============================================================
+  gd_target_date              DATE;
+-- == 2009/07/13 V1.1 Added END   ===============================================================
 --
   -- ===============================
   -- カーソル定義
@@ -203,7 +207,16 @@ AS
               ELSE ROUND(xvri.standard_cost  * xvri.inv_wear_account)
             END                               inv_wear_account_money            -- 棚卸減耗費（金額）
            ,hca.account_name                  account_name                      -- 拠点名
-           ,SUBSTRB(iimb.attribute2, 1, 3)    gun_code                          -- 群コード
+-- == 2009/07/13 V1.1 Modified START ===============================================================
+--           ,SUBSTR(iimb.attribute2, 1, 3)     gun_code                          -- 群コード
+           ,SUBSTR(
+              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                      THEN iimb.attribute1                                      -- 群コード(旧)
+                      ELSE iimb.attribute2                                      -- 群コード(新)
+                    END
+              ), 1, 3
+            )                                 gun_code                          -- 群コード
+-- == 2009/07/13 V1.1 Modified END   ===============================================================
            ,msib.segment1                     segment1                          -- 商品コード
            ,ximb.item_short_name              item_short_name                   -- 品名
     FROM    xxcoi_vd_reception_info       xvri                                  -- VD受払情報テーブル
@@ -275,7 +288,16 @@ AS
               ELSE ROUND(xvri.standard_cost  * xvri.inv_wear_account)
             END                               inv_wear_account_money            -- 棚卸減耗費（金額）
            ,hca.account_name                  account_name                      -- 拠点名
-           ,SUBSTRB(iimb.attribute2, 1, 3)    gun_code                          -- 群コード
+-- == 2009/07/14 V1.1 Modified START ===============================================================
+--           ,SUBSTR(iimb.attribute2, 1, 3)     gun_code                          -- 群コード
+           ,SUBSTR(
+              (CASE WHEN  TRUNC(TO_DATE(iimb.attribute3, 'YYYY/MM/DD')) > TRUNC(gd_target_date)
+                      THEN iimb.attribute1                                      -- 群コード(旧)
+                      ELSE iimb.attribute2                                      -- 群コード(新)
+                    END
+              ), 1, 3
+            )                                 gun_code                          -- 群コード
+-- == 2009/07/14 V1.1 Modified END   ===============================================================
            ,msib.segment1                     segment1                          -- 商品コード
            ,ximb.item_short_name              item_short_name                   -- 品名
     FROM    xxcoi_vd_reception_info       xvri                                  -- VD受払情報テーブル
@@ -1425,6 +1447,9 @@ AS
       lv_errbuf   :=  lv_errmsg;
       RAISE global_process_expt;
     END IF;
+-- == 2009/07/14 V1.1 Added START ===============================================================
+    gd_target_date := LAST_DAY(ld_dummy);
+-- == 2009/07/14 V1.1 Added END   ===============================================================
     --
     -- ===================================
     --  3.拠点コード置換
