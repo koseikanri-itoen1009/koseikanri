@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -54,6 +54,7 @@ AS
  *  2009/04/09    1.12  SCS丸下          本番障害#1346
  *  2009/06/30    1.13  Yuki Kazama      本番障害#1335対応
  *  2009/09/29    1.14  H.Itou           本番障害#1465対応
+ *  2009/10/20    1.15  H.Itou           本番障害#1569,1591(営業稼動支援)対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -98,6 +99,9 @@ AS
   no_data_expt           EXCEPTION;        -- 処理対象データ0件（警告）
   lock_expt              EXCEPTION;        -- ロック取得例外
   PRAGMA EXCEPTION_INIT(lock_expt, -54);   -- ロック取得例外
+-- 2009/10/20 H.Itou Mod Start 本番障害#1569 在庫クローズエラーのときは警告とし、後続処理をスキップする。
+  skip_expt              EXCEPTION;        -- スキップ例外
+-- 2009/10/20 H.Itou Mod End
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -111,6 +115,9 @@ AS
   gv_cate_order        CONSTANT VARCHAR2(10)  := 'ORDER';                   -- 受注カテゴリ 受注
   gv_flag_on           CONSTANT VARCHAR2(1)   := 'Y';
   gv_flag_off          CONSTANT VARCHAR2(1)   := 'N';
+-- 2009/10/20 H.Itou Add Start 本番障害#1569
+  gv_comma             CONSTANT VARCHAR2(1)   := ',';
+-- 2009/10/20 H.Itou Add End
 --
   -- メッセージ
   -- プロファイル取得エラーメッセージ
@@ -190,6 +197,9 @@ AS
     invoice_no         xxwsh_reserve_interface.invoice_no%TYPE,        -- 伝票No
     item_no            ic_item_mst_b.item_no%TYPE,                     -- 品目コード
     quantity_total     xxwsh_reserve_interface.quantity%TYPE           -- 数量
+-- 2009/10/20 H.Itou Add Start 本番障害#1569
+   ,data_dump          VARCHAR2(5000)                                  -- データダンプ
+-- 2009/10/20 H.Itou Add End
   );
 --
   TYPE reserve_interface_tbl IS TABLE OF reserve_interface_rec INDEX BY PLS_INTEGER;
@@ -977,6 +987,15 @@ AS
            xri2.invoice_no,                        -- 伝票No
            xri2.item_no,                           -- 品目コード(OPM品目情報VIEW)
            xri2.quantity_total                     -- 数量
+-- 2009/10/20 H.Itou Add Start 本番障害#1569
+          ,xri2.recorded_year     || gv_comma ||
+           xri2.input_base_code   || gv_comma ||
+           xri2.receive_base_code || gv_comma ||
+           xri2.invoice_class_1   || gv_comma ||
+           xri2.invoice_no        || gv_comma ||
+           xri2.item_no           || gv_comma ||
+           xri2.quantity_total                   data_dump -- データダンプ
+-- 2009/10/20 H.Itou Add End
     BULK COLLECT INTO gt_reserve_interface_tbl
     FROM (SELECT xri.recorded_year,                -- 計上年月
                  xri.input_base_code,              -- 入力拠点コード
@@ -1121,7 +1140,7 @@ AS
     BEGIN
       SELECT icv.prod_class_code                  -- 商品区分
       INTO   lt_item_class
-      FROM   xxcmn_item_categories3_v  icv        -- 品目カテゴリ情報VIEW3
+      FROM   xxcmn_item_categories5_v  icv        -- 品目カテゴリ情報VIEW5
       WHERE  icv.item_no = it_item_no;            -- 品目コード
 --
       IF (lt_item_class IS NULL) THEN             -- 商品区分に値が登録されていない場合はエラー
@@ -1248,6 +1267,9 @@ AS
    ***********************************************************************************/
   PROCEDURE check_stock(
     it_recorded_date      IN  xxwsh_reserve_interface.recorded_date%TYPE,    -- 1.計上日付(着日)
+-- 2009/10/20 H.Itou Add Start 本番障害#1569
+    iv_data_dump          IN  VARCHAR2,                                      -- 2.データダンプ
+-- 2009/10/20 H.Itou Add End
     ov_errbuf             OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
     ov_retcode            OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
     ov_errmsg             OUT NOCOPY VARCHAR2)     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1308,8 +1330,13 @@ AS
         gv_xxwsh_stock_from_err,
         gv_tkn_arrival_date,
         lv_recorded_date);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
+-- 2009/10/20 H.Itou Mod Start 本番障害#1569 在庫クローズエラーのときは警告とし、後続処理をスキップする。
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,iv_data_dump); -- データダンプ出力
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);    -- 在庫クローズエラーメッセージ
+        ov_retcode := gv_status_warn;
+-- 2009/10/20 H.Itou Mod End
     END IF;
 --
     -- CLOSE年月=プロファイルから取得したMAX日付の場合はエラー
@@ -1467,23 +1494,26 @@ AS
         RAISE global_api_expt;
     END;
 --
-    -- **************************************************
-    -- *** 依頼No導出処理
-    -- **************************************************
-    gt_request_no := NULL;     -- 共通関数で伝票No(9桁)を依頼No(12桁)に変換する
-    ln_rtn_cd := xxwsh_common_pkg.convert_request_number(
-      cv_inbound,              -- 変換区分
-      it_invoice_no,           -- 変換前伝票No
-      gt_request_no);          -- 変換後依頼No
---
-    IF ((ln_rtn_cd <> cv_status_normal)        -- 共通関数のリターンコードがエラーの場合
-    OR  (gt_request_no IS NULL)) THEN          -- 変換後依頼NoがNULLの場合はエラー
-      lv_errmsg := xxcmn_common_pkg.get_msg(
-        gv_xxwsh,
-        gv_xxwsh_request_no_conv_err);
-      lv_errbuf := lv_errmsg;
-      RAISE global_api_expt;
-    END IF;
+-- 2009/10/20 H.Itou Mod Start 本番障害#1591
+--    -- **************************************************
+--    -- *** 依頼No導出処理
+--    -- **************************************************
+--    gt_request_no := NULL;     -- 共通関数で伝票No(9桁)を依頼No(12桁)に変換する
+--    ln_rtn_cd := xxwsh_common_pkg.convert_request_number(
+--      cv_inbound,              -- 変換区分
+--      it_invoice_no,           -- 変換前伝票No
+--      gt_request_no);          -- 変換後依頼No
+----
+--    IF ((ln_rtn_cd <> cv_status_normal)        -- 共通関数のリターンコードがエラーの場合
+--    OR  (gt_request_no IS NULL)) THEN          -- 変換後依頼NoがNULLの場合はエラー
+--      lv_errmsg := xxcmn_common_pkg.get_msg(
+--        gv_xxwsh,
+--        gv_xxwsh_request_no_conv_err);
+--      lv_errbuf := lv_errmsg;
+--      RAISE global_api_expt;
+--    END IF;
+    gt_request_no := it_invoice_no;
+-- 2009/10/20 H.Itou Mod End
 --
     -- **************************************************
     -- *** ダミーロット設定処理 2008/10/10 v1.5 M.Hirafuku ADD ST
@@ -4205,6 +4235,10 @@ AS
     <<gt_reserve_interface_tbl_loop>>
     FOR i IN gt_reserve_interface_tbl.FIRST .. gt_reserve_interface_tbl.LAST LOOP
 --
+-- 2009/10/20 H.Itou Add Start 本番障害#1569
+      -- 在庫クローズチェックで警告の場合、処理をスキップさせるためにスキップ例外作成
+      BEGIN
+-- 2009/10/20 H.Itou Add End
       -- ===============================
       -- 変数・フラグの初期化
       -- ===============================
@@ -4278,12 +4312,19 @@ AS
       -- ===============================
       check_stock(
         gt_reserve_interface_tbl(i).recorded_date,         -- 1.計上日付(着日)
+-- 2009/10/20 H.Itou Add Start 本番障害#1569
+        gt_reserve_interface_tbl(i).data_dump,             -- 2.データダンプ
+-- 2009/10/20 H.Itou Add End
         lv_errbuf,         -- エラー・メッセージ           --# 固定 #
         lv_retcode,        -- リターン・コード             --# 固定 #
         lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
 --
       IF (lv_retcode = gv_status_error) THEN
         RAISE global_process_expt;
+-- 2009/10/20 H.Itou Mod Start 本番障害#1569 在庫クローズエラーのときは警告とし、後続処理をスキップする。
+      ELSIF (lv_retcode = gv_status_warn) THEN
+        RAISE skip_expt;
+-- 2009/10/20 H.Itou Mod End
       END IF;
 --
       -- ===============================
@@ -4899,6 +4940,13 @@ AS
         END IF;
 --
       END IF;
+-- 2009/10/20 H.Itou Add Start 本番障害#1569
+      -- 在庫クローズチェックで警告の場合、処理をスキップさせるためにスキップ例外作成
+      EXCEPTION
+        WHEN skip_expt THEN
+          ov_retcode := gv_status_warn; -- 終了ステータスに警告をセット
+      END;
+-- 2009/10/20 H.Itou Add End
 --
     END LOOP gt_reserve_interface_tbl_loop;
 --
@@ -5062,10 +5110,18 @@ AS
     -- エラー・メッセージ出力
     -- ======================
     IF (lv_retcode = gv_status_error)
-    OR (lv_retcode = gv_status_warn) THEN
+-- 2009/10/20 H.Itou Mod Start 本番障害#1569
+--    OR (lv_retcode = gv_status_warn) THEN
+    THEN
+-- 2009/10/20 H.Itou Mod End
       IF (lv_errmsg IS NULL) THEN
         --定型メッセージ・セット
         lv_errmsg := xxcmn_common_pkg.get_msg('XXCMN','APP-XXCMN-10030');
+-- 2009/10/20 H.Itou Add Start 本番障害#1569
+      ELSIF (lv_errbuf IS NULL) THEN
+        --ユーザー・エラー・メッセージのコピー
+        lv_errbuf := lv_errmsg;
+-- 2009/10/20 H.Itou Add End
       END IF;
       FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
       FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
