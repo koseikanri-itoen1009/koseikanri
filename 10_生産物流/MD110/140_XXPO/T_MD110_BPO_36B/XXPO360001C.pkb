@@ -7,7 +7,7 @@ AS
  * Description      : 発注書
  * MD.050/070       : 仕入（帳票）Issue1.0(T_MD050_BPO_360)
  *                    仕入（帳票）Issue1.0(T_MD070_BPO_36B)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -43,7 +43,7 @@ AS
  *  2009/03/30    1.11  A.Shiina         本番#1346対応
  *  2009/04/01    1.12  T.Yoshimoto      本番#1363対応
  *  2009/04/01    1.13  T.Yoshimoto      本番#1363対応(再)
- *
+ *  2009/09/15    1.14  T.Yoshimoto      本番#1624対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1278,20 +1278,30 @@ AS
           -- 明細Ｇデータタグ出力
           -- -----------------------------------------------------
           -- 合計数
-          IF (ln_ctotal <> 0) THEN
-            gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-            gt_xml_data_table(gl_xml_idx).tag_name  := 'cnt_total' ;
-            gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-            gt_xml_data_table(gl_xml_idx).tag_value := ln_ctotal;
-          END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+          --IF (ln_ctotal <> 0) THEN
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'cnt_total' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := ln_ctotal;
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+          --END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+--
           -- 合計金額
-          IF (ln_mtotal <> 0) THEN
-            gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-            gt_xml_data_table(gl_xml_idx).tag_name  := 'money_total' ;
-            gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-            gt_xml_data_table(gl_xml_idx).tag_value := fnc_show_ctl(TO_CHAR(ln_mtotal),
-                                                                    ir_param.site_use);
-          END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+          --IF (ln_mtotal <> 0) THEN
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+          gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+          gt_xml_data_table(gl_xml_idx).tag_name  := 'money_total' ;
+          gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+          gt_xml_data_table(gl_xml_idx).tag_value := fnc_show_ctl(TO_CHAR(ln_mtotal),
+                                                                  ir_param.site_use);
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+          --END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+--
           -- -----------------------------------------------------
           -- 合計Ｇ終了タグ出力
           -- -----------------------------------------------------
@@ -1561,13 +1571,19 @@ AS
                               gt_main_data(i).commission_amount - 
                               gt_main_data(i).levy_amount);
 -- mod end 1.9
-      IF (ln_purchase_amount <> 0) THEN
-        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-        gt_xml_data_table(gl_xml_idx).tag_name  := 'purchase_amount' ;
-        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := fnc_show_ctl(ln_purchase_amount,
-                                                                ir_param.site_use) ;
-      END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+      --IF (ln_purchase_amount <> 0) THEN
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+      gt_xml_data_table(gl_xml_idx).tag_name  := 'purchase_amount' ;
+      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+      gt_xml_data_table(gl_xml_idx).tag_value := fnc_show_ctl(ln_purchase_amount,
+                                                              ir_param.site_use) ;
+--
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+      --END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+--
       -- ロットＮｏ
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'lot_number' ;
@@ -1798,20 +1814,30 @@ AS
     -- 明細Ｇデータタグ出力
     -- -----------------------------------------------------
     -- 合計数
-    IF (ln_ctotal <> 0) THEN
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'cnt_total' ;
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := ln_ctotal;
-    END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+    --IF (ln_ctotal <> 0) THEN
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'cnt_total' ;
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value := ln_ctotal;
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+    --END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+--
     -- 合計金額
-    IF (ln_mtotal <> 0) THEN
-      gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
-      gt_xml_data_table(gl_xml_idx).tag_name  := 'money_total' ;
-      gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-      gt_xml_data_table(gl_xml_idx).tag_value := fnc_show_ctl(TO_CHAR(ln_mtotal),
-                                                              ir_param.site_use);
-    END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+    --IF (ln_mtotal <> 0) THEN
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+    gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+    gt_xml_data_table(gl_xml_idx).tag_name  := 'money_total' ;
+    gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+    gt_xml_data_table(gl_xml_idx).tag_value := fnc_show_ctl(TO_CHAR(ln_mtotal),
+                                                            ir_param.site_use);
+-- 2009/09/15 v1.14 T.Yoshimoto Del Start 本番#1624
+    --END IF;
+-- 2009/09/15 v1.14 T.Yoshimoto Del End 本番#1624
+--
     -- -----------------------------------------------------
     -- 合計Ｇ終了タグ出力
     -- -----------------------------------------------------
