@@ -76,7 +76,7 @@ DECLARE
   -- ユーザー宣言部
   -- ===============================
   -- *** ローカル定数 ***
-  cv_directory               CONSTANT VARCHAR2(100) := 'XX03_PDF_DIR';
+  cv_directory               CONSTANT VARCHAR2(100) := 'ECX_UTL_LOG_DIR_OBJ';
   -- *** ローカル変数 ***
   lv_debug_step              VARCHAR2(5) ;
   lv_file_nohints            VARCHAR2(100);
