@@ -3,13 +3,14 @@
  * VIEW Name       : XXCSO_CUST_ACCOUNTS_V
  * Description     : 共通用：顧客マスタビュー
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.1
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
  *  Date          Ver.  Editor       Description
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
+ *  2010/01/06    1.1  D.Abe         E_本稼動_00069対応
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_CUST_ACCOUNTS_V
 (
@@ -42,6 +43,9 @@ CREATE OR REPLACE VIEW APPS.XXCSO_CUST_ACCOUNTS_V
 ,cnvs_business_person
 ,cnvs_base_code
 ,new_point_div
+/* 2010.01.06 D.Abe E_本稼動_00069対応 START */
+,torihiki_form
+/* 2010.01.06 D.Abe E_本稼動_00069対応 END */
 ,party_id
 ,party_name
 ,organization_name_phonetic
@@ -81,6 +85,9 @@ SELECT
 ,xca.cnvs_business_person
 ,xca.cnvs_base_code
 ,xca.new_point_div
+/* 2010.01.06 D.Abe E_本稼動_00069対応 START */
+,xca.torihiki_form
+/* 2010.01.06 D.Abe E_本稼動_00069対応 END */
 ,hp.party_id
 ,hp.party_name
 ,hp.organization_name_phonetic
@@ -126,6 +133,9 @@ COMMENT ON COLUMN XXCSO_CUST_ACCOUNTS_V.cnvs_date IS '顧客獲得日';
 COMMENT ON COLUMN XXCSO_CUST_ACCOUNTS_V.cnvs_business_person IS '獲得営業員';
 COMMENT ON COLUMN XXCSO_CUST_ACCOUNTS_V.cnvs_base_code IS '獲得拠点';
 COMMENT ON COLUMN XXCSO_CUST_ACCOUNTS_V.new_point_div IS '新規ポイント区分';
+/* 2010.01.06 D.Abe E_本稼動_00069対応 START */
+COMMENT ON COLUMN XXCSO_CUST_ACCOUNTS_V.torihiki_form IS '取引形態';
+/* 2010.01.06 D.Abe E_本稼動_00069対応 END */
 COMMENT ON COLUMN XXCSO_CUST_ACCOUNTS_V.party_id IS 'パーティID';
 COMMENT ON COLUMN XXCSO_CUST_ACCOUNTS_V.party_name IS '顧客名';
 COMMENT ON COLUMN XXCSO_CUST_ACCOUNTS_V.organization_name_phonetic IS '顧客名（カナ）';

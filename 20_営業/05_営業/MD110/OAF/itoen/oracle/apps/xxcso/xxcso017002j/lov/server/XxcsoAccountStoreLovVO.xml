@@ -21,17 +21,7 @@ FROM    xxcso_employees_v2       xev
 WHERE   xev.user_id          = fnd_global.user_id
 AND     xrcv.employee_number = xev.employee_number
 AND     xcav.account_number  = xrcv.account_number
-AND     (
-          (
-              xcav.customer_status IN ('20','25','30','40','50')
-          AND NVL(xcav.customer_class_code, '10') = '10'
-          )
-        OR
-          (
-              xcav.customer_status IN ('90','99')
-          AND xcav.customer_class_code = '16'
-          )
-        )
+AND     xcav.torihiki_form   = '2'
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
