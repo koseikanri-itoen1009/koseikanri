@@ -52,6 +52,10 @@ SELECT gbh.batch_id                   batch_id                  -- バッチID
            THEN 'DeleteCoProdEnable'
            ELSE 'DeleteCoProdDisable'
        END                            delete_switcher           -- 削除アイコン 
+-- 2009/02/04 D.Nihei Add Start
+      ,gmd.attribute26                rank3                     -- R3
+      ,gmd.attribute26                base_rank3                -- R3(DB)
+-- 2009/02/04 D.Nihei Add End
 FROM   gme_batch_header          gbh     -- 生産バッチヘッダ
       ,gme_material_details      gmd     -- 生産原料詳細
       ,gmd_routings_vl           grv     -- 工順マスタビュー
@@ -492,6 +496,32 @@ AND    ximv.end_date_active  >= NVL(gbhh.product_date, TRUNC(SYSDATE))
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="19" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Rank3"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RANK3"
+      Expression="RANK3"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseRank3"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_RANK3"
+      Expression="BASE_RANK3"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
       </DesignTime>
    </ViewAttribute>
    <AttrArray Name="KeyAttributes">

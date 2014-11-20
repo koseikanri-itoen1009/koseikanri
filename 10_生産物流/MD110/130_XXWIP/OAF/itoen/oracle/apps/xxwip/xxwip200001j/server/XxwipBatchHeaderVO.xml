@@ -111,6 +111,11 @@ SELECT gbh.batch_id                batch_id                          -- バッチID
       ,TO_CHAR(gbh.batch_id)       qs_batch_id                       -- バッチID(検索用)
       ,gbh.batch_no                qs_batch_no                       -- バッチNo(検索用)
       ,grv.attribute3              orgn_code                         -- 取引先コード(プラント)
+-- 2009/02/04 D.Nihei Add Start
+      ,DECODE(ilm.lot_no, null, gmd.attribute26
+                              , ilm.attribute19)  rank3              -- R3
+      ,gmd.attribute26             base_rank3                        -- R3(DB)
+-- 2009/02/04 D.Nihei Add End
 FROM   gme_batch_header          gbh     -- 生産バッチヘッダ
       ,gme_material_details      gmd     -- 生産原料詳細
       ,ic_tran_pnd               itp     -- OPM保留在庫トランザクション
@@ -1100,6 +1105,32 @@ AND    ximv.end_date_active    >= NVL(FND_DATE.STRING_TO_DATE(gmd.attribute11, '
       ColumnType="VARCHAR2"
       AliasName="ORGN_CODE"
       Expression="ORGN_CODE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="Rank3"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="RANK3"
+      Expression="RANK3"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="BaseRank3"
+      IsPersistent="false"
+      Precision="10"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="BASE_RANK3"
+      Expression="BASE_RANK3"
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="240" />

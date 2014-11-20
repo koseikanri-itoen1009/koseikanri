@@ -325,7 +325,16 @@
                                     <oa:messageTextInput id="Rank2" viewName="XxwipBatchHeaderVO1" viewAttr="Rank2" shortDesc="R2" maximumLength="10" columns="13" styleClass="LegendText"/>
                                  </ui:contents>
                               </oa:cellFormat>
-                              <oa:cellFormat id="cell88" columnSpan="2"/>
+                              <oa:cellFormat id="cell88" hAlign="right">
+                                 <ui:contents>
+                                    <oa:messageStyledText id="Rank3Prompt" prompt="R3"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
+                              <oa:cellFormat id="cell89">
+                                 <ui:contents>
+                                    <oa:messageTextInput id="Rank3" viewName="XxwipBatchHeaderVO1" viewAttr="Rank3" shortDesc="R3" maximumLength="10" columns="13" styleClass="LegendText"/>
+                                 </ui:contents>
+                              </oa:cellFormat>
                            </ui:contents>
                         </oa:rowLayout>
                         <oa:rowLayout id="spRow8">

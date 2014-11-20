@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipVolumeActualAMImpl
 * 概要説明   : 出来高実績入力アプリケーションモジュール
-* バージョン : 1.8
+* バージョン : 1.9
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -17,6 +17,8 @@
 * 2009-01-15 1.7  二瓶大輔     本番障害#823
 *                              本番障害#836恒久対応Ⅱ
 * 2009-01-20 1.8  二瓶大輔     本番障害#1055
+* 2009-02-04 1.9  二瓶大輔     本番障害#4
+*                              本番障害#666
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.xxwip200001j.server;
@@ -51,7 +53,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 出来高実績入力画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.8
+ * @version 1.9
  ***************************************************************************
  */
 public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -730,6 +732,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       {
         exeFlag = true;  
       }
+// 2009-02-04 v.1.9 D.Nihei Add Start
+      // 生産日更新関数
+      updateProdDate();
+// 2009-02-04 v.1.9 D.Nihei Add End
       // ステータス更新処理
       if (updateStatus()) 
       {
@@ -1364,6 +1370,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("Type"),           hdrRow.getAttribute("BaseType"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("Rank1"),          hdrRow.getAttribute("BaseRank1"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("Rank2"),          hdrRow.getAttribute("BaseRank2"))
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("Rank3"),          hdrRow.getAttribute("BaseRank3"))
+// 2009-02-04 v1.9 D.Nihei Add End
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("MaterialDesc"),   hdrRow.getAttribute("BaseMaterialDesc"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("EntityInner"),    hdrRow.getAttribute("BaseEntityInner"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("ProductDate"),    hdrRow.getAttribute("BaseProductDate"))
@@ -1377,6 +1386,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       String type         = (String)hdrRow.getAttribute("Type");           // タイプ
       String rank1        = (String)hdrRow.getAttribute("Rank1");          // ランク１
       String rank2        = (String)hdrRow.getAttribute("Rank2");          // ランク２
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+      String rank3        = (String)hdrRow.getAttribute("Rank3");          // ランク３
+// 2009-02-04 v1.9 D.Nihei Add End
       // 引数を設定します。
       HashMap params = new HashMap();
       params.put("entityInner",    entityInner);
@@ -1385,6 +1397,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       params.put("type",           type);
       params.put("rank1",          rank1);
       params.put("rank2",          rank2);
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+      params.put("rank3",          rank3);
+// 2009-02-04 v1.9 D.Nihei Add End
       params.put("itemNo",         itemNo);
       params.put("itemId",         itemId);
       params.put("lotId",          lotId);
@@ -1424,6 +1439,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                                   row.getAttribute("BaseRank1"))
         || !XxcmnUtility.isEquals(row.getAttribute("Rank2"),               
                                   row.getAttribute("BaseRank2"))
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+        || !XxcmnUtility.isEquals(row.getAttribute("Rank3"),               
+                                  row.getAttribute("BaseRank3"))
+// 2009-02-04 v1.9 D.Nihei Add End
         || !XxcmnUtility.isEquals(row.getAttribute("EntityInner"),         
                                   row.getAttribute("BaseEntityInner")))
         {
@@ -1433,6 +1452,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
           String type         = (String)row.getAttribute("Type");         // タイプ
           String rank1        = (String)row.getAttribute("Rank1");        // ランク１
           String rank2        = (String)row.getAttribute("Rank2");        // ランク２
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+          String rank3        = (String)row.getAttribute("Rank3");        // ランク３
+// 2009-02-04 v1.9 D.Nihei Add End
           String qtType       = (String)row.getAttribute("QtType");       // 試験有無区分
           String itemNo       = (String)row.getAttribute("ItemNo");       // 品目コード
           // 引数を設定します。
@@ -1443,6 +1465,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
           params.put("type",           type);
           params.put("rank1",          rank1);
           params.put("rank2",          rank2);
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+          params.put("rank3",          rank3);
+// 2009-02-04 v1.9 D.Nihei Add End
           params.put("itemNo",         itemNo);
           params.put("itemId",         itemId);
           params.put("lotId",          lotId);
@@ -1488,6 +1513,7 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       タイプ
       ランク１
       ランク２
+      ランク３
       摘要
       生産日
       製造日
@@ -1503,6 +1529,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                                hdrRow.getAttribute("BaseRank1"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("Rank2"),              
                                hdrRow.getAttribute("BaseRank2"))
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+     || !XxcmnUtility.isEquals(hdrRow.getAttribute("Rank3"),              
+                               hdrRow.getAttribute("BaseRank3"))
+// 2009-02-04 v1.9 D.Nihei Add End
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("MaterialDesc"),       
                                hdrRow.getAttribute("BaseMaterialDesc"))
      || !XxcmnUtility.isEquals(hdrRow.getAttribute("ProductDate"),        
@@ -1529,6 +1559,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       String type          = (String)hdrRow.getAttribute("Type");
       String rank1         = (String)hdrRow.getAttribute("Rank1");
       String rank2         = (String)hdrRow.getAttribute("Rank2");
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+      String rank3         = (String)hdrRow.getAttribute("Rank3");
+// 2009-02-04 v1.9 D.Nihei Add End
       String mtlDesc       = (String)hdrRow.getAttribute("MaterialDesc");
       String trustCalcType = (String)hdrRow.getAttribute("TrustCalculateType");
       String othersCost    = (String)hdrRow.getAttribute("OthersCost");
@@ -1540,6 +1573,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       params.put("type",           type);
       params.put("rank1",          rank1);
       params.put("rank2",          rank2);
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+      params.put("rank3",          rank3);
+// 2009-02-04 v1.9 D.Nihei Add End
       params.put("mtlDesc",        mtlDesc);
       params.put("entityInner",    entityInner);
       params.put("productDate",    productDate);
@@ -1572,6 +1608,10 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
                                      row.getAttribute("BaseRank1"))
            || !XxcmnUtility.isEquals(row.getAttribute("Rank2"),                  
                                      row.getAttribute("BaseRank2"))
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+           || !XxcmnUtility.isEquals(row.getAttribute("Rank3"),                  
+                                     row.getAttribute("BaseRank3"))
+// 2009-02-04 v1.9 D.Nihei Add End
            || !XxcmnUtility.isEquals(row.getAttribute("EntityInner"),            
                                      row.getAttribute("BaseEntityInner")))
           {
@@ -1579,6 +1619,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
             String type        = (String)row.getAttribute("Type");
             String rank1       = (String)row.getAttribute("Rank1");
             String rank2       = (String)row.getAttribute("Rank2");
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+            String rank3       = (String)row.getAttribute("Rank3");
+// 2009-02-04 v1.9 D.Nihei Add End
             Number mtlDtlId    = (Number)row.getAttribute("MaterialDetailId");
             Number lineType    = (Number)row.getAttribute("LineType");
             // 引数を設定します。
@@ -1586,6 +1629,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
             params.put("type",        type);
             params.put("rank1",       rank1);
             params.put("rank2",       rank2);
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+            params.put("rank3",       rank3);
+// 2009-02-04 v1.9 D.Nihei Add End
             params.put("lineType",    lineType);
             params.put("entityInner", entityInner);
             params.put("mtlDtlId",    mtlDtlId);
@@ -1664,6 +1710,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       String type     = null;
       String rank1    = null;
       String rank2    = null;
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+      String rank3    = null;
+// 2009-02-04 v1.9 D.Nihei Add End
       String entityInner = null;
       if (XxwipConstants.TAB_TYPE_INVEST.equals(tabType)) 
       {
@@ -1675,6 +1724,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
         type  = (String)row.getAttribute("Type");
         rank1 = (String)row.getAttribute("Rank1");
         rank2 = (String)row.getAttribute("Rank2");
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+        rank3 = (String)row.getAttribute("Rank3");
+// 2009-02-04 v1.9 D.Nihei Add End
 // 2008-07-29 D.Nihei ADD START
         row.setAttribute("BatchId", batchId);
 // 2008-07-29 D.Nihei ADD END
@@ -1687,6 +1739,9 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
       params.put("type",     type);
       params.put("rank1",    rank1);
       params.put("rank2",    rank2);
+// 2009-02-04 v1.9 D.Nihei Add Start 本番障害#4対応
+      params.put("rank3",    rank3);
+// 2009-02-04 v1.9 D.Nihei Add End
       params.put("slit",     slit);
       params.put("utkType",  utkType);
       params.put("lineType", lineType);
@@ -2946,6 +3001,82 @@ public class XxwipVolumeActualAMImpl extends XxcmnOAApplicationModuleImpl
     }
   } // doClose
 // 2009-01-15 v1.7 D.Nihei Add End
+// 2009-02-04 v.1.9 D.Nihei Add Start
+  /*****************************************************************************
+   * 生産原料詳細の生産日を更新します。
+   * @throws OAException - OA例外
+   ****************************************************************************/
+  public void updateProdDate() throws OAException
+  {
+    String apiName      = "updateProdDate";
+
+    // バッチヘッダ情報VO取得
+    XxwipBatchHeaderVOImpl vo  = getXxwipBatchHeaderVO1();
+    OARow row = (OARow)vo.first();
+    // 生産原料詳細ID
+    Number mtlDtlId      = (Number)row.getAttribute("MaterialDetailId");
+    // 生産日
+    Date productDate     = (Date)row.getAttribute("ProductDate");
+    // 生産日(DB)
+    Date baseProductDate = (Date)row.getAttribute("BaseProductDate");
+    // 生産日が変更されていない場合
+    if (XxcmnUtility.isEquals(productDate, baseProductDate)) 
+    {
+      // 処理終了
+      return;
+    }
+    //PL/SQLの作成を行います
+    StringBuffer sb = new StringBuffer(1000);
+    sb.append("BEGIN ");
+    sb.append("  UPDATE gme_material_details gmd ");
+    sb.append("  SET    gmd.attribute11        = TO_CHAR(:1,'YYYY/MM/DD') "); // 生産日
+    sb.append("       , gmd.last_updated_by    = FND_GLOBAL.USER_ID "      ); // 最終更新者
+    sb.append("       , gmd.last_update_date   = SYSDATE "                 ); // 最終更新日
+    sb.append("       , gmd.last_update_login  = FND_GLOBAL.LOGIN_ID "     ); // 最終更新ログイン
+    sb.append("  WHERE  gmd.material_detail_id = :2 ;"                     ); // 生産原料詳細ID
+    sb.append("END; ");
+
+    //PL/SQLの設定を行います
+    CallableStatement cstmt = getOADBTransaction().createCallableStatement(
+                                sb.toString(),
+                                OADBTransaction.DEFAULT);
+    try
+    {
+      int i = 1;
+      // パラメータ設定(INパラメータ)
+      cstmt.setDate(i++, XxcmnUtility.dateValue(productDate)); // 生産日
+      cstmt.setInt(i++,  XxcmnUtility.intValue(mtlDtlId));     // 生産原料詳細ID
+     
+      //PL/SQL実行
+      cstmt.execute();
+
+    // PL/SQL実行時例外の場合
+    } catch(SQLException s)
+    {
+      XxcmnUtility.writeLog(getOADBTransaction(),
+                            XxwipConstants.CLASS_AM_XXWIP200001J + XxcmnConstants.DOT + apiName,
+                            s.toString(),
+                            6);
+      throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                             XxcmnConstants.XXCMN10123);
+    } finally
+    {
+      try
+      {
+        // 処理中にエラーが発生した場合を想定する
+        cstmt.close();
+      } catch (SQLException s)
+      {
+        XxcmnUtility.writeLog(getOADBTransaction(),
+                              XxwipConstants.CLASS_AM_XXWIP200001J + XxcmnConstants.DOT + apiName,
+                              s.toString(),
+                              6);
+        throw new OAException(XxcmnConstants.APPL_XXCMN, 
+                               XxcmnConstants.XXCMN10123);
+      }
+    }
+  } // updateProdDate 
+// 2009-02-04 v.1.9 D.Nihei Add End
   /**
    * 
    * Container's getter for TypeVO1

@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxwipUtility
 * 概要説明   : 生産共通関数
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2007-11-09 1.0  二瓶大輔     新規作成
 * 2008-06-27 1.1  二瓶大輔     addメソッド追加
 * 2008-10-31 1.2  二瓶大輔     在庫会計クローズ関数追加
+* 2009-02-04 1.3  二瓶大輔     本番障害#4
 *============================================================================
 */
 package itoen.oracle.apps.xxwip.util;
@@ -32,7 +33,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 生産共通関数クラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.2
+ * @version 1.3
  ***************************************************************************
  */
 public class XxwipUtility 
@@ -149,6 +150,9 @@ public class XxwipUtility
     String  type        = (String)params.get("type");
     String  rank1       = (String)params.get("rank1");
     String  rank2       = (String)params.get("rank2");
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+    String  rank3       = (String)params.get("rank3");
+// 2009-02-04 v1.3 D.Nihei Add End
     String  slit        = (String)params.get("slit");
     String  utkType     = (String)params.get("utkType");
     Number  mtlDtlId    = null; 
@@ -172,21 +176,27 @@ public class XxwipUtility
     sb.append("  lr_material_detail_in.attribute1 := :8;  ");// タイプ     
     sb.append("  lr_material_detail_in.attribute2 := :9;  ");// ランク１     
     sb.append("  lr_material_detail_in.attribute3 := :10; ");// ランク２    
-    sb.append("  lr_material_detail_in.attribute10:= TO_CHAR(:11,'YYYY/MM/DD'); "); // 賞味期限日
-    sb.append("  lr_material_detail_in.attribute11:= TO_CHAR(:12,'YYYY/MM/DD'); "); // 生産日
-    sb.append("  lr_material_detail_in.attribute17:= TO_CHAR(:13,'YYYY/MM/DD'); "); // 製造日
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+    sb.append("  lr_material_detail_in.attribute26:= :11; ");// ランク３    
+// 2009-02-04 v1.3 D.Nihei Add End
+    sb.append("  lr_material_detail_in.attribute10:= TO_CHAR(:12,'YYYY/MM/DD'); "); // 賞味期限日
+    sb.append("  lr_material_detail_in.attribute11:= TO_CHAR(:13,'YYYY/MM/DD'); "); // 生産日
+    sb.append("  lr_material_detail_in.attribute17:= TO_CHAR(:14,'YYYY/MM/DD'); "); // 製造日
     sb.append("  xxwip_common_pkg.insert_material_line (  ");
     sb.append("    lr_material_detail_in  ");
     sb.append("   ,lr_material_detail_out ");
-    sb.append("   ,:14  ");
     sb.append("   ,:15  ");
     sb.append("   ,:16  ");
+    sb.append("   ,:17  ");
     sb.append("  ); ");
-    sb.append("  :17 := lr_material_detail_out.attribute6; ");
-    sb.append("  :18 := lr_material_detail_out.material_detail_id; ");
-    sb.append("  :19 := lr_material_detail_out.attribute1; ");
-    sb.append("  :20 := lr_material_detail_out.attribute2; ");
-    sb.append("  :21 := lr_material_detail_out.attribute3; ");
+    sb.append("  :18 := lr_material_detail_out.attribute6; ");
+    sb.append("  :19 := lr_material_detail_out.material_detail_id; ");
+    sb.append("  :20 := lr_material_detail_out.attribute1; ");
+    sb.append("  :21 := lr_material_detail_out.attribute2; ");
+    sb.append("  :22 := lr_material_detail_out.attribute3; ");
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+    sb.append("  :23 := lr_material_detail_out.attribute26; ");
+// 2009-02-04 v1.3 D.Nihei Add End
     sb.append("END; ");
     //PL/SQLの設定を行います
     CallableStatement cstmt = trans.createCallableStatement(
@@ -206,6 +216,9 @@ public class XxwipUtility
       cstmt.setString(i++, type);
       cstmt.setString(i++, rank1);
       cstmt.setString(i++, rank2);
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+      cstmt.setString(i++, rank3);
+// 2009-02-04 v1.3 D.Nihei Add End
       // 副産物の場合
       if (XxwipConstants.LINE_TYPE_CO_PROD.equals(lineType.stringValue())) 
       {
@@ -227,19 +240,25 @@ public class XxwipUtility
       cstmt.registerOutParameter(i++, Types.VARCHAR); 
       cstmt.registerOutParameter(i++, Types.VARCHAR); 
       cstmt.registerOutParameter(i++, Types.VARCHAR); 
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+      cstmt.registerOutParameter(i++, Types.VARCHAR); 
+// 2009-02-04 v1.3 D.Nihei Add End
 
       cstmt.execute();
 
-      if (XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(15))) 
+      if (XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(16))) 
       {
         insertFlag = true;
         if (XxwipConstants.TAB_TYPE_CO_PROD.equals(tabType)) 
         {
-          entityInner = cstmt.getString(17);
-          mtlDtlId    = new Number(cstmt.getInt(18));
-          type  = cstmt.getString(19);
-          rank1 = cstmt.getString(20);
-          rank2 = cstmt.getString(21);
+          entityInner = cstmt.getString(18);
+          mtlDtlId    = new Number(cstmt.getInt(19));
+          type  = cstmt.getString(20);
+          rank1 = cstmt.getString(21);
+          rank2 = cstmt.getString(22);
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+          rank3 = cstmt.getString(23);
+// 2009-02-04 v1.3 D.Nihei Add End
           row.setAttribute("EntityInner", entityInner);  
           row.setAttribute("MaterialDetailId", mtlDtlId);  
           row.setAttribute("Type",  type);  
@@ -253,7 +272,7 @@ public class XxwipUtility
         // APIエラーを出力する。
         XxcmnUtility.writeLog(trans,
                               XxwipConstants.CLASS_XXWIP_UTILITY + XxcmnConstants.DOT + apiName,
-                              cstmt.getString(14) + cstmt.getString(16),
+                              cstmt.getString(15) + cstmt.getString(17),
                               6);
         //トークンを生成します。
         MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_API_NAME,
@@ -311,6 +330,9 @@ public class XxwipUtility
     String  type           = (String)params.get("type");
     String  rank1          = (String)params.get("rank1");
     String  rank2          = (String)params.get("rank2");
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+    String  rank3          = (String)params.get("rank3");
+// 2009-02-04 v1.3 D.Nihei Add End
     String  mtlDesc        = (String)params.get("mtlDesc");
     String  entityInner    = (String)params.get("entityInner");
     Date    productDate    = (Date)params.get("productDate");
@@ -338,11 +360,14 @@ public class XxwipUtility
     sb.append("  lr_material_detail.attribute14        := :11; "); // 委託計算区分
     sb.append("  lr_material_detail.attribute16        := :12; "); // その他金額
     sb.append("  lr_material_detail.attribute17        := TO_CHAR(:13,'YYYY/MM/DD'); "); // 製造日
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+    sb.append("  lr_material_detail.attribute26        := :14;  "); // ランク３
+// 2009-02-04 v1.3 D.Nihei Add End
     sb.append("  xxwip_common_pkg.update_material_line(  ");
     sb.append("    lr_material_detail ");
-    sb.append("   ,:14  ");
     sb.append("   ,:15  ");
     sb.append("   ,:16  ");
+    sb.append("   ,:17  ");
     sb.append("  ); ");
     sb.append("END; ");
 
@@ -381,13 +406,16 @@ public class XxwipUtility
         cstmt.setNull(i++, Types.INTEGER);
         cstmt.setNull(i++, Types.DATE);
       }      
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+      cstmt.setString(i++, rank3);
+// 2009-02-04 v1.3 D.Nihei Add End
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000); 
       cstmt.registerOutParameter(i++, Types.VARCHAR, 1); 
       cstmt.registerOutParameter(i++, Types.VARCHAR, 5000); 
 
       cstmt.execute();
 
-      if (XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(15))) 
+      if (XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(16))) 
       {
         exeFlag = true;
       } else
@@ -397,7 +425,7 @@ public class XxwipUtility
         // APIエラーを出力する。
         XxcmnUtility.writeLog(trans,
                               XxwipConstants.CLASS_XXWIP_UTILITY + XxcmnConstants.DOT + apiName,
-                              cstmt.getString(14) + cstmt.getString(16),
+                              cstmt.getString(15) + cstmt.getString(17),
                               6);
         //トークンを生成します。
         MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_API_NAME,
@@ -1086,6 +1114,9 @@ public class XxwipUtility
     String  type          = (String)params.get("type");
     String  rank1         = (String)params.get("rank1");
     String  rank2         = (String)params.get("rank2");
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+    String  rank3         = (String)params.get("rank3");
+// 2009-02-04 v1.3 D.Nihei Add End
     String  materialDesc  = (String)params.get("materialDesc");
     String  lotNo         = (String)params.get("lotNo");    
     String  uniqueSign    = (String)params.get("uniqueSign");    
@@ -1112,7 +1143,7 @@ public class XxwipUtility
     sb.append("  lr_ic_lots_mst_in.attribute6  := :6;   "); // 在庫入数
     sb.append("  lr_ic_lots_mst_in.attribute13 := :7;   "); // タイプ
     sb.append("  lr_ic_lots_mst_in.attribute14 := :8;   "); // ランク１
-    sb.append("  lr_ic_lots_mst_in.attribute15 := :9;   "); // タンク２
+    sb.append("  lr_ic_lots_mst_in.attribute15 := :9;   "); // ランク２
     sb.append("  lr_ic_lots_mst_in.attribute16 := :10;  "); // 生産伝票区分
     sb.append("  lr_ic_lots_mst_in.attribute17 := :11;  "); // ラインNo
     if (XxwipConstants.LINE_TYPE_PROD.equals(lineType)) 
@@ -1122,24 +1153,30 @@ public class XxwipUtility
     {
       sb.append("lr_ic_lots_mst_in.lot_no      := :12;  "); // ロットNo
     }
-    sb.append("  lr_ic_lots_mst_in.attribute23 := :13;  "); // ロットステータス
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+    sb.append("  lr_ic_lots_mst_in.attribute19 := :13;  "); // ランク３
+// 2009-02-04 v1.3 D.Nihei Add End
+    sb.append("  lr_ic_lots_mst_in.attribute23 := :14;  "); // ロットステータス
     sb.append("  xxwip_common_pkg.lot_execute ( ");
     sb.append("    ir_lot_mst         => lr_ic_lots_mst_in  "); // OPMロットマスタテーブル変数
-    sb.append("   ,it_item_no         => :14                "); // 品目コード
-    sb.append("   ,it_line_type       => :15                "); // ラインタイプ
-    sb.append("   ,it_item_class_code => :16                "); // 品目区分
-    sb.append("   ,it_lot_no_prod     => :17                "); // 完成品ロットNo
+    sb.append("   ,it_item_no         => :15                "); // 品目コード
+    sb.append("   ,it_line_type       => :16                "); // ラインタイプ
+    sb.append("   ,it_item_class_code => :17                "); // 品目区分
+    sb.append("   ,it_lot_no_prod     => :18                "); // 完成品ロットNo
     sb.append("   ,or_lot_mst         => lr_ic_lots_mst_out "); // OPMロットマスタテーブル変数
-    sb.append("   ,ov_errbuf          => :18                ");
-    sb.append("   ,ov_retcode         => :19                ");
-    sb.append("   ,ov_errmsg          => :20                ");
+    sb.append("   ,ov_errbuf          => :19                ");
+    sb.append("   ,ov_retcode         => :20                ");
+    sb.append("   ,ov_errmsg          => :21                ");
     sb.append("  ); ");
-    sb.append("  :21 := lr_ic_lots_mst_out.lot_no;      ");
-    sb.append("  :22 := lr_ic_lots_mst_out.lot_id;      ");
-    sb.append("  :23 := lr_ic_lots_mst_out.attribute13; ");
-    sb.append("  :24 := lr_ic_lots_mst_out.attribute14; ");
-    sb.append("  :25 := lr_ic_lots_mst_out.attribute15; ");
-    sb.append("  :26 := lr_ic_lots_mst_out.attribute18; ");
+    sb.append("  :22 := lr_ic_lots_mst_out.lot_no;      ");
+    sb.append("  :23 := lr_ic_lots_mst_out.lot_id;      ");
+    sb.append("  :24 := lr_ic_lots_mst_out.attribute13; ");
+    sb.append("  :25 := lr_ic_lots_mst_out.attribute14; ");
+    sb.append("  :26 := lr_ic_lots_mst_out.attribute15; ");
+    sb.append("  :27 := lr_ic_lots_mst_out.attribute18; ");
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+    sb.append("  :28 := lr_ic_lots_mst_out.attribute19; "); // ランク３
+// 2009-02-04 v1.3 D.Nihei Add End
     sb.append("END;    ");
 
     //PL/SQLの設定を行います
@@ -1174,6 +1211,9 @@ public class XxwipUtility
       {
         cstmt.setString(i++, lotNo);      
       }
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+      cstmt.setString(i++, rank3);
+// 2009-02-04 v1.3 D.Nihei Add End
       if (XxwipConstants.QT_TYPE_ON.equals(qtType)) 
       {
         cstmt.setString(i++, XxwipConstants.QT_STATUS_NON_JUDG); // 未判定
@@ -1194,23 +1234,32 @@ public class XxwipUtility
       cstmt.registerOutParameter(i++, Types.VARCHAR); 
       cstmt.registerOutParameter(i++, Types.VARCHAR); 
       cstmt.registerOutParameter(i++, Types.VARCHAR); 
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+      cstmt.registerOutParameter(i++, Types.VARCHAR); 
+// 2009-02-04 v1.3 D.Nihei Add End
       cstmt.execute();
 
       // 正常終了の場合
-      if (XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(19))) 
+      if (XxcmnConstants.API_RETURN_NORMAL.equals(cstmt.getString(20))) 
       {
         exeFlag = true;
-        lotNo        = cstmt.getString(21);
-        lotId        = new Number(cstmt.getInt(22));
-        type         = cstmt.getString(23);
-        rank1        = cstmt.getString(24);
-        rank2        = cstmt.getString(25);
-        materialDesc = cstmt.getString(26);
+        lotNo        = cstmt.getString(22);
+        lotId        = new Number(cstmt.getInt(23));
+        type         = cstmt.getString(24);
+        rank1        = cstmt.getString(25);
+        rank2        = cstmt.getString(26);
+        materialDesc = cstmt.getString(27);
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+        rank3        = cstmt.getString(28);
+// 2009-02-04 v1.3 D.Nihei Add End
         row.setAttribute("LotId", lotId);
         row.setAttribute("LotNo", lotNo);
         row.setAttribute("Type",  type);
         row.setAttribute("Rank1", rank1);
         row.setAttribute("Rank2", rank2);
+// 2009-02-04 v1.3 D.Nihei Add Start 本番障害#4対応
+        row.setAttribute("Rank3", rank3);
+// 2009-02-04 v1.3 D.Nihei Add End
         if (XxwipConstants.LINE_TYPE_PROD.equals(lineType)) 
         {
           row.setAttribute("MaterialDesc", materialDesc);
@@ -1222,7 +1271,7 @@ public class XxwipUtility
         rollBack(trans, XxwipConstants.SAVE_POINT_XXWIP200001J);
         XxcmnUtility.writeLog(trans,
                               XxwipConstants.CLASS_XXWIP_UTILITY + XxcmnConstants.DOT + apiName,
-                              cstmt.getString(18) + cstmt.getString(20),
+                              cstmt.getString(19) + cstmt.getString(21),
                               6);
         //トークンを生成します。
         MessageToken[] tokens = { new MessageToken(XxwipConstants.TOKEN_API_NAME,

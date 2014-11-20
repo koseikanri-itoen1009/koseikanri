@@ -87,7 +87,7 @@
                   <oa:sortableHeader id="Rank1CoProdHdr" prompt="R1"/>
                </ui:columnHeader>
                <ui:contents>
-                  <oa:messageTextInput id="Rank1CoProd" viewAttr="Rank1" shortDesc="R1" maximumLength="10"/>
+                  <oa:messageTextInput id="Rank1CoProd" viewAttr="Rank1" shortDesc="R1" maximumLength="10" columns="13"/>
                </ui:contents>
             </oa:column>
             <oa:column id="colRank2CoProd">
@@ -95,7 +95,15 @@
                   <oa:sortableHeader id="Rank2CoProdHdr" prompt="R2"/>
                </ui:columnHeader>
                <ui:contents>
-                  <oa:messageTextInput id="Rank2CoProd" viewAttr="Rank2" shortDesc="R2" maximumLength="10"/>
+                  <oa:messageTextInput id="Rank2CoProd" viewAttr="Rank2" shortDesc="R2" maximumLength="10" columns="13"/>
+               </ui:contents>
+            </oa:column>
+            <oa:column id="colRank3CoProd">
+               <ui:columnHeader>
+                  <oa:sortableHeader id="Rank3CoProdHdr" prompt="R3"/>
+               </ui:columnHeader>
+               <ui:contents>
+                  <oa:messageTextInput id="Rank3CoProd" viewAttr="Rank3" shortDesc="R3" maximumLength="10" columns="13"/>
                </ui:contents>
             </oa:column>
             <oa:column id="colDeleteBtnCoProd" columnDataFormat="iconButtonFormat">
