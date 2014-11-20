@@ -7,7 +7,7 @@ AS
  * Description      : 他勘定振替原価差異表
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -37,6 +37,8 @@ AS
  *  2008/06/25    1.4   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
  *  2008/07/23    1.5   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V→XXCMN_ITEM_CATEGORIES6_V変更
+ *  2008/08/07    1.6   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
+ *                                                       「xxcmn_rcv_pay_mst_porc_rma09_v」
  *
  *****************************************************************************************/
 --
@@ -466,7 +468,7 @@ AS
       || '     )    AS from_cost ,'     --実際原価
       || '  SUM(xsup.stnd_unit_price_gen) to_price,                ' --原料費
       || '  SUM(xsup.stnd_unit_price_gen * itp.trans_qty)  to_cost ' --振替先標準原価金額
-      || 'FROM xxcmn_rcv_pay_mst_porc_rma_v xrpmpr '   --経理受払区分情報view_購買関連
+      || 'FROM xxcmn_rcv_pay_mst_porc_rma09_v xrpmpr '   --経理受払区分情報view_購買関連
       || '   , ic_tran_pnd              itp'           --在庫トラン
       || '   , xxcmn_lot_each_item_v    xlei '
       || '   , xxcmn_stnd_unit_price_v  xsup '

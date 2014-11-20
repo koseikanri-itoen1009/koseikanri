@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,6 +38,8 @@ AS
  *                                       数量・金額の間を詰める。
  *  2008/06/25    1.5   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/08/05    1.6   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
+ *                                                       「xxcmn_rcv_pay_mst_porc_rma02_v」
  *
  *****************************************************************************************/
 --
@@ -988,9 +990,9 @@ AS
                     ;
 --
     lv_from_porc := ''
-      || ',ic_tran_pnd                   trn'      -- 保留在庫トラン
-      || ',xxcmn_rcv_pay_mst_porc_rma_v  xrpmxv'   --  受払VIW（RMA）
-      || ',xxcmn_item_mst2_v             xitem'    -- 品目マスタVIEW
+      || ',ic_tran_pnd                     trn'      -- 保留在庫トラン
+      || ',xxcmn_rcv_pay_mst_porc_rma02_v  xrpmxv'   --  受払VIW（RMA）
+      || ',xxcmn_item_mst2_v               xitem'    -- 品目マスタVIEW
        ;
 --
     lv_where_porc :=  ''

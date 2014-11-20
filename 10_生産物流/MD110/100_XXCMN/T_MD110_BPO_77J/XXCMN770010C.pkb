@@ -7,7 +7,7 @@ AS
  * Description      : 標準原価内訳表
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77J)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -35,6 +35,8 @@ AS
  *  2008/06/25    1.6   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
  *  2008/07/23    1.7   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V→XXCMN_ITEM_CATEGORIES6_V変更
+ *  2008/08/07    1.8   Y.Majikina       参照するVIEWをXXCMN_RCV_PAY_MST_PORC_RMA_V →
+ *                                       XXCMN_RCV_PAY_MST_PORC_RMA10_Vへ変更
  *
  *****************************************************************************************/
 --
@@ -835,12 +837,12 @@ AS
                    ||      '       ,it.trans_qty '
                    ||      ',it.trans_qty * TO_NUMBER(xrpmprv.rcv_pay_div))) trans_qty ' -- 数量
                    || ' FROM '
-                   || ' ic_tran_pnd                  it,      '
-                   || ' xxcmn_rcv_pay_mst_porc_rma_v xrpmprv, '
-                   || ' xxcmn_lookup_values2_v       xlvv,    ' -- クイックコード情報view2
-                   || ' xxcmn_item_mst2_v            ximv,    ' -- 品目情報ビュー
-                   || ' xxcmn_item_categories6_v     xicv,    ' -- 品目カテゴリービュー
-                   || ' xxcmn_stnd_unit_price_v      xsup     ' -- 標準原価情報view
+                   || ' ic_tran_pnd                    it,      '
+                   || ' xxcmn_rcv_pay_mst_porc_rma10_v xrpmprv, '
+                   || ' xxcmn_lookup_values2_v         xlvv,    ' -- クイックコード情報view2
+                   || ' xxcmn_item_mst2_v              ximv,    ' -- 品目情報ビュー
+                   || ' xxcmn_item_categories6_v       xicv,    ' -- 品目カテゴリービュー
+                   || ' xxcmn_stnd_unit_price_v        xsup     ' -- 標準原価情報view
                    || ' WHERE '
                    || ' it.doc_type                 = ''' || cv_doc_type_porc || ''' '
                    || ' AND it.doc_id               = xrpmprv.doc_id '

@@ -7,7 +7,7 @@ AS
  * Description      : 受払その他実績リスト
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  2008/06/19    1.6   Y.Ishikawa       取引区分が廃却、見本に関しては、受払区分を掛けない
  *  2008/06/25    1.7   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/08/07    1.8   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
+ *                                                       「xxcmn_rcv_pay_mst_porc_rma04_v」
  *
  *****************************************************************************************/
 --
@@ -1317,7 +1319,7 @@ AS
       ;
 --
     lv_from_porc := ' FROM'
-      || ' xxcmn_rcv_pay_mst_porc_rma_v rpmv'  -- 受払View_PORC
+      || ' xxcmn_rcv_pay_mst_porc_rma04_v rpmv'  -- 受払View_PORC
       || ',ic_tran_pnd                  trn'   -- OPM保留在庫トラン
       || ',xxcmn_item_mst2_v            ximv'  -- 品目マスタVIEW
       || ',xxcmn_locations2_v           loca'  -- 事業所情報VIEW

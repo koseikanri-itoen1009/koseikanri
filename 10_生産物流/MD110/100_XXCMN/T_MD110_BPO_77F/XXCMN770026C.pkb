@@ -7,7 +7,7 @@ AS
  * Description      : 出庫実績表
  * MD.050/070       : 月次〆処理(経理)Issue1.0 (T_MD050_BPO_770)
  *                    月次〆処理(経理)Issue1.0 (T_MD070_BPO_77F)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -38,6 +38,8 @@ AS
  *  2008/06/25    1.5   T.Endou          特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
  *  2008/07/18    1.6   T.Ikehara        出力件数カウントタグ追加
+ *  2008/08/07    1.7   T.Endou          参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
+ *                                                       「xxcmn_rcv_pay_mst_porc_rma26_v」
  *
  *****************************************************************************************/
 --
@@ -784,7 +786,7 @@ AS
     -- 有償支給・返品以外
     lv_from_porc := ' FROM'
                  ||       '  ic_tran_pnd'                  || ' itp'   -- 保留在庫トラン
-                 ||       ' ,xxcmn_rcv_pay_mst_porc_rma_v' || ' xrpm'  -- 受払VIEW(購買関連)
+                 ||       ' ,Xxcmn_rcv_pay_mst_porc_rma26_v' || ' xrpm'  -- 受払VIEW(購買関連)
                  ||       ' ,xxcmn_lookup_values2_v'       || ' xlvv'  -- クイックコード
                  ||       ' ,xxcmn_lot_each_item_v'        || ' xleiv' -- ロット別品目情報
                  ||       ' ,xxcmn_stnd_unit_price_v'      || ' xsupv' -- 標準原価情報View
@@ -796,7 +798,7 @@ AS
     -- 有償支給・返品
     lv_from_porc_charge := ' FROM'
                  ||       '  ic_tran_pnd'                  || ' itp'   -- 保留在庫トラン
-                 ||       ' ,xxcmn_rcv_pay_mst_porc_rma_v' || ' xrpm'  -- 受払VIEW(購買関連)
+                 ||       ' ,xxcmn_rcv_pay_mst_porc_rma26_v' || ' xrpm'  -- 受払VIEW(購買関連)
                  ||       ' ,xxcmn_lookup_values2_v'       || ' xlvv'  -- クイックコード
                  ||       ' ,xxcmn_lot_each_item_v'        || ' xleiv' -- ロット別品目情報
                  ||       ' ,xxcmn_stnd_unit_price_v'      || ' xsupv' -- 標準原価情報View

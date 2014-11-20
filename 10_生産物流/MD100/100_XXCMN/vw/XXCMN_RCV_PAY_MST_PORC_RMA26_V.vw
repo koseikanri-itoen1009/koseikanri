@@ -1,36 +1,23 @@
 /************************************************************************
  * Copyright(c)Oracle Corporation Japan, 2008. All rights reserved.
  *
- * View Name       : XXCMN_RCV_PAY_MST_OMSO_V
- * Description     : Œo—ó•¥‹æ•ªî•ñVIEW_ó’ŠÖ˜A
- * Version         : 1.9
+ * View Name       : XXCMN_RCV_PAY_MST_PORC_RMA26_V
+ * Description     : Œo—ó•¥‹æ•ªî•ñVIEW_w”ƒŠÖ˜A_o‰×
+ * Version         : 1.0
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
- *  2008-04-14    1.0   Y.Ishikawa       V‹Kì¬
- *  2008-05-20    1.1   Y.Ishikawa       XXCMN_ITEM_CATEGORIES3_V‚ğ‚â‚ß
- *                                       •K—v‚Èƒe[ƒuƒ‹‚Ì‚İ‚ÌŒ‹‡‚Æ‚·‚éB
- *  2008-06-10    1.2   Y.Ishikawa       æˆø‹æ•ª'Œ©–{oŒÉ','”p‹poŒÉ' ¨
- *                                       'Œ©–{','”p‹p'‚Ö•ÏX
- *  2008-06-12    1.3   Y.Ishikawa       €–Ú‚Éæˆø‹æ•ª–¼‚ğ’Ç‰Á
- *  2008-06-12    1.4   Y.Ishikawa       €–Ú‚Éd“üæID‚ğ’Ç‰Á
- *  2008-06-13    1.5   Y.Ishikawa       ’…‰×—\’è“ú‚ğ’Ç‰Á
- *  2008-06-13    1.6   Y.Ishikawa       ƒJƒeƒSƒŠæ“¾•”•ª‚ÅGROUP BY‚Ì—˜—p‚ğ‚â‚ß‚é
- *  2008-07-01    1.7   Y.Ishikawa       o‰×x‹‹‹æ•ª‚É‚æ‚Á‚Äó’ƒwƒbƒ_[‚Ì’ŠoğŒ
- *                                       ‚ªo‰×ÀÑ‚©x‹‹ÀÑ‚ğ”»’f‚·‚é‚æ‚¤•ÏX‚·‚é
- *  2008-07-24    1.8   Y.Ishikawa       —˜—p‚µ‚Ä‚¢‚È‚¢ƒJƒeƒSƒŠî•ñ‚ÌŒ‹‡íœ
- *  2008-08-01    1.9   T.Ikehara        ƒJƒeƒSƒŠƒZƒbƒg‚Æ‚ÌŒ‹‡æ‚è‚â‚ß‘Î‰
+ *  2008-08-07    1.0   T.Endou          V‹Kì¬
  *
  ************************************************************************/
-CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_OMSO_V
+CREATE OR REPLACE VIEW XXCMN_RCV_PAY_MST_PORC_RMA26_V
     (NEW_DIV_ACCOUNT,DEALINGS_DIV,RCV_PAY_DIV,DOC_TYPE,SOURCE_DOCUMENT_CODE,TRANSACTION_TYPE,
      SHIPMENT_PROVISION_DIV,STOCK_ADJUSTMENT_DIV,SHIP_PROV_RCV_PAY_CATEGORY,ITEM_DIV_AHEAD,
-     ITEM_DIV_ORIGIN,PROD_DIV_AHEAD,PROD_DIV_ORIGIN,ROUTING_CLASS,LINE_TYPE,HIT_IN_DIV,
-     REASON_CODE,DOC_LINE,RESULT_POST,UNIT_PRICE,REQUEST_ITEM_CODE,ARRIVAL_DATE,
-     DELIVER_TO_ID,ITEM_ID,ITEM_DIV,PROD_DIV,CROWD_CODE,ACNT_CROWD_CODE,DEALINGS_DIV_NAME,
-     VENDOR_SITE_ID,SCHEDULE_ARRIVAL_DATE)
+     ITEM_DIV_ORIGIN,PROD_DIV_AHEAD,PROD_DIV_ORIGIN,ROUTING_CLASS,LINE_TYPE,HIT_IN_DIV,REASON_CODE,
+     DOC_ID,DOC_LINE,RESULT_POST,UNIT_PRICE,REQUEST_ITEM_CODE,DELIVER_TO_ID,ITEM_ID,ITEM_DIV
+     ,PROD_DIV,CROWD_CODE,ACNT_CROWD_CODE,DEALINGS_DIV_NAME,VENDOR_SITE_ID)
 AS
 SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—ó•¥‹æ•ª
        ,xrpm.dealings_div               AS dealings_div               -- æˆø‹æ•ª
@@ -49,58 +36,53 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Å‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- –—RƒR[ƒh
-       ,wdd.delivery_detail_id          AS doc_line                   -- æˆø–¾×”Ô†
+       ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
+       ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.arrival_date               AS arrival_date               -- ’…‰×“ú
        ,DECODE(xrpm.shipment_provision_div,'1',
                xoha.result_deliver_to_id,  '2',
                xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
-       ,mcb_o2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
-       ,mcb_o1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
-       ,mcb_o3.segment1                 AS crowd_code                 -- ŒS
-       ,mcb_o4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
+       ,mcb_a2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
+       ,mcb_a1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
+       ,mcb_a3.segment1                 AS crowd_code                 -- ŒS
+       ,mcb_a4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
-       ,xoha.schedule_arrival_date      AS schedule_arrival_date      -- ’…‰×—\’è“ú
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
-       ,wsh_delivery_details     wdd     -- o‰×”À‘—–¾×
+       ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
-       ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
-       ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,ic_item_mst_b          iimb_a    -- •i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- •i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- •i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
-WHERE xrpm.doc_type             = 'OMSO'
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
   AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning              IN ('»•io‰×','—L')
   AND xrpm.dealings_div         = xlvv.lookup_code
   AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
-  AND ooha.header_id            = wdd.source_header_id
+  AND ooha.header_id            = rsl.oe_order_header_id
   AND otta.transaction_type_id  = ooha.order_type_id
-  AND oola.line_id              = wdd.source_line_id
-  AND wdd.org_id                = ooha.org_id
-  AND wdd.org_id                = oola.org_id
   AND xoha.header_id            = ooha.header_id
   AND oola.header_id            = ooha.header_id
-  AND xola.header_id            = xoha.header_id
+  AND oola.line_id              = rsl.oe_order_line_id
   AND oola.line_id              = xola.line_id
+  AND xola.request_item_code    = xola.shipping_item_code
   AND iimb_a.item_no            = xola.request_item_code
-  AND iimb_o.item_no            = xola.shipping_item_code
+  AND iimb_a.item_no            = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -111,28 +93,23 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND xrpm.prod_div_ahead      IS NULL
   AND xrpm.prod_div_origin     IS NULL
   AND xrpm.item_div_ahead  = mcb_a2.segment1
-  AND xrpm.item_div_origin = mcb_o2.segment1
-  AND xola.request_item_code = xola.shipping_item_code
-  -- U‘Öæ•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND xrpm.item_div_origin = mcb_a2.segment1
+  -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- •i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND gic_a2.category_id        = mcb_a2.category_id
   AND iimb_a.item_id            = gic_a2.item_id
-  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
-  AND gic_o1.category_id        = mcb_o1.category_id
-  AND iimb_o.item_id            = gic_o1.item_id
-  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
-  AND gic_o2.category_id        = mcb_o2.category_id
-  AND iimb_o.item_id            = gic_o2.item_id
-  -- U‘ÖŒ³ŒSæ“¾î•ñ
-  AND gic_o3.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
-  AND gic_o3.category_id        = mcb_o3.category_id
-  AND iimb_o.item_id            = gic_o3.item_id
-  -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
-  AND gic_o4.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE')
-  AND gic_o4.category_id        = mcb_o4.category_id
-  AND iimb_o.item_id            = gic_o4.item_id
+  -- ŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- Œo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE')
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND iimb_a.item_id            = gic_a4.item_id
 --
 UNION
 --
@@ -153,58 +130,53 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Å‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- –—RƒR[ƒh
-       ,wdd.delivery_detail_id          AS doc_line                   -- æˆø–¾×”Ô†
+       ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
+       ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.arrival_date               AS arrival_date               -- ’…‰×“ú
        ,DECODE(xrpm.shipment_provision_div,'1',
                xoha.result_deliver_to_id,  '2',
                xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
-       ,mcb_o2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
-       ,mcb_o1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
-       ,mcb_o3.segment1                 AS crowd_code                 -- ŒS
-       ,mcb_o4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
+       ,mcb_a2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
+       ,mcb_a1.segment1                 AS prod_div                   -- ¤•i‹æ•ª
+       ,mcb_a3.segment1                 AS crowd_code                 -- ŒS
+       ,mcb_a4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
-       ,xoha.schedule_arrival_date      AS schedule_arrival_date      -- ’…‰×—\’è“ú
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
-       ,wsh_delivery_details     wdd     -- o‰×”À‘—–¾×
+       ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
-       ,ic_item_mst_b          iimb_a    -- U‘Öæ•i–Úî•ñ
-       ,ic_item_mst_b          iimb_o    -- U‘ÖŒ³•i–Úî•ñ
-       ,gmi_item_categories    gic_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_a2    -- U‘Öæ•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_o1    -- U‘ÖŒ³•i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_o2    -- U‘ÖŒ³•i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_o3    -- U‘ÖŒ³•i–ÚŒSƒJƒeƒSƒŠî•ñ
-       ,gmi_item_categories    gic_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
-       ,mtl_categories_b       mcb_o4    -- U‘ÖŒ³•i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,ic_item_mst_b          iimb_a    -- •i–Úî•ñ
+       ,gmi_item_categories    gic_a1    -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a1    -- •i–Ú¤•i‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a2    -- •i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a2    -- •i–Ú•i–Ú‹æ•ªƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a3    -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a3    -- •i–ÚŒSƒJƒeƒSƒŠî•ñ
+       ,gmi_item_categories    gic_a4    -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
+       ,mtl_categories_b       mcb_a4    -- •i–ÚŒo—ŒSƒJƒeƒSƒŠî•ñ
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
-WHERE xrpm.doc_type             = 'OMSO'
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
   AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning              IN ('‘Şo‰×','—L')
   AND xrpm.dealings_div         = xlvv.lookup_code
   AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
-  AND ooha.header_id            = wdd.source_header_id
+  AND ooha.header_id            = rsl.oe_order_header_id
   AND otta.transaction_type_id  = ooha.order_type_id
-  AND oola.line_id              = wdd.source_line_id
-  AND wdd.org_id                = ooha.org_id
-  AND wdd.org_id                = oola.org_id
   AND xoha.header_id            = ooha.header_id
   AND oola.header_id            = ooha.header_id
-  AND xola.header_id            = xoha.header_id
+  AND oola.line_id              = rsl.oe_order_line_id
   AND oola.line_id              = xola.line_id
+  AND xola.request_item_code    = xola.shipping_item_code
   AND iimb_a.item_no            = xola.request_item_code
-  AND iimb_o.item_no            = xola.shipping_item_code
+  AND iimb_a.item_no            = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -215,28 +187,22 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND xrpm.prod_div_ahead      IS NULL
   AND xrpm.prod_div_origin     IS NULL
   AND mcb_a2.segment1  <> '5'   -- »•iˆÈŠO
-  AND mcb_o2.segment1  <> '5'   -- »•iˆÈŠO
-  AND xola.request_item_code = xola.shipping_item_code
-  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_a1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
+  AND gic_a1.category_id        = mcb_a1.category_id
+  AND iimb_a.item_id            = gic_a1.item_id
+  -- •i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND gic_a2.category_id        = mcb_a2.category_id
   AND iimb_a.item_id            = gic_a2.item_id
-  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
-  AND gic_o1.category_id        = mcb_o1.category_id
-  AND iimb_o.item_id            = gic_o1.item_id
-  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
-  AND gic_o2.category_id        = mcb_o2.category_id
-  AND iimb_o.item_id            = gic_o2.item_id
-  -- U‘ÖŒ³ŒSæ“¾î•ñ
-  AND gic_o3.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
-  AND gic_o3.category_id        = mcb_o3.category_id
-  AND iimb_o.item_id            = gic_o3.item_id
-  -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
-  AND gic_o4.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE')
-  AND gic_o4.category_id        = mcb_o4.category_id
-  AND iimb_o.item_id            = gic_o4.item_id
+  -- ŒSæ“¾î•ñ
+  AND gic_a3.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
+  AND gic_a3.category_id        = mcb_a3.category_id
+  AND iimb_a.item_id            = gic_a3.item_id
+  -- Œo—ŒSæ“¾î•ñ
+  AND gic_a4.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE')
+  AND gic_a4.category_id        = mcb_a4.category_id
+  AND iimb_a.item_id            = gic_a4.item_id
 --
 UNION
 --
@@ -257,11 +223,11 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Å‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- –—RƒR[ƒh
-       ,wdd.delivery_detail_id          AS doc_line                   -- æˆø–¾×”Ô†
+       ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
+       ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.arrival_date               AS arrival_date               -- ’…‰×“ú
        ,DECODE(xrpm.shipment_provision_div,'1',
                xoha.result_deliver_to_id,  '2',
                xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
@@ -287,9 +253,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
                  'U‘Ö—L_•¥o',mcb_o4.segment1) AS acnt_crowd_code  -- U‘ÖŒ³Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
-       ,xoha.schedule_arrival_date      AS schedule_arrival_date      -- ’…‰×—\’è“ú
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
-       ,wsh_delivery_details     wdd     -- o‰×”À‘—–¾×
+       ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
@@ -314,37 +279,35 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
-WHERE xrpm.doc_type             = 'OMSO'
-  AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
-  AND xlvv.meaning              IN ('U‘Ö—L_ó“ü','U‘Ö—L_o‰×','U‘Ö—L_•¥o')
-  AND xrpm.dealings_div         = xlvv.lookup_code
+WHERE xrpm.doc_type               = 'PORC'
+  AND xrpm.source_document_code   = 'RMA'
+  AND xlvv.lookup_type            = 'XXCMN_DEALINGS_DIV'
+  AND xlvv.meaning                IN ('U‘Ö—L_ó“ü','U‘Ö—L_o‰×','U‘Ö—L_•¥o')
+  AND xrpm.dealings_div           = xlvv.lookup_code
   AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
-  AND ooha.header_id            = wdd.source_header_id
-  AND otta.transaction_type_id  = ooha.order_type_id
-  AND oola.line_id              = wdd.source_line_id
-  AND wdd.org_id                = ooha.org_id
-  AND wdd.org_id                = oola.org_id
-  AND xoha.header_id            = ooha.header_id
-  AND oola.header_id            = ooha.header_id
-  AND xola.header_id            = xoha.header_id
-  AND oola.line_id              = xola.line_id
+  AND ooha.header_id              = rsl.oe_order_header_id
+  AND otta.transaction_type_id    = ooha.order_type_id
+  AND xoha.header_id              = ooha.header_id
+  AND oola.header_id              = ooha.header_id
+  AND oola.line_id                = rsl.oe_order_line_id
+  AND oola.line_id                = xola.line_id
   AND iimb_a.item_no            = xola.request_item_code
   AND iimb_o.item_no            = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
   AND xrpm.ship_prov_rcv_pay_category = otta.attribute11
-  AND xrpm.item_div_ahead      IS NOT NULL
-  AND xrpm.item_div_origin     IS NULL
-  AND xrpm.prod_div_ahead      IS NULL
-  AND xrpm.prod_div_origin     IS NULL
+  AND xrpm.item_div_ahead         IS NOT NULL
+  AND xrpm.item_div_origin        IS NULL
+  AND xrpm.prod_div_ahead         IS NULL
+  AND xrpm.prod_div_origin        IS NULL
   AND xrpm.item_div_ahead         = mcb_a2.segment1
   AND mcb_o2.segment1          <> '5'   -- »•iˆÈŠO
   -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
   AND gic_a1.category_id        = mcb_a1.category_id
   AND iimb_a.item_id            = gic_a1.item_id
-  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  -- U‘Öæ•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND gic_a2.category_id        = mcb_a2.category_id
   AND iimb_a.item_id            = gic_a2.item_id
@@ -357,19 +320,19 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND gic_a4.category_id        = mcb_a4.category_id
   AND iimb_a.item_id            = gic_a4.item_id
   -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
+  AND gic_o1.category_set_id    = gic_a1.category_set_id
   AND gic_o1.category_id        = mcb_o1.category_id
   AND iimb_o.item_id            = gic_o1.item_id
-  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  -- U‘ÖŒ³•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = gic_a2.category_set_id
   AND gic_o2.category_id        = mcb_o2.category_id
   AND iimb_o.item_id            = gic_o2.item_id
   -- U‘ÖŒ³ŒSæ“¾î•ñ
-  AND gic_o3.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
+  AND gic_o3.category_set_id    = gic_a3.category_set_id
   AND gic_o3.category_id        = mcb_o3.category_id
   AND iimb_o.item_id            = gic_o3.item_id
   -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
-  AND gic_o4.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE')
+  AND gic_o4.category_set_id    = gic_a4.category_set_id
   AND gic_o4.category_id        = mcb_o4.category_id
   AND iimb_o.item_id            = gic_o4.item_id
 --
@@ -392,11 +355,11 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Å‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- –—RƒR[ƒh
-       ,wdd.delivery_detail_id          AS doc_line                   -- æˆø–¾×”Ô†
+       ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
+       ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.arrival_date               AS arrival_date               -- ’…‰×“ú
        ,DECODE(xrpm.shipment_provision_div,'1',
                xoha.result_deliver_to_id,  '2',
                xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
@@ -422,9 +385,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
                  '¤•iU‘Ö—L_•¥o',mcb_o4.segment1) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
-       ,xoha.schedule_arrival_date      AS schedule_arrival_date      -- ’…‰×—\’è“ú
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
-       ,wsh_delivery_details     wdd     -- o‰×”À‘—–¾×
+       ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
@@ -449,20 +411,18 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
-WHERE xrpm.doc_type             = 'OMSO'
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
   AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning              IN ('¤•iU‘Ö—L_ó“ü','¤•iU‘Ö—L_o‰×','¤•iU‘Ö—L_•¥o')
-  AND xrpm.dealings_div         = xlvv.lookup_code
+  AND xrpm.dealings_div           = xlvv.lookup_code
   AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
-  AND ooha.header_id            = wdd.source_header_id
-  AND otta.transaction_type_id  = ooha.order_type_id
-  AND oola.line_id              = wdd.source_line_id
-  AND wdd.org_id                = ooha.org_id
-  AND wdd.org_id                = oola.org_id
-  AND xoha.header_id            = ooha.header_id
-  AND oola.header_id            = ooha.header_id
-  AND xola.header_id            = xoha.header_id
-  AND oola.line_id              = xola.line_id
+  AND ooha.header_id              = rsl.oe_order_header_id
+  AND otta.transaction_type_id    = ooha.order_type_id
+  AND xoha.header_id              = ooha.header_id
+  AND oola.header_id              = ooha.header_id
+  AND oola.line_id                = rsl.oe_order_line_id
+  AND oola.line_id                = xola.line_id
   AND iimb_a.item_no           = xola.request_item_code
   AND iimb_o.item_no           = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
@@ -481,7 +441,7 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND gic_a1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
   AND gic_a1.category_id        = mcb_a1.category_id
   AND iimb_a.item_id            = gic_a1.item_id
-  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  -- U‘Öæ•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND gic_a2.category_id        = mcb_a2.category_id
   AND iimb_a.item_id            = gic_a2.item_id
@@ -494,19 +454,19 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND gic_a4.category_id        = mcb_a4.category_id
   AND iimb_a.item_id            = gic_a4.item_id
   -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
+  AND gic_o1.category_set_id    = gic_a1.category_set_id
   AND gic_o1.category_id        = mcb_o1.category_id
   AND iimb_o.item_id            = gic_o1.item_id
-  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  -- U‘ÖŒ³•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = gic_a2.category_set_id
   AND gic_o2.category_id        = mcb_o2.category_id
   AND iimb_o.item_id            = gic_o2.item_id
   -- U‘ÖŒ³ŒSæ“¾î•ñ
-  AND gic_o3.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
+  AND gic_o3.category_set_id    = gic_a3.category_set_id
   AND gic_o3.category_id        = mcb_o3.category_id
   AND iimb_o.item_id            = gic_o3.item_id
   -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
-  AND gic_o4.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE')
+  AND gic_o4.category_set_id    = gic_a4.category_set_id
   AND gic_o4.category_id        = mcb_o4.category_id
   AND iimb_o.item_id            = gic_o4.item_id
 --
@@ -529,11 +489,11 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Å‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- –—RƒR[ƒh
-       ,wdd.delivery_detail_id          AS doc_line                   -- æˆø–¾×”Ô†
+       ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
+       ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.arrival_date               AS arrival_date               -- ’…‰×“ú
        ,DECODE(xrpm.shipment_provision_div,'1',
                xoha.result_deliver_to_id,  '2',
                xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
@@ -564,9 +524,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
                  'U‘Öo‰×_•¥o'   ,mcb_o4.segment1) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
-       ,xoha.schedule_arrival_date      AS schedule_arrival_date      -- ’…‰×—\’è“ú
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
-       ,wsh_delivery_details     wdd     -- o‰×”À‘—–¾×
+       ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
@@ -591,23 +550,21 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
-WHERE xrpm.doc_type             = 'OMSO'
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
   AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning              IN ('U‘Öo‰×_ó“ü_Œ´','U‘Öo‰×_ó“ü_”¼',
                                     'U‘Öo‰×_o‰×','U‘Öo‰×_•¥o')
-  AND xrpm.dealings_div         = xlvv.lookup_code
-  AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
-  AND ooha.header_id            = wdd.source_header_id
-  AND otta.transaction_type_id  = ooha.order_type_id
-  AND oola.line_id              = wdd.source_line_id
-  AND wdd.org_id                = ooha.org_id
-  AND wdd.org_id                = oola.org_id
-  AND xoha.header_id            = ooha.header_id
-  AND oola.header_id            = ooha.header_id
-  AND xola.header_id            = xoha.header_id
-  AND oola.line_id              = xola.line_id
-  AND iimb_a.item_no            = xola.request_item_code
-  AND iimb_o.item_no            = xola.shipping_item_code
+  AND xrpm.dealings_div           = xlvv.lookup_code
+  AND xoha.req_status             = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
+  AND ooha.header_id              = rsl.oe_order_header_id
+  AND otta.transaction_type_id    = ooha.order_type_id
+  AND xoha.header_id              = ooha.header_id
+  AND oola.header_id              = ooha.header_id
+  AND oola.line_id                = rsl.oe_order_line_id
+  AND oola.line_id                = xola.line_id
+  AND iimb_a.item_no              = xola.request_item_code
+  AND iimb_o.item_no              = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
   AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
       OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
@@ -621,7 +578,7 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND gic_a1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
   AND gic_a1.category_id        = mcb_a1.category_id
   AND iimb_a.item_id            = gic_a1.item_id
-  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  -- U‘Öæ•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND gic_a2.category_id        = mcb_a2.category_id
   AND iimb_a.item_id            = gic_a2.item_id
@@ -634,19 +591,19 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND gic_a4.category_id        = mcb_a4.category_id
   AND iimb_a.item_id            = gic_a4.item_id
   -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
+  AND gic_o1.category_set_id    = gic_a1.category_set_id
   AND gic_o1.category_id        = mcb_o1.category_id
   AND iimb_o.item_id            = gic_o1.item_id
-  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  -- U‘ÖŒ³•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = gic_a2.category_set_id
   AND gic_o2.category_id        = mcb_o2.category_id
   AND iimb_o.item_id            = gic_o2.item_id
   -- U‘ÖŒ³ŒSæ“¾î•ñ
-  AND gic_o3.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
+  AND gic_o3.category_set_id    = gic_a3.category_set_id
   AND gic_o3.category_id        = mcb_o3.category_id
   AND iimb_o.item_id            = gic_o3.item_id
   -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
-  AND gic_o4.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE')
+  AND gic_o4.category_set_id    = gic_a4.category_set_id
   AND gic_o4.category_id        = mcb_o4.category_id
   AND iimb_o.item_id            = gic_o4.item_id
 --
@@ -669,11 +626,11 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Å‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- –—RƒR[ƒh
-       ,wdd.delivery_detail_id          AS doc_line                   -- æˆø–¾×”Ô†
+       ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
+       ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.arrival_date               AS arrival_date               -- ’…‰×“ú
        ,DECODE(xrpm.shipment_provision_div,'1',
                xoha.result_deliver_to_id,  '2',
                xoha.deliver_to_id)      AS deliver_to_id              -- o‰×æID
@@ -704,9 +661,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
                  'U‘Öo‰×_•¥o'   ,mcb_o4.segment1) AS acnt_crowd_code -- U‘ÖŒ³Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
-       ,xoha.schedule_arrival_date      AS schedule_arrival_date      -- ’…‰×—\’è“ú
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
-       ,wsh_delivery_details     wdd     -- o‰×”À‘—–¾×
+       ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
@@ -731,21 +687,19 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
-WHERE xrpm.doc_type             = 'OMSO'
+WHERE xrpm.doc_type             = 'PORC'
+  AND xrpm.source_document_code = 'RMA'
   AND xlvv.lookup_type          = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning              IN ('U‘Öo‰×_ó“ü_Œ´','U‘Öo‰×_ó“ü_”¼',
                                     'U‘Öo‰×_o‰×','U‘Öo‰×_•¥o')
-  AND xrpm.dealings_div         = xlvv.lookup_code
-  AND xoha.req_status           = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
-  AND ooha.header_id            = wdd.source_header_id
-  AND otta.transaction_type_id  = ooha.order_type_id
-  AND oola.line_id              = wdd.source_line_id
-  AND wdd.org_id                = ooha.org_id
-  AND wdd.org_id                = oola.org_id
-  AND xoha.header_id            = ooha.header_id
-  AND oola.header_id            = ooha.header_id
-  AND xola.header_id            = xoha.header_id
-  AND oola.line_id              = xola.line_id
+  AND xrpm.dealings_div           = xlvv.lookup_code
+  AND xoha.req_status             = DECODE(xrpm.shipment_provision_div,'1','04','2','08')
+  AND ooha.header_id              = rsl.oe_order_header_id
+  AND otta.transaction_type_id    = ooha.order_type_id
+  AND xoha.header_id              = ooha.header_id
+  AND oola.header_id              = ooha.header_id
+  AND oola.line_id                = rsl.oe_order_line_id
+  AND oola.line_id                = xola.line_id
   AND iimb_a.item_no            = xola.request_item_code
   AND iimb_o.item_no            = xola.shipping_item_code
   AND xrpm.shipment_provision_div = otta.attribute1
@@ -761,7 +715,7 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND gic_a1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
   AND gic_a1.category_id        = mcb_a1.category_id
   AND iimb_a.item_id            = gic_a1.item_id
-  -- U‘Öæ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  -- U‘Öæ•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND gic_a2.category_id        = mcb_a2.category_id
   AND iimb_a.item_id            = gic_a2.item_id
@@ -774,19 +728,19 @@ WHERE xrpm.doc_type             = 'OMSO'
   AND gic_a4.category_id        = mcb_a4.category_id
   AND iimb_a.item_id            = gic_a4.item_id
   -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
+  AND gic_o1.category_set_id    = gic_a1.category_set_id
   AND gic_o1.category_id        = mcb_o1.category_id
   AND iimb_o.item_id            = gic_o1.item_id
-  -- U‘ÖŒ³¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
-  AND gic_o2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
+  -- U‘ÖŒ³•i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  AND gic_o2.category_set_id    = gic_a2.category_set_id
   AND gic_o2.category_id        = mcb_o2.category_id
   AND iimb_o.item_id            = gic_o2.item_id
   -- U‘ÖŒ³ŒSæ“¾î•ñ
-  AND gic_o3.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_CROWD_CODE')
+  AND gic_o3.category_set_id    = gic_a3.category_set_id
   AND gic_o3.category_id        = mcb_o3.category_id
   AND iimb_o.item_id            = gic_o3.item_id
   -- U‘ÖŒ³Œo—ŒSæ“¾î•ñ
-  AND gic_o4.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ACNT_CROWD_CODE')
+  AND gic_o4.category_set_id    = gic_a4.category_set_id
   AND gic_o4.category_id        = mcb_o4.category_id
   AND iimb_o.item_id            = gic_o4.item_id
 --
@@ -809,11 +763,11 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Å‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- –—RƒR[ƒh
-       ,wdd.delivery_detail_id          AS doc_line                   -- æˆø–¾×”Ô†
+       ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
+       ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.arrival_date               AS arrival_date               -- ’…‰×“ú
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
        ,mcb_a2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
@@ -822,9 +776,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,mcb_a4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
-       ,xoha.schedule_arrival_date      AS schedule_arrival_date      -- ’…‰×—\’è“ú
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
-       ,wsh_delivery_details     wdd     -- o‰×”À‘—–¾×
+       ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
@@ -840,29 +793,27 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
-WHERE xrpm.doc_type                   = 'OMSO'
+WHERE xrpm.doc_type                   = 'PORC'
+  AND xrpm.source_document_code       = 'RMA'
   AND xlvv.lookup_type                = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning                    IN ('‘q‘Ö','•Ô•i')
   AND xrpm.dealings_div               = xlvv.lookup_code
-  AND ooha.header_id                  = wdd.source_header_id
+  AND ooha.header_id                  = rsl.oe_order_header_id
   AND otta.transaction_type_id        = ooha.order_type_id
-  AND oola.line_id                    = wdd.source_line_id
-  AND wdd.org_id                      = ooha.org_id
-  AND wdd.org_id                      = oola.org_id
   AND xoha.header_id                  = ooha.header_id
   AND oola.header_id                  = ooha.header_id
-  AND xola.header_id                  = xoha.header_id
+  AND oola.line_id                    = rsl.oe_order_line_id
   AND oola.line_id                    = xola.line_id
   AND iimb_a.item_no                  = xola.shipping_item_code
   AND xrpm.shipment_provision_div     = otta.attribute1
-  AND ((otta.attribute4           <> '2')         -- İŒÉ’²®ˆÈŠO
-      OR  (otta.attribute4       IS NULL))        -- İŒÉ’²®ˆÈŠO
+  AND ((otta.attribute4               <> '2')         -- İŒÉ’²®ˆÈŠO
+      OR  (otta.attribute4            IS NULL))       -- İŒÉ’²®ˆÈŠO
   AND xrpm.ship_prov_rcv_pay_category = otta.attribute11
   -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
   AND gic_a1.category_id        = mcb_a1.category_id
   AND iimb_a.item_id            = gic_a1.item_id
-  -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  -- •i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND gic_a2.category_id        = mcb_a2.category_id
   AND iimb_a.item_id            = gic_a2.item_id
@@ -894,11 +845,11 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xrpm.line_type                  AS line_type                  -- ƒ‰ƒCƒ“ƒ^ƒCƒv
        ,xrpm.hit_in_div                 AS hit_in_div                 -- ‘Å‹æ•ª
        ,xrpm.reason_code                AS reason_code                -- –—RƒR[ƒh
-       ,wdd.delivery_detail_id          AS doc_line                   -- æˆø–¾×”Ô†
+       ,rsl.shipment_header_id          AS doc_id                     -- •¶‘ID
+       ,rsl.line_num                    AS doc_line                   -- æˆø–¾×”Ô†
        ,ooha.attribute11                AS result_post                -- ¬Ñ•”
        ,xola.unit_price                 AS unit_price                 -- ”Ì”„’P‰¿
        ,oola.attribute3                 AS request_item_code          -- ˆË—Š•i–ÚƒR[ƒh
-       ,xoha.arrival_date               AS arrival_date               -- ’…‰×“ú
        ,xoha.deliver_to_id              AS deliver_to_id              -- o‰×æID
        ,NULL                            AS item_id                    -- •i–ÚID
        ,mcb_a2.segment1                 AS item_div                   -- •i–Ú‹æ•ª
@@ -907,9 +858,8 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,mcb_a4.segment1                 AS acnt_crowd_code            -- Œo—ŒS
        ,xlvv.meaning                    AS dealings_div_name          -- æˆø‹æ•ª–¼
        ,xoha.vendor_site_id             AS vendor_site_id             -- d“üæID
-       ,xoha.schedule_arrival_date      AS schedule_arrival_date      -- ’…‰×—\’è“ú
  FROM   xxcmn_rcv_pay_mst        xrpm    -- ó•¥‹æ•ªƒ}ƒXƒ^
-       ,wsh_delivery_details     wdd     -- o‰×”À‘—–¾×
+       ,rcv_shipment_lines       rsl     -- ó“ü–¾×
        ,oe_order_headers_all     ooha    -- ó’ƒwƒbƒ_
        ,oe_order_lines_all       oola    -- ó’–¾×
        ,oe_transaction_types_all otta    -- ó’ƒ^ƒCƒv
@@ -925,18 +875,16 @@ SELECT  xrpm.new_div_account            AS new_div_account            -- VŒo—
        ,xxwsh_order_headers_all  xoha    -- ó’ƒwƒbƒ_ƒAƒhƒIƒ“
        ,xxwsh_order_lines_all    xola    -- ó’–¾×ƒAƒhƒIƒ“
        ,xxcmn_lookup_values_v    xlvv    -- ƒNƒCƒbƒNƒR[ƒhƒrƒ…[LOOKUP_CODE
-WHERE xrpm.doc_type                   = 'OMSO'
+WHERE xrpm.doc_type                   = 'PORC'
+  AND xrpm.source_document_code       = 'RMA'
   AND xlvv.lookup_type                = 'XXCMN_DEALINGS_DIV'
   AND xlvv.meaning                    IN ('Œ©–{','”p‹p')
   AND xrpm.dealings_div               = xlvv.lookup_code
-  AND ooha.header_id                  = wdd.source_header_id
+  AND ooha.header_id                  = rsl.oe_order_header_ID
   AND otta.transaction_type_id        = ooha.order_type_id
-  AND oola.line_id                    = wdd.source_line_id
-  AND wdd.org_id                      = ooha.org_id
-  AND wdd.org_id                      = oola.org_id
   AND xoha.header_id                  = ooha.header_id
   AND oola.header_id                  = ooha.header_id
-  AND xola.header_id                  = xoha.header_id
+  AND oola.line_id                    = rsl.oe_order_line_iD
   AND oola.line_id                    = xola.line_id
   AND iimb_a.item_no                   = xola.shipping_item_code
   AND xrpm.stock_adjustment_div       = otta.attribute4
@@ -945,7 +893,7 @@ WHERE xrpm.doc_type                   = 'OMSO'
   AND gic_a1.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_PROD_CLASS')
   AND gic_a1.category_id        = mcb_a1.category_id
   AND iimb_a.item_id            = gic_a1.item_id
-  -- ¤•i‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
+  -- •i–Ú‹æ•ªƒJƒeƒSƒŠæ“¾î•ñ
   AND gic_a2.category_set_id    = FND_PROFILE.VALUE('XXCMN_ITEM_CATEGORY_ITEM_CLASS')
   AND gic_a2.category_id        = mcb_a2.category_id
   AND iimb_a.item_id            = gic_a2.item_id
@@ -958,67 +906,65 @@ WHERE xrpm.doc_type                   = 'OMSO'
   AND gic_a4.category_id        = mcb_a4.category_id
   AND iimb_a.item_id            = gic_a4.item_id
 /
-COMMENT ON TABLE XXCMN_RCV_PAY_MST_OMSO_V IS 'Œo—ó•¥‹æ•ªî•ñVIEW_ó’ŠÖ˜A'
+COMMENT ON TABLE XXCMN_RCV_PAY_MST_PORC_RMA26_V IS 'Œo—ó•¥‹æ•ªî•ñVIEW_w”ƒŠÖ˜A_o‰×'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.NEW_DIV_ACCOUNT IS 'VŒo—ó•¥‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.NEW_DIV_ACCOUNT IS 'VŒo—ó•¥‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.DEALINGS_DIV IS 'æˆø‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.DEALINGS_DIV IS 'æˆø‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.RCV_PAY_DIV IS 'ó•¥‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.RCV_PAY_DIV IS 'ó•¥‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.DOC_TYPE IS '•¶‘ƒ^ƒCƒv'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.DOC_TYPE IS '•¶‘ƒ^ƒCƒv'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.SOURCE_DOCUMENT_CODE IS 'ƒ\[ƒX•¶‘'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.SOURCE_DOCUMENT_CODE IS 'ƒ\[ƒX•¶‘'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.TRANSACTION_TYPE IS 'POæˆøƒ^ƒCƒv'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.TRANSACTION_TYPE IS 'POæˆøƒ^ƒCƒv'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.SHIPMENT_PROVISION_DIV IS 'o‰×x‹‹‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.SHIPMENT_PROVISION_DIV IS 'o‰×x‹‹‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.STOCK_ADJUSTMENT_DIV IS 'İŒÉ’²®‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.STOCK_ADJUSTMENT_DIV IS 'İŒÉ’²®‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.SHIP_PROV_RCV_PAY_CATEGORY IS 'o‰×x‹‹ó•¥ƒJƒeƒSƒŠ'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.SHIP_PROV_RCV_PAY_CATEGORY IS 'o‰×x‹‹ó•¥ƒJƒeƒSƒŠ'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.ITEM_DIV_AHEAD IS '•i–Ú‹æ•ªiU‘Öæj'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.ITEM_DIV_AHEAD IS '•i–Ú‹æ•ªiU‘Öæj'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.ITEM_DIV_ORIGIN IS '•i–Ú‹æ•ªiU‘ÖŒ³j'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.ITEM_DIV_ORIGIN IS '•i–Ú‹æ•ªiU‘ÖŒ³j'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.PROD_DIV_AHEAD IS '¤•i‹æ•ªiU‘Öæj'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.PROD_DIV_AHEAD IS '¤•i‹æ•ªiU‘Öæj'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.PROD_DIV_ORIGIN IS '¤•i‹æ•ªiU‘ÖŒ³j'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.PROD_DIV_ORIGIN IS '¤•i‹æ•ªiU‘ÖŒ³j'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.ROUTING_CLASS IS 'H‡‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.ROUTING_CLASS IS 'H‡‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.LINE_TYPE IS 'ƒ‰ƒCƒ“ƒ^ƒCƒv'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.LINE_TYPE IS 'ƒ‰ƒCƒ“ƒ^ƒCƒv'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.HIT_IN_DIV IS '‘Å‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.HIT_IN_DIV IS '‘Å‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.REASON_CODE IS '–—RƒR[ƒh'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.REASON_CODE IS '–—RƒR[ƒh'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.DOC_LINE IS 'æˆø–¾×”Ô†'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.DOC_ID   IS '•¶‘ID'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.RESULT_POST IS '¬Ñ•”'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.DOC_LINE IS 'æˆø–¾×”Ô†'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.UNIT_PRICE IS '”Ì”„’P‰¿'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.RESULT_POST IS '¬Ñ•”'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.REQUEST_ITEM_CODE IS 'ˆË—Š•i–ÚƒR[ƒh'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.UNIT_PRICE IS '”Ì”„’P‰¿'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.ARRIVAL_DATE IS '’…‰×“ú'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.REQUEST_ITEM_CODE IS 'ˆË—Š•i–ÚƒR[ƒh'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.DELIVER_TO_ID IS 'o‰×æID'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.DELIVER_TO_ID IS 'o‰×æID'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.ITEM_ID IS '•i–ÚID'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.ITEM_ID IS '•i–ÚID'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.ITEM_DIV IS '•i–Ú‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.ITEM_DIV IS '•i–Ú‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.PROD_DIV IS '¤•i‹æ•ª'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.PROD_DIV IS '¤•i‹æ•ª'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.CROWD_CODE IS 'ŒS'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.CROWD_CODE IS 'ŒS'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.ACNT_CROWD_CODE IS 'Œo—ŒS'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.ACNT_CROWD_CODE IS 'Œo—ŒS'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.DEALINGS_DIV_NAME IS 'æˆø‹æ•ª–¼'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.DEALINGS_DIV_NAME IS 'æˆø‹æ•ª–¼'
 /
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.VENDOR_SITE_ID IS 'd“üæID'
-/
-COMMENT ON COLUMN XXCMN_RCV_PAY_MST_OMSO_V.SCHEDULE_ARRIVAL_DATE IS '’…‰×—\’è“ú'
+COMMENT ON COLUMN XXCMN_RCV_PAY_MST_PORC_RMA26_V.VENDOR_SITE_ID IS 'd“üæID'
 /

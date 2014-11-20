@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -41,6 +41,8 @@ AS
  *  2008/06/24    1.5   Y.Ishikawa       金額、数量がNULLの場合は0を表示する。
  *  2008/06/25    1.6   T.Ikehara        特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                       されない現象への対応
+ *  2008/08/05    1.7   R.Tomoyose       参照ビューの変更「xxcmn_rcv_pay_mst_porc_rma_v」→
+ *                                                       「xxcmn_rcv_pay_mst_porc_rma03_v」
  *
  *****************************************************************************************/
 --
@@ -1293,10 +1295,10 @@ AS
     -- FROM句生成
     -- ============================================
     lv_from_porc := ' FROM '
-                 || ' ic_tran_pnd                   itp, '
-                 || ' xxcmn_rcv_pay_mst_porc_rma_v  porc_v, '
-                 || ' xxcmn_lookup_values2_v        xlvv,  '   -- クイックコード情報VIEW2
-                 || ' xxcmn_lot_each_item_v         xleiv  ';  -- ロット別品目情報View
+                 || ' ic_tran_pnd                     itp, '
+                 || ' xxcmn_rcv_pay_mst_porc_rma03_v  porc_v, '
+                 || ' xxcmn_lookup_values2_v          xlvv,  '   -- クイックコード情報VIEW2
+                 || ' xxcmn_lot_each_item_v           xleiv  ';  -- ロット別品目情報View
 --
     -- 帳票区分が倉庫別
     IF ( ir_param.report_type = cv_one ) THEN
