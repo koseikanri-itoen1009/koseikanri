@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.8
+ * Version          : 1.9
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -34,6 +34,9 @@ AS
  *  2009/05/13    1.6   T.Kitajima       [T1_0764]OIF連携不正データ修正
  *  2009/07/06    1.7   T.Tominaga       [0000235]対象データ無しメッセージのトークン削除
  *  2009/08/25    1.8   M.Sano           [0001166]CCID取得関数の入力パラメータを変更
+ *  2009/09/14    1.9   K.Atsushiba      [0001177]PT対応
+ *                                       [0001360]BULK処理によるPGA領域不足対応
+ *                                       [0001330]パフォーマンス対応
  *
  *****************************************************************************************/
 --
@@ -137,6 +140,11 @@ AS
   cv_pro_org_cd             CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12880'; -- 在庫組織コード
   cv_org_id_get_msg         CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12881'; -- 在庫組織ID
   cv_cust_err_msg           CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12882'; -- 顧客区分取得エラー
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+  cv_skip_data_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12885'; -- スキップデータ
+  cv_prof_bulk_msg          CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12886';  -- 結果セット取得件数（バルク）
+  cv_prof_journal_msg       CONSTANT VARCHAR2(20) := 'APP-XXCOS1-12887';  -- 仕訳バッチ作成件数
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
 --
   -- トークン
   cv_tkn_pro                CONSTANT  VARCHAR2(20) := 'PROFILE';         -- プロファイル
@@ -157,6 +165,12 @@ AS
 --******************************** 2009/03/26 1.4 T.Kitajima ADD START *****************************
   cv_tkn_segment9           CONSTANT  VARCHAR2(20) := 'SEGMENT9';        --
 --******************************** 2009/03/26 1.4 T.Kitajima ADD  END  *****************************
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+  cv_tkn_header_from        CONSTANT  VARCHAR2(20) := 'HEADER_FROM';      -- 販売実績ヘッダID(FROM)
+  cv_tkn_header_to          CONSTANT  VARCHAR2(20) := 'HEADER_TO';        -- 販売実績ヘッダID(TO)
+  cv_tkn_count              CONSTANT  VARCHAR2(20) := 'HEADER_COUNT';     -- 販売実績ヘッダ件数
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
+
   cv_blank                  CONSTANT VARCHAR2(1)   := '';                -- ブランク
   cv_tkn_key_data           CONSTANT VARCHAR2(20)  := 'KEY_DATA';        -- キー項目
 --
@@ -194,6 +208,16 @@ AS
   ct_round_rule_down       CONSTANT  VARCHAR2(10)  := 'DOWN';                           -- 切り下げ
   ct_round_rule_nearest    CONSTANT  VARCHAR2(10)  := 'NEAREST';                        -- 四捨五入
   ct_percent               CONSTANT  NUMBER        := 100;                              -- 100
+--****************************** 2009/09/14 1.9 Atsushiba     ADD START ******************************--
+--
+  -- その他
+  ct_lang                  CONSTANT  fnd_lookup_values.language%TYPE := USERENV('LANG'); -- 言語コード
+  cv_exists_flag           CONSTANT  VARCHAR2(1)   := '1';                               -- EXISTS文表示用 
+  cn_bulk_collect_count    NUMBER;                            -- 結果セット取得件数
+  cn_journal_batch_count   NUMBER;                            -- 仕訳バッチ作成件数
+  cn_commit_exec_flag      NUMBER DEFAULT 0;     -- コミット実行フラグ(0:未実行,1:実行あり)
+--
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -311,6 +335,14 @@ AS
   TYPE g_sel_ccid_ttype   IS TABLE OF gr_select_ccid       INDEX BY VARCHAR2( 200 );
   gt_sel_ccid_tbl                     g_sel_ccid_ttype;                             -- CCID
 --
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+--
+  gt_sales_exp_wk_tbl                 g_sales_exp_ttype;                            -- 販売実績データ(作業用)
+  --
+  TYPE g_sales_header_ttype IS TABLE OF NUMBER INDEX BY VARCHAR(100);
+  gt_sales_header_tbl                 g_sales_header_ttype;
+--
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
   -- ===============================
   -- ユーザー定義グローバルレコード
   -- ===============================
@@ -329,6 +361,117 @@ AS
   gt_cust_cls_cd                      hz_cust_accounts.customer_class_code%TYPE;    -- 顧客区分（上様）
   gt_card_sale_cls                    fnd_lookup_values.lookup_code%TYPE;           -- カード売り区分
   gt_no_tax_cls                       fnd_lookup_values.attribute3%TYPE;            -- 消費区分
+--
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+--
+  CURSOR sales_data_cur
+  IS
+    SELECT
+          /*+ LEADING(xseh)
+              INDEX(xseh xxcos_sales_exp_headers_n05 )
+              USE_NL(xseh xsel msib )
+              USE_NL(xseh hca avta gcct )
+              USE_NL(xseh xchv)
+              INDEX(xchv.cust_hier.ship_hzca_1 hz_cust_accounts_u2)
+              INDEX(xchv.cust_hier.ship_hzca_2 hz_cust_accounts_u2)
+              INDEX(xchv.cust_hier.ship_hzca_3 hz_cust_accounts_u2)
+              INDEX(xchv.cust_hier.ship_hzca_4 hz_cust_accounts_u2)
+           */
+           xseh.sales_exp_header_id          sales_exp_header_id      -- 販売実績ヘッダID
+         , xseh.dlv_invoice_number           dlv_invoice_number       -- 納品伝票番号
+         , xseh.dlv_invoice_class            dlv_invoice_class        -- 納品伝票区分
+         , xseh.cust_gyotai_sho              cust_gyotai_sho          -- 業態小分類
+         , xseh.delivery_date                delivery_date            -- 納品日
+         , xseh.inspect_date                 inspect_date             -- 検収日
+         , xseh.ship_to_customer_code        ship_to_customer_code    -- 顧客【納品先】
+         , xseh.tax_code                     tax_code                 -- 税金コード
+         , xseh.tax_rate                     tax_rate                 -- 消費税率
+         , xseh.consumption_tax_class        consumption_tax_class    -- 消費区分
+         , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
+         , xseh.sales_base_code              sales_base_code          -- 売上拠点コード
+         , NVL( xseh.card_sale_class, cv_cash_class )
+                                             card_sale_class          -- カード売り区分
+         , xsel.sales_class                  sales_class              -- 売上区分
+         , xsel.pure_amount                  pure_amount              -- 本体金額
+         , xsel.tax_amount                   tax_amount               -- 消費税金額
+         , NVL( xsel.cash_and_card, 0 )      cash_and_card            -- 現金・カード併用額
+         , xsel.red_black_flag               red_black_flag           -- 赤黒フラグ
+         , hca.customer_class_code           customer_cls_code        -- 顧客区分
+         , gcct.segment3                     gcct_segment3            -- 税金勘定科目コード
+         , xchv.bill_tax_round_rule          tax_round_rule           -- 税金－端数処理
+         , xseh.rowid                        xseh_rowid               -- ROWID
+    FROM
+           xxcos_sales_exp_headers           xseh                     -- 販売実績ヘッダテーブル
+         , xxcos_sales_exp_lines             xsel                     -- 販売実績明細テーブル
+         , mtl_system_items_b                msib                     -- 品目マスタ
+         , gl_code_combinations              gcct                     -- 勘定科目組合せマスタ（TAX用）
+         , ar_vat_tax_all_b                  avta                     -- 税金マスタ
+         , hz_cust_accounts                  hca                      -- 顧客区分
+         , xxcos_cust_hierarchy_v            xchv                     -- 顧客階層ビュー
+    WHERE
+        xseh.sales_exp_header_id             = xsel.sales_exp_header_id
+    AND xseh.dlv_invoice_number              = xsel.dlv_invoice_number
+    AND xseh.gl_interface_flag               = cv_n_flag
+    AND xseh.inspect_date                   <= gd_process_date
+    AND xsel.item_code                      <> gv_var_elec_item_cd
+    AND hca.account_number                   = xseh.ship_to_customer_code
+    AND xchv.ship_account_number             = xseh.ship_to_customer_code
+    AND ( EXISTS (
+          SELECT /*+ USE_NL(flvl1) */
+              cv_exists_flag                 exists_flag
+          FROM
+              fnd_lookup_values              flvl1
+          WHERE
+              flvl1.lookup_type              = ct_qct_gyotai_sho
+          AND flvl1.lookup_code              LIKE ct_qcc_code
+          AND flvl1.meaning                  = xseh.cust_gyotai_sho
+          AND flvl1.attribute1               = ct_attribute_y
+          AND flvl1.enabled_flag             = ct_enabled_yes
+          AND flvl1.language                 = ct_lang
+          AND gd_process_date BETWEEN        NVL( flvl1.start_date_active, gd_process_date )
+                              AND            NVL( flvl1.end_date_active,   gd_process_date )
+          )
+          OR hca.customer_class_code          = gt_cust_cls_cd
+        )
+    AND NOT EXISTS (
+        SELECT /*+ USE_NL(flvl2) */
+            cv_exists_flag                   exists_flag
+        FROM
+            fnd_lookup_values                flvl2
+        WHERE
+            flvl2.lookup_type                = ct_qct_sale_class
+        AND flvl2.lookup_code                LIKE ct_qcc_code
+        AND flvl2.meaning                    = xsel.sales_class
+        AND flvl2.attribute1                 = ct_attribute_y
+        AND flvl2.enabled_flag               = ct_enabled_yes
+        AND flvl2.language                   = ct_lang
+        AND gd_process_date BETWEEN          NVL( flvl2.start_date_active, gd_process_date )
+                            AND              NVL( flvl2.end_date_active,   gd_process_date )
+        )
+    AND EXISTS (
+        SELECT /*+ USE_NL(flvl3) */
+            cv_exists_flag                   exists_flag
+        FROM
+            fnd_lookup_values                flvl3
+        WHERE
+            flvl3.lookup_type                = ct_qct_dlv_slp_cls
+        AND flvl3.lookup_code                LIKE ct_qcc_code
+        AND flvl3.meaning                    = xseh.dlv_invoice_class
+        AND flvl3.attribute1                 = ct_attribute_y
+        AND flvl3.enabled_flag               = ct_enabled_yes
+        AND flvl3.language                   = ct_lang
+        AND gd_process_date BETWEEN          NVL( flvl3.start_date_active, gd_process_date )
+                            AND              NVL( flvl3.end_date_active,   gd_process_date )
+        )
+    AND msib.organization_id                 = gv_org_id
+    AND xsel.item_code                       = msib.segment1
+    AND avta.tax_code                        = xseh.tax_code
+    AND gcct.code_combination_id             = avta.tax_account_id
+    AND avta.set_of_books_id                 = TO_NUMBER( gv_set_bks_id )
+    AND avta.enabled_flag                    = ct_enabled_yes
+    ORDER BY xseh.sales_exp_header_id;
+--
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
   /**********************************************************************************
    * Procedure Name   : roundup
@@ -384,9 +527,16 @@ AS
                                                                       -- XXCOI:会社コード
     ct_var_elec_item_cd      CONSTANT VARCHAR2(30) := 'XXCOS1_ELECTRIC_FEE_ITEM_CODE';
                                                                       -- XXCOS:変動電気料(品目コード)
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+    ct_bulk_collect_count    CONSTANT VARCHAR2(30) := 'XXCOS1_BULK_COLLECT_COUNT';  -- 結果セット取得件数（バルク）
+    ct_journal_batch_count   CONSTANT VARCHAR2(30) := 'XXCOS1_JOURNAL_BATCH_COUNT'; -- 仕訳バッチ作成件数
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
     -- *** ローカル変数 ***
     lv_profile_name          VARCHAR2(50);                           -- プロファイル名
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+    lv_tmp                   VARCHAR2(100);
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
     -- *** ローカル例外 ***
     non_lookup_value_expt    EXCEPTION;                               -- LOOKUP取得エラー
@@ -583,7 +733,10 @@ AS
       WHERE  flvl.lookup_type            = ct_qct_card_cls
         AND  flvl.attribute3             = ct_attribute_y
         AND  flvl.enabled_flag           = ct_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+--****************************** 2009/09/14 1.9 Atsushiba     MOD START ******************************--
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+--****************************** 2009/09/14 1.9 Atsushiba     MOD END   ******************************--
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -610,7 +763,10 @@ AS
       WHERE  flvl.lookup_type            = ct_qct_tax_cls
         AND  flvl.attribute4             = ct_attribute_y
         AND  flvl.enabled_flag           = ct_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+--****************************** 2009/09/14 1.9 Atsushiba     MOD START ******************************--
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+--****************************** 2009/09/14 1.9 Atsushiba     MOD END   ******************************--
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -637,7 +793,10 @@ AS
       WHERE  flvl.lookup_type            = ct_cust_cls_cd
         AND  flvl.lookup_code            LIKE ct_qcc_code
         AND  flvl.enabled_flag           = ct_enabled_yes
-        AND  flvl.language               = USERENV( 'LANG' )
+--****************************** 2009/09/14 1.9 Atsushiba     MOD START ******************************--
+--        AND  flvl.language               = USERENV( 'LANG' )
+        AND  flvl.language               = ct_lang
+--****************************** 2009/09/14 1.9 Atsushiba     MOD END   ******************************--
         AND  gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                              AND         NVL( flvl.end_date_active,   gd_process_date );
 --
@@ -654,9 +813,52 @@ AS
         RAISE non_lookup_value_expt;
     END;
 --
-    --==============================================================
-    --メッセージ出力をする必要がある場合は処理を記述
-    --==============================================================
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+--
+    --==================================
+    -- XXCOI:結果セット取得件数
+    --==================================
+    lv_tmp := FND_PROFILE.VALUE( ct_bulk_collect_count );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_tmp IS NULL ) THEN
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+        ,iv_name        => cv_prof_bulk_msg                -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcos_short_nm
+                     , iv_name         => cv_pro_msg
+                     , iv_token_name1  => cv_tkn_pro
+                     , iv_token_value1 => lv_profile_name
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    cn_bulk_collect_count := TO_NUMBER(lv_tmp);
+--
+    --==================================
+    -- XXCOI:仕訳バッチ作成件数
+    --==================================
+    lv_tmp := FND_PROFILE.VALUE( ct_journal_batch_count );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_tmp IS NULL ) THEN
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+        ,iv_name        => cv_prof_journal_msg               -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_xxcos_short_nm
+                     , iv_name         => cv_pro_msg
+                     , iv_token_name1  => cv_tkn_pro
+                     , iv_token_value1 => lv_profile_name
+                   );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    cn_journal_batch_count := TO_NUMBER(lv_tmp);
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
   EXCEPTION
 --
@@ -825,102 +1027,110 @@ AS
 --    FOR UPDATE OF  xseh.sales_exp_header_id
 --    NOWAIT;
 --
-    CURSOR sales_data_cur
-    IS
-      SELECT
-             xseh.sales_exp_header_id          sales_exp_header_id      -- 販売実績ヘッダID
-           , xseh.dlv_invoice_number           dlv_invoice_number       -- 納品伝票番号
-           , xseh.dlv_invoice_class            dlv_invoice_class        -- 納品伝票区分
-           , xseh.cust_gyotai_sho              cust_gyotai_sho          -- 業態小分類
-           , xseh.delivery_date                delivery_date            -- 納品日
-           , xseh.inspect_date                 inspect_date             -- 検収日
-           , xseh.ship_to_customer_code        ship_to_customer_code    -- 顧客【納品先】
-           , xseh.tax_code                     tax_code                 -- 税金コード
-           , xseh.tax_rate                     tax_rate                 -- 消費税率
-           , xseh.consumption_tax_class        consumption_tax_class    -- 消費区分
-           , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
-           , xseh.sales_base_code              sales_base_code          -- 売上拠点コード
-           , NVL( xseh.card_sale_class, cv_cash_class )
-                                               card_sale_class          -- カード売り区分
-           , xsel.sales_class                  sales_class              -- 売上区分
-           , xsel.pure_amount                  pure_amount              -- 本体金額
-           , xsel.tax_amount                   tax_amount               -- 消費税金額
-           , NVL( xsel.cash_and_card, 0 )      cash_and_card            -- 現金・カード併用額
-           , xsel.red_black_flag               red_black_flag           -- 赤黒フラグ
-           , hca.customer_class_code           customer_cls_code        -- 顧客区分
-           , gcct.segment3                     gcct_segment3            -- 税金勘定科目コード
-           , xchv.bill_tax_round_rule          tax_round_rule           -- 税金－端数処理
-           , xseh.rowid                        xseh_rowid               -- ROWID
-      FROM
-             xxcos_sales_exp_headers           xseh                     -- 販売実績ヘッダテーブル
-           , xxcos_sales_exp_lines             xsel                     -- 販売実績明細テーブル
-           , mtl_system_items_b                msib                     -- 品目マスタ
-           , gl_code_combinations              gcct                     -- 勘定科目組合せマスタ（TAX用）
-           , ar_vat_tax_all_b                  avta                     -- 税金マスタ
-           , hz_cust_accounts                  hca                      -- 顧客区分
-           , xxcos_cust_hierarchy_v            xchv                     -- 顧客階層ビュー
-      WHERE
-          xseh.sales_exp_header_id             = xsel.sales_exp_header_id
-      AND xseh.dlv_invoice_number              = xsel.dlv_invoice_number
-      AND xseh.gl_interface_flag               = cv_n_flag
-      AND xseh.inspect_date                   <= gd_process_date
-      AND xsel.item_code                      <> gv_var_elec_item_cd
-      AND hca.account_number                   = xseh.ship_to_customer_code
-      AND xchv.ship_account_number             = xseh.ship_to_customer_code
-      AND ( xseh.cust_gyotai_sho                 IN (
-            SELECT
-                flvl.meaning                   meaning
-            FROM
-                fnd_lookup_values              flvl
-            WHERE
-                flvl.lookup_type               = ct_qct_gyotai_sho
-            AND flvl.lookup_code               LIKE ct_qcc_code
-            AND flvl.attribute1                = ct_attribute_y
-            AND flvl.enabled_flag              = ct_enabled_yes
-            AND flvl.language                  = USERENV( 'LANG' )
-            AND gd_process_date BETWEEN        NVL( flvl.start_date_active, gd_process_date )
-                                AND            NVL( flvl.end_date_active,   gd_process_date )
-            )
-            OR hca.customer_class_code          = gt_cust_cls_cd
-          )
-      AND xsel.sales_class                     NOT IN (
-          SELECT
-              flvl.meaning                     meaning
-          FROM
-              fnd_lookup_values                flvl
-          WHERE
-              flvl.lookup_type                 = ct_qct_sale_class
-          AND flvl.lookup_code                 LIKE ct_qcc_code
-          AND flvl.attribute1                  = ct_attribute_y
-          AND flvl.enabled_flag                = ct_enabled_yes
-          AND flvl.language                    = USERENV( 'LANG' )
-          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
-                              AND              NVL( flvl.end_date_active,   gd_process_date )
-          )
-      AND xseh.dlv_invoice_class               IN (
-          SELECT
-              flvl.meaning                     meaning
-          FROM
-              fnd_lookup_values                flvl
-          WHERE
-              flvl.lookup_type                 = ct_qct_dlv_slp_cls
-          AND flvl.lookup_code                 LIKE ct_qcc_code
-          AND flvl.attribute1                  = ct_attribute_y
-          AND flvl.enabled_flag                = ct_enabled_yes
-          AND flvl.language                    = USERENV( 'LANG' )
-          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
-                              AND              NVL( flvl.end_date_active,   gd_process_date )
-          )
-      AND msib.organization_id                 = gv_org_id
-      AND xsel.item_code                       = msib.segment1
-      AND avta.tax_code                        = xseh.tax_code
-      AND gcct.code_combination_id             = avta.tax_account_id
-      AND avta.set_of_books_id                 = TO_NUMBER( gv_set_bks_id )
-      AND avta.enabled_flag                    = ct_enabled_yes
-      ORDER BY xseh.sales_exp_header_id
-    FOR UPDATE OF  xseh.sales_exp_header_id
-    NOWAIT;
---****************************** 2009/05/13 1.6 MOD  END  ******************************--
+--****************************** 2009/09/14 1.9 Atsushiba  Del START ******************************--
+--    CURSOR sales_data_cur
+--    IS
+--      SELECT
+--            /*+ LEADING(xseh)
+--                INDEX(xseh xxcos_sales_exp_headers_n05 )
+--                USE_NL(xseh xsel msib )
+--                USE_NL(xseh hca avta gcct )
+--                USE_NL(xseh xchv)
+--             */
+--             xseh.sales_exp_header_id          sales_exp_header_id      -- 販売実績ヘッダID
+--           , xseh.dlv_invoice_number           dlv_invoice_number       -- 納品伝票番号
+--           , xseh.dlv_invoice_class            dlv_invoice_class        -- 納品伝票区分
+--           , xseh.cust_gyotai_sho              cust_gyotai_sho          -- 業態小分類
+--           , xseh.delivery_date                delivery_date            -- 納品日
+--           , xseh.inspect_date                 inspect_date             -- 検収日
+--           , xseh.ship_to_customer_code        ship_to_customer_code    -- 顧客【納品先】
+--           , xseh.tax_code                     tax_code                 -- 税金コード
+--           , xseh.tax_rate                     tax_rate                 -- 消費税率
+--           , xseh.consumption_tax_class        consumption_tax_class    -- 消費区分
+--           , xseh.results_employee_code        results_employee_code    -- 成績計上者コード
+--           , xseh.sales_base_code              sales_base_code          -- 売上拠点コード
+--           , NVL( xseh.card_sale_class, cv_cash_class )
+--                                               card_sale_class          -- カード売り区分
+--           , xsel.sales_class                  sales_class              -- 売上区分
+--           , xsel.pure_amount                  pure_amount              -- 本体金額
+--           , xsel.tax_amount                   tax_amount               -- 消費税金額
+--           , NVL( xsel.cash_and_card, 0 )      cash_and_card            -- 現金・カード併用額
+--           , xsel.red_black_flag               red_black_flag           -- 赤黒フラグ
+--           , hca.customer_class_code           customer_cls_code        -- 顧客区分
+--           , gcct.segment3                     gcct_segment3            -- 税金勘定科目コード
+--           , xchv.bill_tax_round_rule          tax_round_rule           -- 税金－端数処理
+--           , xseh.rowid                        xseh_rowid               -- ROWID
+--      FROM
+--             xxcos_sales_exp_headers           xseh                     -- 販売実績ヘッダテーブル
+--           , xxcos_sales_exp_lines             xsel                     -- 販売実績明細テーブル
+--           , mtl_system_items_b                msib                     -- 品目マスタ
+--           , gl_code_combinations              gcct                     -- 勘定科目組合せマスタ（TAX用）
+--           , ar_vat_tax_all_b                  avta                     -- 税金マスタ
+--           , hz_cust_accounts                  hca                      -- 顧客区分
+--           , xxcos_cust_hierarchy_v            xchv                     -- 顧客階層ビュー
+--      WHERE
+--          xseh.sales_exp_header_id             = xsel.sales_exp_header_id
+--      AND xseh.dlv_invoice_number              = xsel.dlv_invoice_number
+--      AND xseh.gl_interface_flag               = cv_n_flag
+--      AND xseh.inspect_date                   <= gd_process_date
+--      AND xsel.item_code                      <> gv_var_elec_item_cd
+--      AND hca.account_number                   = xseh.ship_to_customer_code
+--      AND xchv.ship_account_number             = xseh.ship_to_customer_code
+--      AND ( xseh.cust_gyotai_sho                 IN (
+--            SELECT
+--                flvl.meaning                   meaning
+--            FROM
+--                fnd_lookup_values              flvl
+--            WHERE
+--                flvl.lookup_type               = ct_qct_gyotai_sho
+--            AND flvl.lookup_code               LIKE ct_qcc_code
+--            AND flvl.attribute1                = ct_attribute_y
+--            AND flvl.enabled_flag              = ct_enabled_yes
+--            AND flvl.language                  = USERENV( 'LANG' )
+--            AND gd_process_date BETWEEN        NVL( flvl.start_date_active, gd_process_date )
+--                                AND            NVL( flvl.end_date_active,   gd_process_date )
+--            )
+--            OR hca.customer_class_code          = gt_cust_cls_cd
+--          )
+--      AND xsel.sales_class                     NOT IN (
+--          SELECT
+--              flvl.meaning                     meaning
+--          FROM
+--              fnd_lookup_values                flvl
+--          WHERE
+--              flvl.lookup_type                 = ct_qct_sale_class
+--          AND flvl.lookup_code                 LIKE ct_qcc_code
+--          AND flvl.attribute1                  = ct_attribute_y
+--          AND flvl.enabled_flag                = ct_enabled_yes
+--          AND flvl.language                    = USERENV( 'LANG' )
+--          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
+--                              AND              NVL( flvl.end_date_active,   gd_process_date )
+--          )
+--      AND xseh.dlv_invoice_class               IN (
+--          SELECT
+--              flvl.meaning                     meaning
+--          FROM
+--              fnd_lookup_values                flvl
+--          WHERE
+--              flvl.lookup_type                 = ct_qct_dlv_slp_cls
+--          AND flvl.lookup_code                 LIKE ct_qcc_code
+--          AND flvl.attribute1                  = ct_attribute_y
+--          AND flvl.enabled_flag                = ct_enabled_yes
+--          AND flvl.language                    = USERENV( 'LANG' )
+--          AND gd_process_date BETWEEN          NVL( flvl.start_date_active, gd_process_date )
+--                              AND              NVL( flvl.end_date_active,   gd_process_date )
+--          )
+--      AND msib.organization_id                 = gv_org_id
+--      AND xsel.item_code                       = msib.segment1
+--      AND avta.tax_code                        = xseh.tax_code
+--      AND gcct.code_combination_id             = avta.tax_account_id
+--      AND avta.set_of_books_id                 = TO_NUMBER( gv_set_bks_id )
+--      AND avta.enabled_flag                    = ct_enabled_yes
+--      ORDER BY xseh.sales_exp_header_id
+--    FOR UPDATE OF  xseh.sales_exp_header_id
+--    NOWAIT;
+----****************************** 2009/05/13 1.6 MOD  END  ******************************--
+--****************************** 2009/09/14 1.9 Atsushiba  DEL END ******************************--
 --
     -- *** ローカル・レコード ***
 --
@@ -938,31 +1148,35 @@ AS
 --
     -- カーソルオープン
     OPEN  sales_data_cur;
-    FETCH sales_data_cur BULK COLLECT INTO gt_sales_exp_tbl;
---
-    -- 対象処理件数
-    gn_target_cnt   := gt_sales_exp_tbl.COUNT;
---
-    -- カーソルクローズ
-    CLOSE sales_data_cur;
+--****************************** 2009/09/14 1.9 Atsushiba  DEL START ******************************--
+--    FETCH sales_data_cur BULK COLLECT INTO gt_sales_exp_tbl;
+----
+--    -- 対象処理件数
+--    gn_target_cnt   := gt_sales_exp_tbl.COUNT;
+----
+--    -- カーソルクローズ
+--    CLOSE sales_data_cur;
+--****************************** 2009/09/14 1.9 Atsushiba  DEL END ******************************--
 --
   EXCEPTION
-    -- ロックエラー
-    WHEN lock_expt THEN
-      lv_table_name := xxccp_common_pkg.get_msg(
-                           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-                         , iv_name        => cv_tkn_sales_msg                -- メッセージID
-                       );
-      lv_errmsg     := xxccp_common_pkg.get_msg(
-                           iv_application   => cv_xxcos_short_nm
-                         , iv_name          => cv_table_lock_msg
-                         , iv_token_name1   => cv_tkn_tbl
-                         , iv_token_value1  => lv_table_name
-                       );
-      lv_errbuf     := lv_errmsg;
-      ov_errmsg     := lv_errmsg;
-      ov_errbuf     := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
-      ov_retcode    := cv_status_error;
+--****************************** 2009/09/14 1.9 Atsushiba  DEL START ******************************--
+--    -- ロックエラー
+--    WHEN lock_expt THEN
+----      lv_table_name := xxccp_common_pkg.get_msg(
+--                           iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+--                         , iv_name        => cv_tkn_sales_msg                -- メッセージID
+--                       );
+--      lv_errmsg     := xxccp_common_pkg.get_msg(
+--                           iv_application   => cv_xxcos_short_nm
+--                         , iv_name          => cv_table_lock_msg
+--                         , iv_token_name1   => cv_tkn_tbl
+--                         , iv_token_value1  => lv_table_name
+--                       );
+--      lv_errbuf     := lv_errmsg;
+--      ov_errmsg     := lv_errmsg;
+--      ov_errbuf     := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+--      ov_retcode    := cv_status_error;
+--****************************** 2009/09/14 1.9 Atsushiba  DEL END ******************************--
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
@@ -1711,7 +1925,10 @@ AS
               flvl.lookup_type            = ct_qct_jour_cls
         AND   flvl.lookup_code            LIKE ct_qcc_code
         AND   flvl.enabled_flag           = ct_enabled_yes
-        AND   flvl.language               = USERENV( 'LANG' )
+--****************************** 2009/09/14 1.9 Atsushiba     MOD START ******************************--
+--        AND   flvl.language               = USERENV( 'LANG' )
+        AND   flvl.language               = ct_lang
+--****************************** 2009/09/14 1.9 Atsushiba     MOD END   ******************************--
         AND   gd_process_date BETWEEN     NVL( flvl.start_date_active, gd_process_date )
                               AND         NVL( flvl.end_date_active,   gd_process_date )
       ;
@@ -2747,6 +2964,18 @@ AS
     -- *** ローカル変数 ***
     lv_tbl_nm VARCHAR2(255);                -- テーブル名
     lv_retcode_tmp VARCHAR2(1);
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+--
+    ln_pre_header_id       xxcos_sales_exp_headers.sales_exp_header_id%TYPE;    -- 販売実績ヘッダID
+    ln_lock_header_id      xxcos_sales_exp_headers.sales_exp_header_id%TYPE;    -- 販売実績ヘッダID
+    ln_header_id_wk        xxcos_sales_exp_headers.sales_exp_header_id%TYPE;    -- 販売実績ヘッダID
+    ln_sales_idx           NUMBER DEFAULT 1;
+    ln_target_wk_cnt       NUMBER DEFAULT 0;
+    ln_fetch_end_flag      NUMBER DEFAULT 0;     -- 0:継続、1:終了
+    ln_warn_wk_cnt         NUMBER DEFAULT 0;
+    lv_table_name          VARCHAR2(100);
+--
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
 --
     -- ===============================
     -- ローカル・カーソル
@@ -2802,97 +3031,327 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- 販売実績情報抽出が0件時は、抽出レコードなしで終了
-    IF ( gn_target_cnt > 0 ) THEN
+--****************************** 2009/09/14 1.9 Atsushiba  MOD START ******************************--
 --
-    -- ===============================
-    -- A-3.一般会計OIF集約処理 (A-4 処理の呼出を含め)
-    -- ===============================
-        edit_work_data(
-             ov_errbuf  => lv_errbuf        -- エラー・メッセージ           --# 固定 #
-           , ov_retcode => lv_retcode       -- リターン・コード             --# 固定 #
-           , ov_errmsg  => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
-        );
-        IF ( lv_retcode = cv_status_error ) THEN
-          RAISE global_process_expt;
-        ELSE
-          lv_retcode_tmp := lv_retcode;
+    -- 初期化
+    gt_sales_exp_tbl.DELETE;
+    lv_retcode_tmp := cv_status_normal;
+    <<bulk_loop>>
+    LOOP
+      -- 初期化
+      gt_sales_exp_wk_tbl.DELETE;
+      ln_pre_header_id := NULL;
+      ln_lock_header_id := NULL;
+      --
+      -- データ取得
+      FETCH sales_data_cur BULK COLLECT INTO gt_sales_exp_wk_tbl LIMIT cn_bulk_collect_count;
+      -- 
+      EXIT WHEN ln_fetch_end_flag = 1;
+--
+      -- データ有無チェック
+      IF ( sales_data_cur%NOTFOUND ) THEN
+        ln_fetch_end_flag := 1;
+      END IF;
+      --
+      <<journal_loop>>
+      FOR ln_idx IN 1..gt_sales_exp_wk_tbl.COUNT LOOP
+        -- 販売実績IDの件数が基準値以上かつ販売実績IDがブレイク
+        -- または、フェッチ読込終了かつ配列の最後
+        IF ( ( gt_sales_header_tbl.COUNT >= cn_journal_batch_count
+               AND ln_pre_header_id <> gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id)
+             OR ( ln_fetch_end_flag = 1 AND ln_idx = gt_sales_exp_wk_tbl.COUNT )
+           )
+        THEN
+         --
+          -- フェッチ読込終了かつ配列の最後の場合
+          IF ( ln_fetch_end_flag = 1 AND ln_idx = gt_sales_exp_wk_tbl.COUNT ) THEN
+            gn_target_cnt := gn_target_cnt + 1;
+            gt_sales_exp_tbl(ln_sales_idx) := gt_sales_exp_wk_tbl(ln_idx);
+          END IF;
+          --
+          BEGIN
+            -- 処理対象データをロック
+            <<lock_loop>>
+            FOR ln_lock_ind IN 1..gt_sales_exp_tbl.COUNT LOOP
+              IF (ln_lock_header_id <> gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id) THEN
+                SELECT  xseh.sales_exp_header_id
+                INTO    ln_header_id_wk
+                FROM    xxcos_sales_exp_headers xseh
+                WHERE   xseh.sales_exp_header_id = gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id
+                FOR UPDATE OF  xseh.sales_exp_header_id
+                NOWAIT;
+              END IF;
+              --
+              ln_lock_header_id := gt_sales_exp_tbl(ln_lock_ind).sales_exp_header_id;
+            END LOOP lock_loop;
+            --
+            -- ===============================
+            -- A-3.一般会計OIF集約処理 (A-4 処理の呼出を含め)
+            -- ===============================
+            edit_work_data(
+                 ov_errbuf  => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+               , ov_retcode => lv_retcode       -- リターン・コード             --# 固定 #
+               , ov_errmsg  => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+            );
+            IF ( lv_retcode = cv_status_error ) THEN
+              gn_error_cnt := 1;
+              RAISE global_process_expt;
+            ELSIF ( lv_retcode = cv_status_warn ) THEN
+              lv_retcode_tmp := cv_status_warn;
+            END IF;
+  --
+            -- ===============================
+            -- A-5.一般会計OIFデータ登録処理
+            -- ===============================
+            insert_gl_data(
+                  ov_errbuf       => lv_errbuf     -- エラー・メッセージ
+                , ov_retcode      => lv_retcode    -- リターン・コード
+                , ov_errmsg       => lv_errmsg     -- ユーザー・エラー・メッセージ
+              );
+            IF ( lv_retcode = cv_status_error ) THEN
+              gn_error_cnt := 1;
+              RAISE global_insert_data_expt;
+            END IF;
+    --
+            -- ===============================
+            -- A-6.販売実績データの更新処理
+            -- ===============================
+            upd_data(
+                ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+              , ov_retcode => lv_retcode          -- リターン・コード
+              , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+              );
+            IF ( lv_retcode = cv_status_error ) THEN
+              gn_error_cnt := 1;
+              RAISE global_update_data_expt;
+            END IF;
+            --
+            -- 正常処理件数設定
+            gn_normal_cnt := gn_normal_cnt + gt_gl_interface_tbl2.COUNT;
+            --
+            -- 警告件数設定
+            ln_warn_wk_cnt := ln_warn_wk_cnt + gn_warn_cnt;
+            --
+            -- コミット
+            COMMIT;
+            cn_commit_exec_flag := 1;
+            --
+          EXCEPTION
+            -- ロックエラー
+            WHEN lock_expt THEN
+              -- ロックエラーメッセージ
+              lv_table_name := xxccp_common_pkg.get_msg(
+                    iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+                  , iv_name        => cv_tkn_sales_msg);                -- メッセージID
+              lv_errmsg     := xxccp_common_pkg.get_msg(
+                    iv_application   => cv_xxcos_short_nm
+                  , iv_name          => cv_table_lock_msg
+                  , iv_token_name1   => cv_tkn_tbl
+                  , iv_token_value1  => lv_table_name);
+              -- メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errmsg
+              );
+              --
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => cv_blank
+              );
+              --
+              -- スキップメッセージ
+              lv_errmsg := xxccp_common_pkg.get_msg(
+                    iv_application   => cv_xxcos_short_nm
+                  , iv_name          => cv_skip_data_msg
+                  , iv_token_name1   => cv_tkn_header_from           -- ヘッダ(FROM)
+                  , iv_token_value1  => TO_CHAR(gt_sales_exp_tbl(1).sales_exp_header_id)
+                  , iv_token_name2   => cv_tkn_header_to             -- ヘッダ(TO)
+                  , iv_token_value2  => TO_CHAR(gt_sales_exp_tbl(gt_sales_exp_tbl.COUNT).sales_exp_header_id)
+                  , iv_token_name3   => cv_tkn_count                 -- ヘッダ件数
+                  , iv_token_value3  => TO_CHAR(gt_sales_header_tbl.COUNT)
+                  );
+              -- メッセージ出力
+              -- 空行出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => cv_blank
+              );
+              --
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errmsg
+              );
+--
+              lv_retcode_tmp := cv_status_warn;
+              -- スキップ件数
+              ln_warn_wk_cnt := ln_warn_wk_cnt + gt_sales_exp_tbl.COUNT;
+          END;
+          --
+          -- 初期化
+          gt_sales_header_tbl.DELETE;    -- 販売実績ヘッダID件数用
+          gt_sales_card_tbl.DELETE;      -- カードデータ用
+          gt_sales_exp_tbl.DELETE;       -- 販売実績データ用
+          gt_sales_h_tbl.DELETE;         -- AR連携フラグ更新用
+          gt_sales_h_tbl2.DELETE;        -- AR連携フラグ更新用
+          gt_gl_interface_tbl.DELETE;    -- GL-OIFデータ編集用
+          gt_gl_interface_tbl2.DELETE;   -- GL-OIF登録用
+          ln_sales_idx := 1;
+          gn_target_cnt := 0;
+          gn_warn_cnt := 0;
+--
         END IF;
---
-      -- ===============================
-      -- A-5.一般会計OIFデータ登録処理
-      -- ===============================
-      insert_gl_data(
-            ov_errbuf       => lv_errbuf     -- エラー・メッセージ
-          , ov_retcode      => lv_retcode    -- リターン・コード
-          , ov_errmsg       => lv_errmsg     -- ユーザー・エラー・メッセージ
-        );
-      IF ( lv_retcode = cv_status_error ) THEN
-        gn_error_cnt := gn_target_cnt;
-        RAISE global_insert_data_expt;
-      END IF;
---
-      -- ===============================
-      -- A-6.販売実績データの更新処理
-      -- ===============================
-      upd_data(
-          ov_errbuf  => lv_errbuf           -- エラー・メッセージ
-        , ov_retcode => lv_retcode          -- リターン・コード
-        , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
-        );
-      IF ( lv_retcode = cv_status_error ) THEN
-        gn_error_cnt := gn_target_cnt;
-        RAISE global_update_data_expt;
-      END IF;
---
-      -- 正常件数設定
---      gn_normal_cnt      := gt_gl_interface_tbl.COUNT;
-      gn_normal_cnt      := gt_gl_interface_tbl2.COUNT;
-      IF ( lv_retcode_tmp = cv_status_warn ) THEN
-        ov_retcode := lv_retcode_tmp;
-      END IF;
---
-    ELSIF ( gn_target_cnt = 0 ) THEN
-      -- 対象データ無しメッセージ
---****************************** 2009/07/06 1.7 T.Tominaga DEL START ******************************
---      lv_tbl_nm  := xxccp_common_pkg.get_msg(
---                        iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
---                      , iv_name        => cv_tkn_sales_msg                -- メッセージID
---                    );
---****************************** 2009/07/06 1.7 T.Tominaga DEL END   ******************************
+        gt_sales_exp_tbl(ln_sales_idx) := gt_sales_exp_wk_tbl(ln_idx);
+        ln_sales_idx := ln_sales_idx + 1;
+        gt_sales_header_tbl(TO_CHAR(gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id)) := NULL;
+        ln_target_wk_cnt := ln_target_wk_cnt + 1;
+        gn_target_cnt := gn_target_cnt + 1;
+        ln_pre_header_id := gt_sales_exp_wk_tbl(ln_idx).sales_exp_header_id;
+      END LOOP journal_loop;
+      --
+    END LOOP bulk_loop;
+    --
+    gn_target_cnt := ln_target_wk_cnt;
+    gn_warn_cnt   := ln_warn_wk_cnt;
+    --
+    IF ((gn_warn_cnt > 0 )
+        OR ( lv_retcode_tmp = cv_status_warn )) THEN
+      -- 警告終了
+      ov_retcode := cv_status_warn;
+    END IF;
+    --
+    -- カーソルクローズ
+    IF ( sales_data_cur%ISOPEN ) THEN
+      CLOSE sales_data_cur;
+    END IF;
+    --
+    IF ( gn_target_cnt = 0 ) THEN
       lv_errmsg  := xxccp_common_pkg.get_msg(
                         iv_application  => cv_xxcos_short_nm
-                      , iv_name         => cv_no_data_msg
---****************************** 2009/07/06 1.7 T.Tominaga DEL START ******************************
---                      , iv_token_name1  => cv_tkn_tbl_nm
---                      , iv_token_value1 => lv_tbl_nm
---****************************** 2009/07/06 1.7 T.Tominaga DEL END   ******************************
-                    );
+                      , iv_name         => cv_no_data_msg);
       lv_errbuf  := lv_errmsg;
       lv_retcode := cv_status_warn;
       RAISE global_no_data_expt;
-    ELSE
-      RAISE global_select_data_expt;
     END IF;
+    --
+    lv_retcode := lv_retcode_tmp;
+    --
+--
+--    -- 販売実績情報抽出が0件時は、抽出レコードなしで終了
+--    IF ( gn_target_cnt > 0 ) THEN
+----
+--    -- ===============================
+--    -- A-3.一般会計OIF集約処理 (A-4 処理の呼出を含め)
+--    -- ===============================
+--        edit_work_data(
+--             ov_errbuf  => lv_errbuf        -- エラー・メッセージ           --# 固定 #
+--           , ov_retcode => lv_retcode       -- リターン・コード             --# 固定 #
+--           , ov_errmsg  => lv_errmsg        -- ユーザー・エラー・メッセージ --# 固定 #
+--        );
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          RAISE global_process_expt;
+--        ELSE
+--          lv_retcode_tmp := lv_retcode;
+--        END IF;
+--
+--      -- ===============================
+--      -- A-5.一般会計OIFデータ登録処理
+--      -- ===============================
+--      insert_gl_data(
+--            ov_errbuf       => lv_errbuf     -- エラー・メッセージ
+--          , ov_retcode      => lv_retcode    -- リターン・コード
+--          , ov_errmsg       => lv_errmsg     -- ユーザー・エラー・メッセージ
+--        );
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        gn_error_cnt := gn_target_cnt;
+--        RAISE global_insert_data_expt;
+--      END IF;
+----
+--      -- ===============================
+--      -- A-6.販売実績データの更新処理
+--      -- ===============================
+--      upd_data(
+--          ov_errbuf  => lv_errbuf           -- エラー・メッセージ
+--        , ov_retcode => lv_retcode          -- リターン・コード
+--        , ov_errmsg  => lv_errmsg           -- ユーザー・エラー・メッセージ
+--        );
+--      IF ( lv_retcode = cv_status_error ) THEN
+--        gn_error_cnt := gn_target_cnt;
+--        RAISE global_update_data_expt;
+--      END IF;
+----
+--      -- 正常件数設定
+----      gn_normal_cnt      := gt_gl_interface_tbl.COUNT;
+--      gn_normal_cnt      := gt_gl_interface_tbl2.COUNT;
+--      IF ( lv_retcode_tmp = cv_status_warn ) THEN
+--        ov_retcode := lv_retcode_tmp;
+--      END IF;
+--
+--    ELSIF ( gn_target_cnt = 0 ) THEN
+--      -- 対象データ無しメッセージ
+----****************************** 2009/07/06 1.7 T.Tominaga DEL START ******************************
+----      lv_tbl_nm  := xxccp_common_pkg.get_msg(
+----                        iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+----                      , iv_name        => cv_tkn_sales_msg                -- メッセージID
+----                    );
+----****************************** 2009/07/06 1.7 T.Tominaga DEL END   ******************************
+--      lv_errmsg  := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_xxcos_short_nm
+--                      , iv_name         => cv_no_data_msg
+----****************************** 2009/07/06 1.7 T.Tominaga DEL START ******************************
+----                      , iv_token_name1  => cv_tkn_tbl_nm
+----                      , iv_token_value1 => lv_tbl_nm
+----****************************** 2009/07/06 1.7 T.Tominaga DEL END   ******************************
+--                    );
+--      lv_errbuf  := lv_errmsg;
+--      lv_retcode := cv_status_warn;
+--      RAISE global_no_data_expt;
+--    ELSE
+--      RAISE global_select_data_expt;
+--    END IF;
+--****************************** 2009/09/14 1.9 Atsushiba  MOD END ******************************--
 --
   EXCEPTION
     -- *** 対象データなし ***
     WHEN global_no_data_expt THEN
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+      -- カーソルクローズ
+      IF ( sales_data_cur%ISOPEN ) THEN
+        CLOSE sales_data_cur;
+      END IF;
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_warn;
     -- *** データ取得例外 ***
     WHEN global_select_data_expt THEN
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+      -- カーソルクローズ
+      IF ( sales_data_cur%ISOPEN ) THEN
+        CLOSE sales_data_cur;
+      END IF;
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 登録処理例外 ***
     WHEN global_insert_data_expt THEN
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+      -- カーソルクローズ
+      IF ( sales_data_cur%ISOPEN ) THEN
+        CLOSE sales_data_cur;
+      END IF;
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 更新処理例外 ***
     WHEN global_update_data_expt THEN
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+      -- カーソルクローズ
+      IF ( sales_data_cur%ISOPEN ) THEN
+        CLOSE sales_data_cur;
+      END IF;
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
@@ -2901,15 +3360,33 @@ AS
 --
     -- *** 処理部共通例外ハンドラ ***
     WHEN global_process_expt THEN
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+      -- カーソルクローズ
+      IF ( sales_data_cur%ISOPEN ) THEN
+        CLOSE sales_data_cur;
+      END IF;
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+      -- カーソルクローズ
+      IF ( sales_data_cur%ISOPEN ) THEN
+        CLOSE sales_data_cur;
+      END IF;
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+      -- カーソルクローズ
+      IF ( sales_data_cur%ISOPEN ) THEN
+        CLOSE sales_data_cur;
+      END IF;
+--****************************** 2009/09/14 1.9 Atsushiba  ADD END ******************************--
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
 --
@@ -2943,6 +3420,9 @@ AS
     cv_normal_msg      CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90004';  -- 正常終了メッセージ
     cv_warn_msg        CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90005';  -- 警告終了メッセージ
     cv_error_msg       CONSTANT VARCHAR2(20)  := 'APP-XXCCP1-90006';  -- エラー終了全ロールバック
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
+    cv_error_part_msg  CONSTANT VARCHAR2(100) := 'APP-XXCCP1-90007'; -- エラー終了一部処理メッセージ
+--****************************** 2009/09/14 1.9 Atsushiba  ADD START ******************************--
     -- ===============================
     -- ローカル変数
     -- ===============================
@@ -3055,7 +3535,17 @@ AS
     ELSIF ( lv_retcode = cv_status_warn ) THEN
       lv_message_code := cv_warn_msg;
     ELSIF ( lv_retcode = cv_status_error ) THEN
-      lv_message_code := cv_error_msg;
+--****************************** 2009/09/14 1.9 Atsushiba  MOD START ******************************--
+      IF ( cn_commit_exec_flag = 1 ) THEN
+        -- コミット実行ありの場合
+        lv_message_code := cv_error_part_msg;
+      ELSE
+        -- コミット未実行の場合
+        lv_message_code := cv_error_msg;
+      END IF;
+--      lv_message_code := cv_error_msg;
+--****************************** 2009/09/14 1.9 Atsushiba  MOD END ******************************--
+
     END IF;
 --
     gv_out_msg := xxccp_common_pkg.get_msg(
