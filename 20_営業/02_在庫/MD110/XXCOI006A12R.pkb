@@ -9,7 +9,7 @@ AS
  *                    を元に月次在庫受払表に存在する品目及び、手持ち数量に存在する品目の一
  *                    覧を作成します。
  * MD.050           : 商品実地棚卸票    MD050_COI_006_A12
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/03/05    1.1   T.Nakamura       [障害COI_035] 件数出力の不具合対応
  *  2009/09/08    1.2   H.Sasaki         [0001266]OPM品目アドオンの版管理対応
  *  2009/09/09    1.3   N.Abe            [0001325]月首在庫の取得対応
+ *  2010/01/07    1.4   N.Abe            [E_本稼動_00858]月首残高なしデータを出力しない
  *
  *****************************************************************************************/
 --
@@ -264,42 +265,81 @@ AS
     -- *** ローカル・カーソル(A-2-2) ***
     CURSOR pickout_cur
     IS
-      SELECT  msi.description                 description                   -- 保管場所名称
-             ,msi.attribute7                  base_code                     -- 拠点コード
-             ,sib.sp_supplier_code            sp_supplier_code              -- 専門店仕入先コード
-             ,sib.item_code                   item_code                     -- 品名コード
+-- == 2010/01/07 V1.4 Modified START ===============================================================
+--      SELECT  msi.description                 description                   -- 保管場所名称
+--             ,msi.attribute7                  base_code                     -- 拠点コード
+--             ,sib.sp_supplier_code            sp_supplier_code              -- 専門店仕入先コード
+--             ,sib.item_code                   item_code                     -- 品名コード
+--             ,SUBSTR(
+--                 (CASE  WHEN  TRUNC(TO_DATE(iib.attribute3, cv_type_date)) > TRUNC(gd_target_date)
+--                        THEN  iib.attribute1                                -- 群コード(旧)
+--                        ELSE  iib.attribute2                                -- 群コード(新)
+--                  END
+--                 ), 1, 3
+--              )                               gun_code                      -- 群コード
+--             ,imb.item_short_name             item_short_name               -- 略称
+--             ,xirm.month_begin_quantity       month_begin_quantity          -- 月首残高（合計）
+--      FROM    (SELECT   sub_xirm.subinventory_code              subinventory_code
+--                       ,sub_xirm.inventory_item_id              inventory_item_id
+--                       ,sub_xirm.organization_id                organization_id
+---- == 2009/09/09 V1.3 Modified START ===============================================================
+----                       ,SUM(sub_xirm.month_begin_quantity)      month_begin_quantity
+--                       ,SUM(sub_xirm.inv_result)                month_begin_quantity
+---- == 2009/09/09 V1.3 Modified END   ===============================================================
+--               FROM     xxcoi_inv_reception_monthly     sub_xirm            -- 月次在庫受払表(月次)
+--               WHERE    sub_xirm.subinventory_code      =   NVL(iv_tenant, sub_xirm.subinventory_code)
+--               AND      sub_xirm.organization_id        =   gn_organization_id
+--               AND      sub_xirm.subinventory_type      =   cv_subinv_4
+--               AND      sub_xirm.practice_month         =   TO_CHAR(ADD_MONTHS(id_practice_month, -1), cv_yyyymm)
+--               AND      sub_xirm.inventory_kbn          =   cv_inv_kbn2     -- 棚卸区分(月末)
+--               GROUP BY sub_xirm.subinventory_code
+--                       ,sub_xirm.inventory_item_id
+--                       ,sub_xirm.organization_id
+--              )                               xirm
+--             ,mtl_secondary_inventories       msi                           -- 保管場所マスタ(INV)
+--             ,mtl_system_items_b              msib                          -- Disc品目        (INV)
+--             ,ic_item_mst_b                   iib                           -- OPM品目         (GMI)
+--             ,xxcmn_item_mst_b                imb                           -- OPM品目アドオン (XXCMN)
+--             ,xxcmm_system_items_b            sib                           -- Disc品目アドオン(XXCMM)
+--      WHERE   xirm.subinventory_code      =   msi.secondary_inventory_name
+--      AND     xirm.organization_id        =   msi.organization_id
+--      AND     msi.attribute1              =   cv_subinv_4                   -- 保管場所区分(専門店)
+--      AND     TRUNC(NVL(msi.disable_date, gd_target_date)) >= TRUNC(gd_target_date)
+--      AND     xirm.inventory_item_id      =   msib.inventory_item_id
+--      AND     xirm.organization_id        =   msib.organization_id
+--      AND     msib.segment1               =   iib.item_no
+--      AND     iib.item_id                 =   imb.item_id
+--      AND     imb.item_id                 =   sib.item_id
+---- == 2009/09/08 V1.2 Added START ===============================================================
+--      AND     TRUNC(gd_target_date) BETWEEN imb.start_date_active
+--                                    AND     NVL(imb.end_date_active, TRUNC(gd_target_date));
+---- == 2009/09/08 V1.2 Added END   ===============================================================
+      SELECT  msi.description                     description               -- 保管場所名称
+             ,msi.attribute7                      base_code                 -- 拠点コード
+             ,sib.sp_supplier_code                sp_supplier_code          -- 専門店仕入先コード
+             ,sib.item_code                       item_code                 -- 品名コード
              ,SUBSTR(
                  (CASE  WHEN  TRUNC(TO_DATE(iib.attribute3, cv_type_date)) > TRUNC(gd_target_date)
                         THEN  iib.attribute1                                -- 群コード(旧)
                         ELSE  iib.attribute2                                -- 群コード(新)
                   END
                  ), 1, 3
-              )                               gun_code                      -- 群コード
-             ,imb.item_short_name             item_short_name               -- 略称
-             ,xirm.month_begin_quantity       month_begin_quantity          -- 月首残高（合計）
-      FROM    (SELECT   sub_xirm.subinventory_code              subinventory_code
-                       ,sub_xirm.inventory_item_id              inventory_item_id
-                       ,sub_xirm.organization_id                organization_id
--- == 2009/09/09 V1.3 Modified START ===============================================================
---                       ,SUM(sub_xirm.month_begin_quantity)      month_begin_quantity
-                       ,SUM(sub_xirm.inv_result)                month_begin_quantity
--- == 2009/09/09 V1.3 Modified END   ===============================================================
-               FROM     xxcoi_inv_reception_monthly     sub_xirm            -- 月次在庫受払表(月次)
-               WHERE    sub_xirm.subinventory_code      =   NVL(iv_tenant, sub_xirm.subinventory_code)
-               AND      sub_xirm.organization_id        =   gn_organization_id
-               AND      sub_xirm.subinventory_type      =   cv_subinv_4
-               AND      sub_xirm.practice_month         =   TO_CHAR(ADD_MONTHS(id_practice_month, -1), cv_yyyymm)
-               AND      sub_xirm.inventory_kbn          =   cv_inv_kbn2     -- 棚卸区分(月末)
-               GROUP BY sub_xirm.subinventory_code
-                       ,sub_xirm.inventory_item_id
-                       ,sub_xirm.organization_id
-              )                               xirm
+              )                                   gun_code                  -- 群コード
+             ,imb.item_short_name                 item_short_name           -- 略称
+             ,(xirm.inv_result + inv_result_bad)  month_begin_quantity      -- 月首残高（合計）
+      FROM    xxcoi_inv_reception_monthly     xirm                          -- 月次在庫受払表
              ,mtl_secondary_inventories       msi                           -- 保管場所マスタ(INV)
              ,mtl_system_items_b              msib                          -- Disc品目        (INV)
              ,ic_item_mst_b                   iib                           -- OPM品目         (GMI)
              ,xxcmn_item_mst_b                imb                           -- OPM品目アドオン (XXCMN)
              ,xxcmm_system_items_b            sib                           -- Disc品目アドオン(XXCMM)
-      WHERE   xirm.subinventory_code      =   msi.secondary_inventory_name
+      WHERE   xirm.subinventory_code      =   NVL(iv_tenant, xirm.subinventory_code)
+      AND     xirm.organization_id        =   gn_organization_id
+      AND     xirm.subinventory_type      =   cv_subinv_4
+      AND     xirm.practice_month         =   TO_CHAR(ADD_MONTHS(id_practice_month, -1), cv_yyyymm)
+      AND     xirm.inventory_kbn          =   cv_inv_kbn2                   -- 棚卸区分(月末)
+      AND     (xirm.inv_result + inv_result_bad) <> 0                       -- 月首棚卸0以外
+      AND     xirm.subinventory_code      =   msi.secondary_inventory_name
       AND     xirm.organization_id        =   msi.organization_id
       AND     msi.attribute1              =   cv_subinv_4                   -- 保管場所区分(専門店)
       AND     TRUNC(NVL(msi.disable_date, gd_target_date)) >= TRUNC(gd_target_date)
@@ -308,64 +348,66 @@ AS
       AND     msib.segment1               =   iib.item_no
       AND     iib.item_id                 =   imb.item_id
       AND     imb.item_id                 =   sib.item_id
--- == 2009/09/08 V1.2 Added START ===============================================================
       AND     TRUNC(gd_target_date) BETWEEN imb.start_date_active
                                     AND     NVL(imb.end_date_active, TRUNC(gd_target_date));
--- == 2009/09/08 V1.2 Added END   ===============================================================
-
-    --
-    CURSOR onhand_cur
-    IS
-      SELECT  msi.description                 description                   -- 保管場所名称
-             ,msi.attribute7                  base_code                     -- 拠点コード
-             ,sib.sp_supplier_code            sp_supplier_code              -- 専門店仕入先コード
-             ,sib.item_code                   item_code                     -- 品名コード
-             ,SUBSTR(
-                 (CASE  WHEN  TRUNC(TO_DATE(iib.attribute3, cv_type_date)) > TRUNC(gd_target_date)
-                        THEN  iib.attribute1                                -- 群コード(旧)
-                        ELSE  iib.attribute2                                -- 群コード(新)
-                  END
-                 ), 1, 3
-              )                               gun_code                      -- 群コード
-             ,imb.item_short_name             item_short_name               -- 略称
-             ,0                               month_begin_quantity          -- 月首残高（合計）
-      FROM    (SELECT DISTINCT
-                      sub_oqd.inventory_item_id
-                     ,sub_oqd.subinventory_code
-                     ,sub_oqd.organization_id
-               FROM   mtl_onhand_quantities_detail    sub_oqd               -- 手持数量        (INV)
-               WHERE  sub_oqd.subinventory_code   =   NVL(iv_tenant, sub_oqd.subinventory_code)
-               AND    sub_oqd.organization_id     =   gn_organization_id
-              )                               oqd                           -- 手持数量情報
-             ,mtl_secondary_inventories       msi                           -- 保管場所マスタ  (INV)
-             ,mtl_system_items_b              msib                          -- Disc品目        (INV)
-             ,ic_item_mst_b                   iib                           -- OPM品目         (GMI)
-             ,xxcmn_item_mst_b                imb                           -- OPM品目アドオン (XXCMN)
-             ,xxcmm_system_items_b            sib                           -- Disc品目アドオン(XXCMM)
-      WHERE   oqd.subinventory_code       =   msi.secondary_inventory_name
-      AND     oqd.organization_id         =   msi.organization_id
-      AND     msi.attribute1              =   cv_subinv_4                     -- 保管場所区分(専門店)
-      AND     TRUNC(NVL(msi.disable_date, gd_target_date)) >= TRUNC(gd_target_date)
-      AND     oqd.inventory_item_id       =   msib.inventory_item_id
-      AND     oqd.organization_id         =   msib.organization_id
-      AND     msib.segment1               =   iib.item_no
-      AND     iib.item_id                 =   imb.item_id
-      AND     imb.item_id                 =   sib.item_id
--- == 2009/09/08 V1.2 Added START ===============================================================
-      AND     TRUNC(gd_target_date) BETWEEN imb.start_date_active
-                                    AND     NVL(imb.end_date_active, TRUNC(gd_target_date))
--- == 2009/09/08 V1.2 Added END   ===============================================================
-      AND NOT EXISTS(
-                SELECT  1
-                FROM    xxcoi_rep_practice_inventory    xrpi
-                WHERE   xrpi.request_id         =   cn_request_id
-                AND     xrpi.base_code          =   msi.attribute7
-                AND     xrpi.subinventory_name  =   msi.description
-                AND     xrpi.item_code          =   sib.item_code
-      );
+-- == 2010/01/07 V1.4 Modified END   ===============================================================
+-- == 2010/01/07 V1.4 Deleted START ===============================================================
+--    --
+--    CURSOR onhand_cur
+--    IS
+--      SELECT  msi.description                 description                   -- 保管場所名称
+--             ,msi.attribute7                  base_code                     -- 拠点コード
+--             ,sib.sp_supplier_code            sp_supplier_code              -- 専門店仕入先コード
+--             ,sib.item_code                   item_code                     -- 品名コード
+--             ,SUBSTR(
+--                 (CASE  WHEN  TRUNC(TO_DATE(iib.attribute3, cv_type_date)) > TRUNC(gd_target_date)
+--                        THEN  iib.attribute1                                -- 群コード(旧)
+--                        ELSE  iib.attribute2                                -- 群コード(新)
+--                  END
+--                 ), 1, 3
+--              )                               gun_code                      -- 群コード
+--             ,imb.item_short_name             item_short_name               -- 略称
+--             ,0                               month_begin_quantity          -- 月首残高（合計）
+--      FROM    (SELECT DISTINCT
+--                      sub_oqd.inventory_item_id
+--                     ,sub_oqd.subinventory_code
+--                     ,sub_oqd.organization_id
+--               FROM   mtl_onhand_quantities_detail    sub_oqd               -- 手持数量        (INV)
+--               WHERE  sub_oqd.subinventory_code   =   NVL(iv_tenant, sub_oqd.subinventory_code)
+--               AND    sub_oqd.organization_id     =   gn_organization_id
+--              )                               oqd                           -- 手持数量情報
+--             ,mtl_secondary_inventories       msi                           -- 保管場所マスタ  (INV)
+--             ,mtl_system_items_b              msib                          -- Disc品目        (INV)
+--             ,ic_item_mst_b                   iib                           -- OPM品目         (GMI)
+--             ,xxcmn_item_mst_b                imb                           -- OPM品目アドオン (XXCMN)
+--             ,xxcmm_system_items_b            sib                           -- Disc品目アドオン(XXCMM)
+--      WHERE   oqd.subinventory_code       =   msi.secondary_inventory_name
+--      AND     oqd.organization_id         =   msi.organization_id
+--      AND     msi.attribute1              =   cv_subinv_4                     -- 保管場所区分(専門店)
+--      AND     TRUNC(NVL(msi.disable_date, gd_target_date)) >= TRUNC(gd_target_date)
+--      AND     oqd.inventory_item_id       =   msib.inventory_item_id
+--      AND     oqd.organization_id         =   msib.organization_id
+--      AND     msib.segment1               =   iib.item_no
+--      AND     iib.item_id                 =   imb.item_id
+--      AND     imb.item_id                 =   sib.item_id
+---- == 2009/09/08 V1.2 Added START ===============================================================
+--      AND     TRUNC(gd_target_date) BETWEEN imb.start_date_active
+--                                    AND     NVL(imb.end_date_active, TRUNC(gd_target_date))
+---- == 2009/09/08 V1.2 Added END   ===============================================================
+--      AND NOT EXISTS(
+--                SELECT  1
+--                FROM    xxcoi_rep_practice_inventory    xrpi
+--                WHERE   xrpi.request_id         =   cn_request_id
+--                AND     xrpi.base_code          =   msi.attribute7
+--                AND     xrpi.subinventory_name  =   msi.description
+--                AND     xrpi.item_code          =   sib.item_code
+--      );
+-- == 2010/01/07 V1.4 Deleted END   ===============================================================
     -- *** ローカル・レコード ***
     pickout_rec   pickout_cur%ROWTYPE;
-    onhand_rec    onhand_cur%ROWTYPE;
+-- == 2010/01/07 V1.4 Deleted START ===============================================================
+--    onhand_rec    onhand_cur%ROWTYPE;
+-- == 2010/01/07 V1.4 Deleted END   ===============================================================
 --
   BEGIN
 --
@@ -435,60 +477,62 @@ AS
   END LOOP;
   CLOSE pickout_cur;
   --
-  OPEN  onhand_cur;
-  LOOP
-    FETCH onhand_cur INTO onhand_rec;
-    EXIT WHEN onhand_cur%NOTFOUND;
-    -- 棚卸票IDをカウント
-    ln_check_num  := ln_check_num  + 1;
-    -- 対象件数をカウント
-    gn_target_cnt := gn_target_cnt + 1;
-    -- A-3.ワークテーブルデータ登録（手持数量より）
-    INSERT INTO xxcoi_rep_practice_inventory(
-            slit_id                                                   -- 棚卸票ID
-           ,inventory_year                                            -- 年
-           ,inventory_month                                           -- 月
-           ,base_code                                                 -- 拠点コード
-           ,subinventory_name                                         -- 棚卸場所名
-           ,stockplace_code                                           -- 仕入先コード
-           ,gun_code                                                  -- 群コード
-           ,item_code                                                 -- 品名コード
-           ,item_name                                                 -- 品名
-           ,first_inventory_qty                                       -- 月首残高
-           ,message                                                   -- メッセージ
-           ,last_update_date                                          -- 最終更新日
-           ,last_updated_by                                           -- 最終更新者
-           ,creation_date                                             -- 作成日
-           ,created_by                                                -- 作成者
-           ,last_update_login                                         -- 最終更新ユーザ
-           ,request_id                                                -- 要求ID
-           ,program_application_id                                    -- プログラムアプリケーションID
-           ,program_id                                                -- プログラムID
-           ,program_update_date)                                      -- プログラム更新日
-    VALUES (ln_check_num                                              -- 棚卸票ID
-           ,SUBSTR(iv_practice_month,1,2)                             -- 年
-           ,SUBSTR(iv_practice_month,3,2)                             -- 月
-           ,onhand_rec.base_code                                      -- 拠点コード
-           ,onhand_rec.description                                    -- 棚卸場所名
-           ,SUBSTR(onhand_rec.sp_supplier_code, 1, 4)                 -- 仕入先コード
-           ,onhand_rec.gun_code                                       -- 群コード
-           ,SUBSTR(onhand_rec.item_code, 1, 7)                        -- 品名コード
-           ,onhand_rec.item_short_name                                -- 品名
-           ,onhand_rec.month_begin_quantity                           -- 月首残高
-           ,NULL                                                      -- メッセージ
-           ,SYSDATE                                                   -- 最終更新日
-           ,cn_last_updated_by                                        -- 最終更新者
-           ,SYSDATE                                                   -- 作成日
-           ,cn_created_by                                             -- 作成者
-           ,cn_last_update_login                                      -- 最終更新ユーザ
-           ,cn_request_id                                             -- 要求ID
-           ,cn_program_application_id                                 -- プログラムアプリケーションID
-           ,cn_program_id                                             -- プログラムID
-           ,SYSDATE);                                                 -- プログラム更新日
-  --
-  END LOOP;
-  CLOSE onhand_cur;
-  --
+-- == 2010/01/07 V1.4 Deleted START ===============================================================
+--  OPEN  onhand_cur;
+--  LOOP
+--    FETCH onhand_cur INTO onhand_rec;
+--    EXIT WHEN onhand_cur%NOTFOUND;
+--    -- 棚卸票IDをカウント
+--    ln_check_num  := ln_check_num  + 1;
+--    -- 対象件数をカウント
+--    gn_target_cnt := gn_target_cnt + 1;
+--    -- A-3.ワークテーブルデータ登録（手持数量より）
+--    INSERT INTO xxcoi_rep_practice_inventory(
+--            slit_id                                                   -- 棚卸票ID
+--           ,inventory_year                                            -- 年
+--           ,inventory_month                                           -- 月
+--           ,base_code                                                 -- 拠点コード
+--           ,subinventory_name                                         -- 棚卸場所名
+--           ,stockplace_code                                           -- 仕入先コード
+--           ,gun_code                                                  -- 群コード
+--           ,item_code                                                 -- 品名コード
+--           ,item_name                                                 -- 品名
+--           ,first_inventory_qty                                       -- 月首残高
+--           ,message                                                   -- メッセージ
+--           ,last_update_date                                          -- 最終更新日
+--           ,last_updated_by                                           -- 最終更新者
+--           ,creation_date                                             -- 作成日
+--           ,created_by                                                -- 作成者
+--           ,last_update_login                                         -- 最終更新ユーザ
+--           ,request_id                                                -- 要求ID
+--           ,program_application_id                                    -- プログラムアプリケーションID
+--           ,program_id                                                -- プログラムID
+--           ,program_update_date)                                      -- プログラム更新日
+--    VALUES (ln_check_num                                              -- 棚卸票ID
+--           ,SUBSTR(iv_practice_month,1,2)                             -- 年
+--           ,SUBSTR(iv_practice_month,3,2)                             -- 月
+--           ,onhand_rec.base_code                                      -- 拠点コード
+--           ,onhand_rec.description                                    -- 棚卸場所名
+--           ,SUBSTR(onhand_rec.sp_supplier_code, 1, 4)                 -- 仕入先コード
+--           ,onhand_rec.gun_code                                       -- 群コード
+--           ,SUBSTR(onhand_rec.item_code, 1, 7)                        -- 品名コード
+--           ,onhand_rec.item_short_name                                -- 品名
+--           ,onhand_rec.month_begin_quantity                           -- 月首残高
+--           ,NULL                                                      -- メッセージ
+--           ,SYSDATE                                                   -- 最終更新日
+--           ,cn_last_updated_by                                        -- 最終更新者
+--           ,SYSDATE                                                   -- 作成日
+--           ,cn_created_by                                             -- 作成者
+--           ,cn_last_update_login                                      -- 最終更新ユーザ
+--           ,cn_request_id                                             -- 要求ID
+--           ,cn_program_application_id                                 -- プログラムアプリケーションID
+--           ,cn_program_id                                             -- プログラムID
+--           ,SYSDATE);                                                 -- プログラム更新日
+--  --
+--  END LOOP;
+--  CLOSE onhand_cur;
+--  --
+-- == 2010/01/07 V1.4 Deleted END   ===============================================================
   -- 結果0件の場合
   IF (ln_check_num = 0) THEN
     -- 結果0件メッセージ取得
