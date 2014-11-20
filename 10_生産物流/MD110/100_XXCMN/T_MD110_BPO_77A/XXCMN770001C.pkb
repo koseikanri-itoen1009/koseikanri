@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.26
+ * Version          : 1.27
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2008/12/09    1.24  H.Marushita      本番障害565対応
  *  2008/12/10    1.25  A.Shiina         本番障害617,636対応
  *  2008/12/11    1.26  N.Yoshida        本番障害580対応
+ *  2008/12/18    1.27  N.Yoshida        本番障害773対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -12804,8 +12805,9 @@ NULL;
           AND    stc.whse_code    = stcr.invent_whse_code
           ;*/
 --
+-- 2008/12/18 v1.27 N.Yoshida mod start
           -- 月末在庫数取得
-          SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
+/*          SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
                  ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))) AS stock_amt
           INTO   on_inv_qty_tbl
                 ,on_inv_amt_tbl
@@ -12844,8 +12846,55 @@ NULL;
           AND    iwm.whse_code    = stc.whse_code
           AND    iwm.attribute1   = '0'
 -- 2008/12/10 v1.25 ADD END
-          ;
+          ;*/
 -- 2008/12/09 v1.24 UPDATE END
+--
+          -- 月末在庫数取得
+          SELECT SUM(stcr_in.trans_qty) AS stock
+                ,SUM(ROUND(stcr_in.trans_qty * NVL(xlc.unit_ploce, 0))) AS stock_amt
+          INTO   on_inv_qty_tbl
+                ,on_inv_amt_tbl
+          FROM  (SELECT  stcr.invent_whse_code
+                        ,stcr.item_id
+                        ,stcr.lot_id
+                        ,SUM(ROUND(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0), 3)) AS trans_qty
+                 FROM    xxinv_stc_inventory_result  stcr
+                        ,ic_whse_mst                 iwm
+                 WHERE   stcr.invent_whse_code  = gt_body_data(in_pos).whse_code
+                 AND     stcr.item_id           = gt_body_data(in_pos).item_id
+                 AND     TO_CHAR(stcr.invent_date,'YYYYMM')  = lv_invent_yyyymm
+                 AND     iwm.whse_code          = stcr.invent_whse_code
+                 AND     iwm.attribute1         = '0'
+                 GROUP BY stcr.invent_whse_code, stcr.item_id, stcr.lot_id
+                ) stcr_in
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stcr_in.item_id      = xlc.item_id(+)
+          AND    stcr_in.lot_id       = xlc.lot_id(+)
+          ;
+--
+          -- 月末積送中数取得
+          SELECT SUM(stc_in.cargo_stock)   AS cargo_stock
+                ,SUM(ROUND(stc_in.cargo_stock * NVL(xlc.unit_ploce, 0))) AS cargo_price
+          INTO   ln_cargo_qty
+                ,ln_cargo_amt
+          FROM  (SELECT  stc.whse_code
+                        ,stc.item_id
+                        ,stc.lot_id
+                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                 FROM    xxinv_stc_inventory_month_stck   stc
+                        ,ic_whse_mst                      iwm
+                 WHERE   stc.whse_code    = gt_body_data(in_pos).whse_code
+                 AND     stc.item_id      = gt_body_data(in_pos).item_id
+                 AND     stc.invent_ym    = lv_invent_yyyymm
+                 AND     iwm.whse_code    = stc.whse_code
+                 AND     iwm.attribute1   = '0'
+                 GROUP BY stc.whse_code, stc.item_id, stc.lot_id
+                ) stc_in
+                ,xxcmn_lot_cost  xlc
+          WHERE  stc_in.item_id      = xlc.item_id(+)
+          AND    stc_in.lot_id       = xlc.lot_id(+)
+          ;
+-- 2008/12/18 v1.27 N.Yoshida mod end
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
@@ -12958,8 +13007,9 @@ NULL;
           AND    stc.whse_code    = stcr.invent_whse_code
           ;*/
 --
+-- 2008/12/18 v1.27 N.Yoshida mod start
           -- 月末在庫数取得
-          SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
+          /*SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
                  ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))) AS stock_amt
           INTO   on_inv_qty_tbl
                 ,on_inv_amt_tbl
@@ -12996,8 +13046,53 @@ NULL;
           AND    iwm.whse_code    = stc.whse_code
           AND    iwm.attribute1   = '0'
 -- 2008/12/10 v1.25 ADD END
-          ;
+          ;*/
 -- 2008/12/09 v1.24 UPDATE END
+--
+          -- 月末在庫数取得
+          SELECT SUM(stcr_in.trans_qty) AS stock
+                ,SUM(ROUND(stcr_in.trans_qty * NVL(xlc.unit_ploce, 0))) AS stock_amt
+          INTO   on_inv_qty_tbl
+                ,on_inv_amt_tbl
+          FROM  (SELECT  stcr.invent_whse_code
+                        ,stcr.item_id
+                        ,stcr.lot_id
+                        ,SUM(ROUND(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0), 3)) AS trans_qty
+                 FROM    xxinv_stc_inventory_result  stcr
+                        ,ic_whse_mst                 iwm
+                 WHERE   stcr.item_id           = gt_body_data(in_pos).item_id
+                 AND     TO_CHAR(stcr.invent_date,'YYYYMM')  = lv_invent_yyyymm
+                 AND     iwm.whse_code          = stcr.invent_whse_code
+                 AND     iwm.attribute1         = '0'
+                 GROUP BY stcr.invent_whse_code, stcr.item_id, stcr.lot_id
+                ) stcr_in
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stcr_in.item_id      = xlc.item_id(+)
+          AND    stcr_in.lot_id       = xlc.lot_id(+)
+          ;
+--
+          -- 月末積送中数取得
+          SELECT SUM(stc_in.cargo_stock)   AS cargo_stock
+                ,SUM(ROUND(stc_in.cargo_stock * NVL(xlc.unit_ploce, 0))) AS cargo_price
+          INTO   ln_cargo_qty
+                ,ln_cargo_amt
+          FROM  (SELECT  stc.whse_code
+                        ,stc.item_id
+                        ,stc.lot_id
+                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                 FROM    xxinv_stc_inventory_month_stck   stc
+                        ,ic_whse_mst                      iwm
+                 WHERE   stc.item_id      = gt_body_data(in_pos).item_id
+                 AND     stc.invent_ym    = lv_invent_yyyymm
+                 AND     iwm.whse_code    = stc.whse_code
+                 AND     iwm.attribute1   = '0'
+                 GROUP BY stc.whse_code, stc.item_id, stc.lot_id
+                ) stc_in
+                ,xxcmn_lot_cost  xlc
+          WHERE  stc_in.item_id      = xlc.item_id(+)
+          AND    stc_in.lot_id       = xlc.lot_id(+)
+          ;
+-- 2008/12/18 v1.27 N.Yoshida mod end
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
@@ -13168,10 +13263,11 @@ NULL;
           ;*/
 --
           -- 月末在庫数取得
+-- 2008/12/18 v1.27 N.Yoshida mod start
 -- 2008/12/10 UPDTE START
 --          SELECT SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
 --          INTO   on_inv_qty_tbl
-          SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
+          /*SELECT SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) AS stock
                  ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(in_price, 0))) AS stock_amt
           INTO   on_inv_qty_tbl
                 ,on_inv_amt_tbl
@@ -13209,8 +13305,49 @@ NULL;
           AND    iwm.whse_code    = stc.whse_code
           AND    iwm.attribute1   = '0'
 -- 2008/12/10 v1.25 ADD END
-          ;
+          ;*/
 -- 2008/12/09 v1.24 UPDATE END
+--
+          -- 月末在庫数取得
+          SELECT SUM(stcr_in.trans_qty) AS stock
+                ,SUM(ROUND(stcr_in.trans_qty * NVL(in_price, 0))) AS stock_amt
+          INTO   on_inv_qty_tbl
+                ,on_inv_amt_tbl
+          FROM  (SELECT  stcr.invent_whse_code
+                        ,stcr.item_id
+                        ,stcr.lot_id
+                        ,SUM(ROUND(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0), 3)) AS trans_qty
+                 FROM    xxinv_stc_inventory_result  stcr
+                        ,ic_whse_mst                 iwm
+                 WHERE   stcr.invent_whse_code  = gt_body_data(in_pos).whse_code
+                 AND     stcr.item_id           = gt_body_data(in_pos).item_id
+                 AND     TO_CHAR(stcr.invent_date,'YYYYMM')  = lv_invent_yyyymm
+                 AND     iwm.whse_code          = stcr.invent_whse_code
+                 AND     iwm.attribute1         = '0'
+                 GROUP BY stcr.invent_whse_code, stcr.item_id, stcr.lot_id
+                ) stcr_in
+          ;
+--
+          -- 月末積送中数取得
+          SELECT SUM(stc_in.cargo_stock)   AS cargo_stock
+                ,SUM(ROUND(stc_in.cargo_stock * NVL(in_price, 0))) AS cargo_price
+          INTO   ln_cargo_qty
+                ,ln_cargo_amt
+          FROM  (SELECT  stc.whse_code
+                        ,stc.item_id
+                        ,stc.lot_id
+                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                 FROM    xxinv_stc_inventory_month_stck   stc
+                        ,ic_whse_mst                      iwm
+                 WHERE   stc.whse_code    = gt_body_data(in_pos).whse_code
+                 AND     stc.item_id      = gt_body_data(in_pos).item_id
+                 AND     stc.invent_ym    = lv_invent_yyyymm
+                 AND     iwm.whse_code    = stc.whse_code
+                 AND     iwm.attribute1   = '0'
+                 GROUP BY stc.whse_code, stc.item_id, stc.lot_id
+                ) stc_in
+          ;
+-- 2008/12/18 v1.27 N.Yoshida mod end
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;
@@ -13295,9 +13432,10 @@ NULL;
           ;*/
 --
           -- 月末在庫数取得
+-- 2008/12/18 v1.27 N.Yoshida mod start
 -- 2008/12/10 v1.25 UPDATE START
 --          SELECT SUM(stcr.case_amt * stcr.content * stcr.loose_amt) AS stock
-          SELECT SUM(stcr.case_amt * stcr.content + stcr.loose_amt) AS stock
+          /*SELECT SUM(stcr.case_amt * stcr.content + stcr.loose_amt) AS stock
 -- 2008/12/10 v1.25 UPDATE END
 -- 2008/12/10 v1.25 ADD START
                  ,SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(in_price, 0))) AS stock_amt
@@ -13337,8 +13475,47 @@ NULL;
           AND    iwm.whse_code    = stc.whse_code
           AND    iwm.attribute1   = '0'
 -- 2008/12/10 v1.25 ADD END
-          ;
+          ;*/
 -- 2008/12/09 v1.24 UPDATE END
+--
+          -- 月末在庫数取得
+          SELECT SUM(stcr_in.trans_qty) AS stock
+                ,SUM(ROUND(stcr_in.trans_qty * NVL(in_price, 0))) AS stock_amt
+          INTO   on_inv_qty_tbl
+                ,on_inv_amt_tbl
+          FROM  (SELECT  stcr.invent_whse_code
+                        ,stcr.item_id
+                        ,stcr.lot_id
+                        ,SUM(ROUND(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0), 3)) AS trans_qty
+                 FROM    xxinv_stc_inventory_result  stcr
+                        ,ic_whse_mst                 iwm
+                 WHERE   stcr.item_id           = gt_body_data(in_pos).item_id
+                 AND     TO_CHAR(stcr.invent_date,'YYYYMM')  = lv_invent_yyyymm
+                 AND     iwm.whse_code          = stcr.invent_whse_code
+                 AND     iwm.attribute1         = '0'
+                 GROUP BY stcr.invent_whse_code, stcr.item_id, stcr.lot_id
+                ) stcr_in
+          ;
+--
+          -- 月末積送中数取得
+          SELECT SUM(stc_in.cargo_stock)   AS cargo_stock
+                ,SUM(ROUND(stc_in.cargo_stock * NVL(in_price, 0))) AS cargo_price
+          INTO   ln_cargo_qty
+                ,ln_cargo_amt
+          FROM  (SELECT  stc.whse_code
+                        ,stc.item_id
+                        ,stc.lot_id
+                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                 FROM    xxinv_stc_inventory_month_stck   stc
+                        ,ic_whse_mst                      iwm
+                 WHERE   stc.item_id      = gt_body_data(in_pos).item_id
+                 AND     stc.invent_ym    = lv_invent_yyyymm
+                 AND     iwm.whse_code    = stc.whse_code
+                 AND     iwm.attribute1   = '0'
+                 GROUP BY stc.whse_code, stc.item_id, stc.lot_id
+                ) stc_in
+          ;
+-- 2008/12/18 v1.27 N.Yoshida mod end
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             on_inv_qty_tbl :=  0;

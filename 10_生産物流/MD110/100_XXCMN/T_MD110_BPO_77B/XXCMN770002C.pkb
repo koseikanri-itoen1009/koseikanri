@@ -7,7 +7,7 @@ AS
  * Description      : éÛï•écçÇï\ÅiáTÅjêªïi
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.29
+ * Version          : 1.30
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -64,6 +64,7 @@ AS
  *  2008/12/12    1.27  A.Shiina         ñ{î‘è·äQ685ëŒâû
  *  2008/12/15    1.28  N.Yoshida        ñ{î‘è·äQ725ëŒâû
  *  2008/12/17    1.29  A.Shiina         ñ{î‘è·äQ774ëŒâû
+ *  2008/12/18    1.30  N.Yoshida        ñ{î‘è·äQ773ëŒâû
  *
  *****************************************************************************************/
 --
@@ -16705,57 +16706,79 @@ AS
 --
       IF( (ln_cost_kbn=1) AND(iv_year_month = gv_exec_year_month_bef) AND (ir_param.print_kind = gc_print_kind_locat)) THEN
          -- åéèâécçÇÇéÊìæ ëqå…ï  ïWèÄå¥âø
-         SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
-               ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
--- 2008/12/10 v1.24 UPDATE START
---               ,0 as price
---               ,0 as cargo_price
-               ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(ln_unit_price, 0))),0) as price
-               ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
--- 2008/12/10 v1.24 UPDATE END
-         INTO   on_inv_qty
-               ,on_cargo_qty
-               ,on_inv_amt
-               ,on_cargo_amt
-         FROM   xxinv_stc_inventory_month_stck stc
--- 2008/12/10 v1.24 ADD START
-               ,ic_whse_mst                    iwm
--- 2008/12/10 v1.24 ADD END
-         WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
-         AND    stc.invent_ym = iv_year_month
-         AND    stc.whse_code = gt_main_data(ln_idx).locat_code
--- 2008/12/10 v1.24 ADD START
-         AND    iwm.whse_code  = stc.whse_code
-         AND    iwm.attribute1 = '0'
--- 2008/12/10 v1.24 ADD END
-         ;
+-- 2008/12/18 v1.30 UPDATE START
+        BEGIN
+           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
+                 ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
+  -- 2008/12/10 v1.24 UPDATE START
+  --               ,0 as price
+  --               ,0 as cargo_price
+                 ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(ln_unit_price, 0))),0) as price
+                 ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
+  -- 2008/12/10 v1.24 UPDATE END
+           INTO   on_inv_qty
+                 ,on_cargo_qty
+                 ,on_inv_amt
+                 ,on_cargo_amt
+           FROM   xxinv_stc_inventory_month_stck stc
+  -- 2008/12/10 v1.24 ADD START
+                 ,ic_whse_mst                    iwm
+  -- 2008/12/10 v1.24 ADD END
+           WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
+           AND    stc.invent_ym = iv_year_month
+           AND    stc.whse_code = gt_main_data(ln_idx).locat_code
+  -- 2008/12/10 v1.24 ADD START
+           AND    iwm.whse_code  = stc.whse_code
+           AND    iwm.attribute1 = '0'
+  -- 2008/12/10 v1.24 ADD END
+           ;
+        EXCEPTION
+           WHEN NO_DATA_FOUND THEN
+             on_inv_qty   := 0;
+             on_cargo_qty := 0;
+             on_inv_amt   := 0;
+             on_cargo_amt := 0;
+        END;
+-- 2008/12/18 v1.30 UPDATE END
       ELSIF((ln_cost_kbn=1) AND(iv_year_month = gv_exec_year_month_bef) AND (ir_param.print_kind <> gc_print_kind_locat)) THEN
-         -- åéèâécçÇÇéÊìæ ïiñ⁄ï  ïWèÄå¥âø
-         SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
-               ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
--- 2008/12/10 v1.24 UPDATE START
---               ,0 as price
---               ,0 as cargo_price
-               ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(ln_unit_price, 0))),0) as price
-               ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
--- 2008/12/10 v1.24 UPDATE END
-         INTO   on_inv_qty
-               ,on_cargo_qty
-               ,on_inv_amt
-               ,on_cargo_amt
-         FROM   xxinv_stc_inventory_month_stck stc
--- 2008/12/10 v1.24 ADD START
-               ,ic_whse_mst                    iwm
--- 2008/12/10 v1.24 ADD END
-         WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
-         AND    stc.invent_ym = iv_year_month
--- 2008/12/10 v1.24 ADD START
-         AND    iwm.whse_code  = stc.whse_code
-         AND    iwm.attribute1 = '0'
--- 2008/12/10 v1.24 ADD END
-         ;
+           -- åéèâécçÇÇéÊìæ ïiñ⁄ï  ïWèÄå¥âø
+-- 2008/12/18 v1.30 UPDATE START
+        BEGIN
+           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
+                 ,NVL(SUM(NVL(stc.cargo_stock  , 0)),0) as cargo_stock
+  -- 2008/12/10 v1.24 UPDATE START
+  --               ,0 as price
+  --               ,0 as cargo_price
+                 ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(ln_unit_price, 0))),0) as price
+                 ,NVL(SUM(ROUND(NVL(stc.cargo_stock, 0) * NVL(ln_unit_price, 0))),0)   as cargo_price
+  -- 2008/12/10 v1.24 UPDATE END
+           INTO   on_inv_qty
+                 ,on_cargo_qty
+                 ,on_inv_amt
+                 ,on_cargo_amt
+           FROM   xxinv_stc_inventory_month_stck stc
+  -- 2008/12/10 v1.24 ADD START
+                 ,ic_whse_mst                    iwm
+  -- 2008/12/10 v1.24 ADD END
+           WHERE  stc.item_id   = gt_main_data(ln_idx).item_id
+           AND    stc.invent_ym = iv_year_month
+  -- 2008/12/10 v1.24 ADD START
+           AND    iwm.whse_code  = stc.whse_code
+           AND    iwm.attribute1 = '0'
+  -- 2008/12/10 v1.24 ADD END
+           ;
+        EXCEPTION
+           WHEN NO_DATA_FOUND THEN
+             on_inv_qty   := 0;
+             on_cargo_qty := 0;
+             on_inv_amt   := 0;
+             on_cargo_amt := 0;
+        END;
+-- 2008/12/18 v1.30 UPDATE END
       ELSIF((ln_cost_kbn=0) AND(iv_year_month = gv_exec_year_month_bef) AND (ir_param.print_kind = gc_print_kind_locat)) THEN
          -- åéèâécçÇÇéÊìæ ëqå…ï  é¿ç€å¥âø
+-- 2008/12/18 v1.30 UPDATE START
+        BEGIN
           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
                 ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
                 ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))),0) as price
@@ -16779,8 +16802,18 @@ AS
           AND    iwm.attribute1 = '0'
 -- 2008/12/10 v1.24 ADD END
           ;
+        EXCEPTION
+           WHEN NO_DATA_FOUND THEN
+             on_inv_qty   := 0;
+             on_cargo_qty := 0;
+             on_inv_amt   := 0;
+             on_cargo_amt := 0;
+        END;
+-- 2008/12/18 v1.30 UPDATE END
       ELSIF((ln_cost_kbn=0) AND(iv_year_month = gv_exec_year_month_bef) AND (ir_param.print_kind <> gc_print_kind_locat)) THEN
          -- åéèâécçÇÇéÊìæ ïiñ⁄ï  é¿ç€å¥âø
+-- 2008/12/18 v1.30 UPDATE START
+        BEGIN
           SELECT NVL(SUM(NVL(stc.monthly_stock, 0)),0) as stock
                 ,NVL(SUM(NVL(stc.cargo_stock, 0)),0)   as cargo_stock
                 ,NVL(SUM(ROUND(NVL(stc.monthly_stock, 0) * NVL(xlc.unit_ploce, 0))),0) as price
@@ -16803,9 +16836,18 @@ AS
           AND    iwm.attribute1 = '0'
 -- 2008/12/10 v1.24 ADD END
           ;
+        EXCEPTION
+           WHEN NO_DATA_FOUND THEN
+             on_inv_qty   := 0;
+             on_cargo_qty := 0;
+             on_inv_amt   := 0;
+             on_cargo_amt := 0;
+        END;
+-- 2008/12/18 v1.30 UPDATE END
       ELSIF((ln_cost_kbn=1) AND(iv_year_month <> gv_exec_year_month_bef) AND (ir_param.print_kind = gc_print_kind_locat)) THEN
                 -- é¿íIâµã‡äz ëqå…ï  ïWèÄå¥âø
-          SELECT NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
+-- 2008/12/18 v1.30 UPDATE START
+          /*SELECT NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
 -- 2008/12/10 v1.24 UPDATE START
 --                ,0 as price
                 ,NVL(SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(ln_unit_price, 0))),0) AS stock_amt
@@ -16843,10 +16885,60 @@ AS
           AND    iwm.whse_code  = stc.whse_code
           AND    iwm.attribute1 = '0'
 -- 2008/12/10 v1.24 ADD END
+          ;*/
+--
+        BEGIN
+          -- é¿íIêîó ÅAã‡äzéZèo
+          SELECT NVL(SUM(stcr_in.trans_qty),0) AS stock
+                ,NVL(SUM(ROUND(stcr_in.trans_qty * NVL(ln_unit_price, 0))),0) AS stock_amt
+          INTO   on_inv_qty
+                ,on_inv_amt
+          FROM  (SELECT  stcr.invent_whse_code
+                        ,stcr.item_id
+                        ,stcr.lot_id
+                        ,SUM(ROUND(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0), 3)) AS trans_qty
+                 FROM    xxinv_stc_inventory_result  stcr
+                        ,ic_whse_mst                 iwm
+                 WHERE   stcr.invent_whse_code  = gt_main_data(ln_idx).locat_code
+                 AND     stcr.item_id           = gt_main_data(ln_idx).item_id
+                 AND     TO_CHAR(stcr.invent_date,'YYYYMM')  = iv_year_month
+                 AND     iwm.whse_code          = stcr.invent_whse_code
+                 AND     iwm.attribute1         = '0'
+                 GROUP BY stcr.invent_whse_code, stcr.item_id, stcr.lot_id
+                ) stcr_in
           ;
+
+          -- êœëóíÜêîó ÅAã‡äzéZèo
+          SELECT NVL(SUM(stc_in.cargo_stock),0)   AS cargo_stock
+                ,NVL(SUM(ROUND(stc_in.cargo_stock * NVL(ln_unit_price, 0))),0) AS cargo_price
+          INTO   on_cargo_qty
+                ,on_cargo_amt
+          FROM  (SELECT  stc.whse_code
+                        ,stc.item_id
+                        ,stc.lot_id
+                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                 FROM    xxinv_stc_inventory_month_stck   stc
+                        ,ic_whse_mst                      iwm
+                 WHERE   stc.whse_code    = gt_main_data(ln_idx).locat_code
+                 AND     stc.item_id      = gt_main_data(ln_idx).item_id
+                 AND     stc.invent_ym    = iv_year_month
+                 AND     iwm.whse_code    = stc.whse_code
+                 AND     iwm.attribute1   = '0'
+                 GROUP BY stc.whse_code, stc.item_id, stc.lot_id
+                ) stc_in
+          ;
+        EXCEPTION
+           WHEN NO_DATA_FOUND THEN
+             on_inv_qty   := 0;
+             on_cargo_qty := 0;
+             on_inv_amt   := 0;
+             on_cargo_amt := 0;
+        END;
+-- 2008/12/18 v1.30 UPDATE END
       ELSIF((ln_cost_kbn=1) AND(iv_year_month <> gv_exec_year_month_bef) AND (ir_param.print_kind <> gc_print_kind_locat)) THEN
                 -- é¿íIâµã‡äz ïiñ⁄ï  ïWèÄå¥âø
-          SELECT NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
+-- 2008/12/18 v1.30 UPDATE START
+          /*SELECT NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
 -- 2008/12/10 v1.24 UPDATE START
 --                ,0 as price
                 ,NVL(SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(ln_unit_price, 0))),0) AS stock_amt
@@ -16882,10 +16974,58 @@ AS
           AND    iwm.whse_code    = stc.whse_code
           AND    iwm.attribute1   = '0'
 -- 2008/12/10 v1.24 ADD END
+          ;*/
+--
+        BEGIN
+          -- é¿íIêîó ÅAã‡äzéZèo
+          SELECT NVL(SUM(stcr_in.trans_qty),0) AS stock
+                ,NVL(SUM(ROUND(stcr_in.trans_qty * NVL(ln_unit_price, 0))),0) AS stock_amt
+          INTO   on_inv_qty
+                ,on_inv_amt
+          FROM  (SELECT  stcr.invent_whse_code
+                        ,stcr.item_id
+                        ,stcr.lot_id
+                        ,SUM(ROUND(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0), 3)) AS trans_qty
+                 FROM    xxinv_stc_inventory_result  stcr
+                        ,ic_whse_mst                 iwm
+                 WHERE   stcr.item_id           = gt_main_data(ln_idx).item_id
+                 AND     TO_CHAR(stcr.invent_date,'YYYYMM')  = iv_year_month
+                 AND     iwm.whse_code          = stcr.invent_whse_code
+                 AND     iwm.attribute1         = '0'
+                 GROUP BY stcr.invent_whse_code, stcr.item_id, stcr.lot_id
+                ) stcr_in
           ;
+
+          -- êœëóíÜêîó ÅAã‡äzéZèo
+          SELECT NVL(SUM(stc_in.cargo_stock),0)   AS cargo_stock
+                ,NVL(SUM(ROUND(stc_in.cargo_stock * NVL(ln_unit_price, 0))),0) AS cargo_price
+          INTO   on_cargo_qty
+                ,on_cargo_amt
+          FROM  (SELECT  stc.whse_code
+                        ,stc.item_id
+                        ,stc.lot_id
+                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                 FROM    xxinv_stc_inventory_month_stck   stc
+                        ,ic_whse_mst                      iwm
+                 WHERE   stc.item_id      = gt_main_data(ln_idx).item_id
+                 AND     stc.invent_ym    = iv_year_month
+                 AND     iwm.whse_code    = stc.whse_code
+                 AND     iwm.attribute1   = '0'
+                 GROUP BY stc.whse_code, stc.item_id, stc.lot_id
+                ) stc_in
+          ;
+        EXCEPTION
+           WHEN NO_DATA_FOUND THEN
+             on_inv_qty   := 0;
+             on_cargo_qty := 0;
+             on_inv_amt   := 0;
+             on_cargo_amt := 0;
+        END;
+-- 2008/12/18 v1.30 UPDATE END
       ELSIF((ln_cost_kbn=0) AND(iv_year_month <> gv_exec_year_month_bef) AND (ir_param.print_kind = gc_print_kind_locat)) THEN
                 -- é¿íIâµã‡äz ëqå…ï  é¿ç€å¥âø
-          SELECT  NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
+-- 2008/12/18 v1.30 UPDATE START
+          /*SELECT  NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
                  ,NVL(SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))),0) AS stock_amt
           INTO   on_inv_qty
                 ,on_inv_amt
@@ -16922,10 +17062,66 @@ AS
           AND    iwm.whse_code    = stc.whse_code
           AND    iwm.attribute1   = '0'
 -- 2008/12/10 v1.24 ADD END
+          ;*/
+--
+        BEGIN
+          -- é¿íIêîó ÅAã‡äzéZèo
+          SELECT NVL(SUM(stcr_in.trans_qty),0) AS stock
+                ,NVL(SUM(ROUND(stcr_in.trans_qty * NVL(xlc.unit_ploce, 0))),0) AS stock_amt
+          INTO   on_inv_qty
+                ,on_inv_amt
+          FROM  (SELECT  stcr.invent_whse_code
+                        ,stcr.item_id
+                        ,stcr.lot_id
+                        ,SUM(ROUND(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0), 3)) AS trans_qty
+                 FROM    xxinv_stc_inventory_result  stcr
+                        ,ic_whse_mst                 iwm
+                 WHERE   stcr.invent_whse_code  = gt_main_data(ln_idx).locat_code
+                 AND     stcr.item_id           = gt_main_data(ln_idx).item_id
+                 AND     TO_CHAR(stcr.invent_date,'YYYYMM')  = iv_year_month
+                 AND     iwm.whse_code          = stcr.invent_whse_code
+                 AND     iwm.attribute1         = '0'
+                 GROUP BY stcr.invent_whse_code, stcr.item_id, stcr.lot_id
+                ) stcr_in
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stcr_in.item_id      = xlc.item_id(+)
+          AND    stcr_in.lot_id       = xlc.lot_id(+)
           ;
+
+          -- êœëóíÜêîó ÅAã‡äzéZèo
+          SELECT NVL(SUM(stc_in.cargo_stock),0)   AS cargo_stock
+                ,NVL(SUM(ROUND(stc_in.cargo_stock * NVL(xlc.unit_ploce, 0))),0) AS cargo_price
+          INTO   on_cargo_qty
+                ,on_cargo_amt
+          FROM  (SELECT  stc.whse_code
+                        ,stc.item_id
+                        ,stc.lot_id
+                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                 FROM    xxinv_stc_inventory_month_stck   stc
+                        ,ic_whse_mst                      iwm
+                 WHERE   stc.whse_code    = gt_main_data(ln_idx).locat_code
+                 AND     stc.item_id      = gt_main_data(ln_idx).item_id
+                 AND     stc.invent_ym    = iv_year_month
+                 AND     iwm.whse_code    = stc.whse_code
+                 AND     iwm.attribute1   = '0'
+                 GROUP BY stc.whse_code, stc.item_id, stc.lot_id
+                ) stc_in
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stc_in.item_id      = xlc.item_id(+)
+          AND    stc_in.lot_id       = xlc.lot_id(+)
+          ;
+        EXCEPTION
+           WHEN NO_DATA_FOUND THEN
+             on_inv_qty   := 0;
+             on_cargo_qty := 0;
+             on_inv_amt   := 0;
+             on_cargo_amt := 0;
+        END;
+-- 2008/12/18 v1.30 UPDATE END
       ELSE
                 -- é¿íIâµã‡äz ïiñ⁄ï  é¿ç€å¥âø
-          SELECT  NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
+-- 2008/12/18 v1.30 UPDATE START
+          /*SELECT  NVL(SUM(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)),0) AS stock
                  ,NVL(SUM(ROUND((NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0)) * NVL(xlc.unit_ploce, 0))),0) AS stock_amt
           INTO   on_inv_qty
                 ,on_inv_amt
@@ -16960,7 +17156,60 @@ AS
           AND    iwm.whse_code    = stc.whse_code
           AND    iwm.attribute1   = '0'
 -- 2008/12/10 v1.24 ADD END
+          ;*/
+--
+        BEGIN
+          -- é¿íIêîó ÅAã‡äzéZèo
+          SELECT NVL(SUM(stcr_in.trans_qty),0) AS stock
+                ,NVL(SUM(ROUND(stcr_in.trans_qty * NVL(xlc.unit_ploce, 0))),0) AS stock_amt
+          INTO   on_inv_qty
+                ,on_inv_amt
+          FROM  (SELECT  stcr.invent_whse_code
+                        ,stcr.item_id
+                        ,stcr.lot_id
+                        ,SUM(ROUND(NVL(stcr.case_amt,0) * NVL(stcr.content,0) + NVL(stcr.loose_amt,0), 3)) AS trans_qty
+                 FROM    xxinv_stc_inventory_result  stcr
+                        ,ic_whse_mst                 iwm
+                 WHERE   stcr.item_id           = gt_main_data(ln_idx).item_id
+                 AND     TO_CHAR(stcr.invent_date,'YYYYMM')  = iv_year_month
+                 AND     iwm.whse_code          = stcr.invent_whse_code
+                 AND     iwm.attribute1         = '0'
+                 GROUP BY stcr.invent_whse_code, stcr.item_id, stcr.lot_id
+                ) stcr_in
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stcr_in.item_id      = xlc.item_id(+)
+          AND    stcr_in.lot_id       = xlc.lot_id(+)
           ;
+
+          -- êœëóíÜêîó ÅAã‡äzéZèo
+          SELECT NVL(SUM(stc_in.cargo_stock),0)   AS cargo_stock
+                ,NVL(SUM(ROUND(stc_in.cargo_stock * NVL(xlc.unit_ploce, 0))),0) AS cargo_price
+          INTO   on_cargo_qty
+                ,on_cargo_amt
+          FROM  (SELECT  stc.whse_code
+                        ,stc.item_id
+                        ,stc.lot_id
+                        ,SUM(NVL(stc.cargo_stock, 0)) AS cargo_stock
+                 FROM    xxinv_stc_inventory_month_stck   stc
+                        ,ic_whse_mst                      iwm
+                 WHERE   stc.item_id      = gt_main_data(ln_idx).item_id
+                 AND     stc.invent_ym    = iv_year_month
+                 AND     iwm.whse_code    = stc.whse_code
+                 AND     iwm.attribute1   = '0'
+                 GROUP BY stc.whse_code, stc.item_id, stc.lot_id
+                ) stc_in
+                ,xxcmn_lot_cost                   xlc
+          WHERE  stc_in.item_id      = xlc.item_id(+)
+          AND    stc_in.lot_id       = xlc.lot_id(+)
+          ;
+        EXCEPTION
+           WHEN NO_DATA_FOUND THEN
+             on_inv_qty   := 0;
+             on_cargo_qty := 0;
+             on_inv_amt   := 0;
+             on_cargo_amt := 0;
+        END;
+-- 2008/12/18 v1.30 UPDATE END
       END IF;
 --
     END prc_get_fst_end_inv_qty_amt;
