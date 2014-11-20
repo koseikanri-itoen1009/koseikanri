@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK009A01C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上・売上原価振替仕訳の作成 販売物流 MD050_COK_009_A01
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  * 2010/02/18     1.7   SCS K.YAMAGUCHI  [障害E_本稼動_01600]非在庫品目の場合、原価の振替を行わないよう変更
  * 2011/02/02     1.8   SCS S.OCHIAI     [障害E_本稼動_05918]共通関数(会計カレンダ取得、会計期間チェック)の
  *                                                           対象アプリケーションを「AR」から「GL」変更
+ * 2013/12/30     1.9   SCSK S.NIKI      [障害E_本稼動_02011]入金時値引の勘定科目変更
  *
  *****************************************************************************************/
   --===============================
@@ -77,6 +78,10 @@ AS
   cv_aff7_preliminary1_dummy  CONSTANT VARCHAR2(100) := 'XXCOK1_AFF7_PRELIMINARY1_DUMMY';   -- 予備1のダミー値
   cv_aff8_preliminary2_dummy  CONSTANT VARCHAR2(100) := 'XXCOK1_AFF8_PRELIMINARY2_DUMMY';   -- 予備2のダミー値
   cv_selling_without_tax_code CONSTANT VARCHAR2(100) := 'XXCOK1_SELLING_WITHOUT_TAX_CODE';  -- 課税売上外税消費税コード
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+  cv_payment_discounts_code   CONSTANT VARCHAR2(100) := 'XXCOS1_PAYMENT_DISCOUNTS_CODE';    -- 入金値引コード
+  cv_acct_payment_discount    CONSTANT VARCHAR2(100) := 'XXCOK1_AFF3_ALLOWANCE_PAYMENT';    -- 入金値引高
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 -- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi ADD START
   --参照タイプ
   cv_lookup_type_01           CONSTANT VARCHAR2(30)  := 'XXCOS1_NO_INV_ITEM_CODE';          -- 非在庫品目
@@ -123,6 +128,10 @@ AS
   cv_unsettled_interface_flag CONSTANT VARCHAR2(1)  := '0';                                 -- 仕訳作成フラグ0(未済)
   cv_finish_interface_flag    CONSTANT VARCHAR2(1)  := '1';                                 -- 仕訳作成フラグ1(済)
   cv_result_flag              CONSTANT VARCHAR2(1)  := 'A';                                 -- 実績フラグ
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+  cv_discounts_item_flag_off  CONSTANT VARCHAR2(1)  := '0';                                 -- 入金値引フラグ0(通常品目)
+  cv_discounts_item_flag_on   CONSTANT VARCHAR2(1)  := '1';                                 -- 入金値引フラグ1(入金値引)
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
   --トークン
   cv_profile_token            CONSTANT VARCHAR2(15) := 'PROFILE';                           -- トークン名
   cv_sales_token              CONSTANT VARCHAR2(15) := 'SALES_DATE';                        -- トークン名
@@ -161,6 +170,11 @@ AS
   gv_aff7_preliminary1_dummy  VARCHAR2(100)  DEFAULT NULL;   -- 予備1のダミー値
   gv_aff8_preliminary2_dummy  VARCHAR2(100)  DEFAULT NULL;   -- 予備2のダミー値
   gv_selling_without_tax_code VARCHAR2(100)  DEFAULT NULL;   -- 課税売上外税消費税コード
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+  gv_payment_discounts_code   VARCHAR2(100)  DEFAULT NULL;   -- 入金値引コード
+  gv_acct_payment_discount    VARCHAR2(100)  DEFAULT NULL;   -- 入金値引高
+  gv_slip_num_normal_item     VARCHAR2(100)  DEFAULT NULL;   -- 伝票番号保持用
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
   gd_selling_date             DATE           DEFAULT NULL;   -- 売上計上日(前日末日)
   gv_slip_number              VARCHAR2(100)  DEFAULT NULL;   -- 伝票番号
   gv_currency_code            VARCHAR2(100)  DEFAULT NULL;   -- 機能通貨コード
@@ -228,6 +242,14 @@ AS
                END
              )                          AS trading_cost                  -- 売上原価
 -- 2010/02/18 Ver.1.7 [障害E_本稼動_01600] SCS K.Yamaguchi REPAIR END
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+           , CASE
+               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+                cv_discounts_item_flag_off  --通常品目
+               ELSE
+                cv_discounts_item_flag_on   --入金値引
+             END                        AS discount_flag
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
     FROM     xxcok_selling_trns_info         xsti                        -- 売上実績振替情報テーブル
     WHERE    xsti.selling_date           >=              TRUNC( gd_selling_date,'MM' )      -- A-2で取得した売上計上日
     AND      xsti.selling_date            <  ADD_MONTHS( TRUNC( gd_selling_date,'MM' ), 1 ) -- A-2で取得した売上計上日+1ヶ月
@@ -243,11 +265,29 @@ AS
            , xsti.selling_from_cust_code
            , xsti.base_code
            , xsti.delivery_base_code
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+           , CASE
+               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+                cv_discounts_item_flag_off  --通常品目
+               ELSE
+                cv_discounts_item_flag_on   --入金値引
+             END
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
     ORDER BY xsti.selling_date
            , xsti.selling_from_cust_code
            , xsti.base_code
-           , xsti.delivery_base_code;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--           , xsti.delivery_base_code;
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama REPAIR END
+           , xsti.delivery_base_code
+           , CASE
+               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+                cv_discounts_item_flag_off  --通常品目
+               ELSE
+                cv_discounts_item_flag_on   --入金値引
+             END
+           ;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
 --
   -- ===============================
   -- グローバルレコードタイプ
@@ -618,6 +658,14 @@ AS
       AND    xsti.base_code            = i_get_rec.base_code          -- 売上振替先拠点コード
       AND    xsti.delivery_base_code   = i_get_rec.delivery_base_code -- 売上振替元拠点コード
       AND    xsti.selling_from_cust_code = i_get_rec.selling_from_cust_code -- 売上振替元顧客コード
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+      AND    CASE
+               WHEN xsti.item_code <> gv_payment_discounts_code THEN
+                cv_discounts_item_flag_off  --通常品目
+               ELSE
+                cv_discounts_item_flag_on   --入金値引
+             END                       = i_get_rec.discount_flag
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
       FOR UPDATE OF xsti.selling_trns_info_id NOWAIT;
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama UPD END
 --
@@ -915,10 +963,25 @@ AS
     lv_errmsg  VARCHAR2(5000) DEFAULT NULL;                      -- ユーザー・エラー・メッセージ
     lv_out_msg VARCHAR2(5000) DEFAULT NULL;                      -- メッセージ出力変数
     lb_retcode BOOLEAN        DEFAULT NULL;                      -- メッセージ出力変数
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+    lv_acct_prod  VARCHAR2(100);                                 -- 勘定科目
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 --
   BEGIN
     ov_retcode := cv_status_normal;
 --
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+    --==================================================================
+    --勘定科目の設定
+    --==================================================================
+    IF ( i_get_rec.discount_flag = cv_discounts_item_flag_off ) THEN
+      --通常品目
+      lv_acct_prod  := gv_acct_prod_sale;        --製品売上高
+    ELSE
+      --入金値引
+      lv_acct_prod  := gv_acct_payment_discount; --入金値引高
+    END IF;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
     --==================================================================
     --＜仕訳パターン1＞集計後の売上金額>0(貸借)
     --==================================================================
@@ -931,7 +994,10 @@ AS
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
       , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
-      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
+      , iv_account_class   => lv_acct_prod                 -- 勘定科目
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
       , iv_adminicle_class => gv_aff4_subacct_dummy        -- 補助科目(ダミー値)
       , in_debit_amt       => i_get_rec.selling_amt        -- 借方金額(売上金額)
       , in_credit_amt      => 0                            -- 貸方金額(0)
@@ -950,7 +1016,10 @@ AS
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
       , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
-      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
+      , iv_account_class   => lv_acct_prod                 -- 勘定科目
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
       , iv_adminicle_class => gv_aff4_subacct_dummy        -- 補助科目(ダミー値)
       , in_debit_amt       => 0                            -- 借方金額(0)
       , in_credit_amt      => i_get_rec.selling_amt        -- 貸方金額(売上金額)
@@ -977,7 +1046,10 @@ AS
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
       , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
-      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
+      , iv_account_class   => lv_acct_prod                 -- 勘定科目
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
       , iv_adminicle_class => gv_aff4_subacct_dummy        -- 補助科目(ダミー値)
       , in_debit_amt       => 0                            -- 借方金額(0)
 -- 2010/01/28 Ver.1.6 [障害E_本稼動_01297] SCS Y.Kuboshima MOD START
@@ -1000,7 +1072,10 @@ AS
       , ov_retcode         => lv_retcode
       , ov_errmsg          => lv_errmsg
       , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
-      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--      , iv_account_class   => gv_acct_prod_sale            -- 勘定科目(A-1で取得した勘定科目コード(製品売上高))
+      , iv_account_class   => lv_acct_prod                 -- 勘定科目
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
       , iv_adminicle_class => gv_aff4_subacct_dummy        -- 補助科目(ダミー値)
 -- 2010/01/28 Ver.1.6 [障害E_本稼動_01297] SCS Y.Kuboshima MOD START
 --      , in_debit_amt       => i_get_rec.selling_amt        -- 借方金額(売上金額)
@@ -1019,132 +1094,139 @@ AS
       END IF;
 --
     END IF;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+    --入金値引以外は原価仕訳作成
+    IF ( i_get_rec.discount_flag = cv_discounts_item_flag_off ) THEN
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --    --==================================================================
 --    --＜仕訳パターン3＞集計後の売上原価金額>0(貸借)
 --    --==================================================================
 --    IF( i_get_rec.selling_cost_amt > 0 ) THEN
 --
-    --==================================================================
-    --＜仕訳パターン3＞集計後の営業原価>0(貸借)
-    --==================================================================
-    IF( i_get_rec.trading_cost > 0 ) THEN
+      --==================================================================
+      --＜仕訳パターン3＞集計後の営業原価>0(貸借)
+      --==================================================================
+      IF( i_get_rec.trading_cost > 0 ) THEN
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
-      --================================================================
-      --ins_gl_interface_p呼び出し(一般会計OIF登録(A-6))
-      --================================================================
-      ins_gl_interface_p(
-        ov_errbuf          => lv_errbuf
-      , ov_retcode         => lv_retcode
-      , ov_errmsg          => lv_errmsg
-      , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
-      , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
-      , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
-      , in_debit_amt       => 0                            -- 借方金額(0)
+        --================================================================
+        --ins_gl_interface_p呼び出し(一般会計OIF登録(A-6))
+        --================================================================
+        ins_gl_interface_p(
+          ov_errbuf          => lv_errbuf
+        , ov_retcode         => lv_retcode
+        , ov_errmsg          => lv_errmsg
+        , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
+        , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
+        , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
+        , in_debit_amt       => 0                            -- 借方金額(0)
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --      , in_credit_amt      => i_get_rec.selling_cost_amt   -- 貸方金額(売上原価金額)
-      , in_credit_amt      => i_get_rec.trading_cost       -- 貸方金額(営業原価)
+        , in_credit_amt      => i_get_rec.trading_cost       -- 貸方金額(営業原価)
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
-      , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+        , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
-      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+        , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
-      );
+        );
 --
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
 --
-      ins_gl_interface_p(
-        ov_errbuf          => lv_errbuf
-      , ov_retcode         => lv_retcode
-      , ov_errmsg          => lv_errmsg
-      , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
-      , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
-      , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
+       ins_gl_interface_p(
+         ov_errbuf          => lv_errbuf
+       , ov_retcode         => lv_retcode
+       , ov_errmsg          => lv_errmsg
+       , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
+       , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
+       , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --      , in_debit_amt       => i_get_rec.selling_cost_amt   -- 借方金額(売上原価金額)
-      , in_debit_amt       => i_get_rec.trading_cost       -- 借方金額(営業原価)
+        , in_debit_amt       => i_get_rec.trading_cost       -- 借方金額(営業原価)
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
-      , in_credit_amt      => 0                            -- 貸方金額(0)
-      , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+        , in_credit_amt      => 0                            -- 貸方金額(0)
+        , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
-      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+        , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
-      );
+        );
 --
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+--
       END IF;
---
-    END IF;
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --    --==================================================================
 --    --＜仕訳パターン4＞集計後の売上原価金額<0(借方)
 --    --==================================================================
 --    IF( i_get_rec.selling_cost_amt < 0 ) THEN
 --
-    --==================================================================
-    --＜仕訳パターン4＞集計後の営業原価<0(借方)
-    --==================================================================
-    IF( i_get_rec.trading_cost < 0 ) THEN
+      --==================================================================
+      --＜仕訳パターン4＞集計後の営業原価<0(借方)
+      --==================================================================
+      IF( i_get_rec.trading_cost < 0 ) THEN
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
-      --================================================================
-      --ins_gl_interface_p呼び出し(一般会計OIF登録(A-6))
-      --================================================================
-      ins_gl_interface_p(
-        ov_errbuf          => lv_errbuf
-      , ov_retcode         => lv_retcode
-      , ov_errmsg          => lv_errmsg
-      , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
-      , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
-      , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
+        --================================================================
+        --ins_gl_interface_p呼び出し(一般会計OIF登録(A-6))
+        --================================================================
+        ins_gl_interface_p(
+          ov_errbuf          => lv_errbuf
+        , ov_retcode         => lv_retcode
+        , ov_errmsg          => lv_errmsg
+        , iv_division        => i_get_rec.delivery_base_code -- 部門(売上振替元拠点コード)
+        , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
+        , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --      , in_debit_amt       => i_get_rec.selling_cost_amt   -- 借方金額(売上原価金額)
 -- 2010/01/28 Ver.1.6 [障害E_本稼動_01297] SCS Y.Kuboshima MOD START
 --      , in_debit_amt       => i_get_rec.trading_cost       -- 借方金額(営業原価)
-        -- 金額の符号反転
-      , in_debit_amt       => -( i_get_rec.trading_cost )  -- 借方金額(営業原価)
+          -- 金額の符号反転
+        , in_debit_amt       => -( i_get_rec.trading_cost )  -- 借方金額(営業原価)
 -- 2010/01/28 Ver.1.6 [障害E_本稼動_01297] SCS Y.Kuboshima MOD END
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
-      , in_credit_amt      => 0                            -- 借方金額(0)
-      , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+       , in_credit_amt      => 0                            -- 借方金額(0)
+       , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
-      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+        , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
-      );
+        );
 --
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
-      END IF;
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
 --
-      ins_gl_interface_p(
-        ov_errbuf          => lv_errbuf
-      , ov_retcode         => lv_retcode
-      , ov_errmsg          => lv_errmsg
-      , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
-      , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
-      , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
-      , in_debit_amt       => 0                            -- 借方金額(0)
+        ins_gl_interface_p(
+          ov_errbuf          => lv_errbuf
+        , ov_retcode         => lv_retcode
+        , ov_errmsg          => lv_errmsg
+        , iv_division        => i_get_rec.base_code          -- 部門(売上振替先拠点コード)
+        , iv_account_class   => gv_acct_prod_sale_cost       -- 勘定科目(勘定科目コード(製品売上原価))
+        , iv_adminicle_class => gv_assi_prod_sale_cost       -- 補助科目(製品売上原価_受払表(製品原価))
+        , in_debit_amt       => 0                            -- 借方金額(0)
 -- Start 2009/05/20 Ver_1.2 T1_1099 M.Hiruta
 --      , in_credit_amt      => i_get_rec.selling_cost_amt   -- 貸方金額(売上原価金額)
 -- 2010/01/28 Ver.1.6 [障害E_本稼動_01297] SCS Y.Kuboshima MOD START
 --      , in_credit_amt      => i_get_rec.trading_cost       -- 貸方金額(営業原価)
-        -- 金額の符号反転
-      , in_credit_amt      => -( i_get_rec.trading_cost )  -- 貸方金額(営業原価)
+          -- 金額の符号反転
+        , in_credit_amt      => -( i_get_rec.trading_cost )  -- 貸方金額(営業原価)
 -- 2010/01/28 Ver.1.6 [障害E_本稼動_01297] SCS Y.Kuboshima MOD END
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
-      , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
+        , iv_base_code       => i_get_rec.base_code          -- 売上振替先拠点コード
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
-      , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
+        , iv_sales_staff_code => iv_sales_staff              -- 売上振替元顧客担当営業員
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
-      );
+        );
 --
-      IF( lv_retcode = cv_status_error ) THEN
-        RAISE global_process_expt;
+        IF( lv_retcode = cv_status_error ) THEN
+          RAISE global_process_expt;
+        END IF;
+--
       END IF;
---
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
     END IF;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 --
   EXCEPTION
     -- *** 処理部共通例外ハンドラ ***
@@ -1192,15 +1274,26 @@ AS
 --
   BEGIN
     ov_retcode := cv_status_normal;
-    --==================================================================
-    --登録付加情報取得
-    --==================================================================
-    gv_slip_number := xxcok_common_pkg.get_slip_number_f(
-                        cv_pkg_name -- 本機能のパッケージ名
-                      );
-    IF( gv_slip_number IS NULL ) THEN
-      RAISE get_slip_number_expt;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+      --通常品目の場合
+    IF ( i_get_rec.discount_flag = cv_discounts_item_flag_off ) THEN
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
+      --==================================================================
+      --登録付加情報取得
+      --==================================================================
+      gv_slip_number := xxcok_common_pkg.get_slip_number_f(
+                          cv_pkg_name -- 本機能のパッケージ名
+                        );
+      IF( gv_slip_number IS NULL ) THEN
+        RAISE get_slip_number_expt;
+      END IF;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+      gv_slip_num_normal_item := gv_slip_number; --製品売上高の伝票番号保持
+    --入金値引の場合
+    ELSE
+      gv_slip_number := gv_slip_num_normal_item; --製品売上高の伝票番号を使用する。
     END IF;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 --
   EXCEPTION
     -- *** 伝票番号取得エラー ***
@@ -1255,6 +1348,13 @@ AS
 --    lt_selling_from_cust  xxcok_selling_trns_info.selling_from_cust_code%TYPE;   -- 振替元顧客
 -- 2009/12/21 Ver.1.5 [障害E_本稼動_00562] SCS K.Nakamura DEL END
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD END
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+    lt_selling_date       xxcok_selling_trns_info.selling_date%TYPE;           -- 売上計上日チェック用
+    lt_cust_code          xxcok_selling_trns_info.selling_from_cust_code%TYPE; -- 売上振替元顧客コードチェック用
+    lt_base_code          xxcok_selling_trns_info.base_code%TYPE;              -- 売上振替先拠点コードチェック用
+    lt_deliv_base_code    xxcok_selling_trns_info.delivery_base_code%TYPE;     -- 売上振替元拠点コードチェック用
+    lb_summary_flag       BOOLEAN        DEFAULT NULL;                         -- 集計単位チェック用
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
     --===============================
     --ローカル例外
     --===============================
@@ -1262,13 +1362,50 @@ AS
 --
   BEGIN
     ov_retcode := cv_status_normal;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+    -- 変数の初期化
+    lt_selling_date     := NULL;
+    lt_cust_code        := NULL;
+    lt_base_code        := NULL;
+    lt_deliv_base_code  := NULL;
+    lb_summary_flag     := NULL;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 --
     <<journal_loop>>
     FOR g_get_journal_rec IN g_get_journal_cur LOOP
-      --================================================================
-      --対象件数
-      --================================================================
-      gn_target_cnt := gn_target_cnt + 1;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--      --================================================================
+--      --対象件数
+--      --================================================================
+--      gn_target_cnt := gn_target_cnt + 1;
+      -- 集計単位チェック
+      IF (
+           ( g_get_journal_rec.xsti_selling_date      = lt_selling_date )     -- 売上計上日
+           AND
+           ( g_get_journal_rec.selling_from_cust_code = lt_cust_code )        -- 売上振替元顧客コード
+           AND
+           ( g_get_journal_rec.base_code              = lt_base_code )        -- 売上振替先拠点コード
+           AND
+           ( g_get_journal_rec.delivery_base_code     = lt_deliv_base_code )  -- 売上振替元拠点コード
+         )
+         THEN
+        -- 集計単位フラグTRUE
+        lb_summary_flag := TRUE;
+      ELSE
+        --================================================================
+        --対象件数
+        --================================================================
+        -- 集計単位が変わったらカウントアップ
+        gn_target_cnt   := gn_target_cnt + 1;
+        -- 集計単位フラグFALSE
+        lb_summary_flag := FALSE;
+        -- チェック用変数に値を格納
+        lt_selling_date     := g_get_journal_rec.xsti_selling_date;       -- 売上計上日
+        lt_cust_code        := g_get_journal_rec.selling_from_cust_code;  -- 売上振替元顧客コード
+        lt_base_code        := g_get_journal_rec.base_code;               -- 売上振替先拠点コード
+        lt_deliv_base_code  := g_get_journal_rec.delivery_base_code;      -- 売上振替元拠点コード
+      END IF;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
       --================================================================
       --伝票番号初期化
       --================================================================
@@ -1302,8 +1439,28 @@ AS
         --================================================================
         --売上金額(税抜き)、営業原価が共に0以外の場合
         --================================================================
-        IF NOT( (     g_get_journal_rec.selling_amt     = 0 )
-        AND   ( NVL(g_get_journal_rec.trading_cost,0) = 0 ) ) THEN
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--        IF NOT( (     g_get_journal_rec.selling_amt     = 0 )
+--        AND   ( NVL(g_get_journal_rec.trading_cost,0) = 0 ) ) THEN
+        IF (
+             -- 通常品目
+             ( g_get_journal_rec.discount_flag = cv_discounts_item_flag_off )
+             AND
+             NOT(
+                  (     g_get_journal_rec.selling_amt     = 0 )
+                  AND
+                  ( NVL(g_get_journal_rec.trading_cost,0) = 0 )
+             )
+           )
+           OR
+           (
+             -- 入金値引
+             ( g_get_journal_rec.discount_flag = cv_discounts_item_flag_on )
+             AND
+             NOT( g_get_journal_rec.selling_amt     = 0 )
+           )
+           THEN
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
 -- End   2009/05/20 Ver_1.2 T1_1099 M.Hiruta
           --================================================================
           --get_entry_accession_info_p呼び出し(登録付加情報取得(A-4))
@@ -1348,27 +1505,55 @@ AS
         --==============================================================
         --成功件数カウント
         --==============================================================
-        gn_normal_cnt := gn_normal_cnt + 1;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--        gn_normal_cnt := gn_normal_cnt + 1;
+        -- 集計単位が変わったらカウントアップ
+        IF ( lb_summary_flag = FALSE ) THEN
+          -- 成功件数
+          gn_normal_cnt := gn_normal_cnt + 1;
+        END IF;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
 -- 2009/10/09 Ver.1.4 [障害E_T3_00632] SCS S.Moriyama ADD START
       ELSE
         --==============================================================
         --警告件数カウント
         --==============================================================
-        gn_warn_cnt := gn_warn_cnt + 1;
-        lv_out_msg := xxccp_common_pkg.get_msg(
-                        cv_appli_xxcok_name
-                      , cv_sales_staff_code_msg
-                      , cv_cust_code_token
-                      , g_get_journal_rec.selling_from_cust_code
-                      );
-        lb_retcode := xxcok_common_pkg.put_message_f( 
-                        FND_FILE.OUTPUT    -- 出力区分
-                      , lv_out_msg         -- メッセージ
-                      , 0                  -- 改行
-                      );
-        ov_errmsg  := NULL;
-        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
-        ov_retcode := cv_status_warn;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD START
+--        gn_warn_cnt := gn_warn_cnt + 1;
+--        lv_out_msg := xxccp_common_pkg.get_msg(
+--                        cv_appli_xxcok_name
+--                      , cv_sales_staff_code_msg
+--                      , cv_cust_code_token
+--                      , g_get_journal_rec.selling_from_cust_code
+--                      );
+--        lb_retcode := xxcok_common_pkg.put_message_f( 
+--                        FND_FILE.OUTPUT    -- 出力区分
+--                      , lv_out_msg         -- メッセージ
+--                      , 0                  -- 改行
+--                      );
+--        ov_errmsg  := NULL;
+--        ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
+--        ov_retcode := cv_status_warn;
+        -- 集計単位が変わったらカウントアップ
+        IF ( lb_summary_flag = FALSE ) THEN
+          -- 警告件数
+          gn_warn_cnt := gn_warn_cnt + 1;
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                          cv_appli_xxcok_name
+                        , cv_sales_staff_code_msg
+                        , cv_cust_code_token
+                        , g_get_journal_rec.selling_from_cust_code
+                        );
+          lb_retcode := xxcok_common_pkg.put_message_f( 
+                          FND_FILE.OUTPUT    -- 出力区分
+                        , lv_out_msg         -- メッセージ
+                        , 0                  -- 改行
+                        );
+          ov_errmsg  := NULL;
+          ov_errbuf  := SUBSTRB( cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg, 1, 5000 );
+          ov_retcode := cv_status_warn;
+        END IF;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki MOD END
       END IF;
 -- 2009/12/21 Ver.1.5 [障害E_本稼動_00562] SCS K.Nakamura DEL START
 --      lt_selling_from_cust := g_get_journal_rec.selling_from_cust_code;
@@ -1610,6 +1795,10 @@ AS
     gv_aff7_preliminary1_dummy  := FND_PROFILE.VALUE( cv_aff7_preliminary1_dummy  ); -- 予備1のダミー値
     gv_aff8_preliminary2_dummy  := FND_PROFILE.VALUE( cv_aff8_preliminary2_dummy  ); -- 予備2のダミー値
     gv_selling_without_tax_code := FND_PROFILE.VALUE( cv_selling_without_tax_code ); -- 課税売上外税消費税コード
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+    gv_payment_discounts_code   := FND_PROFILE.VALUE( cv_payment_discounts_code   ); -- 入金値引コード
+    gv_acct_payment_discount    := FND_PROFILE.VALUE( cv_acct_payment_discount    ); -- 勘定科目_入金時値引高
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
 --
     IF( gn_set_of_bks_id IS NULL ) THEN
       lv_token_value := TO_CHAR( cv_set_of_bks_id );
@@ -1670,6 +1859,17 @@ AS
     ELSIF( gv_selling_without_tax_code IS NULL ) THEN
       lv_token_value := cv_selling_without_tax_code;
       RAISE profile_expt;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD START
+    -- 入金値引コード
+    ELSIF( gv_payment_discounts_code IS NULL ) THEN
+      lv_token_value := cv_payment_discounts_code;
+      RAISE profile_expt;
+--
+    -- 勘定科目_入金時値引高
+    ELSIF( gv_acct_payment_discount IS NULL ) THEN
+      lv_token_value := cv_acct_payment_discount;
+      RAISE profile_expt;
+-- Ver.1.9 [障害E_本稼動_02011] SCSK S.Niki ADD END
     END IF;
     --==============================================================
     --バッチ名を取得
