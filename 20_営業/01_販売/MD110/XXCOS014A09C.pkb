@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A09C (body)
  * Description      : 百貨店送り状データ作成 
  * MD.050           : 百貨店送り状データ作成 MD050_COS_014_A09
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/03/19    1.2   Y.Tsubomatsu     [障害COS_158] パラメータの編集(百貨店コード,百貨店店舗コード,枝番)
  *  2009/04/17    1.3   T.Kitajima       [T1_0375] エラーメッセージ受注番号修正(伝票番号→受注No)
  *  2009/09/07    1.4   N.Maeda          [0000403] 検索キー項目の任意化に伴い枝番毎のループ処理追加
+ *  2009/11/05    1.5   N.Maeda          [E_T4_00123]社コードセット内容修正
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -2622,7 +2623,10 @@ AS
         l_data_tab_supply('BASE_CODE')                      := g_input_rec.base_code;                                 --拠点（部門）コード
         l_data_tab_supply('REPORT_CODE')                    := g_input_rec.report_code;                               --帳票コード
         l_data_tab_supply('REPORT_SHOW_NAME')               := g_input_rec.report_name;                               --帳票表示名
-        l_data_tab_supply('COMPANY_CODE')                   := g_input_rec.dept_code;                                 --社コード
+-- ************** 2009/11/05 1.5 N.Maeda MOD START *********** --
+--        l_data_tab_supply('COMPANY_CODE')                   := g_input_rec.dept_code;                                 --社コード
+        l_data_tab_supply('COMPANY_CODE')                   := l_cust_dept_rec.dept_shop_code;                        --社コード
+-- ************** 2009/11/05 1.5 N.Maeda MOD  END  *********** --
         l_data_tab_supply('COMPANY_NAME')                   := l_cust_dept_rec.dept_name;                             --社名（漢字）
         l_data_tab_supply('SHOP_CODE')                      := l_cust_shop_rec.store_code;                            --店コード
         l_data_tab_supply('SHOP_NAME')                      := l_cust_shop_rec.cust_store_name;                       --店名（漢字）
