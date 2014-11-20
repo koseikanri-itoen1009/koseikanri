@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *                                       [障害T1_1030] 倉替データ取得時の取得条件を追加
  *  2009/05/22    1.6   H.Sasaki         [障害T1_1162] 運送費算出処理の実行条件を追加（倉替のみ）
  *  2009/05/29    1.7   H.Sasaki         [T1_1113]伝票番号の桁数を修正
+ *  2009/06/03    1.8   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1075,7 +1076,7 @@ AS
              ,msib.segment1                  item_no                    -- 品目コード
              ,ximb.item_short_name           item_short_name            -- 略称
              ,mmt.transaction_quantity       transaction_qty            -- 取引数量
-      FROM    mtl_material_transactions mmt                             -- 資材取引
+      FROM    mtl_material_transactions  mmt                            -- 資材取引
              ,mtl_transaction_types      mtt                            -- 取引タイプマスタ
              ,mtl_secondary_inventories  msi1                           -- 保管場所マスタ1
              ,mtl_secondary_inventories  msi2                           -- 保管場所マスタ2
@@ -1097,6 +1098,10 @@ AS
                ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
         AND  mmt.subinventory_code               =  msi1.secondary_inventory_name
         AND  mmt.transfer_subinventory           =  msi2.secondary_inventory_name
+-- == 2009/06/03 V1.8 Added START ===============================================================
+        AND  mmt.organization_id                 =  msi1.organization_id
+        AND  mmt.transfer_organization_id        =  msi2.organization_id
+-- == 2009/06/03 V1.8 Added END   ===============================================================
         AND  msi1.attribute7                     =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
         AND  hca1.account_number                 =  msi1.attribute7
         AND  hca1.customer_class_code            =  cv_1
@@ -1145,6 +1150,9 @@ AS
           OR ( ( gr_param.a_day IS NOT NULL ) AND 
                ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
         AND  mmt.subinventory_code               =  msi.secondary_inventory_name
+-- == 2009/06/03 V1.8 Added START ===============================================================
+        AND  mmt.organization_id                 =  msi.organization_id
+-- == 2009/06/03 V1.8 Added END   ===============================================================
         AND  msi.attribute7                      =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
         AND  hca.account_number                  =  msi.attribute7
         AND  hca.customer_class_code             =  cv_1
@@ -1199,6 +1207,9 @@ AS
           OR ( ( gr_param.a_day IS NOT NULL ) AND 
                ( TO_CHAR ( mmt.transaction_date, 'YYYYMMDD' ) = gr_param.year_month||gr_param.a_day ) ) )
         AND  mmt.subinventory_code               =  msi.secondary_inventory_name
+-- == 2009/06/03 V1.8 Added START ===============================================================
+        AND  mmt.organization_id                 =  msi.organization_id
+-- == 2009/06/03 V1.8 Added END   ===============================================================
         AND  msi.attribute7                      =  gt_base_num_tab(gn_base_loop_cnt).hca_cust_num
         AND  hca.account_number                  =  msi.attribute7
         AND  hca.customer_class_code             =  cv_1

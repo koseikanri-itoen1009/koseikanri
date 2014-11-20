@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI009A04R(body)
  * Description      : 入出庫ジャーナルチェックリスト
  * MD.050           : 入出庫ジャーナルチェックリスト MD050_COI_009_A04
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2008/12/05    1.0   SCS.Tsuboi       新規作成
  *  2009/04/02    1.1   H.Sasaki         [T1_0002]VD預け先の顧客コード出力
  *  2009/05/15    1.2   H.Sasaki         [T1_0785]帳票出力のソート項目の設定値を変更
+ *  2009/06/03    1.3   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *
  *****************************************************************************************/
 --
@@ -948,6 +949,10 @@ AS
       AND  hca.customer_class_code                  =  cv_1
       AND  xhit.outside_subinv_code                 =  msi1.secondary_inventory_name
       AND  xhit.inside_subinv_code                  =  msi2.secondary_inventory_name(+)
+-- == 2009/06/03 V1.3 Added START ===============================================================
+      AND  msi1.organization_id                     =  gn_organization_id
+      AND  msi2.organization_id(+)                  =  gn_organization_id
+-- == 2009/06/03 V1.3 Added END   ===============================================================
       AND  msib.segment1                            =  xhit.item_code
       AND  msib.organization_id                     =  gn_organization_id
       AND  msib.segment1                            =  iimb.item_no

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A13C(body)
  * Description      : 棚卸減耗データ作成
  * MD.050           : 棚卸減耗データ作成 <MD050_COI_A13>
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/27    1.0   N.Abe            新規作成
  *  2009/05/08    1.1   T.Nakamura       [T1_0782]異常終了時に成功件数を0とするよう修正
+ *  2009/06/03    1.2   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
  *
  *****************************************************************************************/
 --
@@ -951,6 +952,9 @@ AS
       AND       xirm.inv_wear          <> 0                   --棚卸減耗 <> 0
       AND       xirm.inv_seq            = xic.inventory_seq
       AND       xirm.subinventory_code  = msi.secondary_inventory_name
+-- == 2009/06/03 V1.2 Added START ===============================================================
+      AND       xirm.organization_id    = msi.organization_id
+-- == 2009/06/03 V1.2 Added END   ===============================================================
       AND       msi.attribute5         <> cv_9                --棚卸対象 <> '9'(対象外)
       ORDER BY  xirm.base_code
                ,xirm.subinventory_code
