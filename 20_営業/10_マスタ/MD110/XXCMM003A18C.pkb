@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,7 @@ AS
  *  2009/12/25    1.11  Yutaka.Kuboshima 障害E_本稼動_00778の対応
  *  2010/01/08    1.12  Yutaka.Kuboshima 障害E_本稼動_00934の対応
  *  2010/02/25    1.13  Yutaka.Kuboshima 障害E_本稼動_01660の対応
+ *  2010/04/06    1.14  Yutaka.Kuboshima 障害E_本稼動_01965の対応
  *
  *****************************************************************************************/
 --
@@ -1445,6 +1446,11 @@ AS
       lv_mc_conf_info             := NULL;
       lv_mc_business_talk_details := NULL;
 -- 2009/06/09 Ver1.6 add end by Yutaka.Kuboshima
+--
+-- 2010/04/06 Ver1.14 E_本稼動_01965 add start by Yutaka.Kuboshima
+      price_list_rec              := NULL;
+      resource_location_code_rec  := NULL;
+-- 2010/04/06 Ver1.14 E_本稼動_01965 add end by Yutaka.Kuboshima
 --
     END LOOP cust_for_loop;
 --
