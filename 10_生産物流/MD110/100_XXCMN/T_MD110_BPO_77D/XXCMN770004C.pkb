@@ -7,7 +7,7 @@ AS
  * Description      : éÛï•ÇªÇÃëºé¿ê—ÉäÉXÉg
  * MD.050/070       : åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùí†ï[Issue1.0 (T_MD070_BPO_77D)
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -54,6 +54,9 @@ AS
  *  2008/12/11    1.17  N.Yoshida        ñ{î‘è·äQ580ëŒâû
  *  2008/12/13    1.18  T.Ohashi         ñ{î‘è·äQ580ëŒâû
  *  2008/12/14    1.19  N.Yoshida        ñ{î‘è·äQ669ëŒâû
+ *  2008/12/19    1.20  A.Shiina         ñ{î‘è·äQ812ëŒâû
+ *                                       é¿ç€å¥âøÇÃéÊìæêÊïœçX Åuxxcmn_lot_cost.unit_ploceÅvÅÀ
+ *                                                            Åuic_lots_mst.attribute7Åv 
  *****************************************************************************************/
 --
 --#######################  å≈íËÉOÉçÅ[ÉoÉãíËêîêÈåæïî START   #######################
@@ -176,7 +179,10 @@ AS
      ,use_by_date        ic_lots_mst.attribute3%TYPE                   -- è‹ñ°ä˙å¿
      ,cost_kbn           ic_item_mst_b.attribute15%TYPE                -- å¥âøä«óùãÊï™
      ,lot_kbn            xxcmn_lot_each_item_v.lot_ctl%TYPE            -- ÉçÉbÉgä«óùãÊï™
-     ,actual_unit_price  xxcmn_lot_cost.unit_ploce%TYPE                -- é¿ç€å¥âø
+-- 2008/12/19 v1.20 UPDATE START
+--     ,actual_unit_price  xxcmn_lot_cost.unit_ploce%TYPE                -- é¿ç€å¥âø
+     ,actual_unit_price  ic_lots_mst.attribute7%TYPE                   -- é¿ç€å¥âø
+-- 2008/12/19 v1.20 UPDATE END
      ,trans_qty          ic_tran_pnd.trans_qty%TYPE                    -- éÊà¯êîó 
      ,description        ic_lots_mst.attribute18%TYPE                  -- ìEóv
    ) ;
@@ -679,7 +685,10 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+-- 2008/12/19 v1.20 UPDATE START à»â∫ìØól
+--            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
+-- 2008/12/19 v1.20 UPDATE END
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -812,7 +821,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -939,7 +948,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -1067,7 +1076,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -1206,7 +1215,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -1338,7 +1347,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -1472,7 +1481,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -1606,7 +1615,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -1749,7 +1758,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -1875,7 +1884,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -2009,7 +2018,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 ADD START
 --                   ,gv_haiki,trn.trans_qty
@@ -2145,7 +2154,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -2288,7 +2297,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -2428,7 +2437,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -2573,7 +2582,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -2705,7 +2714,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE STAET
 --                   ,gv_haiki,trn.trans_qty
@@ -2851,7 +2860,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -2997,7 +3006,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -3139,7 +3148,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -3265,7 +3274,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -3405,7 +3414,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -3545,7 +3554,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -3687,7 +3696,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -3816,7 +3825,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -3948,7 +3957,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
             ,trn.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
@@ -4043,7 +4052,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -4147,7 +4156,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -4272,7 +4281,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -4403,7 +4412,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -4508,7 +4517,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -4634,7 +4643,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/13 v1.18 T.Ohashi mod start
 -- 2008/12/11 v1.17 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
@@ -4758,7 +4767,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -4859,7 +4868,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -4973,7 +4982,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/14 v1.18 UPDATE START
             ,CASE WHEN xrpm.reason_code = cv_reason_911
                   THEN trn.trans_qty
@@ -5096,7 +5105,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -5208,7 +5217,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -5330,7 +5339,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
             ,DECODE(xrpm.use_div_invent_dis
@@ -5447,7 +5456,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/03 H.Itou Mod Start ñ{î‘è·äQ#384
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -5556,7 +5565,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/03 H.Itou Mod Start ñ{î‘è·äQ#384
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -5666,7 +5675,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -5777,7 +5786,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -5911,7 +5920,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -6039,7 +6048,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -6168,7 +6177,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -6308,7 +6317,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -6441,7 +6450,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -6576,7 +6585,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -6711,7 +6720,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -6855,7 +6864,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -6982,7 +6991,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -7117,7 +7126,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 ADD START
 --                   ,gv_haiki,trn.trans_qty
@@ -7254,7 +7263,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -7398,7 +7407,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -7539,7 +7548,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -7685,7 +7694,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -7818,7 +7827,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE STAET
 --                   ,gv_haiki,trn.trans_qty
@@ -7965,7 +7974,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -8112,7 +8121,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,DECODE(xrpm.dealings_div_name
 -- 2008/11/11 v1.11 UPDATE START
 --                   ,gv_haiki,trn.trans_qty
@@ -8255,7 +8264,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -8382,7 +8391,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -8523,7 +8532,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -8664,7 +8673,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -8808,7 +8817,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -8938,7 +8947,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -9071,7 +9080,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
             ,trn.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
@@ -9167,7 +9176,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -9272,7 +9281,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -9398,7 +9407,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/11/11 v1.11 UPDATE START
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -9530,7 +9539,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -9636,7 +9645,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -9763,7 +9772,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/13 v1.18 T.Ohashi mod start
 -- 2008/12/11 v1.17 UPDATE START
 -- 2008/11/11 v1.11 UPDATE START
@@ -9888,7 +9897,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -9990,7 +9999,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/27 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -10105,7 +10114,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/14 v1.18 UPDATE START
             ,CASE WHEN xrpm.reason_code = cv_reason_911
                   THEN trn.trans_qty
@@ -10229,7 +10238,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -10342,7 +10351,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
@@ -10466,7 +10475,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/14 v1.18 UPDATE START
             ,CASE WHEN xrpm.reason_code = cv_reason_911
                   THEN trn.trans_qty
@@ -10589,7 +10598,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/03 H.Itou Mod Start ñ{î‘è·äQ#384
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -10699,7 +10708,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
 -- 2008/12/03 H.Itou Mod Start ñ{î‘è·äQ#384
 --            ,DECODE(xrpm.dealings_div_name
 --                   ,gv_haiki,trn.trans_qty
@@ -10810,7 +10819,7 @@ AS
             ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute3) use_by_date
             ,iimb.attribute15           cost_mng_clss
             ,iimb.lot_ctl               lot_ctl
-            ,xlc.unit_ploce             actual_unit_price
+            ,ilm.attribute7             actual_unit_price
             ,trn.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
 -- 2008/10/28 v1.11 UPDATE START
 --            ,DECODE(iimb.lot_ctl,gv_lot_n,NULL,ilm.attribute18) lot_desc
