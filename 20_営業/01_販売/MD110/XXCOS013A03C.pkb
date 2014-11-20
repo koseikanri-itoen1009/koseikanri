@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS013A03C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS013A03C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS013A03C (body)
  * Description      : 販売実績情報より仕訳情報を作成し、一般会計OIFに連携する処理
  * MD.050           : GLへの販売実績データ連携 MD050_COS_013_A03
- * Version          : 1.6
+ * Version          : 1.7
  * Program List
  * ----------------------------------------------------------------------------------------
  *  Name                   Description
@@ -32,6 +32,7 @@ AS
  *  2009/03/26    1.4   T.Kitajima       [T1_0106]警告処理対応
  *  2009/04/30    1.5   T.Miyata         [T1_0891]最終行に[/]付与
  *  2009/05/13    1.6   T.Kitajima       [T1_0764]OIF連携不正データ修正
+ *  2009/07/06    1.7   T.Tominaga       [0000235]対象データ無しメッセージのトークン削除
  *
  *****************************************************************************************/
 --
@@ -2757,6 +2758,9 @@ AS
     gn_target_cnt    := 0;                  -- 対象件数
     gn_normal_cnt    := 0;                  -- 正常件数
     gn_error_cnt     := 0;                  -- エラー件数
+--****************************** 2009/07/06 1.7 T.Tominaga ADL START ******************************
+    gn_warn_cnt      := 0;                  --スキップ件数
+--****************************** 2009/07/06 1.7 T.Tominaga ADL END   ******************************
 --
     --*********************************************
     --***      MD.050のフロー図を表す           ***
@@ -2840,15 +2844,19 @@ AS
 --
     ELSIF ( gn_target_cnt = 0 ) THEN
       -- 対象データ無しメッセージ
-      lv_tbl_nm  := xxccp_common_pkg.get_msg(
-                        iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
-                      , iv_name        => cv_tkn_sales_msg                -- メッセージID
-                    );
+--****************************** 2009/07/06 1.7 T.Tominaga DEL START ******************************
+--      lv_tbl_nm  := xxccp_common_pkg.get_msg(
+--                        iv_application => cv_xxcos_short_nm               -- アプリケーション短縮名
+--                      , iv_name        => cv_tkn_sales_msg                -- メッセージID
+--                    );
+--****************************** 2009/07/06 1.7 T.Tominaga DEL END   ******************************
       lv_errmsg  := xxccp_common_pkg.get_msg(
                         iv_application  => cv_xxcos_short_nm
                       , iv_name         => cv_no_data_msg
-                      , iv_token_name1  => cv_tkn_tbl_nm
-                      , iv_token_value1 => lv_tbl_nm
+--****************************** 2009/07/06 1.7 T.Tominaga DEL START ******************************
+--                      , iv_token_name1  => cv_tkn_tbl_nm
+--                      , iv_token_value1 => lv_tbl_nm
+--****************************** 2009/07/06 1.7 T.Tominaga DEL END   ******************************
                     );
       lv_errbuf  := lv_errmsg;
       lv_retcode := cv_status_warn;
