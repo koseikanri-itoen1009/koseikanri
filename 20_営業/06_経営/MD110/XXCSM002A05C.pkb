@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSM002A05C(body)
  * Description      : 商品計画単品別按分処理
  * MD.050           : 商品計画単品別按分処理 MD050_CSM_002_A05
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,9 +34,10 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/18    1.0   S.Son            新規作成
- *  2008/02/06    1.1   M.Ohtsuki       ［障害CT_014］販売実績無しの対応
- *  2009/02/18    1.2   M.Ohtsuki       ［障害CT_033］予算差分チェック不具合の対応
- *  2009/03/02    1.3   M.Ohtsuki       ［障害CT_073］値引き用品目不具合の対応
+ *  2008/02/06    1.1   M.Ohtsuki       ［障害CT_014］ 販売実績無しの対応
+ *  2009/02/18    1.2   M.Ohtsuki       ［障害CT_033］ 予算差分チェック不具合の対応
+ *  2009/03/02    1.3   M.Ohtsuki       ［障害CT_073］ 値引き用品目不具合の対応
+ *  2009/05/07    1.4   T.Tsukino       ［障害T1_0792］チェックリストに出力される新商品予算の粗利益額が不正
  *
   *****************************************************************************************/
 --
@@ -2136,6 +2137,10 @@ AS
     lt_kyoten_cd                  xxcsm_item_plan_headers.location_cd%TYPE;       --拠点コード    
     ld_sale_start_day             DATE;                                           --発売日(日付)
     lv_no_data_msg                VARCHAR2(100);                                  --実績データ無しメッセージ
+--//ADD START 2009/05/07 T1_0792 T.Tsukino
+    ln_new_plan_amount            NUMBER;                                         --新商品数量
+    ln_new_plan_credit            NUMBER;                                         --新商品掛率
+--//ADD END 2009/05/07 T1_0792 T.Tsukino
               
     -- ===============================
     -- ローカル・カーソル
@@ -2870,6 +2875,12 @@ AS
             --③新商品計画値算出
             ln_new_plan_sales := ln_new_sales_budget - NVL(ln_month_sales_sum,0);
             ln_new_plan_gross := ln_new_gross_budget - NVL(ln_month_gross_sum,0);
+--//ADD START 2009/05/07 T1_0792 T.Tsukino
+            -- 数量 = ( ( 売上 - 粗利益額 ) / 原価(1つあたり) )
+            ln_new_plan_amount :=  ROUND(((ln_new_plan_sales - ln_new_plan_gross) / ln_discrete_cost),0);
+            -- 掛率 = ( 売上 / ( 数量 * 定価) ) * 100        
+            ln_new_plan_credit :=  ROUND((ln_new_plan_sales / (ln_new_plan_amount * ln_fixed_price)) * 100,2);
+--//ADD END 2009/05/07 T1_0792 T.Tsukino
             --新商品登録値保存
             lr_new_plan_rec.item_plan_header_id    := lt_item_plan_header_id;         --商品計画ヘッダID
             lr_new_plan_rec.item_plan_lines_id     := NULL;
@@ -2879,10 +2890,16 @@ AS
             lr_new_plan_rec.item_kbn               := '2';                            --商品区分(2：新商品)
             lr_new_plan_rec.item_no                := lv_new_item_no;                 --商品コード
             lr_new_plan_rec.item_group_no          := lt_item_group_no;               --商品群コード
-            lr_new_plan_rec.amount                 := 0;                              --数量
+--//UPD START 2009/05/07 T1_0792 T.Tsukino
+            --lr_new_plan_rec.amount                 := 0;                              --数量
+            lr_new_plan_rec.amount                 := ln_new_plan_amount;               --数量
+--//UPD END 2009/05/07 T1_0792 T.Tsukino
             lr_new_plan_rec.sales_budget           := ln_new_plan_sales;              --売上金額
             lr_new_plan_rec.amount_gross_margin    := ln_new_plan_gross;              --粗利益(新)
-            lr_new_plan_rec.credit_rate            := 0;                              --掛率
+--//UPD START 2009/05/07 T1_0792 T.Tsukino
+            --lr_new_plan_rec.credit_rate            := 0;                              --掛率
+            lr_new_plan_rec.credit_rate            := ln_new_plan_credit;             --掛率
+--//UPD END 2009/05/07 T1_0792 T.Tsukino
             lr_new_plan_rec.margin_rate            := 0;                              --粗利益率(新)
             lr_new_plan_rec.created_by             := cn_created_by;                  --作成者
             lr_new_plan_rec.creation_date          := cd_creation_date;               --作成日
