@@ -7,6 +7,7 @@
 * “ú•t       Ver. ’S“–Ò       C³“à—e
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-19 1.0  SCS¬ì_     V‹Kì¬
+* 2009-04-02 1.1  SCS–ö•½’¼l   [STáŠQT1-0229]SPêŒˆƒwƒbƒ_IDÌ”Ô•û®C³
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -148,7 +149,25 @@ public class XxcsoSpDecRequestEOImpl extends OAPlsqlEntityImpl
 
         if ( headerEo.getEntityState() == STATUS_NEW )
         {
-          setSpDecisionHeaderId(headerEo.getSpDecisionHeaderId());
+// 2009-04-02 [STáŠQT1-0229] Mod Start
+//          setSpDecisionHeaderId(headerEo.getSpDecisionHeaderId());
+          Number spDecisionHeaderId = headerEo.getSpDecisionHeaderId();
+          if (spDecisionHeaderId.intValue() < 0)
+          {
+            spDecisionHeaderId
+              = getOADBTransaction()
+                  .getSequenceValue("XXCSO_SP_DECISION_HEADERS_S01");
+
+            // headerEo‚É‘Î‚µİ’è
+            headerEo.setSpDecisionHeaderId(spDecisionHeaderId);
+
+            XxcsoUtils.debug(
+              txn
+             ,"SP_DECISION_HEADER_ID:getSequence[" + spDecisionHeaderId + "]"
+            );
+          }
+          setSpDecisionHeaderId(spDecisionHeaderId);
+// 2009-04-02 [STáŠQT1-0229] Mod End
           break;
         }
       }

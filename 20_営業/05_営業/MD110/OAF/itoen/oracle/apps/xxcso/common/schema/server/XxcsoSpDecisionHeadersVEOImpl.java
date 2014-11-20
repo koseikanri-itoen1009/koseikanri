@@ -7,6 +7,7 @@
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-12-19 1.0  SCS小川浩     新規作成
+* 2009-04-02 1.1  SCS柳平直人   [ST障害T1-0229]SP専決ヘッダID採番方式修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.schema.server;
@@ -347,9 +348,24 @@ public class XxcsoSpDecisionHeadersVEOImpl extends OAPlsqlEntityImpl
 
     XxcsoUtils.debug(txn, "[START]");
 
-    // 登録する直前でシーケンス値を払い出します。
-    Number spDecisionHeaderId
-      = getOADBTransaction().getSequenceValue("XXCSO_SP_DECISION_HEADERS_S01");
+// 2009-04-02 [ST障害T1-0229] Mod Start
+//    // 登録する直前でシーケンス値を払い出します。
+//    Number spDecisionHeaderId
+//      = getOADBTransaction().getSequenceValue("XXCSO_SP_DECISION_HEADERS_S01");
+    Number spDecisionHeaderId = getSpDecisionHeaderId();
+    if (spDecisionHeaderId.intValue() < 0)
+    {
+      spDecisionHeaderId
+        = getOADBTransaction()
+            .getSequenceValue("XXCSO_SP_DECISION_HEADERS_S01");
+
+      XxcsoUtils.debug(
+        txn
+       ,"SP_DECISION_HEADER_ID:getSequence[" + spDecisionHeaderId + "]"
+      );
+
+    }
+// 2009-04-02 [ST障害T1-0229] Mod End
 
     setSpDecisionHeaderId(spDecisionHeaderId);
     setSpDecisionNumber(spDecisionHeaderId.toString());
