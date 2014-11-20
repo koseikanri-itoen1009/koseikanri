@@ -1,0 +1,2 @@
+CREATE INDEX xxinv.xxinv_mrih_n06 ON xxinv.xxinv_mov_req_instr_headers(status,freight_charge_class,item_class,notif_status,mov_type
+) TABLESPACE xxidx ;
