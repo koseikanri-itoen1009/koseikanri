@@ -7,7 +7,7 @@ AS
  * Description      : 在庫不足確認リスト
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_620
  * MD.070           : 在庫不足確認リスト T_MD070_BPO_62B
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,7 +30,9 @@ AS
  * ------------- ----- ------------------ -----------------------------------------------
  *  2008/05/05    1.0   Nozomi Kashiwagi   新規作成
  *  2008/07/08    1.1   Akiyoshi Shiina    禁則文字「'」「"」「<」「>」「＆」対応
- *
+ *  2008/09/26    1.2   Hitomi Itou        T_TE080_BPO_600 指摘38
+ *                                         T_TE080_BPO_600 指摘37
+ *                                         T_S_533(PT対応 動的SQLに変更)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -195,6 +197,9 @@ AS
     ,description       xoha.shipping_instructions%TYPE       -- 摘要
     ,conf_req          xlvv.meaning%TYPE                     -- 確認依頼
     ,de_prod_date      xola.warning_date%TYPE                -- 指定製造日
+-- 2008/09/26 H.Itou Add Start T_TE080_BPO_620指摘38
+    ,de_prod_date_sort xola.warning_date%TYPE                -- 指定製造日(ソート用)
+-- 2008/09/26 H.Itou Add End
     ,prod_date         ilm.attribute1%TYPE                   -- 製造日
     ,best_before_date  ilm.attribute3%TYPE                   -- 賞味期限
     ,native_sign       ilm.attribute2%TYPE                   -- 固有記号
@@ -414,798 +419,850 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル・カーソル ***
-    CURSOR cur_data
-    IS
-      ----------------------------------------------------------------------------------
-      -- 不足分取得(出荷)
-      ----------------------------------------------------------------------------------
-      SELECT
-        ----------------------------------------------------------------------------------
-        -- ヘッダ部
-        ----------------------------------------------------------------------------------
-         xilv.distribution_block      AS  block_cd            -- ブロックコード
-        ,xlvv1.meaning                AS  block_nm            -- ブロック名称
-        ,xoha.deliver_from            AS  shipped_cd          -- 出庫元コード
-        ,xilv.description             AS  shipped_nm          -- 出庫元名
-        ----------------------------------------------------------------------------------
-        -- 明細部
-        ----------------------------------------------------------------------------------
-        ,xola.shipping_item_code      AS  item_cd             -- 品目コード
-        ,ximv.item_name               AS  item_nm             -- 品目名称
-        ,xoha.schedule_ship_date      AS  shipped_date        -- 出庫日
-        ,xoha.schedule_arrival_date   AS  arrival_date        -- 着日
-        ,TO_CHAR(gc_biz_type_nm_ship) AS  biz_type            -- 業務種別
-        ,xoha.request_no              AS  req_move_no         -- 依頼No/移動No
-        ,xoha.head_sales_branch       AS  base_cd             -- 管轄拠点
-        ,xcav.party_short_name        AS  base_nm             -- 管轄拠点名称
-        ,xoha.deliver_to              AS  delivery_to_cd      -- 配送先/入庫先
-        ,xcasv.party_site_full_name   AS  delivery_to_nm      -- 配送先名称
-        ,SUBSTRB(xoha.shipping_instructions, 1, 40)
-                                      AS  description         -- 摘要
-        ,xlvv2.meaning                AS  conf_req            -- 確認依頼
-        ,CASE
-           WHEN xola.warning_date IS NULL THEN xola.designated_production_date
-           ELSE xola.warning_date
-         END                          AS  de_prod_date        -- 指定製造日
-        ,NULL                         AS  prod_date           -- 製造日
-        ,NULL                         AS  best_before_date    -- 賞味期限
-        ,NULL                         AS  native_sign         -- 固有記号
-        ,NULL                         AS  lot_no              -- ロットNo
-        ,NULL                         AS  lot_status          -- 品質
-        ,TO_NUMBER(0)                 AS  req_qty             -- 依頼数
-        ,CASE
-          WHEN ximv.conv_unit IS NULL THEN
-            (xola.quantity - NVL(xola.reserved_quantity, 0))
-          ELSE ((xola.quantity - NVL(xola.reserved_quantity, 0))
-               / TO_NUMBER(
-                   CASE
-                     WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases
-                     ELSE TO_CHAR(1)
-                   END)
-          )
-         END                          AS  ins_qty             -- 不足数
-        ,xcav.reserve_order           AS  reserve_order       -- 引当順
-        ,xoha.arrival_time_from       AS  time_from           -- 時間指定From
-      FROM
-         xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
-        ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
-        ,xxwsh_oe_transaction_types2_v  xottv   -- 03:受注タイプ情報
-        ,xxwsh_tightening_control       xtc     -- 04:出荷依頼締め管理(アドオン)
-        ,xxcmn_item_locations2_v        xilv    -- 05:OPM保管場所情報
-        ,xxcmn_cust_accounts2_v         xcav    -- 06:顧客情報(管轄拠点)
-        ,xxcmn_cust_acct_sites2_v       xcasv   -- 07:顧客サイト情報(出荷先)
-        ,xxcmn_item_mst2_v              ximv    -- 08:OPM品目情報
-        ,xxcmn_lookup_values2_v         xlvv1   -- 09:クイックコード(物流ブロック)
-        ,xxcmn_lookup_values2_v         xlvv2   -- 10:クイックコード(物流担当確認依頼区分)
-      WHERE
-        ----------------------------------------------------------------------------------
-        -- ヘッダ情報
-        ----------------------------------------------------------------------------------
-        -- 03:受注タイプ情報
-             xottv.shipping_shikyu_class  =  gc_ship_pro_kbn_s  -- 出荷支給区分:出荷依頼
-        AND  xottv.order_category_code   <>  gc_order_cate_ret  -- 受注カテゴリ:返品
-        -- 01:受注ヘッダアドオン
-        AND  xoha.order_type_id           =  xottv.transaction_type_id
-        AND  xoha.req_status             >=  gc_ship_status_close      -- ステータス:締め済み
-        AND  xoha.req_status             <>  gc_ship_status_delete     -- ステータス:取消
-        AND  xoha.latest_external_flag    =  gc_new_flg                -- 最新フラグ
-        AND  xoha.prod_class              =  gv_prod_kbn
-        AND  xoha.schedule_ship_date     >=  gt_param.shipped_date_from
-        AND  xoha.schedule_ship_date     <=  gt_param.shipped_date_to
-        -- 04:出荷依頼締め管理(アドオン)
-        AND  xoha.tightening_program_id  = xtc.concurrent_id(+)
-        AND  (gt_param.tighten_date IS NULL
-          OR  TRUNC(xtc.tightening_date)  = TRUNC(gt_param.tighten_date)
-        )
-        AND  (xtc.tightening_date IS NULL
-          OR (TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
-              >= NVL(gt_param.tighten_time_from, gc_time_start)
-            AND  TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
-              <= NVL(gt_param.tighten_time_to, gc_time_end)
-          )
-        )
-        -- 05:OPM保管場所情報
-        AND  xoha.deliver_from_id = xilv.inventory_location_id
-        AND  (
-              xilv.distribution_block = gt_param.block1
-          OR  xilv.distribution_block = gt_param.block2
-          OR  xilv.distribution_block = gt_param.block3
-          OR  xoha.deliver_from = gt_param.shipped_cd
-          OR  ( gt_param.block1 IS NULL
-            AND gt_param.block2 IS NULL
-            AND gt_param.block3 IS NULL
-            AND gt_param.shipped_cd IS NULL
-          )
-        )
-        -- 06:顧客情報(管轄拠点)
-        AND  xoha.head_sales_branch = xcav.party_number
-        -- 07:顧客サイト情報(出荷先)
-        AND  xoha.deliver_to_id     = xcasv.party_site_id
-        ----------------------------------------------------------------------------------
-        -- 明細情報
-        ----------------------------------------------------------------------------------
-        -- 02:受注明細アドオン
-        AND  xoha.order_header_id =  xola.order_header_id
-        AND  xola.delete_flag    <>  gc_delete_flg
-        -- 08:OPM品目情報
-        AND  (gt_param.item_cd IS NULL
-           OR xola.shipping_item_code = gt_param.item_cd
-        )
-        AND  xola.shipping_inventory_item_id = ximv.inventory_item_id
-        ----------------------------------------------------------------------------------
-        -- 不足分取得条件
-        ----------------------------------------------------------------------------------
-        AND  ((xola.quantity - xola.reserved_quantity) > 0
-           OR  xola.reserved_quantity IS NULL
-        )
-        ----------------------------------------------------------------------------------
-        -- クイックコード
-        ----------------------------------------------------------------------------------
-        -- 09:クイックコード(物流ブロック)
-        AND  xlvv1.lookup_type = gc_lookup_cd_block
-        AND  xilv.distribution_block = xlvv1.lookup_code
-        -- 10:クイックコード(物流担当確認依頼区分)
-        AND  xlvv2.lookup_type = gc_lookup_cd_conreq
-        AND  xoha.confirm_request_class = xlvv2.lookup_code
-        ----------------------------------------------------------------------------------
-        -- 適用日
-        ----------------------------------------------------------------------------------
-        -- 06:顧客情報(管轄拠点)
-        AND  xcav.start_date_active  <= xoha.schedule_ship_date
-        AND  (xcav.end_date_active IS NULL
-          OR  xcav.end_date_active  >= xoha.schedule_ship_date)
-        -- 07:顧客サイト情報(出荷先)
-        AND  xcasv.start_date_active <= xoha.schedule_ship_date
-        AND  (xcasv.end_date_active IS NULL
-          OR  xcasv.end_date_active >= xoha.schedule_ship_date)
-        -- 08:OPM品目情報
-        AND  ximv.start_date_active  <= xoha.schedule_ship_date
-        AND  (ximv.end_date_active IS NULL
-          OR  ximv.end_date_active  >= xoha.schedule_ship_date)
-      ----------------------------------------------------------------------------------
-      -- 不足無し分の取得(出荷)
-      ----------------------------------------------------------------------------------
-      UNION ALL
-      SELECT
-        ----------------------------------------------------------------------------------
-        -- ヘッダ部
-        ----------------------------------------------------------------------------------
-         xilv.distribution_block      AS  block_cd            -- ブロックコード
-        ,xlvv1.meaning                AS  block_nm            -- ブロック名称
-        ,xoha.deliver_from            AS  shipped_cd          -- 出庫元コード
-        ,xilv.description             AS  shipped_nm          -- 出庫元名
-        ----------------------------------------------------------------------------------
-        -- 明細部
-        ----------------------------------------------------------------------------------
-        ,xola.shipping_item_code      AS  item_cd             -- 品目コード
-        ,ximv.item_name               AS  item_nm             -- 品目名称
-        ,xoha.schedule_ship_date      AS  shipped_date        -- 出庫日
-        ,xoha.schedule_arrival_date   AS  arrival_date        -- 着日
-        ,TO_CHAR(gc_biz_type_nm_ship) AS  biz_type            -- 業務種別
-        ,xoha.request_no              AS  req_move_no         -- 依頼No/移動No
-        ,xoha.head_sales_branch       AS  base_cd             -- 管轄拠点
-        ,xcav.party_short_name        AS  base_nm             -- 管轄拠点名称
-        ,xoha.deliver_to              AS  delivery_to_cd      -- 配送先/入庫先
-        ,xcasv.party_site_full_name   AS  delivery_to_nm      -- 配送先名称
-        ,SUBSTRB(xoha.shipping_instructions, 1, 40) 
-                                      AS  description         -- 摘要
-        ,xlvv2.meaning                AS  conf_req            -- 確認依頼
-        ,CASE
-           WHEN xola.warning_date IS NULL THEN xola.designated_production_date
-           ELSE xola.warning_date
-         END                          AS  de_prod_date        -- 指定製造日
-        ,ilm.attribute1               AS  prod_date           -- 製造日
-        ,ilm.attribute3               AS  best_before_date    -- 賞味期限
-        ,ilm.attribute2               AS  native_sign         -- 固有記号
-        ,xmld.lot_no                  AS  lot_no              -- ロットNo
-        ,xlvv3.meaning                AS  lot_status          -- 品質
-        ,CASE
-          WHEN ximv.conv_unit IS NULL THEN xmld.actual_quantity
-          ELSE (xmld.actual_quantity / TO_NUMBER(
-                                         CASE
-                                           WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases
-                                           ELSE TO_CHAR(1)
-                                         END)
-          )
-         END                          AS  req_qty             -- 依頼数
-        ,TO_NUMBER(0)                 AS  ins_qty             -- 不足数
-        ,xcav.reserve_order           AS  reserve_order       -- 引当順
-        ,xoha.arrival_time_from       AS  time_from           -- 時間指定From
-      FROM
-        (
-          ----------------------------------------------------------------------------------
-          -- 引当済分を抽出するための不足品目の取得
-          ----------------------------------------------------------------------------------
-          SELECT
-             sub_data.shipped_cd         AS  shipped_cd    -- 出荷元保管場所(出庫元保管場所)
-            ,sub_data.item_cd            AS  item_cd       -- 出荷品目(品目)
-            ,MAX(sub_data.shipped_date)  AS  shipped_date  -- 出荷予定日(出庫予定日)
-          FROM
-            (
-              ----------------------------------------------------------------------------------
-              -- 引当済分を抽出するための不足品目の取得(出荷)
-              ----------------------------------------------------------------------------------
-              SELECT
-                 xoha.deliver_from             AS  shipped_cd    -- 出荷元保管場所
-                ,xola.shipping_item_code       AS  item_cd       -- 出荷品目
-                ,xoha.schedule_ship_date       AS  shipped_date  -- 出荷予定日
-              FROM
-                 xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
-                ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
-                ,xxwsh_oe_transaction_types2_v  xottv   -- 03:受注タイプ情報
-                ,xxwsh_tightening_control       xtc     -- 04:出荷依頼締め管理(アドオン)
-                ,xxcmn_item_locations2_v        xilv    -- 05:OPM保管場所情報
-              WHERE
-                ----------------------------------------------------------------------------------
-                -- ヘッダ情報
-                ----------------------------------------------------------------------------------
-                -- 01:受注ヘッダアドオン
-                     xoha.order_type_id       = xottv.transaction_type_id
-                AND  xoha.schedule_ship_date >= TO_DATE(gt_param.shipped_date_from)
-                AND  xoha.schedule_ship_date <= TO_DATE(gt_param.shipped_date_to)
-                AND  xoha.latest_external_flag  =  gc_new_flg    -- 最新フラグ
-                -- 04:出荷依頼締め管理(アドオン)
-                AND  xoha.tightening_program_id  = xtc.concurrent_id(+)
-                AND  (gt_param.tighten_date IS NULL
-                  OR  TRUNC(xtc.tightening_date)  = TRUNC(gt_param.tighten_date)
-                )
-                AND  (xtc.tightening_date IS NULL
-                  OR (TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
-                      >= NVL(gt_param.tighten_time_from, gc_time_start)
-                    AND  TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
-                      <= NVL(gt_param.tighten_time_to, gc_time_end)
-                  )
-                )
-                -- 05:OPM保管場所情報
-                AND  xoha.deliver_from_id = xilv.inventory_location_id
-                AND  (
-                      xilv.distribution_block = gt_param.block1
-                  OR  xilv.distribution_block = gt_param.block2
-                  OR  xilv.distribution_block = gt_param.block3
-                  OR  xoha.deliver_from = gt_param.shipped_cd
-                  OR  ( gt_param.block1 IS NULL
-                    AND gt_param.block2 IS NULL
-                    AND gt_param.block3 IS NULL
-                    AND gt_param.shipped_cd IS NULL
-                  )
-                )
-                ----------------------------------------------------------------------------------
-                -- 明細情報
-                ----------------------------------------------------------------------------------
-                -- 02:受注明細アドオン
-                AND  xoha.order_header_id = xola.order_header_id
-                AND  xola.delete_flag    <>  gc_delete_flg
-                -- 10:OPM品目情報
-                AND  (gt_param.item_cd IS NULL
-                   OR xola.shipping_item_code = gt_param.item_cd
-                )
-                AND  xoha.prod_class = gv_prod_kbn
-                ----------------------------------------------------------------------------------
-                -- 不足分取得条件
-                ----------------------------------------------------------------------------------
-                AND  ((xola.quantity - xola.reserved_quantity) > 0
-                   OR xola.reserved_quantity IS NULL
-                )
-              ----------------------------------------------------------------------------------
-              -- 引当済分を抽出するための不足品目の取得(移動)
-              ----------------------------------------------------------------------------------
-              UNION ALL
-              SELECT
-                 xmrih.shipped_locat_code       AS  shipped_cd   -- 出庫元保管場所
-                ,xmril.item_code                AS  item_cd      -- 品目
-                ,xmrih.schedule_ship_date       AS  shipped_date -- 出庫予定日
-              FROM
-                 xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ（アドオン）
-                ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細（アドオン）
-                ,xxcmn_item_locations2_v        xilv1     -- 03:OPM保管場所情報(出庫元)
-              WHERE
-                ----------------------------------------------------------------------------------
-                -- ヘッダ情報
-                ----------------------------------------------------------------------------------
-                -- 01:移動依頼/指示ヘッダ（アドオン）
-                     xmrih.schedule_ship_date >= TO_DATE(gt_param.shipped_date_from)
-                AND  xmrih.schedule_ship_date <= TO_DATE(gt_param.shipped_date_to)
-                -- 03:OPM保管場所情報(出庫元)
-                AND  xilv1.inventory_location_id = xmrih.shipped_locat_id
-                AND  (
-                      xilv1.distribution_block = gt_param.block1
-                  OR  xilv1.distribution_block = gt_param.block2
-                  OR  xilv1.distribution_block = gt_param.block3
-                  OR  xmrih.shipped_locat_code = gt_param.shipped_cd
-                  OR  (  gt_param.block1 IS NULL
-                    AND  gt_param.block2 IS NULL
-                    AND  gt_param.block3 IS NULL
-                    AND  gt_param.shipped_cd IS NULL
-                  )
-                )
-                ----------------------------------------------------------------------------------
-                -- 明細情報
-                ----------------------------------------------------------------------------------
-                -- 02:移動依頼/指示明細（アドオン）
-                AND  xmrih.mov_hdr_id = xmril.mov_hdr_id
-                AND  xmril.delete_flg  <>  gc_delete_flg
-                AND  (gt_param.item_cd IS NULL
-                  OR  xmril.item_code = gt_param.item_cd
-                )
-                AND  xmrih.item_class = gv_prod_kbn
-                ----------------------------------------------------------------------------------
-                -- 不足分取得条件
-                ----------------------------------------------------------------------------------
-                AND  ((xmril.instruct_qty - xmril.reserved_quantity) > 0
-                  OR  xmril.reserved_quantity IS NULL
-                )
-            ) sub_data
-          GROUP BY
-             sub_data.shipped_cd
-            ,sub_data.item_cd
-        )data
-        ,xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
-        ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
-        ,xxwsh_oe_transaction_types2_v  xottv   -- 03:受注タイプ情報
-        ,xxwsh_tightening_control       xtc     -- 04:出荷依頼締め管理(アドオン)
-        ,xxcmn_item_locations2_v        xilv    -- 05:OPM保管場所情報
-        ,xxcmn_cust_accounts2_v         xcav    -- 06:顧客情報(管轄拠点)
-        ,xxcmn_cust_acct_sites2_v       xcasv   -- 07:顧客サイト情報(出荷先)
-        ,xxcmn_item_mst2_v              ximv    -- 08:OPM品目情報
-        ,xxinv_mov_lot_details          xmld    -- 09:移動ロット詳細(アドオン)
-        ,ic_lots_mst                    ilm     -- 10:OPMロットマスタ
-        ,xxcmn_lookup_values2_v         xlvv1   -- 11:クイックコード(物流ブロック)
-        ,xxcmn_lookup_values2_v         xlvv2   -- 12:クイックコード(物流担当確認依頼区分)
-        ,xxcmn_lookup_values2_v         xlvv3   -- 13:クイックコード(ロットステータス)
-      WHERE
-        ----------------------------------------------------------------------------------
-        -- 不足品目情報絞込み条件
-        ----------------------------------------------------------------------------------
-             xoha.deliver_from         =  data.shipped_cd
-        AND  xola.shipping_item_code   =  data.item_cd
-        AND  xoha.schedule_ship_date  >=  TO_DATE(gt_param.shipped_date_from)
-        AND  xoha.schedule_ship_date  <=  TO_DATE(data.shipped_date)
-        AND  (xola.quantity - xola.reserved_quantity) <= 0
-        ----------------------------------------------------------------------------------
-        -- ヘッダ情報
-        ----------------------------------------------------------------------------------
-        -- 03:受注タイプ情報
-        AND  xottv.shipping_shikyu_class  =  gc_ship_pro_kbn_s  -- 出荷支給区分:出荷依頼
-        AND  xottv.order_category_code   <>  gc_order_cate_ret  -- 受注カテゴリ:返品
-        -- 01:受注ヘッダアドオン
-        AND  xoha.order_type_id           =  xottv.transaction_type_id
-        AND  xoha.req_status             >=  gc_ship_status_close      -- ステータス:締め済み
-        AND  xoha.req_status             <>  gc_ship_status_delete     -- ステータス:取消
-        AND  xoha.latest_external_flag    =  gc_new_flg                -- 最新フラグ
-        -- 04:出荷依頼締め管理(アドオン)
-        AND  xoha.tightening_program_id  = xtc.concurrent_id(+)
-        AND  (gt_param.tighten_date IS NULL
-          OR  TRUNC(xtc.tightening_date)  = TRUNC(gt_param.tighten_date)
-        )
-        AND  (xtc.tightening_date IS NULL
-          OR (TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
-              >= NVL(gt_param.tighten_time_from, gc_time_start)
-            AND  TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
-              <= NVL(gt_param.tighten_time_to, gc_time_end)
-          )
-        )
-        -- 05:OPM保管場所情報
-        AND  xoha.deliver_from_id = xilv.inventory_location_id
-        -- 06:顧客情報(管轄拠点)
-        AND  xoha.head_sales_branch = xcav.party_number
-        -- 07:顧客サイト情報(出荷先)
-        AND  xoha.deliver_to_id     = xcasv.party_site_id
-        ----------------------------------------------------------------------------------
-        -- 明細情報
-        ----------------------------------------------------------------------------------
-        -- 02:受注明細アドオン
-        AND  xoha.order_header_id  =  xola.order_header_id
-        AND  xola.delete_flag     <>  gc_delete_flg
-        -- 10:OPM品目情報
-        AND  xola.shipping_inventory_item_id = ximv.inventory_item_id
-        ----------------------------------------------------------------------------------
-        -- ロット情報
-        ----------------------------------------------------------------------------------
-        -- 09:移動ロット詳細(アドオン)
-        AND  xola.order_line_id = xmld.mov_line_id
-        AND  xmld.document_type_code = gc_doc_type_ship   -- 文書タイプ:出荷依頼
-        AND  xmld.record_type_code   = gc_rec_type_shiji  -- レコードタイプ:指示
-        -- 10:OPMロットマスタ
-        AND  xmld.lot_id   =  ilm.lot_id
-        AND  xmld.item_id  =  ilm.item_id
-        ----------------------------------------------------------------------------------
-        -- クイックコード
-        ----------------------------------------------------------------------------------
-        -- 11:クイックコード(物流ブロック)
-        AND  xlvv1.lookup_type = gc_lookup_cd_block
-        AND  xilv.distribution_block = xlvv1.lookup_code
-        -- 12:クイックコード(物流担当確認依頼区分)
-        AND  xlvv2.lookup_type = gc_lookup_cd_conreq
-        AND  xoha.confirm_request_class = xlvv2.lookup_code
-        -- 13:クイックコード(ロットステータス)
-        AND  xlvv3.lookup_type = gc_lookup_cd_lot_status
-        AND  ilm.attribute23 = xlvv3.lookup_code
-        ----------------------------------------------------------------------------------
-        -- 適用日
-        ----------------------------------------------------------------------------------
-        -- 06:顧客情報(管轄拠点)
-        AND  xcav.start_date_active  <= xoha.schedule_ship_date
-        AND  (xcav.end_date_active IS NULL
-          OR  xcav.end_date_active  >= xoha.schedule_ship_date)
-        -- 07:顧客サイト情報(出荷先)
-        AND  xcasv.start_date_active <= xoha.schedule_ship_date
-        AND  (xcasv.end_date_active IS NULL
-          OR  xcasv.end_date_active >= xoha.schedule_ship_date)
-        -- 08:OPM品目情報
-        AND  ximv.start_date_active  <= xoha.schedule_ship_date
-        AND  (ximv.end_date_active IS NULL
-          OR  ximv.end_date_active  >= xoha.schedule_ship_date)
-      ----------------------------------------------------------------------------------
-      -- 不足分取得(移動)
-      ----------------------------------------------------------------------------------
-      UNION ALL
-      SELECT
-        ----------------------------------------------------------------------------------
-        -- ヘッダ情報
-        ----------------------------------------------------------------------------------
-         xilv1.distribution_block     AS  block_cd            -- ブロックコード
-        ,xlvv1.meaning                AS  block_nm            -- ブロック名称
-        ,xmrih.shipped_locat_code     AS  shipped_cd          -- 出庫元コード
-        ,xilv1.description            AS  shipped_nm          -- 出庫元名
-        ----------------------------------------------------------------------------------
-        -- 明細情報
-        ----------------------------------------------------------------------------------
-        ,xmril.item_code              AS  item_cd             -- 品目コード
-        ,ximv.item_name               AS  item_nm             -- 品目名称
-        ,xmrih.schedule_ship_date     AS  shipped_date        -- 出庫日
-        ,xmrih.schedule_arrival_date  AS  arrival_date        -- 着日
-        ,TO_CHAR(gc_biz_type_nm_move) AS  biz_type            -- 業務種別
-        ,xmrih.mov_num                AS  req_move_no         -- 依頼No/移動No
-        ,NULL                         AS  base_cd             -- 管轄拠点
-        ,NULL                         AS  base_nm             -- 管轄拠点名称
-        ,xmrih.ship_to_locat_code     AS  delivery_to_cd      -- 配送先/入庫先
-        ,xilv2.description            AS  delivery_to_nm      -- 配送先名称
-        ,SUBSTRB(xmrih.description, 1, 40) AS  description    -- 摘要
-        ,NULL                         AS  conf_req            -- 確認依頼
-        ,CASE
-          WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date
-          ELSE xmril.warning_date
-         END                          AS  de_prod_date        -- 指定製造日
-        ,NULL                         AS  prod_date           -- 製造日
-        ,NULL                         AS  best_before_date    -- 賞味期限
-        ,NULL                         AS  native_sign         -- 固有記号
-        ,NULL                         AS  lot_no              -- ロットNo
-        ,NULL                         AS  lot_status          -- 品質
-        ,TO_NUMBER(0)                 AS  req_qty             -- 依頼数
-        ,CASE
-          WHEN ximv.conv_unit IS NULL THEN
-            (xmril.instruct_qty - NVL(xmril.reserved_quantity, 0))
-          ELSE ((xmril.instruct_qty - NVL(xmril.reserved_quantity, 0))
-                / TO_NUMBER(
-                    CASE
-                      WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases
-                      ELSE TO_CHAR(1)
-                    END)
-          )
-         END                          AS  ins_qty             -- 不足数
-        ,NULL                         AS  reserve_order       -- 引当順
-        ,xmrih.arrival_time_from      AS  time_from           -- 時間指定From
-      FROM
-         xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ（アドオン）
-        ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細（アドオン）
-        ,xxcmn_item_locations2_v        xilv1     -- 03:OPM保管場所情報(出庫元)
-        ,xxcmn_item_locations2_v        xilv2     -- 04:OPM保管場所情報(入庫先)
-        ,xxcmn_item_mst2_v              ximv      -- 05:OPM品目情報
-        ,xxcmn_lookup_values2_v         xlvv1     -- 06:クイックコード(物流ブロック)
-      WHERE
-        ----------------------------------------------------------------------------------
-        -- ヘッダ情報
-        ----------------------------------------------------------------------------------
-        -- 01:移動依頼/指示ヘッダ（アドオン）
-             xmrih.status               >=  gc_move_status_ordered  -- ステータス:依頼済
-        AND  xmrih.mov_type             <>  gc_mov_type_not_ship    -- 移動タイプ:積送なし
-        AND  xmrih.item_class            =  gv_prod_kbn
-        AND  xmrih.schedule_ship_date   >=  gt_param.shipped_date_from
-        AND  xmrih.schedule_ship_date   <=  gt_param.shipped_date_to
-        -- 03:OPM保管場所情報(出庫元)
-        AND  xilv1.inventory_location_id = xmrih.shipped_locat_id
-        AND  (
-              xilv1.distribution_block = gt_param.block1
-          OR  xilv1.distribution_block = gt_param.block2
-          OR  xilv1.distribution_block = gt_param.block3
-          OR  xmrih.shipped_locat_code = gt_param.shipped_cd
-          OR  (  gt_param.block1 IS NULL
-            AND  gt_param.block2 IS NULL
-            AND  gt_param.block3 IS NULL
-            AND  gt_param.shipped_cd IS NULL
-          )
-        )
-        -- 04:OPM保管場所情報(入庫先)
-        AND  xilv2.inventory_location_id = xmrih.ship_to_locat_id
-        ----------------------------------------------------------------------------------
-        -- 明細情報
-        ----------------------------------------------------------------------------------
-        -- 02:移動依頼/指示明細（アドオン）
-        AND  xmrih.mov_hdr_id   =  xmril.mov_hdr_id
-        AND  xmril.delete_flg  <>  gc_delete_flg
-        AND  (gt_param.item_cd IS NULL
-          OR  xmril.item_code = gt_param.item_cd
-        )
-        -- 05:OPM品目情報
-        AND  xmril.item_id = ximv.item_id
-        ----------------------------------------------------------------------------------
-        -- 不足分取得条件
-        ----------------------------------------------------------------------------------
-        AND  ((xmril.instruct_qty - xmril.reserved_quantity) > 0
-          OR  xmril.reserved_quantity IS NULL
-        )
-        ----------------------------------------------------------------------------------
-        -- クイックコード
-        ----------------------------------------------------------------------------------
-        -- 06:クイックコード(物流ブロック)
-        AND  xlvv1.lookup_type = gc_lookup_cd_block
-        AND  xilv1.distribution_block = xlvv1.lookup_code
-        ----------------------------------------------------------------------------------
-        -- 適用日
-        ----------------------------------------------------------------------------------
-        -- 05:OPM品目情報
-        AND  ximv.start_date_active  <= xmrih.schedule_ship_date
-        AND  (ximv.end_date_active IS NULL
-          OR  ximv.end_date_active  >= xmrih.schedule_ship_date)
-      ----------------------------------------------------------------------------------
-      -- 不足無し分の取得(移動)
-      ----------------------------------------------------------------------------------
-      UNION ALL
-      SELECT
-        ----------------------------------------------------------------------------------
-        -- ヘッダ情報
-        ----------------------------------------------------------------------------------
-         xilv1.distribution_block     AS  block_cd            -- ブロックコード
-        ,xlvv1.meaning                AS  block_nm            -- ブロック名称
-        ,xmrih.shipped_locat_code     AS  shipped_cd          -- 出庫元コード
-        ,xilv1.description            AS  shipped_nm          -- 出庫元名
-        ----------------------------------------------------------------------------------
-        -- 明細情報
-        ----------------------------------------------------------------------------------
-        ,xmril.item_code              AS  item_cd             -- 品目コード
-        ,ximv.item_name               AS  item_nm             -- 品目名称
-        ,xmrih.schedule_ship_date     AS  shipped_date        -- 出庫日
-        ,xmrih.schedule_arrival_date  AS  arrival_date        -- 着日
-        ,TO_CHAR(gc_biz_type_nm_move) AS  biz_type            -- 業務種別
-        ,xmrih.mov_num                AS  req_move_no         -- 依頼No/移動No
-        ,NULL                         AS  base_cd             -- 管轄拠点
-        ,NULL                         AS  base_nm             -- 管轄拠点名称
-        ,xmrih.ship_to_locat_code     AS  delivery_to_cd      -- 配送先/入庫先
-        ,xilv2.description            AS  delivery_to_nm      -- 配送先名称
-        ,SUBSTRB(xmrih.description, 1, 40) AS  description    -- 摘要
-        ,NULL                         AS  conf_req            -- 確認依頼
-        ,CASE
-          WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date
-          ELSE xmril.warning_date
-         END                          AS  de_prod_date        -- 指定製造日
-        ,ilm.attribute1               AS  prod_date           -- 製造日
-        ,ilm.attribute3               AS  best_before_date    -- 賞味期限
-        ,ilm.attribute2               AS  native_sign         -- 固有記号
-        ,xmld.lot_no                  AS  lot_no              -- ロットNo
-        ,xlvv2.meaning                AS  lot_status          -- 品質
-        ,CASE
-          WHEN ximv.conv_unit IS NULL THEN xmld.actual_quantity
-          ELSE (xmld.actual_quantity / TO_NUMBER(
-                                         CASE
-                                           WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases
-                                           ELSE TO_CHAR(1)
-                                         END)
-          )
-         END                          AS  req_qty             -- 依頼数
-        ,TO_NUMBER(0)                 AS  ins_qty             -- 不足数
-        ,NULL                         AS  reserve_order       -- 引当順
-        ,xmrih.arrival_time_from      AS  time_from           -- 時間指定From
-      FROM
-        (
-          ----------------------------------------------------------------------------------
-          -- 引当済分を抽出するための不足品目の取得（出荷）
-          ----------------------------------------------------------------------------------
-          SELECT
-             sub_data.shipped_cd         AS  shipped_cd    -- 出荷元保管場所
-            ,sub_data.item_cd            AS  item_cd       -- 出荷品目
-            ,MAX(sub_data.shipped_date)  AS  shipped_date  -- 出荷予定日
-          FROM
-            (
-              ----------------------------------------------------------------------------------
-              -- 引当済分を抽出するための不足品目の取得（出荷）
-              ----------------------------------------------------------------------------------
-              SELECT
-                 xoha.deliver_from             AS  shipped_cd    -- 出荷元保管場所
-                ,xola.shipping_item_code       AS  item_cd       -- 出荷品目
-                ,xoha.schedule_ship_date       AS  shipped_date
-              FROM
-                 xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
-                ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
-                ,xxwsh_oe_transaction_types2_v  xottv   -- 03:受注タイプ情報
-                ,xxwsh_tightening_control       xtc     -- 04:出荷依頼締め管理(アドオン)
-                ,xxcmn_item_locations2_v        xilv    -- 05:OPM保管場所情報
-              WHERE
-                ----------------------------------------------------------------------------------
-                -- ヘッダ情報
-                ----------------------------------------------------------------------------------
-                -- 01:受注ヘッダアドオン
-                     xoha.order_type_id       = xottv.transaction_type_id
-                AND  xoha.schedule_ship_date >= gt_param.shipped_date_from
-                AND  xoha.schedule_ship_date <= gt_param.shipped_date_to
-                AND  xoha.latest_external_flag  =  gc_new_flg       -- 最新フラグ
-                -- 04:出荷依頼締め管理(アドオン)
-                AND  xoha.tightening_program_id  = xtc.concurrent_id(+)
-                AND  (gt_param.tighten_date IS NULL
-                  OR  TRUNC(xtc.tightening_date)  = TRUNC(gt_param.tighten_date)
-                )
-                AND  (xtc.tightening_date IS NULL
-                  OR (TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
-                      >= NVL(gt_param.tighten_time_from, gc_time_start)
-                    AND  TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
-                      <= NVL(gt_param.tighten_time_to, gc_time_end)
-                  )
-                )
-                -- 05:OPM保管場所情報
-                AND  xoha.deliver_from_id = xilv.inventory_location_id
-                AND  (
-                      xilv.distribution_block = gt_param.block1
-                  OR  xilv.distribution_block = gt_param.block2
-                  OR  xilv.distribution_block = gt_param.block3
-                  OR  xoha.deliver_from = gt_param.shipped_cd
-                  OR  ( gt_param.block1 IS NULL
-                    AND gt_param.block2 IS NULL
-                    AND gt_param.block3 IS NULL
-                    AND gt_param.shipped_cd IS NULL
-                  )
-                )
-                ----------------------------------------------------------------------------------
-                -- 明細情報
-                ----------------------------------------------------------------------------------
-                -- 02:受注明細アドオン
-                AND  xoha.order_header_id = xola.order_header_id
-                AND  xola.delete_flag    <>  gc_delete_flg
-                -- 10:OPM品目情報
-                AND  (gt_param.item_cd IS NULL
-                   OR xola.shipping_item_code = gt_param.item_cd
-                )
-                AND  xoha.prod_class = gv_prod_kbn
-                ----------------------------------------------------------------------------------
-                -- 不足分取得条件
-                ----------------------------------------------------------------------------------
-                AND  ((xola.quantity - xola.reserved_quantity) > 0
-                   OR xola.reserved_quantity IS NULL
-                )
-                ----------------------------------------------------------------------------------
-                -- 適用日
-                ----------------------------------------------------------------------------------
-                -- 05:OPM保管場所情報
-                AND  xilv.date_from <= xoha.schedule_ship_date
-                AND  (xilv.date_to IS NULL
-                  OR  xilv.date_to >= xoha.schedule_ship_date)
-              ----------------------------------------------------------------------------------
-              -- 引当済分を抽出するための不足品目の取得(移動)
-              ----------------------------------------------------------------------------------
-              UNION ALL
-              SELECT
-                 xmrih.shipped_locat_code       AS  shipped_cd   -- 出庫元保管場所
-                ,xmril.item_code                AS  item_cd      -- 品目
-                ,xmrih.schedule_ship_date       AS  shipped_date -- 出庫予定日
-              FROM
-                 xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ（アドオン）
-                ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細（アドオン）
-                ,xxcmn_item_locations2_v        xilv1     -- 03:OPM保管場所情報(出庫元)
-              WHERE
-                ----------------------------------------------------------------------------------
-                -- ヘッダ情報
-                ----------------------------------------------------------------------------------
-                -- 01:移動依頼/指示ヘッダ（アドオン）
-                     xmrih.schedule_ship_date >= gt_param.shipped_date_from
-                AND  xmrih.schedule_ship_date <= gt_param.shipped_date_to
-                -- 03:OPM保管場所情報(出庫元)
-                AND  xilv1.inventory_location_id = xmrih.shipped_locat_id
-                AND  (
-                      xilv1.distribution_block = gt_param.block1
-                  OR  xilv1.distribution_block = gt_param.block2
-                  OR  xilv1.distribution_block = gt_param.block3
-                  OR  xmrih.shipped_locat_code = gt_param.shipped_cd
-                  OR  (  gt_param.block1 IS NULL
-                    AND  gt_param.block2 IS NULL
-                    AND  gt_param.block3 IS NULL
-                    AND  gt_param.shipped_cd IS NULL
-                  )
-                )
-                ----------------------------------------------------------------------------------
-                -- 明細情報
-                ----------------------------------------------------------------------------------
-                -- 02:移動依頼/指示明細（アドオン）
-                AND  xmrih.mov_hdr_id = xmril.mov_hdr_id
-                AND  xmril.delete_flg  <>  gc_delete_flg
-                AND  (gt_param.item_cd IS NULL
-                  OR  xmril.item_code = gt_param.item_cd
-                )
-                AND  xmrih.item_class = gv_prod_kbn
-                ----------------------------------------------------------------------------------
-                -- 不足分取得条件
-                ----------------------------------------------------------------------------------
-                AND  ((xmril.instruct_qty - xmril.reserved_quantity) > 0
-                  OR  xmril.reserved_quantity IS NULL
-                )
-            ) sub_data
-          GROUP BY
-             sub_data.shipped_cd
-            ,sub_data.item_cd
-        ) data
-        ,xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ（アドオン）
-        ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細（アドオン）
-        ,xxcmn_item_locations2_v        xilv1     -- 03:OPM保管場所情報(出庫元)
-        ,xxcmn_item_locations2_v        xilv2     -- 04:OPM保管場所情報(入庫先)
-        ,xxcmn_item_mst2_v              ximv      -- 05:OPM品目情報
-        ,xxinv_mov_lot_details          xmld      -- 06:移動ロット詳細(アドオン)
-        ,ic_lots_mst                    ilm       -- 07:OPMロットマスタ
-        ,xxcmn_lookup_values2_v         xlvv1     -- 08:クイックコード(物流ブロック)
-        ,xxcmn_lookup_values2_v         xlvv2     -- 09:クイックコード(ロットステータス)
-      WHERE
-        ----------------------------------------------------------------------------------
-        -- 不足品目情報絞込み条件
-        ----------------------------------------------------------------------------------
-             xmrih.shipped_locat_code   =  data.shipped_cd
-        AND  xmril.item_code            =  data.item_cd
-        AND  xmrih.schedule_ship_date  >=  gt_param.shipped_date_from
-        AND  xmrih.schedule_ship_date  <=  data.shipped_date
-        AND  (xmril.instruct_qty - xmril.reserved_quantity) <= 0
-        ----------------------------------------------------------------------------------
-        -- ヘッダ情報
-        ----------------------------------------------------------------------------------
-        -- 01:移動依頼/指示ヘッダ（アドオン）
-        AND  xmrih.status    >=  gc_move_status_ordered  -- ステータス:依頼済
-        AND  xmrih.mov_type  <>  gc_mov_type_not_ship    -- 移動タイプ:積送なし
-        -- 03:OPM保管場所情報(出庫元)
-        AND  xilv1.inventory_location_id = xmrih.shipped_locat_id
-        -- 04:OPM保管場所情報(入庫先)
-        AND  xilv2.inventory_location_id = xmrih.ship_to_locat_id
-        ----------------------------------------------------------------------------------
-        -- 明細情報
-        ----------------------------------------------------------------------------------
-        -- 02:移動依頼/指示明細（アドオン）
-        AND  xmrih.mov_hdr_id  =  xmril.mov_hdr_id
-        AND  xmril.delete_flg  <>  gc_delete_flg
-        -- 05:OPM品目情報
-        AND  xmril.item_id = ximv.item_id
-        ----------------------------------------------------------------------------------
-        -- ロット情報
-        ----------------------------------------------------------------------------------
-        -- 06:移動ロット詳細(アドオン)
-        AND  xmril.mov_line_id =  xmld.mov_line_id
-        AND  xmril.item_id     =  xmld.item_id
-        AND  xmld.document_type_code = gc_doc_type_move   -- 文書タイプ:移動
-        AND  xmld.record_type_code   = gc_rec_type_shiji  -- レコードタイプ:指示
-        -- 07:OPMロットマスタ
-        AND  xmld.lot_id   =  ilm.lot_id
-        AND  xmld.item_id  =  ilm.item_id
-        ----------------------------------------------------------------------------------
-        -- クイックコード
-        ----------------------------------------------------------------------------------
-        -- 08:クイックコード(物流ブロック)
-        AND  xlvv1.lookup_type = gc_lookup_cd_block
-        AND  xilv1.distribution_block = xlvv1.lookup_code
-        -- 09:クイックコード(ロットステータス)
-        AND  xlvv2.lookup_type = gc_lookup_cd_lot_status
-        AND  ilm.attribute23 = xlvv2.lookup_code
-        ----------------------------------------------------------------------------------
-        -- 適用日
-        ----------------------------------------------------------------------------------
-        -- 05:OPM品目情報
-        AND  ximv.start_date_active  <= xmrih.schedule_ship_date
-        AND  (ximv.end_date_active IS NULL
-          OR  ximv.end_date_active  >= xmrih.schedule_ship_date)
-      ORDER BY
-         block_cd       ASC      -- 01:ブロック
-        ,shipped_cd     ASC      -- 02:出庫元
-        ,item_cd        ASC      -- 03:品目
-        ,shipped_date   ASC      -- 04:出庫日
-        ,arrival_date   ASC      -- 05:着日
-        ,de_prod_date   DESC     -- 06:指定製造日
-        ,reserve_order  ASC      -- 07:引当順
-        ,base_cd        ASC      -- 08:管轄拠点
-        ,time_from      ASC      -- 09:時間指定From
-        ,req_move_no    ASC      -- 10:依頼No/移動No
-        ,lot_no         ASC      -- 11:ロットNo
-      ;
+-- 2008/09/26 H.Itou Del Start T_S_533(PT対応)
+--    CURSOR cur_data
+--    IS
+--      ----------------------------------------------------------------------------------
+--      -- 不足分取得(出荷)
+--      ----------------------------------------------------------------------------------
+--      SELECT
+--        ----------------------------------------------------------------------------------
+--        -- ヘッダ部
+--        ----------------------------------------------------------------------------------
+--         xilv.distribution_block      AS  block_cd            -- ブロックコード
+--        ,xlvv1.meaning                AS  block_nm            -- ブロック名称
+--        ,xoha.deliver_from            AS  shipped_cd          -- 出庫元コード
+--        ,xilv.description             AS  shipped_nm          -- 出庫元名
+--        ----------------------------------------------------------------------------------
+--        -- 明細部
+--        ----------------------------------------------------------------------------------
+--        ,xola.shipping_item_code      AS  item_cd             -- 品目コード
+--        ,ximv.item_name               AS  item_nm             -- 品目名称
+--        ,xoha.schedule_ship_date      AS  shipped_date        -- 出庫日
+--        ,xoha.schedule_arrival_date   AS  arrival_date        -- 着日
+--        ,TO_CHAR(gc_biz_type_nm_ship) AS  biz_type            -- 業務種別
+--        ,xoha.request_no              AS  req_move_no         -- 依頼No/移動No
+--        ,xoha.head_sales_branch       AS  base_cd             -- 管轄拠点
+--        ,xcav.party_short_name        AS  base_nm             -- 管轄拠点名称
+--        ,xoha.deliver_to              AS  delivery_to_cd      -- 配送先/入庫先
+--        ,xcasv.party_site_full_name   AS  delivery_to_nm      -- 配送先名称
+--        ,SUBSTRB(xoha.shipping_instructions, 1, 40)
+--                                      AS  description         -- 摘要
+--        ,xlvv2.meaning                AS  conf_req            -- 確認依頼
+--        ,CASE
+--           WHEN xola.warning_date IS NULL THEN xola.designated_production_date
+--           ELSE xola.warning_date
+--         END                          AS  de_prod_date        -- 指定製造日
+--        ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE('19000101', 'YYYYMMDD'))) 
+--                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--        ,NULL                         AS  prod_date           -- 製造日
+--        ,NULL                         AS  best_before_date    -- 賞味期限
+--        ,NULL                         AS  native_sign         -- 固有記号
+--        ,NULL                         AS  lot_no              -- ロットNo
+--        ,NULL                         AS  lot_status          -- 品質
+---- 2008/09/26 H.Itou Mod Start T_TE080_BPO_620指摘37対応
+----        ,TO_NUMBER(0)                 AS  req_qty             -- 依頼数
+--        ,CASE 
+--           WHEN ximv.conv_unit IS NULL THEN xola.quantity 
+--           ELSE                            (xola.quantity / ximv.num_of_cases) 
+--         END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘37対応
+---- 2008/09/26 H.Itou Mod End
+--        ,CASE
+--          WHEN ximv.conv_unit IS NULL THEN
+--            (xola.quantity - NVL(xola.reserved_quantity, 0))
+--          ELSE ((xola.quantity - NVL(xola.reserved_quantity, 0))
+--               / TO_NUMBER(
+--                   CASE
+--                     WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases
+--                     ELSE TO_CHAR(1)
+--                   END)
+--          )
+--         END                          AS  ins_qty             -- 不足数
+--        ,xcav.reserve_order           AS  reserve_order       -- 引当順
+--        ,xoha.arrival_time_from       AS  time_from           -- 時間指定From
+--      FROM
+--         xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
+--        ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
+--        ,xxwsh_oe_transaction_types2_v  xottv   -- 03:受注タイプ情報
+--        ,xxwsh_tightening_control       xtc     -- 04:出荷依頼締め管理(アドオン)
+--        ,xxcmn_item_locations2_v        xilv    -- 05:OPM保管場所情報
+--        ,xxcmn_cust_accounts2_v         xcav    -- 06:顧客情報(管轄拠点)
+--        ,xxcmn_cust_acct_sites2_v       xcasv   -- 07:顧客サイト情報(出荷先)
+--        ,xxcmn_item_mst2_v              ximv    -- 08:OPM品目情報
+--        ,xxcmn_lookup_values2_v         xlvv1   -- 09:クイックコード(物流ブロック)
+--        ,xxcmn_lookup_values2_v         xlvv2   -- 10:クイックコード(物流担当確認依頼区分)
+--      WHERE
+--        ----------------------------------------------------------------------------------
+--        -- ヘッダ情報
+--        ----------------------------------------------------------------------------------
+--        -- 03:受注タイプ情報
+--             xottv.shipping_shikyu_class  =  gc_ship_pro_kbn_s  -- 出荷支給区分:出荷依頼
+--        AND  xottv.order_category_code   <>  gc_order_cate_ret  -- 受注カテゴリ:返品
+--        -- 01:受注ヘッダアドオン
+--        AND  xoha.order_type_id           =  xottv.transaction_type_id
+--        AND  xoha.req_status             >=  gc_ship_status_close      -- ステータス:締め済み
+--        AND  xoha.req_status             <>  gc_ship_status_delete     -- ステータス:取消
+--        AND  xoha.latest_external_flag    =  gc_new_flg                -- 最新フラグ
+--        AND  xoha.prod_class              =  gv_prod_kbn
+--        AND  xoha.schedule_ship_date     >=  gt_param.shipped_date_from
+--        AND  xoha.schedule_ship_date     <=  gt_param.shipped_date_to
+--        -- 04:出荷依頼締め管理(アドオン)
+--        AND  xoha.tightening_program_id  = xtc.concurrent_id(+)
+--        AND  (gt_param.tighten_date IS NULL
+--          OR  TRUNC(xtc.tightening_date)  = TRUNC(gt_param.tighten_date)
+--        )
+--        AND  (xtc.tightening_date IS NULL
+--          OR (TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
+--              >= NVL(gt_param.tighten_time_from, gc_time_start)
+--            AND  TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
+--              <= NVL(gt_param.tighten_time_to, gc_time_end)
+--          )
+--        )
+--        -- 05:OPM保管場所情報
+--        AND  xoha.deliver_from_id = xilv.inventory_location_id
+--        AND  (
+--              xilv.distribution_block = gt_param.block1
+--          OR  xilv.distribution_block = gt_param.block2
+--          OR  xilv.distribution_block = gt_param.block3
+--          OR  xoha.deliver_from = gt_param.shipped_cd
+--          OR  ( gt_param.block1 IS NULL
+--            AND gt_param.block2 IS NULL
+--            AND gt_param.block3 IS NULL
+--            AND gt_param.shipped_cd IS NULL
+--          )
+--        )
+--        -- 06:顧客情報(管轄拠点)
+--        AND  xoha.head_sales_branch = xcav.party_number
+--        -- 07:顧客サイト情報(出荷先)
+--        AND  xoha.deliver_to_id     = xcasv.party_site_id
+--        ----------------------------------------------------------------------------------
+--        -- 明細情報
+--        ----------------------------------------------------------------------------------
+--        -- 02:受注明細アドオン
+--        AND  xoha.order_header_id =  xola.order_header_id
+--        AND  xola.delete_flag    <>  gc_delete_flg
+--        -- 08:OPM品目情報
+--        AND  (gt_param.item_cd IS NULL
+--           OR xola.shipping_item_code = gt_param.item_cd
+--        )
+--        AND  xola.shipping_inventory_item_id = ximv.inventory_item_id
+--        ----------------------------------------------------------------------------------
+--        -- 不足分取得条件
+--        ----------------------------------------------------------------------------------
+--        AND  ((xola.quantity - xola.reserved_quantity) > 0
+--           OR  xola.reserved_quantity IS NULL
+--        )
+--        ----------------------------------------------------------------------------------
+--        -- クイックコード
+--        ----------------------------------------------------------------------------------
+--        -- 09:クイックコード(物流ブロック)
+--        AND  xlvv1.lookup_type = gc_lookup_cd_block
+--        AND  xilv.distribution_block = xlvv1.lookup_code
+--        -- 10:クイックコード(物流担当確認依頼区分)
+--        AND  xlvv2.lookup_type = gc_lookup_cd_conreq
+--        AND  xoha.confirm_request_class = xlvv2.lookup_code
+--        ----------------------------------------------------------------------------------
+--        -- 適用日
+--        ----------------------------------------------------------------------------------
+--        -- 06:顧客情報(管轄拠点)
+--        AND  xcav.start_date_active  <= xoha.schedule_ship_date
+--        AND  (xcav.end_date_active IS NULL
+--          OR  xcav.end_date_active  >= xoha.schedule_ship_date)
+--        -- 07:顧客サイト情報(出荷先)
+--        AND  xcasv.start_date_active <= xoha.schedule_ship_date
+--        AND  (xcasv.end_date_active IS NULL
+--          OR  xcasv.end_date_active >= xoha.schedule_ship_date)
+--        -- 08:OPM品目情報
+--        AND  ximv.start_date_active  <= xoha.schedule_ship_date
+--        AND  (ximv.end_date_active IS NULL
+--          OR  ximv.end_date_active  >= xoha.schedule_ship_date)
+--      ----------------------------------------------------------------------------------
+--      -- 不足無し分の取得(出荷)
+--      ----------------------------------------------------------------------------------
+--      UNION ALL
+--      SELECT
+--        ----------------------------------------------------------------------------------
+--        -- ヘッダ部
+--        ----------------------------------------------------------------------------------
+--         xilv.distribution_block      AS  block_cd            -- ブロックコード
+--        ,xlvv1.meaning                AS  block_nm            -- ブロック名称
+--        ,xoha.deliver_from            AS  shipped_cd          -- 出庫元コード
+--        ,xilv.description             AS  shipped_nm          -- 出庫元名
+--        ----------------------------------------------------------------------------------
+--        -- 明細部
+--        ----------------------------------------------------------------------------------
+--        ,xola.shipping_item_code      AS  item_cd             -- 品目コード
+--        ,ximv.item_name               AS  item_nm             -- 品目名称
+--        ,xoha.schedule_ship_date      AS  shipped_date        -- 出庫日
+--        ,xoha.schedule_arrival_date   AS  arrival_date        -- 着日
+--        ,TO_CHAR(gc_biz_type_nm_ship) AS  biz_type            -- 業務種別
+--        ,xoha.request_no              AS  req_move_no         -- 依頼No/移動No
+--        ,xoha.head_sales_branch       AS  base_cd             -- 管轄拠点
+--        ,xcav.party_short_name        AS  base_nm             -- 管轄拠点名称
+--        ,xoha.deliver_to              AS  delivery_to_cd      -- 配送先/入庫先
+--        ,xcasv.party_site_full_name   AS  delivery_to_nm      -- 配送先名称
+--        ,SUBSTRB(xoha.shipping_instructions, 1, 40) 
+--                                      AS  description         -- 摘要
+--        ,xlvv2.meaning                AS  conf_req            -- 確認依頼
+--        ,CASE
+--           WHEN xola.warning_date IS NULL THEN xola.designated_production_date
+--           ELSE xola.warning_date
+--         END                          AS  de_prod_date        -- 指定製造日
+--        ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE('19000101', 'YYYYMMDD'))) 
+--                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--        ,ilm.attribute1               AS  prod_date           -- 製造日
+--        ,ilm.attribute3               AS  best_before_date    -- 賞味期限
+--        ,ilm.attribute2               AS  native_sign         -- 固有記号
+--        ,xmld.lot_no                  AS  lot_no              -- ロットNo
+--        ,xlvv3.meaning                AS  lot_status          -- 品質
+--        ,CASE
+--          WHEN ximv.conv_unit IS NULL THEN xmld.actual_quantity
+--          ELSE (xmld.actual_quantity / TO_NUMBER(
+--                                         CASE
+--                                           WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases
+--                                           ELSE TO_CHAR(1)
+--                                         END)
+--          )
+--         END                          AS  req_qty             -- 依頼数
+--        ,TO_NUMBER(0)                 AS  ins_qty             -- 不足数
+--        ,xcav.reserve_order           AS  reserve_order       -- 引当順
+--        ,xoha.arrival_time_from       AS  time_from           -- 時間指定From
+--      FROM
+--        (
+--          ----------------------------------------------------------------------------------
+--          -- 引当済分を抽出するための不足品目の取得
+--          ----------------------------------------------------------------------------------
+--          SELECT
+--             sub_data.shipped_cd         AS  shipped_cd    -- 出荷元保管場所(出庫元保管場所)
+--            ,sub_data.item_cd            AS  item_cd       -- 出荷品目(品目)
+--            ,MAX(sub_data.shipped_date)  AS  shipped_date  -- 出荷予定日(出庫予定日)
+--          FROM
+--            (
+--              ----------------------------------------------------------------------------------
+--              -- 引当済分を抽出するための不足品目の取得(出荷)
+--              ----------------------------------------------------------------------------------
+--              SELECT
+--                 xoha.deliver_from             AS  shipped_cd    -- 出荷元保管場所
+--                ,xola.shipping_item_code       AS  item_cd       -- 出荷品目
+--                ,xoha.schedule_ship_date       AS  shipped_date  -- 出荷予定日
+--              FROM
+--                 xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
+--                ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
+--                ,xxwsh_oe_transaction_types2_v  xottv   -- 03:受注タイプ情報
+--                ,xxwsh_tightening_control       xtc     -- 04:出荷依頼締め管理(アドオン)
+--                ,xxcmn_item_locations2_v        xilv    -- 05:OPM保管場所情報
+--              WHERE
+--                ----------------------------------------------------------------------------------
+--                -- ヘッダ情報
+--                ----------------------------------------------------------------------------------
+--                -- 01:受注ヘッダアドオン
+--                     xoha.order_type_id       = xottv.transaction_type_id
+--                AND  xoha.schedule_ship_date >= TO_DATE(gt_param.shipped_date_from)
+--                AND  xoha.schedule_ship_date <= TO_DATE(gt_param.shipped_date_to)
+--                AND  xoha.latest_external_flag  =  gc_new_flg    -- 最新フラグ
+--                -- 04:出荷依頼締め管理(アドオン)
+--                AND  xoha.tightening_program_id  = xtc.concurrent_id(+)
+--                AND  (gt_param.tighten_date IS NULL
+--                  OR  TRUNC(xtc.tightening_date)  = TRUNC(gt_param.tighten_date)
+--                )
+--                AND  (xtc.tightening_date IS NULL
+--                  OR (TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
+--                      >= NVL(gt_param.tighten_time_from, gc_time_start)
+--                    AND  TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
+--                      <= NVL(gt_param.tighten_time_to, gc_time_end)
+--                  )
+--                )
+--                -- 05:OPM保管場所情報
+--                AND  xoha.deliver_from_id = xilv.inventory_location_id
+--                AND  (
+--                      xilv.distribution_block = gt_param.block1
+--                  OR  xilv.distribution_block = gt_param.block2
+--                  OR  xilv.distribution_block = gt_param.block3
+--                  OR  xoha.deliver_from = gt_param.shipped_cd
+--                  OR  ( gt_param.block1 IS NULL
+--                    AND gt_param.block2 IS NULL
+--                    AND gt_param.block3 IS NULL
+--                    AND gt_param.shipped_cd IS NULL
+--                  )
+--                )
+--                ----------------------------------------------------------------------------------
+--                -- 明細情報
+--                ----------------------------------------------------------------------------------
+--                -- 02:受注明細アドオン
+--                AND  xoha.order_header_id = xola.order_header_id
+--                AND  xola.delete_flag    <>  gc_delete_flg
+--                -- 10:OPM品目情報
+--                AND  (gt_param.item_cd IS NULL
+--                   OR xola.shipping_item_code = gt_param.item_cd
+--                )
+--                AND  xoha.prod_class = gv_prod_kbn
+--                ----------------------------------------------------------------------------------
+--                -- 不足分取得条件
+--                ----------------------------------------------------------------------------------
+--                AND  ((xola.quantity - xola.reserved_quantity) > 0
+--                   OR xola.reserved_quantity IS NULL
+--                )
+--              ----------------------------------------------------------------------------------
+--              -- 引当済分を抽出するための不足品目の取得(移動)
+--              ----------------------------------------------------------------------------------
+--              UNION ALL
+--              SELECT
+--                 xmrih.shipped_locat_code       AS  shipped_cd   -- 出庫元保管場所
+--                ,xmril.item_code                AS  item_cd      -- 品目
+--                ,xmrih.schedule_ship_date       AS  shipped_date -- 出庫予定日
+--              FROM
+--                 xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ（アドオン）
+--                ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細（アドオン）
+--                ,xxcmn_item_locations2_v        xilv1     -- 03:OPM保管場所情報(出庫元)
+--              WHERE
+--                ----------------------------------------------------------------------------------
+--                -- ヘッダ情報
+--                ----------------------------------------------------------------------------------
+--                -- 01:移動依頼/指示ヘッダ（アドオン）
+--                     xmrih.schedule_ship_date >= TO_DATE(gt_param.shipped_date_from)
+--                AND  xmrih.schedule_ship_date <= TO_DATE(gt_param.shipped_date_to)
+--                -- 03:OPM保管場所情報(出庫元)
+--                AND  xilv1.inventory_location_id = xmrih.shipped_locat_id
+--                AND  (
+--                      xilv1.distribution_block = gt_param.block1
+--                  OR  xilv1.distribution_block = gt_param.block2
+--                  OR  xilv1.distribution_block = gt_param.block3
+--                  OR  xmrih.shipped_locat_code = gt_param.shipped_cd
+--                  OR  (  gt_param.block1 IS NULL
+--                    AND  gt_param.block2 IS NULL
+--                    AND  gt_param.block3 IS NULL
+--                    AND  gt_param.shipped_cd IS NULL
+--                  )
+--                )
+--                ----------------------------------------------------------------------------------
+--                -- 明細情報
+--                ----------------------------------------------------------------------------------
+--                -- 02:移動依頼/指示明細（アドオン）
+--                AND  xmrih.mov_hdr_id = xmril.mov_hdr_id
+--                AND  xmril.delete_flg  <>  gc_delete_flg
+--                AND  (gt_param.item_cd IS NULL
+--                  OR  xmril.item_code = gt_param.item_cd
+--                )
+--                AND  xmrih.item_class = gv_prod_kbn
+--                ----------------------------------------------------------------------------------
+--                -- 不足分取得条件
+--                ----------------------------------------------------------------------------------
+--                AND  ((xmril.instruct_qty - xmril.reserved_quantity) > 0
+--                  OR  xmril.reserved_quantity IS NULL
+--                )
+--            ) sub_data
+--          GROUP BY
+--             sub_data.shipped_cd
+--            ,sub_data.item_cd
+--        )data
+--        ,xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
+--        ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
+--        ,xxwsh_oe_transaction_types2_v  xottv   -- 03:受注タイプ情報
+--        ,xxwsh_tightening_control       xtc     -- 04:出荷依頼締め管理(アドオン)
+--        ,xxcmn_item_locations2_v        xilv    -- 05:OPM保管場所情報
+--        ,xxcmn_cust_accounts2_v         xcav    -- 06:顧客情報(管轄拠点)
+--        ,xxcmn_cust_acct_sites2_v       xcasv   -- 07:顧客サイト情報(出荷先)
+--        ,xxcmn_item_mst2_v              ximv    -- 08:OPM品目情報
+--        ,xxinv_mov_lot_details          xmld    -- 09:移動ロット詳細(アドオン)
+--        ,ic_lots_mst                    ilm     -- 10:OPMロットマスタ
+--        ,xxcmn_lookup_values2_v         xlvv1   -- 11:クイックコード(物流ブロック)
+--        ,xxcmn_lookup_values2_v         xlvv2   -- 12:クイックコード(物流担当確認依頼区分)
+--        ,xxcmn_lookup_values2_v         xlvv3   -- 13:クイックコード(ロットステータス)
+--      WHERE
+--        ----------------------------------------------------------------------------------
+--        -- 不足品目情報絞込み条件
+--        ----------------------------------------------------------------------------------
+--             xoha.deliver_from         =  data.shipped_cd
+--        AND  xola.shipping_item_code   =  data.item_cd
+--        AND  xoha.schedule_ship_date  >=  TO_DATE(gt_param.shipped_date_from)
+--        AND  xoha.schedule_ship_date  <=  TO_DATE(data.shipped_date)
+--        AND  (xola.quantity - xola.reserved_quantity) <= 0
+--        ----------------------------------------------------------------------------------
+--        -- ヘッダ情報
+--        ----------------------------------------------------------------------------------
+--        -- 03:受注タイプ情報
+--        AND  xottv.shipping_shikyu_class  =  gc_ship_pro_kbn_s  -- 出荷支給区分:出荷依頼
+--        AND  xottv.order_category_code   <>  gc_order_cate_ret  -- 受注カテゴリ:返品
+--        -- 01:受注ヘッダアドオン
+--        AND  xoha.order_type_id           =  xottv.transaction_type_id
+--        AND  xoha.req_status             >=  gc_ship_status_close      -- ステータス:締め済み
+--        AND  xoha.req_status             <>  gc_ship_status_delete     -- ステータス:取消
+--        AND  xoha.latest_external_flag    =  gc_new_flg                -- 最新フラグ
+--        -- 04:出荷依頼締め管理(アドオン)
+--        AND  xoha.tightening_program_id  = xtc.concurrent_id(+)
+--        AND  (gt_param.tighten_date IS NULL
+--          OR  TRUNC(xtc.tightening_date)  = TRUNC(gt_param.tighten_date)
+--        )
+--        AND  (xtc.tightening_date IS NULL
+--          OR (TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
+--              >= NVL(gt_param.tighten_time_from, gc_time_start)
+--            AND  TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
+--              <= NVL(gt_param.tighten_time_to, gc_time_end)
+--          )
+--        )
+--        -- 05:OPM保管場所情報
+--        AND  xoha.deliver_from_id = xilv.inventory_location_id
+--        -- 06:顧客情報(管轄拠点)
+--        AND  xoha.head_sales_branch = xcav.party_number
+--        -- 07:顧客サイト情報(出荷先)
+--        AND  xoha.deliver_to_id     = xcasv.party_site_id
+--        ----------------------------------------------------------------------------------
+--        -- 明細情報
+--        ----------------------------------------------------------------------------------
+--        -- 02:受注明細アドオン
+--        AND  xoha.order_header_id  =  xola.order_header_id
+--        AND  xola.delete_flag     <>  gc_delete_flg
+--        -- 10:OPM品目情報
+--        AND  xola.shipping_inventory_item_id = ximv.inventory_item_id
+--        ----------------------------------------------------------------------------------
+--        -- ロット情報
+--        ----------------------------------------------------------------------------------
+--        -- 09:移動ロット詳細(アドオン)
+--        AND  xola.order_line_id = xmld.mov_line_id
+--        AND  xmld.document_type_code = gc_doc_type_ship   -- 文書タイプ:出荷依頼
+--        AND  xmld.record_type_code   = gc_rec_type_shiji  -- レコードタイプ:指示
+--        -- 10:OPMロットマスタ
+--        AND  xmld.lot_id   =  ilm.lot_id
+--        AND  xmld.item_id  =  ilm.item_id
+--        ----------------------------------------------------------------------------------
+--        -- クイックコード
+--        ----------------------------------------------------------------------------------
+--        -- 11:クイックコード(物流ブロック)
+--        AND  xlvv1.lookup_type = gc_lookup_cd_block
+--        AND  xilv.distribution_block = xlvv1.lookup_code
+--        -- 12:クイックコード(物流担当確認依頼区分)
+--        AND  xlvv2.lookup_type = gc_lookup_cd_conreq
+--        AND  xoha.confirm_request_class = xlvv2.lookup_code
+--        -- 13:クイックコード(ロットステータス)
+--        AND  xlvv3.lookup_type = gc_lookup_cd_lot_status
+--        AND  ilm.attribute23 = xlvv3.lookup_code
+--        ----------------------------------------------------------------------------------
+--        -- 適用日
+--        ----------------------------------------------------------------------------------
+--        -- 06:顧客情報(管轄拠点)
+--        AND  xcav.start_date_active  <= xoha.schedule_ship_date
+--        AND  (xcav.end_date_active IS NULL
+--          OR  xcav.end_date_active  >= xoha.schedule_ship_date)
+--        -- 07:顧客サイト情報(出荷先)
+--        AND  xcasv.start_date_active <= xoha.schedule_ship_date
+--        AND  (xcasv.end_date_active IS NULL
+--          OR  xcasv.end_date_active >= xoha.schedule_ship_date)
+--        -- 08:OPM品目情報
+--        AND  ximv.start_date_active  <= xoha.schedule_ship_date
+--        AND  (ximv.end_date_active IS NULL
+--          OR  ximv.end_date_active  >= xoha.schedule_ship_date)
+--      ----------------------------------------------------------------------------------
+--      -- 不足分取得(移動)
+--      ----------------------------------------------------------------------------------
+--      UNION ALL
+--      SELECT
+--        ----------------------------------------------------------------------------------
+--        -- ヘッダ情報
+--        ----------------------------------------------------------------------------------
+--         xilv1.distribution_block     AS  block_cd            -- ブロックコード
+--        ,xlvv1.meaning                AS  block_nm            -- ブロック名称
+--        ,xmrih.shipped_locat_code     AS  shipped_cd          -- 出庫元コード
+--        ,xilv1.description            AS  shipped_nm          -- 出庫元名
+--        ----------------------------------------------------------------------------------
+--        -- 明細情報
+--        ----------------------------------------------------------------------------------
+--        ,xmril.item_code              AS  item_cd             -- 品目コード
+--        ,ximv.item_name               AS  item_nm             -- 品目名称
+--        ,xmrih.schedule_ship_date     AS  shipped_date        -- 出庫日
+--        ,xmrih.schedule_arrival_date  AS  arrival_date        -- 着日
+--        ,TO_CHAR(gc_biz_type_nm_move) AS  biz_type            -- 業務種別
+--        ,xmrih.mov_num                AS  req_move_no         -- 依頼No/移動No
+--        ,NULL                         AS  base_cd             -- 管轄拠点
+--        ,NULL                         AS  base_nm             -- 管轄拠点名称
+--        ,xmrih.ship_to_locat_code     AS  delivery_to_cd      -- 配送先/入庫先
+--        ,xilv2.description            AS  delivery_to_nm      -- 配送先名称
+--        ,SUBSTRB(xmrih.description, 1, 40) AS  description    -- 摘要
+--        ,NULL                         AS  conf_req            -- 確認依頼
+--        ,CASE
+--          WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date
+--          ELSE xmril.warning_date
+--         END                          AS  de_prod_date        -- 指定製造日
+--        ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE('19000101', 'YYYYMMDD'))) 
+--                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--        ,NULL                         AS  prod_date           -- 製造日
+--        ,NULL                         AS  best_before_date    -- 賞味期限
+--        ,NULL                         AS  native_sign         -- 固有記号
+--        ,NULL                         AS  lot_no              -- ロットNo
+--        ,NULL                         AS  lot_status          -- 品質
+---- 2008/09/26 H.Itou Mod Start T_TE080_BPO_620指摘37対応
+----        ,TO_NUMBER(0)                 AS  req_qty             -- 依頼数
+--        ,CASE 
+--           WHEN ximv.conv_unit IS NULL THEN xmril.instruct_qty 
+--           ELSE                            (xmril.instruct_qty / ximv.num_of_cases) 
+--         END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘37対応
+---- 2008/09/26 H.Itou Mod End
+--        ,CASE
+--          WHEN ximv.conv_unit IS NULL THEN
+--            (xmril.instruct_qty - NVL(xmril.reserved_quantity, 0))
+--          ELSE ((xmril.instruct_qty - NVL(xmril.reserved_quantity, 0))
+--                / TO_NUMBER(
+--                    CASE
+--                      WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases
+--                      ELSE TO_CHAR(1)
+--                    END)
+--          )
+--         END                          AS  ins_qty             -- 不足数
+--        ,NULL                         AS  reserve_order       -- 引当順
+--        ,xmrih.arrival_time_from      AS  time_from           -- 時間指定From
+--      FROM
+--         xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ（アドオン）
+--        ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細（アドオン）
+--        ,xxcmn_item_locations2_v        xilv1     -- 03:OPM保管場所情報(出庫元)
+--        ,xxcmn_item_locations2_v        xilv2     -- 04:OPM保管場所情報(入庫先)
+--        ,xxcmn_item_mst2_v              ximv      -- 05:OPM品目情報
+--        ,xxcmn_lookup_values2_v         xlvv1     -- 06:クイックコード(物流ブロック)
+--      WHERE
+--        ----------------------------------------------------------------------------------
+--        -- ヘッダ情報
+--        ----------------------------------------------------------------------------------
+--        -- 01:移動依頼/指示ヘッダ（アドオン）
+--             xmrih.status               >=  gc_move_status_ordered  -- ステータス:依頼済
+--        AND  xmrih.mov_type             <>  gc_mov_type_not_ship    -- 移動タイプ:積送なし
+--        AND  xmrih.item_class            =  gv_prod_kbn
+--        AND  xmrih.schedule_ship_date   >=  gt_param.shipped_date_from
+--        AND  xmrih.schedule_ship_date   <=  gt_param.shipped_date_to
+--        -- 03:OPM保管場所情報(出庫元)
+--        AND  xilv1.inventory_location_id = xmrih.shipped_locat_id
+--        AND  (
+--              xilv1.distribution_block = gt_param.block1
+--          OR  xilv1.distribution_block = gt_param.block2
+--          OR  xilv1.distribution_block = gt_param.block3
+--          OR  xmrih.shipped_locat_code = gt_param.shipped_cd
+--          OR  (  gt_param.block1 IS NULL
+--            AND  gt_param.block2 IS NULL
+--            AND  gt_param.block3 IS NULL
+--            AND  gt_param.shipped_cd IS NULL
+--          )
+--        )
+--        -- 04:OPM保管場所情報(入庫先)
+--        AND  xilv2.inventory_location_id = xmrih.ship_to_locat_id
+--        ----------------------------------------------------------------------------------
+--        -- 明細情報
+--        ----------------------------------------------------------------------------------
+--        -- 02:移動依頼/指示明細（アドオン）
+--        AND  xmrih.mov_hdr_id   =  xmril.mov_hdr_id
+--        AND  xmril.delete_flg  <>  gc_delete_flg
+--        AND  (gt_param.item_cd IS NULL
+--          OR  xmril.item_code = gt_param.item_cd
+--        )
+--        -- 05:OPM品目情報
+--        AND  xmril.item_id = ximv.item_id
+--        ----------------------------------------------------------------------------------
+--        -- 不足分取得条件
+--        ----------------------------------------------------------------------------------
+--        AND  ((xmril.instruct_qty - xmril.reserved_quantity) > 0
+--          OR  xmril.reserved_quantity IS NULL
+--        )
+--        ----------------------------------------------------------------------------------
+--        -- クイックコード
+--        ----------------------------------------------------------------------------------
+--        -- 06:クイックコード(物流ブロック)
+--        AND  xlvv1.lookup_type = gc_lookup_cd_block
+--        AND  xilv1.distribution_block = xlvv1.lookup_code
+--        ----------------------------------------------------------------------------------
+--        -- 適用日
+--        ----------------------------------------------------------------------------------
+--        -- 05:OPM品目情報
+--        AND  ximv.start_date_active  <= xmrih.schedule_ship_date
+--        AND  (ximv.end_date_active IS NULL
+--          OR  ximv.end_date_active  >= xmrih.schedule_ship_date)
+--      ----------------------------------------------------------------------------------
+--      -- 不足無し分の取得(移動)
+--      ----------------------------------------------------------------------------------
+--      UNION ALL
+--      SELECT
+--        ----------------------------------------------------------------------------------
+--        -- ヘッダ情報
+--        ----------------------------------------------------------------------------------
+--         xilv1.distribution_block     AS  block_cd            -- ブロックコード
+--        ,xlvv1.meaning                AS  block_nm            -- ブロック名称
+--        ,xmrih.shipped_locat_code     AS  shipped_cd          -- 出庫元コード
+--        ,xilv1.description            AS  shipped_nm          -- 出庫元名
+--        ----------------------------------------------------------------------------------
+--        -- 明細情報
+--        ----------------------------------------------------------------------------------
+--        ,xmril.item_code              AS  item_cd             -- 品目コード
+--        ,ximv.item_name               AS  item_nm             -- 品目名称
+--        ,xmrih.schedule_ship_date     AS  shipped_date        -- 出庫日
+--        ,xmrih.schedule_arrival_date  AS  arrival_date        -- 着日
+--        ,TO_CHAR(gc_biz_type_nm_move) AS  biz_type            -- 業務種別
+--        ,xmrih.mov_num                AS  req_move_no         -- 依頼No/移動No
+--        ,NULL                         AS  base_cd             -- 管轄拠点
+--        ,NULL                         AS  base_nm             -- 管轄拠点名称
+--        ,xmrih.ship_to_locat_code     AS  delivery_to_cd      -- 配送先/入庫先
+--        ,xilv2.description            AS  delivery_to_nm      -- 配送先名称
+--        ,SUBSTRB(xmrih.description, 1, 40) AS  description    -- 摘要
+--        ,NULL                         AS  conf_req            -- 確認依頼
+--        ,CASE
+--          WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date
+--          ELSE xmril.warning_date
+--         END                          AS  de_prod_date        -- 指定製造日
+--        ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE('19000101', 'YYYYMMDD'))) 
+--                                      AS  de_prod_date_sort   -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--        ,ilm.attribute1               AS  prod_date           -- 製造日
+--        ,ilm.attribute3               AS  best_before_date    -- 賞味期限
+--        ,ilm.attribute2               AS  native_sign         -- 固有記号
+--        ,xmld.lot_no                  AS  lot_no              -- ロットNo
+--        ,xlvv2.meaning                AS  lot_status          -- 品質
+--        ,CASE
+--          WHEN ximv.conv_unit IS NULL THEN xmld.actual_quantity
+--          ELSE (xmld.actual_quantity / TO_NUMBER(
+--                                         CASE
+--                                           WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases
+--                                           ELSE TO_CHAR(1)
+--                                         END)
+--          )
+--         END                          AS  req_qty             -- 依頼数
+--        ,TO_NUMBER(0)                 AS  ins_qty             -- 不足数
+--        ,NULL                         AS  reserve_order       -- 引当順
+--        ,xmrih.arrival_time_from      AS  time_from           -- 時間指定From
+--      FROM
+--        (
+--          ----------------------------------------------------------------------------------
+--          -- 引当済分を抽出するための不足品目の取得（出荷）
+--          ----------------------------------------------------------------------------------
+--          SELECT
+--             sub_data.shipped_cd         AS  shipped_cd    -- 出荷元保管場所
+--            ,sub_data.item_cd            AS  item_cd       -- 出荷品目
+--            ,MAX(sub_data.shipped_date)  AS  shipped_date  -- 出荷予定日
+--          FROM
+--            (
+--              ----------------------------------------------------------------------------------
+--              -- 引当済分を抽出するための不足品目の取得（出荷）
+--              ----------------------------------------------------------------------------------
+--              SELECT
+--                 xoha.deliver_from             AS  shipped_cd    -- 出荷元保管場所
+--                ,xola.shipping_item_code       AS  item_cd       -- 出荷品目
+--                ,xoha.schedule_ship_date       AS  shipped_date
+--              FROM
+--                 xxwsh_order_headers_all        xoha    -- 01:受注ヘッダアドオン
+--                ,xxwsh_order_lines_all          xola    -- 02:受注明細アドオン
+--                ,xxwsh_oe_transaction_types2_v  xottv   -- 03:受注タイプ情報
+--                ,xxwsh_tightening_control       xtc     -- 04:出荷依頼締め管理(アドオン)
+--                ,xxcmn_item_locations2_v        xilv    -- 05:OPM保管場所情報
+--              WHERE
+--                ----------------------------------------------------------------------------------
+--                -- ヘッダ情報
+--                ----------------------------------------------------------------------------------
+--                -- 01:受注ヘッダアドオン
+--                     xoha.order_type_id       = xottv.transaction_type_id
+--                AND  xoha.schedule_ship_date >= gt_param.shipped_date_from
+--                AND  xoha.schedule_ship_date <= gt_param.shipped_date_to
+--                AND  xoha.latest_external_flag  =  gc_new_flg       -- 最新フラグ
+--                -- 04:出荷依頼締め管理(アドオン)
+--                AND  xoha.tightening_program_id  = xtc.concurrent_id(+)
+--                AND  (gt_param.tighten_date IS NULL
+--                  OR  TRUNC(xtc.tightening_date)  = TRUNC(gt_param.tighten_date)
+--                )
+--                AND  (xtc.tightening_date IS NULL
+--                  OR (TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
+--                      >= NVL(gt_param.tighten_time_from, gc_time_start)
+--                    AND  TO_CHAR(xtc.tightening_date, gc_date_fmt_hm)
+--                      <= NVL(gt_param.tighten_time_to, gc_time_end)
+--                  )
+--                )
+--                -- 05:OPM保管場所情報
+--                AND  xoha.deliver_from_id = xilv.inventory_location_id
+--                AND  (
+--                      xilv.distribution_block = gt_param.block1
+--                  OR  xilv.distribution_block = gt_param.block2
+--                  OR  xilv.distribution_block = gt_param.block3
+--                  OR  xoha.deliver_from = gt_param.shipped_cd
+--                  OR  ( gt_param.block1 IS NULL
+--                    AND gt_param.block2 IS NULL
+--                    AND gt_param.block3 IS NULL
+--                    AND gt_param.shipped_cd IS NULL
+--                  )
+--                )
+--                ----------------------------------------------------------------------------------
+--                -- 明細情報
+--                ----------------------------------------------------------------------------------
+--                -- 02:受注明細アドオン
+--                AND  xoha.order_header_id = xola.order_header_id
+--                AND  xola.delete_flag    <>  gc_delete_flg
+--                -- 10:OPM品目情報
+--                AND  (gt_param.item_cd IS NULL
+--                   OR xola.shipping_item_code = gt_param.item_cd
+--                )
+--                AND  xoha.prod_class = gv_prod_kbn
+--                ----------------------------------------------------------------------------------
+--                -- 不足分取得条件
+--                ----------------------------------------------------------------------------------
+--                AND  ((xola.quantity - xola.reserved_quantity) > 0
+--                   OR xola.reserved_quantity IS NULL
+--                )
+--                ----------------------------------------------------------------------------------
+--                -- 適用日
+--                ----------------------------------------------------------------------------------
+--                -- 05:OPM保管場所情報
+--                AND  xilv.date_from <= xoha.schedule_ship_date
+--                AND  (xilv.date_to IS NULL
+--                  OR  xilv.date_to >= xoha.schedule_ship_date)
+--              ----------------------------------------------------------------------------------
+--              -- 引当済分を抽出するための不足品目の取得(移動)
+--              ----------------------------------------------------------------------------------
+--              UNION ALL
+--              SELECT
+--                 xmrih.shipped_locat_code       AS  shipped_cd   -- 出庫元保管場所
+--                ,xmril.item_code                AS  item_cd      -- 品目
+--                ,xmrih.schedule_ship_date       AS  shipped_date -- 出庫予定日
+--              FROM
+--                 xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ（アドオン）
+--                ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細（アドオン）
+--                ,xxcmn_item_locations2_v        xilv1     -- 03:OPM保管場所情報(出庫元)
+--              WHERE
+--                ----------------------------------------------------------------------------------
+--                -- ヘッダ情報
+--                ----------------------------------------------------------------------------------
+--                -- 01:移動依頼/指示ヘッダ（アドオン）
+--                     xmrih.schedule_ship_date >= gt_param.shipped_date_from
+--                AND  xmrih.schedule_ship_date <= gt_param.shipped_date_to
+--                -- 03:OPM保管場所情報(出庫元)
+--                AND  xilv1.inventory_location_id = xmrih.shipped_locat_id
+--                AND  (
+--                      xilv1.distribution_block = gt_param.block1
+--                  OR  xilv1.distribution_block = gt_param.block2
+--                  OR  xilv1.distribution_block = gt_param.block3
+--                  OR  xmrih.shipped_locat_code = gt_param.shipped_cd
+--                  OR  (  gt_param.block1 IS NULL
+--                    AND  gt_param.block2 IS NULL
+--                    AND  gt_param.block3 IS NULL
+--                    AND  gt_param.shipped_cd IS NULL
+--                  )
+--                )
+--                ----------------------------------------------------------------------------------
+--                -- 明細情報
+--                ----------------------------------------------------------------------------------
+--                -- 02:移動依頼/指示明細（アドオン）
+--                AND  xmrih.mov_hdr_id = xmril.mov_hdr_id
+--                AND  xmril.delete_flg  <>  gc_delete_flg
+--                AND  (gt_param.item_cd IS NULL
+--                  OR  xmril.item_code = gt_param.item_cd
+--                )
+--                AND  xmrih.item_class = gv_prod_kbn
+--                ----------------------------------------------------------------------------------
+--                -- 不足分取得条件
+--                ----------------------------------------------------------------------------------
+--                AND  ((xmril.instruct_qty - xmril.reserved_quantity) > 0
+--                  OR  xmril.reserved_quantity IS NULL
+--                )
+--            ) sub_data
+--          GROUP BY
+--             sub_data.shipped_cd
+--            ,sub_data.item_cd
+--        ) data
+--        ,xxinv_mov_req_instr_headers    xmrih     -- 01:移動依頼/指示ヘッダ（アドオン）
+--        ,xxinv_mov_req_instr_lines      xmril     -- 02:移動依頼/指示明細（アドオン）
+--        ,xxcmn_item_locations2_v        xilv1     -- 03:OPM保管場所情報(出庫元)
+--        ,xxcmn_item_locations2_v        xilv2     -- 04:OPM保管場所情報(入庫先)
+--        ,xxcmn_item_mst2_v              ximv      -- 05:OPM品目情報
+--        ,xxinv_mov_lot_details          xmld      -- 06:移動ロット詳細(アドオン)
+--        ,ic_lots_mst                    ilm       -- 07:OPMロットマスタ
+--        ,xxcmn_lookup_values2_v         xlvv1     -- 08:クイックコード(物流ブロック)
+--        ,xxcmn_lookup_values2_v         xlvv2     -- 09:クイックコード(ロットステータス)
+--      WHERE
+--        ----------------------------------------------------------------------------------
+--        -- 不足品目情報絞込み条件
+--        ----------------------------------------------------------------------------------
+--             xmrih.shipped_locat_code   =  data.shipped_cd
+--        AND  xmril.item_code            =  data.item_cd
+--        AND  xmrih.schedule_ship_date  >=  gt_param.shipped_date_from
+--        AND  xmrih.schedule_ship_date  <=  data.shipped_date
+--        AND  (xmril.instruct_qty - xmril.reserved_quantity) <= 0
+--        ----------------------------------------------------------------------------------
+--        -- ヘッダ情報
+--        ----------------------------------------------------------------------------------
+--        -- 01:移動依頼/指示ヘッダ（アドオン）
+--        AND  xmrih.status    >=  gc_move_status_ordered  -- ステータス:依頼済
+--        AND  xmrih.mov_type  <>  gc_mov_type_not_ship    -- 移動タイプ:積送なし
+--        -- 03:OPM保管場所情報(出庫元)
+--        AND  xilv1.inventory_location_id = xmrih.shipped_locat_id
+--        -- 04:OPM保管場所情報(入庫先)
+--        AND  xilv2.inventory_location_id = xmrih.ship_to_locat_id
+--        ----------------------------------------------------------------------------------
+--        -- 明細情報
+--        ----------------------------------------------------------------------------------
+--        -- 02:移動依頼/指示明細（アドオン）
+--        AND  xmrih.mov_hdr_id  =  xmril.mov_hdr_id
+--        AND  xmril.delete_flg  <>  gc_delete_flg
+--        -- 05:OPM品目情報
+--        AND  xmril.item_id = ximv.item_id
+--        ----------------------------------------------------------------------------------
+--        -- ロット情報
+--        ----------------------------------------------------------------------------------
+--        -- 06:移動ロット詳細(アドオン)
+--        AND  xmril.mov_line_id =  xmld.mov_line_id
+--        AND  xmril.item_id     =  xmld.item_id
+--        AND  xmld.document_type_code = gc_doc_type_move   -- 文書タイプ:移動
+--        AND  xmld.record_type_code   = gc_rec_type_shiji  -- レコードタイプ:指示
+--        -- 07:OPMロットマスタ
+--        AND  xmld.lot_id   =  ilm.lot_id
+--        AND  xmld.item_id  =  ilm.item_id
+--        ----------------------------------------------------------------------------------
+--        -- クイックコード
+--        ----------------------------------------------------------------------------------
+--        -- 08:クイックコード(物流ブロック)
+--        AND  xlvv1.lookup_type = gc_lookup_cd_block
+--        AND  xilv1.distribution_block = xlvv1.lookup_code
+--        -- 09:クイックコード(ロットステータス)
+--        AND  xlvv2.lookup_type = gc_lookup_cd_lot_status
+--        AND  ilm.attribute23 = xlvv2.lookup_code
+--        ----------------------------------------------------------------------------------
+--        -- 適用日
+--        ----------------------------------------------------------------------------------
+--        -- 05:OPM品目情報
+--        AND  ximv.start_date_active  <= xmrih.schedule_ship_date
+--        AND  (ximv.end_date_active IS NULL
+--          OR  ximv.end_date_active  >= xmrih.schedule_ship_date)
+--      ORDER BY
+--         block_cd       ASC      -- 01:ブロック
+--        ,shipped_cd     ASC      -- 02:出庫元
+--        ,item_cd        ASC      -- 03:品目
+--        ,shipped_date   ASC      -- 04:出庫日
+--        ,arrival_date   ASC      -- 05:着日
+----        ,de_prod_date   DESC     -- 06:指定製造日
+--        ,de_prod_date_sort   DESC     -- 06:指定製造日 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+--        ,reserve_order  ASC      -- 07:引当順
+--        ,base_cd        ASC      -- 08:管轄拠点
+--        ,time_from      ASC      -- 09:時間指定From
+--        ,req_move_no    ASC      -- 10:依頼No/移動No
+--        ,lot_no         ASC      -- 11:ロットNo
+--      ;
+-- 2008/09/26 H.Itou Del End T_S_533(PT対応)
+-- 2008/09/26 H.Itou Add Start T_S_533(PT対応)
+    -- ===============================
+    -- 定数宣言
+    -- ===============================
+    cv_union_all                   CONSTANT VARCHAR2(32767) := ' UNION ALL ';
+--
+    -- ===============================
+    -- 型宣言
+    -- ===============================
+    TYPE ref_cursor                IS REF CURSOR ; -- カーソル型
+--
+    -- ===============================
+    -- 変数宣言
+    -- ===============================
+    -- 動的SQL用変数
+    lv_sql_wsh_short_stock         VARCHAR2(32767); -- 不足分取得(出荷)のSQL
+    lv_sql_wsh_stock               VARCHAR2(32767); -- 不足無し分の取得(出荷)のSQL
+    lv_sql_inv_short_stock         VARCHAR2(32767); -- 不足分取得(移動)のSQL
+    lv_sql_inv_stock               VARCHAR2(32767); -- 不足無し分の取得(移動)のSQL
+    lv_sql_item_short_stock        VARCHAR2(32767); -- 引当済分を抽出するための不足品目取得のSQL
+    lv_where_block_or_deliver_from VARCHAR2(32767); -- 動的条件：物流ブロック・出庫元条件
+    lv_where_tightening_date       VARCHAR2(32767); -- 動的条件：締め実施日条件
+    lv_where_item_no               VARCHAR2(32767); -- 動的条件：品目条件
+    lv_sql                         VARCHAR2(32767); -- 全SQL
+    lv_order_by                    VARCHAR2(32767); -- ORDER BY
+--
+    cur_data                       ref_cursor ;    -- カーソル
+--
+-- 2008/09/26 H.Itou Add End T_S_533(PT対応)
 --
   BEGIN
 --
@@ -1223,13 +1280,893 @@ AS
     -- 担当者
     gv_dept_nm := SUBSTRB(xxcmn_common_pkg.get_user_name(gv_user_id), 1, 14) ;
 --
-    -- ====================================================
-    -- 帳票データ取得
-    -- ====================================================
-    OPEN cur_data ;
-    FETCH cur_data BULK COLLECT INTO gt_report_data ;
-    CLOSE cur_data ;
+-- 2008/09/26 H.Itou Del START T_S_533(PT対応)
+--    -- ====================================================
+--    -- 帳票データ取得
+--    -- ====================================================
+--    OPEN cur_data ;
+--    FETCH cur_data BULK COLLECT INTO gt_report_data ;
+--    CLOSE cur_data ;
+-- 2008/09/26 H.Itou Del END T_S_533(PT対応)
 --
+-- 2008/09/26 H.Itou Add START T_S_533(PT対応)
+    -- ========================
+    -- 締め実施日条件設定
+    -- ========================
+    -- 締め実施日に指定ありの場合
+    IF (gt_param.tighten_date IS NOT NULL) THEN
+     lv_where_tightening_date := 
+        ' AND  TRUNC(xtc.tightening_date)  = TRUNC(:tighten_date) ';
+    --
+    -- 締め実施日に指定なしの場合
+    ELSE
+     lv_where_tightening_date := 
+        ' AND  :tighten_date IS NULL ';
+    END IF;
+--
+    -- ========================
+    -- 品目条件設定
+    -- ========================
+    -- 品目に指定ありの場合
+    IF (gt_param.item_cd IS NOT NULL) THEN
+     lv_where_item_no := 
+        ' AND ximv.item_no = :item_cd ';
+--
+    -- 品目に指定なしの場合
+    ELSE
+     lv_where_item_no := 
+        ' AND  :item_cd IS NULL ';
+    END IF;
+--
+    -- ===============================
+    -- 物流ブロック・出庫元条件設定
+    -- ==============================
+    -- 出庫元・物流ブロック1・2・3いづれかに指定がある場合
+    IF  ((gt_param.shipped_cd IS NOT NULL) 
+      OR (gt_param.block1     IS NOT NULL)
+      OR (gt_param.block2     IS NOT NULL)
+      OR (gt_param.block3     IS NOT NULL)) THEN
+--
+      lv_where_block_or_deliver_from := 
+         ' AND ((xilv.segment1           = :shipped_cd) '
+      || '  OR  (xilv.distribution_block = :block1) '
+      || '  OR  (xilv.distribution_block = :block2) '
+      || '  OR  (xilv.distribution_block = :block3)) '
+      ;
+--
+    -- 出庫元・物流ブロック1・2・3すべて指定なしの場合
+    ELSE
+--
+      lv_where_block_or_deliver_from := 
+         ' AND :shipped_cd IS NULL '
+      || ' AND :block1 IS NULL '
+      || ' AND :block2 IS NULL '
+      || ' AND :block3 IS NULL '
+      ;
+    END IF;
+--
+    -- ===========================================================================================
+    -- 引当済分を抽出するための不足品目の取得(不足無し分(出荷),不足無し分(移動)のSQLのサブクエリ
+    -- ===========================================================================================
+    lv_sql_item_short_stock :=
+         ----------------------------------------------------------------------------------
+         -- 引当済分を抽出するための不足品目の取得
+         ----------------------------------------------------------------------------------
+       ' SELECT '
+    || '   sub_data.shipped_cd         AS  shipped_cd '   -- 出荷元保管場所(出庫元保管場所)
+    || '  ,sub_data.item_cd            AS  item_cd '      -- 出荷品目(品目)
+    || '  ,MAX(sub_data.shipped_date)  AS  shipped_date ' -- 出荷予定日(出庫予定日)
+    || ' FROM '
+    || '  ( '
+           ----------------------------------------------------------------------------------
+           -- 引当済分を抽出するための不足品目の取得(出荷)
+           ----------------------------------------------------------------------------------
+    || '   SELECT '
+    || '     xoha.deliver_from             AS  shipped_cd '   -- 出荷元保管場所
+    || '    ,xola.shipping_item_code       AS  item_cd '      -- 出荷品目
+    || '    ,xoha.schedule_ship_date       AS  shipped_date ' -- 出荷予定日
+    || '   FROM '
+    || '     xxwsh_order_headers_all        xoha '   -- 01:受注ヘッダアドオン
+    || '    ,xxwsh_order_lines_all          xola '   -- 02:受注明細アドオン
+    || '    ,xxwsh_oe_transaction_types2_v  xottv '  -- 03:受注タイプ情報
+    || '    ,xxwsh_tightening_control       xtc '    -- 04:出荷依頼締め管理(アドオン)
+    || '    ,xxcmn_item_locations2_v        xilv '   -- 05:OPM保管場所情報
+    || '    ,xxcmn_item_mst_v               ximv '   -- 06:OPM品目情報
+    || '   WHERE '
+           ----------------------------------------------------------------------------------
+           -- ヘッダ情報
+           ----------------------------------------------------------------------------------
+           -- 01:受注ヘッダアドオン
+    || '        xoha.order_type_id       = xottv.transaction_type_id '
+    || '   AND  xoha.schedule_ship_date >= TO_DATE(:shipped_date_from) '
+    || '   AND  xoha.schedule_ship_date <= TO_DATE(:shipped_date_to) '
+    || '   AND  xoha.latest_external_flag  = ''' || gc_new_flg || ''' '   -- 最新フラグ
+           -- 04:出荷依頼締め管理(アドオン)
+    || '   AND  xoha.tightening_program_id  = xtc.concurrent_id(+) '
+    || '   AND   ((xtc.tightening_date IS NULL) '
+    || '     OR   ((TO_CHAR(xtc.tightening_date, ''' || gc_date_fmt_hm || ''')  >= :tighten_time_from) '
+    || '       AND (TO_CHAR(xtc.tightening_date, ''' || gc_date_fmt_hm || ''')  <= :tighten_time_to ))) '
+           -- 05:OPM保管場所情報
+    || '   AND  xoha.deliver_from_id = xilv.inventory_location_id '
+           ----------------------------------------------------------------------------------
+           -- 明細情報
+           ----------------------------------------------------------------------------------
+           -- 02:受注明細アドオン
+    || '   AND  xoha.order_header_id = xola.order_header_id '
+    || '   AND  xola.delete_flag    <> ''' || gc_delete_flg || ''' '
+           -- 06:OPM品目情報
+    || '   AND  xola.shipping_inventory_item_id = ximv.inventory_item_id '
+    || '   AND  xoha.prod_class = ''' || gv_prod_kbn || ''' '
+           ----------------------------------------------------------------------------------
+           -- 不足分取得条件
+           ----------------------------------------------------------------------------------
+    || '   AND (((xola.quantity - xola.reserved_quantity) > 0) '
+    || '     OR  (xola.reserved_quantity IS NULL)) '
+           ----------------------------------------------------------------------------------
+           -- 適用日条件
+           ----------------------------------------------------------------------------------
+           -- 04:出荷依頼締め管理(アドオン)
+    || '   AND  xottv.start_date_active <= xoha.schedule_ship_date '
+    || '   AND  ((xottv.end_date_active IS NULL) '
+    || '     OR  (xottv.end_date_active >= xoha.schedule_ship_date)) '
+           -- 05:OPM保管場所
+    || '   AND  xilv.date_from <= xoha.schedule_ship_date '
+    || '   AND  ((xilv.date_to IS NULL) '
+    || '     OR  (xilv.date_to >= xoha.schedule_ship_date)) '
+           ----------------------------------------------------------------------------------
+           -- 動的条件
+           ----------------------------------------------------------------------------------
+    ||     lv_where_tightening_date       -- 締め実施日条件
+    ||     lv_where_item_no               -- 品目条件
+    ||     lv_where_block_or_deliver_from -- 物流ブロック・出庫元条件
+           ----------------------------------------------------------------------------------
+           -- 引当済分を抽出するための不足品目の取得(移動)
+           ----------------------------------------------------------------------------------
+    || '   UNION ALL '
+    || '   SELECT '
+    || '     xmrih.shipped_locat_code       AS  shipped_cd '  -- 出庫元保管場所
+    || '    ,xmril.item_code                AS  item_cd '     -- 品目
+    || '    ,xmrih.schedule_ship_date       AS  shipped_date '-- 出庫予定日
+    || '   FROM '
+    || '     xxinv_mov_req_instr_headers    xmrih '    -- 01:移動依頼/指示ヘッダ（アドオン）
+    || '    ,xxinv_mov_req_instr_lines      xmril '    -- 02:移動依頼/指示明細（アドオン）
+    || '    ,xxcmn_item_locations2_v        xilv  '    -- 03:OPM保管場所情報(出庫元)
+    ||  '   ,xxcmn_item_mst_v               ximv  '    -- 04:OPM品目情報
+    || '   WHERE '
+           ----------------------------------------------------------------------------------
+           -- ヘッダ情報
+           ----------------------------------------------------------------------------------
+           -- 01:移動依頼/指示ヘッダ（アドオン）
+    || '        xmrih.schedule_ship_date >= TO_DATE(:shipped_date_from) '
+    || '   AND  xmrih.schedule_ship_date <= TO_DATE(:shipped_date_to) '
+           -- 03:OPM保管場所情報(出庫元)
+    || '   AND  xilv.inventory_location_id = xmrih.shipped_locat_id '
+           ----------------------------------------------------------------------------------
+           -- 明細情報
+           ----------------------------------------------------------------------------------
+           -- 02:移動依頼/指示明細（アドオン）
+    || '   AND  xmrih.mov_hdr_id = xmril.mov_hdr_id '
+    || '   AND  xmril.delete_flg  <> ''' || gc_delete_flg || ''' '
+    || '   AND  xmrih.item_class   = ''' || gv_prod_kbn || ''' '
+           -- 04:OPM品目情報
+    || '   AND  xmril.item_id = ximv.item_id '
+           ----------------------------------------------------------------------------------
+           -- 不足分取得条件
+           ----------------------------------------------------------------------------------
+    || '   AND (((xmril.instruct_qty - xmril.reserved_quantity) > 0) '
+    || '     OR  (xmril.reserved_quantity IS NULL)) '
+           ----------------------------------------------------------------------------------
+           -- 適用日条件
+           ----------------------------------------------------------------------------------
+           -- 04:OPM保管場所
+    || '   AND  xilv.date_from <= xmrih.schedule_ship_date '
+    || '   AND  ((xilv.date_to IS NULL) '
+    || '     OR  (xilv.date_to >= xmrih.schedule_ship_date)) '
+           ----------------------------------------------------------------------------------
+           -- 動的条件
+           ----------------------------------------------------------------------------------
+    ||     lv_where_item_no               -- 品目条件
+    ||     lv_where_block_or_deliver_from -- 物流ブロック・出庫元条件
+    || '  ) sub_data '
+    || ' GROUP BY '
+    || '   sub_data.shipped_cd '
+    || '  ,sub_data.item_cd '
+    ;
+--
+    -- ======================================
+    -- 不足分取得(出荷)SQL作成
+    -- ======================================
+    lv_sql_wsh_short_stock :=
+       ' SELECT '
+         ----------------------------------------------------------------------------------
+         -- ヘッダ部
+         ----------------------------------------------------------------------------------
+    || '   xilv.distribution_block      AS  block_cd '                -- ブロックコード
+    || '  ,xlvv1.meaning                AS  block_nm '                -- ブロック名称
+    || '  ,xoha.deliver_from            AS  shipped_cd '              -- 出庫元コード
+    || '  ,xilv.description             AS  shipped_nm '              -- 出庫元名
+         ----------------------------------------------------------------------------------
+         -- 明細部
+         ----------------------------------------------------------------------------------
+    || '  ,xola.shipping_item_code      AS  item_cd '                 -- 品目コード
+    || '  ,ximv.item_name               AS  item_nm '                 -- 品目名称
+    || '  ,xoha.schedule_ship_date      AS  shipped_date '            -- 出庫日
+    || '  ,xoha.schedule_arrival_date   AS  arrival_date '            -- 着日
+    || '  ,TO_CHAR( ''' || gc_biz_type_nm_ship || ''') AS  biz_type ' -- 業務種別
+    || '  ,xoha.request_no              AS  req_move_no '             -- 依頼No/移動No
+    || '  ,xoha.head_sales_branch       AS  base_cd '                 -- 管轄拠点
+    || '  ,xcav.party_short_name        AS  base_nm '                 -- 管轄拠点名称
+    || '  ,xoha.deliver_to              AS  delivery_to_cd '          -- 配送先/入庫先
+    || '  ,xcasv.party_site_full_name   AS  delivery_to_nm '          -- 配送先名称
+    || '  ,SUBSTRB(xoha.shipping_instructions, 1, 40) '
+    || '                                AS  description '             -- 摘要
+    || '  ,xlvv2.meaning                AS  conf_req '                -- 確認依頼
+    || '  ,CASE '
+    || '     WHEN xola.warning_date IS NULL THEN xola.designated_production_date '
+    || '     ELSE xola.warning_date '
+    || '   END                          AS  de_prod_date '            -- 指定製造日
+    || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+    || '                                AS  de_prod_date_sort '       -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+    || '  ,NULL                         AS  prod_date '               -- 製造日
+    || '  ,NULL                         AS  best_before_date '        -- 賞味期限
+    || '  ,NULL                         AS  native_sign '             -- 固有記号
+    || '  ,NULL                         AS  lot_no '                  -- ロットNo
+    || '  ,NULL                         AS  lot_status '              -- 品質
+    || '  ,CASE '
+    || '     WHEN ximv.conv_unit IS NULL THEN xola.quantity '
+    || '     ELSE                            (xola.quantity / ximv.num_of_cases) '
+    || '   END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘37対応
+    || '  ,CASE '
+    || '     WHEN ximv.conv_unit IS NULL THEN '
+    || '       (xola.quantity - NVL(xola.reserved_quantity, 0)) '
+    || '     ELSE ((xola.quantity - NVL(xola.reserved_quantity, 0)) '
+    || '            / TO_NUMBER( '
+    || '                CASE  '
+    || '                  WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                  ELSE TO_CHAR(1) '
+    || '                END)) '
+    || '   END                          AS  ins_qty '                 -- 不足数
+    || '  ,xcav.reserve_order           AS  reserve_order '           -- 引当順
+    || '  ,xoha.arrival_time_from       AS  time_from '               -- 時間指定From
+    || ' FROM '
+    || '   xxwsh_order_headers_all        xoha   ' -- 01:受注ヘッダアドオン
+    || '  ,xxwsh_order_lines_all          xola   ' -- 02:受注明細アドオン
+    || '  ,xxwsh_oe_transaction_types2_v  xottv  ' -- 03:受注タイプ情報
+    || '  ,xxwsh_tightening_control       xtc    ' -- 04:出荷依頼締め管理(アドオン)
+    || '  ,xxcmn_item_locations2_v        xilv   ' -- 05:OPM保管場所情報
+    || '  ,xxcmn_cust_accounts2_v         xcav   ' -- 06:顧客情報(管轄拠点)
+    || '  ,xxcmn_cust_acct_sites2_v       xcasv  ' -- 07:顧客サイト情報(出荷先)
+    || '  ,xxcmn_item_mst2_v              ximv   ' -- 08:OPM品目情報
+    || '  ,xxcmn_lookup_values2_v         xlvv1  ' -- 09:クイックコード(物流ブロック)
+    || '  ,xxcmn_lookup_values2_v         xlvv2  ' -- 10:クイックコード(物流担当確認依頼区分)
+    || ' WHERE '
+         ----------------------------------------------------------------------------------
+         -- ヘッダ情報
+         ----------------------------------------------------------------------------------
+         -- 03:受注タイプ情報
+    || '      xottv.shipping_shikyu_class  =  ''' || gc_ship_pro_kbn_s || ''' ' -- 出荷支給区分:出荷依頼
+    || ' AND  xottv.order_category_code   <>  ''' || gc_order_cate_ret || ''' ' -- 受注カテゴリ:返品
+         -- 01:受注ヘッダアドオン
+    || ' AND  xoha.order_type_id           =  xottv.transaction_type_id '
+    || ' AND  xoha.req_status             >=  ''' || gc_ship_status_close  || ''' '      -- ステータス:締め済み
+    || ' AND  xoha.req_status             <>  ''' || gc_ship_status_delete || ''' '      -- ステータス:取消
+    || ' AND  xoha.latest_external_flag    =  ''' || gc_new_flg  || ''' '                -- 最新フラグ
+    || ' AND  xoha.prod_class              =  ''' || gv_prod_kbn || ''' '
+    || ' AND  xoha.schedule_ship_date     >=  :shipped_date_from '
+    || ' AND  xoha.schedule_ship_date     <=  :shipped_date_to '
+         -- 04:出荷依頼締め管理(アドオン)
+    || ' AND  xoha.tightening_program_id  = xtc.concurrent_id(+) '
+    || ' AND   ((xtc.tightening_date IS NULL) '
+    || '   OR   ((TO_CHAR(xtc.tightening_date, ''' || gc_date_fmt_hm || ''')  >= :tighten_time_from) '
+    || '     AND (TO_CHAR(xtc.tightening_date, ''' || gc_date_fmt_hm || ''')  <= :tighten_time_to ))) '
+         -- 05:OPM保管場所情報
+    || ' AND  xoha.deliver_from_id = xilv.inventory_location_id '
+         -- 06:顧客情報(管轄拠点)
+    || ' AND  xoha.head_sales_branch = xcav.party_number '
+         -- 07:顧客サイト情報(出荷先)
+    || ' AND  xoha.deliver_to_id     = xcasv.party_site_id '
+         ----------------------------------------------------------------------------------
+         -- 明細情報
+         ----------------------------------------------------------------------------------
+         -- 02:受注明細アドオン
+    || ' AND  xoha.order_header_id =  xola.order_header_id '
+    || ' AND  xola.delete_flag    <>  ''' || gc_delete_flg || ''' '
+         -- 08:OPM品目情報 '
+    || ' AND  xola.shipping_inventory_item_id = ximv.inventory_item_id '
+         ----------------------------------------------------------------------------------
+         -- 不足分取得条件
+         ----------------------------------------------------------------------------------
+    || ' AND  (((xola.quantity - xola.reserved_quantity) > 0) '
+    || '    OR  (xola.reserved_quantity IS NULL)) '
+         ----------------------------------------------------------------------------------
+         -- クイックコード
+         ----------------------------------------------------------------------------------
+         -- 09:クイックコード(物流ブロック)
+    || ' AND  xlvv1.lookup_type = ''' || gc_lookup_cd_block || ''' '
+    || ' AND  xilv.distribution_block = xlvv1.lookup_code '
+         -- 10:クイックコード(物流担当確認依頼区分)
+    || ' AND  xlvv2.lookup_type = ''' || gc_lookup_cd_conreq || ''' '
+    || ' AND  xoha.confirm_request_class = xlvv2.lookup_code '
+         ----------------------------------------------------------------------------------
+         -- 適用日
+         ----------------------------------------------------------------------------------
+         -- 04:出荷依頼締め管理(アドオン)
+    || ' AND  xottv.start_date_active <= xoha.schedule_ship_date '
+    || ' AND  ((xottv.end_date_active IS NULL) '
+    || '   OR  (xottv.end_date_active >= xoha.schedule_ship_date)) '
+         -- 05:OPM保管場所
+    || ' AND  xilv.date_from <= xoha.schedule_ship_date '
+    || ' AND  ((xilv.date_to IS NULL) '
+    || '   OR  (xilv.date_to >= xoha.schedule_ship_date)) '
+         -- 06:顧客情報(管轄拠点)
+    || ' AND  xcav.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((xcav.end_date_active IS NULL) '
+    || '   OR (xcav.end_date_active  >= xoha.schedule_ship_date)) '
+         -- 07:顧客サイト情報(出荷先)
+    || ' AND  xcasv.start_date_active <= xoha.schedule_ship_date '
+    || ' AND ((xcasv.end_date_active IS NULL) '
+    || '   OR (xcasv.end_date_active >= xoha.schedule_ship_date)) '
+         -- 08:OPM品目情報
+    || ' AND  ximv.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((ximv.end_date_active IS NULL) '
+    || '   OR (ximv.end_date_active  >= xoha.schedule_ship_date)) '
+         -- 09:クイックコード(物流ブロック)
+    || ' AND  xlvv1.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((xlvv1.end_date_active IS NULL) '
+    || '   OR (xlvv1.end_date_active  >= xoha.schedule_ship_date)) '
+         -- 10:クイックコード(物流担当確認依頼区分)
+    || ' AND  xlvv2.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((xlvv2.end_date_active IS NULL) '
+    || '   OR (xlvv2.end_date_active  >= xoha.schedule_ship_date)) '
+         ----------------------------------------------------------------------------------
+         -- 動的条件
+         ----------------------------------------------------------------------------------
+    ||   lv_where_tightening_date       -- 締め実施日条件
+    ||   lv_where_item_no               -- 品目条件
+    ||   lv_where_block_or_deliver_from -- 物流ブロック・出庫元条件
+    ;
+--
+    -- ======================================
+    -- 不足無し分(出荷)SQL作成
+    -- ======================================
+    lv_sql_wsh_stock :=
+       ' SELECT '
+         ----------------------------------------------------------------------------------
+         -- ヘッダ部
+         ----------------------------------------------------------------------------------
+    || '   xilv.distribution_block      AS  block_cd '           -- ブロックコード
+    || '  ,xlvv1.meaning                AS  block_nm '           -- ブロック名称
+    || '  ,xoha.deliver_from            AS  shipped_cd '         -- 出庫元コード
+    || '  ,xilv.description             AS  shipped_nm '         -- 出庫元名
+         ----------------------------------------------------------------------------------
+         -- 明細部
+         ----------------------------------------------------------------------------------
+    || '  ,xola.shipping_item_code      AS  item_cd '            -- 品目コード
+    || '  ,ximv.item_name               AS  item_nm '            -- 品目名称
+    || '  ,xoha.schedule_ship_date      AS  shipped_date '       -- 出庫日
+    || '  ,xoha.schedule_arrival_date   AS  arrival_date '       -- 着日
+    || '  ,TO_CHAR(''' || gc_biz_type_nm_ship || ''') AS  biz_type '           -- 業務種別
+    || '  ,xoha.request_no              AS  req_move_no '        -- 依頼No/移動No
+    || '  ,xoha.head_sales_branch       AS  base_cd '            -- 管轄拠点
+    || '  ,xcav.party_short_name        AS  base_nm '            -- 管轄拠点名称
+    || '  ,xoha.deliver_to              AS  delivery_to_cd '     -- 配送先/入庫先
+    || '  ,xcasv.party_site_full_name   AS  delivery_to_nm '     -- 配送先名称
+    || '  ,SUBSTRB(xoha.shipping_instructions, 1, 40) '
+    || '                                AS  description '        -- 摘要
+    || '  ,xlvv2.meaning                AS  conf_req '           -- 確認依頼
+    || '  ,CASE '
+    || '     WHEN xola.warning_date IS NULL THEN xola.designated_production_date '
+    || '     ELSE xola.warning_date '
+    || '   END                          AS  de_prod_date '       -- 指定製造日
+    || '  ,NVL(xola.warning_date, NVL(xola.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+    || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
+    || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
+    || '  ,ilm.attribute2               AS  native_sign '        -- 固有記号
+    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
+    || '  ,xlvv3.meaning                AS  lot_status '         -- 品質
+    || '  ,CASE '
+    || '    WHEN ximv.conv_unit IS NULL THEN xmld.actual_quantity '
+    || '    ELSE (xmld.actual_quantity '
+    || '          / TO_NUMBER( '
+    || '              CASE '
+    || '                WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                ELSE TO_CHAR(1) '
+    || '              END)) '
+    || '   END                          AS  req_qty '            -- 依頼数
+    || '  ,TO_NUMBER(0)                 AS  ins_qty '            -- 不足数
+    || '  ,xcav.reserve_order           AS  reserve_order '      -- 引当順
+    || '  ,xoha.arrival_time_from       AS  time_from '          -- 時間指定From
+    || ' FROM '
+    || '  ( ' || lv_sql_item_short_stock || ') data '   -- 00:引当済分を抽出するための不足品目のサブクエリ
+    || '  ,xxwsh_order_headers_all        xoha '   -- 01:受注ヘッダアドオン
+    || '  ,xxwsh_order_lines_all          xola '   -- 02:受注明細アドオン
+    || '  ,xxwsh_oe_transaction_types2_v  xottv '  -- 03:受注タイプ情報
+    || '  ,xxwsh_tightening_control       xtc '    -- 04:出荷依頼締め管理(アドオン)
+    || '  ,xxcmn_item_locations2_v        xilv '   -- 05:OPM保管場所情報
+    || '  ,xxcmn_cust_accounts2_v         xcav '   -- 06:顧客情報(管轄拠点)
+    || '  ,xxcmn_cust_acct_sites2_v       xcasv '  -- 07:顧客サイト情報(出荷先)
+    || '  ,xxcmn_item_mst2_v              ximv '   -- 08:OPM品目情報
+    || '  ,xxinv_mov_lot_details          xmld '   -- 09:移動ロット詳細(アドオン)
+    || '  ,ic_lots_mst                    ilm '    -- 10:OPMロットマスタ
+    || '  ,xxcmn_lookup_values2_v         xlvv1 '  -- 11:クイックコード(物流ブロック)
+    || '  ,xxcmn_lookup_values2_v         xlvv2 '  -- 12:クイックコード(物流担当確認依頼区分)
+    || '  ,xxcmn_lookup_values2_v         xlvv3 '  -- 13:クイックコード(ロットステータス)
+    || ' WHERE '
+         ----------------------------------------------------------------------------------
+         -- 不足品目情報絞込み条件
+         ----------------------------------------------------------------------------------
+    || '       xoha.deliver_from        =  data.shipped_cd '
+    || ' AND  xola.shipping_item_code   =  data.item_cd '
+    || ' AND  xoha.schedule_ship_date  >=  TO_DATE(:shipped_date_from) '
+    || ' AND  xoha.schedule_ship_date  <=  TO_DATE(data.shipped_date) '
+    || ' AND  (xola.quantity - xola.reserved_quantity) <= 0 '
+         ----------------------------------------------------------------------------------
+         -- ヘッダ情報
+         ----------------------------------------------------------------------------------
+         -- 03:受注タイプ情報
+    || ' AND  xottv.shipping_shikyu_class  = ''' || gc_ship_pro_kbn_s || ''' '  -- 出荷支給区分:出荷依頼
+    || ' AND  xottv.order_category_code   <> ''' || gc_order_cate_ret || ''' '  -- 受注カテゴリ:返品
+         -- 01:受注ヘッダアドオン
+    || ' AND  xoha.order_type_id           =  xottv.transaction_type_id '
+    || ' AND  xoha.req_status             >= ''' || gc_ship_status_close || ''' '     -- ステータス:締め済み
+    || ' AND  xoha.req_status             <> ''' || gc_ship_status_delete || ''' '    -- ステータス:取消
+    || ' AND  xoha.latest_external_flag    = ''' || gc_new_flg || ''' '               -- 最新フラグ
+         -- 04:出荷依頼締め管理(アドオン)
+    || ' AND  xoha.tightening_program_id  = xtc.concurrent_id(+) '
+    || ' AND   ((xtc.tightening_date IS NULL) '
+    || '   OR   ((TO_CHAR(xtc.tightening_date, ''' || gc_date_fmt_hm || ''')  >= :tighten_time_from) '
+    || '     AND (TO_CHAR(xtc.tightening_date, ''' || gc_date_fmt_hm || ''')  <= :tighten_time_to ))) '
+         -- 05:OPM保管場所情報
+    || ' AND  xoha.deliver_from_id = xilv.inventory_location_id '
+         -- 06:顧客情報(管轄拠点)
+    || ' AND  xoha.head_sales_branch = xcav.party_number '
+         -- 07:顧客サイト情報(出荷先)
+    || ' AND  xoha.deliver_to_id     = xcasv.party_site_id '
+         ----------------------------------------------------------------------------------
+         -- 明細情報
+         ----------------------------------------------------------------------------------
+         -- 02:受注明細アドオン
+    || ' AND  xoha.order_header_id  =  xola.order_header_id '
+    || ' AND  xola.delete_flag     <> ''' || gc_delete_flg || ''' '
+         -- 10:OPM品目情報
+    || ' AND  xola.shipping_inventory_item_id = ximv.inventory_item_id '
+         ----------------------------------------------------------------------------------
+         -- ロット情報
+         ----------------------------------------------------------------------------------
+         -- 09:移動ロット詳細(アドオン)
+    || ' AND  xola.order_line_id = xmld.mov_line_id '
+    || ' AND  xmld.document_type_code = ''' || gc_doc_type_ship  || ''' '  -- 文書タイプ:出荷依頼
+    || ' AND  xmld.record_type_code   = ''' || gc_rec_type_shiji || ''' '  -- レコードタイプ:指示
+         -- 10:OPMロットマスタ
+    || ' AND  xmld.lot_id   =  ilm.lot_id '
+    || ' AND  xmld.item_id  =  ilm.item_id '
+         ----------------------------------------------------------------------------------
+         -- クイックコード
+         ----------------------------------------------------------------------------------
+         -- 11:クイックコード(物流ブロック)
+    || ' AND  xlvv1.lookup_type = ''' || gc_lookup_cd_block || ''' '
+    || ' AND  xilv.distribution_block = xlvv1.lookup_code '
+         -- 12:クイックコード(物流担当確認依頼区分)
+    || ' AND  xlvv2.lookup_type = ''' || gc_lookup_cd_conreq || ''' '
+    || ' AND  xoha.confirm_request_class = xlvv2.lookup_code '
+         -- 13:クイックコード(ロットステータス)
+    || ' AND  xlvv3.lookup_type = ''' || gc_lookup_cd_lot_status || ''' '
+    || ' AND  ilm.attribute23 = xlvv3.lookup_code '
+         ----------------------------------------------------------------------------------
+         -- 適用日
+         ----------------------------------------------------------------------------------
+         -- 04:出荷依頼締め管理(アドオン)
+    || ' AND  xottv.start_date_active <= xoha.schedule_ship_date '
+    || ' AND  ((xottv.end_date_active IS NULL) '
+    || '   OR  (xottv.end_date_active >= xoha.schedule_ship_date)) '
+         -- 05:OPM保管場所
+    || ' AND  xilv.date_from <= xoha.schedule_ship_date '
+    || ' AND  ((xilv.date_to IS NULL) '
+    || '   OR  (xilv.date_to >= xoha.schedule_ship_date)) '
+         -- 06:顧客情報(管轄拠点)
+    || ' AND  xcav.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((xcav.end_date_active IS NULL) '
+    || '   OR (xcav.end_date_active  >= xoha.schedule_ship_date)) '
+         -- 07:顧客サイト情報(出荷先)
+    || ' AND  xcasv.start_date_active <= xoha.schedule_ship_date '
+    || ' AND ((xcasv.end_date_active IS NULL) '
+    || '   OR (xcasv.end_date_active >= xoha.schedule_ship_date)) '
+         -- 08:OPM品目情報
+    || ' AND  ximv.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((ximv.end_date_active IS NULL) '
+    || '   OR (ximv.end_date_active  >= xoha.schedule_ship_date)) '
+         -- 11:クイックコード(物流ブロック)
+    || ' AND  xlvv1.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((xlvv1.end_date_active IS NULL) '
+    || '   OR (xlvv1.end_date_active  >= xoha.schedule_ship_date)) '
+         -- 12:クイックコード(物流担当確認依頼区分)
+    || ' AND  xlvv2.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((xlvv2.end_date_active IS NULL) '
+    || '   OR (xlvv2.end_date_active  >= xoha.schedule_ship_date)) '
+         -- 13:クイックコード(ロットステータス)
+    || ' AND  xlvv3.start_date_active  <= xoha.schedule_ship_date '
+    || ' AND ((xlvv3.end_date_active IS NULL) '
+    || '   OR (xlvv3.end_date_active  >= xoha.schedule_ship_date)) '
+         ----------------------------------------------------------------------------------
+         -- 動的条件
+         ----------------------------------------------------------------------------------
+    ||   lv_where_tightening_date       -- 締め実施日条件
+    ;
+    -- ======================================
+    -- 不足分取得(移動)
+    -- ======================================
+    lv_sql_inv_short_stock :=
+       ' SELECT '
+         ----------------------------------------------------------------------------------
+         -- ヘッダ情報
+         ----------------------------------------------------------------------------------
+    || '   xilv.distribution_block      AS  block_cd '           -- ブロックコード
+    || '  ,xlvv1.meaning                AS  block_nm '           -- ブロック名称
+    || '  ,xmrih.shipped_locat_code     AS  shipped_cd '         -- 出庫元コード
+    || '  ,xilv.description             AS  shipped_nm '         -- 出庫元名
+         ----------------------------------------------------------------------------------
+         -- 明細情報
+         ----------------------------------------------------------------------------------
+    || '  ,xmril.item_code              AS  item_cd '            -- 品目コード
+    || '  ,ximv.item_name               AS  item_nm '            -- 品目名称
+    || '  ,xmrih.schedule_ship_date     AS  shipped_date '       -- 出庫日
+    || '  ,xmrih.schedule_arrival_date  AS  arrival_date '       -- 着日
+    || '  ,TO_CHAR(''' || gc_biz_type_nm_move || ''') AS  biz_type '           -- 業務種別
+    || '  ,xmrih.mov_num                AS  req_move_no '        -- 依頼No/移動No
+    || '  ,NULL                         AS  base_cd '            -- 管轄拠点
+    || '  ,NULL                         AS  base_nm '            -- 管轄拠点名称
+    || '  ,xmrih.ship_to_locat_code     AS  delivery_to_cd '     -- 配送先/入庫先
+    || '  ,xilv2.description            AS  delivery_to_nm '     -- 配送先名称
+    || '  ,SUBSTRB(xmrih.description, 1, 40) AS  description '   -- 摘要
+    || '  ,NULL                         AS  conf_req '           -- 確認依頼
+    || '  ,CASE '
+    || '    WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date '
+    || '    ELSE xmril.warning_date '
+    || '   END                          AS  de_prod_date '       -- 指定製造日
+    || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+    || '  ,NULL                         AS  prod_date '          -- 製造日
+    || '  ,NULL                         AS  best_before_date '   -- 賞味期限
+    || '  ,NULL                         AS  native_sign '        -- 固有記号
+    || '  ,NULL                         AS  lot_no '             -- ロットNo
+    || '  ,NULL                         AS  lot_status '         -- 品質
+    || '  ,CASE '
+    || '     WHEN ximv.conv_unit IS NULL THEN xmril.instruct_qty '
+    || '     ELSE                            (xmril.instruct_qty / ximv.num_of_cases) '
+    || '   END                          AS  req_qty '                 -- 依頼数 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘37対応
+    || '  ,CASE '
+    || '    WHEN ximv.conv_unit IS NULL THEN '
+    || '      (xmril.instruct_qty - NVL(xmril.reserved_quantity, 0)) '
+    || '    ELSE ((xmril.instruct_qty - NVL(xmril.reserved_quantity, 0)) '
+    || '          / TO_NUMBER( '
+    || '              CASE '
+    || '                WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                ELSE TO_CHAR(1) '
+    || '              END)) '
+    || '   END                          AS  ins_qty '            -- 不足数
+    || '  ,NULL                         AS  reserve_order '      -- 引当順
+    || '  ,xmrih.arrival_time_from      AS  time_from '          -- 時間指定From
+    || ' FROM '
+    || '   xxinv_mov_req_instr_headers    xmrih '    -- 01:移動依頼/指示ヘッダ（アドオン）
+    || '  ,xxinv_mov_req_instr_lines      xmril '    -- 02:移動依頼/指示明細（アドオン）
+    || '  ,xxcmn_item_locations2_v        xilv '     -- 03:OPM保管場所情報(出庫元)
+    || '  ,xxcmn_item_locations2_v        xilv2 '    -- 04:OPM保管場所情報(入庫先)
+    || '  ,xxcmn_item_mst2_v              ximv  '    -- 05:OPM品目情報
+    || '  ,xxcmn_lookup_values2_v         xlvv1 '    -- 06:クイックコード(物流ブロック)
+    || ' WHERE '
+         ----------------------------------------------------------------------------------
+         -- ヘッダ情報
+         ----------------------------------------------------------------------------------
+         -- 01:移動依頼/指示ヘッダ（アドオン）
+    || '      xmrih.status               >=  ''' || gc_move_status_ordered || ''' ' -- ステータス:依頼済
+    || ' AND  xmrih.mov_type             <>  ''' || gc_mov_type_not_ship   || ''' '   -- 移動タイプ:積送なし
+    || ' AND  xmrih.item_class            =  ''' || gv_prod_kbn            || ''' '
+    || ' AND  xmrih.schedule_ship_date   >=  :shipped_date_from '
+    || ' AND  xmrih.schedule_ship_date   <=  :shipped_date_to '
+        -- 03:OPM保管場所情報(出庫元)
+    || ' AND  xilv.inventory_location_id = xmrih.shipped_locat_id '
+         -- 04:OPM保管場所情報(入庫先)
+    || ' AND  xilv2.inventory_location_id = xmrih.ship_to_locat_id '
+         ----------------------------------------------------------------------------------
+         -- 明細情報
+         ----------------------------------------------------------------------------------
+         -- 02:移動依頼/指示明細（アドオン）
+    || ' AND  xmrih.mov_hdr_id   =  xmril.mov_hdr_id '
+    || ' AND  xmril.delete_flg  <>  ''' || gc_delete_flg || ''' '
+         -- 05:OPM品目情報
+    || ' AND  xmril.item_id = ximv.item_id '
+         ----------------------------------------------------------------------------------
+         -- 不足分取得条件
+         ----------------------------------------------------------------------------------
+    || ' AND (((xmril.instruct_qty - xmril.reserved_quantity) > 0) '
+    || '   OR  (xmril.reserved_quantity IS NULL)) '
+         ----------------------------------------------------------------------------------
+         -- クイックコード
+         ----------------------------------------------------------------------------------
+         -- 06:クイックコード(物流ブロック)
+    || ' AND  xlvv1.lookup_type = ''' || gc_lookup_cd_block || ''' '
+    || ' AND  xilv.distribution_block = xlvv1.lookup_code '
+         ----------------------------------------------------------------------------------
+         -- 適用日
+         ----------------------------------------------------------------------------------
+         -- 03:OPM保管場所(出庫元)
+    || ' AND  xilv.date_from <= xmrih.schedule_ship_date '
+    || ' AND  ((xilv.date_to IS NULL) '
+    || '   OR  (xilv.date_to >= xmrih.schedule_ship_date)) '
+         -- 04:OPM保管場所(入庫先)
+    || ' AND  xilv2.date_from <= xmrih.schedule_ship_date '
+    || ' AND  ((xilv2.date_to IS NULL) '
+    || '   OR  (xilv2.date_to >= xmrih.schedule_ship_date)) '
+         -- 05:OPM品目情報
+    || ' AND  ximv.start_date_active  <= xmrih.schedule_ship_date '
+    || ' AND ((ximv.end_date_active IS NULL) '
+    || '   OR (ximv.end_date_active  >= xmrih.schedule_ship_date)) '
+         -- 06:クイックコード(物流ブロック)
+    || ' AND  xlvv1.start_date_active  <= xmrih.schedule_ship_date '
+    || ' AND ((xlvv1.end_date_active IS NULL) '
+    || '   OR (xlvv1.end_date_active  >= xmrih.schedule_ship_date)) '
+         ----------------------------------------------------------------------------------
+         -- 動的条件
+         ----------------------------------------------------------------------------------
+    ||   lv_where_item_no               -- 品目条件
+    ||   lv_where_block_or_deliver_from -- 物流ブロック・出庫元条件
+    ;
+--
+    -- ======================================
+    -- 不足無し分の取得(移動)
+    -- ======================================
+    lv_sql_inv_stock :=
+       ' SELECT '
+         ----------------------------------------------------------------------------------
+         -- ヘッダ情報
+         ----------------------------------------------------------------------------------
+    || '   xilv1.distribution_block     AS  block_cd '           -- ブロックコード
+    || '  ,xlvv1.meaning                AS  block_nm '           -- ブロック名称
+    || '  ,xmrih.shipped_locat_code     AS  shipped_cd '         -- 出庫元コード
+    || '  ,xilv1.description            AS  shipped_nm '         -- 出庫元名
+         ----------------------------------------------------------------------------------
+         -- 明細情報
+         ----------------------------------------------------------------------------------
+    || '  ,xmril.item_code              AS  item_cd '            -- 品目コード
+    || '  ,ximv.item_name               AS  item_nm '            -- 品目名称
+    || '  ,xmrih.schedule_ship_date     AS  shipped_date '       -- 出庫日
+    || '  ,xmrih.schedule_arrival_date  AS  arrival_date '       -- 着日
+    || '  ,TO_CHAR(''' || gc_biz_type_nm_move || ''') AS  biz_type '           -- 業務種別
+    || '  ,xmrih.mov_num                AS  req_move_no '        -- 依頼No/移動No
+    || '  ,NULL                         AS  base_cd '            -- 管轄拠点
+    || '  ,NULL                         AS  base_nm '            -- 管轄拠点名称
+    || '  ,xmrih.ship_to_locat_code     AS  delivery_to_cd '     -- 配送先/入庫先
+    || '  ,xilv2.description            AS  delivery_to_nm '     -- 配送先名称
+    || '  ,SUBSTRB(xmrih.description, 1, 40) AS  description '   -- 摘要
+    || '  ,NULL                         AS  conf_req '           -- 確認依頼
+    || '  ,CASE '
+    || '     WHEN xmril.warning_date IS NULL THEN xmril.designated_production_date '
+    || '     ELSE xmril.warning_date '
+    || '   END                          AS  de_prod_date '       -- 指定製造日
+    || '  ,NVL(xmril.warning_date, NVL(xmril.designated_production_date, TO_DATE(''19000101'', ''YYYYMMDD''))) '
+    || '                                AS  de_prod_date_sort '  -- 指定製造日(ソート用) 2008/09/26 H.Itou Add T_TE080_BPO_620指摘38対応
+    || '  ,ilm.attribute1               AS  prod_date '          -- 製造日
+    || '  ,ilm.attribute3               AS  best_before_date '   -- 賞味期限
+    || '  ,ilm.attribute2               AS  native_sign '        -- 固有記号
+    || '  ,xmld.lot_no                  AS  lot_no '             -- ロットNo
+    || '  ,xlvv2.meaning                AS  lot_status '         -- 品質
+    || '  ,CASE '
+    || '     WHEN ximv.conv_unit IS NULL THEN xmld.actual_quantity '
+    || '     ELSE (xmld.actual_quantity '
+    || '           / TO_NUMBER( '
+    || '               CASE '
+    || '                 WHEN ximv.num_of_cases > 0 THEN  ximv.num_of_cases '
+    || '                 ELSE TO_CHAR(1) '
+    || '               END)) '
+    || '   END                          AS  req_qty '            -- 依頼数
+    || '  ,TO_NUMBER(0)                 AS  ins_qty '            -- 不足数
+    || '  ,NULL                         AS  reserve_order '      -- 引当順
+    || '  ,xmrih.arrival_time_from      AS  time_from '          -- 時間指定From
+    || ' FROM '
+    || '  ( ' || lv_sql_item_short_stock || ') data ' -- 00:引当済分を抽出するための不足品目のサブクエリ
+    || '  ,xxinv_mov_req_instr_headers    xmrih '    -- 01:移動依頼/指示ヘッダ（アドオン）
+    || '  ,xxinv_mov_req_instr_lines      xmril '    -- 02:移動依頼/指示明細（アドオン）
+    || '  ,xxcmn_item_locations2_v        xilv1 '    -- 03:OPM保管場所情報(出庫元)
+    || '  ,xxcmn_item_locations2_v        xilv2 '    -- 04:OPM保管場所情報(入庫先)
+    || '  ,xxcmn_item_mst2_v              ximv  '    -- 05:OPM品目情報
+    || '  ,xxinv_mov_lot_details          xmld  '    -- 06:移動ロット詳細(アドオン)
+    || '  ,ic_lots_mst                    ilm   '    -- 07:OPMロットマスタ
+    || '  ,xxcmn_lookup_values2_v         xlvv1 '    -- 08:クイックコード(物流ブロック)
+    || '  ,xxcmn_lookup_values2_v         xlvv2 '    -- 09:クイックコード(ロットステータス)
+    || ' WHERE '
+         ----------------------------------------------------------------------------------
+         -- 不足品目情報絞込み条件
+         ----------------------------------------------------------------------------------
+    || '      xmrih.shipped_locat_code   =  data.shipped_cd '
+    || ' AND  xmril.item_code            =  data.item_cd '
+    || ' AND  xmrih.schedule_ship_date  >=  :shipped_date_from '
+    || ' AND  xmrih.schedule_ship_date  <=  data.shipped_date '
+    || ' AND  (xmril.instruct_qty - xmril.reserved_quantity) <= 0 '
+         ----------------------------------------------------------------------------------
+         -- ヘッダ情報
+         ----------------------------------------------------------------------------------
+         -- 01:移動依頼/指示ヘッダ（アドオン）
+    || ' AND  xmrih.status    >=  ''' || gc_move_status_ordered || ''' ' -- ステータス:依頼済
+    || ' AND  xmrih.mov_type  <>  ''' || gc_mov_type_not_ship   || ''' ' -- 移動タイプ:積送なし
+         -- 03:OPM保管場所情報(出庫元)
+    || ' AND  xilv1.inventory_location_id = xmrih.shipped_locat_id '
+         -- 04:OPM保管場所情報(入庫先)
+    || ' AND  xilv2.inventory_location_id = xmrih.ship_to_locat_id '
+         ----------------------------------------------------------------------------------
+         -- 明細情報
+         ----------------------------------------------------------------------------------
+         -- 02:移動依頼/指示明細（アドオン）
+    || ' AND  xmrih.mov_hdr_id  =  xmril.mov_hdr_id '
+    || ' AND  xmril.delete_flg  <>  ''' || gc_delete_flg || ''' '
+         -- 05:OPM品目情報
+    || ' AND  xmril.item_id = ximv.item_id '
+         ----------------------------------------------------------------------------------
+         -- ロット情報
+         ----------------------------------------------------------------------------------
+         -- 06:移動ロット詳細(アドオン)
+    || ' AND  xmril.mov_line_id =  xmld.mov_line_id '
+    || ' AND  xmril.item_id     =  xmld.item_id '
+    || ' AND  xmld.document_type_code = ''' || gc_doc_type_move  || ''' '  -- 文書タイプ:移動
+    || ' AND  xmld.record_type_code   = ''' || gc_rec_type_shiji || ''' '  -- レコードタイプ:指示
+         -- 07:OPMロットマスタ
+    || ' AND  xmld.lot_id   =  ilm.lot_id '
+    || ' AND  xmld.item_id  =  ilm.item_id '
+         ----------------------------------------------------------------------------------
+         -- クイックコード
+         ----------------------------------------------------------------------------------
+         -- 08:クイックコード(物流ブロック)
+    || ' AND  xlvv1.lookup_type = ''' || gc_lookup_cd_block || ''' '
+    || ' AND  xilv1.distribution_block = xlvv1.lookup_code '
+         -- 09:クイックコード(ロットステータス)
+    || ' AND  xlvv2.lookup_type = ''' || gc_lookup_cd_lot_status || ''' '
+    || ' AND  ilm.attribute23 = xlvv2.lookup_code '
+         ----------------------------------------------------------------------------------
+         -- 適用日
+         ----------------------------------------------------------------------------------
+         -- 03:OPM保管場所(出庫元)
+    || ' AND  xilv1.date_from <= xmrih.schedule_ship_date '
+    || ' AND  ((xilv1.date_to IS NULL) '
+    || '   OR  (xilv1.date_to >= xmrih.schedule_ship_date)) '
+         -- 04:OPM保管場所(入庫元)
+    || ' AND  xilv2.date_from <= xmrih.schedule_ship_date '
+    || ' AND  ((xilv2.date_to IS NULL) '
+    || '   OR  (xilv2.date_to >= xmrih.schedule_ship_date)) '
+         -- 05:OPM品目情報
+    || ' AND  ximv.start_date_active  <= xmrih.schedule_ship_date '
+    || ' AND ((ximv.end_date_active IS NULL) '
+    || '   OR (ximv.end_date_active  >= xmrih.schedule_ship_date)) '
+         -- 08:クイックコード(物流ブロック)
+    || ' AND  xlvv1.start_date_active  <= xmrih.schedule_ship_date '
+    || ' AND ((xlvv1.end_date_active IS NULL) '
+    || '   OR (xlvv1.end_date_active  >= xmrih.schedule_ship_date)) '
+         -- 09:クイックコード(ロットステータス)
+    || ' AND  xlvv2.start_date_active  <= xmrih.schedule_ship_date '
+    || ' AND ((xlvv2.end_date_active IS NULL) '
+    || '   OR (xlvv2.end_date_active  >= xmrih.schedule_ship_date)) '
+    ;
+--
+    -- ======================================
+    -- ORDER BY句作成
+    -- ======================================
+    lv_order_by :=
+       ' ORDER BY '
+    || '   block_cd       ASC '     -- 01:ブロック
+    || '  ,shipped_cd     ASC '     -- 02:出庫元
+    || '  ,item_cd        ASC '     -- 03:品目
+    || '  ,shipped_date   ASC '     -- 04:出庫日
+    || '  ,arrival_date   ASC '     -- 05:着日
+    || '  ,de_prod_date_sort  DESC '-- 06:指定製造日 2008/09/26 H.Itou Mod T_TE080_BPO_620指摘38対応
+    || '  ,reserve_order  ASC '     -- 07:引当順
+    || '  ,base_cd        ASC '     -- 08:管轄拠点
+    || '  ,time_from      ASC '     -- 09:時間指定From
+    || '  ,req_move_no    ASC '     -- 10:依頼No/移動No
+    || '  ,lot_no         ASC '     -- 11:ロットNo
+    ;
+--
+    -- ======================================
+    -- SQL作成
+    -- ======================================
+    lv_sql := lv_sql_wsh_short_stock -- 不足分取得(出荷)SQL
+           || cv_union_all           -- UNION ALL
+           || lv_sql_wsh_stock       -- 不足無し分(出荷)SQL
+           || cv_union_all           -- UNION ALL
+           || lv_sql_inv_short_stock -- 不足分取得(移動)SQL
+           || cv_union_all           -- UNION ALL
+           || lv_sql_inv_stock       -- 不足無し分(移動)SQL
+           || lv_order_by            -- ORDER BY句
+           ;
+--
+    -- ======================================
+    -- カーソルOPEN
+    -- ======================================
+    OPEN  cur_data FOR lv_sql
+    USING ----------------------------------
+          -- 不足分取得(出荷)SQLパラメータ
+          ----------------------------------
+          gt_param.shipped_date_from                      -- WHERE句 出庫日           >= INパラメータ.出庫日FROM
+         ,gt_param.shipped_date_to                        -- WHERE句 出庫日           <= INパラメータ.出庫日TO
+         ,NVL(gt_param.tighten_time_from, gc_time_start)  -- WHERE句 締め実施日(時間) >= INパラメータ.締め実施時間FROM
+         ,NVL(gt_param.tighten_time_to,   gc_time_end)    -- WHERE句 締め実施日(時間) <= INパラメータ.締め実施時間TO
+         ,gt_param.tighten_date                           -- WHERE句 締め実施日        = INパラメータ.締め実施日
+         ,gt_param.item_cd                                -- WHERE句 品目              = INパラメータ.品目
+         ,gt_param.shipped_cd                             -- WHERE句 出庫元            = INパラメータ.出庫元
+         ,gt_param.block1                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック1
+         ,gt_param.block2                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック2
+         ,gt_param.block3                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック3
+          ----------------------------------
+          -- 不足無し取得(出荷)SQLパラメータ
+          ----------------------------------
+          -- ** サブクエリのパラメータ(引当済分を抽出するための不足品目の取得(出荷)) ** --
+         ,gt_param.shipped_date_from                      -- WHERE句 出庫日           >= INパラメータ.出庫日FROM
+         ,gt_param.shipped_date_to                        -- WHERE句 出庫日           <= INパラメータ.出庫日TO
+         ,NVL(gt_param.tighten_time_from, gc_time_start)  -- WHERE句 締め実施日(時間) >= INパラメータ.締め実施時間FROM
+         ,NVL(gt_param.tighten_time_to,   gc_time_end)    -- WHERE句 締め実施日(時間) <= INパラメータ.締め実施時間TO
+         ,gt_param.tighten_date                           -- WHERE句 締め実施日        = INパラメータ.締め実施日
+         ,gt_param.item_cd                                -- WHERE句 品目              = INパラメータ.品目
+         ,gt_param.shipped_cd                             -- WHERE句 出庫元            = INパラメータ.出庫元
+         ,gt_param.block1                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック1
+         ,gt_param.block2                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック2
+         ,gt_param.block3                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック3
+          -- ** サブクエリのパラメータ(引当済分を抽出するための不足品目の取得(移動)) ** --
+         ,gt_param.shipped_date_from                      -- WHERE句 出庫日           >= INパラメータ.出庫日FROM
+         ,gt_param.shipped_date_to                        -- WHERE句 出庫日           <= INパラメータ.出庫日TO
+         ,gt_param.item_cd                                -- WHERE句 品目              = INパラメータ.品目
+         ,gt_param.shipped_cd                             -- WHERE句 出庫元            = INパラメータ.出庫元
+         ,gt_param.block1                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック1
+         ,gt_param.block2                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック2
+         ,gt_param.block3                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック3
+          -- ** メインのパラメータ ** --
+         ,gt_param.shipped_date_from                      -- WHERE句 出庫日           >= INパラメータ.出庫日FROM
+         ,NVL(gt_param.tighten_time_from, gc_time_start)  -- WHERE句 締め実施日(時間) >= INパラメータ.締め実施時間FROM
+         ,NVL(gt_param.tighten_time_to,   gc_time_end)    -- WHERE句 締め実施日(時間) <= INパラメータ.締め実施時間TO
+         ,gt_param.tighten_date                           -- WHERE句 締め実施日        = INパラメータ.締め実施日
+          ----------------------------------
+          -- 不足分取得(移動)SQLパラメータ
+          ----------------------------------
+         ,gt_param.shipped_date_from                      -- WHERE句 出庫日           >= INパラメータ.出庫日FROM
+         ,gt_param.shipped_date_to                        -- WHERE句 出庫日           <= INパラメータ.出庫日TO
+         ,gt_param.item_cd                                -- WHERE句 品目              = INパラメータ.品目
+         ,gt_param.shipped_cd                             -- WHERE句 出庫元            = INパラメータ.出庫元
+         ,gt_param.block1                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック1
+         ,gt_param.block2                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック2
+         ,gt_param.block3                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック3
+          ----------------------------------
+          -- 不足無し取得(移動)SQLパラメータ
+          ----------------------------------
+          -- ** サブクエリのパラメータ(引当済分を抽出するための不足品目の取得(出荷)) ** --
+         ,gt_param.shipped_date_from                      -- WHERE句 出庫日           >= INパラメータ.出庫日FROM
+         ,gt_param.shipped_date_to                        -- WHERE句 出庫日           <= INパラメータ.出庫日TO
+         ,NVL(gt_param.tighten_time_from, gc_time_start)  -- WHERE句 締め実施日(時間) >= INパラメータ.締め実施時間FROM
+         ,NVL(gt_param.tighten_time_to,   gc_time_end)    -- WHERE句 締め実施日(時間) <= INパラメータ.締め実施時間TO
+         ,gt_param.tighten_date                           -- WHERE句 締め実施日        = INパラメータ.締め実施日
+         ,gt_param.item_cd                                -- WHERE句 品目              = INパラメータ.品目
+         ,gt_param.shipped_cd                             -- WHERE句 出庫元            = INパラメータ.出庫元
+         ,gt_param.block1                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック1
+         ,gt_param.block2                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック2
+         ,gt_param.block3                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック3
+          -- ** サブクエリのパラメータ(引当済分を抽出するための不足品目の取得(移動)) ** --
+         ,gt_param.shipped_date_from                      -- WHERE句 出庫日           >= INパラメータ.出庫日FROM
+         ,gt_param.shipped_date_to                        -- WHERE句 出庫日           <= INパラメータ.出庫日TO
+         ,gt_param.item_cd                                -- WHERE句 品目              = INパラメータ.品目
+         ,gt_param.shipped_cd                             -- WHERE句 出庫元            = INパラメータ.出庫元
+         ,gt_param.block1                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック1
+         ,gt_param.block2                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック2
+         ,gt_param.block3                                 -- WHERE句 物流ブロック      = INパラメータ.ブロック3
+          -- ** メインのパラメータ ** --
+         ,gt_param.shipped_date_from                      -- WHERE句 出庫日           >= INパラメータ.出庫日FROM
+    ;
+--
+    -- ======================================
+    -- カーソルFETCH
+    -- ======================================
+    FETCH cur_data BULK COLLECT INTO gt_report_data ;
+--
+    -- ======================================
+    -- カーソルCLOSE
+    -- ======================================
+    CLOSE cur_data ;
+-- 2008/09/26 H.Itou Add End T_S_533(PT対応)
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
