@@ -1,0 +1,14 @@
+/*************************************************************************
+ * 
+ * INDEX Name      : xxcso_jtf_tasks_b_n21
+ * Description     : 
+ * MD.070          : 
+ * Version         : 1.0
+ * 
+ * Change Record
+ * ------------- ----- ------------ -------------------------------------
+ *  Date          Ver.  Editor       Description
+ * ------------- ----- ------------ -------------------------------------
+ *  2009/10/26   1.0  D.Abe         èââÒçÏê¨
+ ************************************************************************/
+CREATE INDEX jtf.xxcso_jtf_tasks_b_n21 ON jtf.jtf_tasks_b (TRUNC(last_update_date)) TABLESPACE apps_ts_tx_idx;
