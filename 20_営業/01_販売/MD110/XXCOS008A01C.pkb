@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS008A01C(body)
  * Description      : 工場直送出荷依頼IF作成を行う
  * MD.050           : 工場直送出荷依頼IF作成 MD050_COS_008_A01
- * Version          : 1.20
+ * Version          : 1.22
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *                                       [E_本稼動_00305]子コードが設定されている場合は子コードで出荷依頼を作成するように修正
  *  2009/12/14    1.20  N.Maeda          [E_本稼動_00462]売上対象区分チェック修正
  *  2009/12/29    1.21  N.Maeda          [E_本稼動_00683]出荷予定日取得関数による翌稼働日算出の追加。
+ *  2011/02/19    1.22  K.Ou             [E_本稼動_01671]パフォマンス改善対応
  *
  *****************************************************************************************/
 --
@@ -233,6 +234,10 @@ AS
   --
   cn_customer_div_cust          CONSTANT  VARCHAR2(4)   := '10';          -- 顧客
   cv_cust_site_use_code         CONSTANT  VARCHAR2(10)  := 'SHIP_TO';     --顧客使用目的：出荷先
+/* 2011/02/18 Ver.1.22 Add Start */
+  -- ヘッダステータス
+  cv_flow_status_code           CONSTANT VARCHAR2(10) := 'BOOKED';        -- 記帳済み
+/* 2011/02/18 Ver.1.22 Add End */
   -- 明細ステータス
   cv_flow_status_cancelled      CONSTANT VARCHAR2(10) := 'CANCELLED';     -- 取消
   cv_flow_status_closed         CONSTANT VARCHAR2(10) := 'CLOSED';        -- クローズ
@@ -262,6 +267,9 @@ AS
   cv_weight_capacity_class      CONSTANT VARCHAR2(30) := 'XXCOS1_WEIGHT_CAPACITY_CLASS';  -- 重量容積区分
   cv_pf_organization_cd         CONSTANT VARCHAR2(50) := 'XXCOI1_ORGANIZATION_CODE';   -- XXCOI:在庫組織コード
   cv_resp_prod                  CONSTANT VARCHAR2(50) := 'XXCOS1_RESPONSIBILITY_PRODUCTION';  -- プロファイル：生産への切替用職責
+/* 2011/02/18 Ver.1.22 Add Start */
+  cv_order_past_day             CONSTANT VARCHAR2(50) := 'XXCOS1_ORDER_PAST_DAY';      -- プロファイル:受注データ過去取得日数
+/* 2011/02/18 Ver.1.22 Add End */
   cv_weight_capacity_err        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-13951';           -- 重量容積区分取得エラー
   cv_msg_get_login              CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11638';           -- ログイン情報取得エラー
   cv_msg_get_resp               CONSTANT VARCHAR2(20) := 'APP-XXCOS1-11639';           -- プロファイル(切替用職責)取得エラー
@@ -284,6 +292,9 @@ AS
   cv_line_insert_err            CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00010';           -- データ登録エラー
   cv_msg_organization_id        CONSTANT VARCHAR2(20) := 'APP-XXCOI1-00006';           -- 在庫組織ID取得エラーメッセージ
   cv_msg_organization_cd        CONSTANT VARCHAR2(20) := 'APP-XXCOS1-00048';           -- XXCOI:在庫組織コード
+/* 2011/02/19 Ver.1.22 Add Start */
+  cv_msg_order_past_day         CONSTANT VARCHAR2(50) := 'APP-XXCOS1-11650';           -- プロファイル:受注データ過去取得日数エラーメッセージ
+/* 2011/02/19 Ver.1.22 Add End */
   cv_tkn_org_code_tok           CONSTANT VARCHAR2(20) := 'ORG_CODE_TOK';               -- 在庫組織コード
   cv_tkn_order_source           CONSTANT VARCHAR2(30) := 'ORDER_SOURCE';               -- 出荷依頼NO
   cv_tkn_ship_method            CONSTANT VARCHAR2(30) := 'SHIP_METHOD';                -- 出荷方法
@@ -319,6 +330,9 @@ AS
   gt_max_wait                   fnd_profile_option_values.profile_option_value%TYPE;      -- 最大監視時間
   gt_interval                   fnd_profile_option_values.profile_option_value%TYPE;      -- 監視間隔
 /* 2009/07/28 Ver.1.11 Add End   */
+/* 2011/02/18 Ver.1.22 Add Start */
+  gn_order_past_day             NUMBER;                                                   -- XXCOS:受注データ過去取得日数
+/* 2011/02/18 Ver.1.22 Add End */
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -607,6 +621,10 @@ AS
     AND   iim.inactive_ind                           <> cn_inactive_ind_on
     AND   xim.obsolete_class                         <> cv_obsolete_class_on
 /* 2009/09/16 Ver.1.12 Add End */
+/* 2011/02/18 Ver.1.22 Add Start */
+    AND   ooha.request_date >= gd_business_date - gn_order_past_day
+    AND   ooha.flow_status_code = cv_flow_status_code
+/* 2011/02/18 Ver.1.22 Add End */
     FOR UPDATE OF  oola.line_id
                   ,ooha.header_id
     NOWAIT
@@ -818,6 +836,9 @@ AS
 /* 2009/09/16 Ver.1.12 Add Start */
     lv_organization_cd   fnd_profile_option_values.profile_option_value%TYPE := NULL;     -- 在庫組織コード
 /* 2009/09/16 Ver.1.12 Add End */
+/* 2011/02/18 Ver.1.22 Add Start */
+    lv_order_past_day   fnd_profile_option_values.profile_option_value%TYPE := NULL;      -- 受注データ過去取得日数
+/* 2011/02/18 Ver.1.22 Add End */
 --
     -- *** ローカル例外 ***
     notfound_hokan_direct_expt   EXCEPTION;      -- 直送倉庫保管場所区分取得エラー
@@ -1139,6 +1160,32 @@ AS
     END;
 /* 2009/11/04 Ver.1.14 Add End */
   --
+/* 2011/02/18 Ver.1.22 Add Start */
+    --==============================================================
+    -- プロファイルの取得(XXCOS:受注データ過去取得日数)
+    --==============================================================
+    lv_order_past_day := FND_PROFILE.VALUE( name => cv_order_past_day );
+    
+    -- プロファイルが取得できなかった場合
+    IF ( lv_order_past_day IS NULL ) THEN
+      -- プロファイル取得エラーを出力
+      lv_profile_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+        ,iv_name        => cv_msg_order_past_day           -- メッセージID
+      );
+      -- メッセージ作成
+      lv_errmsg := xxccp_common_pkg.get_msg(
+         iv_application  => cv_xxcos_short_name         -- アプリケーション短縮名
+        ,iv_name         => cv_msg_notfound_profile     -- メッセージ
+        ,iv_token_name1  => cv_tkn_profile              -- トークン1名
+        ,iv_token_value1 => lv_profile_name);           -- トークン1値
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+    
+    gn_order_past_day := TO_NUMBER(lv_order_past_day);
+  --
+/* 2011/02/18 Ver.1.22 Add End */
   EXCEPTION
 /* 2009/09/16 Ver.1.12 Add Start */
     WHEN notfound_weight_capacity_expt THEN
