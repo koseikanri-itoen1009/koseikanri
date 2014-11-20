@@ -1,0 +1,1 @@
+CREATE INDEX xxcmn.xxcmn_sr_n02 ON xxcmn.xxcmn_sourcing_rules( item_code,ship_to_code,delivery_whse_code ) TABLESPACE xxidx;
