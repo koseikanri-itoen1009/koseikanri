@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS003A02C(body)
  * Description      : 単価マスタIF出力（データ抽出）
  * MD.050           : 単価マスタIF出力（データ抽出） MD050_COS_003_A02
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -30,6 +30,7 @@ AS
  *  2009/06/09   1.4    N.Maeda          [障害T1_1401] 端数処理取得テーブル修正
  *  2009/07/17   1.5    K.Shirasuna      [障害PT_00016]「単価マスタIF出力」処理の性能改善
  *  2009/08/04   1.6    M.Sano           [障害0000933] 『単価マスタIF出力』PTの考慮
+ *  2009/08/17   1.7    M.Sano           [障害0001044] 「単価マスタIF出力」処理の性能改善
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -228,7 +229,9 @@ AS
 --****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
              FROM   fnd_lookup_values flvl
              WHERE  flvl.lookup_type         = cv_lookup_type_gyotai
-             AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL START ***********************************--
+--             AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL End   ***********************************--
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
 --             AND    flvl.language            = USERENV('LANG')
              AND    flvl.language            = gv_language
@@ -245,7 +248,9 @@ AS
 --****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
              FROM   fnd_lookup_values flvl
              WHERE  flvl.lookup_type         = cv_lookup_type_no_inv
-             AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL START ***********************************--
+--             AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL End   ***********************************--
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
 --             AND    flvl.language            = USERENV('LANG')
              AND    flvl.language            = gv_language
@@ -257,7 +262,10 @@ AS
     UNION
 --****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
 --    SELECT  xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
-    SELECT  /*+ leading(inl1.inl2.xsel) use_nl(inl1.inl2.xsel inl1.inl2.xseh) */
+--****************************** 2009/08/17 1.7  M.Sano MOD START ***********************************--
+--    SELECT  /*+ leading(inl1.inl2.xsel) use_nl(inl1.inl2.xsel inl1.inl2.xseh) */
+    SELECT  /*+ leading(inl1.inl2.xsel) use_nl(inl1 xseh xsel) */
+--****************************** 2009/08/17 1.7  M.Sano MOD End   ***********************************--
             xseh.sales_exp_header_id          sales_exp_header_id               --販売実績ヘッダID
 --****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
            ,xseh.ship_to_customer_code        ship_to_customer_code             --顧客【納品先】
@@ -288,12 +296,19 @@ AS
 --           ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
 ----****************************** 2009/06/09 1.4  N.Maeda MOD END ******************************--
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD END ********************************--
-           ,(SELECT  MAX(xseh.digestion_ln_number) digestion_ln_number
+--****************************** 2009/08/17 1.7  M.Sano MOD START ***********************************--
+--           ,(SELECT  MAX(xseh.digestion_ln_number) digestion_ln_number
+           ,(SELECT  /*+ use_nl(inl2 xseh) */
+                     MAX(xseh.digestion_ln_number) digestion_ln_number
+--****************************** 2009/08/17 1.7  M.Sano MOD End   ***********************************--
                     ,inl2.order_no_hht
              FROM   xxcos_sales_exp_headers xseh
 --****************************** 2009/08/04 1.6  M.Sano MOD START ***********************************--
 --                   ,(SELECT xseh.order_no_hht order_no_hht
-                   ,(SELECT /*+ index(xsel xxcos_sales_exp_lines_n02) */
+--****************************** 2009/08/17 1.7  M.Sano MOD START ***********************************--
+--                   ,(SELECT /*+ index(xsel xxcos_sales_exp_lines_n02) */
+                   ,(SELECT /*+ index(xsel xxcos_sales_exp_lines_n02) use_nl(xsel xseh) */
+--****************************** 2009/08/17 1.7  M.Sano MOD End   ***********************************--
                              xseh.order_no_hht order_no_hht
 --****************************** 2009/08/04 1.6  M.Sano MOD End   ***********************************--
                      FROM    xxcos_sales_exp_headers xseh
@@ -302,11 +317,17 @@ AS
                      AND     xseh.digestion_ln_number  = 1
                      AND     xseh.dlv_invoice_class IN (cv_invoice_class_dliv,cv_invoice_class_d_co)
                      AND     xsel.unit_price_mst_flag  = cv_flag_off
-                     AND     NOT EXISTS(SELECT NULL
+--****************************** 2009/08/17 1.7  M.Sano MOD START ***********************************--
+--                     AND     NOT EXISTS(SELECT NULL
+                     AND     NOT EXISTS(SELECT /*+ use_nl(flvl) */
+                                               NULL
+--****************************** 2009/08/17 1.7  M.Sano MOD End   ***********************************--
                                         FROM   fnd_lookup_values       flvl
                                         WHERE  flvl.lookup_type       = cv_lookup_type_gyotai
-                                        AND    flvl.security_group_id = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type
-                                                                                                ,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL START ***********************************--
+--                                        AND    flvl.security_group_id = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type
+--                                                                                                ,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL End   ***********************************--
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
 --                                        AND     flvl.language             = USERENV('LANG')
                                         AND     flvl.language             = gv_language
@@ -332,10 +353,16 @@ AS
     AND     inl1.digestion_ln_number = xseh.digestion_ln_number
     AND     xseh.sales_exp_header_id = xsel.sales_exp_header_id
     AND     xsel.sales_class         IN(gv_sales_cls_nml,gv_sales_cls_sls)
-    AND     NOT EXISTS(SELECT NULL
+--****************************** 2009/08/17 1.7  M.Sano MOD START ***********************************--
+--    AND     NOT EXISTS(SELECT NULL
+    AND     NOT EXISTS(SELECT /*+ use_nl(flvl) */
+                              NULL
+--****************************** 2009/08/17 1.7  M.Sano MOD End   ***********************************--
                        FROM   fnd_lookup_values flvl
                        WHERE  flvl.lookup_type         = cv_lookup_type_no_inv
-                       AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL START ***********************************--
+--                       AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL End   ***********************************--
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
 --                       AND    flvl.language            = USERENV('LANG')
                        AND    flvl.language            = gv_language
@@ -485,7 +512,9 @@ AS
       FROM   fnd_lookup_values       flvl
       WHERE  flvl.lookup_type         = cv_lookup_type_sals_cls
       AND    flvl.meaning             = gv_msg_tkn_sales_cls_nml
-      AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL START ***********************************--
+--      AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL End   ***********************************--
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
 --      AND    flvl.language            = USERENV('LANG')
       AND    flvl.language            = gv_language
@@ -502,7 +531,9 @@ AS
       FROM   fnd_lookup_values flvl
       WHERE  flvl.lookup_type         = cv_lookup_type_sals_cls
       AND    flvl.meaning             = gv_msg_tkn_sales_cls_sls
-      AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL START ***********************************--
+--      AND    flvl.security_group_id   = FND_GLOBAL.LOOKUP_SECURITY_GROUP(flvl.lookup_type,flvl.view_application_id)
+--****************************** 2009/08/17 1.7  M.Sano DEL End   ***********************************--
 --****************************** 2009/07/17 1.5  K.Shirasuna MOD START ******************************--
 --      AND    flvl.language            = USERENV('LANG')
       AND    flvl.language            = gv_language
@@ -1366,7 +1397,7 @@ AS
                                                 );
             RAISE;
         END;
-
+--
         -- ===============================
         --A-6． 販売実績明細テーブルステータス更新
         -- ===============================
@@ -1411,7 +1442,7 @@ AS
             ov_retcode := cv_status_warn;
             gn_new_warn_count := gn_new_warn_count + 1;
         END;
-
+--
       EXCEPTION
         WHEN upm_work_exp THEN
           FND_FILE.PUT_LINE(
@@ -1460,7 +1491,7 @@ AS
           ELSE
             ov_errmsg  := NULL;
           END IF;
-
+--
           FND_FILE.PUT_LINE(
                             which  => FND_FILE.LOG
                            ,buff   => lv_errbuf --エラーメッセージ
@@ -1472,12 +1503,12 @@ AS
           ov_retcode := cv_status_warn;
           gn_new_warn_count := gn_new_warn_count + 1;
       END;
-
+--
     END LOOP main_loop;
-
+--
     --エラーカウント
     gn_warn_tran_count     := gn_warn_tran_count + gn_new_warn_count;
-
+--
     IF (gn_warn_tran_count > 0) THEN
       ROLLBACK;
       gn_warn_cnt := gn_warn_cnt + gn_tran_count;
@@ -1487,7 +1518,7 @@ AS
       COMMIT;
       gn_normal_cnt := gn_normal_cnt + gn_tran_count;
     END IF;
-
+--
   EXCEPTION
 --
 --#################################  固定例外処理部 START   ####################################
