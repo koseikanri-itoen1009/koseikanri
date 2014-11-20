@@ -7,7 +7,7 @@ AS
  * Description      : 振替運賃情報更新
  * MD.050           : 運賃計算（振替） T_MD050_BPO_750
  * MD.070           : 振替運賃情報更新 T_MD070_BPO_75C
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/06/27    1.3  Oracle 丸下 博宣  内部変更要求144
  *  2008/07/29    1.4  Oracle 山根 一浩  ST障害No484対応
  *  2008/09/03    1.5  Oracle 野村 正幸  内部変更要求201_203
+ *  2008/09/22    1.6  Oracle 山根 一浩  T_S_552,T_TE080_BPO_750 指摘4対応
  *
  *****************************************************************************************/
 --
@@ -124,12 +125,17 @@ AS
   gv_wip_msg_75c_008         CONSTANT VARCHAR2(15) := 'APP-XXWIP-00008';
   gv_wip_msg_75c_004         CONSTANT VARCHAR2(15) := 'APP-XXWIP-10004'; -- ロック詳細メッセージ
 --
+  gv_wip_msg_75c_009         CONSTANT VARCHAR2(15) := 'APP-XXWIP-30012'; -- 2008/09/22 Add
+--
   -- トークン
   gv_tkn_parameter           CONSTANT VARCHAR2(10) := 'PARAMETER';
   gv_tkn_value               CONSTANT VARCHAR2(10) := 'VALUE';
   gv_tkn_table               CONSTANT VARCHAR2(10) := 'TABLE';
   gv_tkn_key                 CONSTANT VARCHAR2(10) := 'KEY';
   gv_tkn_cnt                 CONSTANT VARCHAR2(10) := 'CNT';
+--2008/09/22 Add
+  gv_tkn_tbl_name            CONSTANT VARCHAR2(10) := 'TBL_NAME';
+  gv_tkn_req_no              CONSTANT VARCHAR2(10) := 'REQ_NO';
 --
   -- トークン値
   gv_exchange_type_name      CONSTANT VARCHAR2(30) := '洗替区分';
@@ -934,11 +940,16 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+    cv_reaf_tbl_name  CONSTANT VARCHAR2(50) := 'リーフ振替運賃アドオンマスタ';
+    cv_drink_tbl_name CONSTANT VARCHAR2(50) := 'ドリンク振替運賃アドオンマスタ';
 --
     -- *** ローカル変数 ***
     ln_flg              NUMBER;   -- 存在チェック用フラグ 「0:無し、1:有り」
     ln_trn_fare_inf_id  NUMBER;   -- ID格納用
     lt_item_id          xxcmn_item_mst_b.item_id%TYPE;   -- 品目ID
+--2008/09/22 Add
+    ln_msg_flg          NUMBER;
+    lv_tbl_name         VARCHAR2(200);
 --
     -- *** ローカル・カーソル ***
 --
@@ -961,6 +972,8 @@ AS
     -- 取得した対象データのマスタデータを取得する
     <<gt_order_inf_tbl_loop>>
     FOR ln_index IN gt_order_inf_tbl.FIRST .. gt_order_inf_tbl.LAST LOOP
+--2008/09/22 Add
+      ln_msg_flg := 0;
 --
       -- 受注データ抽出処理.商品区分 = 「リーフ」の場合
       IF (gt_order_inf_tbl(ln_index).prod_class = gv_prod_class_lef) THEN
@@ -980,6 +993,7 @@ AS
             WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
               -- データが存在しない場合は単価に「0」を設定
               gt_order_inf_tbl(ln_index).setting_amount := 0;
+              ln_msg_flg := 1;                                    -- 2008/09/22 Add
           END;
 --
         -- 受注データ抽出処理.小口区分 = 「小口」の場合
@@ -1020,6 +1034,7 @@ AS
             WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
               -- データが存在しない場合は単価に「0」を設定
               gt_order_inf_tbl(ln_index).setting_amount := 0;
+              ln_msg_flg := 1;                                    -- 2008/09/22 Add
           END;
 --
         END IF;
@@ -1047,6 +1062,7 @@ AS
           WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
             -- データが存在しない場合は単価に「0」を設定
             gt_order_inf_tbl(ln_index).setting_amount := 0;
+            ln_msg_flg := 2;                                      -- 2008/09/22 Add
         END;
 --
       END IF;
@@ -1302,6 +1318,28 @@ AS
           ROUND(gt_order_inf_tbl(ln_index).setting_amount * u_trn_calc_qry_tab(gn_upd_order_inf_cnt));
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 end   #####
       END IF;
+--2008/09/22 Add ↓
+      IF (ln_msg_flg > 0) THEN
+--
+        -- リーフ
+        IF (ln_msg_flg = 1) THEN
+          lv_tbl_name := cv_reaf_tbl_name;
+--
+        -- ドリンク
+        ELSIF (ln_msg_flg = 2) THEN
+          lv_tbl_name := cv_drink_tbl_name;
+        END IF;
+--
+        -- メッセージ出力
+        lv_errmsg := xxcmn_common_pkg.get_msg(gv_wip_msg_kbn,
+                                              gv_wip_msg_75c_009,
+                                              gv_tkn_tbl_name,
+                                              lv_tbl_name,
+                                              gv_tkn_req_no,
+                                              gt_order_inf_tbl(ln_index).request_no);
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+      END IF;
+--2008/09/22 Add ↑
 --
     END LOOP gt_order_inf_tbl_loop;
 --
@@ -2165,10 +2203,16 @@ AS
                  THEN
                    SUBSTR(xpv.new_division_code, 0, 4) -- 新・本部コードの頭文字4桁
                  ELSE '0'
+--2008/09/22 Mod ↓
+/*
                END AS business_block,
                xpv.block_name               -- 地区名
         INTO   gt_trans_inf_tbl(ln_index).business_block,
                gt_trans_inf_tbl(ln_index).area_name
+*/
+               END AS business_block
+        INTO   gt_trans_inf_tbl(ln_index).business_block
+--2008/09/22 Mod ↑
 -- ##### 20080903 Ver.1.5 内部変更要求201_203 start #####
 --        FROM   xxcmn_parties2_v xpv         -- パーティ情報VIEW2
         FROM   xxcmn_cust_accounts2_v xpv         -- 顧客情報VIEW2
@@ -2190,6 +2234,27 @@ AS
           lv_errbuf := lv_errmsg;
           RAISE global_api_expt;
       END;
+--2008/09/22 Add ↓
+      -- 地区名の取得
+      BEGIN
+        SELECT xlvv.meaning
+        INTO   gt_trans_inf_tbl(ln_index).area_name
+        FROM   xxcmn_lookup_values2_v xlvv
+        WHERE  xlvv.lookup_type = 'XXCMN_AREA'
+        AND    xlvv.lookup_code = gt_trans_inf_tbl(ln_index).business_block
+        AND ( xlvv.start_date_active <= 
+              FND_DATE.STRING_TO_DATE(gt_trans_inf_tbl(ln_index).target_date || '01', 'YYYYMMDD')
+         OR xlvv.start_date_active IS NULL )
+        AND ( xlvv.end_date_active >= 
+              FND_DATE.STRING_TO_DATE(gt_trans_inf_tbl(ln_index).target_date || '01', 'YYYYMMDD')
+         OR xlvv.end_date_active IS NULL )
+        AND xlvv.enabled_flag = gv_ktg_yes;
+--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN   --*** データ取得エラー ***
+          gt_trans_inf_tbl(ln_index).area_name := NULL;
+      END;
+--2008/09/22 Add ↑
 --
       -- 抽出したデータを元に振替情報アドオンの存在チェックを行い、存在する場合はロックを行う
       BEGIN
@@ -2949,6 +3014,15 @@ AS
       FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errbuf);
       FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
     END IF;
+--2008/09/22 Add ↓
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, gv_sep_msg ) ;   --区切り文字列出力
+    -------------------------------------------------------
+    -- 入力パラメータ
+    -------------------------------------------------------
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '入力パラメータ' );
+    FND_FILE.PUT_LINE( FND_FILE.OUTPUT, '洗い替え区分：' || iv_exchange_type ) ;
+--2008/09/22 Add ↑
+--
     -- ==================================
     -- リターン・コードのセット、終了処理
     -- ==================================
