@@ -47,6 +47,13 @@ CREATE TABLE xxcmn.xxcmn_item_if
  ,spare1                    VARCHAR2(12)
  ,spare2                    VARCHAR2(12)
  ,spare3                    VARCHAR2(12)
+ ,haisu                     NUMBER(2)
+ ,dansu                     NUMBER(2)
+ ,bunrui                    NUMBER
+ ,naiyou                    NUMBER
+ ,naiyou_tani               NUMBER
+ ,utiiri                    NUMBER
+ ,yoki_gun_code             VARCHAR2(4)
  ,spare                     VARCHAR2(22)
 ) ;
 --
@@ -97,6 +104,13 @@ COMMENT ON COLUMN xxcmn.xxcmn_item_if.other_expense_cost    IS 'その他経費' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_if.spare1                IS '予備1' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_if.spare2                IS '予備2' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_if.spare3                IS '予備3' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.haisu                 IS '配数' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.dansu                 IS '段数' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.bunrui                IS '商品分類' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.naiyou                IS '内容量' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.naiyou_tani           IS '内容量単位' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.utiiri                IS '内訳入数' ;
+COMMENT ON COLUMN xxcmn.xxcmn_item_if.yoki_gun_code         IS '容器群コード' ;
 COMMENT ON COLUMN xxcmn.xxcmn_item_if.spare                 IS '予備' ;
 --
 COMMENT ON TABLE  xxcmn.xxcmn_item_if IS '品名インタフェース';

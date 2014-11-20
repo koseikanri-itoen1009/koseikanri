@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *  2008/10/02    1.13  Oracle 椎名 昭圭 統合障害＃293対応
  *  2008/10/10    1.14  Oracle 椎名 昭圭 T_S_442対応にあわせ原価内訳取得方法統一
  *  2008/10/21    1.15  Oracle 丸下 博宣 I_S_431対応
+ *  2008/11/13    1.16  Oracle 伊藤ひとみ 統合テスト指摘538,641対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -161,7 +162,7 @@ AS
 --
   gv_lookup_type       CONSTANT VARCHAR2(100) := 'XXPO_PRICE_TYPE';
   gv_meaning           CONSTANT VARCHAR2(100) := '標準';
-  gv_description       CONSTANT VARCHAR2(100) := 'ケース';
+  gv_description       CONSTANT VARCHAR2(100) := '本';
   gv_lookup_code       CONSTANT VARCHAR2(1)   := '2';
   gv_lot_ctl_on        CONSTANT VARCHAR2(1)   := '1';
   gv_active_flag_mi    CONSTANT VARCHAR2(1)   := 'N';
@@ -169,7 +170,7 @@ AS
   gv_inactive_ind_off  CONSTANT VARCHAR2(1)   := '1';
   gv_language          CONSTANT VARCHAR2(10)  := userenv('LANG');
   gv_cost_level_on     CONSTANT VARCHAR2(1)   := '0';
-  gv_def_item_um       CONSTANT VARCHAR2(2)   := 'CS';
+  gv_def_item_um       CONSTANT VARCHAR2(2)   := '本';
   gv_autolot_on        CONSTANT NUMBER        := 1;
   gv_lot_suffix_on     CONSTANT NUMBER        := 0;
   gv_dot_pnt           CONSTANT NUMBER        := 2;
@@ -376,6 +377,10 @@ AS
     spare1                xxcmn_item_if.spare1%TYPE,                --- 予備1
     spare2                xxcmn_item_if.spare2%TYPE,                --- 予備2
     spare3                xxcmn_item_if.spare3%TYPE,                --- 予備3
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+    palette_max_cs_qty    xxcmn_item_if.dansu%TYPE,                 --- 配数
+    palette_max_step_qty  xxcmn_item_if.haisu%TYPE,                 --- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
     spare                 xxcmn_item_if.spare%TYPE,                 --- 予備
 --
     item_id               ic_item_mst_b.item_id%TYPE,               --- 品目ID
@@ -454,6 +459,10 @@ AS
     spare1                xxcmn_item_if.spare1%TYPE,                --- 予備1
     spare2                xxcmn_item_if.spare2%TYPE,                --- 予備2
     spare3                xxcmn_item_if.spare3%TYPE,                --- 予備3
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+    palette_max_cs_qty    xxcmn_item_if.dansu%TYPE,                 --- 配数
+    palette_max_step_qty  xxcmn_item_if.haisu%TYPE,                 --- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
     spare                 xxcmn_item_if.spare%TYPE,                 --- 予備
 --
     imb_flg               NUMBER,                                   -- OPM品目マスタ
@@ -2147,6 +2156,10 @@ AS
     lr_report_rec.spare1               := ir_masters_rec.spare1;
     lr_report_rec.spare2               := ir_masters_rec.spare2;
     lr_report_rec.spare3               := ir_masters_rec.spare3;
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+    lr_report_rec.palette_max_cs_qty   := ir_masters_rec.palette_max_cs_qty;         -- 配数
+    lr_report_rec.palette_max_step_qty := ir_masters_rec.palette_max_step_qty; -- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
     lr_report_rec.spare                := ir_masters_rec.spare;
 --
     lr_report_rec.row_level_status     := ir_status_rec.row_level_status;
@@ -2312,7 +2325,12 @@ AS
                    lr_report_rec.other_expense_cost   || gv_msg_pnt ||
                    lr_report_rec.spare1               || gv_msg_pnt ||
                    lr_report_rec.spare2               || gv_msg_pnt ||
-                   lr_report_rec.spare3               || gv_msg_pnt || lr_report_rec.spare;
+                   lr_report_rec.spare3               || gv_msg_pnt || 
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+                   lr_report_rec.palette_max_cs_qty   || gv_msg_pnt || -- 配数
+                   lr_report_rec.palette_max_step_qty || gv_msg_pnt || -- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
+                   lr_report_rec.spare;
 --
       -- 対象
       IF (lr_report_rec.row_level_status = disp_kbn) THEN
@@ -4019,6 +4037,10 @@ AS
          ,obsolete_date
          ,rate_class
          ,raw_material_consumption
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+         ,palette_max_cs_qty    -- 配数
+         ,palette_max_step_qty  -- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
          ,created_by
          ,creation_date
          ,last_updated_by
@@ -4041,6 +4063,10 @@ AS
          ,ir_masters_rec.abolition_date                               -- 廃止日(製造中止)
          ,ir_masters_rec.rate_code                                    -- 率区分
          ,ir_masters_rec.raw_mate_consumption                         -- 原料使用量
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+         ,ir_masters_rec.palette_max_cs_qty                           -- 配数
+         ,ir_masters_rec.palette_max_step_qty                         -- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
          ,gn_user_id
          ,gd_sysdate
          ,gn_user_id
@@ -4063,6 +4089,10 @@ AS
             ,obsolete_date            = ir_masters_rec.abolition_date       -- 廃止日(製造中止)
             ,rate_class               = ir_masters_rec.rate_code            -- 率区分
             ,raw_material_consumption = ir_masters_rec.raw_mate_consumption -- 原料使用量
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+            ,palette_max_cs_qty       = ir_masters_rec.palette_max_cs_qty   -- 配数
+            ,palette_max_step_qty     = ir_masters_rec.palette_max_step_qty -- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
 -- 2008/10/21 ADD START
             ,active_flag              = gv_active_flag_mi -- 適用済フラグ
 -- 2008/10/21 ADD END
@@ -7260,6 +7290,10 @@ AS
              xif.spare1,                -- 予備1
              xif.spare2,                -- 予備2
              xif.spare3,                -- 予備3
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+             xif.haisu   palette_max_cs_qty,   -- 配数
+             xif.dansu   palette_max_step_qty, -- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
              xif.spare                  -- 予備
       FROM   xxcmn_item_if xif
       ORDER BY seq_number;
@@ -7407,6 +7441,10 @@ AS
       lr_masters_rec.spare1               := lr_item_if_rec.spare1;
       lr_masters_rec.spare2               := lr_item_if_rec.spare2;
       lr_masters_rec.spare3               := lr_item_if_rec.spare3;
+-- 2008/11/13 H.Itou Add Start 統合テスト指摘538
+      lr_masters_rec.palette_max_cs_qty   := lr_item_if_rec.palette_max_cs_qty;   -- 配数
+      lr_masters_rec.palette_max_step_qty := lr_item_if_rec.palette_max_step_qty; -- パレット当り最大段数
+-- 2008/11/13 H.Itou Add End
       lr_masters_rec.spare                := lr_item_if_rec.spare;
 --
       -- コンポーネント区分の設定

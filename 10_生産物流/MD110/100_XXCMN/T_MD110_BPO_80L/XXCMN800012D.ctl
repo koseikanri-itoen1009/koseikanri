@@ -15,6 +15,7 @@
 -- ------------- ----- ---------------- -------------------------------------------------
 --  2008/03/31    1.0   ORACLE 伊東愛美  初回作成
 --  2008/06/19    1.1   ORACLE 弓場哲士  VARCHAR項目にRTRIM関数を付加
+--  2008/11/13    1.2   ORACLE 伊藤      項目追加対応I_S_538
 -- **************************************************************************************
 LOAD DATA
 INFILE *
@@ -70,5 +71,12 @@ OTHER_EXPENSE_COST         CHAR "RTRIM(:OTHER_EXPENSE_COST, ' 　')",
 SPARE1                     CHAR "RTRIM(:SPARE1, ' 　')",
 SPARE2                     CHAR "RTRIM(:SPARE2, ' 　')",
 SPARE3                     CHAR "RTRIM(:SPARE3, ' 　')",
+HAISU,
+DANSU,
+BUNRUI,
+NAIYOU,
+NAIYOU_TANI,
+UTIIRI,
+YOKI_GUN_CODE              CHAR "RTRIM(:YOKI_GUN_CODE, ' 　')",
 SPARE                      CHAR "RTRIM(:SPARE, ' 　')"
 )

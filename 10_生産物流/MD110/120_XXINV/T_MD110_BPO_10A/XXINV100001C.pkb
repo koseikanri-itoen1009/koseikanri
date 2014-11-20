@@ -8,7 +8,7 @@ PACKAGE BODY XXINV100001C AS
  * Description      : 生産物流(計画)
  * MD.050           : 計画・移動・在庫・販売計画/引取計画 T_MD050_BPO100
  * MD.070           : 計画・移動・在庫・販売計画/引取計画 T_MD070_BPO10A
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------------- ----------------------------------------------------------
@@ -101,6 +101,7 @@ PACKAGE BODY XXINV100001C AS
  *  2008/09/16    1.12 Oracle 大橋 孝郎 PT 2-2_14指摘75,76,77対応
  *  2008/11/07    1.13 Oracle Yuko Kawano 統合指摘#585
  *  2008/11/11    1.14 Oracle 福田 直樹 統合指摘#589対応
+ *  2008/11/13    1.15 Oracle 大橋 孝郎 指摘586,596対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -132,6 +133,10 @@ PACKAGE BODY XXINV100001C AS
 -- add start 1.11
   gn_del_data_cnt         NUMBER := 0;  -- あらいがえ対象データの処理カウンタ
 -- add end 1.11
+-- add start ver1.15
+  gn_del_data_cnt2         NUMBER := 0;  -- あらいがえ対象データの処理カウンタ2
+-- add end ver1.15
+--
 --
 --################################  固定部 END   ##################################
 --
@@ -258,6 +263,9 @@ PACKAGE BODY XXINV100001C AS
   gv_cons_dept_code           CONSTANT VARCHAR2(100) := '取込部署';           -- 取込部署
   gv_cons_input_forecast      CONSTANT VARCHAR2(100) := 'Forecast分類:';      -- Forecast分類
   gv_cons_input_param         CONSTANT VARCHAR2(100) := '入力パラメータ値:';  -- 入力パラメータ値
+-- add start ver1.15
+  gv_object                   CONSTANT VARCHAR2(100) := 'あらいがえ対象:';  -- あらいがえ前データ
+-- add end ver1.15
 --
   gv_cons_fc_type             CONSTANT VARCHAR2(100) := 'XXINV_FC_TYPE';-- loopup_type=Forecast分類
 --                                                        -- loopup_type=計画商品対象期間
@@ -417,6 +425,16 @@ PACKAGE BODY XXINV100001C AS
              mrp_forecast_dates.forecast_date%TYPE,                   -- 開始日付
     gd_4f_end_date_active
              mrp_forecast_dates.rate_end_date%TYPE                   -- 終了日付
+-- add start ver1.15
+   ,gd_4f_item_no
+             ic_item_mst_b.item_no%TYPE                              -- 品目コード
+   ,gd_4f_quantity
+             mrp_forecast_dates.current_forecast_quantity%TYPE       -- 数量
+   ,gd_4f_case_quantity
+             mrp_forecast_dates.attribute6%TYPE                      -- 元ケース数量
+   ,gd_4f_bara_quantity
+             mrp_forecast_dates.attribute4%TYPE                      -- 元バラ数量
+-- add end ver1.15
   );
 --
   --販売計画用グローバル変数
@@ -8550,7 +8568,14 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
             mfd.organization_id,         -- 在庫組織ID
             mfd.inventory_item_id,       -- 品目ID
             mfd.forecast_date,           -- 開始日付
-            mfd.rate_end_date            -- 終了日付
+-- mod start ver1.15
+--            mfd.rate_end_date            -- 終了日付
+            mfd.rate_end_date,           -- 終了日付
+            NULL,                          -- 品目コード
+            mfd.current_forecast_quantity, -- 数量
+            mfd.attribute6,                -- 元ケース数量
+            mfd.attribute4                 -- 元バラ数量
+-- mod end ver1.15
     FROM    mrp_forecast_dates  mfd,   -- Forecast日付
             mrp_forecast_items  mfi    -- Forecast品目
     WHERE   mfd.forecast_designator      = gv_3f_forecast_designator   -- Forecast名
@@ -9029,7 +9054,14 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
             mfd.organization_id,         -- 在庫組織ID
             mfd.inventory_item_id,       -- 品目ID
             mfd.forecast_date,           -- 開始日付
-            mfd.rate_end_date            -- 終了日付
+-- mod start ver1.15
+--            mfd.rate_end_date            -- 終了日付
+            mfd.rate_end_date,             -- 終了日付
+            im.item_no,                    -- 品目コード
+            mfd.current_forecast_quantity, -- 数量
+            mfd.attribute6,                -- 元ケース数量
+            mfd.attribute4                 -- 元バラ数量
+-- mod end ver1.15
     FROM    mrp_forecast_dates  mfd,   -- Forecast日付
             mrp_forecast_items  mfi,   -- Forecast品目
             ic_item_mst_vl        im,    -- OPM品目マスタ
@@ -9413,7 +9445,14 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
             mfd.organization_id,         -- 在庫組織ID
             mfd.inventory_item_id,       -- 品目ID
             mfd.forecast_date,           -- 開始日付
-            mfd.rate_end_date            -- 終了日付
+-- mod start ver1.15
+--            mfd.rate_end_date            -- 終了日付
+            mfd.rate_end_date,             -- 終了日付
+            im.item_no,                    -- 品目コード
+            mfd.current_forecast_quantity, -- 数量
+            mfd.attribute6,                -- 元ケース数量
+            mfd.attribute4                 -- 元バラ数量
+-- mod end ver1.15
     FROM    mrp_forecast_dates  mfd,   -- Forecast日付
             mrp_forecast_items  mfi,   -- Forecast品目
             ic_item_mst_vl        im,    -- OPM品目マスタ
@@ -9730,7 +9769,14 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
             mfd.organization_id,         -- 在庫組織ID
             mfd.inventory_item_id,       -- 品目ID
             mfd.forecast_date,           -- 開始日付
-            mfd.rate_end_date            -- 終了日付
+-- mod start ver1.15
+--            mfd.rate_end_date            -- 終了日付
+            mfd.rate_end_date,             -- 終了日付
+            im.item_no,                    -- 品目コード
+            mfd.current_forecast_quantity, -- 数量
+            mfd.attribute6,                -- 元ケース数量
+            mfd.attribute4                 -- 元バラ数量
+-- mod end ver1.15
     FROM    mrp_forecast_dates  mfd,   -- Forecast日付
             mrp_forecast_items  mfi,   -- Forecast品目
             ic_item_mst_vl        im,    -- OPM品目マスタ
@@ -10146,7 +10192,14 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
             mfd.organization_id,         -- 在庫組織ID
             mfd.inventory_item_id,       -- 品目ID
             mfd.forecast_date,           -- 開始日付
-            mfd.rate_end_date            -- 終了日付
+-- add start ver1.15
+--            mfd.rate_end_date            -- 終了日付
+            mfd.rate_end_date,             -- 終了日付
+            NULL,                          -- 品目コード
+            mfd.current_forecast_quantity, -- 数量
+            mfd.attribute6,                -- 元ケース数量
+            mfd.attribute4                 -- 元バラ数量
+-- add end ver1.15
     FROM    mrp_forecast_dates  mfd,   -- Forecast日付
             mrp_forecast_items  mfi    -- Forecast品目
     WHERE   mfd.forecast_designator      = gv_3f_forecast_designator   -- Forecast名
@@ -10321,10 +10374,36 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
 --          RAISE global_api_expt;
 --        END IF;
      END LOOP del_loop;
+-- add start ver1.15
+     -- Forecast日付データのクリア
+     -- あらいがえ対象データの処理カウンタが1000件を超えた場合
+     IF (gn_del_data_cnt >= 1000) THEN
+--
+       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_del);
+       -- エラーだった場合
+       IF (lb_retcode = FALSE )THEN
+         ln_error_flg := 1;
+       END IF;
+       -- あらいがえ対象データの処理カウンタの初期化
+       gn_del_data_cnt := 0;
+       t_forecast_interface_tab_del.delete;
+     -- 抽出インターフェースデータループが終了する場合
+     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+--
+       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_del);
+       IF (lb_retcode = FALSE )THEN
+         ln_error_flg := 1;
+       END IF;
+     END IF;
+-- add end ver1.15
     END LOOP araigae_loop;
+-- del start ver1.15
     -- Forecast日付データのクリア
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                          t_forecast_interface_tab_del);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                          t_forecast_interface_tab_del);
+-- del end ver1.15
 --
 -- mod start 1.12
 --    <<del_serch_error_loop>>
@@ -10343,8 +10422,10 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
 --        EXIT;
 --      END IF;
 --    END LOOP del_serch_error_loop;
+-- mod start ver1.15
     -- エラーだった場合
-    IF (lb_retcode = FALSE )THEN
+--    IF (lb_retcode = FALSE )THEN
+    IF (ln_error_flg = 1 )THEN
       lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_cmn  -- 'XXCMN'
                                                     ,gv_msg_10a_045  -- APIエラー
                                                     ,gv_tkn_api_name
@@ -10352,8 +10433,9 @@ and mfd.FORECAST_DESIGNATOR = mfi.FORECAST_DESIGNATOR
                                                     ,1
                                                     ,5000);
       gn_error_cnt := gn_error_cnt + 1;
-      ln_error_flg := 1;
+--      ln_error_flg := 1;
     END IF;
+-- mod end ver1.15
 -- mod end 1.12
     -- あらいがえ対象データの処理カウンタの初期化
     gn_del_data_cnt := 0;
@@ -10897,6 +10979,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --add start 1.9
     ln_warn_flg   NUMBER := 0; -- インタ－フェースデータ警告ありフラグ(0:なし, 1:あり)
 --add end 1.9
+-- add start ver1.15
+    lv_err        VARCHAR2(5000);
+-- add end ver1.15
 --
     -- *** ローカル・レコード ***
     lr_araigae_data                 araigae_tbl;
@@ -10915,7 +11000,14 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
             mfd.organization_id,         -- 在庫組織ID
             mfd.inventory_item_id,       -- 品目ID
             mfd.forecast_date,           -- 開始日付
-            mfd.rate_end_date            -- 終了日付
+-- mod start ver1.15
+--            mfd.rate_end_date            -- 終了日付
+            mfd.rate_end_date,             -- 終了日付
+            im.item_no,                    -- 品目コード
+            mfd.current_forecast_quantity, -- 数量
+            mfd.attribute6,                -- 元ケース数量
+            mfd.attribute4                 -- 元バラ数量
+-- mod end ver1.15
     FROM    mrp_forecast_dates  mfd,   -- Forecast日付
             mrp_forecast_items  mfi,   -- Forecast品目
             ic_item_mst_vl        im,    -- OPM品目マスタ
@@ -11039,9 +11131,41 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --
       <<del_loop>>
       FOR ln_data_cnt2 IN 1..gn_araigae_cnt LOOP
+-- add start ver1.15
+        -- 開始日付、終了日付の比較
+        IF   (TRUNC(lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active) <>
+              TRUNC(gd_keikaku_start_date))
+          OR (TRUNC(lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active) <>
+              TRUNC(gd_keikaku_end_date))
+        THEN
+          -- メッセージセット
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+                                                        ,gv_msg_10a_021)
+                                                                 -- フォーキャスト日付更新ワーニング
+                                                        ,1
+                                                        ,5000);
+          if_data_disp( lt_if_data, ln_data_cnt);
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          -- あらいがえ前データセット
+          lv_err := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator || ',' || -- フォーキャスト名
+                    lr_araigae_data(ln_data_cnt2).gd_4f_item_no             || ',' || -- 品目
+                    lr_araigae_data(ln_data_cnt2).gd_4f_quantity            || ',' || -- 数量
+                    lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active   || ',' || -- 開始日付
+                    lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active     || ',' || -- 終了日付
+                    lr_araigae_data(ln_data_cnt2).gd_4f_case_quantity       || ',' || -- 元バラ数量
+                    lr_araigae_data(ln_data_cnt2).gd_4f_bara_quantity                 -- 元ケース数量
+                    ;
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_object || lv_err);
+          gn_warn_cnt := gn_warn_cnt + 1;
+          ln_warn_flg := 1;
+        END IF;
+-- add end ver1.15
         -- 削除用変数にセット
 -- mod start 1.11
         gn_del_data_cnt := gn_del_data_cnt + 1;
+-- add start ver1.15
+        gn_del_data_cnt2 := gn_del_data_cnt + 1;
+-- add end ver1.15
 --        t_forecast_interface_tab_del(1).transaction_id
 --                          := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
 --        t_forecast_interface_tab_del(1).forecast_designator
@@ -11089,11 +11213,30 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --          RAISE global_api_expt;
 --        END IF;
      END LOOP del_loop;
+-- add start ver1.15
+      -- Forecast日付データのクリア
+     -- あらいがえ対象データの処理カウンタが1000件を超えた場合
+     IF (gn_del_data_cnt2 >= 1000) THEN
+--
+       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_del);
+       -- あらいがえ対象データの処理カウンタ2の初期化
+       gn_del_data_cnt2 := 0;
+       t_forecast_interface_tab_del.delete;
+     -- 抽出インターフェースデータループが終了する場合
+     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+--
+       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_del);
+     END IF;
+-- add end ver1.15
     END LOOP araigae_loop;
 --
+-- del start ver1.15
     -- Forecast日付データのクリア
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                          t_forecast_interface_tab_del);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                          t_forecast_interface_tab_del);
+-- del end ver1.15
 --
     <<del_serch_error_loop>>
     FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
@@ -11307,6 +11450,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --add start 1.9
     ln_warn_flg   NUMBER := 0; -- インタ－フェースデータ警告ありフラグ(0:なし, 1:あり)
 --add end 1.9
+-- add start ver1.15
+    lv_err        VARCHAR2(5000);
+-- add end ver1.15
 --
     -- *** ローカル・レコード ***
     lt_if_data    forecast_tbl;
@@ -11323,7 +11469,14 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
             mfd.organization_id,         -- 在庫組織ID
             mfd.inventory_item_id,       -- 品目ID
             mfd.forecast_date,           -- 開始日付
-            mfd.rate_end_date            -- 終了日付
+-- mod start ver1.15
+--            mfd.rate_end_date            -- 終了日付
+            mfd.rate_end_date,             -- 終了日付
+            im.item_no,                    -- 品目コード
+            mfd.current_forecast_quantity, -- 数量
+            mfd.attribute6,                -- 元ケース数量
+            mfd.attribute4                 -- 元バラ数量
+-- mod end ver1.15
     FROM    mrp_forecast_dates  mfd,   -- Forecast日付
             mrp_forecast_items  mfi,   -- Forecast品目
             ic_item_mst_vl        im,    -- OPM品目マスタ
@@ -11453,9 +11606,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         TRUNC(lt_if_data(ln_data_cnt).start_date_active))
       THEN
         -- メッセージセット
+-- mod start ver1.15
 --mod start 1.9
---        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
-        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
 --mod end 1.9
                                                                -- フォーキャスト日付更新ワーニング
                                                       ,gv_msg_10a_021)
@@ -11464,6 +11618,18 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         -- 処理結果レポートに出力
         if_data_disp( lt_if_data, ln_data_cnt);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+        -- あらいがえ前データセット
+        lv_err := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator || ',' || -- フォーキャスト名
+                  lr_araigae_data(ln_data_cnt2).gd_4f_item_no             || ',' || -- 品目
+                  lr_araigae_data(ln_data_cnt2).gd_4f_quantity            || ',' || -- 数量
+                  lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active   || ',' || -- 開始日付
+                  lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active     || ',' || -- 終了日付
+                  lr_araigae_data(ln_data_cnt2).gd_4f_case_quantity       || ',' || -- 元バラ数量
+                  lr_araigae_data(ln_data_cnt2).gd_4f_bara_quantity                 -- 元ケース数量
+                  ;
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_object || lv_err);
+        gn_warn_cnt := gn_warn_cnt + 1;
+-- mod end ver1.15
 --add start 1.9
         ln_warn_flg := 1;
 --add end 1.9
@@ -11474,9 +11640,10 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         TRUNC(lt_if_data(ln_data_cnt).end_date_active))
       THEN
         -- メッセージセット
+-- mod start ver1.15
 --mod start 1.9
---        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
-        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
 --mod end 1.9
                                                                -- フォーキャスト日付更新ワーニング
                                                       ,gv_msg_10a_021)
@@ -11485,6 +11652,18 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
         -- 処理結果レポートに出力
         if_data_disp( lt_if_data, ln_data_cnt);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+        -- あらいがえ前データセット
+        lv_err := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator || ',' || -- フォーキャスト名
+                  lr_araigae_data(ln_data_cnt2).gd_4f_item_no             || ',' || -- 品目
+                  lr_araigae_data(ln_data_cnt2).gd_4f_quantity            || ',' || -- 数量
+                  lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active   || ',' || -- 開始日付
+                  lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active     || ',' || -- 終了日付
+                  lr_araigae_data(ln_data_cnt2).gd_4f_case_quantity       || ',' || -- 元バラ数量
+                  lr_araigae_data(ln_data_cnt2).gd_4f_bara_quantity                 -- 元ケース数量
+                  ;
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_object || lv_err);
+        gn_warn_cnt := gn_warn_cnt + 1;
+-- mod end ver1.15
 --add start 1.9
         ln_warn_flg := 1;
 --add end 1.9
@@ -11493,6 +11672,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
       -- 登録済みデータの削除のためのデータセット
 -- mod start 1.11
         gn_del_data_cnt := gn_del_data_cnt + 1;
+-- add start ver1.15
+        gn_del_data_cnt2 := gn_del_data_cnt + 1;
+-- add end ver1.15
 --      t_forecast_interface_tab_del(1).transaction_id
 --                         := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
 --      t_forecast_interface_tab_del(1).forecast_designator
@@ -11540,10 +11722,29 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --          RAISE global_api_expt;
 --        END IF;
       END LOOP del_loop;
+-- add start ver1.15
+      -- Forecast日付データのクリア
+     -- あらいがえ対象データの処理カウンタが1000件を超えた場合
+     IF (gn_del_data_cnt2 >= 1000) THEN
+--
+       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_del);
+       -- あらいがえ対象データの処理カウンタ2の初期化
+       gn_del_data_cnt2 := 0;
+       t_forecast_interface_tab_del.delete;
+     -- 抽出インターフェースデータループが終了する場合
+     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+--
+       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_del);
+     END IF;
+-- add end ver1.15
     END LOOP araigae_loop;
+-- del start ver1.15
     -- Forecast日付データのクリア
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                           t_forecast_interface_tab_del);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                           t_forecast_interface_tab_del);
+-- del end ver1.15
 --
     <<del_serch_error_loop>>
     FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP
@@ -11759,6 +11960,9 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
 --add start 1.9
     ln_warn_flg   NUMBER := 0; -- インタ－フェースデータ警告ありフラグ(0:なし, 1:あり)
 --add end 1.9
+-- add start ver1.15
+    lv_err        VARCHAR2(5000);
+-- add end ver1.15
 --
     -- *** ローカル・レコード ***
     lr_araigae_data                 araigae_tbl;
@@ -11775,7 +11979,14 @@ FND_FILE.PUT_LINE(FND_FILE.LOG,'(A-3)-A-3-3 error....');
             mfd.organization_id,         -- 在庫組織ID
             mfd.inventory_item_id,       -- 品目ID
             mfd.forecast_date,           -- 開始日付
-            mfd.rate_end_date            -- 終了日付
+-- mod start ver1.15
+--            mfd.rate_end_date            -- 終了日付
+            mfd.rate_end_date,             -- 終了日付
+            im.item_no,                    -- 品目コード
+            mfd.current_forecast_quantity, -- 数量
+            mfd.attribute6,                -- 元ケース数量
+            mfd.attribute4                 -- 元バラ数量
+-- mod end ver1.15
     FROM    mrp_forecast_dates  mfd,   -- Forecast日付
             mrp_forecast_items  mfi,   -- Forecast品目
             ic_item_mst_vl        im,    -- OPM品目マスタ
@@ -11906,9 +12117,10 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
         TRUNC(lt_if_data(ln_data_cnt).start_date_active))
       THEN
         -- メッセージセット
+-- mod start ver1.15
 --mod start 1.9
---        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
-        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
 --mod end 1.9
                                                                -- フォーキャスト日付更新ワーニング
                                                       ,gv_msg_10a_021)
@@ -11917,6 +12129,17 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
         -- 処理結果レポートに出力
         if_data_disp( lt_if_data, ln_data_cnt);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+        -- あらいがえ前データセット
+        lv_err := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator || ',' || -- フォーキャスト名
+                  lr_araigae_data(ln_data_cnt2).gd_4f_item_no             || ',' || -- 品目
+                  lr_araigae_data(ln_data_cnt2).gd_4f_quantity            || ',' || -- 数量
+                  lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active   || ',' || -- 開始日付
+                  lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active     || ',' || -- 終了日付
+                  lr_araigae_data(ln_data_cnt2).gd_4f_case_quantity       || ',' || -- 元バラ数量
+                  lr_araigae_data(ln_data_cnt2).gd_4f_bara_quantity                 -- 元ケース数量
+                  ;
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_object || lv_err);
+-- mod end ver1.15
 --add start 1.9
         ln_warn_flg := 1;
 --add end 1.9
@@ -11927,9 +12150,10 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
         TRUNC(lt_if_data(ln_data_cnt).end_date_active))
       THEN
         -- メッセージセット
+-- mod start ver1.15
 --mod start 1.9
---        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
-        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+        lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
+--        ov_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_msg_kbn_inv   -- 'XXINV'
 --mod end 1.9
                                                                -- フォーキャスト日付更新ワーニング
                                                       ,gv_msg_10a_021)
@@ -11938,6 +12162,17 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
         -- 処理結果レポートに出力
         if_data_disp( lt_if_data, ln_data_cnt);
         FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+        -- あらいがえ前データセット
+        lv_err := lr_araigae_data(ln_data_cnt2).gv_4f_forecast_designator || ',' || -- フォーキャスト名
+                  lr_araigae_data(ln_data_cnt2).gd_4f_item_no             || ',' || -- 品目
+                  lr_araigae_data(ln_data_cnt2).gd_4f_quantity            || ',' || -- 数量
+                  lr_araigae_data(ln_data_cnt2).gd_4f_start_date_active   || ',' || -- 開始日付
+                  lr_araigae_data(ln_data_cnt2).gd_4f_end_date_active     || ',' || -- 終了日付
+                  lr_araigae_data(ln_data_cnt2).gd_4f_case_quantity       || ',' || -- 元バラ数量
+                  lr_araigae_data(ln_data_cnt2).gd_4f_bara_quantity                 -- 元ケース数量
+                  ;
+        FND_FILE.PUT_LINE(FND_FILE.OUTPUT,gv_object || lv_err);
+-- mod end ver1.15
 --add start 1.9
         ln_warn_flg := 1;
 --add end 1.9
@@ -11946,6 +12181,9 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
       -- 登録済みデータの削除のためのデータセット
 -- mod start 1.11
       gn_del_data_cnt := gn_del_data_cnt + 1;
+-- add start ver1.15
+      gn_del_data_cnt2 := gn_del_data_cnt + 1;
+-- add end ver1.15
 --      t_forecast_interface_tab_del(1).transaction_id
 --                         := lr_araigae_data(ln_data_cnt2).gv_4f_txns_id;            -- 取引ID
 --      t_forecast_interface_tab_del(1).forecast_designator
@@ -11993,10 +12231,29 @@ AND (im.item_no = NVL(pv_item_code,im.item_no)
 --          RAISE global_api_expt;
 --        END IF;
       END LOOP del_loop;
+-- add start ver1.15
+      -- Forecast日付データのクリア
+     -- あらいがえ対象データの処理カウンタが1000件を超えた場合
+     IF (gn_del_data_cnt2 >= 1000) THEN
+--
+       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_del);
+       -- あらいがえ対象データの処理カウンタ2の初期化
+       gn_del_data_cnt2 := 0;
+       t_forecast_interface_tab_del.delete;
+     -- 抽出インターフェースデータループが終了する場合
+     ELSIF (ln_data_cnt = gn_araigae_cnt) THEN
+--
+       lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+                                             t_forecast_interface_tab_del);
+     END IF;
+-- add end ver1.15
     END LOOP araigae_loop;
+-- del start ver1.15
     -- Forecast日付データのクリア
-    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
-                                           t_forecast_interface_tab_del);
+--    lb_retcode := MRP_FORECAST_INTERFACE_PK.MRP_FORECAST_INTERFACE(
+--                                           t_forecast_interface_tab_del);
+-- del end ver1.15
 --
     <<del_serch_error_loop>>
     FOR ln_data_cnt IN 1..gn_del_data_cnt LOOP

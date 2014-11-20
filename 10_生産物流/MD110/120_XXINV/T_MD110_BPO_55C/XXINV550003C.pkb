@@ -7,7 +7,7 @@ AS
  * Description      : 計画・移動・在庫：在庫(帳票)
  * MD.050/070       : T_MD050_BPO_550_在庫(帳票)Issue1.0 (T_MD050_BPO_550)
  *                  : 振替明細表                         (T_MD070_BPO_55C)
- * Version          : 1.7
+ * Version          : 1.8
  * Program List
  * --------------------------- ----------------------------------------------------------
  *  Name                        Description
@@ -38,6 +38,7 @@ AS
  *  2008/07/02    1.5  Satoshi Yunba    禁則文字対応
  *  2008/09/26    1.6  Akiyosi Shiina   T_S_528対応
  *  2008/10/16    1.7  Takao Ohashi     T_S_492,T_S_557,T_S_494対応
+ *  2008/11/11    1.8  Takao Ohashi     指摘549対応
  *
  *****************************************************************************************/
 --
@@ -139,6 +140,9 @@ AS
   gc_routing_class          CONSTANT VARCHAR2(19) := 'XXINV_DUMMY_ROUTING' ;          -- 品目振替
   gc_routing_class_ret      CONSTANT VARCHAR2(23) := 'XXINV_DUMMY_ROUTING_RET' ;      -- 返品原料
   gc_routing_class_separate CONSTANT VARCHAR2(29) := 'XXINV_DUMMY_ROUTING_SEPARATE' ; -- 解体半製品
+-- add start ver1.8
+  gc_item_class             CONSTANT VARCHAR2(31) := 'XXCMN_ITEM_CATEGORY_ITEM_CLASS' ;
+-- add end ver1.8
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -527,14 +531,21 @@ AS
     -- メインSQL
     -- ------------------------------------------------------------------------------
     -- SQL本体
-    lv_sql_body := lv_sql_body || ' SELECT ' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' SELECT ' ;
+    lv_sql_body := lv_sql_body || ' SELECT /*+ leading(gbh itp xrpm iimb ximb gic mcb mct) use_nl(gbh itp xrpm iimb ximb gic mcb mct) */' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || '  gbh.batch_id                AS batch_id' ;
     lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
     lv_sql_body := lv_sql_body || ' ,xlv.description             AS dept_name' ;
     lv_sql_body := lv_sql_body || ' ,xilv.segment1               AS item_location_code' ;
     lv_sql_body := lv_sql_body || ' ,xilv.description            AS item_location_name' ;
-    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code        AS item_div_type' ;
-    lv_sql_body := lv_sql_body || ' ,xicv.item_class_name        AS item_div_value' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code        AS item_div_type' ;
+--    lv_sql_body := lv_sql_body || ' ,xicv.item_class_name        AS item_div_value' ;
+    lv_sql_body := lv_sql_body || ' ,mcb.segment1                AS item_div_type' ;
+    lv_sql_body := lv_sql_body || ' ,mct.description             AS item_div_value' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,gbh.batch_no                AS entry_no' ;
     lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date       AS entry_date' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
@@ -542,14 +553,23 @@ AS
 -- add start 1.7
     lv_sql_body := lv_sql_body || ' ,flv2.attribute1             AS pay_purpose_name' ;
 -- add end 1.7
-    lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
+    lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
+-- mod end ver1.8
 --mod start 1.2
 --    lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS pay_item_name' ;
-    lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS pay_item_name' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS pay_item_name' ;
+    lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name' ;
+-- mod end ver1.8
 --mod end 1.2
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no' ;
     lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itp.trans_qty),4) AS pay_quant' ;
-    lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+    lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 --   lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -578,11 +598,18 @@ AS
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
     ---------------------------------------------------------------------------------------
     -- FROM句
-    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst2_v    ximv' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst2_v    ximv' ;
+    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b     ximb' ;
 -- 2008/09/26 v1.6 UPDATE START
 --    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories4_v xicv' ;
-    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories5_v xicv' ;
+--    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories5_v xicv' ;
 -- 2008/09/26 v1.6 UPDATE END
+    lv_sql_body := lv_sql_body || ' ,ic_item_mst_b            iimb' ;
+    lv_sql_body := lv_sql_body || ' ,gmi_item_categories      gic' ;
+    lv_sql_body := lv_sql_body || ' ,mtl_categories_b         mcb' ;
+    lv_sql_body := lv_sql_body || ' ,mtl_categories_tl        mct' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,ic_lots_mst               ilm' ;
     lv_sql_body := lv_sql_body || ' ,xxinv_rcv_pay_mst2_v     xrpm' ;
     lv_sql_body := lv_sql_body || ' ,gme_batch_header          gbh' ;
@@ -638,18 +665,30 @@ AS
     lv_sql_body := lv_sql_body || ' AND gbh.batch_status           = :para_batch_status_close ' ;
 -- 2008/09/26 v1.6 UPDATE END
     -- OPM品目情報VIEW結合
-    lv_sql_body := lv_sql_body || ' AND itp.item_id                = ximv.item_id' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND itp.item_id                = ximv.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND itp.item_id                = iimb.item_id' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 /*
     lv_sql_body := lv_sql_body || ' AND ' || gv_sql_date_from || ' BETWEEN ximv.start_date_active' ;
     lv_sql_body := lv_sql_body || '                                    AND NVL(ximv.end_date_active,' || gv_sql_date_from || ')' ;
 */
-    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximv.start_date_active' ;
-    lv_sql_body := lv_sql_body || '   AND NVL(ximv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximv.start_date_active' ;
+--    lv_sql_body := lv_sql_body || '   AND NVL(ximv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximb.start_date_active' ;
+    lv_sql_body := lv_sql_body || '   AND ximb.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPM品目カテゴリ割当情報VIEW結合
-    lv_sql_body := lv_sql_body || ' AND ximv.item_id  = xicv.item_id' ;
-    lv_sql_body := lv_sql_body || ' AND xicv.item_class_code       IN (' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND ximv.item_id  = xicv.item_id' ;
+--    lv_sql_body := lv_sql_body || ' AND xicv.item_class_code       IN (' ;
+    lv_sql_body := lv_sql_body || ' AND ximb.item_id  = iimb.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND iimb.item_id  = gic.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND mcb.segment1       IN (' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 /*
     lv_sql_body := lv_sql_body ||  '''' || gc_item_class_code_1 || ''',' ;
@@ -659,6 +698,13 @@ AS
     lv_sql_body := lv_sql_body ||  ' :para_item_class_code_1,' ;
     lv_sql_body := lv_sql_body ||  ' :para_item_class_code_4,' ;
     lv_sql_body := lv_sql_body ||  ' :para_item_class_code_5)' ;
+-- add start ver1.8
+    lv_sql_body := lv_sql_body || ' AND mct.source_lang  = :para_language_code ' ;
+    lv_sql_body := lv_sql_body || ' AND mct.language     = :para_language_code ' ;
+    lv_sql_body := lv_sql_body || ' AND mcb.category_id        = mct.category_id' ;
+    lv_sql_body := lv_sql_body || ' AND gic.category_id        = mcb.category_id' ;
+    lv_sql_body := lv_sql_body || ' AND gic.category_set_id    = FND_PROFILE.VALUE(:para_item_class)' ;
+-- add end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- 標準原価情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xsupv.item_id              = itp.item_id ' ;
@@ -668,8 +714,12 @@ AS
     lv_sql_body := lv_sql_body || '                                    AND NVL(xsupv.end_date_active,'  || gv_sql_date_from || ')' ;
 */
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ';
-    lv_sql_body := lv_sql_body || '   NVL(xsupv.start_date_active, :para_sql_date_from)' ;
-    lv_sql_body := lv_sql_body || '     AND NVL(xsupv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || '   NVL(xsupv.start_date_active, :para_sql_date_from)' ;
+--    lv_sql_body := lv_sql_body || '     AND NVL(xsupv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || '   xsupv.start_date_active' ;
+    lv_sql_body := lv_sql_body || '     AND xsupv.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPMロットマスタ結合
     lv_sql_body := lv_sql_body || ' AND itp.lot_id                 = ilm.lot_id' ;
@@ -717,8 +767,12 @@ AS
     lv_sql_body := lv_sql_body || '                                    AND NVL(xlv.end_date_active,'  || gv_sql_date_from || ')' ;
 */
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ';
-    lv_sql_body := lv_sql_body || '   NVL(xlv.start_date_active, :para_sql_date_from)' ;
-    lv_sql_body := lv_sql_body || '     AND NVL(xlv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || '   NVL(xlv.start_date_active, :para_sql_date_from)' ;
+--    lv_sql_body := lv_sql_body || '     AND NVL(xlv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || '   xlv.start_date_active' ;
+    lv_sql_body := lv_sql_body || '     AND xlv.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPM保管場所情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xilv.whse_code             = itp.whse_code' ;
@@ -751,7 +805,10 @@ AS
     -------------------------------------------------------------------------------
     --  3．払出品目区分
     IF (gr_param.out_item_ctl IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND xicv.item_class_code =' || cv_sc || gr_param.out_item_ctl || cv_sc;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' AND xicv.item_class_code =' || cv_sc || gr_param.out_item_ctl || cv_sc;
+      lv_sql_body := lv_sql_body || ' AND mcb.segment1 =' || cv_sc || gr_param.out_item_ctl || cv_sc;
+-- mod end ver1.8
     END IF ;
     -------------------------------------------------------------------------------
     --  7．事由コード
@@ -849,11 +906,15 @@ AS
     --ORDER BY 句
     lv_sql_body := lv_sql_body || ' ORDER BY xlv.location_code' ;
     lv_sql_body := lv_sql_body || ' ,xilv.segment1' ;
-    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code' ;
+    lv_sql_body := lv_sql_body || ' ,mcb.segment1' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent' ;
     lv_sql_body := lv_sql_body || ' ,gbh.batch_no' ;
     lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date' ;
-    lv_sql_body := lv_sql_body || ' ,ximv.item_no' ;
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_no' ;
+    lv_sql_body := lv_sql_body || ' ,iimb.item_no' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no' ;
 --
 -- 2008/09/26 v1.6 UPDATE START
@@ -869,13 +930,18 @@ AS
                                                                       ,lv_routing_class_separate
                                                                       ,gc_batch_status_close
                                                                       ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
+-- mod start ver1.8
+--                                                                      ,gv_sql_date_from
                                                                       ,gc_item_class_code_1
                                                                       ,gc_item_class_code_4
                                                                       ,gc_item_class_code_5
+                                                                      ,gc_language_code
+                                                                      ,gc_language_code
+                                                                      ,gc_item_class
                                                                       ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+-- mod end ver1.8
                                                                       ,gc_lookup_type_new_div
                                                                       ,gc_language_code
 -- add start 1.7
@@ -885,8 +951,10 @@ AS
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
+-- del start ver1.8
+--                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+-- del end ver1.8
                                                                       ,gr_param.date_from
                                                                       ,gc_date_mask
                                                                       ,gc_date_mask
@@ -958,7 +1026,10 @@ AS
   BEGIN
 --
     -- SQL本体
-    lv_sql_body := lv_sql_body || ' SELECT ' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' SELECT ' ;
+    lv_sql_body := lv_sql_body || ' SELECT /*+ leading(gbh itp xrpm iimb ximb) use_nl(gbh itp xrpm iimb ximb) */' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || '  gbh.batch_id                AS batch_id' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS dept_code' ;
     lv_sql_body := lv_sql_body || ' ,NULL                        AS dept_name' ;
@@ -983,14 +1054,23 @@ AS
 -- add start 1.7
     lv_sql_body := lv_sql_body || ' ,flv2.attribute1             AS rcv_purpose_name' ;
 -- add end 1.7
-    lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS rcv_item_no' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS rcv_item_no' ;
+    lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS rcv_item_no' ;
+-- mod end ver1.8
 --mod start 1.2
 --    lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS rcv_item_name' ;
-    lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS rcv_item_name' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS rcv_item_name' ;
+    lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS rcv_item_name' ;
+-- mod end ver1.8
 --mod end 1.2
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS rcv_lot_no' ;
     lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itp.trans_qty),4) AS rcv_quant' ;
-    lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+    lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 --   lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -1009,7 +1089,11 @@ AS
     lv_sql_body := lv_sql_body || ' END                          AS rcv_unt_price' ;
     ---------------------------------------------------------------------------------------
     -- FROM句
-    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst2_v    ximv' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst2_v    ximv' ;
+    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b      ximb' ;
+    lv_sql_body := lv_sql_body || ' ,ic_item_mst_b             iimb' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,ic_lots_mst               ilm' ;
     lv_sql_body := lv_sql_body || ' ,xxinv_rcv_pay_mst2_v     xrpm' ;
     lv_sql_body := lv_sql_body || ' ,gme_batch_header          gbh' ;
@@ -1044,14 +1128,21 @@ AS
     -- 生産バッチ結合
     lv_sql_body := lv_sql_body || ' AND itp.doc_id                 = gbh.batch_id' ;
     -- OPM品目情報VIEW結合
-    lv_sql_body := lv_sql_body || ' AND itp.item_id                = ximv.item_id' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND itp.item_id                = ximv.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND itp.item_id                = iimb.item_id' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 /*
     lv_sql_body := lv_sql_body || ' AND ' || gv_sql_date_from || ' BETWEEN ximv.start_date_active' ;
     lv_sql_body := lv_sql_body || '                                    AND NVL(ximv.end_date_active,' || gv_sql_date_from || ')' ;
 */
-    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximv.start_date_active' ;
-    lv_sql_body := lv_sql_body || '   AND NVL(ximv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximv.start_date_active' ;
+--    lv_sql_body := lv_sql_body || '   AND NVL(ximv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximb.start_date_active' ;
+    lv_sql_body := lv_sql_body || '   AND ximb.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- 標準原価情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xsupv.item_id              = itp.item_id ' ;
@@ -1061,8 +1152,12 @@ AS
     lv_sql_body := lv_sql_body || '                                    AND NVL(xsupv.end_date_active,'  || gv_sql_date_from || ')' ;
 */
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ' ;
-    lv_sql_body := lv_sql_body || '   NVL(xsupv.start_date_active, :para_sql_date_from)' ;
-    lv_sql_body := lv_sql_body || '     AND NVL(xsupv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || '   NVL(xsupv.start_date_active, :para_sql_date_from)' ;
+--    lv_sql_body := lv_sql_body || '     AND NVL(xsupv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || '   xsupv.start_date_active' ;
+    lv_sql_body := lv_sql_body || '     AND xsupv.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPMロットマスタ結合
     lv_sql_body := lv_sql_body || ' AND itp.lot_id                 = ilm.lot_id' ;
@@ -1093,7 +1188,10 @@ AS
     lv_sql_body := lv_sql_body || '  xrpm.new_div_invent' ;
     lv_sql_body := lv_sql_body || ' ,gbh.batch_no' ;
     lv_sql_body := lv_sql_body || ' ,gbh.actual_cmplt_date' ;
-    lv_sql_body := lv_sql_body || ' ,ximv.item_no' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_no' ;
+    lv_sql_body := lv_sql_body || ' ,iimb.item_no' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no' ;
 --
 -- 2008/09/26 v1.6 UPDATE START
@@ -1105,10 +1203,12 @@ AS
                                                                       ,gc_comp_ind_on
                                                                       ,gc_use_div_invent_rep
                                                                       ,gv_sql_date_from
+-- del start ver1.8
+--                                                                      ,gv_sql_date_from
                                                                       ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+-- del end ver1.8
                                                                       ,gc_lookup_type_new_div
                                                                       ,gc_language_code
 -- add start 1.7
@@ -1181,14 +1281,21 @@ AS
 --
     -- SQL本体
     IF(in_line_type = -1) THEN
-      lv_sql_body := lv_sql_body || ' SELECT ' ;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' SELECT ' ;
+      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm iimb ximb gic mcb mct) */' ;
+-- mod end ver1.8
       lv_sql_body := lv_sql_body || '  NULL                        AS batch_id' ;
       lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
       lv_sql_body := lv_sql_body || ' ,SUBSTRB(xlv.description,1,20)             AS dept_name' ;
       lv_sql_body := lv_sql_body || ' ,xilv.segment1               AS item_location_code' ;
       lv_sql_body := lv_sql_body || ' ,xilv.description            AS item_location_name' ;
-      lv_sql_body := lv_sql_body || ' ,xicv.item_class_code        AS item_div_type' ;
-      lv_sql_body := lv_sql_body || ' ,xicv.item_class_name        AS item_div_value';
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' ,xicv.item_class_code        AS item_div_type' ;
+--      lv_sql_body := lv_sql_body || ' ,xicv.item_class_name        AS item_div_value';
+      lv_sql_body := lv_sql_body || ' ,mcb.segment1                AS item_div_type' ;
+      lv_sql_body := lv_sql_body || ' ,mct.description             AS item_div_value';
+-- mod end ver1.8
       lv_sql_body := lv_sql_body || ' ,ijm.journal_no              AS entry_no' ;
       lv_sql_body := lv_sql_body || ' ,itc.trans_date              AS entry_date';
       lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
@@ -1196,18 +1303,27 @@ AS
 -- add start 1.7
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_purpose_name' ;
 -- add end 1.7
-      lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
+      lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
+-- mod end ver1.8
 --mod start 1.2
 --      lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS pay_item_name';
 --      lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no';
-      lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS pay_item_name';
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS pay_item_name';
+      lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name';
+-- mod end ver1.8
       lv_sql_body := lv_sql_body || ' ,DECODE(ilm.lot_id,0,NULL,ilm.lot_no) AS pay_lot_no';
 --mod end 1.2
 -- mod start 1.7
 --      lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itc.trans_qty),4) AS pay_quant';
       lv_sql_body := lv_sql_body || ' ,ROUND(itc.trans_qty,4) * -1 AS pay_quant';
 -- mod end 1.7
-      lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+      lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
+-- mod end ver1.8
       lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
       lv_sql_body := lv_sql_body || '      ROUND(xsupv.stnd_unit_price,3)' ;
       lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_j || cv_sc ||' THEN' ;
@@ -1229,14 +1345,21 @@ AS
       lv_sql_body := lv_sql_body || ' ,0                           AS rcv_quant';
       lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
     ELSE
-      lv_sql_body := lv_sql_body || ' SELECT ' ;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' SELECT ' ;
+      lv_sql_body := lv_sql_body || ' SELECT /*+ leading(itc iaj ijm xrpm iimb ximb gic mcb mct) use_nl(itc iaj ijm xrpm iimb ximb gic mcb mct) */' ;
+-- mod end ver1.8
       lv_sql_body := lv_sql_body || '  NULL                        AS batch_id' ;
       lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
       lv_sql_body := lv_sql_body || ' ,SUBSTRB(xlv.description,1,20)             AS dept_name' ;
       lv_sql_body := lv_sql_body || ' ,xilv.segment1               AS item_location_code' ;
       lv_sql_body := lv_sql_body || ' ,xilv.description            AS item_location_name' ;
-      lv_sql_body := lv_sql_body || ' ,xicv.item_class_code        AS item_div_type' ;
-      lv_sql_body := lv_sql_body || ' ,xicv.item_class_name        AS item_div_value';
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' ,xicv.item_class_code        AS item_div_type' ;
+--      lv_sql_body := lv_sql_body || ' ,xicv.item_class_name        AS item_div_value';
+      lv_sql_body := lv_sql_body || ' ,mcb.segment1                AS item_div_type' ;
+      lv_sql_body := lv_sql_body || ' ,mct.description             AS item_div_value';
+-- mod end ver1.8
       lv_sql_body := lv_sql_body || ' ,ijm.journal_no              AS entry_no' ;
       lv_sql_body := lv_sql_body || ' ,itc.trans_date              AS entry_date';
       lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_reason_code' ;
@@ -1254,18 +1377,27 @@ AS
 -- add start 1.7
       lv_sql_body := lv_sql_body || ' ,NULL                        AS rcv_purpose_name' ;
 -- add end 1.7
-      lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS rcv_item_no' ;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS rcv_item_no' ;
+      lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS rcv_item_no' ;
+-- mod end ver1.8
 --mod start 1.2
 --      lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS rcv_item_name';
 --      lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS rcv_lot_no';
-      lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS rcv_item_name';
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS rcv_item_name';
+      lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS rcv_item_name';
+-- mod end ver1.8
       lv_sql_body := lv_sql_body || ' ,DECODE(ilm.lot_id,0,NULL,ilm.lot_no) AS rcv_lot_no';
 --mod end 1.2
 -- mod start 1.7
 --      lv_sql_body := lv_sql_body || ' ,ROUND(ABS(itc.trans_qty),4) AS rcv_quant';
       lv_sql_body := lv_sql_body || ' ,ROUND(itc.trans_qty,4) AS rcv_quant';
 -- mod end 1.7
-      lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+      lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
+-- mod end ver1.8
       lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
       lv_sql_body := lv_sql_body || '      ROUND(xsupv.stnd_unit_price,3)' ;
       lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_j || cv_sc ||' THEN' ;
@@ -1279,11 +1411,20 @@ AS
     END IF ;
     ---------------------------------------------------------------------------------------
     -- FROM句
-    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst2_v    ximv' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst2_v    ximv' ;
+    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b     ximb' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 --    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories4_v xicv' ;
-    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories5_v xicv' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories5_v xicv' ;
+    lv_sql_body := lv_sql_body || ' ,ic_item_mst_b            iimb' ;
+    lv_sql_body := lv_sql_body || ' ,gmi_item_categories       gic' ;
+    lv_sql_body := lv_sql_body || ' ,mtl_categories_b          mcb' ;
+    lv_sql_body := lv_sql_body || ' ,mtl_categories_tl         mct' ;
 -- 2008/09/26 v1.6 UPDATE END
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,ic_lots_mst               ilm' ;
     lv_sql_body := lv_sql_body || ' ,xxinv_rcv_pay_mst6_v     xrpm' ;
     lv_sql_body := lv_sql_body || ' ,ic_jrnl_mst               ijm' ;
@@ -1315,17 +1456,33 @@ AS
 -- del end 1.7
     lv_sql_body := lv_sql_body || ' AND xrpm.rcv_pay_div           = :line_type';
     -- OPM品目情報VIEW結合
-    lv_sql_body := lv_sql_body || ' AND itc.item_id                = ximv.item_id' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND itc.item_id                = ximv.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND itc.item_id                = iimb.item_id' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 /*
     lv_sql_body := lv_sql_body || ' AND ' || gv_sql_date_from || ' BETWEEN ximv.start_date_active' ;
     lv_sql_body := lv_sql_body || '                                    AND NVL(ximv.end_date_active,' || gv_sql_date_from || ')' ;
 */
-    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximv.start_date_active' ;
-    lv_sql_body := lv_sql_body || '   AND NVL(ximv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximv.start_date_active' ;
+--    lv_sql_body := lv_sql_body || '   AND NVL(ximv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximb.start_date_active' ;
+    lv_sql_body := lv_sql_body || '   AND ximb.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPM品目カテゴリ割当情報VIEW結合
-    lv_sql_body := lv_sql_body || ' AND ximv.item_id  = xicv.item_id' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND ximv.item_id  = xicv.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND ximb.item_id  = iimb.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND iimb.item_id  = gic.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND mct.source_lang  = :para_language_code ' ;
+    lv_sql_body := lv_sql_body || ' AND mct.language     = :para_language_code ' ;
+    lv_sql_body := lv_sql_body || ' AND mcb.category_id        = mct.category_id' ;
+    lv_sql_body := lv_sql_body || ' AND gic.category_id        = mcb.category_id' ;
+    lv_sql_body := lv_sql_body || ' AND gic.category_set_id    = FND_PROFILE.VALUE(:para_item_class)' ;
+-- mod end ver1.8
     -- 標準原価情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xsupv.item_id              = itc.item_id ' ;
 -- 2008/09/26 v1.6 UPDATE START
@@ -1334,8 +1491,12 @@ AS
     lv_sql_body := lv_sql_body || '                                    AND NVL(xsupv.end_date_active,'  || gv_sql_date_from || ')' ;
 */
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ' ;
-    lv_sql_body := lv_sql_body || '   NVL(xsupv.start_date_active, :para_sql_date_from)' ;
-    lv_sql_body := lv_sql_body || '     AND NVL(xsupv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || '   NVL(xsupv.start_date_active, :para_sql_date_from)' ;
+--    lv_sql_body := lv_sql_body || '     AND NVL(xsupv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || '   xsupv.start_date_active' ;
+    lv_sql_body := lv_sql_body || '     AND xsupv.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPMロットマスタ結合
     lv_sql_body := lv_sql_body || ' AND itc.lot_id                 = ilm.lot_id' ;
@@ -1377,8 +1538,12 @@ AS
     lv_sql_body := lv_sql_body || '                                    AND NVL(xlv.end_date_active,'  || gv_sql_date_from || ')' ;
 */
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ' ;
-    lv_sql_body := lv_sql_body || '   NVL(xlv.start_date_active, :para_sql_date_from)' ;
-    lv_sql_body := lv_sql_body || '     AND NVL(xlv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || '   NVL(xlv.start_date_active, :para_sql_date_from)' ;
+--    lv_sql_body := lv_sql_body || '     AND NVL(xlv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || '   xlv.start_date_active' ;
+    lv_sql_body := lv_sql_body || '     AND xlv.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPM保管場所情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xilv.whse_code             = itc.whse_code' ;
@@ -1407,7 +1572,10 @@ AS
 -- 2008/09/26 v1.6 UPDATE END
     --  3．払出品目区分
     IF (gr_param.out_item_ctl IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND xicv.item_class_code = ' || cv_sc || gr_param.out_item_ctl || cv_sc;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' AND xicv.item_class_code = ' || cv_sc || gr_param.out_item_ctl || cv_sc;
+      lv_sql_body := lv_sql_body || ' AND mcb.segment1 = ' || cv_sc || gr_param.out_item_ctl || cv_sc;
+-- mod end ver1.8
     END IF ;
     -------------------------------------------------------------------------------
     --  7．事由コード
@@ -1505,11 +1673,15 @@ AS
     --ORDER BY 句
     lv_sql_body := lv_sql_body || ' ORDER BY xlv.location_code' ;
     lv_sql_body := lv_sql_body || ' ,xilv.segment1' ;
-    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code' ;
+    lv_sql_body := lv_sql_body || ' ,mcb.segment1' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent' ;
     lv_sql_body := lv_sql_body || ' ,ijm.journal_no' ;
     lv_sql_body := lv_sql_body || ' ,itc.trans_date' ;
-    lv_sql_body := lv_sql_body || ' ,ximv.item_no' ;
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_no' ;
+    lv_sql_body := lv_sql_body || ' ,iimb.item_no' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no' ;
 --
 -- 2008/09/26 v1.6 UPDATE START
@@ -1517,17 +1689,24 @@ AS
     EXECUTE IMMEDIATE lv_sql_body BULK COLLECT INTO ot_data_rec USING  gc_use_div_invent_rep
                                                                       ,in_line_type
                                                                       ,gv_sql_date_from
+-- mod start ver1.8
+--                                                                      ,gv_sql_date_from
+                                                                      ,gc_language_code
+                                                                      ,gc_language_code
+                                                                      ,gc_item_class
                                                                       ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+-- mod end ver1.8
                                                                       ,gc_lookup_type_new_div
                                                                       ,gc_language_code
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
+-- del start ver1.8
+--                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+-- del end ver1.8
                                                                       ,gr_param.date_from
                                                                       ,gc_date_mask
                                                                       ,gc_date_mask
@@ -1597,14 +1776,21 @@ AS
   BEGIN
 --
     -- SQL本体
-    lv_sql_body := lv_sql_body || ' SELECT ' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' SELECT ' ;
+    lv_sql_body := lv_sql_body || ' SELECT /*+ leading(xoha ooha otta iimb ximb gic mcb mct) use_nl(xoha ooha otta iimb ximb gic mcb mct) */' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || '  NULL                        AS batch_id' ;
     lv_sql_body := lv_sql_body || ' ,xlv.location_code           AS dept_code' ;
     lv_sql_body := lv_sql_body || ' ,SUBSTRB(xlv.description,1,20)             AS dept_name' ;
     lv_sql_body := lv_sql_body || ' ,xilv.segment1               AS item_location_code' ;
     lv_sql_body := lv_sql_body || ' ,xilv.description            AS item_location_name' ;
-    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code        AS item_div_type' ;
-    lv_sql_body := lv_sql_body || ' ,xicv.item_class_name        AS item_div_value' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code        AS item_div_type' ;
+--    lv_sql_body := lv_sql_body || ' ,xicv.item_class_name        AS item_div_value' ;
+    lv_sql_body := lv_sql_body || ' ,mcb.segment1                AS item_div_type' ;
+    lv_sql_body := lv_sql_body || ' ,mct.description             AS item_div_value' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,xoha.request_no             AS entry_no' ;
     lv_sql_body := lv_sql_body || ' ,xoha.shipped_date           AS entry_date' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent         AS pay_reason_code' ;
@@ -1612,10 +1798,16 @@ AS
 -- add start 1.7
     lv_sql_body := lv_sql_body || ' ,NULL                        AS pay_purpose_name' ;
 -- add end 1.7
-    lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_no                AS pay_item_no' ;
+    lv_sql_body := lv_sql_body || ' ,iimb.item_no                AS pay_item_no' ;
+-- mod end ver1.8
 --mod start 1.2
 --    lv_sql_body := lv_sql_body || ' ,ximv.item_desc1             AS pay_item_name' ;
-    lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS pay_item_name' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_short_name        AS pay_item_name' ;
+    lv_sql_body := lv_sql_body || ' ,ximb.item_short_name        AS pay_item_name' ;
+-- mod end ver1.8
 --mod end 1.2
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no                  AS pay_lot_no' ;
     IF (iv_doc_type = gc_doc_type_porc) THEN
@@ -1623,7 +1815,10 @@ AS
     ELSE
       lv_sql_body := lv_sql_body || ',ABS(ROUND(itp.trans_qty,4))  AS pay_quant' ;
     END IF ;
-    lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,CASE ximv.cost_manage_code' ;
+    lv_sql_body := lv_sql_body || ' ,CASE iimb.attribute15' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 --   lv_sql_body := lv_sql_body || '    WHEN '|| cv_sc || gc_cost_manage_code_n || cv_sc ||' THEN' ;
     lv_sql_body := lv_sql_body || '    WHEN :para_cost_manage_code_n THEN' ;
@@ -1652,10 +1847,19 @@ AS
     lv_sql_body := lv_sql_body || ' ,0                           AS rcv_unt_price' ;
     ---------------------------------------------------------------------------------------
     -- FROM句
-    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst2_v    ximv' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst2_v    ximv' ;
+    lv_sql_body := lv_sql_body || ' FROM xxcmn_item_mst_b     ximb' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 --    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories4_v xicv' ;
-    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories5_v xicv' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,xxcmn_item_categories5_v xicv' ;
+    lv_sql_body := lv_sql_body || ' ,ic_item_mst_b            iimb' ;
+    lv_sql_body := lv_sql_body || ' ,gmi_item_categories      gic' ;
+    lv_sql_body := lv_sql_body || ' ,mtl_categories_b         mcb' ;
+    lv_sql_body := lv_sql_body || ' ,mtl_categories_tl        mct' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     lv_sql_body := lv_sql_body || ' ,ic_lots_mst               ilm' ;
     lv_sql_body := lv_sql_body || ' ,xxcmn_rcv_pay_mst        xrpm' ;
@@ -1702,17 +1906,33 @@ AS
     -- 受注タイプ結合
     lv_sql_body := lv_sql_body || ' AND otta.transaction_type_id        = xoha.order_type_id' ;
     -- OPM品目情報VIEW結合
-    lv_sql_body := lv_sql_body || ' AND itp.item_id                = ximv.item_id' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND itp.item_id                = ximv.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND itp.item_id                = iimb.item_id' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE START
 /*
     lv_sql_body := lv_sql_body || ' AND ' || gv_sql_date_from || ' BETWEEN ximv.start_date_active' ;
     lv_sql_body := lv_sql_body || '                                    AND NVL(ximv.end_date_active,' || gv_sql_date_from || ')' ;
 */
-    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximv.start_date_active' ;
-    lv_sql_body := lv_sql_body || '   AND NVL(ximv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximv.start_date_active' ;
+--    lv_sql_body := lv_sql_body || '   AND NVL(ximv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ximb.start_date_active' ;
+    lv_sql_body := lv_sql_body || '   AND ximb.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPM品目カテゴリ割当情報VIEW結合
-    lv_sql_body := lv_sql_body || ' AND ximv.item_id  = xicv.item_id' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' AND ximv.item_id  = xicv.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND ximb.item_id  = iimb.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND iimb.item_id  = gic.item_id' ;
+    lv_sql_body := lv_sql_body || ' AND mct.source_lang  = :para_language_code ' ;
+    lv_sql_body := lv_sql_body || ' AND mct.language     = :para_language_code ' ;
+    lv_sql_body := lv_sql_body || ' AND mcb.category_id        = mct.category_id' ;
+    lv_sql_body := lv_sql_body || ' AND gic.category_id        = mcb.category_id' ;
+    lv_sql_body := lv_sql_body || ' AND gic.category_set_id    = FND_PROFILE.VALUE(:para_item_class)' ;
+-- mod end ver1.8
     -- 標準原価情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xsupv.item_id              = itp.item_id ' ;
 -- 2008/09/26 v1.6 UPDATE START
@@ -1721,8 +1941,12 @@ AS
     lv_sql_body := lv_sql_body || '                                    AND NVL(xsupv.end_date_active,'  || gv_sql_date_from || ')' ;
 */
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ' ;
-    lv_sql_body := lv_sql_body || '   NVL(xsupv.start_date_active, :para_sql_date_from)' ;
-    lv_sql_body := lv_sql_body || '     AND NVL(xsupv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || '   NVL(xsupv.start_date_active, :para_sql_date_from)' ;
+--    lv_sql_body := lv_sql_body || '     AND NVL(xsupv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || '   xsupv.start_date_active' ;
+    lv_sql_body := lv_sql_body || '     AND xsupv.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPMロットマスタ結合
     lv_sql_body := lv_sql_body || ' AND itp.lot_id                 = ilm.lot_id' ;
@@ -1764,8 +1988,12 @@ AS
     lv_sql_body := lv_sql_body || '                                    AND NVL(xlv.end_date_active,'  || gv_sql_date_from || ')' ;
 */
     lv_sql_body := lv_sql_body || ' AND :para_sql_date_from BETWEEN ' ;
-    lv_sql_body := lv_sql_body || '   NVL(xlv.start_date_active, :para_sql_date_from)' ;
-    lv_sql_body := lv_sql_body || '     AND NVL(xlv.end_date_active, :para_sql_date_from)' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || '   NVL(xlv.start_date_active, :para_sql_date_from)' ;
+--    lv_sql_body := lv_sql_body || '     AND NVL(xlv.end_date_active, :para_sql_date_from)' ;
+    lv_sql_body := lv_sql_body || '   xlv.start_date_active' ;
+    lv_sql_body := lv_sql_body || '     AND xlv.end_date_active' ;
+-- mod end ver1.8
 -- 2008/09/26 v1.6 UPDATE END
     -- OPM保管場所情報VIEW結合
     lv_sql_body := lv_sql_body || ' AND xilv.whse_code             = itp.whse_code' ;
@@ -1815,7 +2043,10 @@ AS
     -------------------------------------------------------------------------------
     --  3．払出品目区分
     IF (gr_param.out_item_ctl IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND xicv.item_class_code =' || cv_sc || gr_param.out_item_ctl || cv_sc;
+-- mod start ver1.8
+--      lv_sql_body := lv_sql_body || ' AND xicv.item_class_code =' || cv_sc || gr_param.out_item_ctl || cv_sc;
+      lv_sql_body := lv_sql_body || ' AND mcb.segment1 =' || cv_sc || gr_param.out_item_ctl || cv_sc;
+-- mod end ver1.8
     END IF ;
     -------------------------------------------------------------------------------
     --  7．事由コード
@@ -1891,7 +2122,8 @@ AS
       lv_work_str_2 := lv_work_str_2  || gr_param.item3 ;
     END IF;
     IF (lv_work_str_2 IS NOT NULL) THEN
-      lv_sql_body := lv_sql_body || ' AND ximv.item_id IN('||lv_work_str_2 || ')';
+--★      lv_sql_body := lv_sql_body || ' AND ximv.item_id IN('||lv_work_str_2 || ')';
+      lv_sql_body := lv_sql_body || ' AND iimb.item_id IN('||lv_work_str_2 || ')';
     END IF ;
     -- 担当者
     IF (gr_param.emp_no IS NOT NULL) THEN
@@ -1913,11 +2145,15 @@ AS
     --ORDER BY 句
     lv_sql_body := lv_sql_body || ' ORDER BY xlv.location_code' ;
     lv_sql_body := lv_sql_body || ' ,xilv.segment1' ;
-    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code' ;
+-- mod start ver1.8
+--    lv_sql_body := lv_sql_body || ' ,xicv.item_class_code' ;
+    lv_sql_body := lv_sql_body || ' ,mcb.segment1' ;
     lv_sql_body := lv_sql_body || ' ,xrpm.new_div_invent' ;
     lv_sql_body := lv_sql_body || ' ,xoha.request_no' ;
     lv_sql_body := lv_sql_body || ' ,xoha.shipped_date' ;
-    lv_sql_body := lv_sql_body || ' ,ximv.item_no' ;
+--    lv_sql_body := lv_sql_body || ' ,ximv.item_no' ;
+    lv_sql_body := lv_sql_body || ' ,iimb.item_no' ;
+-- mod end ver1.8
     lv_sql_body := lv_sql_body || ' ,ilm.lot_no' ;
 --
 -- 2008/09/26 v1.6 UPDATE START
@@ -1929,17 +2165,24 @@ AS
                                                                       ,gc_use_div_invent_rep
                                                                       ,gc_line_type_pay
                                                                       ,gv_sql_date_from
+-- mod start ver1.8
+--                                                                      ,gv_sql_date_from
+                                                                      ,gc_language_code
+                                                                      ,gc_language_code
+                                                                      ,gc_item_class
                                                                       ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+-- mod end ver1.8
                                                                       ,gc_lookup_type_new_div
                                                                       ,gc_language_code
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
                                                                       ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
-                                                                      ,gv_sql_date_from
+-- del start ver1.8
+--                                                                      ,gv_sql_date_from
+--                                                                      ,gv_sql_date_from
+-- del end ver1.8
                                                                       ,gr_param.date_from
                                                                       ,gc_date_mask
                                                                       ,gc_date_mask
