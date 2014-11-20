@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoContractRegistAMImpl
 * 概要説明   : 自販機設置契約情報登録画面アプリケーション・モジュールクラス
-* バージョン : 1.0
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,6 +11,7 @@
 * 2009-02-23 1.1  SCS柳平直人  [CT1-021]送付先コード取得不正対応
 *                              [CT1-022]口座情報取得不正対応
 * 2009-04-08 1.2  SCS柳平直人  [ST障害T1_0364]仕入先重複チェック修正対応
+* 2010-01-26 1.3  SCS阿部大輔  [E_本稼動_01314]契約書発効日必須対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso010003j.server;
@@ -945,13 +946,17 @@ public class XxcsoContractRegistAMImpl extends OAApplicationModuleImpl
     // ステータスが作成中の場合は入力チェック実施
     if (XxcsoContractRegistConstants.STS_INPUT.equals( mngRow.getStatus() ) )
     {
-      if ( getTransaction().isDirty() )
-      {
-        this.validateAll(false);
+// 2010-01-26 [E_本稼動_01314] Add Start
+      //if ( getTransaction().isDirty() )
+      //{
+// 2010-01-26 [E_本稼動_01314] Add End
+      this.validateAll(false);
 
-        // 保存処理を実行します。
-        this.commit();
-      }
+      // 保存処理を実行します。
+      this.commit();
+// 2010-01-26 [E_本稼動_01314] Add Start
+      //}
+// 2010-01-26 [E_本稼動_01314] Add End
     }
     else
     {
