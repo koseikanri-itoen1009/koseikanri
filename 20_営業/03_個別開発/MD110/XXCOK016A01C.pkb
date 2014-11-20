@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK016A01C(spec)
  * Description      : 組み戻し・残高取消・保留情報(CSVファイル)の取込処理
  * MD.050           : 残高更新Excelアップロード MD050_COK_016_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  2008/11/25    1.0   K.Ezaki          新規作成
  *  2009/02/19    1.1   A.Yano           [障害COK_047] 残高取消日の更新不具合対応
  *  2009/05/29    1.2   M.Hiruta         [障害T1_1139] 日付条件を変更し、過去分のデータを処理できるよう変更
+ *  2010/01/20    1.3   K.Kiriu          [E_本稼動_01115]残高更新を拠点で処理可、１仕入先の複数処理を可能とできるよう変更
  *
  *****************************************************************************************/
 --
@@ -50,7 +51,10 @@ AS
   cv_bel_dept       CONSTANT VARCHAR2(1)  := '2';                                -- 各拠点部門
   cn_vend_len       CONSTANT NUMBER       := 9;                                  -- 仕入先コード桁数
   cn_cust_len       CONSTANT NUMBER       := 9;                                  -- 顧客コード桁数
-  cn_pay_amt_len    CONSTANT NUMBER       := 7;                                  -- 支払金額桁数
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--  cn_pay_amt_len    CONSTANT NUMBER       := 7;                                  -- 支払金額桁数
+  cn_pay_amt_len    CONSTANT NUMBER       := 10;                                 -- 支払金額桁数(FBデータファイルの桁数に合わす)
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
   cv_proc_type1     CONSTANT VARCHAR2(1)  := '1';                                -- 処理区分：組み戻し
   cv_proc_type2     CONSTANT VARCHAR2(1)  := '2';                                -- 処理区分：残高取消
   cv_proc_type3     CONSTANT VARCHAR2(1)  := '3';                                -- 処理区分：保留
@@ -78,6 +82,10 @@ AS
   cv_status_warn    CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_warn;   -- 警告:1
   cv_status_error   CONSTANT VARCHAR2(1)  := xxccp_common_pkg.set_status_error;  -- 異常:2
   cv_status_check   CONSTANT VARCHAR2(1)  := 9;                                  -- チェックエラー:9
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+  cv_status_lock    CONSTANT VARCHAR2(1)  := '7';                                -- ロックエラー:7
+  cv_status_update  CONSTANT VARCHAR2(1)  := '8';                                -- 更新エラー:8
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
   -- 共通メッセージ定義
   cv_normal_msg     CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90004';                 -- 正常終了メッセージ
   cv_warn_msg       CONSTANT VARCHAR2(16) := 'APP-XXCCP1-90005';                 -- 警告終了メッセージ
@@ -95,8 +103,10 @@ AS
   cv_errmsg_00061   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00061';                 -- ファイルアップロードロックエラー
   cv_errmsg_00041   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00041';                 -- BLOBデータ変換エラー
   cv_errmsg_00039   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00039';                 -- ファイル取得エラー
-  cv_errmsg_00053   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00053';                 -- 残高更新ロックエラー
-  cv_errmsg_00054   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00054';                 -- 残高更新エラー
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--  cv_errmsg_00053   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00053';                 -- 残高更新ロックエラー
+--  cv_errmsg_00054   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00054';                 -- 残高更新エラー
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
   cv_errmsg_00062   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00062';                 -- ファイルアップロードIF削除エラー
   cv_errmsg_10217   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10217';                 -- 残高更新アップロード情報取得エラー
   cv_errmsg_10218   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10218';                 -- 業務管理部処理区分チェックエラー
@@ -124,6 +134,13 @@ AS
   cv_errmsg_10240   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10240';                 -- 残高取消組み合わせチェックエラー
   cv_errmsg_10241   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10241';                 -- 保留仕入先組み合わせチェックエラー
   cv_errmsg_10242   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10242';                 -- 保留顧客組み合わせチェックエラー
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+  cv_errmsg_10474   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10474';                 -- 残高更新ロックエラー
+  cv_errmsg_10475   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10475';                 -- 残高更新エラー
+  cv_errmsg_10456   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10476';                 -- 残高取消必須チェックエラー(拠点)
+  cv_errmsg_10457   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10477';                 -- 残高取消組み合わせチェックエラー（拠点）
+  cv_errmsg_10458   CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10478';                 -- 金額未確定チェックエラー（拠点）
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
   -- メッセージトークン定義
   cv_tkn_file_id    CONSTANT VARCHAR2(7)  := 'FILE_ID';                          -- ファイルIDトークン
   cv_tkn_format     CONSTANT VARCHAR2(6)  := 'FORMAT';                           -- ファイルパターントークン
@@ -337,7 +354,7 @@ AS
       AND    xbb.resv_flag           IS NULL
       AND    xbb.fb_interface_status = cv_fb_if_type1
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
-    -- 残高取消ロックカーソル定義
+    -- 業務管理部残高取消ロックカーソル定義
     CURSOR bm_cancel_cur(
        iv_vendor_code IN po_vendors.segment1%TYPE                          -- 仕入先コード
       ,id_pay_date    IN xxcok_backmargin_balance.expect_payment_date%TYPE -- 支払日
@@ -387,6 +404,24 @@ AS
       AND    NVL( xbb.resv_flag,'N' ) = iv_recv_type
       AND    xbb.fb_interface_status  = cv_fb_if_type0
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    -- 拠点残高取消ロック、更新カーソル定義
+    CURSOR bm_bel_cancel_cur(
+       iv_vendor_code IN po_vendors.segment1%TYPE                          -- 仕入先コード
+      ,iv_customer_code IN hz_cust_accounts.account_number%TYPE            -- 顧客コード
+      ,id_pay_date    IN xxcok_backmargin_balance.expect_payment_date%TYPE -- 支払日
+    )
+    IS
+      SELECT xbb.rowid AS row_id -- 販手残高ROWID
+      FROM   xxcok_backmargin_balance xbb -- 販手残高テーブル
+      WHERE  xbb.supplier_code       = iv_vendor_code
+      AND    xbb.expect_payment_date <= id_pay_date
+      AND    xbb.resv_flag           IS NULL
+      AND    xbb.fb_interface_status = cv_fb_if_type0
+      AND    xbb.base_code           = gv_dept_bel_code
+      AND    xbb.cust_code           = iv_customer_code
+      FOR UPDATE OF xbb.bm_balance_id NOWAIT;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -- 拠点顧客保留ロックカーソル定義
     CURSOR bm_bel_cust_pending_cur(
        iv_base_code     IN xxcok_backmargin_balance.base_code%TYPE           -- 拠点コード
@@ -406,6 +441,13 @@ AS
       AND    NVL( xbb.resv_flag,'N' ) = iv_recv_type
       AND    xbb.fb_interface_status  = cv_fb_if_type0
       FOR UPDATE OF xbb.bm_balance_id NOWAIT;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    -- =======================
+    -- ローカルTABLE型
+    -- =======================
+    TYPE bm_bel_cancel_tab_type IS TABLE OF ROWID INDEX BY PLS_INTEGER;
+    l_bm_bel_cancel_tab  bm_bel_cancel_tab_type;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     --===============================
     -- ローカル例外
     --===============================
@@ -429,9 +471,13 @@ AS
       );
       CLOSE bm_rollback_cur;
     -------------------------------------------------
-    -- 2.残高取消ロック処理
+    -- 2.業務管理部残高取消ロック処理
     -------------------------------------------------
-    ELSIF ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--    ELSIF ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+    ELSIF ( gv_dept_flg =  cv_act_dept ) AND
+          ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
       -- ロック処理
       OPEN bm_cancel_cur(
          it_check_data(in_index).vendor_code -- 仕入先コード
@@ -490,8 +536,22 @@ AS
         ,cv_yes                                -- 保留・保留解除
       );
       CLOSE bm_act_cust_pending_cur;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -------------------------------------------------
-    -- 5.拠点顧客保留ロック処理
+    -- 5.拠点残高取消ロック処理
+    -------------------------------------------------      
+    ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+          ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+      OPEN bm_bel_cancel_cur(
+         it_check_data(in_index).vendor_code   -- 仕入先コード
+        ,it_check_data(in_index).customer_code -- 顧客コード
+        ,it_check_data(in_index).pay_date      -- 支払日
+      );
+      FETCH bm_bel_cancel_cur BULK COLLECT INTO l_bm_bel_cancel_tab;
+      CLOSE bm_bel_cancel_cur;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    -------------------------------------------------
+    -- 6.拠点顧客保留ロック処理
     -------------------------------------------------
     ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
           ( it_check_data(in_index).customer_code IS NOT NULL ) AND
@@ -505,7 +565,7 @@ AS
       );
       CLOSE bm_bel_cust_pending_cur;
     -------------------------------------------------
-    -- 5.拠点顧客保留解除ロック処理
+    -- 7.拠点顧客保留解除ロック処理
     -------------------------------------------------
     ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
           ( it_check_data(in_index).customer_code IS NOT NULL ) AND
@@ -520,7 +580,7 @@ AS
       CLOSE bm_bel_cust_pending_cur;
     END IF;
     -------------------------------------------------
-    -- 6.組み戻し更新処理
+    -- 8.組み戻し更新処理
     -------------------------------------------------
     BEGIN
       IF ( it_check_data(in_index).proc_type = cv_proc_type1 ) THEN
@@ -549,9 +609,13 @@ AS
         AND    xbb.resv_flag           IS NULL
         AND    xbb.fb_interface_status = cv_fb_if_type1;
       -------------------------------------------------
-      -- 7.残高取消更新処理
+      -- 9.業務管理部残高取消更新処理
       -------------------------------------------------
-      ELSIF ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--      ELSIF ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+      ELSIF ( gv_dept_flg =  cv_act_dept ) AND
+            ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
         -- 更新処理
         UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
         SET    xbb.expect_payment_amt_tax = cn_zero                    -- 支払予定額
@@ -583,7 +647,7 @@ AS
         AND    xbb.resv_flag           IS NULL
         AND    xbb.fb_interface_status = cv_fb_if_type0;
       -------------------------------------------------
-      -- 8.業務管理部仕入先保留更新処理
+      -- 10.業務管理部仕入先保留更新処理
       -------------------------------------------------
       ELSIF ( gv_dept_flg =  cv_act_dept ) AND
             ( it_check_data(in_index).vendor_code IS NOT NULL ) AND
@@ -626,7 +690,7 @@ AS
         AND    NVL( xbb.resv_flag,'N' ) = cv_yes
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
       -------------------------------------------------
-      -- 9.業務管理部顧客保留更新処理
+      -- 11.業務管理部顧客保留更新処理
       -------------------------------------------------
       ELSIF ( gv_dept_flg =  cv_act_dept ) AND
             ( it_check_data(in_index).customer_code IS NOT NULL ) AND
@@ -668,8 +732,37 @@ AS
 -- End   2009/05/29 Ver_1.2 T1_1139 M.Hiruta
         AND    NVL( xbb.resv_flag,'N' ) = cv_yes
         AND    xbb.fb_interface_status  = cv_fb_if_type0;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
       -------------------------------------------------
-      -- 10.拠点顧客保留更新処理
+      -- 12.拠点顧客残高取消更新処理
+      -------------------------------------------------
+      ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+            ( it_check_data(in_index).proc_type = cv_proc_type2 ) THEN
+        -- 更新処理
+        FORALL i IN 1 .. l_bm_bel_cancel_tab.COUNT
+          UPDATE xxcok_backmargin_balance xbb -- 販手残高テーブル
+          SET    xbb.expect_payment_amt_tax = cn_zero                    -- 支払予定額
+                ,xbb.payment_amt_tax        = xbb.expect_payment_amt_tax -- 支払額
+                ,xbb.publication_date       = it_check_data(in_index).pay_date -- 案内書発効日
+                ,xbb.fb_interface_status    = cv_fb_if_type1             -- 連携ステータス（本振用FB）
+                ,xbb.fb_interface_date      = gd_proc_date               -- 連携日（本振用FB）
+                ,xbb.edi_interface_status   = cv_fb_if_type1             -- 連携ステータス（EDI支払案内書）
+                ,xbb.edi_interface_date     = gd_proc_date               -- 連携日（EDI支払案内書）
+                ,xbb.gl_interface_status    = cv_fb_if_type1             -- 連携ステータス（GL）
+                ,xbb.gl_interface_date      = gd_proc_date               -- 連携日（GL）
+                ,xbb.return_flag            = NULL                       -- 組み戻しフラグ
+                ,xbb.balance_cancel_date    = gd_proc_date               -- 残高取消日
+                ,xbb.last_updated_by        = APPS.FND_GLOBAL.USER_ID    -- 最終更新者
+                ,xbb.last_update_date       = SYSDATE                    -- 最終更新日
+                ,xbb.last_update_login      = APPS.FND_GLOBAL.LOGIN_ID   -- 最終更新ログインID
+                ,xbb.request_id             = cn_request_id              -- リクエストID
+                ,xbb.program_application_id = cn_prg_appl_id             -- プログラムアプリID
+                ,xbb.program_id             = cn_program_id              -- プログラムID
+                ,xbb.program_update_date    = SYSDATE                    -- プログラム更新日
+          WHERE  xbb.rowid       = l_bm_bel_cancel_tab(i);
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+      -------------------------------------------------
+      -- 13.拠点顧客保留更新処理
       -------------------------------------------------
       ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
             ( it_check_data(in_index).customer_code IS NOT NULL ) AND
@@ -716,42 +809,52 @@ AS
       END IF;
     EXCEPTION
       WHEN OTHERS THEN
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+        --エラー内容設定
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
         RAISE update_err_expt;
     END;
   --
   EXCEPTION
     -- *** ロック例外ハンドラ ****
     WHEN global_lock_expt THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_errmsg_00053
-                    );    
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which      => FND_FILE.OUTPUT -- 出力区分
-                      ,iv_message    => lv_out_msg      -- メッセージ
-                      ,in_new_line   => cn_one          -- 改行
-                    );
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_error;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--      -- メッセージ取得
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_ap_type_xxcok
+--                      ,iv_name         => cv_errmsg_00053
+--                    );    
+--      -- メッセージ出力
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                       in_which      => FND_FILE.OUTPUT -- 出力区分
+--                      ,iv_message    => lv_out_msg      -- メッセージ
+--                      ,in_new_line   => cn_one          -- 改行
+--                    );
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_lock;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -- *** 更新例外ハンドラ ***
     WHEN update_err_expt THEN
-      -- メッセージ取得
-      lv_out_msg := xxccp_common_pkg.get_msg(
-                       iv_application  => cv_ap_type_xxcok
-                      ,iv_name         => cv_errmsg_00054
-                    );    
-      -- メッセージ出力
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                       in_which      => FND_FILE.OUTPUT -- 出力区分
-                      ,iv_message    => lv_out_msg      -- メッセージ
-                      ,in_new_line   => cn_one          -- 改行
-                    );
-      ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
-      ov_retcode := cv_status_error;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--      -- メッセージ取得
+--      lv_out_msg := xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_ap_type_xxcok
+--                      ,iv_name         => cv_errmsg_00054
+--                    );
+--      -- メッセージ出力
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                       in_which      => FND_FILE.OUTPUT -- 出力区分
+--                      ,iv_message    => lv_out_msg      -- メッセージ
+--                      ,in_new_line   => cn_one          -- 改行
+--                    );
+--      ov_errmsg  := lv_errmsg;
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_out_msg,1,5000);
+--      ov_retcode := cv_status_error;
+      ov_retcode := cv_status_update;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
       ov_errmsg  := lv_errmsg;
@@ -811,6 +914,9 @@ AS
     ld_pay_date      xxcok_backmargin_balance.expect_payment_date%TYPE; -- 支払日
     ln_pay_amount    xxcok_backmargin_balance.backmargin%TYPE;          -- 支払金額
     lv_proc_type     xxcok_backmargin_balance.resv_flag%TYPE;           -- 処理区分
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    ln_amt_nofix_cnt NUMBER;                                            -- 金額確定
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -- 抽出項目
     lv_hold_pay_flg  po_vendor_sites_all.hold_all_payments_flag%TYPE;   -- 全支払保留フラグ
     lv_pay_type      po_vendor_sites_all.attribute4%TYPE;               -- BM支払区分
@@ -926,7 +1032,11 @@ AS
     -------------------------------------------------
     IF ( gv_dept_flg =  cv_bel_dept ) THEN
       -- 拠点処理区分チェック
-      IF ( iv_segment5 = cv_proc_type3 ) OR
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--      IF ( iv_segment5 = cv_proc_type3 ) OR
+      IF ( iv_segment5 = cv_proc_type2 ) OR
+         ( iv_segment5 = cv_proc_type3 ) OR
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
          ( iv_segment5 = cv_proc_type4 ) THEN
         -- 処理区分を退避
         lv_proc_type := iv_segment5;
@@ -1081,7 +1191,16 @@ AS
     -------------------------------------------------
     IF ( iv_segment4 IS NOT NULL ) THEN
       -- 半角数字チェック
-      lb_retbool := xxccp_common_pkg.chk_number( iv_segment4 );
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--      lb_retbool := xxccp_common_pkg.chk_number( iv_segment4 );
+      BEGIN
+        ln_pay_amount := TO_NUMBER( iv_segment4 );
+        lb_retbool    := TRUE;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lb_retbool := FALSE;
+      END;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
       -- 支払金額半角数字チェック
       IF ( lb_retbool = TRUE ) THEN
         -- 支払金額チェック正常
@@ -1918,6 +2037,283 @@ AS
         -- カーソルクローズ
         CLOSE customer_bm_chk_cur1;
       END IF;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    -- 拠点かつ残高取消の場合
+    ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
+          ( lv_proc_type = cv_proc_type2 ) THEN
+      -------------------------------------------------
+      -- 1.必須チェック（残高取消）
+      -------------------------------------------------
+      IF ( iv_segment1 IS NULL ) OR
+         ( iv_segment2 IS NULL ) OR
+         ( iv_segment3 IS NULL ) OR
+         ( iv_segment4 IS NULL ) THEN
+        -- 妥当性チェックエラーメッセージ取得
+        lv_out_msg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_ap_type_xxcok
+                        ,iv_name         => cv_errmsg_10456
+                        ,iv_token_name1  => cv_tkn_row_num
+                        ,iv_token_value1 => in_index
+                      );
+        -- 妥当性チェックエラーメッセージ出力
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                         in_which      => FND_FILE.OUTPUT -- 出力区分
+                        ,iv_message    => lv_out_msg      -- メッセージ
+                        ,in_new_line   => cn_zero         -- 改行
+                      );
+        -- 妥当性チェックエラー
+        ov_retcode := cv_status_check;
+      END IF;
+      -------------------------------------------------
+      -- 2.支払金額値チェック（残高取消）
+      -------------------------------------------------
+      IF ( iv_segment4 IS NOT NULL ) AND
+         ( ln_pay_chk_flg = cv_one ) THEN
+        -- 数値変換
+        ln_pay_amount := TO_NUMBER( iv_segment4 );
+        -- 支払金額値チェック
+        IF ( ln_pay_amount = cn_zero ) THEN
+          -- 妥当性チェックエラーメッセージ取得
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_ap_type_xxcok
+                          ,iv_name         => cv_errmsg_10231
+                          ,iv_token_name1  => cv_tkn_row_num
+                          ,iv_token_value1 => in_index
+                        );
+          -- 妥当性チェックエラーメッセージ出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_out_msg      -- メッセージ
+                          ,in_new_line   => cn_zero         -- 改行
+                        );
+          -- 妥当性チェックエラー
+          ov_retcode := cv_status_check;
+          -- 支払金額チェックエラー
+          ln_pay_chk_flg := cv_zero;
+        END IF;
+      END IF;
+      -------------------------------------------------
+      -- 3.仕入先存在チェック（残高取消）
+      -------------------------------------------------
+      IF ( iv_segment1 IS NOT NULL ) THEN
+        -- 仕入先確認
+        BEGIN
+          SELECT pvs.segment1               AS vendor_code  -- 仕入先コード
+                ,pva.hold_all_payments_flag AS hold_pay_flg -- 全支払保留フラグ
+                ,NVL( pva.attribute4,'X' )  AS pay_type     -- BM支払区分
+          INTO   lv_vendor_code  -- 仕入先コード
+                ,lv_hold_pay_flg -- 全支払保留フラグ
+                ,lv_pay_type     -- BM支払区分
+          FROM   po_vendors          pvs
+                ,po_vendor_sites_all pva
+          WHERE  pvs.segment1                                         = iv_segment1
+          AND    pvs.enabled_flag                                     = cv_yes
+          AND    pvs.vendor_id                                        = pva.vendor_id
+          AND    TRUNC( NVL( pva.inactive_date, gd_proc_date + 1 ) )  > gd_proc_date
+          AND    pva.org_id                                           = gn_org_id;
+        EXCEPTION
+          -- 仕入先存在チェック
+          WHEN NO_DATA_FOUND THEN
+            -- 妥当性チェックエラーメッセージ取得
+            lv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_ap_type_xxcok
+                            ,iv_name         => cv_errmsg_10232
+                            ,iv_token_name1  => cv_tkn_row_num
+                            ,iv_token_value1 => in_index
+                          );
+            -- 妥当性チェックエラーメッセージ出力
+            lb_retcode := xxcok_common_pkg.put_message_f(
+                             in_which      => FND_FILE.OUTPUT -- 出力区分
+                            ,iv_message    => lv_out_msg      -- メッセージ
+                            ,in_new_line   => cn_zero         -- 改行
+                          );
+            -- 妥当性チェックエラー
+            ov_retcode := cv_status_check;
+        END;
+      END IF;
+      -------------------------------------------------
+      -- 4.顧客存在チェック（業務管理部保留）
+      -------------------------------------------------
+      IF ( iv_segment2 IS NOT NULL ) THEN
+        -- 顧客確認
+        BEGIN
+          SELECT hza.account_number
+          INTO   lv_customer_code
+          FROM   hz_cust_accounts hza
+          WHERE  hza.account_number = iv_segment2;
+        EXCEPTION
+          -- 顧客存在チェック
+          WHEN NO_DATA_FOUND THEN
+            -- 妥当性チェックエラーメッセージ取得
+            lv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_ap_type_xxcok
+                            ,iv_name         => cv_errmsg_10233
+                            ,iv_token_name1  => cv_tkn_row_num
+                            ,iv_token_value1 => in_index
+                          );
+            -- 妥当性チェックエラーメッセージ出力
+            lb_retcode := xxcok_common_pkg.put_message_f(
+                             in_which      => FND_FILE.OUTPUT -- 出力区分
+                            ,iv_message    => lv_out_msg      -- メッセージ
+                            ,in_new_line   => cn_zero         -- 改行
+                          );
+            -- 妥当性チェックエラー
+            ov_retcode := cv_status_check;
+        END;
+      END IF;
+      -------------------------------------------------
+      -- 5.支払保留有効チェック（残高取消）
+      -------------------------------------------------
+      IF ( lv_vendor_code IS NOT NULL ) THEN
+        -- 支払保留有効チェック
+        IF ( lv_hold_pay_flg = cv_yes ) THEN
+          -- 妥当性チェックエラーメッセージ取得
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_ap_type_xxcok
+                          ,iv_name         => cv_errmsg_10238
+                          ,iv_token_name1  => cv_tkn_vend_code
+                          ,iv_token_value1 => lv_vendor_code
+                          ,iv_token_name2  => cv_tkn_row_num
+                          ,iv_token_value2 => in_index
+                        );
+          -- 妥当性チェックエラーメッセージ出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_out_msg      -- メッセージ
+                          ,in_new_line   => cn_zero         -- 改行
+                        );
+          -- 妥当性チェックエラー
+          ov_retcode := cv_status_check;
+        END IF;
+      END IF;
+      -------------------------------------------------
+      -- 6.販手残高存在チェック（残高取消）
+      -------------------------------------------------
+      IF ( lv_vendor_code   IS NOT NULL ) AND
+         ( lv_customer_code IS NOT NULL ) AND
+         ( ld_pay_date      IS NOT NULL ) AND
+         ( lv_proc_type     IS NOT NULL ) AND
+         ( ln_pay_chk_flg =  cv_one ) THEN
+        -- 販手残高確認
+        BEGIN
+          SELECT xbb.supplier_code                 AS supplier_code -- 仕入先コード
+                ,SUM( xbb.expect_payment_amt_tax ) AS payment_amt   -- 支払予定額
+                ,SUM( DECODE(  xbb.amt_fix_status
+                              ,cv_zero, cn_one
+                              ,cn_zero
+                      )
+                 )                                 AS amt_nofix_cnt -- 金額未確定件数
+          INTO   lv_vendor_code   -- 仕入先コード
+                ,ln_pay_sum_amt   -- 支払予定額
+                ,ln_amt_nofix_cnt -- 金額未確定件数
+          FROM   xxcok_backmargin_balance xbb  -- 販手残高
+          WHERE  xbb.supplier_code       = lv_vendor_code
+          AND    xbb.expect_payment_date <= TRUNC( ld_pay_date )
+          AND    xbb.resv_flag           IS NULL
+          AND    xbb.fb_interface_status = cv_zero
+          AND    xbb.base_code           = gv_dept_bel_code
+          AND    xbb.cust_code           = lv_customer_code
+          GROUP BY xbb.supplier_code
+                  ,xbb.cust_code;
+        EXCEPTION
+          -- 販手残高存在チェック
+          WHEN NO_DATA_FOUND THEN
+            -- 妥当性チェックエラーメッセージ取得
+            lv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => cv_ap_type_xxcok
+                            ,iv_name         => cv_errmsg_10457
+                            ,iv_token_name1  => cv_tkn_vend_code
+                            ,iv_token_value1 => lv_vendor_code
+                            ,iv_token_name2  => cv_tkn_cust_code
+                            ,iv_token_value2 => lv_customer_code
+                            ,iv_token_name3  => cv_tkn_pay_date
+                            ,iv_token_value3 => ld_pay_date
+                            ,iv_token_name4  => cv_tkn_pay_amt
+                            ,iv_token_value4 => ln_pay_amount
+                            ,iv_token_name5  => cv_tkn_row_num
+                            ,iv_token_value5 => in_index
+                          );
+            -- 妥当性チェックエラーメッセージ出力
+            lb_retcode := xxcok_common_pkg.put_message_f(
+                             in_which      => FND_FILE.OUTPUT -- 出力区分
+                            ,iv_message    => lv_out_msg      -- メッセージ
+                            ,in_new_line   => cn_zero         -- 改行
+                          );
+            -- 妥当性チェックエラー
+            ov_retcode := cv_status_check;
+        END;
+      END IF;
+      -------------------------------------------------
+      -- 7.金額未確定チェック（残高取消）
+      -------------------------------------------------
+      IF ( lv_vendor_code IS NOT NULL ) AND
+         ( ld_pay_date    IS NOT NULL ) AND
+         ( ln_pay_sum_amt IS NOT NULL ) AND
+         ( lv_proc_type   IS NOT NULL ) AND
+         ( ln_pay_chk_flg =  cv_one ) THEN
+        --金額未確定チェック
+        IF ( ln_amt_nofix_cnt <> cn_zero ) THEN
+          -- 妥当性チェックエラーメッセージ取得
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_ap_type_xxcok
+                          ,iv_name         => cv_errmsg_10458
+                          ,iv_token_name1  => cv_tkn_vend_code
+                          ,iv_token_value1 => lv_vendor_code
+                          ,iv_token_name2  => cv_tkn_cust_code
+                          ,iv_token_value2 => lv_customer_code
+                          ,iv_token_name3  => cv_tkn_pay_date
+                          ,iv_token_value3 => ld_pay_date
+                          ,iv_token_name4  => cv_tkn_pay_amt
+                          ,iv_token_value4 => ln_pay_amount
+                          ,iv_token_name5  => cv_tkn_row_num
+                          ,iv_token_value5 => in_index
+                        );
+          -- 妥当性チェックエラーメッセージ出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_out_msg      -- メッセージ
+                          ,in_new_line   => cn_zero         -- 改行
+                        );
+          -- 妥当性チェックエラー
+          ov_retcode := cv_status_check;
+        END IF;
+      END IF;
+      -------------------------------------------------
+      -- 8.販手残高組み合わせチェック（残高取消）
+      -------------------------------------------------
+      IF ( lv_vendor_code IS NOT NULL ) AND
+         ( ld_pay_date    IS NOT NULL ) AND
+         ( ln_pay_sum_amt IS NOT NULL ) AND
+         ( lv_proc_type   IS NOT NULL ) AND
+         ( ln_pay_chk_flg =  cv_one ) THEN
+        -- 販手残高組み合わせチェック
+        IF ( ln_pay_amount <> ln_pay_sum_amt ) THEN
+          -- 妥当性チェックエラーメッセージ取得
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_ap_type_xxcok
+                          ,iv_name         => cv_errmsg_10457
+                          ,iv_token_name1  => cv_tkn_vend_code
+                          ,iv_token_value1 => lv_vendor_code
+                          ,iv_token_name2  => cv_tkn_cust_code
+                          ,iv_token_value2 => lv_customer_code
+                          ,iv_token_name3  => cv_tkn_pay_date
+                          ,iv_token_value3 => ld_pay_date
+                          ,iv_token_name4  => cv_tkn_pay_amt
+                          ,iv_token_value4 => ln_pay_amount
+                          ,iv_token_name5  => cv_tkn_row_num
+                          ,iv_token_value5 => in_index
+                        );
+          -- 妥当性チェックエラーメッセージ出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_out_msg      -- メッセージ
+                          ,in_new_line   => cn_zero         -- 改行
+                        );
+          -- 妥当性チェックエラー
+          ov_retcode := cv_status_check;
+        END IF;
+      END IF;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -- 拠点かつ保留・保留解除の場合
     ELSIF ( gv_dept_flg =  cv_bel_dept ) AND
           (( lv_proc_type = cv_proc_type3 ) OR ( lv_proc_type = cv_proc_type4 )) THEN
@@ -2312,10 +2708,16 @@ AS
     lv_format        xxccp_mrp_file_ul_interface.file_format%TYPE;      -- フォーマット
     -- BLOB変換後データ分割後退避用
     ln_col_cnt       PLS_INTEGER := 0;                                  -- CSV項目数
-    ln_row_cnt       PLS_INTEGER := 0;                                  -- CSV行数
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--    ln_row_cnt       PLS_INTEGER := 0;                                  -- CSV行数
+    ln_row_cnt       PLS_INTEGER := 1;                                  -- CSV行数
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     ln_line_cnt      PLS_INTEGER := 0;                                  -- CSV処理行カウンタ
     lt_csv_data      xxcok_common_pkg.g_split_csv_tbl;                  -- CSV分割データ
-    lt_file_data     xxccp_common_pkg2.g_file_data_tbl;                 -- BLOB変換後データ退避
+    lt_file_data     xxccp_common_pkg2.g_file_data_tbl;                 -- BLOB変換後データ退避(空白行排除後)
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    lt_file_data_all xxccp_common_pkg2.g_file_data_tbl;                 -- BLOB変換後データ退避(全データ)
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     lt_check_data    g_check_data_ttype;                                -- チェック後データ退避
     lv_vendor_code   po_vendors.segment1%TYPE;                          -- 仕入先コード
     lv_customer_code hz_cust_accounts.account_number%TYPE;              -- 顧客コード
@@ -2338,6 +2740,9 @@ AS
     ln_file_id := TO_NUMBER(TRUNC(iv_file_id));
     lv_format  := iv_format;
     lt_file_data.delete;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    lt_file_data_all.delete;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     --===============================================
     -- A-1.初期処理
     --===============================================
@@ -2361,7 +2766,10 @@ AS
     -- 1.BLOBデータ変換
     xxccp_common_pkg2.blob_to_varchar2(
        in_file_id   => ln_file_id   -- ファイルID
-      ,ov_file_data => lt_file_data -- BLOB変換後データ退避
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--      ,ov_file_data => lt_file_data -- BLOB変換後データ退避
+      ,ov_file_data => lt_file_data_all -- BLOB変換後データ退避
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
       ,ov_errbuf    => lv_errbuf    -- エラー・メッセージ
       ,ov_retcode   => lv_retcode   -- リターン・コード
       ,ov_errmsg    => lv_errmsg    -- ユーザー・エラー・メッセージ 
@@ -2370,6 +2778,20 @@ AS
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE blob_err_expt;
     END IF;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    -- 取得したデータから、空白行(カンマのみの行)を排除する
+    << blob_data_loop >>
+    FOR i IN 1..lt_file_data_all.COUNT LOOP
+      IF ( LENGTHB( REPLACE( lt_file_data_all(i), ',', '') ) <> cn_zero ) THEN
+        ln_line_cnt := ln_line_cnt + cn_one;
+        lt_file_data(ln_line_cnt) := lt_file_data_all(i);
+      END IF;
+    END LOOP blob_data_loop;
+    -- 編集用のテーブル削除
+    lt_file_data_all.delete;
+    -- CSV処理行カウンタ初期化
+    ln_line_cnt := cn_zero;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     -- 処理対象件数を退避
     gn_target_cnt := lt_file_data.COUNT - cn_one; -- ヘッダーは除く
     -- 処理対象存在チェック
@@ -2424,8 +2846,10 @@ AS
       --
       -- ステータスエラー判定：正常時
       IF ( lv_retcode = cv_status_normal ) THEN
-        -- 正常データの行数をインクリメント
-        ln_row_cnt := ln_row_cnt + 1;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--        -- 正常データの行数をインクリメント
+--        ln_row_cnt := ln_row_cnt + 1;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
         -- 正常データ退避
         lt_check_data(ln_row_cnt).vendor_code   := lv_vendor_code;   -- 仕入先コード
         lt_check_data(ln_row_cnt).customer_code := lv_customer_code; -- 顧客コード
@@ -2447,31 +2871,105 @@ AS
         -- エラー終了
         RAISE proc_err_expt;
       END IF;
-      --
-    END LOOP;
-    --===============================================
-    -- A-6.残高の更新
-    --===============================================
-    --
-    IF ( gn_error_cnt = cn_zero ) THEN
-      << upd_bm_balance_loop >>
-      FOR ln_line_cnt IN 1..lt_check_data.COUNT LOOP
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+      --===============================================
+      -- A-6.残高の更新
+      --===============================================
+      -- ステータスエラー判定：正常時
+      IF ( lv_retcode = cv_status_normal ) THEN
         -- 残高更新処理
         upd_bm_balance_data(
              ov_errbuf     => lv_errbuf     -- エラー・メッセージ
             ,ov_retcode    => lv_retcode    -- リターン・コード
             ,ov_errmsg     => lv_errmsg     -- ユーザー・エラー・メッセージ
-            ,in_index      => ln_line_cnt   -- 行番号
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--            ,in_index      => ln_line_cnt   -- 行番号
+            ,in_index      => ln_row_cnt    -- 行番号
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
             ,it_check_data => lt_check_data -- チェック後データ
           );
-        -- ステータスエラー判定
-        IF ( lv_retcode = cv_status_error ) THEN
+        -- ステータスエラー判定(ロックエラー)
+        IF ( lv_retcode = cv_status_lock ) THEN
+          -- メッセージ取得
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_ap_type_xxcok
+                          ,iv_name         => cv_errmsg_10474
+                          ,iv_token_name1  => cv_tkn_row_num
+                          ,iv_token_value1 => ln_line_cnt
+                        );
+          -- メッセージ出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_out_msg      -- メッセージ
+                          ,in_new_line   => cn_one          -- 改行
+                        );
+          -- エラー件数をインクリメント
+          gn_error_cnt := gn_error_cnt + 1;
+        -- ステータスエラー判定(更新エラー)
+        ELSIF ( lv_retcode = cv_status_update ) THEN
+          -- メッセージ取得
+          lv_out_msg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_ap_type_xxcok
+                          ,iv_name         => cv_errmsg_10475
+                          ,iv_token_name1  => cv_tkn_row_num
+                          ,iv_token_value1 => ln_line_cnt
+                        );
+          -- メッセージ出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_out_msg      -- メッセージ
+                          ,in_new_line   => cn_zero          -- 改行
+                        );
+          -- エラー内容出力
+          lb_retcode := xxcok_common_pkg.put_message_f(
+                           in_which      => FND_FILE.OUTPUT -- 出力区分
+                          ,iv_message    => lv_errbuf       -- メッセージ
+                          ,in_new_line   => cn_one          -- 改行
+                        );
+          -- エラー件数をインクリメント
+          gn_error_cnt := gn_error_cnt + 1;
+        -- ステータスエラー判定(その他例外)
+        ELSIF ( lv_retcode = cv_status_error ) THEN
+          -- エラー終了
           RAISE proc_err_expt;
+        -- ステータスエラー判定(正常)
+        ELSE
+          -- 正常終了件数をインクリメント
+          gn_normal_cnt := gn_normal_cnt + 1;
         END IF;
-        -- 正常終了件数をインクリメント
-        gn_normal_cnt := gn_normal_cnt + 1;
-      END LOOP;
+      END IF;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+      --
+    END LOOP;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+--    --===============================================
+--    -- A-6.残高の更新
+--    --===============================================
+--    --
+--    IF ( gn_error_cnt = cn_zero ) THEN
+--      << upd_bm_balance_loop >>
+--      FOR ln_line_cnt IN 1..lt_check_data.COUNT LOOP
+--        -- 残高更新処理
+--        upd_bm_balance_data(
+--             ov_errbuf     => lv_errbuf     -- エラー・メッセージ
+--            ,ov_retcode    => lv_retcode    -- リターン・コード
+--            ,ov_errmsg     => lv_errmsg     -- ユーザー・エラー・メッセージ
+--            ,in_index      => ln_line_cnt   -- 行番号
+--            ,it_check_data => lt_check_data -- チェック後データ
+--          );
+--        -- ステータスエラー判定
+--        IF ( lv_retcode = cv_status_error ) THEN
+--          RAISE proc_err_expt;
+--        END IF;
+--        -- 正常終了件数をインクリメント
+--        gn_normal_cnt := gn_normal_cnt + 1;
+--      END LOOP;
+--    END IF;
+    -- チェック・更新でエラーの場合、更新したデータをROLLBACK(削除処理がある為)
+    IF ( gn_error_cnt <> cn_zero ) THEN
+      ROLLBACK;
     END IF;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     --
     --===============================================
     -- A-7.ファイルアップロードデータの削除
@@ -2486,6 +2984,11 @@ AS
     -- ステータスエラー判定
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE proc_err_expt;
+-- Start 2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
+    ELSE
+      -- チェック・更新エラーの場合、異常終了させるのでここでCOMMIT
+      COMMIT;
+-- End   2010/01/20 Ver_1.3 E_本稼動_01115 K.Kiriu
     END IF;
     -- 妥当性チェックエラー判定
     IF ( gn_error_cnt <> cn_zero ) THEN
