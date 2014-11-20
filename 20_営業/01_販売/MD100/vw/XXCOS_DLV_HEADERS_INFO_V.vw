@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_dlv_headers_info_v
  * Description     : 納品伝票ヘッダ情報ビュー
- * Version         : 1.8
+ * Version         : 1.9
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -20,6 +20,7 @@
  *                                       (業務日付の取得方法変更)
  *  2009/11/27    1.7   M.Sano           [E_本稼動_00130]重複データ対応
  *  2009/12/16    1.8   K.Kiriu          [E_本稼動_00244]売上値引のみのデータ(ヘッダのみ作成)対応
+ *  2011/03/22    1.9   M.Hirose         [E_本稼動_06590]オーダーNoの追加
  ************************************************************************/
 CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
 (
@@ -78,6 +79,9 @@ CREATE OR REPLACE VIEW apps.xxcos_dlv_headers_info_v
   customer_id
   ,party_id
   ,resource_id
+/* 2011/03/22 Ver1.9 Add Start */
+  ,order_number
+/* 2011/03/22 Ver1.9 Add End   */
 )
 AS
 SELECT
@@ -94,10 +98,10 @@ SELECT
        xdh.performance_by_code performance_by_code,                --成績者コード
        papf.per_information18||' '||papf.per_information19 source_name,                             --成績者名称
        xdh.dlv_by_code dlv_by_code,                                --納品者コード
-/* 2009/04/09 Ver1.9 Mod Start */
+/* 2009/04/09 Ver1.1 Mod Start */
 --       xsv.kanji_last || ' ' || xsv.kanji_first dlv_by_name,       --納品者名称
        papf_dlv.per_information18||' '||papf_dlv.per_information19 dlv_by_name,                     --納品者名称
-/* 2009/04/09 Ver1.9 Mod End   */
+/* 2009/04/09 Ver1.1 Mod End   */
        xdh.hht_invoice_no hht_invoice_no,                          --伝票No.
        xdh.dlv_date dlv_date,                                      --納品日
        xdh.inspect_date inspect_date,                              --検収日
@@ -176,15 +180,18 @@ SELECT
        ,NULL                                                      --有効訪問は新規登録時のみの為
        ,NULL                                                      --有効訪問は新規登録時のみの為
 /* 2009/09/01 Mod End   */
+/* 2011/03/22 Ver1.9 Add Start */
+       ,xdh.order_number                                          -- オーダーNo
+/* 2011/03/22 Ver1.9 Add End   */
 FROM
        xxcos_dlv_headers    xdh,                                  --納品ヘッダテーブル
        xxcmm_cust_accounts  custadd,                              --顧客アドオン
        xxcos_salesreps_v    xsv,                                  --担当者営業員ビュー(顧客関連)
        hz_parties           hp,                                   --party
        per_all_people_f     papf,                                 --従業員マスタ
-/* 2009/04/09 Ver1.9 Add Start */
+/* 2009/04/09 Ver1.1 Add Start */
        per_all_people_f     papf_dlv,                             --従業員マスタ(納品者)
-/* 2009/04/09 Ver1.9 Add End   */
+/* 2009/04/09 Ver1.1 Add End   */
 /* 2009/08/03 Ver1.4 Mod Start */
 --       (
 --       --カード売区分
@@ -506,5 +513,8 @@ COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.program_update_date         IS  'プ
 COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.customer_id                 IS  '顧客ID';
 COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.party_id                    IS  'パーティID';
 COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.resource_id                 IS  'リソースID';
+/* 2011/03/22 Ver1.9 Add Start */
+COMMENT ON  COLUMN  xxcos_dlv_headers_info_v.order_number                IS  'オーダーNo';
+/* 2011/03/22 Ver1.9 Add End   */
 --
 COMMENT ON  TABLE   xxcos_dlv_headers_info_v                             IS  '納品伝票ヘッダ情報ビュー';
