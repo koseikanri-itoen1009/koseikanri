@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : ＨＨＴ入出庫実績インタフェース   T_MD070_BPO_93B
- * Version          : 1.21
+ * Version          : 1.22
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -106,6 +106,7 @@ AS
  *  2008/10/08    1.19 Oracle 福田 直樹  統合テスト障害#310対応(入力パラ"対象倉庫"抽出条件が移動入庫/230の場合に入庫倉庫ではなく出庫倉庫になっている)
  *  2008/10/13    1.20 Oracle 福田 直樹  統合テスト障害#314対応(差異チェックで取込報告と比較するトランザクションは実績・指示の順で比較する)
  *  2008/10/18    1.21 Oracle 福田 直樹  変更一覧#168(課題一覧#62)(受注の指示無し実績登録時、出荷依頼画面に合わせ出荷予定日・着荷予定日にNULLをセット)
+ *  2008/10/27    1.22 Oracle 福田 直樹  課題T_S_619(1)対応(常に無条件で全データについて引当可能チェックをしている)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -15646,7 +15647,6 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
       lb_break_flg         := FALSE;
       gb_ord_cnt_a8_flg    := FALSE;      -- 受注(A-8) 件数表示で計上か訂正か判断するのためのフラグ
       gb_shipping_result_if_flg := FALSE; -- 2008/09/22 TE080_400指摘#76 Add
-
 --
     END IF;
 --
@@ -16025,6 +16025,7 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
   * Description      : 引当可能チェック プロシージャ (A-10)
   ***********************************************************************************/
   PROCEDURE drawing_enable_check(
+    in_idx        IN  NUMBER,              --   データindex                  2008/10/27 課題T_S_619(1) Add
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT NOCOPY VARCHAR2      --   ユーザー・エラー・メッセージ --# 固定 #
@@ -16061,6 +16062,10 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
     lv_reserve_flg               VARCHAR2(1);                                     --保留flag
     lt_delivery_no               xxwsh_shipping_headers_if.delivery_no%TYPE;      --IF_H.配送No
     lt_order_source_ref          xxwsh_shipping_headers_if.order_source_ref%TYPE; --IF_H.受注ソース参照
+    lt_orderd_item_code          xxwsh_shipping_lines_if.orderd_item_code%TYPE;   --IF_L.出荷品目  2008/10/27 課題T_S_619(1) Add
+    lt_reserved_quantity         xxwsh_order_lines_all.reserved_quantity%TYPE;    --引当数         2008/10/27 課題T_S_619(1) Add
+--
+    i                            NUMBER;     -- 2008/10/27 課題T_S_619(1) Add
 --
     -- *** ローカル・カーソル ***
 --
@@ -16085,13 +16090,16 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
     ln_act_hikiate           := 0;    -- 引当可能数
     ln_shiped_quantity       := 0;    -- 出荷実績数
 --
-     <<status_update_loop>>
-    FOR i IN 1..gr_interface_info_rec.COUNT LOOP
+    i := in_idx;     -- 2008/10/27 課題T_S_619(1) Add
+--
+    -- <<status_update_loop>>                           2008/10/27 課題T_S_619(1) Del
+    --FOR i IN 1..gr_interface_info_rec.COUNT LOOP      2008/10/27 課題T_S_619(1) Del
 --
       lv_error_flg        := gr_interface_info_rec(i).err_flg;                  --エラーフラグ
       lv_reserve_flg      := gr_interface_info_rec(i).reserve_flg;              --保留フラグ
       lt_delivery_no      := gr_interface_info_rec(i).delivery_no;              --配送No
       lt_order_source_ref := gr_interface_info_rec(i).order_source_ref;         --受注ソース参照
+      lt_orderd_item_code := gr_interface_info_rec(i).orderd_item_code;         --出荷品目   2008/10/27 課題T_S_619(1) Add
 --
       IF (lv_error_flg = '0') AND (lv_reserve_flg = '0') THEN
 --
@@ -16099,12 +16107,64 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
         IF (gr_interface_info_rec(i).eos_data_type <> gv_eos_data_cd_230)
         THEN
 --
-          --共通関数：有効日ベース引当可能数算出API
+--********** debug_log ************************** START **********************
+debug_log(FND_FILE.LOG,'******* 引当可能チェック(A-10) drawing_enable_check *******');
+debug_log(FND_FILE.LOG,'      依頼No:' || lt_order_source_ref);
+debug_log(FND_FILE.LOG,'      品目コード:' || lt_orderd_item_code);
+--********** debug_log ************************** END *************************
+--
+          -- 2008/10/27 課題T_S_619(1) Add Start ----------------------------------------------------------------
+          BEGIN
+            IF (gr_interface_info_rec(i).eos_data_type <> gv_eos_data_cd_220) THEN
+--
+              SELECT  NVL(xmrql.reserved_quantity,0) AS reserved_quantity    -- 引当数
+              INTO    lt_reserved_quantity
+              FROM    xxinv_mov_req_instr_headers xmrif    -- 移動依頼/指示ヘッダ(アドオン)
+                    , xxinv_mov_req_instr_lines   xmrql    -- 移動依頼/指示明細(アドオン)
+              WHERE   NVL(xmrif.delivery_no,gv_delivery_no_null) = NVL(lt_delivery_no,gv_delivery_no_null)
+              AND     xmrif.mov_num          = lt_order_source_ref
+              AND     xmrif.mov_hdr_id       = xmrql.mov_hdr_id
+              AND     xmrif.status          <> gv_mov_status_99     -- 取消以外
+              AND     ((xmrql.delete_flg     = gv_yesno_n) OR (xmrql.delete_flg IS NULL))  -- 削除フラグ:未削除
+              AND     xmrql.item_code        = lt_orderd_item_code   -- 出荷品目
+              ;
+--
+            ELSE
+              SELECT  NVL(xola.reserved_quantity,0) AS reserved_quantity    -- 引当数
+              INTO    lt_reserved_quantity
+              FROM    xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
+                    , xxwsh_order_lines_all     xola    -- 受注明細(アドオン)
+              WHERE   NVL(xoha.delivery_no,gv_delivery_no_null) = NVL(lt_delivery_no,gv_delivery_no_null)
+              AND     xoha.request_no           = lt_order_source_ref
+              AND     xoha.order_header_id      = xola.order_header_id
+              AND     xoha.latest_external_flag = gv_yesno_y
+              AND     ((xola.delete_flag        = gv_yesno_n) OR (xola.delete_flag IS NULL))  -- 削除フラグ:未削除
+              AND     xola.shipping_item_code   = lt_orderd_item_code   -- 出荷品目
+              ;
+            END IF;
+--
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                lt_reserved_quantity := 0;
+          END;
+          -- 2008/10/27 課題T_S_619(1) Add End ------------------------------------------------------------------
+--
+--********** debug_log ************************** START **********************
+debug_log(FND_FILE.LOG,'      明細引当数:' || lt_reserved_quantity);
+debug_log(FND_FILE.LOG,'      出庫倉庫:' || gr_interface_info_rec(i).shipped_locat);
+debug_log(FND_FILE.LOG,'      品目ID:' || gr_interface_info_rec(i).item_id);
+debug_log(FND_FILE.LOG,'      ロットID:' || gr_interface_info_rec(i).lot_id);
+debug_log(FND_FILE.LOG,'      出庫日:' || TO_CHAR(gr_interface_info_rec(i).shipped_date,'yyyy/mm/dd'));
+--********** debug_log ************************** END *************************
+--
+          --共通関数：有効日ベース引当可能数算出API     2008/10/27 課題T_S_619(1) Del
+          --共通関数：出荷日ベース引当可能数算出API     2008/10/27 課題T_S_619(1) Add
           ln_act_date_hikiate := xxcmn_common_pkg.get_can_enc_in_time_qty(
                                  gr_interface_info_rec(i).shipped_locat  -- OPM保管倉庫ID
                                , gr_interface_info_rec(i).item_id        -- OPM品目ID
                                , gr_interface_info_rec(i).lot_id         -- ロットID
-                               , gd_sysdate );                           -- 有効日
+                               --, gd_sysdate );                           -- 有効日    2008/10/27 課題T_S_619(1) Del
+                               , gr_interface_info_rec(i).shipped_date );  -- 出荷日    2008/10/27 課題T_S_619(1) Add
 --
           -- 総引当可能数取得--
           -- 共通関数：総引当可能数算出API
@@ -16113,7 +16173,7 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
                                 , gr_interface_info_rec(i).item_id        -- OPM品目ID
                                 , gr_interface_info_rec(i).lot_id);       -- ロットID
 --
-          -- 総引当可能数と有効日ベース引当可能数のうち小さい方を訂正可能数とする
+          -- 総引当可能数と出荷日ベース引当可能数のうち小さい方を訂正可能数とする
           ln_act_hikiate := LEAST( ln_act_date_hikiate, ln_act_total_hikiate );
 --
           -- 引当可能数と比較する出荷実績数量を算出
@@ -16127,8 +16187,19 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
             ln_shiped_quantity := gr_interface_info_rec(i).detailed_quantity;
           END IF;
 --
+--********** debug_log ************************** START **********************
+debug_log(FND_FILE.LOG,'      引当可能数:' || ln_act_hikiate);
+debug_log(FND_FILE.LOG,'      実績数量:' || ln_shiped_quantity);
+--********** debug_log ************************** END *************************
+--
+          -- 2008/10/27 課題T_S_619(1) Del Start -------------------------------------------
           -- 引当可能数 < 出荷実績数量の場合、警告として、ステータスを保留にする。
-          IF (ln_act_hikiate < ln_shiped_quantity) THEN
+          --IF (ln_act_hikiate < ln_shiped_quantity) THEN
+          -- 2008/10/27 課題T_S_619(1) Del End ---------------------------------------------
+          -- 2008/10/27 課題T_S_619(1) Add Start -------------------------------------------
+          -- 共通関数から取得した引当可能数 + 明細の引当数 < 出荷実績数量の場合、警告として、ステータスを保留にする。
+          IF (ln_act_hikiate + lt_reserved_quantity < ln_shiped_quantity) THEN
+          -- 2008/10/27 課題T_S_619(1) Add End ---------------------------------------------
 --
             -- 警告メッセージ出力
             lv_msg_buff := SUBSTRB( xxcmn_common_pkg.get_msg(
@@ -16174,7 +16245,7 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
 --
       END IF;
 --
-    END LOOP status_update_loop;
+    --END LOOP status_update_loop;    2008/10/27 課題T_S_619(1) Del
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
@@ -17198,6 +17269,26 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
             RAISE global_process_expt;
           END IF;
 --
+          -- 2008/10/27 課題T_S_619(1) Add Start -------------------------------------
+          -- ===============================
+          -- 引当可能チェック プロシージャ(A-10)
+          -- ===============================
+          drawing_enable_check(
+            in_idx,                 -- データindex
+            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+            lv_retcode,             -- リターン・コード             --# 固定 #
+            lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+--
+          IF (lv_retcode = gv_status_warn) THEN
+            lv_warn_flg := gv_status_warn;
+          END IF;
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- 2008/10/27 課題T_S_619(1) Add End --------------------------------------
+--
         END IF;
 --
       END IF;
@@ -17271,6 +17362,26 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
             RAISE global_process_expt;
           END IF;
 --
+          -- 2008/10/27 課題T_S_619(1) Add Start -------------------------------------
+          -- ===============================
+          -- 引当可能チェック プロシージャ(A-10)
+          -- ===============================
+          drawing_enable_check(
+            in_idx,                 -- データindex
+            lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+            lv_retcode,             -- リターン・コード             --# 固定 #
+            lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+          );
+--
+          IF (lv_retcode = gv_status_warn) THEN
+            lv_warn_flg := gv_status_warn;
+          END IF;
+--
+          IF (lv_retcode = gv_status_error) THEN
+            RAISE global_process_expt;
+          END IF;
+          -- 2008/10/27 課題T_S_619(1) Add End --------------------------------------
+--
         END IF;
 --
       END IF;
@@ -17294,22 +17405,24 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
       RAISE global_process_expt;
     END IF;
 --
-    -- ===============================
-    -- 引当可能チェック プロシージャ(A-10)
-    -- ===============================
-    drawing_enable_check(
-      lv_errbuf,              -- エラー・メッセージ           --# 固定 #
-      lv_retcode,             -- リターン・コード             --# 固定 #
-      lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
-    );
---
-    IF (lv_retcode = gv_status_warn) THEN
-      lv_warn_flg := gv_status_warn;
-    END IF;
---
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
-    END IF;
+    -- 2008/10/27 課題T_S_619(1) Del Start --------------------------------------
+    ---- ===============================
+    ---- 引当可能チェック プロシージャ(A-10)
+    ---- ===============================
+    --drawing_enable_check(
+    --  lv_errbuf,              -- エラー・メッセージ           --# 固定 #
+    --  lv_retcode,             -- リターン・コード             --# 固定 #
+    --  lv_errmsg               -- ユーザー・エラー・メッセージ --# 固定 #
+    --);
+    --
+    --IF (lv_retcode = gv_status_warn) THEN
+    --  lv_warn_flg := gv_status_warn;
+    --END IF;
+    --
+    --IF (lv_retcode = gv_status_error) THEN
+    --  RAISE global_process_expt;
+    --END IF;
+    -- 2008/10/27 課題T_S_619(1) Del End -----------------------------------------
 --
     -- ===============================
     -- エラー発生レベルによりレコード削除プロシージャ(A-13)

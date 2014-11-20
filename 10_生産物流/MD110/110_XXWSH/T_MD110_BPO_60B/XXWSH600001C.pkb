@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/10/01    1.9  Oracle H.Itou     PT 6-1_27 指摘18 対応
  *  2008/10/16    1.10 Oracle H.Itou     T_S_625,統合テスト指摘369
  *  2008/10/24    1.11 Oracle H.Itou     T_TE080_BPO_600指摘26
+ *  2008/10/30    1.12 Oracle H.Itou     統合テスト指摘526
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4795,6 +4796,9 @@ debug_log(FND_FILE.LOG,'配送No設定処理終了');
 -- 2008/10/16 H.Itou Add Start T_S_625 集約Noごとに処理を行うように変更
     iv_intensive_no IN VARCHAR2,           -- 集約No
 -- 2008/10/16 H.Itou Add End
+-- 2008/10/30 H.Itou Add Start 統合テスト指摘526 リーフの場合の配送区分を指定
+    iv_ship_method  IN VARCHAR2,           -- 配送区分
+-- 2008/10/30 H.Itou Add End
     ov_errbuf     OUT NOCOPY VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode    OUT NOCOPY VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg     OUT NOCOPY VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #
@@ -5103,6 +5107,9 @@ debug_log(FND_FILE.LOG,'ループカウント：'||ln_loop_cnt);
 --                                                                                      -- 修正配送区分
 --      lt_delivery_no_tab(ln_loop_cnt)     := lt_get_tab(ln_loop_cnt).delivery_no;     -- 配送No
 -- 2008/10/16 H.Itou Del End
+-- 2008/10/30 H.Itou Mod Start 統合テスト指摘526 リーフの場合の配送区分が設定されないので、INパラメータで渡された値をセットする
+      lt_fix_ship_method_cd(ln_loop_cnt)  := iv_ship_method;                          -- 修正配送区分
+-- 2008/10/30 H.Itou Mod End
       lt_request_no_tab(ln_loop_cnt)      := lt_get_tab(ln_loop_cnt).req_no;          -- 依頼No
       lt_sum_case_qty_tab(ln_loop_cnt)    := lt_get_tab(ln_loop_cnt).small_quantity;   -- ケース数
 --
@@ -6869,6 +6876,9 @@ debug_log(FND_FILE.LOG,'9-4-h混載配送区分ルートチェック(混載先)関数エラー');
           -- ==============================
           set_small_sam_class(
              iv_intensive_no => lt_intensive_no_tab(rec_idx)                 --集約No
+-- 2008/10/30 H.Itou Add Start 統合テスト指摘526 リーフの場合の配送区分を指定
+           , iv_ship_method  => lv_ship_optimization                         --配送区分
+-- 2008/10/30 H.Itou Add End
            , ov_errbuf       => lv_errbuf    -- エラー・メッセージ           --# 固定 #
            , ov_retcode      => lv_retcode   -- リターン・コード             --# 固定 #
            , ov_errmsg       => lv_errmsg    -- ユーザー・エラー・メッセージ --# 固定 #
