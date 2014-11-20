@@ -322,7 +322,7 @@ WHERE xiiv.inventory_item_id = XxcsoQuoteLinesSalesVEO.INVENTORY_ITEM_ID
    <ViewAttribute
       Name="CaseIncNum"
       IsPersistent="false"
-      Precision="240"
+      Precision="10"
       Type="oracle.jbo.domain.Number"
       ColumnType="NUMBER"
       AliasName="CASE_INC_NUM"
@@ -332,6 +332,7 @@ WHERE xiiv.inventory_item_id = XxcsoQuoteLinesSalesVEO.INVENTORY_ITEM_ID
    <ViewAttribute
       Name="BowlIncNum"
       IsPersistent="false"
+      Precision="10"
       Type="oracle.jbo.domain.Number"
       ColumnType="NUMBER"
       AliasName="BOWL_INC_NUM"
