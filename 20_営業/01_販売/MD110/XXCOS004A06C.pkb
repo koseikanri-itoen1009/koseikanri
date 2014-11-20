@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A06C (body)
  * Description      : 消化ＶＤ掛率作成
  * MD.050           : 消化ＶＤ掛率作成 MD050_COS_004_A06
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -14,6 +14,7 @@ AS
  * ---------------------- ----------------------------------------------------------
  *  init                   初期処理(A-0)
  *  chk_parameter          パラメータチェック(A-1)
+ *  lock_hdrs_lns_data     消化VD用消化計算ヘッダ、明細データロック処理(A-2-1)
  *  del_tt_vd_digestion    消化VD消化計算情報の今回データ削除 (A-3)
  *  ini_header             ヘッダ単位初期化処理 (A-4)
  *  get_cust_trx           AR取引情報取得処理 (A-5)
@@ -50,6 +51,11 @@ AS
  *  2009/08/06    1.10  N.Maeda          [0000922]再レビュー指摘対応
  *  2010/01/19    1.11  K.Atsushiba      [E_本稼動_00622]消化計算締年月日導出処理修正
  *  2010/01/25    1.12  K.Atsushiba      [E_本稼動_01386]前々回データを削除しなように修正
+ *  2010/02/15    1.13  K.Hosoi          [E_本稼動_01394]定期（洗替え）モードの追加。消化VD用
+ *                                       消化計算ヘッダ、明細データロック処理の追加。
+ *                                       [E_本稼動_01396]未計算のデータが残っていた場合、次の
+ *                                       締日であっても計算しないよう修正。
+ *                                       [E_本稼動_01397]掛率に対する閾値チェック処理の追加。
  *
  *****************************************************************************************/
 --
@@ -146,6 +152,14 @@ AS
                                          := 'APP-XXCOS1-00014';     --業務日付取得エラー
   ct_msg_call_api_err           CONSTANT fnd_new_messages.message_name%TYPE
                                          := 'APP-XXCOS1-00017';     --API呼出エラーメッセージ
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+  ct_msg_thrshld_chk_err        CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-14004';     --閾値チェックエラーメッセージ
+  ct_msg_lock_error_skip        CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-14005';     --ロックエラーメッセージ
+  ct_msg_lock_error             CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-14006';     --ロックエラーメッセージ
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
   --文字列用
   ct_msg_request                CONSTANT fnd_new_messages.message_name%TYPE
                                          := 'APP-XXCOS1-00042';     --要求ＩＤ
@@ -213,6 +227,12 @@ AS
                                          := 'APP-XXCOS1-11173';     --販売用稼働日チェック関数（稼働日）
   ct_msg_nonoperation_day       CONSTANT fnd_new_messages.message_name%TYPE
                                          := 'APP-XXCOS1-11174';     --販売用稼働日チェック関数（非稼働日）
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+  ct_msg_max_thrshld            CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-14002';     --XXCOS:最大閾値(消化VD)
+  ct_msg_min_thrshld            CONSTANT fnd_new_messages.message_name%TYPE
+                                         := 'APP-XXCOS1-14003';     --XXCOS:最小閾値(消化VD)
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
   --トークン
   cv_tkn_table                  CONSTANT VARCHAR2(100) := 'TABLE';                --テーブル
   cv_tkn_profile                CONSTANT VARCHAR2(100) := 'PROFILE';              --プロファイル
@@ -237,6 +257,10 @@ AS
   cv_tkn_apply_date             CONSTANT VARCHAR2(100) := 'APPLY_DATE';           --適用日
   cv_tkn_order_no_hht           CONSTANT VARCHAR2(100) := 'ORDER_NO_HHT';         --受注No(HHT)
   cv_tkn_digestion_ln_number    CONSTANT VARCHAR2(100) := 'DIGESTION_LN_NUMBER';  --枝番
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+  cv_tkn_max_thrshld            CONSTANT VARCHAR2(100) := 'MAX_THRESHOLD';        --最大閾値
+  cv_tkn_min_thrshld            CONSTANT VARCHAR2(100) := 'MIN_THRESHOLD';        --最小閾値
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
   --プロファイル名称
   ct_prof_org_id                CONSTANT fnd_profile_options.profile_option_name%TYPE
                                          := 'ORG_ID';                             --MO:営業単位
@@ -248,6 +272,12 @@ AS
                                          := 'XXCOI1_ORGANIZATION_CODE';           --XXCOI:在庫組織コード
   ct_prof_diges_calc_delay_day  CONSTANT fnd_profile_options.profile_option_name%TYPE
                                          := 'XXCOS1_DIGESTION_CALC_DELAY_DAY';    --XXCOS:消化VD掛率作成猶予日数
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+  ct_prof_max_threshold_vd      CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                         := 'XXCOS1_MAX_THRESHOLD_VD';            --XXCOS:最大閾値(消化VD)
+  ct_prof_min_threshold_vd      CONSTANT fnd_profile_options.profile_option_name%TYPE
+                                         := 'XXCOS1_MIN_THRESHOLD_VD';            --XXCOS:最小閾値(消化VD)
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
   --クイックコードタイプ
   ct_qct_regular_any_class      CONSTANT fnd_lookup_types.lookup_type%TYPE
                                          := 'XXCOS1_REGULAR_ANY_CLASS';           --定期随時区分マスタ
@@ -284,6 +314,10 @@ AS
                                          := '0';                      --随時
   ct_regular_any_class_reg      CONSTANT fnd_lookup_values.lookup_code%TYPE
                                          := '1';                      --定期
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+  ct_regular_any_class_rplc     CONSTANT fnd_lookup_values.lookup_code%TYPE
+                                         := '2';                      --定期（洗替え）
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
   --使用可能フラグ定数
   ct_enabled_flag_yes           CONSTANT fnd_lookup_values.enabled_flag%TYPE
                                          := 'Y';                      --使用可能
@@ -405,6 +439,9 @@ AS
   gn_warn_cnt1                          NUMBER;                       -- スキップ件数１
   gn_warn_cnt2                          NUMBER;                       -- スキップ件数２
   gn_warn_cnt3                          NUMBER;                       -- スキップ件数３
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+  gn_thrshld_chk_cnt                    NUMBER;                       -- 閾値チェックエラー件数
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
   --パラメータ
   gt_regular_any_class                  fnd_lookup_values.lookup_code%TYPE;
                                                                       -- 定期随時区分
@@ -425,6 +462,10 @@ AS
                                                                       -- カレンダコード
   gn_diges_calc_delay_day               NUMBER;                       -- 消化VD掛率作成猶予日数
   gd_temp_digestion_due_date            DATE;                         -- 仮消化VD締年月日
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+  gn_max_threshold                      NUMBER;                       -- 最大閾値(消化VD)
+  gn_min_threshold                      NUMBER;                       -- 最小閾値(消化VD)
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
   --
   gt_vd_digestion_hdr_id                xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE;
                                                                       -- 消化VD消化計算ヘッダID
@@ -435,6 +476,9 @@ AS
   gn_xvdl_idx                           NUMBER;
   g_xvch_tab                            g_xvdh_ttype;                 -- VDコラム別取引ヘッダ
   g_tt_xvdh_tab                         g_xvdh_ttype;                 -- 今回データ削除用消化VD別消化計算ヘッダ
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+  g_tt_xvdh_work_tab                    g_xvdh_ttype;                 -- 今回データ削除用消化VD別消化計算ヘッダワーク
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
   g_xvdh_tab                            g_xvdh_ttype;                 -- 消化VD別消化計算ヘッダ
   g_xvdl_tab                            g_xvdl_ttype;                 -- 消化VD別消化計算明細
   g_diges_due_dt_tab                    g_diges_due_dt_ttype;         -- 消化計算締年月日
@@ -612,6 +656,10 @@ AS
                                                                       --在庫組織コード
     lv_diges_calc_delay_day       VARCHAR2(5000);                     --消化VD掛率作成猶予日数
     lt_regular_any_class_name     fnd_lookup_values.meaning%TYPE;     --定期随時区分名称
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+    lv_max_threshold              VARCHAR2(5000);                     --MAX閾値(VD)
+    lv_min_threshold              VARCHAR2(5000);                     --MIN閾値(VD)
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
     --エラーメッセージ用
     lv_str_profile_name           VARCHAR2(5000);                     --プロファイル名
     lv_str_api_name               VARCHAR2(5000);                     --関数名
@@ -778,9 +826,50 @@ AS
 --
     gn_diges_calc_delay_day   := TO_NUMBER( lv_diges_calc_delay_day );
 --
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
     --============================================
-    -- 9.定期随時パラメータチェック
+    -- 9.XXCOS:最大閾値取得
     --============================================
+    lv_max_threshold      := FND_PROFILE.VALUE( ct_prof_max_threshold_vd );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_max_threshold IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_str_profile_name     := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_max_thrshld
+                                 );
+      --
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    gn_max_threshold          := TO_NUMBER( lv_max_threshold );
+--
+    --============================================
+    -- 10.XXCOS:最小閾値取得
+    --============================================
+    lv_min_threshold      := FND_PROFILE.VALUE( ct_prof_min_threshold_vd );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( lv_min_threshold IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_str_profile_name     := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_min_thrshld
+                                 );
+      --
+      RAISE global_get_profile_expt;
+    END IF;
+--
+    gn_min_threshold          := TO_NUMBER( lv_min_threshold );
+--
+--    --============================================
+--    -- 9.定期随時パラメータチェック
+--    --============================================
+    --============================================
+    -- 11.定期随時パラメータチェック
+    --============================================
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
     BEGIN
       SELECT
         flv.meaning                     regular_any_class_name
@@ -910,6 +999,154 @@ AS
 --#####################################  固定部 END   ##########################################
 --
   END chk_parameter;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+--
+  /**********************************************************************************
+   * Procedure Name   : lock_hdrs_lns_data
+   * Description      : 消化VD用消化計算ヘッダ、明細データロック処理(A-2-1)
+   ***********************************************************************************/
+  PROCEDURE lock_hdrs_lns_data(
+    it_vd_dgstn_hdr_id  IN  xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE,
+    iv_customer_num     IN  VARCHAR2,     --   顧客コード
+    ov_errbuf           OUT VARCHAR2,     --   エラー・メッセージ            --# 固定 #
+    ov_retcode          OUT VARCHAR2,     --   リターン・コード              --# 固定 #
+    ov_errmsg           OUT VARCHAR2)     --   ユーザー・エラー・メッセージ  --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'lock_hdrs_lns_data'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+    lv_str_table_name             VARCHAR2(5000);
+    lv_str_key_data               VARCHAR2(5000);
+    ln_idx                        NUMBER;
+--
+    -- *** ローカル・カーソル ***
+    CURSOR lock_cur(
+     it_vd_digestion_hdr_id       xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE
+    )
+    IS
+      SELECT
+        xvdh.vd_digestion_hdr_id          vd_digestion_hdr_id
+      FROM
+        xxcos_vd_digestion_hdrs           xvdh,                             --消化VD用消化計算ヘッダテーブル
+        xxcos_vd_digestion_lns            xvdl                              --消化VD用消化計算明細テーブル
+      WHERE
+        xvdh.vd_digestion_hdr_id          = it_vd_digestion_hdr_id
+      AND xvdh.vd_digestion_hdr_id        = xvdl.vd_digestion_hdr_id (+)
+      AND xvdh.sales_result_creation_flag <> cv_delete_flag
+      FOR UPDATE NOWAIT
+      ;
+--
+    -- *** ローカル・レコード ***
+    l_lock_rec lock_cur%ROWTYPE;
+--
+    -- *** ローカル・関数 ***
+--
+    -- *** ローカル・例外 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode  := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    --==================================
+    -- 1.消化VD情報データロック
+    --==================================
+    BEGIN
+      OPEN lock_cur( it_vd_digestion_hdr_id => it_vd_dgstn_hdr_id );
+      CLOSE lock_cur;
+    EXCEPTION
+      WHEN global_data_lock_expt THEN
+        RAISE global_data_lock_expt;
+    END;
+--
+  EXCEPTION
+    -- *** 処理対象データロック例外ハンドラ ***
+    WHEN global_data_lock_expt THEN
+      IF ( lock_cur%ISOPEN ) THEN
+        CLOSE lock_cur;
+      END IF;
+      --テーブル名取得
+      lv_str_table_name       := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_tt_diges_info_tblnm
+                                 );
+--
+      IF ( gt_regular_any_class = ct_regular_any_class_reg ) 
+        OR ( gt_regular_any_class = ct_regular_any_class_rplc ) THEN
+      --パラメータ実行区分が、「定期」または「定期（洗替え）」の場合
+        ov_errmsg               := xxccp_common_pkg.get_msg(
+                                     iv_application        => ct_xxcos_appl_short_name,
+                                     iv_name               => ct_msg_lock_error_skip,
+                                     iv_token_name1        => cv_tkn_table,
+                                     iv_token_value1       => lv_str_table_name,
+                                     iv_token_name2        => cv_tkn_cust_code,
+                                     iv_token_value2       => iv_customer_num
+                                   );
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+        ov_retcode := cv_status_warn;
+      ELSIF ( gt_regular_any_class = ct_regular_any_class_any ) THEN
+      --パラメータ実行区分が、「随時」の場合
+        ov_errmsg               := xxccp_common_pkg.get_msg(
+                                     iv_application        => ct_xxcos_appl_short_name,
+                                     iv_name               => ct_msg_lock_error,
+                                     iv_token_name1        => cv_tkn_table,
+                                     iv_token_value1       => lv_str_table_name
+                                   );
+        ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+        ov_retcode := cv_status_error;
+      END IF;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF ( lock_cur%ISOPEN ) THEN
+        CLOSE lock_cur;
+      END IF;
+      --
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF ( lock_cur%ISOPEN ) THEN
+        CLOSE lock_cur;
+      END IF;
+      --
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF ( lock_cur%ISOPEN ) THEN
+        CLOSE lock_cur;
+      END IF;
+      --
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END lock_hdrs_lns_data;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
 --
   /**********************************************************************************
    * Procedure Name   : del_tt_vd_digestion
@@ -944,26 +1181,30 @@ AS
     ln_idx                        NUMBER;
 --
     -- *** ローカル・カーソル ***
-    CURSOR lock_cur(
-     it_vd_digestion_hdr_id       xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE
-    )
-    IS
-      SELECT
-        xvdh.vd_digestion_hdr_id          vd_digestion_hdr_id
-      FROM
-        xxcos_vd_digestion_hdrs           xvdh,                             --消化VD用消化計算ヘッダテーブル
-        xxcos_vd_digestion_lns            xvdl                              --消化VD用消化計算明細テーブル
-      WHERE
-        xvdh.vd_digestion_hdr_id          = it_vd_digestion_hdr_id
-      AND xvdh.vd_digestion_hdr_id        = xvdl.vd_digestion_hdr_id (+)
-/* 2010/01/25 Ver1.11 Add Start */
-      AND xvdh.sales_result_creation_flag <> cv_delete_flag
-/* 2010/01/25 Ver1.11 Add Start */
-      FOR UPDATE NOWAIT
-      ;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--    CURSOR lock_cur(
+--     it_vd_digestion_hdr_id       xxcos_vd_digestion_hdrs.vd_digestion_hdr_id%TYPE
+--    )
+--    IS
+--      SELECT
+--        xvdh.vd_digestion_hdr_id          vd_digestion_hdr_id
+--      FROM
+--        xxcos_vd_digestion_hdrs           xvdh,                             --消化VD用消化計算ヘッダテーブル
+--        xxcos_vd_digestion_lns            xvdl                              --消化VD用消化計算明細テーブル
+--      WHERE
+--        xvdh.vd_digestion_hdr_id          = it_vd_digestion_hdr_id
+--      AND xvdh.vd_digestion_hdr_id        = xvdl.vd_digestion_hdr_id (+)
+--/* 2010/01/25 Ver1.11 Add Start */
+--      AND xvdh.sales_result_creation_flag <> cv_delete_flag
+--/* 2010/01/25 Ver1.11 Add Start */
+--      FOR UPDATE NOWAIT
+--      ;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
 --
     -- *** ローカル・レコード ***
-    l_lock_rec lock_cur%ROWTYPE;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--    l_lock_rec lock_cur%ROWTYPE;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
 --
     -- *** ローカル・関数 ***
 --
@@ -984,19 +1225,26 @@ AS
     <<tt_xvdh_tab_loop>>
     FOR i IN 1..g_tt_xvdh_tab.COUNT LOOP
       ln_idx := i;
-      --==================================
-      -- 1.消化VD情報データロック
-      --==================================
-      BEGIN
-        OPEN lock_cur( it_vd_digestion_hdr_id => g_tt_xvdh_tab(ln_idx).vd_digestion_hdr_id );
-        CLOSE lock_cur;
-      EXCEPTION
-        WHEN global_data_lock_expt THEN
-          RAISE global_data_lock_expt;
-      END;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--      --==================================
+--      -- 1.消化VD情報データロック
+--      --==================================
+--      BEGIN
+--        OPEN lock_cur( it_vd_digestion_hdr_id => g_tt_xvdh_tab(ln_idx).vd_digestion_hdr_id );
+--        CLOSE lock_cur;
+--      EXCEPTION
+--        WHEN global_data_lock_expt THEN
+--          RAISE global_data_lock_expt;
+--      END;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
 /* 2010/01/25 Ver1.11 Add Start */
-      IF ( gt_regular_any_class = ct_regular_any_class_any ) THEN
-      -- 随時の場合
+-- 2010/02/15 Ver.1.13 K.Hosoi Mod Start
+--      IF ( gt_regular_any_class = ct_regular_any_class_any ) THEN
+--      -- 随時の場合
+      IF ( gt_regular_any_class = ct_regular_any_class_any )
+        OR ( gt_regular_any_class = ct_regular_any_class_rplc ) THEN
+      -- 随時又は、定期（洗替え）の場合
+-- 2010/02/15 Ver.1.13 K.Hosoi Mod End
 /* 2010/01/25 Ver1.11 Add End */
       --======================================================
       -- 2.消化VD別消化計算ヘッダテーブル削除
@@ -1108,31 +1356,35 @@ AS
     END LOOP tt_xvdh_tab_loop;
 --
   EXCEPTION
-    -- *** 処理対象データロック例外ハンドラ ***
-    WHEN global_data_lock_expt THEN
-      IF ( lock_cur%ISOPEN ) THEN
-        CLOSE lock_cur;
-      END IF;
-      --テーブル名取得
-      lv_str_table_name       := xxccp_common_pkg.get_msg(
-                                   iv_application        => ct_xxcos_appl_short_name,
-                                   iv_name               => ct_msg_tt_diges_info_tblnm
-                                 );
---
-      ov_errmsg               := xxccp_common_pkg.get_msg(
-                                   iv_application        => ct_xxcos_appl_short_name,
-                                   iv_name               => ct_msg_lock_err,
-                                   iv_token_name1        => cv_tkn_table,
-                                   iv_token_value1       => lv_str_table_name
-                                 );
-      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
-      ov_retcode := cv_status_error;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--    -- *** 処理対象データロック例外ハンドラ ***
+--    WHEN global_data_lock_expt THEN
+--      IF ( lock_cur%ISOPEN ) THEN
+--        CLOSE lock_cur;
+--      END IF;
+--      --テーブル名取得
+--      lv_str_table_name       := xxccp_common_pkg.get_msg(
+--                                   iv_application        => ct_xxcos_appl_short_name,
+--                                   iv_name               => ct_msg_tt_diges_info_tblnm
+--                                 );
+----
+--      ov_errmsg               := xxccp_common_pkg.get_msg(
+--                                   iv_application        => ct_xxcos_appl_short_name,
+--                                   iv_name               => ct_msg_lock_err,
+--                                   iv_token_name1        => cv_tkn_table,
+--                                   iv_token_value1       => lv_str_table_name
+--                                 );
+--      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+--      ov_retcode := cv_status_error;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
 --
     -- *** 処理対象データロック例外ハンドラ ***
     WHEN global_delete_data_expt THEN
-      IF ( lock_cur%ISOPEN ) THEN
-        CLOSE lock_cur;
-      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--      IF ( lock_cur%ISOPEN ) THEN
+--        CLOSE lock_cur;
+--      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
       --
       ov_errmsg               := xxccp_common_pkg.get_msg(
                                    iv_application        => ct_xxcos_appl_short_name,
@@ -1147,9 +1399,11 @@ AS
 --
 /* 2010/01/25 Ver1.11 Add Start */
     WHEN update_data_expt THEN
-      IF ( lock_cur%ISOPEN ) THEN
-        CLOSE lock_cur;
-      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--      IF ( lock_cur%ISOPEN ) THEN
+--        CLOSE lock_cur;
+--      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
       --
       ov_errmsg               := xxccp_common_pkg.get_msg(
                                    iv_application        => ct_xxcos_appl_short_name,
@@ -1167,26 +1421,32 @@ AS
 --
     -- *** 共通関数例外ハンドラ ***
     WHEN global_api_expt THEN
-      IF ( lock_cur%ISOPEN ) THEN
-        CLOSE lock_cur;
-      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--      IF ( lock_cur%ISOPEN ) THEN
+--        CLOSE lock_cur;
+--      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
       --
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
     -- *** 共通関数OTHERS例外ハンドラ ***
     WHEN global_api_others_expt THEN
-      IF ( lock_cur%ISOPEN ) THEN
-        CLOSE lock_cur;
-      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--      IF ( lock_cur%ISOPEN ) THEN
+--        CLOSE lock_cur;
+--      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
-      IF ( lock_cur%ISOPEN ) THEN
-        CLOSE lock_cur;
-      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--      IF ( lock_cur%ISOPEN ) THEN
+--        CLOSE lock_cur;
+--      END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
       --
       ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
       ov_retcode := cv_status_error;
@@ -2868,6 +3128,7 @@ AS
         xxcos_vd_digestion_hdrs           xvdh                        -- 消化VD用消化計算ヘッダテーブル
       WHERE
         xvdh.digestion_due_date           < it_digestion_due_date
+      AND xvdh.sales_result_creation_flag <> cv_delete_flag
       AND xvdh.sales_result_creation_flag = ct_sr_creation_flag_yes
       ORDER BY
         xvdh.customer_number              asc,                        -- 顧客コード
@@ -3291,7 +3552,9 @@ AS
             WHERE
               xvdh.cust_account_id                = it_cust_account_id
             AND xvdh.digestion_due_date           < id_digestion_due_date
-            AND xvdh.sales_result_creation_flag   = ct_sr_creation_flag_yes
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+--            AND xvdh.sales_result_creation_flag   = ct_sr_creation_flag_yes
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
             ORDER BY
               xvdh.digestion_due_date             desc
           ) xvdh
@@ -3426,6 +3689,12 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+    ct_bsinss_lw_tp_svd                 CONSTANT xxcmm_cust_accounts.business_low_type%TYPE  := '27'; -- 業態小分類：27(消化VD)
+    cv_uncalc_cls_4                     CONSTANT VARCHAR2(1) := '4';  -- 未計算区分'4'
+    cv_yes                              CONSTANT VARCHAR2(1) := 'Y';  -- チェックフラグ'Y'
+    cv_no                               CONSTANT VARCHAR2(1) := 'N';  -- チェックフラグ'N'
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
 --
     -- *** ローカル変数 ***
     --データ存在フラグ
@@ -3460,6 +3729,12 @@ AS
     lv_leap_year_due_day                VARCHAR2(2);                  -- 月末日
     --前回消化計算締年月日
     ld_pre_digestion_due_date           DATE;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+    --ロック取得エラーフラグ
+    lv_lock_data_err_flg                VARCHAR2(1);
+    --閾値チェックエラーフラグ
+    lv_thrshld_chk_err_flg              VARCHAR2(1);
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -3581,6 +3856,38 @@ AS
      ;
     -- 消化VD用消化計算ヘッダ情報 レコード型
     l_xvdh_rec xvdh_cur%ROWTYPE;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+--
+    --============================================
+    -- 消化VD用消化計算ヘッダ情報取得処理(定期(洗替え))(A-2)
+    --============================================
+    CURSOR xvdh_cur2
+    IS
+      SELECT
+        xvdh.vd_digestion_hdr_id                  vd_digestion_hdr_id,          --消化VD用消化計算ヘッダID
+        xvdh.customer_number                      customer_number,              --顧客コード
+        xvdh.digestion_due_date                   digestion_due_date,           --消化計算締年月日
+        xvdh.sales_base_code                      sales_base_code,              --前月売上拠点コード
+        xvdh.cust_account_id                      cust_account_id,              --顧客ID
+        xvdh.master_rate                          master_rate,                  --マスタ掛率
+        xvdh.cust_gyotai_sho                      cust_gyotai_sho,              --業態小分類
+        xvdh.pre_digestion_due_date               pre_digestion_due_date,       --前回消化計算締年月日
+        xca.delivery_base_code                    delivery_base_code            --納品拠点コード
+      FROM
+        xxcos_vd_digestion_hdrs               xvdh,                         --消化VD用消化計算ヘッダテーブル
+        xxcmm_cust_accounts                   xca                           --アカウントアドオン
+      WHERE
+        xvdh.cust_account_id                  = xca.customer_id
+      AND xvdh.sales_result_creation_flag     = ct_sr_creation_flag_no
+      AND xca.business_low_type               = ct_bsinss_lw_tp_svd
+      ORDER BY
+        xvdh.digestion_due_date,
+        xvdh.customer_number
+    ;
+--
+    -- 消化VD用消化計算ヘッダ情報 レコード型(定期(洗替え))
+    l_xvdh_rec2 xvdh_cur2%ROWTYPE;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
 --
     --============================================
     -- 消化VD用消化計算ヘッダ情報(今回データ）取得
@@ -3933,6 +4240,11 @@ AS
       ;
     -- 顧客マスタ レコード型
     l_cust_rec cust_cur%ROWTYPE;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+    -- *** ローカル例外 ***
+    skip_error_expt     EXCEPTION;
+    thrshld_chk_expt    EXCEPTION;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
 --
     -- *** ローカル・関数 ***
     --==================================
@@ -3986,7 +4298,10 @@ AS
     gn_target_cnt := 0;                 --未使用
     gn_normal_cnt := 0;                 --ヘッダ単位の件数で使用
     gn_error_cnt  := 0;                 --未使用
-    gn_warn_cnt   := 0;                 --未使用
+-- 2010/02/15 Ver.1.13 K.Hosoi Mod Start
+--    gn_warn_cnt   := 0;                 --未使用
+    gn_warn_cnt   := 0;                 --ロック取得失敗でスキップ件数
+-- 2010/02/15 Ver.1.13 K.Hosoi Mod End
     --対象件数
     gn_target_cnt1 := 0;                --顧客マスタ対象件数
     gn_target_cnt2 := 0;                --AR取引対象件数
@@ -3995,6 +4310,10 @@ AS
     gn_warn_cnt1 := 0;                  --両方NOF
     gn_warn_cnt2 := 0;                  --AR取引NOF
     gn_warn_cnt3 := 0;                  --VDコラム別取引NOF
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+    --閾値チェックエラー件数
+    gn_thrshld_chk_cnt := 0;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
 --
     -- ===================================================
     -- A-0  初期処理
@@ -4053,6 +4372,26 @@ AS
       FOR xvdh_rec IN xvdh_cur LOOP
         --
         l_xvdh_rec                      := xvdh_rec;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+        -- 閾値チェックエラーフラグの初期化
+        lv_thrshld_chk_err_flg          := cv_no;
+        --
+        -- ===================================================
+        -- 消化VD用消化計算ヘッダ、明細データロック処理(A-2-1)
+        -- ===================================================
+        lock_hdrs_lns_data(
+          it_vd_dgstn_hdr_id                => l_xvdh_rec.vd_digestion_hdr_id,
+          iv_customer_num                   => NULL,
+          ov_errbuf                         => lv_errbuf,                 -- エラー・メッセージ
+          ov_retcode                        => lv_retcode,                -- リターン・コード
+          ov_errmsg                         => lv_errmsg                  -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
         -- ===================================================
         -- 消化VD用消化計算ヘッダ対象件数加算
         -- ===================================================
@@ -4192,6 +4531,15 @@ AS
                                                                  ln_ar_amount / ln_vdc_amount * 100,
                                                                  cn_rate_fraction_place
                                                                );
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+          -- 算出した掛率に対する閾値のチェック
+          IF ( g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate < gn_min_threshold)
+            OR ( g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate > gn_max_threshold) THEN
+            --
+            lv_thrshld_chk_err_flg := cv_yes;
+            gn_thrshld_chk_cnt     := gn_thrshld_chk_cnt + 1;
+          END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
         END IF;
         --マスタ掛率
         g_xvdh_tab(gn_xvdh_idx).master_rate                 := l_xvdh_rec.master_rate;
@@ -4217,11 +4565,19 @@ AS
         g_xvdh_tab(gn_xvdh_idx).sales_result_creation_flag  := ct_sr_creation_flag_no;
         --前回消化計算締年月日
         g_xvdh_tab(gn_xvdh_idx).pre_digestion_due_date      := l_xvdh_rec.pre_digestion_due_date;
-        --未計算区分(ローカル関数使用）
-        g_xvdh_tab(gn_xvdh_idx).uncalculate_class           := get_uncalculate_class(
-                                                                 iv_ar_uncalculate_type   => lv_ar_uncalculate_type,
-                                                                 iv_vdc_uncalculate_type  => lv_vdc_uncalculate_type
-                                                               );
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+        IF ( lv_thrshld_chk_err_flg = cv_yes ) THEN
+          g_xvdh_tab(gn_xvdh_idx).uncalculate_class := cv_uncalc_cls_4;
+        ELSE
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
+          --未計算区分(ローカル関数使用）
+          g_xvdh_tab(gn_xvdh_idx).uncalculate_class           := get_uncalculate_class(
+                                                                   iv_ar_uncalculate_type   => lv_ar_uncalculate_type,
+                                                                   iv_vdc_uncalculate_type  => lv_vdc_uncalculate_type
+                                                                 );
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+        END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
         --つり銭切れ時間100円
         g_xvdh_tab(gn_xvdh_idx).change_out_time_100         := lt_change_out_time_100;
         --つり銭切れ時間10円
@@ -4306,6 +4662,333 @@ AS
         --
       END IF;
       --
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+    ELSIF ( gt_regular_any_class = ct_regular_any_class_rplc ) THEN
+      -- パラメータの定期随時区分が「定期（洗替え）」の場合
+      -- 内部テーブル初期化
+      g_xvch_tab.DELETE;
+      g_tt_xvdh_tab.DELETE;
+      g_xvdh_tab.DELETE;
+      g_xvdl_tab.DELETE;
+      gn_xvch_idx    := 0;
+      gn_tt_xvdh_idx := 0;
+      gn_xvdh_idx    := 0;
+      gn_xvdl_idx    := 0;
+      --
+      -- ===================================================
+      -- A-2  消化VD用消化計算ヘッダ取得処理
+      -- ===================================================
+      l_xvdh_rec2                       := NULL;
+      lv_xvdh_exists_flag               := cv_exists_flag_no;
+      --
+      <<get_xvdh_loop2>>
+      FOR xvdh_rec2 IN xvdh_cur2 LOOP
+        --
+        BEGIN
+          --
+          l_xvdh_rec2                     := xvdh_rec2;
+          -- 閾値チェックエラーフラグの初期化
+          lv_thrshld_chk_err_flg          := cv_no;
+          --
+          -- ===================================================
+          -- 消化VD用消化計算ヘッダ対象件数加算
+          -- ===================================================
+          gn_target_cnt1                  := gn_target_cnt1 + 1;
+          --
+          lv_xvdh_exists_flag             := cv_exists_flag_yes;
+          -- ===================================================
+          -- 消化VD用消化計算ヘッダ、明細データロック処理(A-2-1)
+          -- ===================================================
+          lock_hdrs_lns_data(
+            it_vd_dgstn_hdr_id                => l_xvdh_rec2.vd_digestion_hdr_id,
+            iv_customer_num                   => l_xvdh_rec2.customer_number,
+            ov_errbuf                         => lv_errbuf,                 -- エラー・メッセージ
+            ov_retcode                        => lv_retcode,                -- リターン・コード
+            ov_errmsg                         => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode = cv_status_warn ) THEN
+            RAISE skip_error_expt;
+          ELSIF ( lv_retcode = cv_status_error ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          -- ===================================================
+          -- 今回データセット
+          -- ===================================================
+          gn_tt_xvdh_idx                  := gn_tt_xvdh_idx + 1;
+          g_tt_xvdh_tab(gn_tt_xvdh_idx).vd_digestion_hdr_id
+                                          := l_xvdh_rec2.vd_digestion_hdr_id;
+          g_tt_xvdh_tab(gn_tt_xvdh_idx).customer_number
+                                          := l_xvdh_rec2.customer_number;
+          g_tt_xvdh_tab(gn_tt_xvdh_idx).digestion_due_date
+                                          := l_xvdh_rec2.digestion_due_date;
+          --
+          -- ===================================================
+          -- VDコラム別取引ヘッダデータセット
+          -- ===================================================
+          gn_xvch_idx                     := gn_xvch_idx + 1;
+          g_xvch_tab(gn_xvch_idx).customer_number
+                                          := l_xvdh_rec2.customer_number;
+          g_xvch_tab(gn_xvch_idx).digestion_due_date
+                                          := l_xvdh_rec2.digestion_due_date;
+          g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
+                                          := NVL( l_xvdh_rec2.pre_digestion_due_date + cn_one_day, gd_min_date );
+          --
+          -- ===================================================
+          -- A-4  ヘッダ単位初期化処理
+          -- ===================================================
+          ini_header(
+            ot_vd_digestion_hdr_id        => lt_vd_digestion_hdr_id,            --  1.消化VD用消化計算ヘッダID
+            ov_ar_uncalculate_type        => lv_ar_uncalculate_type,            --  2.AR未計算区分
+            ov_vdc_uncalculate_type       => lv_vdc_uncalculate_type,           --  3.VDコラム別未計算区分
+            on_ar_amount                  => ln_ar_amount,                      --  4.売上金額合計
+            on_tax_amount                 => ln_tax_amount,                     --  5.消費税額合計
+            on_vdc_amount                 => ln_vdc_amount,                     --  6.販売金額合計
+            ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
+            ov_retcode                    => lv_retcode,                -- リターン・コード
+            ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          -- ===================================================
+          -- A-5  AR取引情報取得処理
+          -- ===================================================
+          -- 初期化
+          lv_ar_uncalculate_type          := cv_uncalculate_type_init;
+          --
+          get_cust_trx(
+            it_cust_account_id            => l_xvdh_rec2.cust_account_id,        --  1.顧客ID
+            it_customer_number            => l_xvdh_rec2.customer_number,        --  2.顧客コード
+            id_start_gl_date              => NVL( l_xvdh_rec2.pre_digestion_due_date + cn_one_day, gd_min_date ),
+                                                                                --  3.開始GL記帳日
+            id_end_gl_date                => l_xvdh_rec2.digestion_due_date,     --  4.終了GL記帳日
+            ov_ar_uncalculate_type        => lv_ar_uncalculate_type,            --  5.AR取引未計算区分
+            on_ar_amount                  => ln_ar_amount,                      --  6.売上金額合計
+            on_tax_amount                 => ln_tax_amount,                     --  7.消費税額合計
+            ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
+            ov_retcode                    => lv_retcode,                -- リターン・コード
+            ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          -- ===================================================
+          -- A-7  VDコラム別取引情報取得処理
+          -- ===================================================
+          -- 初期化
+          lv_vdc_uncalculate_type         := cv_uncalculate_type_init;
+          lt_delivery_date                := NULL;                 -- 納品日
+          lt_dlv_time                     := NULL;                 -- 納品時間
+          lt_performance_by_code          := NULL;                 -- 成績者コード
+          lt_change_out_time_100          := NULL;                 -- つり銭切れ時間100円
+          lt_change_out_time_10           := NULL;                 -- つり銭切れ時間10円
+          --
+          get_vd_column(
+            it_cust_account_id            => l_xvdh_rec2.cust_account_id,        --  1.顧客ID
+            it_customer_number            => l_xvdh_rec2.customer_number,        --  2.顧客コード
+            it_digestion_due_date         => l_xvdh_rec2.digestion_due_date,     --  3.消化計算締年月日
+            it_pre_digestion_due_date     => NVL( l_xvdh_rec2.pre_digestion_due_date + cn_one_day, gd_min_date ),
+                                                                                --  4.前回消化計算締年月日
+            it_delivery_base_code         => l_xvdh_rec2.delivery_base_code,     --  5.納品拠点コード
+            it_vd_digestion_hdr_id        => lt_vd_digestion_hdr_id,            --  6.消化VD消化計算ヘッダID
+            it_sales_base_code            => l_xvdh_rec2.sales_base_code,        --  7.売上拠点コード
+            ov_vdc_uncalculate_type       => lv_vdc_uncalculate_type,           --  8.VDコラム別取引未計算フラグ
+            on_vdc_amount                 => ln_vdc_amount,                     --  9.販売金額合計
+            ot_delivery_date              => lt_delivery_date,                  -- 10.納品日（最新データ）
+            ot_dlv_time                   => lt_dlv_time,                       -- 11.納品時間（最新データ）
+            ot_performance_by_code        => lt_performance_by_code,            -- 12.成績者コード（最新データ）
+            ot_change_out_time_100        => lt_change_out_time_100,            -- 13.つり銭切れ時間100円（最新データ）
+            ot_change_out_time_10         => lt_change_out_time_10,             -- 14.つり銭切れ時間10円（最新データ）
+            ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
+            ov_retcode                    => lv_retcode,                -- リターン・コード
+            ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
+          );
+          --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+          END IF;
+          --
+          -- ===================================================
+          -- 消化VD用消化計算ヘッダ登録用セット処理
+          -- ===================================================
+          gn_xvdh_idx := gn_xvdh_idx + 1;
+          --消化VD用消化計算ヘッダID
+          g_xvdh_tab(gn_xvdh_idx).vd_digestion_hdr_id         := lt_vd_digestion_hdr_id;
+          --顧客コード
+          g_xvdh_tab(gn_xvdh_idx).customer_number             := l_xvdh_rec2.customer_number;
+          --消化計算締年月日
+          g_xvdh_tab(gn_xvdh_idx).digestion_due_date          := l_xvdh_rec2.digestion_due_date;
+          --売上拠点コード
+          g_xvdh_tab(gn_xvdh_idx).sales_base_code             := l_xvdh_rec2.sales_base_code;
+          --顧客ＩＤ
+          g_xvdh_tab(gn_xvdh_idx).cust_account_id             := l_xvdh_rec2.cust_account_id;
+          --消化計算実行日
+          g_xvdh_tab(gn_xvdh_idx).digestion_exe_date          := gd_process_date;
+          --売上金額
+          g_xvdh_tab(gn_xvdh_idx).ar_sales_amount             := ROUND( ln_ar_amount );
+          --販売金額
+          g_xvdh_tab(gn_xvdh_idx).sales_amount                := ROUND( ln_vdc_amount );
+          --消化計算掛率
+          IF ( ( ln_ar_amount = cn_amount_default )
+            OR ( ln_vdc_amount = cn_amount_default ) )
+          THEN
+            g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate       := 0;
+          ELSE
+            g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate       := ROUND(
+                                                                   ln_ar_amount / ln_vdc_amount * 100,
+                                                                   cn_rate_fraction_place
+                                                                 );
+            -- 算出した掛率に対する閾値のチェック
+            IF ( g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate < gn_min_threshold)
+              OR ( g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate > gn_max_threshold) THEN
+              --
+              lv_thrshld_chk_err_flg := cv_yes;
+              gn_thrshld_chk_cnt     := gn_thrshld_chk_cnt + 1;
+            END IF;
+          END IF;
+          --マスタ掛率
+          g_xvdh_tab(gn_xvdh_idx).master_rate                 := l_xvdh_rec2.master_rate;
+          --差額
+          g_xvdh_tab(gn_xvdh_idx).balance_amount              := ROUND(
+                                                                   ln_ar_amount - ( ln_vdc_amount *
+                                                                   g_xvdh_tab(gn_xvdh_idx).master_rate / 100 ),
+                                                                   cn_rate_fraction_place
+                                                                 );
+          --業態小分類
+          g_xvdh_tab(gn_xvdh_idx).cust_gyotai_sho             := l_xvdh_rec2.cust_gyotai_sho;
+          --消費税額
+          g_xvdh_tab(gn_xvdh_idx).tax_amount                  := ln_tax_amount;
+          --納品日
+          g_xvdh_tab(gn_xvdh_idx).delivery_date               := lt_delivery_date;
+          --時間
+          g_xvdh_tab(gn_xvdh_idx).dlv_time                    := lt_dlv_time;
+          --成績者コード
+          g_xvdh_tab(gn_xvdh_idx).performance_by_code         := lt_performance_by_code;
+          --販売実績登録日
+          g_xvdh_tab(gn_xvdh_idx).sales_result_creation_date  := NULL;
+          --販売実績作成済フラグ
+          g_xvdh_tab(gn_xvdh_idx).sales_result_creation_flag  := ct_sr_creation_flag_no;
+          --前回消化計算締年月日
+          g_xvdh_tab(gn_xvdh_idx).pre_digestion_due_date      := l_xvdh_rec2.pre_digestion_due_date;
+          IF ( lv_thrshld_chk_err_flg = cv_yes ) THEN
+            g_xvdh_tab(gn_xvdh_idx).uncalculate_class := cv_uncalc_cls_4;
+          ELSE
+            --未計算区分(ローカル関数使用）
+            g_xvdh_tab(gn_xvdh_idx).uncalculate_class           := get_uncalculate_class(
+                                                                     iv_ar_uncalculate_type   => lv_ar_uncalculate_type,
+                                                                     iv_vdc_uncalculate_type  => lv_vdc_uncalculate_type
+                                                                   );
+          END IF;
+          --つり銭切れ時間100円
+          g_xvdh_tab(gn_xvdh_idx).change_out_time_100         := lt_change_out_time_100;
+          --つり銭切れ時間10円
+          g_xvdh_tab(gn_xvdh_idx).change_out_time_10          := lt_change_out_time_10;
+          --WHOカラム
+          g_xvdh_tab(gn_xvdh_idx).created_by                  := cn_created_by;
+          g_xvdh_tab(gn_xvdh_idx).creation_date               := cd_creation_date;
+          g_xvdh_tab(gn_xvdh_idx).last_updated_by             := cn_last_updated_by;
+          g_xvdh_tab(gn_xvdh_idx).last_update_date            := cd_last_update_date;
+          g_xvdh_tab(gn_xvdh_idx).last_update_login           := cn_last_update_login;
+          g_xvdh_tab(gn_xvdh_idx).request_id                  := cn_request_id;
+          g_xvdh_tab(gn_xvdh_idx).program_application_id      := cn_program_application_id;
+          g_xvdh_tab(gn_xvdh_idx).program_id                  := cn_program_id;
+          g_xvdh_tab(gn_xvdh_idx).program_update_date         := cd_program_update_date;
+          -- ===================================================
+          -- 警告件数用カウント
+          -- ===================================================
+          IF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_both_nof ) THEN
+            gn_warn_cnt1                  := gn_warn_cnt1 + 1;
+          ELSIF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_ar_nof ) THEN
+            gn_warn_cnt2                  := gn_warn_cnt2 + 1;
+          ELSIF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_vdc_nof ) THEN
+            gn_warn_cnt3                  := gn_warn_cnt3 + 1;
+          END IF;
+          --
+        EXCEPTION
+          WHEN skip_error_expt THEN
+            gn_warn_cnt := gn_warn_cnt + 1;
+            ov_retcode := cv_status_warn;
+            --
+            --メッセージ出力
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.OUTPUT
+              ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+            );
+            --
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => lv_errbuf --エラーメッセージ
+            );
+            --
+          WHEN global_process_expt THEN
+            RAISE global_process_expt;
+        END;
+      END LOOP get_xvdh_loop2;
+      --
+      IF ( lv_xvdh_exists_flag = cv_exists_flag_no ) THEN
+        RAISE global_target_nodata_expt;
+      ELSE
+        -- ===================================================
+        -- A-3  消化VD用消化計算情報の今回データ削除
+        -- ===================================================
+        del_tt_vd_digestion(
+          ov_errbuf                       => lv_errbuf,                 -- エラー・メッセージ
+          ov_retcode                      => lv_retcode,                -- リターン・コード
+          ov_errmsg                       => lv_errmsg                  -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+        -- ===================================================
+        -- A-11 VDコラム別取引ヘッダ更新処理
+        -- ===================================================
+        upd_vd_column_hdr(
+          ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
+          ov_retcode                    => lv_retcode,                -- リターン・コード
+          ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+        -- ===================================================
+        -- A-12 消化VD用消化計算ヘッダ登録処理
+        -- ===================================================
+        ins_vd_digestion_hdrs(
+          ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
+          ov_retcode                    => lv_retcode,                -- リターン・コード
+          ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+        -- ===================================================
+        -- A-10 消化VD用消化計算明細登録処理
+        -- ===================================================
+        ins_vd_digestion_lns(
+          ov_errbuf                     => lv_errbuf,                 -- エラー・メッセージ
+          ov_retcode                    => lv_retcode,                -- リターン・コード
+          ov_errmsg                     => lv_errmsg                  -- ユーザー・エラー・メッセージ
+        );
+        --
+        IF ( lv_retcode <> cv_status_normal ) THEN
+          RAISE global_process_expt;
+        END IF;
+        --
+      END IF;
+      --
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
     ELSE
       --パラメータの定期随時区分が「定期」の場合
       lv_cust_exists_flag2              := cv_exists_flag_no;
@@ -4367,6 +5050,9 @@ AS
         --内部テーブル初期化
         g_xvch_tab.DELETE;
         g_tt_xvdh_tab.DELETE;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+        g_tt_xvdh_work_tab.DELETE;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
         g_xvdh_tab.DELETE;
         g_xvdl_tab.DELETE;
         gn_xvch_idx           := 0;
@@ -4405,275 +5091,378 @@ AS
                                                                       -- 4.閏年締日
                         )
         LOOP
-          --
-          l_cust_rec                    := cust_rec;
-          --
-          -- ===================================================
-          -- A-18 前回消化計算締年月日算出処理
-          -- ===================================================
-          calc_pre_diges_due_dt(
-            it_cust_account_id          => l_cust_rec.cust_account_id,
-                                                                      --  1.顧客ID
-            it_customer_number          => l_cust_rec.customer_number,
-                                                                      --  2.顧客コード
-            id_digestion_due_date       => g_diges_due_dt_tab(ln_idx),
-                                                                      --  3.消化計算締年月日
-            id_stop_approval_date       => l_cust_rec.stop_approval_date,
-                                                                      --  4.中止決裁日
-            od_pre_digestion_due_date   => ld_pre_digestion_due_date,
-                                                                      --  5.前回消化計算締年月日
-            ov_errbuf                   => lv_errbuf,                 -- エラー・メッセージ
-            ov_retcode                  => lv_retcode,                -- リターン・コード
-            ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
-          );
-          --
-          IF ( lv_retcode <> cv_status_normal ) THEN
-            RAISE global_process_expt;
-          END IF;
-          --
-          IF ( ld_pre_digestion_due_date IS NULL ) THEN
-            NULL;
-          ELSE
-            -- ===================================================
-            -- 顧客マスタ対象件数加算
-            -- ===================================================
-            gn_target_cnt1              := gn_target_cnt1 + 1;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+          BEGIN
+            -- 閾値チェックエラーフラグの初期化
+            lv_thrshld_chk_err_flg        := cv_no;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
             --
-            lv_cust_exists_flag1        := cv_exists_flag_yes;
-            lv_cust_exists_flag2        := cv_exists_flag_yes;
-            -- ===================================================
-            -- 販売実績情報未作成のデータを抽出
-            -- ===================================================
-            <<tt_xvdh_loop>>
-            FOR tt_xvdh_rec IN tt_xvdh_cur(
-                                 it_customer_number         => l_cust_rec.customer_number
-                               )
-            LOOP
-              --
-              l_tt_xvdh_rec             := tt_xvdh_rec;
-              -- 今回データセット
-              gn_tt_xvdh_idx            := gn_tt_xvdh_idx + 1;
-              g_tt_xvdh_tab(gn_tt_xvdh_idx).vd_digestion_hdr_id
-                                        := l_tt_xvdh_rec.vd_digestion_hdr_id;
-              g_tt_xvdh_tab(gn_tt_xvdh_idx).customer_number
-                                        := l_cust_rec.customer_number;
-              g_tt_xvdh_tab(gn_tt_xvdh_idx).digestion_due_date
-                                        := g_diges_due_dt_tab(ln_idx);
-            END LOOP tt_xvdh_loop;
+            l_cust_rec                    := cust_rec;
             --
             -- ===================================================
-            -- VDコラム別取引ヘッダデータセット
+            -- A-18 前回消化計算締年月日算出処理
             -- ===================================================
-            gn_xvch_idx                 := gn_xvch_idx + 1;
-            g_xvch_tab(gn_xvch_idx).customer_number
-                                        := l_cust_rec.customer_number;
-            g_xvch_tab(gn_xvch_idx).digestion_due_date
-                                        := g_diges_due_dt_tab(ln_idx);
-            g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
-                                        := CASE
-                                             WHEN ( ld_pre_digestion_due_date = gd_min_date )
-                                             THEN ld_pre_digestion_due_date
-                                             ELSE ld_pre_digestion_due_date + cn_one_day
-                                           END;
-            --
-            -- ===================================================
-            -- A-4  ヘッダ単位初期化処理
-            -- ===================================================
-            ini_header(
-              ot_vd_digestion_hdr_id    => lt_vd_digestion_hdr_id,        --  1.消化VD用消化計算ヘッダID
-              ov_ar_uncalculate_type    => lv_ar_uncalculate_type,        --  2.AR未計算区分
-              ov_vdc_uncalculate_type   => lv_vdc_uncalculate_type,       --  3.VDコラム別未計算区分
-              on_ar_amount              => ln_ar_amount,                  --  4.売上金額合計
-              on_tax_amount             => ln_tax_amount,                 --  5.消費税額合計
-              on_vdc_amount             => ln_vdc_amount,                 --  6.販売金額合計
-              ov_errbuf                 => lv_errbuf,               -- エラー・メッセージ
-              ov_retcode                => lv_retcode,              -- リターン・コード
-              ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ
+            calc_pre_diges_due_dt(
+              it_cust_account_id          => l_cust_rec.cust_account_id,
+                                                                        --  1.顧客ID
+              it_customer_number          => l_cust_rec.customer_number,
+                                                                        --  2.顧客コード
+              id_digestion_due_date       => g_diges_due_dt_tab(ln_idx),
+                                                                        --  3.消化計算締年月日
+              id_stop_approval_date       => l_cust_rec.stop_approval_date,
+                                                                        --  4.中止決裁日
+              od_pre_digestion_due_date   => ld_pre_digestion_due_date,
+                                                                        --  5.前回消化計算締年月日
+              ov_errbuf                   => lv_errbuf,                 -- エラー・メッセージ
+              ov_retcode                  => lv_retcode,                -- リターン・コード
+              ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
             );
             --
             IF ( lv_retcode <> cv_status_normal ) THEN
               RAISE global_process_expt;
             END IF;
             --
-            -- ===================================================
-            -- A-5  AR取引情報取得処理
-            -- ===================================================
-            -- 初期化
-            lv_ar_uncalculate_type      := cv_uncalculate_type_init;
-            --
-            get_cust_trx(
-              it_cust_account_id        => l_cust_rec.cust_account_id,    --  1.顧客ID
-              it_customer_number        => l_cust_rec.customer_number,    --  2.顧客コード
-              id_start_gl_date          => CASE
-                                             WHEN ( ld_pre_digestion_due_date = gd_min_date )
-                                             THEN ld_pre_digestion_due_date
-                                             ELSE ld_pre_digestion_due_date + cn_one_day
-                                           END,                           --  3.開始GL記帳日
-              id_end_gl_date            => g_diges_due_dt_tab(ln_idx),    --  4.終了GL記帳日
-              ov_ar_uncalculate_type    => lv_ar_uncalculate_type,        --  5.AR未計算区分
-              on_ar_amount              => ln_ar_amount,                  --  6.売上金額合計
-              on_tax_amount             => ln_tax_amount,                 --  7.消費税額合計
-              ov_errbuf                 => lv_errbuf,               -- エラー・メッセージ
-              ov_retcode                => lv_retcode,              -- リターン・コード
-              ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ
-            );
-            --
-            IF ( lv_retcode <> cv_status_normal ) THEN
-              RAISE global_process_expt;
-            END IF;
-            --
-            -- ===================================================
-            -- A-7  VDコラム別取引情報取得処理
-            -- ===================================================
-            -- 初期化
-            lv_vdc_uncalculate_type     := cv_uncalculate_type_init;
-            lt_delivery_date            := NULL;                    -- 納品日
-            lt_dlv_time                 := NULL;                    -- 納品時間
-            lt_performance_by_code      := NULL;                    -- 成績者コード
-            lt_change_out_time_100      := NULL;                    -- つり銭切れ時間100円
-            lt_change_out_time_10       := NULL;                    -- つり銭切れ時間10円
-            --
-            get_vd_column(
-              it_cust_account_id        => l_cust_rec.cust_account_id,    --  1.顧客ID
-              it_customer_number        => l_cust_rec.customer_number,    --  2.顧客コード
-              it_digestion_due_date     => g_diges_due_dt_tab(ln_idx),    --  3.消化計算締年月日
-              it_pre_digestion_due_date => CASE
-                                             WHEN ( ld_pre_digestion_due_date = gd_min_date )
-                                             THEN ld_pre_digestion_due_date
-                                             ELSE ld_pre_digestion_due_date + cn_one_day
-                                           END,                           --  4.前回消化計算締年月日
-              it_delivery_base_code     => l_cust_rec.delivery_base_code, --  5.納品拠点コード
-              it_vd_digestion_hdr_id    => lt_vd_digestion_hdr_id,        --  6.消化VD消化計算ヘッダID
---******************************** 2009/03/19 1.6 T.Kitajima ADD START **************************************************
-              it_sales_base_code            => l_cust_rec.sales_base_code,--  7.売上拠点コード
---******************************** 2009/03/19 1.6 T.Kitajima ADD  END  **************************************************
-              ov_vdc_uncalculate_type   => lv_vdc_uncalculate_type,       --  8.VDコラム別取引未計算区分
-              on_vdc_amount             => ln_vdc_amount,                 --  9.販売金額合計
-              ot_delivery_date          => lt_delivery_date,              -- 10.納品日（最新データ）
-              ot_dlv_time               => lt_dlv_time,                   -- 11.納品時間（最新データ）
-              ot_performance_by_code    => lt_performance_by_code,        -- 12.成績者コード（最新データ）
-              ot_change_out_time_100    => lt_change_out_time_100,        -- 13.つり銭切れ時間100円（最新データ）
-              ot_change_out_time_10     => lt_change_out_time_10,         -- 14.つり銭切れ時間10円（最新データ）
-              ov_errbuf                 => lv_errbuf,               -- エラー・メッセージ
-              ov_retcode                => lv_retcode,              -- リターン・コード
-              ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ
-            );
-            --
-            IF ( lv_retcode <> cv_status_normal ) THEN
-              RAISE global_process_expt;
-            END IF;
-            --
-            -- ===================================================
-            -- 消化VD用消化計算ヘッダ登録用セット処理
-            -- ===================================================
-            gn_xvdh_idx := gn_xvdh_idx + 1;
-            --消化VD用消化計算ヘッダID
-            g_xvdh_tab(gn_xvdh_idx).vd_digestion_hdr_id     := lt_vd_digestion_hdr_id;
-            --顧客コード
-            g_xvdh_tab(gn_xvdh_idx).customer_number         := l_cust_rec.customer_number;
-            --消化計算締年月日
-            g_xvdh_tab(gn_xvdh_idx).digestion_due_date      := g_diges_due_dt_tab(ln_idx);
-            --売上拠点コード
-            g_xvdh_tab(gn_xvdh_idx).sales_base_code         := l_cust_rec.sales_base_code;
-            --顧客ＩＤ
-            g_xvdh_tab(gn_xvdh_idx).cust_account_id         := l_cust_rec.cust_account_id;
-            --消化計算実行日
-            g_xvdh_tab(gn_xvdh_idx).digestion_exe_date      := gd_process_date;
-            --売上金額
-            g_xvdh_tab(gn_xvdh_idx).ar_sales_amount         := ln_ar_amount;
-            --販売金額
-            g_xvdh_tab(gn_xvdh_idx).sales_amount            := ln_vdc_amount;
-            --消化計算掛率
-            IF ( ( ln_ar_amount = cn_amount_default )
-              OR ( ln_vdc_amount = cn_amount_default ) )
-            THEN
-              g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate   := 0;
+            IF ( ld_pre_digestion_due_date IS NULL ) THEN
+              NULL;
             ELSE
-              g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate   := ROUND(
-                                                                 ln_ar_amount / ln_vdc_amount * 100,
-                                                                 cn_rate_fraction_place
-                                                               );
+              -- ===================================================
+              -- 顧客マスタ対象件数加算
+              -- ===================================================
+              gn_target_cnt1              := gn_target_cnt1 + 1;
+              --
+              lv_cust_exists_flag1        := cv_exists_flag_yes;
+              lv_cust_exists_flag2        := cv_exists_flag_yes;
+              -- ===================================================
+              -- 販売実績情報未作成のデータを抽出
+              -- ===================================================
+              <<tt_xvdh_loop>>
+              FOR tt_xvdh_rec IN tt_xvdh_cur(
+                                   it_customer_number         => l_cust_rec.customer_number
+                                 )
+              LOOP
+                --
+                l_tt_xvdh_rec             := tt_xvdh_rec;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+                -- ロック取得エラーフラグの初期化
+                lv_lock_data_err_flg      := cv_no;
+                --
+                -- ===================================================
+                -- 消化VD用消化計算ヘッダ、明細データロック処理(A-2-1)
+                -- ===================================================
+                lock_hdrs_lns_data(
+                  it_vd_dgstn_hdr_id                => l_tt_xvdh_rec.vd_digestion_hdr_id,
+                  iv_customer_num                   => l_cust_rec.customer_number,
+                  ov_errbuf                         => lv_errbuf,                 -- エラー・メッセージ
+                  ov_retcode                        => lv_retcode,                -- リターン・コード
+                  ov_errmsg                         => lv_errmsg                  -- ユーザー・エラー・メッセージ
+                );
+                --
+                IF ( lv_retcode = cv_status_warn ) THEN
+                  lv_lock_data_err_flg := cv_yes;
+                  EXIT;
+                ELSIF ( lv_retcode = cv_status_error ) THEN
+                  RAISE global_process_expt;
+                END IF;
+                --
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
+-- 2010/02/15 Ver.1.13 K.Hosoi Mod Start
+--                -- 今回データセット
+--                gn_tt_xvdh_idx            := gn_tt_xvdh_idx + 1;
+--                g_tt_xvdh_tab(gn_tt_xvdh_idx).vd_digestion_hdr_id
+--                                          := l_tt_xvdh_rec.vd_digestion_hdr_id;
+--                g_tt_xvdh_tab(gn_tt_xvdh_idx).customer_number
+--                                          := l_cust_rec.customer_number;
+--                g_tt_xvdh_tab(gn_tt_xvdh_idx).digestion_due_date
+--                                          := g_diges_due_dt_tab(ln_idx);
+                -- 今回データをワーク変数にセット
+                gn_tt_xvdh_idx         := gn_tt_xvdh_idx + 1;
+                g_tt_xvdh_work_tab(gn_tt_xvdh_idx).vd_digestion_hdr_id
+                                          := l_tt_xvdh_rec.vd_digestion_hdr_id;
+                g_tt_xvdh_work_tab(gn_tt_xvdh_idx).customer_number
+                                          := l_cust_rec.customer_number;
+                g_tt_xvdh_work_tab(gn_tt_xvdh_idx).digestion_due_date
+                                          := g_diges_due_dt_tab(ln_idx);
+-- 2010/02/15 Ver.1.13 K.Hosoi Mod End
+              END LOOP tt_xvdh_loop;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+              IF ( lv_lock_data_err_flg = cv_yes ) THEN
+                RAISE skip_error_expt;
+              END IF;
+              -- ===================================================
+              -- 今回データセット
+              -- ===================================================
+              <<tt_xvdh_loop2>>
+              FOR ln_wk_idx IN 1..g_tt_xvdh_work_tab.COUNT LOOP
+                -- 今回データセット
+                g_tt_xvdh_tab(ln_wk_idx).vd_digestion_hdr_id
+                                          := g_tt_xvdh_work_tab(ln_wk_idx).vd_digestion_hdr_id;
+                g_tt_xvdh_tab(ln_wk_idx).customer_number
+                                          := g_tt_xvdh_work_tab(ln_wk_idx).customer_number;
+                g_tt_xvdh_tab(ln_wk_idx).digestion_due_date
+                                          := g_tt_xvdh_work_tab(ln_wk_idx).digestion_due_date;
+              --
+              END LOOP tt_xvdh_loop2;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
+              --
+              -- ===================================================
+              -- VDコラム別取引ヘッダデータセット
+              -- ===================================================
+              gn_xvch_idx                 := gn_xvch_idx + 1;
+              g_xvch_tab(gn_xvch_idx).customer_number
+                                          := l_cust_rec.customer_number;
+              g_xvch_tab(gn_xvch_idx).digestion_due_date
+                                          := g_diges_due_dt_tab(ln_idx);
+              g_xvch_tab(gn_xvch_idx).pre_digestion_due_date
+                                          := CASE
+                                               WHEN ( ld_pre_digestion_due_date = gd_min_date )
+                                               THEN ld_pre_digestion_due_date
+                                               ELSE ld_pre_digestion_due_date + cn_one_day
+                                             END;
+              --
+              -- ===================================================
+              -- A-4  ヘッダ単位初期化処理
+              -- ===================================================
+              ini_header(
+                ot_vd_digestion_hdr_id    => lt_vd_digestion_hdr_id,        --  1.消化VD用消化計算ヘッダID
+                ov_ar_uncalculate_type    => lv_ar_uncalculate_type,        --  2.AR未計算区分
+                ov_vdc_uncalculate_type   => lv_vdc_uncalculate_type,       --  3.VDコラム別未計算区分
+                on_ar_amount              => ln_ar_amount,                  --  4.売上金額合計
+                on_tax_amount             => ln_tax_amount,                 --  5.消費税額合計
+                on_vdc_amount             => ln_vdc_amount,                 --  6.販売金額合計
+                ov_errbuf                 => lv_errbuf,               -- エラー・メッセージ
+                ov_retcode                => lv_retcode,              -- リターン・コード
+                ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ
+              );
+              --
+              IF ( lv_retcode <> cv_status_normal ) THEN
+                RAISE global_process_expt;
+              END IF;
+              --
+              -- ===================================================
+              -- A-5  AR取引情報取得処理
+              -- ===================================================
+              -- 初期化
+              lv_ar_uncalculate_type      := cv_uncalculate_type_init;
+              --
+              get_cust_trx(
+                it_cust_account_id        => l_cust_rec.cust_account_id,    --  1.顧客ID
+                it_customer_number        => l_cust_rec.customer_number,    --  2.顧客コード
+                id_start_gl_date          => CASE
+                                               WHEN ( ld_pre_digestion_due_date = gd_min_date )
+                                               THEN ld_pre_digestion_due_date
+                                               ELSE ld_pre_digestion_due_date + cn_one_day
+                                             END,                           --  3.開始GL記帳日
+                id_end_gl_date            => g_diges_due_dt_tab(ln_idx),    --  4.終了GL記帳日
+                ov_ar_uncalculate_type    => lv_ar_uncalculate_type,        --  5.AR未計算区分
+                on_ar_amount              => ln_ar_amount,                  --  6.売上金額合計
+                on_tax_amount             => ln_tax_amount,                 --  7.消費税額合計
+                ov_errbuf                 => lv_errbuf,               -- エラー・メッセージ
+                ov_retcode                => lv_retcode,              -- リターン・コード
+                ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ
+              );
+              --
+              IF ( lv_retcode <> cv_status_normal ) THEN
+                RAISE global_process_expt;
+              END IF;
+              --
+              -- ===================================================
+              -- A-7  VDコラム別取引情報取得処理
+              -- ===================================================
+              -- 初期化
+              lv_vdc_uncalculate_type     := cv_uncalculate_type_init;
+              lt_delivery_date            := NULL;                    -- 納品日
+              lt_dlv_time                 := NULL;                    -- 納品時間
+              lt_performance_by_code      := NULL;                    -- 成績者コード
+              lt_change_out_time_100      := NULL;                    -- つり銭切れ時間100円
+              lt_change_out_time_10       := NULL;                    -- つり銭切れ時間10円
+              --
+              get_vd_column(
+                it_cust_account_id        => l_cust_rec.cust_account_id,    --  1.顧客ID
+                it_customer_number        => l_cust_rec.customer_number,    --  2.顧客コード
+                it_digestion_due_date     => g_diges_due_dt_tab(ln_idx),    --  3.消化計算締年月日
+                it_pre_digestion_due_date => CASE
+                                               WHEN ( ld_pre_digestion_due_date = gd_min_date )
+                                               THEN ld_pre_digestion_due_date
+                                               ELSE ld_pre_digestion_due_date + cn_one_day
+                                             END,                           --  4.前回消化計算締年月日
+                it_delivery_base_code     => l_cust_rec.delivery_base_code, --  5.納品拠点コード
+                it_vd_digestion_hdr_id    => lt_vd_digestion_hdr_id,        --  6.消化VD消化計算ヘッダID
+--******************************** 2009/03/19 1.6 T.Kitajima ADD START **************************************************
+                it_sales_base_code            => l_cust_rec.sales_base_code,--  7.売上拠点コード
+--******************************** 2009/03/19 1.6 T.Kitajima ADD  END  **************************************************
+                ov_vdc_uncalculate_type   => lv_vdc_uncalculate_type,       --  8.VDコラム別取引未計算区分
+                on_vdc_amount             => ln_vdc_amount,                 --  9.販売金額合計
+                ot_delivery_date          => lt_delivery_date,              -- 10.納品日（最新データ）
+                ot_dlv_time               => lt_dlv_time,                   -- 11.納品時間（最新データ）
+                ot_performance_by_code    => lt_performance_by_code,        -- 12.成績者コード（最新データ）
+                ot_change_out_time_100    => lt_change_out_time_100,        -- 13.つり銭切れ時間100円（最新データ）
+                ot_change_out_time_10     => lt_change_out_time_10,         -- 14.つり銭切れ時間10円（最新データ）
+                ov_errbuf                 => lv_errbuf,               -- エラー・メッセージ
+                ov_retcode                => lv_retcode,              -- リターン・コード
+                ov_errmsg                 => lv_errmsg                -- ユーザー・エラー・メッセージ
+              );
+              --
+              IF ( lv_retcode <> cv_status_normal ) THEN
+                RAISE global_process_expt;
+              END IF;
+              --
+              -- ===================================================
+              -- 消化VD用消化計算ヘッダ登録用セット処理
+              -- ===================================================
+              gn_xvdh_idx := gn_xvdh_idx + 1;
+              --消化VD用消化計算ヘッダID
+              g_xvdh_tab(gn_xvdh_idx).vd_digestion_hdr_id     := lt_vd_digestion_hdr_id;
+              --顧客コード
+              g_xvdh_tab(gn_xvdh_idx).customer_number         := l_cust_rec.customer_number;
+              --消化計算締年月日
+              g_xvdh_tab(gn_xvdh_idx).digestion_due_date      := g_diges_due_dt_tab(ln_idx);
+              --売上拠点コード
+              g_xvdh_tab(gn_xvdh_idx).sales_base_code         := l_cust_rec.sales_base_code;
+              --顧客ＩＤ
+              g_xvdh_tab(gn_xvdh_idx).cust_account_id         := l_cust_rec.cust_account_id;
+              --消化計算実行日
+              g_xvdh_tab(gn_xvdh_idx).digestion_exe_date      := gd_process_date;
+              --売上金額
+              g_xvdh_tab(gn_xvdh_idx).ar_sales_amount         := ln_ar_amount;
+              --販売金額
+              g_xvdh_tab(gn_xvdh_idx).sales_amount            := ln_vdc_amount;
+              --消化計算掛率
+              IF ( ( ln_ar_amount = cn_amount_default )
+                OR ( ln_vdc_amount = cn_amount_default ) )
+              THEN
+                g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate   := 0;
+              ELSE
+                g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate   := ROUND(
+                                                                   ln_ar_amount / ln_vdc_amount * 100,
+                                                                   cn_rate_fraction_place
+                                                                 );
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+                -- 算出した掛率に対する閾値のチェック
+                IF ( g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate < gn_min_threshold)
+                  OR ( g_xvdh_tab(gn_xvdh_idx).digestion_calc_rate > gn_max_threshold) THEN
+                  --
+                  lv_thrshld_chk_err_flg := cv_yes;
+                  gn_thrshld_chk_cnt     := gn_thrshld_chk_cnt + 1;
+                END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
+              END IF;
+              --マスタ掛率
+              g_xvdh_tab(gn_xvdh_idx).master_rate             := l_cust_rec.master_rate;
+              --差額
+              g_xvdh_tab(gn_xvdh_idx).balance_amount          := ROUND(
+                                                                   ln_ar_amount - ( ln_vdc_amount *
+                                                                   g_xvdh_tab(gn_xvdh_idx).master_rate / 100 ),
+                                                                   cn_rate_fraction_place
+                                                                 );
+              --業態小分類
+              g_xvdh_tab(gn_xvdh_idx).cust_gyotai_sho         := l_cust_rec.cust_gyotai_sho;
+              --消費税額
+              g_xvdh_tab(gn_xvdh_idx).tax_amount              := ln_tax_amount;
+              --納品日
+              g_xvdh_tab(gn_xvdh_idx).delivery_date           := lt_delivery_date;
+              --時間
+              g_xvdh_tab(gn_xvdh_idx).dlv_time                := lt_dlv_time;
+              --成績者コード
+              g_xvdh_tab(gn_xvdh_idx).performance_by_code     := lt_performance_by_code;
+              --販売実績登録日
+              g_xvdh_tab(gn_xvdh_idx).sales_result_creation_date
+                                                              := NULL;
+              --販売実績作成済フラグ
+              g_xvdh_tab(gn_xvdh_idx).sales_result_creation_flag
+                                                              := ct_sr_creation_flag_no;
+              --前回消化計算締年月日
+              g_xvdh_tab(gn_xvdh_idx).pre_digestion_due_date
+                                                              := CASE
+                                                                   WHEN ( ld_pre_digestion_due_date = gd_min_date )
+                                                                   THEN
+                                                                     NULL
+                                                                   ELSE
+                                                                     ld_pre_digestion_due_date
+                                                                 END;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+              IF ( lv_thrshld_chk_err_flg = cv_yes ) THEN
+                g_xvdh_tab(gn_xvdh_idx).uncalculate_class := cv_uncalc_cls_4;
+              ELSE
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
+                --未計算区分(ローカル関数使用）
+                g_xvdh_tab(gn_xvdh_idx).uncalculate_class       := get_uncalculate_class(
+                                                                     iv_ar_uncalculate_type   => lv_ar_uncalculate_type,
+                                                                     iv_vdc_uncalculate_type  => lv_vdc_uncalculate_type
+                                                                   );
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+              END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
+              --つり銭切れ時間100円
+              g_xvdh_tab(gn_xvdh_idx).change_out_time_100     := lt_change_out_time_100;
+              --つり銭切れ時間10円
+              g_xvdh_tab(gn_xvdh_idx).change_out_time_10      := lt_change_out_time_10;
+              --WHOカラム
+              g_xvdh_tab(gn_xvdh_idx).created_by              := cn_created_by;
+              g_xvdh_tab(gn_xvdh_idx).creation_date           := cd_creation_date;
+              g_xvdh_tab(gn_xvdh_idx).last_updated_by         := cn_last_updated_by;
+              g_xvdh_tab(gn_xvdh_idx).last_update_date        := cd_last_update_date;
+              g_xvdh_tab(gn_xvdh_idx).last_update_login       := cn_last_update_login;
+              g_xvdh_tab(gn_xvdh_idx).request_id              := cn_request_id;
+              g_xvdh_tab(gn_xvdh_idx).program_application_id  := cn_program_application_id;
+              g_xvdh_tab(gn_xvdh_idx).program_id              := cn_program_id;
+              g_xvdh_tab(gn_xvdh_idx).program_update_date     := cd_program_update_date;
+              -- ===================================================
+              --  警告件数用カウント
+              -- ===================================================
+              IF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_both_nof ) THEN
+                gn_warn_cnt1              := gn_warn_cnt1 + 1;
+              ELSIF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_ar_nof ) THEN
+                gn_warn_cnt2              := gn_warn_cnt2 + 1;
+              ELSIF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_vdc_nof ) THEN
+                gn_warn_cnt3              := gn_warn_cnt3 + 1;
+              END IF;
+            --
             END IF;
-            --マスタ掛率
-            g_xvdh_tab(gn_xvdh_idx).master_rate             := l_cust_rec.master_rate;
-            --差額
-            g_xvdh_tab(gn_xvdh_idx).balance_amount          := ROUND(
-                                                                 ln_ar_amount - ( ln_vdc_amount *
-                                                                 g_xvdh_tab(gn_xvdh_idx).master_rate / 100 ),
-                                                                 cn_rate_fraction_place
-                                                               );
-            --業態小分類
-            g_xvdh_tab(gn_xvdh_idx).cust_gyotai_sho         := l_cust_rec.cust_gyotai_sho;
-            --消費税額
-            g_xvdh_tab(gn_xvdh_idx).tax_amount              := ln_tax_amount;
-            --納品日
-            g_xvdh_tab(gn_xvdh_idx).delivery_date           := lt_delivery_date;
-            --時間
-            g_xvdh_tab(gn_xvdh_idx).dlv_time                := lt_dlv_time;
-            --成績者コード
-            g_xvdh_tab(gn_xvdh_idx).performance_by_code     := lt_performance_by_code;
-            --販売実績登録日
-            g_xvdh_tab(gn_xvdh_idx).sales_result_creation_date
-                                                            := NULL;
-            --販売実績作成済フラグ
-            g_xvdh_tab(gn_xvdh_idx).sales_result_creation_flag
-                                                            := ct_sr_creation_flag_no;
-            --前回消化計算締年月日
-            g_xvdh_tab(gn_xvdh_idx).pre_digestion_due_date
-                                                            := CASE
-                                                                 WHEN ( ld_pre_digestion_due_date = gd_min_date )
-                                                                 THEN
-                                                                   NULL
-                                                                 ELSE
-                                                                   ld_pre_digestion_due_date
-                                                               END;
-            --未計算区分(ローカル関数使用）
-            g_xvdh_tab(gn_xvdh_idx).uncalculate_class       := get_uncalculate_class(
-                                                                 iv_ar_uncalculate_type   => lv_ar_uncalculate_type,
-                                                                 iv_vdc_uncalculate_type  => lv_vdc_uncalculate_type
-                                                               );
-            --つり銭切れ時間100円
-            g_xvdh_tab(gn_xvdh_idx).change_out_time_100     := lt_change_out_time_100;
-            --つり銭切れ時間10円
-            g_xvdh_tab(gn_xvdh_idx).change_out_time_10      := lt_change_out_time_10;
-            --WHOカラム
-            g_xvdh_tab(gn_xvdh_idx).created_by              := cn_created_by;
-            g_xvdh_tab(gn_xvdh_idx).creation_date           := cd_creation_date;
-            g_xvdh_tab(gn_xvdh_idx).last_updated_by         := cn_last_updated_by;
-            g_xvdh_tab(gn_xvdh_idx).last_update_date        := cd_last_update_date;
-            g_xvdh_tab(gn_xvdh_idx).last_update_login       := cn_last_update_login;
-            g_xvdh_tab(gn_xvdh_idx).request_id              := cn_request_id;
-            g_xvdh_tab(gn_xvdh_idx).program_application_id  := cn_program_application_id;
-            g_xvdh_tab(gn_xvdh_idx).program_id              := cn_program_id;
-            g_xvdh_tab(gn_xvdh_idx).program_update_date     := cd_program_update_date;
-            -- ===================================================
-            --  警告件数用カウント
-            -- ===================================================
-            IF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_both_nof ) THEN
-              gn_warn_cnt1              := gn_warn_cnt1 + 1;
-            ELSIF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_ar_nof ) THEN
-              gn_warn_cnt2              := gn_warn_cnt2 + 1;
-            ELSIF ( g_xvdh_tab(gn_xvdh_idx).uncalculate_class = ct_uncalculate_class_vdc_nof ) THEN
-              gn_warn_cnt3              := gn_warn_cnt3 + 1;
-            END IF;
-          --
-          END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+          EXCEPTION
+            WHEN skip_error_expt THEN
+              gn_warn_cnt := gn_warn_cnt + 1;
+              ov_retcode := cv_status_warn;
+              --
+              IF ( tt_xvdh_cur%ISOPEN ) THEN
+                CLOSE tt_xvdh_cur;
+              END IF;
+              --メッセージ出力
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.OUTPUT
+                ,buff   => lv_errmsg --ユーザー・エラーメッセージ
+              );
+              --
+              FND_FILE.PUT_LINE(
+                 which  => FND_FILE.LOG
+                ,buff   => lv_errbuf --エラーメッセージ
+              );
+              --
+            WHEN global_process_expt THEN
+              IF ( tt_xvdh_cur%ISOPEN ) THEN
+                CLOSE tt_xvdh_cur;
+              END IF;
+              RAISE global_process_expt;
+          END;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
           --
         END LOOP cust_loop;
         --
         IF ( lv_cust_exists_flag1 = cv_exists_flag_yes ) THEN
-          -- ===================================================
-          -- A-3  消化VD用消化計算情報の今回データ削除
-          -- ===================================================
-          del_tt_vd_digestion(
-            ov_errbuf                   => lv_errbuf,                 -- エラー・メッセージ
-            ov_retcode                  => lv_retcode,                -- リターン・コード
-            ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
-          );
-          --
-          IF ( lv_retcode <> cv_status_normal ) THEN
-            RAISE global_process_expt;
-          END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del Start
+--          -- ===================================================
+--          -- A-3  消化VD用消化計算情報の今回データ削除
+--          -- ===================================================
+--          del_tt_vd_digestion(
+--            ov_errbuf                   => lv_errbuf,                 -- エラー・メッセージ
+--            ov_retcode                  => lv_retcode,                -- リターン・コード
+--            ov_errmsg                   => lv_errmsg                  -- ユーザー・エラー・メッセージ
+--          );
+--          --
+--          IF ( lv_retcode <> cv_status_normal ) THEN
+--            RAISE global_process_expt;
+--          END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Del End
           --
           -- ===================================================
           -- A-11 VDコラム別取引ヘッダ更新処理
@@ -4724,6 +5513,12 @@ AS
     END IF;
 --
     COMMIT;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+--
+    IF ( gn_thrshld_chk_cnt > 0) THEN
+      RAISE thrshld_chk_expt;
+    END IF;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
 --
   EXCEPTION
     -- *** 対象データ無し例外ハンドラ ***
@@ -4735,6 +5530,22 @@ AS
                                  );
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
       ov_retcode := cv_status_warn;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+--
+    -- *** 閾値チェック有り例外ハンドラ ***
+    WHEN thrshld_chk_expt THEN
+--
+      ov_errmsg               := xxccp_common_pkg.get_msg(
+                                   iv_application        => ct_xxcos_appl_short_name,
+                                   iv_name               => ct_msg_thrshld_chk_err,
+                                   iv_token_name1        => cv_tkn_max_thrshld,
+                                   iv_token_value1       => TO_CHAR(gn_max_threshold),
+                                   iv_token_name2        => cv_tkn_min_thrshld,
+                                   iv_token_value2       => TO_CHAR(gn_min_threshold)
+                                 );
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||ov_errmsg,1,5000);
+      ov_retcode := cv_status_warn;
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
 --
 --#################################  固定例外処理部 START   ###################################
 --
@@ -4880,6 +5691,20 @@ AS
       ,buff   => gv_out_msg
     );
     --
+-- 2010/02/15 Ver.1.13 K.Hosoi Add Start
+    --スキップ件数出力
+    gv_out_msg := xxccp_common_pkg.get_msg(
+                     iv_application  => cv_appl_short_name
+                    ,iv_name         => cv_skip_rec_msg
+                    ,iv_token_name1  => cv_cnt_token
+                    ,iv_token_value1 => TO_CHAR(gn_warn_cnt)
+                   );
+    FND_FILE.PUT_LINE(
+       which  => FND_FILE.OUTPUT
+      ,buff   => gv_out_msg
+    );
+    --
+-- 2010/02/15 Ver.1.13 K.Hosoi Add End
     --警告件数出力
     gv_out_msg := xxccp_common_pkg.get_msg(
                    iv_application  => ct_xxcos_appl_short_name
