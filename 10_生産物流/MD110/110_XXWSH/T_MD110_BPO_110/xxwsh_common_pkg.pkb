@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.43
+ * Version                : 1.44
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -98,6 +98,7 @@ AS
  *  2009/02/20   1.43  SCS    二瓶大輔  [配車解除関数]本番#863対応(混載対応)
  *                                      [配車解除関数]本番#1034対応
  *                                      [配車解除関数]本番#1210対応
+ *  2009/02/27   1.44  SCS    伊藤ひとみ[配車解除関数]本番#863対応(再対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -7150,11 +7151,31 @@ END;
             -- 混載率算出
             -- 重量の場合
             IF ( lv_weight_capacity_class =  cv_weight ) THEN
-              ln_mixed_ratio := ROUND( ln_sum_weight / ln_deli_sum_w * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              -- 重量が0でない場合のみ混載率算出
+              IF (NVL(ln_deli_sum_w, 0) = 0) THEN
+                ln_mixed_ratio := 0;
+--
+              ELSE
+-- 2009/02/27 H.Itou Add End
+                ln_mixed_ratio := ROUND( ln_sum_weight / ln_deli_sum_w * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              END IF;
+-- 2009/02/27 H.Itou Add End
 --
             -- 容積の場合
             ELSIF ( lv_weight_capacity_class =  cv_capacity ) THEN
-              ln_mixed_ratio := ROUND( lt_chk_ship_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              -- 重量が0でない場合のみ混載率算出
+              IF (NVL(ln_deli_sum_c, 0) = 0) THEN
+                ln_mixed_ratio := 0;
+--
+              ELSE
+-- 2009/02/27 H.Itou Add End
+                ln_mixed_ratio := ROUND( lt_chk_ship_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              END IF;
+-- 2009/02/27 H.Itou Add End
             END IF;
 --
             -- 受注ヘッダアドオン更新処理
@@ -7181,11 +7202,31 @@ END;
             -- 混載率算出
             -- 重量の場合
             IF ( lv_weight_capacity_class =  cv_weight ) THEN
-              ln_mixed_ratio := ROUND( lt_chk_supply_tbl(i).sum_weight / ln_deli_sum_w * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              -- 重量が0でない場合のみ混載率算出
+              IF (NVL(ln_deli_sum_w, 0) = 0) THEN
+                ln_mixed_ratio := 0;
+--
+              ELSE
+-- 2009/02/27 H.Itou Add End
+                ln_mixed_ratio := ROUND( lt_chk_supply_tbl(i).sum_weight / ln_deli_sum_w * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              END IF;
+-- 2009/02/27 H.Itou Add End
 --
             -- 容積の場合
             ELSIF ( lv_weight_capacity_class =  cv_capacity ) THEN
-              ln_mixed_ratio := ROUND( lt_chk_supply_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              -- 重量が0でない場合のみ混載率算出
+              IF (NVL(ln_deli_sum_c, 0) = 0) THEN
+                ln_mixed_ratio := 0;
+--
+              ELSE
+-- 2009/02/27 H.Itou Add End
+                ln_mixed_ratio := ROUND( lt_chk_supply_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              END IF;
+-- 2009/02/27 H.Itou Add End
             END IF;
 --
             -- 受注ヘッダアドオン更新処理
@@ -7221,11 +7262,31 @@ END;
 --
             -- 重量の場合
             IF ( lv_weight_capacity_class =  cv_weight ) THEN
-              ln_mixed_ratio := ROUND( ln_sum_weight / ln_deli_sum_w * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              -- 重量が0でない場合のみ混載率算出
+              IF (NVL(ln_deli_sum_w, 0) = 0) THEN
+                ln_mixed_ratio := 0;
+--
+              ELSE
+-- 2009/02/27 H.Itou Add End
+                ln_mixed_ratio := ROUND( ln_sum_weight / ln_deli_sum_w * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              END IF;
+-- 2009/02/27 H.Itou Add End
 --
             -- 容積の場合
             ELSIF ( lv_weight_capacity_class =  cv_capacity ) THEN
-              ln_mixed_ratio := ROUND( lt_chk_move_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              -- 重量が0でない場合のみ混載率算出
+              IF (NVL(ln_deli_sum_c, 0) = 0) THEN
+                ln_mixed_ratio := 0;
+--
+              ELSE
+-- 2009/02/27 H.Itou Add End
+                ln_mixed_ratio := ROUND( lt_chk_move_tbl(i).sum_capacity / ln_deli_sum_c * 100, 2 );
+-- 2009/02/27 H.Itou Add Start 本番障害#863対応
+              END IF;
+-- 2009/02/27 H.Itou Add End
             END IF;
 --
             -- 移動依頼/指示ヘッダ(アドオン)更新処理
