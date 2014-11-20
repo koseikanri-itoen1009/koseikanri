@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK008A06C(body)
  * Description      : 営業システム構築プロジェクト
  * MD.050           : アドオン：売上実績振替情報の作成（振替割合） 販売物流 MD050_COK_008_A06
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -35,6 +35,16 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/25    1.0   M.Hiruta         新規作成
  *  2009/02/18    1.1   T.OSADA          [障害COK_042]振戻データ作成時の情報系I/Fフラグ、仕訳作成フラグ修正
+ *  2009/04/02    1.2   M.Hiruta         [障害T1_0089]振替元と先が同じ顧客である場合も、集計処理を行うよう修正
+ *                                       [障害T1_0103]担当拠点、担当営業員が変更された場合の情報が
+ *                                                    正確に取得できるよう修正
+ *                                       [障害T1_0115]販売実績テーブル抽出時の絞込み条件において、
+ *                                                    「検収日」を「納品日」に修正
+ *                                       [障害T1_0190]基準単位換算失敗時にエラー終了するよう修正
+ *                                       [障害T1_0196]販売実績テーブル抽出時の絞込み条件において、
+ *                                                    1.A-5集計条件「納品日」の精度を"年月"までに修正
+ *                                                    2.A-6、A-11集計条件「売上計上日」でA-5で取得した「納品日」の
+ *                                                      の年月を参照するよう修正
  *
  *****************************************************************************************/
   -- ===============================
@@ -76,6 +86,9 @@ AS
   cv_msg_xxcok1_10033       CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10033'; -- A-3メッセージ
   cv_msg_xxcok1_10012       CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10012'; -- A-4 A-12メッセージ
   cv_msg_xxcok1_10035       CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10035'; -- A-4 A-12メッセージ
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+  cv_msg_xxcok1_10452       CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10452'; -- A-6 A-11メッセージ
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
   cv_msg_xxcok1_00045       CONSTANT VARCHAR2(16) := 'APP-XXCOK1-00045'; -- A-7メッセージ
   cv_msg_xxcok1_10034       CONSTANT VARCHAR2(16) := 'APP-XXCOK1-10034'; -- A-10メッセージ
   -- トークン名
@@ -88,6 +101,9 @@ AS
   cv_sales_date             CONSTANT VARCHAR2(10) := 'SALES_DATE';     -- 売上計上日
   cv_location_code          CONSTANT VARCHAR2(13) := 'LOCATION_CODE';  -- 拠点コード
   cv_item_code              CONSTANT VARCHAR2(9)  := 'ITEM_CODE';      -- 品目コード
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+  cv_dlv_uom_code           CONSTANT VARCHAR2(12) := 'DLV_UOM_CODE';   -- 単位
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
   -- データ用固定値
   cv_correction_off_flg     CONSTANT VARCHAR2(1)  := '0';  -- 振戻オフ
   cv_correction_on_flg      CONSTANT VARCHAR2(1)  := '1';  -- 振戻オン
@@ -413,7 +429,7 @@ AS
     ov_errbuf              OUT VARCHAR2
   , ov_retcode             OUT VARCHAR2
   , ov_errmsg              OUT VARCHAR2
-  , iv_inspect_date         IN VARCHAR2  -- 売上計上日
+  , iv_delivery_date        IN VARCHAR2  -- 売上計上日
   , iv_to_base_code         IN VARCHAR2  -- 拠点コード
   , iv_to_cust_code         IN VARCHAR2  -- 顧客コード
   , iv_to_staff_code        IN VARCHAR2  -- 担当営業コード
@@ -454,11 +470,11 @@ AS
     -- ===============================
     -- 売上計上日
     -- 速報確定フラグ
-    IF ( iv_inspect_date = gv_current_month ) THEN
+    IF ( iv_delivery_date = gv_current_month ) THEN
       ld_selling_date := gd_process_date;
       lv_info_class   := cv_report_news_flg;
     ELSIF ( gv_info_class   = cv_report_decision_flg AND
-            iv_inspect_date = gv_past_month )
+            iv_delivery_date = gv_past_month )
     THEN
       ld_selling_date := LAST_DAY(ADD_MONTHS(gd_process_date,-1));
       lv_info_class   := cv_report_decision_flg;
@@ -806,6 +822,9 @@ AS
   , ov_errmsg        OUT VARCHAR2
   , iv_to_cust_code   IN VARCHAR2  -- 顧客コード
   , iv_to_cust_name   IN VARCHAR2  -- 顧客名称
+-- Start 2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+  , iv_delivery_date  IN VARCHAR2  -- 売上計上日（納品日）
+-- End   2009/04/02 Ver_1.2 T1_0103 M.Hiruta
   , ov_to_staff_code OUT VARCHAR2  -- 担当営業コード
   )
   IS
@@ -821,6 +840,9 @@ AS
     lv_errmsg        VARCHAR2(5000) DEFAULT NULL;
     lv_out_msg       VARCHAR2(1000) DEFAULT NULL;  -- メッセージ出力変数
     lb_msg_return    BOOLEAN        DEFAULT TRUE;  -- メッセージ関数戻り値用
+-- Start 2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+    ld_coverd_period DATE           DEFAULT NULL;  -- 担当営業員取得用日付データ
+-- End   2009/04/02 Ver_1.2 T1_0103 M.Hiruta
     -- エラーメッセージ用変数
     lv_to_base_code  VARCHAR2(10)   DEFAULT NULL;  -- 売上拠点コード
     lv_to_staff_code VARCHAR2(10)   DEFAULT NULL;  -- 担当営業コード
@@ -832,7 +854,17 @@ AS
     -- 1.売上拠点コード取得
     -- ===============================
     BEGIN
-      SELECT xca.sale_base_code AS selling_to_base_code
+-- Start 2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+--      SELECT xca.sale_base_code AS selling_to_base_code
+      SELECT (
+             CASE ( iv_delivery_date )
+                 WHEN ( TO_CHAR( gd_process_date , 'YYYYMM' ) ) THEN
+                     xca.sale_base_code
+                 ELSE
+                     xca.past_sale_base_code
+             END
+             ) AS selling_to_base_code
+-- End   2009/04/02 Ver_1.2 T1_0103 M.Hiruta
       INTO   lv_to_base_code
       FROM   hz_cust_accounts    hca
            , xxcmm_cust_accounts xca
@@ -845,10 +877,21 @@ AS
 --
     -- ===============================
     -- 2.担当営業員コード取得
-    -- ===============================    
+    -- ===============================
+-- Start 2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+    -- 担当営業員取得用の日付取得
+    IF ( iv_delivery_date = TO_CHAR( gd_process_date ) ) THEN
+        ld_coverd_period := gd_process_date;
+    ELSE
+        ld_coverd_period := LAST_DAY( TO_DATE( iv_delivery_date , 'YYYYMM' ) );
+    END IF;
+--
+    -- 担当営業員取得共通関数
     lv_to_staff_code := xxcok_common_pkg.get_sales_staff_code_f(
                           iv_to_cust_code
-                        , gd_process_date
+--                        , gd_process_date
+                        , ld_coverd_period
+-- End   2009/04/02 Ver_1.2 T1_0103 M.Hiruta
                         );
 --
     -- 値をパラメータに格納
@@ -906,7 +949,10 @@ AS
     ov_errbuf                 OUT VARCHAR2
   , ov_retcode                OUT VARCHAR2
   , ov_errmsg                 OUT VARCHAR2
-  , iv_inspect_date            IN VARCHAR2  -- 売上計上日
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--  , iv_inspect_date            IN VARCHAR2  -- 売上計上日（検収日）
+  , iv_delivery_date           IN VARCHAR2  -- 売上計上日（納品日）
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
   , iv_selling_from_base_code  IN VARCHAR2  -- 売上振替元拠点コード
   , iv_selling_from_cust_code  IN VARCHAR2  -- 売上振替元顧客コード
   , iv_bill_account_number     IN VARCHAR2  -- 請求先顧客コード
@@ -928,31 +974,50 @@ AS
     lv_to_staff_code   VARCHAR2(10)   DEFAULT NULL; -- 担当営業コード
     lv_to_cust_code    VARCHAR2(10)   DEFAULT NULL; -- A-7用売上振替先顧客コード
     lv_to_cust_name    VARCHAR2(30)   DEFAULT NULL; -- A-7用売上振替先顧客名称
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+    ln_converted_qty   NUMBER         DEFAULT NULL; -- 基準数量取得成否チェック用
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
     -- ===============================
     -- ローカルカーソル
     -- ===============================
     -- 相殺対象データ
     CURSOR offset_exp_cur
     IS
-      SELECT xseh.inspect_date                          AS inspect_date            -- 売上計上日（検収日）
-           , xsel.sales_class                           AS sales_class             -- 売上区分
-           , xseh.dlv_invoice_number                    AS dlv_invoice_number      -- 納品伝票区分
+-- Start 2009/04/02 Ver_1.2 T1_0089 M.Hiruta
+--      SELECT xseh.inspect_date                          AS inspect_date            -- 売上計上日（検収日）
+      SELECT TO_CHAR(xseh.delivery_date , 'YYYYMM' )     AS delivery_date            -- 売上計上日（納品日）
+--           , xsel.sales_class                           AS sales_class             -- 売上区分
+--           , xseh.dlv_invoice_number                    AS dlv_invoice_number      -- 納品伝票区分
+-- End   2009/04/02 Ver_1.2 T1_0089 M.Hiruta
            , xseh.sales_base_code                       AS selling_from_base_code  -- 売上振替元拠点コード
            , xseh.ship_to_customer_code                 AS selling_from_cust_code  -- 売上振替元顧客コード
            , hp.party_name                              AS selling_from_cust_name  -- 売上振替元顧客名称
            , xseh.cust_gyotai_sho                       AS cust_gyotai_sho         -- 顧客業態区分
            , xsel.item_code                             AS item_code               -- 品目コード
-           , ( xsel.dlv_qty * -1 )                      AS dlv_qty                 -- 数量(相殺)
-           , ( xsel.sale_amount * -1 )                  AS sale_amount             -- 売上金額(相殺)
-           , ( xsel.pure_amount * -1 )                  AS pure_amount             -- 売上金額（税抜き）(相殺)
+-- Start 2009/04/02 Ver_1.2 T1_0089 M.Hiruta
+--           , ( xsel.dlv_qty * -1 )                      AS dlv_qty                 -- 数量(相殺)
+--           , ( xsel.sale_amount * -1 )                  AS sale_amount             -- 売上金額(相殺)
+--           , ( xsel.pure_amount * -1 )                  AS pure_amount             -- 売上金額（税抜き）(相殺)
+           , SUM( xsel.dlv_qty * -1 )                   AS dlv_qty                 -- 数量(相殺)
+           , SUM( xsel.sale_amount * -1 )               AS sale_amount             -- 売上金額(相殺)
+           , SUM( xsel.pure_amount * -1 )               AS pure_amount             -- 売上金額（税抜き）(相殺)
+-- End   2009/04/02 Ver_1.2 T1_0089 M.Hiruta
            , xseh.tax_code                              AS tax_code                -- 消費税コード
            , xseh.tax_rate                              AS tax_rate                -- 消費税率
            , xsel.dlv_uom_code                          AS dlv_uom_code            -- 単位
-           , ( xsel.business_cost * xxcok_common_pkg.get_uom_conversion_qty_f(     -- 基準単位換算共通関数
-                                      xsel.item_code                               -- 品目コード
-                                    , xsel.dlv_uom_code                            -- 単位
-                                    , xsel.dlv_qty                                 -- 数量
-                                    ) * -1 )            AS business_cost           -- 営業原価(相殺)
+-- Start 2009/04/02 Ver_1.2 T1_0089 M.Hiruta
+--           , ( xsel.business_cost * xxcok_common_pkg.get_uom_conversion_qty_f(     -- 基準単位換算共通関数
+--                                      xsel.item_code                               -- 品目コード
+--                                    , xsel.dlv_uom_code                            -- 単位
+--                                    , xsel.dlv_qty                                 -- 数量
+--                                    ) * -1 )            AS business_cost           -- 営業原価(相殺)
+           , ROUND(xsel.sale_amount / xsel.dlv_qty , 1) AS unit_price                -- 単価（デバッグ用）
+           , SUM( xsel.business_cost * xxcok_common_pkg.get_uom_conversion_qty_f(  -- 基準単位換算共通関数
+                                         xsel.item_code                            -- 品目コード
+                                       , xsel.dlv_uom_code                         -- 単位
+                                       , xsel.dlv_qty                              -- 数量
+                                       ) * -1 )         AS business_cost           -- 営業原価(相殺)
+-- End   2009/04/02 Ver_1.2 T1_0089 M.Hiruta
       FROM   xxcos_sales_exp_lines   xsel
            , xxcos_sales_exp_headers xseh
            , hz_cust_accounts        hca  -- 顧客マスタ
@@ -972,10 +1037,26 @@ AS
                                             , cv_invoice_class_04
                                             )
       AND    xsel.business_cost          IS NOT NULL
-      AND    TO_CHAR(xseh.inspect_date , 'YYYYMM' ) IN ( gv_current_month , gv_past_month )
+-- Start 2009/04/02 Ver_1.2 T1_0196 M.Hiruta
+--      AND    TO_CHAR(xseh.inspect_date , 'YYYYMM' ) IN ( gv_current_month , gv_past_month )
+      AND    TO_CHAR(xseh.delivery_date , 'YYYYMM' ) = iv_delivery_date
+-- End   2009/04/02 Ver_1.2 T1_0196 M.Hiruta
       AND    xseh.sales_base_code         = iv_selling_from_base_code
       AND    xseh.ship_to_customer_code   = iv_selling_from_cust_code
-      AND    xsel.item_code               = iv_item_code;
+      AND    xsel.item_code               = iv_item_code
+-- Start 2009/04/02 Ver_1.2 T1_0089 M.Hiruta
+      GROUP BY
+             TO_CHAR(xseh.delivery_date , 'YYYYMM' )
+           , xseh.sales_base_code
+           , xseh.ship_to_customer_code
+           , hp.party_name
+           , xseh.cust_gyotai_sho
+           , xsel.item_code
+           , xseh.tax_code
+           , xseh.tax_rate
+           , xsel.dlv_uom_code
+           , ROUND(xsel.sale_amount / xsel.dlv_qty , 1);
+-- End   2009/04/02 Ver_1.2 T1_0089 M.Hiruta
 --
     -- カーソル型レコード
     l_offset_exp_rec offset_exp_cur%ROWTYPE;
@@ -983,7 +1064,10 @@ AS
     -- ===============================
     -- ローカル例外
     -- ===============================
-    warn_expt EXCEPTION; -- A-7警告処理用例外
+    warn_expt    EXCEPTION; -- A-7警告処理用例外
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+    convert_expt EXCEPTION; -- 基準数量取得エラー
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
 --
   BEGIN
     -- 処理ステータスの初期化
@@ -996,6 +1080,23 @@ AS
     LOOP
       FETCH offset_exp_cur INTO l_offset_exp_rec;
       EXIT WHEN offset_exp_cur%NOTFOUND;
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+        -- ===============================
+        -- 基準数量取得成否判定
+        -- ===============================
+        -- 基準単位換算共通関数コール
+        ln_converted_qty := xxcok_common_pkg.get_uom_conversion_qty_f(
+                              l_offset_exp_rec.item_code                -- 品目コード
+                            , l_offset_exp_rec.dlv_uom_code             -- 単位
+                            , l_offset_exp_rec.dlv_qty                  -- 数量
+                            );
+--
+        -- 基準単位換算共通関数の戻り値がNULLである場合エラー処理へ遷移
+        IF ( ln_converted_qty IS NULL ) THEN
+          RAISE convert_expt;
+        END IF;
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+--
         -- 処理対象件数カウントアップ
         gn_target_cnt := gn_target_cnt +1;
 --
@@ -1012,9 +1113,12 @@ AS
             ov_errbuf        => lv_errbuf
           , ov_retcode       => lv_retcode
           , ov_errmsg        => lv_errmsg
-          , iv_to_cust_code  => lv_to_cust_code   -- 顧客コード
-          , iv_to_cust_name  => lv_to_cust_name   -- 顧客名称
-          , ov_to_staff_code => lv_to_staff_code  -- 担当営業コード
+          , iv_to_cust_code  => lv_to_cust_code                -- 顧客コード
+          , iv_to_cust_name  => lv_to_cust_name                -- 顧客名称
+-- Start 2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+          , iv_delivery_date => l_offset_exp_rec.delivery_date -- 売上計上日（納品日）
+-- End   2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+          , ov_to_staff_code => lv_to_staff_code               -- 担当営業コード
           );
         END IF;
 --
@@ -1039,7 +1143,10 @@ AS
           ov_errbuf               => lv_errbuf
         , ov_retcode              => lv_retcode
         , ov_errmsg               => lv_errmsg
-        , iv_inspect_date         => iv_inspect_date                         -- 売上計上日
+-- Start 2009/04/02 Ver_1.2 T1_0089 M.Hiruta
+--        , iv_inspect_date         => iv_inspect_date                         -- 売上計上日
+        , iv_delivery_date        => l_offset_exp_rec.delivery_date          -- 売上計上日
+-- End   2009/04/02 Ver_1.2 T1_0089 M.Hiruta
         , iv_to_base_code         => l_offset_exp_rec.selling_from_base_code -- 拠点コード
         , iv_to_cust_code         => l_offset_exp_rec.selling_from_cust_code -- 顧客コード
         , iv_to_staff_code        => lv_to_staff_code                        -- 担当営業コード
@@ -1081,9 +1188,30 @@ AS
         CLOSE offset_exp_cur;
       END IF;
 --
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+    -- 基準数量取得エラー
+    WHEN convert_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      cv_appli_short_name_xxcok
+                    , cv_msg_xxcok1_10452
+                    , cv_item_code
+                    , l_offset_exp_rec.item_code
+                    , cv_dlv_uom_code
+                    , l_offset_exp_rec.dlv_uom_code
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--  -- 共通関数OTHERS例外ハンドラ
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+--
     -- 機能内プロシージャエラー例外ハンドラ
     WHEN global_process_expt THEN
-      -- 処理ステータスをエラーとしてA-6を終了する。
+      -- 処理ステータスをエラーとしてA-11を終了する。
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
@@ -1110,7 +1238,7 @@ AS
     ov_errbuf                 OUT VARCHAR2
   , ov_retcode                OUT VARCHAR2
   , ov_errmsg                 OUT VARCHAR2
-  , iv_inspect_date            IN VARCHAR2  -- 売上計上日
+  , iv_delivery_date           IN VARCHAR2  -- 売上計上日
   , iv_selling_from_base_code  IN VARCHAR2  -- 売上振替元拠点コード
   , iv_selling_from_cust_code  IN VARCHAR2  -- 売上振替元顧客コード
   , iv_bill_account_number     IN VARCHAR2  -- 請求先顧客コード
@@ -1146,23 +1274,39 @@ AS
     ln_pure_amount     NUMBER         DEFAULT 0;    -- A-9_調整後売上金額（税抜）
     ln_business_cost   NUMBER         DEFAULT 0;    -- A-9_調整後営業原価
     ln_dlv_unit_price  NUMBER         DEFAULT 0;    -- A-9_納品単価
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+    ln_converted_qty   NUMBER         DEFAULT NULL; -- 基準数量取得成否チェック用
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
     -- ===============================
     -- ローカルカーソル
     -- ===============================
     -- 販売実績情報
     CURSOR sales_exp_cur
     IS
-      SELECT TO_CHAR(xseh.inspect_date , 'YYYYMM' ) AS inspect_date           -- 売上計上日（検収日）
-           , xseh.sales_base_code                   AS selling_from_base_code -- 売上振替元拠点コード
-           , xseh.ship_to_customer_code             AS selling_from_cust_code -- 売上振替元顧客コード
-           , xca.sale_base_code                     AS selling_to_base_code   -- 売上振替先拠点コード
-           , hca.account_number                     AS selling_to_cust_code   -- 売上振替先顧客コード
-           , hp.party_name                          AS selling_to_cust_name   -- 売上振替先顧客名称
-           , xseh.cust_gyotai_sho                   AS cust_gyotai_sho        -- 顧客業態区分
-           , xsel.item_code                         AS item_code              -- 品目コード
-           , xseh.tax_code                          AS tax_code               -- 消費税コード
-           , xseh.tax_rate                          AS tax_rate               -- 消費税率
-           , xsel.dlv_uom_code                      AS dlv_uom_code           -- 単位
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--      SELECT TO_CHAR(xseh.inspect_date , 'YYYYMM' )  AS inspect_date           -- 売上計上日（検収日）
+      SELECT TO_CHAR(xseh.delivery_date , 'YYYYMM' ) AS delivery_date          -- 売上計上日（納品日）
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+           , xseh.sales_base_code                    AS selling_from_base_code -- 売上振替元拠点コード
+           , xseh.ship_to_customer_code              AS selling_from_cust_code -- 売上振替元顧客コード
+-- Start 2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+--           , xca.sale_base_code                      AS selling_to_base_code   -- 売上振替先拠点コード
+           , (
+             CASE ( TO_CHAR( xseh.delivery_date , 'YYYYMM' ) )
+                 WHEN ( TO_CHAR( gd_process_date , 'YYYYMM' ) ) THEN
+                     xca.sale_base_code
+                 ELSE
+                     xca.past_sale_base_code
+             END
+             )                                       AS selling_to_base_code   -- 売上振替先拠点コード
+-- End   2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+           , hca.account_number                      AS selling_to_cust_code   -- 売上振替先顧客コード
+           , hp.party_name                           AS selling_to_cust_name   -- 売上振替先顧客名称
+           , xseh.cust_gyotai_sho                    AS cust_gyotai_sho        -- 顧客業態区分
+           , xsel.item_code                          AS item_code              -- 品目コード
+           , xseh.tax_code                           AS tax_code               -- 消費税コード
+           , xseh.tax_rate                           AS tax_rate               -- 消費税率
+           , xsel.dlv_uom_code                       AS dlv_uom_code           -- 単位
            , ROUND(SUM(xsel.dlv_qty) * ( xsri.selling_trns_rate / 100 ))      AS dlv_qty     -- 数量
            , ROUND(SUM(xsel.sale_amount) * ( xsri.selling_trns_rate / 100 ))  AS sale_amount -- 売上金額
            , ROUND(SUM(xsel.pure_amount) * ( xsri.selling_trns_rate / 100 ))  AS pure_amount -- 売上金額（税抜き）
@@ -1171,7 +1315,7 @@ AS
                                              , xsel.dlv_uom_code                             -- 単位
                                              , xsel.dlv_qty                                  -- 数量
                                              )) * ( xsri.selling_trns_rate / 100 ))) AS business_cost -- 営業原価
-           , ROUND(xsel.sale_amount / xsel.dlv_qty , 1)                       AS unit_price  -- 単価(デバッグ用の抽出)
+           , ROUND(xsel.sale_amount / xsel.dlv_qty , 1)                       AS unit_price  -- 単価（デバッグ用）
            , ABS(ROUND(SUM(xsel.dlv_qty) * ( xsri.selling_trns_rate / 100 ))) AS abs_dlv_qty -- 納品数量（絶対値）
       FROM   xxcos_sales_exp_lines   xsel
            , xxcos_sales_exp_headers xseh
@@ -1202,17 +1346,33 @@ AS
                                             , cv_invoice_class_04
                                             )
       AND    xsel.business_cost          IS NOT NULL
-      AND    TO_CHAR(xseh.inspect_date , 'YYYYMM' ) IN ( gv_current_month , gv_past_month )
+-- Start 2009/04/02 Ver_1.2 T1_0196 M.Hiruta
+--      AND    TO_CHAR(xseh.inspect_date , 'YYYYMM' ) IN ( gv_current_month , gv_past_month )
+      AND    TO_CHAR(xseh.delivery_date , 'YYYYMM' ) = iv_delivery_date
+-- End   2009/04/02 Ver_1.2 T1_0196 M.Hiruta
       AND    xsri.invalid_flag            = cv_invalid_0_flg
       AND    xsti.invalid_flag            = cv_invalid_0_flg
       AND    xseh.sales_base_code         = iv_selling_from_base_code
       AND    xseh.ship_to_customer_code   = iv_selling_from_cust_code
       AND    xsel.item_code               = iv_item_code
       GROUP BY
-             TO_CHAR(xseh.inspect_date , 'YYYYMM' )     -- 売上計上日（検収日）
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--             TO_CHAR(xseh.inspect_date , 'YYYYMM' )     -- 売上計上日（検収日）
+             TO_CHAR(xseh.delivery_date , 'YYYYMM' )    -- 売上計上日（検収日）
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
            , xseh.sales_base_code                       -- 売上振替元拠点コード
            , xseh.ship_to_customer_code                 -- 売上振替元顧客コード
-           , xca.sale_base_code                         -- 売上振替先拠点コード
+-- Start 2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+--           , xca.sale_base_code                         -- 売上振替先拠点コード
+           , (
+             CASE ( TO_CHAR( xseh.delivery_date , 'YYYYMM' ) )
+                 WHEN ( TO_CHAR( gd_process_date , 'YYYYMM' ) ) THEN
+                     xca.sale_base_code
+                 ELSE
+                     xca.past_sale_base_code
+             END
+             )                                          -- 売上振替先拠点コード
+-- End   2009/04/02 Ver_1.2 T1_0103 M.Hiruta
            , hca.account_number                         -- 売上振替先顧客コード
            , hp.party_name                              -- 売上振替先顧客名称
            , xseh.cust_gyotai_sho                       -- 顧客業態区分
@@ -1231,7 +1391,10 @@ AS
     -- ===============================
     -- ローカル例外
     -- ===============================
-    warn_expt EXCEPTION; -- A-7警告処理用例外
+    warn_expt    EXCEPTION; -- A-7警告処理用例外
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+    convert_expt EXCEPTION; -- 基準数量取得エラー
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
 --
   BEGIN
     -- 処理ステータスの初期化
@@ -1244,6 +1407,23 @@ AS
     LOOP
       FETCH sales_exp_cur INTO l_sales_exp_rec;
       EXIT WHEN sales_exp_cur%NOTFOUND;
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+        -- ===============================
+        -- 基準数量取得成否判定
+        -- ===============================
+        -- 基準単位換算共通関数コール
+        ln_converted_qty := xxcok_common_pkg.get_uom_conversion_qty_f(
+                              l_sales_exp_rec.item_code                -- 品目コード
+                            , l_sales_exp_rec.dlv_uom_code             -- 単位
+                            , l_sales_exp_rec.dlv_qty                  -- 数量
+                            );
+--
+        -- 基準単位換算共通関数の戻り値がNULLである場合エラー処理へ遷移
+        IF ( ln_converted_qty IS NULL ) THEN
+          RAISE convert_expt;
+        END IF;
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+--
         -- 処理対象件数カウントアップ
         gn_target_cnt := gn_target_cnt +1;
 --
@@ -1263,9 +1443,12 @@ AS
             ov_errbuf        => lv_errbuf
           , ov_retcode       => lv_retcode
           , ov_errmsg        => lv_errmsg
-          , iv_to_cust_code  => lv_to_cust_code   -- 顧客コード
-          , iv_to_cust_name  => lv_to_cust_name   -- 顧客名称
-          , ov_to_staff_code => lv_to_staff_code  -- 担当営業コード
+          , iv_to_cust_code  => lv_to_cust_code               -- 顧客コード
+          , iv_to_cust_name  => lv_to_cust_name               -- 顧客名称
+-- Start 2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+          , iv_delivery_date => l_sales_exp_rec.delivery_date -- 売上計上日（納品日）
+-- End   2009/04/02 Ver_1.2 T1_0103 M.Hiruta
+          , ov_to_staff_code => lv_to_staff_code              -- 担当営業コード
           );
         END IF;
 --
@@ -1358,7 +1541,7 @@ AS
             ov_errbuf               => lv_errbuf
           , ov_retcode              => lv_retcode
           , ov_errmsg               => lv_errmsg
-          , iv_inspect_date         => iv_inspect_date                        -- 売上計上日
+          , iv_delivery_date        => iv_delivery_date                       -- 売上計上日
           , iv_to_base_code         => l_sales_exp_rec.selling_to_base_code   -- 拠点コード
           , iv_to_cust_code         => l_sales_exp_rec.selling_to_cust_code   -- 顧客コード
           , iv_to_staff_code        => lv_to_staff_code                       -- 担当営業コード
@@ -1400,6 +1583,27 @@ AS
       IF ( sales_exp_cur%ISOPEN ) THEN
         CLOSE sales_exp_cur;
       END IF;
+--
+-- Start 2009/04/02 Ver_1.2 T1_0190 M.Hiruta
+    -- 基準数量取得エラー
+    WHEN convert_expt THEN
+      lv_errmsg  := xxccp_common_pkg.get_msg(
+                      cv_appli_short_name_xxcok
+                    , cv_msg_xxcok1_10452
+                    , cv_item_code
+                    , l_sales_exp_rec.item_code
+                    , cv_dlv_uom_code
+                    , l_sales_exp_rec.dlv_uom_code
+                    );
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errmsg,1,5000);
+      ov_retcode := cv_status_error;
+--
+--  -- 共通関数OTHERS例外ハンドラ
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+-- End   2009/04/02 Ver_1.2 T1_0190 M.Hiruta
 --
     -- 機能内プロシージャエラー例外ハンドラ
     WHEN global_process_expt THEN
@@ -1452,7 +1656,10 @@ AS
     -- 販売実績情報（集計）
     CURSOR sales_exp_sum_cur
     IS
-      SELECT in_A.inspect_date                 AS inspect_date            -- 売上計上日（検収日）
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--      SELECT in_A.inspect_date                 AS inspect_date            -- 売上計上日（検収日）
+      SELECT in_A.delivery_date                AS delivery_date           -- 売上計上日（納品日）
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
            , in_A.selling_from_base_code       AS selling_from_base_code  -- 売上振替元拠点コード
            , in_A.selling_from_cust_code       AS selling_from_cust_code  -- 売上振替元顧客コード
            , in_A.item_code                    AS item_code               -- 品目コード
@@ -1465,7 +1672,10 @@ AS
            , SUM(ROUND(in_A.pure_amount_to))   AS pure_amount_to          -- 売上振替先売上金額（税抜き）
            , SUM(ROUND(in_A.business_cost_to)) AS business_cost_to        -- 売上振替先営業原価
       FROM   (-- インラインビューA_START
-             SELECT in_B.inspect_date                                       AS inspect_date
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--             SELECT in_B.inspect_date                                       AS inspect_date
+             SELECT in_B.delivery_date                                      AS delivery_date
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
                   , in_B.sales_base_code                                    AS selling_from_base_code
                   , in_B.ship_to_customer_code                              AS selling_from_cust_code
                   , in_B.item_code                                          AS item_code
@@ -1487,7 +1697,10 @@ AS
                   , xxcok_selling_from_info xsfi
                   , xxcok_selling_to_info   xsti
                   , (-- インラインビューB_START
-                    SELECT TO_CHAR(xseh.inspect_date , 'YYYYMM')  AS inspect_date              -- 売上計上日の年月
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--                    SELECT TO_CHAR(xseh.inspect_date , 'YYYYMM')  AS inspect_date              -- 売上計上日の年月
+                    SELECT TO_CHAR(xseh.delivery_date , 'YYYYMM') AS delivery_date             -- 売上計上日の年月
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
                          , xseh.sales_base_code                   AS sales_base_code           -- 売上拠点コード
                          , xseh.ship_to_customer_code             AS ship_to_customer_code     -- 顧客【納品先】
                          , xsel.item_code                         AS item_code                 -- 品目コード
@@ -1508,9 +1721,15 @@ AS
                                                        , cv_invoice_class_03
                                                        , cv_invoice_class_04
                                                        )
-                    AND    TO_CHAR(xseh.inspect_date , 'YYYYMM') IN ( gv_current_month , gv_past_month )
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--                    AND    TO_CHAR(xseh.inspect_date , 'YYYYMM') IN ( gv_current_month , gv_past_month )
+                    AND    TO_CHAR(xseh.delivery_date , 'YYYYMM') IN ( gv_current_month , gv_past_month )
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
                     GROUP BY
-                           xseh.inspect_date
+-- Start 2009/04/02 Ver_1.2 T1_0196 M.Hiruta
+--                           xseh.inspect_date
+                           TO_CHAR(xseh.delivery_date , 'YYYYMM')
+-- End   2009/04/02 Ver_1.2 T1_0196 M.Hiruta
                          , xseh.sales_base_code
                          , xseh.ship_to_customer_code
                          , xsel.item_code
@@ -1542,7 +1761,10 @@ AS
              ) in_A
              -- インラインビューA_END
       GROUP BY
-             in_A.inspect_date
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--             in_A.inspect_date
+             in_A.delivery_date
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
            , in_A.selling_from_base_code
            , in_A.selling_from_cust_code
            , in_A.item_code
@@ -1580,7 +1802,10 @@ AS
           ov_errbuf                 => lv_errbuf
         , ov_retcode                => lv_retcode
         , ov_errmsg                 => lv_errmsg
-        , iv_inspect_date           => l_sales_exp_sum_rec.inspect_date           -- 売上計上日
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--        , iv_inspect_date           => l_sales_exp_sum_rec.inspect_date           -- 売上計上日
+        , iv_delivery_date          => l_sales_exp_sum_rec.delivery_date          -- 売上計上日
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
         , iv_selling_from_base_code => l_sales_exp_sum_rec.selling_from_base_code -- 売上振替元拠点コード
         , iv_selling_from_cust_code => l_sales_exp_sum_rec.selling_from_cust_code -- 売上振替元顧客コード
         , iv_bill_account_number    => lv_bill_account_number                     -- 請求先顧客コード
@@ -1632,7 +1857,10 @@ AS
             ov_errbuf                 => lv_errbuf
           , ov_retcode                => lv_retcode
           , ov_errmsg                 => lv_errmsg
-          , iv_inspect_date           => l_sales_exp_sum_rec.inspect_date           -- 売上計上日
+-- Start 2009/04/02 Ver_1.2 T1_0115 M.Hiruta
+--          , iv_inspect_date           => l_sales_exp_sum_rec.inspect_date           -- 売上計上日
+          , iv_delivery_date          => l_sales_exp_sum_rec.delivery_date          -- 売上計上日
+-- End   2009/04/02 Ver_1.2 T1_0115 M.Hiruta
           , iv_selling_from_base_code => l_sales_exp_sum_rec.selling_from_base_code -- 売上振替元拠点コード
           , iv_selling_from_cust_code => l_sales_exp_sum_rec.selling_from_cust_code -- 売上振替元顧客コード
           , iv_bill_account_number    => lv_bill_account_number                     -- 請求先顧客コード
