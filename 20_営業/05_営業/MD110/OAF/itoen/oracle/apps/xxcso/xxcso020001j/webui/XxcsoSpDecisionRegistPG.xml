@@ -350,6 +350,7 @@ HISTORY
                   </oa:rowLayout>
                   <oa:header id="VdInfoHdrRN" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/VdInfoHdrRN">
                      <ui:contents>
+                        <oa:tip id="VdHint" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/VdHint"/>
                         <oa:messageComponentLayout id="VdInfoMclRN">
                            <ui:contents>
                               <oa:messageLayout id="VdInfo1Layout" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/VdInfo1Layout">
@@ -1878,9 +1879,9 @@ HISTORY
                                  <ui:contents>
                                     <oa:rowLayout id="AttachActionRlRN">
                                        <ui:contents>
-                                          <oa:messageFileUpload id="AttachFileUp" columns="50" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AttachFileUp" viewName="XxcsoSpDecisionInitVO1" viewAttr="AttachFileUp" required="uiOnly" vAlign="middle"/>
+                                          <oa:messageFileUpload id="AttachFileUp" columns="50" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AttachFileUp" viewName="XxcsoSpDecisionInitVO1" viewAttr="AttachFileUp" required="no" vAlign="middle"/>
                                           <oa:spacer id="AttachFileSpacer" width="10"/>
-                                          <oa:messageTextInput id="AttachFileUpExcerpt" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AttachFileUpExcerpt" columns="55" maximumLength="100" viewName="XxcsoSpDecisionInitVO1" viewAttr="AttachFileUpExcerpt" required="uiOnly" styleClass="OraInstructionText"/>
+                                          <oa:messageTextInput id="AttachFileUpExcerpt" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AttachFileUpExcerpt" columns="55" maximumLength="100" viewName="XxcsoSpDecisionInitVO1" viewAttr="AttachFileUpExcerpt" required="no" styleClass="OraInstructionText"/>
                                           <oa:submitButton id="AttachAddButton" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AttachAddButton"/>
                                           <oa:submitButton id="AttachDelButton" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/AttachDelButton"/>
                                        </ui:contents>

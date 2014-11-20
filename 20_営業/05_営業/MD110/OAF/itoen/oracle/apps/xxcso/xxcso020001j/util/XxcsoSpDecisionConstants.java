@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionConstants
 * 概要説明   : SP専決固定値クラス
-* バージョン : 1.0
+* バージョン : 1.4
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -10,6 +10,7 @@
 * 2009-03-23 1.1  SCS柳平直人  [ST障害T1_0163]課題No.115取り込み
 * 2009-04-20 1.2  SCS柳平直人  [ST障害T1_0302]返却ボタン押下後表示不正対応
 * 2009-04-27 1.3  SCS柳平直人  [ST障害T1_0708]文字列チェック処理統一修正
+* 2009-08-24 1.4  SCS阿部大輔   [SCS障害0001104]申請区分チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -263,6 +264,9 @@ public class XxcsoSpDecisionConstants
   public static final String OPERATION_RETURN  = "RETURN";
   public static final String OPERATION_APPROVE = "APPROVE";
   public static final String OPERATION_REJECT  = "REJECT";
+  // 2009-08-24 [障害0001104] Add Start
+  public static final String OPERATION_REQUEST = "REQUEST";
+  // 2009-08-24 [障害0001104] Add End
   
   /*****************************************************************************
    * オペレーションモード

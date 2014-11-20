@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -12,6 +12,7 @@
 * 2009-04-14 1.3  SCS柳平直人   [ST障害T1_0225]契約先validate修正
 * 2009-04-27 1.4  SCS柳平直人   [ST障害T1_0294]売価別条件確定事項反映修正
 * 2009-08-04 1.5  SCS小川浩     [SCS障害0000908]コピー時の回送先再設定対応
+* 2009-08-24 1.6  SCS阿部大輔   [SCS障害0001104]申請区分チェック対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -1079,6 +1080,23 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           "getXxcsoSpDecisionHeaderFullVO1"
         );
     }
+
+    // 2009-08-24 [障害0001104] Add Start
+    XxcsoSpDecRequestFullVOImpl requestVo
+      = getXxcsoSpDecRequestFullVO1();
+    if ( requestVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+   
+    XxcsoSpDecRequestFullVORowImpl requestRow
+      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
+
+    requestRow.setOperationMode(XxcsoSpDecisionConstants.OPERATION_REQUEST);
+    // 2009-08-24 [障害0001104] Add End
 
     validateAll(true);
 
@@ -2191,16 +2209,18 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
     String excerpt = initRow.getAttachFileUpExcerpt();
     
-    if ( excerpt == null || "".equals(excerpt.trim()) )
-    {
-      errorList.add(
-        XxcsoMessage.createErrorMessage(
-          XxcsoConstants.APP_XXCSO1_00005
-         ,XxcsoConstants.TOKEN_COLUMN
-         ,XxcsoSpDecisionConstants.TOKEN_VALUE_EXCERPT
-        )
-      );
-    }
+    // 2009-08-24 [障害0001104] Add Start
+    //if ( excerpt == null || "".equals(excerpt.trim()) )
+    //{
+    //  errorList.add(
+    //    XxcsoMessage.createErrorMessage(
+    //      XxcsoConstants.APP_XXCSO1_00005
+    //     ,XxcsoConstants.TOKEN_COLUMN
+    //     ,XxcsoSpDecisionConstants.TOKEN_VALUE_EXCERPT
+    //    )
+    //  );
+    //}
+    // 2009-08-24 [障害0001104] Add End
     
     int fileNameLen = fileName.getBytes().length;
     int maxFileNameLen = XxcsoSpDecisionConstants.MAX_ATTACH_FILE_NAME_LENGTH;
@@ -2238,7 +2258,13 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
 
     attachVo.insertRow(attachRow);
 
+    String a = initRow.getAttachFileUp();
+
     initRow.setAttachFileUpExcerpt(null);
+    // 2009-08-24 [障害0001104] Add Start
+    // 添付ファイルをクリア
+    initRow.setAttachFileUp(null);
+    // 2009-08-24 [障害0001104] Add End
     
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -3031,6 +3057,20 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
           "XxcsoSpDecisionBmFormatVO1"
         );
     }
+
+    // 2009-08-24 [障害0001104] Add Start
+    XxcsoSpDecRequestFullVOImpl requestVo
+      = getXxcsoSpDecRequestFullVO1();
+    if ( requestVo == null )
+    {
+      throw
+        XxcsoMessage.createInstanceLostError(
+          "XxcsoSpDecisionHeaderFullVO1"
+        );
+    }
+    // 2009-08-24 [障害0001104] Add End
+
+
     
     /////////////////////////////////////
     // 各行を取得
@@ -3057,6 +3097,11 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       = (XxcsoSpDecisionAttachFullVORowImpl)attachVo.first();
     XxcsoSpDecisionSendFullVORowImpl sendRow
       = (XxcsoSpDecisionSendFullVORowImpl)sendVo.first();
+    // 2009-08-24 [障害0001104] Add Start
+    XxcsoSpDecRequestFullVORowImpl requestRow
+      = (XxcsoSpDecRequestFullVORowImpl)requestVo.first();
+    // 2009-08-24 [障害0001104] Add End
+
 
     /////////////////////////////////////
     // 概算年間損益の計算
@@ -3120,13 +3165,23 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
     /////////////////////////////////////
     // 検証処理：VD情報
     /////////////////////////////////////
-    errorList.addAll(
-      XxcsoSpDecisionValidateUtils.validateVdInfo(
-        txn
-       ,headerVo
-       ,submitFlag
-      )
-    );
+    // 2009-08-24 [障害0001104] Add Start
+    // 申請区分が「新規」の場合、必須チェック。または「発注依頼」ボタンの場合
+    if ((XxcsoSpDecisionConstants.APP_TYPE_NEW.equals(headerRow.getApplicationType()) ||
+        (XxcsoSpDecisionConstants.OPERATION_REQUEST.equals(requestRow.getOperationMode()))
+       ))
+    {
+    // 2009-08-24 [障害0001104] Add End
+      errorList.addAll(
+        XxcsoSpDecisionValidateUtils.validateVdInfo(
+          txn
+         ,headerVo
+         ,submitFlag
+        )
+      );
+    // 2009-08-24 [障害0001104] Add Start
+    }
+    // 2009-08-24 [障害0001104] Add End
     /////////////////////////////////////
     // 検証処理：取引条件
     /////////////////////////////////////
