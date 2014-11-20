@@ -19,7 +19,7 @@ CREATE TABLE xxpo.xxpo_vendor_supply_txns (
      producted_quantity        NUMBER(12,3)     ,
      corrected_quantity        NUMBER(12,3)     ,
      producted_uom             VARCHAR2(3)     ,
-     conversion_factor         NUMBER(5)     ,
+     conversion_factor         NUMBER(8,3)     ,
      order_created_flg         VARCHAR2(1)   DEFAULT 'N'   ,
      order_created_date        DATE   ,
      description               VARCHAR2(150)     ,

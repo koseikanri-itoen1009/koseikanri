@@ -29,7 +29,7 @@ CREATE TABLE XXPO.XXPO_RCV_AND_RTN_TXNS
   UOM                           VARCHAR2(3)   NOT NULL,
   RCV_RTN_QUANTITY              NUMBER(12,3)  NOT NULL,
   RCV_RTN_UOM                   VARCHAR2(3)   NOT NULL,
-  CONVERSION_FACTOR             NUMBER(5)     NOT NULL,
+  CONVERSION_FACTOR             NUMBER(8,3)     NOT NULL,
   UNIT_PRICE                    NUMBER(9,2)   NOT NULL,
   KOBIKI_RATE                   NUMBER(5,2),
   KOBKI_CONVERTED_UNIT_PRICE    NUMBER(9,2),
