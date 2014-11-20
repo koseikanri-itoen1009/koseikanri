@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A01C(body)
  * Description      : 販売実績情報・手数料計算条件からの販売手数料計算処理
  * MD.050           : 条件別販手販協計算処理 MD050_COK_014_A01
- * Version          : 3.14
+ * Version          : 3.15
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -77,6 +77,7 @@ AS
  *                                       [E_本稼動_01896] 計算対象顧客の判別を、販売実績の存在有無に差し戻し
  *  2011/04/01    3.13  M.Watanabe       [E_本稼動_06757] 販売実績にて変動電気代のみの場合でも電気料の計算対象とする
  *  2012/02/23    3.14  S.Niki           [E_本稼動_09144] 売上金額（税込）に変動電気代を加算しないよう修正
+ *  2012/07/10    3.15  S.Niki           [E_本稼動_08751] パフォーマンス改善対応
  *****************************************************************************************/
   --==================================================
   -- グローバル定数
@@ -135,6 +136,10 @@ AS
   cv_msg_cok_10456                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10456';
   cv_msg_cok_00103                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-00103';
   cv_msg_cok_10457                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10457';
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  cv_msg_cok_10494                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10494';
+  cv_msg_cok_10495                 CONSTANT VARCHAR2(50)    := 'APP-XXCOK1-10495';
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   -- トークン
   cv_tkn_close_date                CONSTANT VARCHAR2(30)    := 'CLOSE_DATE';
   cv_tkn_container_type            CONSTANT VARCHAR2(30)    := 'CONTAINER_TYPE';
@@ -144,6 +149,9 @@ AS
   cv_tkn_pay_date                  CONSTANT VARCHAR2(30)    := 'PAY_DATE';
   cv_tkn_proc_date                 CONSTANT VARCHAR2(30)    := 'PROC_DATE';
   cv_tkn_proc_type                 CONSTANT VARCHAR2(30)    := 'PROC_TYPE';
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  cv_tkn_proc_flag                 CONSTANT VARCHAR2(30)    := 'PROC_FLAG';  -- 起動フラグ
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   cv_tkn_profile                   CONSTANT VARCHAR2(30)    := 'PROFILE';
   cv_tkn_sales_amt                 CONSTANT VARCHAR2(30)    := 'SALES_AMT';
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD START
@@ -154,6 +162,15 @@ AS
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
   cv_tkn_base_code                 CONSTANT VARCHAR2(30)    := 'BASE_CODE';
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  cv_tkn_data_name                 CONSTANT VARCHAR2(20)    := 'DATA_NAME';
+  --
+  cv_tkn_val_purge_xcbi_cnt        CONSTANT VARCHAR2(50)    := '販手計算済顧客情報データ削除件数  ： ';
+  cv_tkn_val_purge_xcbs_cnt        CONSTANT VARCHAR2(50)    := '条件別販手販協データ削除件数  ： ';
+  cv_tkn_val_insert_xt0c_cnt       CONSTANT VARCHAR2(50)    := '計算顧客情報一時表作成件数  ： ';
+  cv_tkn_val_insert_xcbs_cnt       CONSTANT VARCHAR2(50)    := '販手販協計算処理件数  ： ';
+  cv_tkn_val_update_xsel_cnt       CONSTANT VARCHAR2(50)    := '販売実績明細更新件数  ： ';
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   -- セパレータ
   cv_msg_part                      CONSTANT VARCHAR2(3)     := ' : ';
   cv_msg_cont                      CONSTANT VARCHAR2(3)     := '.';
@@ -168,6 +185,9 @@ AS
   cv_profile_name_08               CONSTANT VARCHAR2(50)    := 'XXCOK1_INSTANTLY_TERM_NAME';        -- 支払条件_即時払い
   cv_profile_name_09               CONSTANT VARCHAR2(50)    := 'XXCOK1_DEFAULT_TERM_NAME';          -- 支払条件_デフォルト
   cv_profile_name_10               CONSTANT VARCHAR2(50)    := 'XXCOK1_ORG_CODE_SALES';             -- 在庫組織コード_営業組織
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  cv_profile_name_11               CONSTANT VARCHAR2(50)    := 'XXCOK1_BULK_LIMIT';                 -- バルクリミット値
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   -- 参照タイプ名
   cv_lookup_type_01                CONSTANT VARCHAR2(30)    := 'XXCOK1_BM_DISTRICT_PARA_MST';       -- 販手販協計算実行区分
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE START
@@ -246,6 +266,13 @@ AS
   ct_tax_code_dummy                CONSTANT ar_vat_tax_b.tax_code%TYPE := NULL;
   ct_tax_rate_dummy                CONSTANT ar_vat_tax_b.tax_rate%TYPE := NULL;
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi ADD END
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  -- 条件別販手販協計算処理起動フラグ
+  cv_bm_proc_flag_1                CONSTANT VARCHAR2(1)     := '1';  -- データパージ処理
+  cv_bm_proc_flag_2                CONSTANT VARCHAR2(1)     := '2';  -- 計算対象顧客一時表作成
+  cv_bm_proc_flag_3                CONSTANT VARCHAR2(1)     := '3';  -- 販手販協計算処理
+  cv_bm_proc_flag_4                CONSTANT VARCHAR2(1)     := '4';  -- 販売実績更新処理
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   --==================================================
   -- グローバル変数
   --==================================================
@@ -255,9 +282,19 @@ AS
   gn_error_cnt                     NUMBER        DEFAULT 0;      -- 異常件数
   gn_skip_cnt                      NUMBER        DEFAULT 0;      -- スキップ件数
   gn_contract_err_cnt              NUMBER        DEFAULT 0;      -- 販手条件エラー件数
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  gn_purge_xcbi_cnt                NUMBER        DEFAULT 0;      -- 販手計算済顧客情報データ削除件数
+  gn_purge_xcbs_cnt                NUMBER        DEFAULT 0;      -- 条件別販手販協データ削除件数
+  gn_insert_xt0c_cnt               NUMBER        DEFAULT 0;      -- 計算顧客情報一時表作成件数
+  gn_insert_xcbs_cnt               NUMBER        DEFAULT 0;      -- 販手販協計算処理件数
+  gn_update_xsel_cnt               NUMBER        DEFAULT 0;      -- 販売実績明細更新件数
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   -- 入力パラメータ
   gv_param_proc_date               VARCHAR2(10)  DEFAULT NULL;   -- 業務日付
   gv_param_proc_type               VARCHAR2(10)  DEFAULT NULL;   -- 処理区分
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  gv_param_proc_flag               VARCHAR2(10)  DEFAULT NULL;   -- 起動フラグ
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   -- 初期処理取得値
   gd_process_date                  DATE          DEFAULT NULL;   -- 業務処理日付
   gn_org_id                        NUMBER        DEFAULT NULL;   -- 営業単位ID
@@ -270,6 +307,9 @@ AS
   gv_instantly_term_name           VARCHAR2(8)   DEFAULT NULL;   -- 支払条件_即時払い
   gv_default_term_name             VARCHAR2(8)   DEFAULT NULL;   -- 支払条件_デフォルト
   gv_organization_code             VARCHAR2(10)  DEFAULT NULL;   -- 在庫組織コード_営業組織
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  gn_bulk_limit                    NUMBER        DEFAULT NULL;   -- XXCOK:バルクリミット値
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   gt_calendar_code                 mtl_parameters.calendar_code%TYPE DEFAULT NULL; -- 在庫組織コード_営業組織-カレンダコード
   --==================================================
   -- 共通例外
@@ -498,6 +538,9 @@ AS
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
          , ship_xca.sale_base_code                     AS sale_base_code             -- 売上拠点コード
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+         , proc_flvv.attribute1                        AS proc_type                  -- 実行区分
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     FROM fnd_lookup_values_vl      proc_flvv
        , hz_locations              ship_hl
        , hz_party_sites            ship_hps
@@ -520,7 +563,9 @@ AS
 --       , ar_vat_tax_b              bill_avtb
 -- 2009/10/19 Ver.3.2 [障害E_T3_00631] SCS K.Yamaguchi DELETE END
     WHERE proc_flvv.lookup_type        = cv_lookup_type_01
-      AND proc_flvv.attribute1         = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki DEL START
+--      AND proc_flvv.attribute1         = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki DEL END
       AND proc_flvv.enabled_flag       = cv_enable
       AND gd_process_date        BETWEEN NVL( proc_flvv.start_date_active, gd_process_date )
                                      AND NVL( proc_flvv.end_date_active  , gd_process_date )
@@ -741,7 +786,10 @@ AS
                   FROM xxcmm_system_items_b        xsim  -- Disc品目アドオン
                      , xxcos_sales_exp_lines       xsel  -- 販売実績明細
                      , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
-                     , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--                     , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
+                     , xxcok_wk_014a01c_custdata   xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
                      , xxcok_cust_bm_info          xcbi
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi ADD START
                      , hz_cust_accounts            hca
@@ -750,6 +798,9 @@ AS
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
 --                  WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
                   WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+                    AND xt0c.proc_type              = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                     AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
                     AND xseh.delivery_date         <= xt0c.closing_date
@@ -991,7 +1042,10 @@ AS
                   FROM xxcmm_system_items_b        xsim  -- Disc品目アドオン
                      , xxcos_sales_exp_lines       xsel  -- 販売実績明細
                      , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
-                     , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--                     , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
+                     , xxcok_wk_014a01c_custdata  xt0c   -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
                      , fnd_lookup_values           flv1  -- 容器群
                      , xxcok_cust_bm_info          xcbi
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi ADD START
@@ -1001,6 +1055,9 @@ AS
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
 --                  WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
                   WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+                    AND xt0c.proc_type              = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
                     AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
                     AND xseh.delivery_date         <= xt0c.closing_date
@@ -1165,7 +1222,10 @@ AS
     FROM xxcok_mst_bm_contract       xmbc  -- 販手条件マスタ
        , xxcos_sales_exp_lines       xsel  -- 販売実績明細
        , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
-       , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--       , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
+       , xxcok_wk_014a01c_custdata  xt0c   -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
        , xxcok_cust_bm_info          xcbi
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi ADD START
        , hz_cust_accounts            hca
@@ -1175,6 +1235,9 @@ AS
 --    WHERE xt0c.ship_gyotai_tyu        = cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
     WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+      AND xt0c.proc_type              = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
       AND xseh.delivery_date         <= xt0c.closing_date
 -- 2010/12/13 Ver.3.12 [E_本稼動_01844] SCS S.Niki ADD START
@@ -1579,7 +1642,10 @@ AS
          , NULL                          AS bm3_electric_amt_tax     -- 【ＢＭ３】電気料(税込)
          , NULL                          AS item_code                -- エラー品目コード
          , xt0c.amount_fix_date          AS amount_fix_date          -- 金額確定日
-    FROM xxcok_tmp_014a01c_custdata      xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--    FROM xxcok_tmp_014a01c_custdata      xt0c  -- 条件別販手販協計算顧客情報一時表
+    FROM xxcok_wk_014a01c_custdata       xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
        , xxcok_mst_bm_contract           xmbc  -- 販手条件マスタ
        , xxcok_cust_bm_info              xcbi
        , hz_cust_accounts                hca
@@ -1589,6 +1655,9 @@ AS
        , xxcos_sales_exp_lines           xsel  -- 販売実績明細
 -- 2010/12/13 Ver.3.12 [E_本稼動_01896] SCS S.Niki REPAIR END
     WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+      AND xt0c.proc_type              = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       AND xt0c.ship_cust_code         = xmbc.cust_code
       AND xmbc.calc_type              = cv_calc_type_flat_rate                    -- 計算条件：定額条件
       AND xmbc.calc_target_flag       = cv_enable
@@ -2470,7 +2539,10 @@ GROUP BY CASE
          , NULL                          AS bm3_electric_amt_tax     -- 【ＢＭ３】電気料(税込)
          , NULL                          AS item_code                -- エラー品目コード
          , xt0c.amount_fix_date          AS amount_fix_date          -- 金額確定日
-    FROM xxcok_tmp_014a01c_custdata      xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--    FROM xxcok_tmp_014a01c_custdata      xt0c  -- 条件別販手販協計算顧客情報一時表
+    FROM xxcok_wk_014a01c_custdata       xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
        , xxcok_cust_bm_info              xcbi
        , hz_cust_accounts                hca
        , xxcmm_cust_accounts             xca
@@ -2479,6 +2551,9 @@ GROUP BY CASE
        , xxcos_sales_exp_lines           xsel  -- 販売実績明細
 -- 2010/12/13 Ver.3.12 [E_本稼動_01896] SCS S.Niki REPAIR END
     WHERE xt0c.ship_gyotai_sho       IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+      AND xt0c.proc_type              = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       AND xt0c.ship_cust_code         = xcbi.cust_code(+)
       AND xt0c.ship_cust_code         = hca.account_number
       AND hca.cust_account_id         = xca.customer_id
@@ -2642,7 +2717,10 @@ GROUP BY CASE
          , xt0c.amount_fix_date                                                                  AS amount_fix_date          -- 金額確定日
     FROM xxcos_sales_exp_lines       xsel  -- 販売実績明細
        , xxcos_sales_exp_headers     xseh  -- 販売実績ヘッダ
-       , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--       , xxcok_tmp_014a01c_custdata  xt0c  -- 条件別販手販協計算顧客情報一時表
+       , xxcok_wk_014a01c_custdata  xt0c   -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
        , xxcok_cust_bm_info          xcbi
 -- 2010/03/16 Ver.3.9 [E_本稼動_01896] SCS K.Yamaguchi ADD START
        , hz_cust_accounts            hca
@@ -2651,6 +2729,9 @@ GROUP BY CASE
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR START
 --    WHERE xt0c.ship_gyotai_tyu       <> cv_gyotai_tyu_vd                          -- 業態（中分類）：VD
     WHERE xt0c.ship_gyotai_sho   NOT IN ( cv_gyotai_sho_25, cv_gyotai_sho_24 )    -- 業態（小分類）：フルサービスVD・フルサービス（消化）VD
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+      AND xt0c.proc_type              = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
 -- 2009/10/02 Ver.3.1 [仕様変更I_E_566] SCS K.Yamaguchi REPAIR END
       AND xseh.ship_to_customer_code  = xt0c.ship_cust_code
       AND xseh.delivery_date         <= xt0c.closing_date
@@ -2780,6 +2861,10 @@ GROUP BY CASE
   , amount_fix_date                DATE
   );
   TYPE xcbs_data_ttype             IS TABLE OF xxcok_cond_bm_support%ROWTYPE INDEX BY BINARY_INTEGER;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  TYPE g_xsel_update_ttype         IS TABLE OF xxcos_sales_exp_lines.sales_exp_line_id%TYPE INDEX BY BINARY_INTEGER;
+  gt_xsel_update_tbl               g_xsel_update_ttype;   -- 販売実績明細更新用
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
 --
   /**********************************************************************************
    * Procedure Name   : get_operating_day_f
@@ -2919,7 +3004,6 @@ GROUP BY CASE
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'tax_div' || '【' || it_tax_div || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END get_tax_rate;
@@ -2949,7 +3033,10 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'tax_div' || '【' || it_tax_div
     lv_outmsg                      VARCHAR2(5000) DEFAULT NULL;                 -- 出力用メッセージ
     lb_retcode                     BOOLEAN        DEFAULT TRUE;                 -- メッセージ出力関数戻り値
     -- エラー時ログ出力用退避変数
-    lt_ship_cust_code              xxcok_tmp_014a01c_custdata.ship_cust_code%TYPE DEFAULT NULL;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--    lt_ship_cust_code              xxcok_tmp_014a01c_custdata.ship_cust_code%TYPE DEFAULT NULL;
+    lt_ship_cust_code              xxcok_wk_014a01c_custdata.ship_cust_code%TYPE DEFAULT NULL;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
     --==================================================
     -- ローカルカーソル
     --==================================================
@@ -2964,8 +3051,14 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'tax_div' || '【' || it_tax_div
                  AND ROWNUM = 1
              )                          AS error_count                -- 販手条件エラーチェック
       FROM xxcok_cust_bm_info           xcbi               -- 販手販協計算済顧客情報テーブル
-         , xxcok_tmp_014a01c_custdata   xt0c               -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--         , xxcok_tmp_014a01c_custdata   xt0c               -- 条件別販手販協計算顧客情報一時表
+         , xxcok_wk_014a01c_custdata   xt0c                -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
       WHERE xcbi.cust_code(+)           = xt0c.ship_cust_code
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+        AND xt0c.proc_type              = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
         AND xt0c.amount_fix_date        = gd_process_date
       FOR UPDATE OF xcbi.cust_bm_info_id NOWAIT
     ;
@@ -3071,7 +3164,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'tax_div' || '【' || it_tax_div
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END update_xcbi;
@@ -3107,7 +3199,10 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
     CURSOR xsel_update_lock_cur
     IS
       SELECT xsel.sales_exp_line_id    AS sales_exp_line_id    -- 販売実績明細ID
-      FROM xxcok_tmp_014a01c_custdata xt0c            -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--      FROM xxcok_tmp_014a01c_custdata xt0c            -- 条件別販手販協計算顧客情報一時表
+      FROM xxcok_wk_014a01c_custdata xt0c             -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
          , xxcos_sales_exp_headers    xseh            -- 販売実績ヘッダーテーブル
          , xxcos_sales_exp_lines      xsel            -- 販売実績明細テーブル
          , xxcok_cust_bm_info         xcbi
@@ -3118,6 +3213,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
 -- 2010/12/13 Ver.3.12 [E_本稼動_01844] SCS S.Niki ADD END
         AND xt0c.amount_fix_date         = gd_process_date
         AND xt0c.ship_cust_code          = xcbi.cust_code(+)
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+        AND xt0c.proc_type               = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
         AND xseh.delivery_date          >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
         AND xseh.sales_exp_header_id     = xsel.sales_exp_header_id
         AND xsel.to_calculate_fees_flag  = cv_xsel_if_flag_no
@@ -3176,7 +3274,10 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
       , xsel.program_id             = cn_program_id
       , xsel.program_update_date    = SYSDATE
     WHERE EXISTS ( SELECT 'X'
-                   FROM xxcok_tmp_014a01c_custdata xt0c            -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--                   FROM xxcok_tmp_014a01c_custdata xt0c            -- 条件別販手販協計算顧客情報一時表
+                   FROM xxcok_wk_014a01c_custdata xt0c             -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
                       , xxcos_sales_exp_headers    xseh            -- 販売実績ヘッダーテーブル
                       , xxcos_sales_exp_lines      xsel2           -- 販売実績明細テーブル
                       , xxcok_cust_bm_info         xcbi
@@ -3187,6 +3288,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
 -- 2010/12/13 Ver.3.12 [E_本稼動_01844] SCS S.Niki ADD END
                      AND xt0c.amount_fix_date         = gd_process_date
                      AND xt0c.ship_cust_code          = xcbi.cust_code(+)
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+                     AND xt0c.proc_type               = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
                      AND xseh.delivery_date          >= NVL( xcbi.last_fix_delivery_date, xseh.delivery_date )
                      AND xseh.sales_exp_header_id     = xsel2.sales_exp_header_id
                      AND xsel2.to_calculate_fees_flag = cv_xsel_if_flag_no
@@ -3201,6 +3305,12 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
           )
     ;
 -- 2010/05/26 Ver.3.11 [E_本稼動_02855] SCS K.Yamaguchi REPAIR END
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    -- 件数カウント
+    gn_target_cnt      := SQL%ROWCOUNT;
+    gn_update_xsel_cnt := SQL%ROWCOUNT;
+    gn_normal_cnt      := SQL%ROWCOUNT;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -3229,7 +3339,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'sales_exp_line_id' || '【' || lt_sales_exp_line_id || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END update_xsel;
@@ -3304,6 +3413,11 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'sales_exp_line_id' || '【' || 
       , cn_program_id                            -- コンカレント・プログラムID
       , SYSDATE                                  -- プログラム更新日
       );
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+      -- 件数カウント
+      gn_target_cnt      := gn_target_cnt + 1;
+      gn_error_cnt       := gn_error_cnt + 1;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       gn_contract_err_cnt := gn_contract_err_cnt + 1;
       lv_end_retcode := cv_status_warn;
     END IF;
@@ -3331,7 +3445,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'sales_exp_line_id' || '【' || 
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END insert_xbce;
@@ -3500,6 +3613,12 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
         , cn_program_id                                       -- コンカレント・プログラムID
         , SYSDATE                                             -- プログラム更新日
         );
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+      -- 件数カウント
+      gn_insert_xcbs_cnt := gn_insert_xcbs_cnt + 1;
+      gn_target_cnt      := gn_target_cnt + 1;
+      gn_normal_cnt      := gn_normal_cnt + 1;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       END IF;
     END LOOP insert_xcbs_loop;
     --==================================================
@@ -3526,7 +3645,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'delivery_cust_code' || '【' || i_xcbs_data_tab( 1 ).delivery_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
 END insert_xcbs;
@@ -3924,12 +4042,10 @@ END insert_xcbs;
       ov_retcode := lv_end_retcode;
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
 END set_xcbs_data;
@@ -4042,7 +4158,6 @@ END set_xcbs_data;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END sales_result_loop1;
@@ -4155,7 +4270,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_g
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END sales_result_loop2;
@@ -4268,7 +4382,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_g
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END sales_result_loop3;
@@ -4381,7 +4494,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_g
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END sales_result_loop4;
@@ -4494,7 +4606,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_g
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END sales_result_loop5;
@@ -4607,7 +4718,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_g
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_get_sales_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END sales_result_loop6;
@@ -4644,8 +4754,14 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_g
     IS
       SELECT xbce.cust_code                AS cust_code  -- 顧客コード
       FROM xxcok_bm_contract_err      xbce               -- 販手条件エラーテーブル
-         , xxcok_tmp_014a01c_custdata xt0c               -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--         , xxcok_tmp_014a01c_custdata xt0c               -- 条件別販手販協計算顧客情報一時表
+         , xxcok_wk_014a01c_custdata xt0c                -- 条件別販手販協計算顧客情報一時表
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
       WHERE xbce.cust_code  = xt0c.ship_cust_code
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+      AND   xt0c.proc_type  = gv_param_proc_type
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       FOR UPDATE OF xbce.cust_code NOWAIT
     ;
 --
@@ -4706,7 +4822,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || l_g
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'cust_code' || '【' || lt_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
 END delete_xbce;
@@ -4826,7 +4941,6 @@ END delete_xbce;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'cond_bm_support_id' || '【' || lt_cond_bm_support_id || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
 END delete_xcbs;
@@ -4846,7 +4960,10 @@ END delete_xcbs;
   , in_period_year                 IN  NUMBER                     -- 会計年度
   , id_amount_fix_date             IN  DATE                       -- 金額確定日
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
-  , it_emp_code                    IN  xxcok_tmp_014a01c_custdata.emp_code%TYPE -- 担当者コード
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--  , it_emp_code                    IN  xxcok_tmp_014a01c_custdata.emp_code%TYPE -- 担当者コード
+  , it_emp_code                    IN  xxcok_wk_014a01c_custdata.emp_code%TYPE -- 担当者コード
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
   )
   IS
@@ -4892,7 +5009,10 @@ END delete_xcbs;
     --==================================================
     -- 条件別販手販協計算顧客情報一時表への登録
     --==================================================
-    INSERT INTO xxcok_tmp_014a01c_custdata (
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--    INSERT INTO xxcok_tmp_014a01c_custdata (
+    INSERT INTO xxcok_wk_014a01c_custdata (
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
       ship_cust_code              -- 【出荷先】顧客コード
     , ship_gyotai_tyu             -- 【出荷先】業態（中分類）
     , ship_gyotai_sho             -- 【出荷先】業態（小分類）
@@ -4922,6 +5042,18 @@ END delete_xcbs;
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
     , emp_code                    -- 担当者コード
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    , proc_type                   -- 実行区分
+    , created_by                  -- 作成者
+    , creation_date               -- 作成日
+    , last_updated_by             -- 最終更新者
+    , last_update_date            -- 最終更新日
+    , last_update_login           -- 最終更新ログイン
+    , request_id                  -- 要求ID
+    , program_application_id      -- コンカレント・プログラム・アプリケーションID
+    , program_id                  -- コンカレント・プログラムID
+    , program_update_date         -- プログラム更新日
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     )
     VALUES (
       i_get_cust_data_rec.ship_cust_code             -- 【出荷先】顧客コード
@@ -4953,6 +5085,18 @@ END delete_xcbs;
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
     , it_emp_code                                    -- 担当者コード
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    , i_get_cust_data_rec.proc_type                  -- 実行区分
+    , cn_created_by                                  -- 作成者
+    , SYSDATE                                        -- 作成日
+    , cn_last_updated_by                             -- 最終更新者
+    , SYSDATE                                        -- 最終更新日
+    , cn_last_update_login                           -- 最終更新ログイン
+    , cn_request_id                                  -- 要求ID
+    , cn_program_application_id                      -- コンカレント・プログラム・アプリケーションID
+    , cn_program_id                                  -- コンカレント・プログラムID
+    , SYSDATE                                        -- プログラム更新日
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     );
     --==================================================
     -- 出力パラメータ設定
@@ -4978,7 +5122,6 @@ END delete_xcbs;
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
 END insert_xt0c;
@@ -5505,24 +5648,20 @@ END insert_xt0c;
       ov_retcode := cv_status_warn;
     -- *** エラー終了 ***
     WHEN error_proc_expt THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_outmsg, 1, 5000 );
       ov_retcode := cv_status_error;
     --*** 処理部共通例外 ***
     WHEN global_process_expt THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
       ov_errmsg  := NULL;
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
       ov_retcode := lv_end_retcode;
     -- *** 共通関数OTHERS例外 ***
     WHEN global_api_others_expt THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_get_cust_data_rec.ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END get_cust_subdata;
@@ -5558,7 +5697,10 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
     ln_period_year                 NUMBER         DEFAULT NULL;                 -- 会計年度
     ld_amount_fix_date             DATE           DEFAULT NULL;                 -- 金額確定日
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD START
-    lt_emp_code                    xxcok_tmp_014a01c_custdata.emp_code%TYPE;    -- 担当者コード
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--    lt_emp_code                    xxcok_tmp_014a01c_custdata.emp_code%TYPE;    -- 担当者コード
+    lt_emp_code                    xxcok_wk_014a01c_custdata.emp_code%TYPE;     -- 担当者コード
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
 -- 2010/02/19 Ver.3.8 [障害E_本稼動_01446] SCS S.Moriyama ADD END
     -- ログ出力用退避項目
     lt_ship_cust_code              hz_cust_accounts.account_number      %TYPE DEFAULT NULL;
@@ -5679,6 +5821,10 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
         -- 正常件数カウント
         --==================================================
         gn_normal_cnt := gn_normal_cnt + 1;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+        -- 件数カウント
+        gn_insert_xt0c_cnt := gn_insert_xt0c_cnt + 1;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       EXCEPTION
         WHEN normal_skip_expt THEN
           --==================================================
@@ -5720,7 +5866,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || i_g
       ov_retcode := cv_status_error;
     -- *** OTHERS例外 ***
     WHEN OTHERS THEN
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_ship_cust_code || '】' ); -- debug
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END cust_loop;
@@ -5805,6 +5950,12 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
         FROM xxcok_cust_bm_info      xcbi
         WHERE xcbi.cust_bm_info_id = xcbi_parge_lock_rec.cust_bm_info_id
         ;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+        -- 件数カウント
+        gn_target_cnt     := gn_target_cnt + 1;
+        gn_purge_xcbi_cnt := gn_purge_xcbi_cnt + 1;
+        gn_normal_cnt     := gn_normal_cnt + 1;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       EXCEPTION
         WHEN OTHERS THEN
           lv_outmsg  := xxccp_common_pkg.get_msg(
@@ -5954,6 +6105,12 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
         FROM xxcok_cond_bm_support   xcbs
         WHERE xcbs.cond_bm_support_id = xcbs_parge_lock_rec.cond_bm_support_id
         ;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+        -- 件数カウント
+        gn_target_cnt     := gn_target_cnt + 1;
+        gn_purge_xcbs_cnt := gn_purge_xcbs_cnt + 1;
+        gn_normal_cnt     := gn_normal_cnt + 1;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
       EXCEPTION
         WHEN OTHERS THEN
           lv_outmsg  := xxccp_common_pkg.get_msg(
@@ -6020,6 +6177,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
   , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
   , iv_proc_date                   IN  VARCHAR2        -- 業務日付
   , iv_proc_type                   IN  VARCHAR2        -- 実行区分
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  , iv_proc_flag                   IN  VARCHAR2        -- 起動フラグ
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   )
   IS
     --==================================================
@@ -6071,6 +6231,30 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
     lb_retcode := xxcok_common_pkg.put_message_f( 
                     in_which                => FND_FILE.OUTPUT    -- 出力区分
                   , iv_message              => lv_outmsg          -- メッセージ
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--                  , in_new_line             => 1                  -- 改行
+                  , in_new_line             => 0                  -- 改行
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                => FND_FILE.LOG
+                  , iv_message              => lv_outmsg
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD START
+--                  , in_new_line             => 1
+                  , in_new_line             => 0
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki MOD END
+                  );
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    -- 起動フラグ
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application          => cv_appl_short_name_cok
+                  , iv_name                 => cv_msg_cok_10494
+                  , iv_token_name1          => cv_tkn_proc_flag
+                  , iv_token_value1         => iv_proc_flag
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f( 
+                    in_which                => FND_FILE.OUTPUT    -- 出力区分
+                  , iv_message              => lv_outmsg          -- メッセージ
                   , in_new_line             => 1                  -- 改行
                   );
     lb_retcode := xxcok_common_pkg.put_message_f(
@@ -6078,11 +6262,15 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
                   , iv_message              => lv_outmsg
                   , in_new_line             => 1
                   );
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     --==================================================
     -- プログラム入力項目をグローバル変数へ格納
     --==================================================
     gv_param_proc_date := iv_proc_date;
     gv_param_proc_type := iv_proc_type;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    gv_param_proc_flag := iv_proc_flag;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     --==================================================
     -- 業務処理日付取得
     --==================================================
@@ -6103,7 +6291,6 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'ship_cust_code' || '【' || lt_
         RAISE error_proc_expt;
       END IF;
     END IF;
-fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO_CHAR( gd_process_date, 'RRRR/MM/DD' ) || '】' ); -- debug
     --==================================================
     -- プロファイル取得(MO: 営業単位)
     --==================================================
@@ -6284,6 +6471,26 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO
                     );
       RAISE error_proc_expt;
     END IF;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    --==================================================
+    -- プロファイル取得(バルクリミット値)
+    --==================================================
+    gn_bulk_limit := FND_PROFILE.VALUE( cv_profile_name_11 );
+    IF( gn_bulk_limit IS NULL ) THEN
+      lv_outmsg  := xxccp_common_pkg.get_msg(
+                      iv_application          => cv_appl_short_name_cok
+                    , iv_name                 => cv_msg_cok_00003
+                    , iv_token_name1          => cv_tkn_profile
+                    , iv_token_value1         => cv_profile_name_11
+                    );
+      lb_retcode := xxcok_common_pkg.put_message_f(
+                      in_which                => FND_FILE.OUTPUT
+                    , iv_message              => lv_outmsg
+                    , in_new_line             => 0
+                    );
+      RAISE error_proc_expt;
+    END IF;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     --==================================================
     -- 稼働日カレンダコード取得
     --==================================================
@@ -6330,6 +6537,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO
   , ov_errmsg                      OUT VARCHAR2        -- ユーザー・エラー・メッセージ
   , iv_proc_date                   IN  VARCHAR2        -- 業務日付
   , iv_proc_type                   IN  VARCHAR2        -- 実行区分
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  , iv_proc_flag                   IN  VARCHAR2        -- 起動フラグ
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   )
   IS
     --==================================================
@@ -6360,185 +6570,229 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO
     , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
     , iv_proc_date            => iv_proc_date          -- 業務日付
     , iv_proc_type            => iv_proc_type          -- 処理区分
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    , iv_proc_flag            => iv_proc_flag          -- 起動フラグ
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     );
     IF( lv_retcode = cv_status_error ) THEN
       lv_end_retcode := cv_status_error;
       RAISE global_process_expt;
     END IF;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     --==================================================
-    -- 条件別販手販協データの削除（保持期間外）(A-2)
+    -- 起動フラグ：1の場合は、データパージ処理を実行
     --==================================================
-    purge_xcbs(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
+    IF ( gv_param_proc_flag = cv_bm_proc_flag_1 ) THEN
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+      --==================================================
+      -- 条件別販手販協データの削除（保持期間外）(A-2)
+      --==================================================
+      purge_xcbs(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販手計算済顧客情報データの削除（保持期間外）(A-14)
+      --==================================================
+      purge_xcbi(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- パージ処理の確定
+      --==================================================
+      COMMIT;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     END IF;
     --==================================================
-    -- 販手計算済顧客情報データの削除（保持期間外）(A-14)
+    -- 起動フラグ：3の場合は、販手販協計算処理を実行
     --==================================================
-    purge_xcbi(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
+    IF ( gv_param_proc_flag = cv_bm_proc_flag_3 ) THEN
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+      --==================================================
+      -- 条件別販手販協データの削除（未確定金額）(A-3)
+      --==================================================
+      delete_xcbs(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     END IF;
     --==================================================
-    -- パージ処理の確定
+    -- 起動フラグ：2の場合は、計算対象顧客一時表作成を実行
     --==================================================
-    COMMIT;
-    --==================================================
-    -- 条件別販手販協データの削除（未確定金額）(A-3)
-    --==================================================
-    delete_xcbs(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
+    IF ( gv_param_proc_flag = cv_bm_proc_flag_2 ) THEN
+      --==================================================
+      -- 計算顧客情報一時表の削除
+      --==================================================
+      EXECUTE IMMEDIATE 'TRUNCATE TABLE xxcok.xxcok_wk_014a01c_custdata';
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+      --==================================================
+      -- 顧客情報ループ(A-4)
+      --==================================================
+      cust_loop(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     END IF;
     --==================================================
-    -- 顧客情報ループ(A-4)
+    -- 起動フラグ：3の場合は、販手販協計算処理を実行
     --==================================================
-    cust_loop(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    ELSIF( lv_retcode = cv_status_warn ) THEN
-      lv_end_retcode := cv_status_warn;
+    IF ( gv_param_proc_flag = cv_bm_proc_flag_3 ) THEN
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+      --==================================================
+      -- 販手条件エラーの削除処理(A-7)
+      --==================================================
+      delete_xbce(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販売実績ループ(A-8)
+      --==================================================
+      sales_result_loop1(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+      --==================================================
+      -- 販売実績ループ(A-8)
+      --==================================================
+      sales_result_loop2(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+      --==================================================
+      -- 販売実績ループ(A-8)
+      --==================================================
+      sales_result_loop3(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+      --==================================================
+      -- 販売実績ループ(A-8)
+      --==================================================
+      sales_result_loop4(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+      --==================================================
+      -- 販売実績ループ(A-8)
+      --==================================================
+      sales_result_loop5(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+      --==================================================
+      -- 販売実績ループ(A-8)
+      --==================================================
+      sales_result_loop6(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      ELSIF( lv_retcode = cv_status_warn ) THEN
+        lv_end_retcode := cv_status_warn;
+      END IF;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     END IF;
     --==================================================
-    -- 販手条件エラーの削除処理(A-7)
+    -- 起動フラグ：4の場合は、販売実績更新処理を実行
     --==================================================
-    delete_xbce(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
+    IF ( gv_param_proc_flag = cv_bm_proc_flag_4 ) THEN
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
+      --==================================================
+      -- 販売実績連携結果の更新(A-12)
+      --==================================================
+      update_xsel(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+      --==================================================
+      -- 販手計算済顧客情報データの更新(A-15)
+      --==================================================
+      update_xcbi(
+        ov_errbuf               => lv_errbuf             -- エラー・メッセージ
+      , ov_retcode              => lv_retcode            -- リターン・コード
+      , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
+      );
+      IF( lv_retcode = cv_status_error ) THEN
+        lv_end_retcode := cv_status_error;
+        RAISE global_process_expt;
+      END IF;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
     END IF;
-    --==================================================
-    -- 販売実績ループ(A-8)
-    --==================================================
-    sales_result_loop1(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    ELSIF( lv_retcode = cv_status_warn ) THEN
-      lv_end_retcode := cv_status_warn;
-    END IF;
-    --==================================================
-    -- 販売実績ループ(A-8)
-    --==================================================
-    sales_result_loop2(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    ELSIF( lv_retcode = cv_status_warn ) THEN
-      lv_end_retcode := cv_status_warn;
-    END IF;
-    --==================================================
-    -- 販売実績ループ(A-8)
-    --==================================================
-    sales_result_loop3(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    ELSIF( lv_retcode = cv_status_warn ) THEN
-      lv_end_retcode := cv_status_warn;
-    END IF;
-    --==================================================
-    -- 販売実績ループ(A-8)
-    --==================================================
-    sales_result_loop4(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    ELSIF( lv_retcode = cv_status_warn ) THEN
-      lv_end_retcode := cv_status_warn;
-    END IF;
-    --==================================================
-    -- 販売実績ループ(A-8)
-    --==================================================
-    sales_result_loop5(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    ELSIF( lv_retcode = cv_status_warn ) THEN
-      lv_end_retcode := cv_status_warn;
-    END IF;
-    --==================================================
-    -- 販売実績ループ(A-8)
-    --==================================================
-    sales_result_loop6(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    ELSIF( lv_retcode = cv_status_warn ) THEN
-      lv_end_retcode := cv_status_warn;
-    END IF;
-    --==================================================
-    -- 販売実績連携結果の更新(A-12)
-    --==================================================
-    update_xsel(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    END IF;
-    --==================================================
-    -- 販手計算済顧客情報データの更新(A-15)
-    --==================================================
-    update_xcbi(
-      ov_errbuf               => lv_errbuf             -- エラー・メッセージ
-    , ov_retcode              => lv_retcode            -- リターン・コード
-    , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
-    );
-    IF( lv_retcode = cv_status_error ) THEN
-      lv_end_retcode := cv_status_error;
-      RAISE global_process_expt;
-    END IF;
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     --==================================================
     -- 出力パラメータ設定
     --==================================================
@@ -6571,6 +6825,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO
   , retcode                        OUT VARCHAR2        -- エラーコード
   , iv_proc_date                   IN  VARCHAR2        -- 業務日付
   , iv_proc_type                   IN  VARCHAR2        -- 実行区分
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+  , iv_proc_flag                   IN  VARCHAR2        -- 起動フラグ
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
   )
   IS
     --==================================================
@@ -6613,6 +6870,9 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO
     , ov_errmsg               => lv_errmsg             -- ユーザー・エラー・メッセージ
     , iv_proc_date            => iv_proc_date          -- 業務日付
     , iv_proc_type            => iv_proc_type          -- 実行区分
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    , iv_proc_flag            => iv_proc_flag          -- 起動フラグ
+-- 2012/06/15 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     );
     --==================================================
     -- 販手条件エラーメッセージ出力
@@ -6663,6 +6923,14 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO
     IF( lv_retcode = cv_status_error ) THEN
       gn_normal_cnt := 0;
       gn_error_cnt  := 1;
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+      -- エラー発生の場合、処理件数に0件を出力
+      gn_purge_xcbi_cnt  := 0;  -- 販手計算済顧客情報データ削除件数
+      gn_purge_xcbs_cnt  := 0;  -- 条件別販手販協データ削除件数
+      gn_insert_xt0c_cnt := 0;  -- 計算顧客情報一時表作成件数
+      gn_insert_xcbs_cnt := 0;  -- 販手販協計算処理件数
+      gn_update_xsel_cnt := 0;  -- 販売実績明細更新件数
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     ELSE
       IF( gn_target_cnt = 0 ) THEN
         gn_normal_cnt := 0;
@@ -6707,6 +6975,88 @@ fnd_file.put_line( FND_FILE.LOG, 'For Debug:' || 'gd_process_date' || '【' || TO
                   , iv_message               => lv_outmsg
                   , in_new_line              => 1
                   );
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD START
+    --==================================================
+    -- 販手計算済顧客情報データ削除件数出力
+    --==================================================
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_cok
+                  , iv_name                  => cv_msg_cok_10495
+                  , iv_token_name1           => cv_tkn_data_name
+                  , iv_token_value1          => cv_tkn_val_purge_xcbi_cnt
+                  , iv_token_name2           => cv_tkn_count
+                  , iv_token_value2          => TO_CHAR( gn_purge_xcbi_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 0
+                  );
+    --==================================================
+    -- 条件別販手販協データ削除件数出力
+    --==================================================
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_cok
+                  , iv_name                  => cv_msg_cok_10495
+                  , iv_token_name1           => cv_tkn_data_name
+                  , iv_token_value1          => cv_tkn_val_purge_xcbs_cnt
+                  , iv_token_name2           => cv_tkn_count
+                  , iv_token_value2          => TO_CHAR( gn_purge_xcbs_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 0
+                  );
+    --==================================================
+    -- 計算顧客情報一時表作成件数出力
+    --==================================================
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_cok
+                  , iv_name                  => cv_msg_cok_10495
+                  , iv_token_name1           => cv_tkn_data_name
+                  , iv_token_value1          => cv_tkn_val_insert_xt0c_cnt
+                  , iv_token_name2           => cv_tkn_count
+                  , iv_token_value2          => TO_CHAR( gn_insert_xt0c_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 0
+                  );
+    --==================================================
+    -- 販手販協計算処理件数出力
+    --==================================================
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_cok
+                  , iv_name                  => cv_msg_cok_10495
+                  , iv_token_name1           => cv_tkn_data_name
+                  , iv_token_value1          => cv_tkn_val_insert_xcbs_cnt
+                  , iv_token_name2           => cv_tkn_count
+                  , iv_token_value2          => TO_CHAR( gn_insert_xcbs_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 0
+                  );
+    --==================================================
+    -- 販売実績明細更新件数出力
+    --==================================================
+    lv_outmsg  := xxccp_common_pkg.get_msg(
+                    iv_application           => cv_appl_short_name_cok
+                  , iv_name                  => cv_msg_cok_10495
+                  , iv_token_name1           => cv_tkn_data_name
+                  , iv_token_value1          => cv_tkn_val_update_xsel_cnt
+                  , iv_token_name2           => cv_tkn_count
+                  , iv_token_value2          => TO_CHAR( gn_update_xsel_cnt )
+                  );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which                 => FND_FILE.OUTPUT
+                  , iv_message               => lv_outmsg
+                  , in_new_line              => 1
+                  );
+-- 2012/06/19 Ver.3.15 [E_本稼動_08751] SCSK S.Niki ADD END
     --==================================================
     -- 処理終了メッセージ出力
     --==================================================

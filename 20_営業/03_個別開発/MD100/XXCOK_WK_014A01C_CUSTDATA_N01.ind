@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_wk_014a01c_custdata_n01
+ON xxcok.xxcok_wk_014a01c_custdata (
+     proc_type
+)
+TABLESPACE xxidx2
+/
