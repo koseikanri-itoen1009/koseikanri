@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *                    
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009-05-01    1.3   Tomoko.Mori      T1_0897対応
  *  2009-09-14    1.4   Mio.Maruyama     0001355対応
  *  2009-10-15    1.5   Daisuke.Abe      0001536,0001537対応
+ *  2009-11-12    1.6   Kazuo.Satomura   I_E_658対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -605,24 +606,26 @@ AS
           AND  xd.delivery_id = xba.delivery_id(+)
           AND  xlv2.dept_code = xcm.publish_dept_code;
 --
-        SELECT  (CASE
-                  WHEN (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate) THEN
-                       xev2.position_name_old
-                  ELSE xev2.position_name_new
-                END) issue_belonging_boss_position                 -- 発行元所属長職位名
-                ,xev2.full_name issue_belonging_boss               -- 氏名
-        INTO    o_rep_cont_data_rec.issue_belonging_boss_position  -- 発行元所属長職位名
-                ,o_rep_cont_data_rec.issue_belonging_boss          -- 氏名
-        FROM   xxcso_employees_v2         xev2     -- 従業員マスタ（最新）ビュー
-        WHERE  ((TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) <= ld_sysdate
-                   AND xev2.position_code_new IN (cv_p_code_002, cv_p_code_003)
-                   AND xev2.work_base_code_new = o_rep_cont_data_rec.publish_base_code)
-               OR
-                (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate
-                   AND xev2.position_code_old IN (cv_p_code_002, cv_p_code_003)
-                   AND xev2.work_base_code_old = o_rep_cont_data_rec.publish_base_code)
-               )
-        AND ROWNUM = 1;
+        /* 2009.11.12 K.Satomura I_E_658対応 START */
+        --SELECT  (CASE
+        --          WHEN (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate) THEN
+        --               xev2.position_name_old
+        --          ELSE xev2.position_name_new
+        --        END) issue_belonging_boss_position                 -- 発行元所属長職位名
+        --        ,xev2.full_name issue_belonging_boss               -- 氏名
+        --INTO    o_rep_cont_data_rec.issue_belonging_boss_position  -- 発行元所属長職位名
+        --        ,o_rep_cont_data_rec.issue_belonging_boss          -- 氏名
+        --FROM   xxcso_employees_v2         xev2     -- 従業員マスタ（最新）ビュー
+        --WHERE  ((TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) <= ld_sysdate
+        --           AND xev2.position_code_new IN (cv_p_code_002, cv_p_code_003)
+        --           AND xev2.work_base_code_new = o_rep_cont_data_rec.publish_base_code)
+        --       OR
+        --        (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate
+        --           AND xev2.position_code_old IN (cv_p_code_002, cv_p_code_003)
+        --           AND xev2.work_base_code_old = o_rep_cont_data_rec.publish_base_code)
+        --       )
+        --AND ROWNUM = 1;
+        /* 2009.11.12 K.Satomura I_E_658対応 END */
 --
       EXCEPTION
         -- 抽出結果が複数の場合
@@ -766,24 +769,26 @@ AS
           AND  pv.vendor_id(+) = NVL(xsdc.customer_id,fnd_api.g_miss_num)
           AND  pvs.vendor_id(+) = NVL(xsdc.customer_id,fnd_api.g_miss_num);
 --
-        SELECT  (CASE
-                  WHEN (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate) THEN
-                       xev2.position_name_old
-                  ELSE xev2.position_name_new
-                END)  issue_belonging_boss_position                -- 発行元所属長職位名
-                ,xev2.full_name issue_belonging_boss               -- 氏名
-        INTO    o_rep_cont_data_rec.issue_belonging_boss_position  -- 発行元所属長職位名
-                ,o_rep_cont_data_rec.issue_belonging_boss          -- 氏名
-        FROM    xxcso_employees_v2         xev2     -- 従業員マスタ（最新）ビュー
-        WHERE   ((TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) <= ld_sysdate
-                   AND xev2.position_code_new IN (cv_p_code_002, cv_p_code_003)
-                   AND xev2.work_base_code_new = o_rep_cont_data_rec.publish_base_code)
-               OR
-                (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate
-                   AND xev2.position_code_old IN (cv_p_code_002, cv_p_code_003)
-                   AND xev2.work_base_code_old = o_rep_cont_data_rec.publish_base_code)
-               )
-        AND ROWNUM = 1;
+        /* 2009.11.12 K.Satomura I_E_658対応 START */
+        --SELECT  (CASE
+        --          WHEN (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate) THEN
+        --               xev2.position_name_old
+        --          ELSE xev2.position_name_new
+        --        END)  issue_belonging_boss_position                -- 発行元所属長職位名
+        --        ,xev2.full_name issue_belonging_boss               -- 氏名
+        --INTO    o_rep_cont_data_rec.issue_belonging_boss_position  -- 発行元所属長職位名
+        --        ,o_rep_cont_data_rec.issue_belonging_boss          -- 氏名
+        --FROM    xxcso_employees_v2         xev2     -- 従業員マスタ（最新）ビュー
+        --WHERE   ((TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) <= ld_sysdate
+        --           AND xev2.position_code_new IN (cv_p_code_002, cv_p_code_003)
+        --           AND xev2.work_base_code_new = o_rep_cont_data_rec.publish_base_code)
+        --       OR
+        --        (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate
+        --           AND xev2.position_code_old IN (cv_p_code_002, cv_p_code_003)
+        --           AND xev2.work_base_code_old = o_rep_cont_data_rec.publish_base_code)
+        --       )
+        --AND ROWNUM = 1;
+        /* 2009.11.12 K.Satomura I_E_658対応 END */
 --
       EXCEPTION
         -- 抽出結果が複数の場合
@@ -809,6 +814,57 @@ AS
       END;
     END IF;
 --
+    /* 2009.11.12 K.Satomura I_E_658対応 START */
+    -- =================================
+    -- 発行元職位名取得
+    -- =================================
+    BEGIN
+      SELECT (
+               CASE
+                 WHEN (TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate) THEN
+                   xev2.position_name_old
+                 ELSE
+                   xev2.position_name_new
+               END
+             ) issue_belonging_boss_position     -- 発行元所属長職位名
+            ,xev2.full_name issue_belonging_boss -- 氏名
+      INTO   o_rep_cont_data_rec.issue_belonging_boss_position -- 発行元所属長職位名
+            ,o_rep_cont_data_rec.issue_belonging_boss          -- 氏名
+      FROM   xxcso_employees_v2 xev2 -- 従業員マスタ（最新）ビュー
+      WHERE  (
+               (
+                     TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) <= ld_sysdate
+                 AND xev2.position_code_new IN (cv_p_code_002, cv_p_code_003)
+                 AND xev2.work_base_code_new = o_rep_cont_data_rec.publish_base_code
+               )
+             OR
+               (
+                     TRUNC(NVL(TO_DATE(xev2.issue_date, 'YYYY/MM/DD'), ld_sysdate)) > ld_sysdate
+                 AND xev2.position_code_old IN (cv_p_code_002, cv_p_code_003)
+                 AND xev2.work_base_code_old = o_rep_cont_data_rec.publish_base_code
+               )
+             )
+      AND    ROWNUM = 1
+      ;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        o_rep_cont_data_rec.issue_belonging_boss_position := NULL;
+        o_rep_cont_data_rec.issue_belonging_boss          := NULL;
+        --
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_04           -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_contract_num        -- トークンコード1
+                       ,iv_token_value1 => gt_contract_number         -- トークン値1
+                     );
+        --
+        lv_errbuf := lv_errmsg || SQLERRM;
+        RAISE global_process_expt;
+        --
+    END;
+    --
+    /* 2009.11.12 K.Satomura I_E_658対応 END */
     -- =================================
     -- 販売手数料情報取得（A-2-1,2 -2）
     -- =================================
