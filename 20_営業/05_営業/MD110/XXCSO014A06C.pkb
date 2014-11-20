@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_CSO_014_A06_HHT-EBSインターフェース：
  *                    (OUT)営業員管理ファイル
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,8 +35,8 @@ AS
  *  2009-03-17    1.1   M.Maruyama        実績振替の集計追加変更によりデータ取得VIEWを
  *                                        売上実績ビューから、営業員用売上実績VIEWへ修正
  *  2009-03-18    1.1   M.Maruyama        DEBUGLOGメッセージ修正
- *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
- *
+ *  2009-05-01    1.2   Tomoko.Mori       T1_0897対応
+ *  2009-05-01    1.3   K.Satomura        T1_1082対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1431,13 +1431,19 @@ AS
     -- 営業員コード、拠点コード、リソースIDの取得を行うカーソルの定義
     CURSOR xrv_v_cur
     IS
-      SELECT  xrv.employee_number  employee_number,  -- 営業員コード
-              (CASE WHEN xrv.issue_date <= lv_process_date_next THEN
-                      xrv.work_dept_code_new
-                    WHEN lv_process_date_next < xrv.issue_date THEN
-                      xrv.work_dept_code_old
-                    END
-               ) work_base_code                      -- 拠点コード
+      SELECT  xrv.employee_number  employee_number  -- 営業員コード
+             /* 2009.05.20 K.Satomura T1_1082対応 START */
+              --(CASE WHEN xrv.issue_date <= lv_process_date_next THEN
+              --        xrv.work_dept_code_new
+              --      WHEN lv_process_date_next < xrv.issue_date THEN
+              --        xrv.work_dept_code_old
+              --      END
+              -- ) work_base_code                      -- 拠点コード
+             ,xxcso_util_common_pkg.get_rs_base_code(
+                 xrv.resource_id
+                ,gd_process_date_next
+             ) work_base_code                        -- 拠点コード
+             /* 2009.05.20 K.Satomura T1_1082対応 END */
              ,xrv.resource_id resource_id            -- リソースID
              ,xrv.full_name full_name                -- 営業員名称 
       FROM   xxcso_resources_v  xrv                  -- リソースマスタビュー
@@ -1568,7 +1574,7 @@ AS
           RAISE global_process_expt;
         END IF;
 --        
-        -- =====================================================
+       -- =====================================================
         -- A-6.営業員管理データを抽出 
         -- =================================================
         get_prsncd_data(

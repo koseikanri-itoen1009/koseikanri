@@ -6,7 +6,7 @@ AS
  * Package Name     : xxcso_util_common_pkg(BODY)
  * Description      : 共通関数(XXCSOユーティリティ）
  * MD.050/070       :
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  *  ------------------------- ---- ----- --------------------------------------------------
@@ -29,6 +29,8 @@ AS
  *  get_working_days          F    N     営業日数取得関数
  *  chk_responsibility        F    -     ログイン者職責判定関数
  *  conv_multi_byte           F    -     半角文字全角置換関数
+ *  get_rs_base_code          F    -     所属拠点取得
+ *  get_current_rs_base_code  F    -     現所属拠点取得
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
  *  Date          Ver.  Editor           Description
@@ -61,6 +63,7 @@ AS
  *  2009-05-01    1.2   Tomoko.Mori      T1_0897対応
  *  2009/05/12    1.3   K.Satomura       get_rs_base_code
  *                                       get_current_rs_base_code 新規作成(T1_0593対応)
+ *  2009/05/20    1.4   K.Satomura       T1_1082対応
  *****************************************************************************************/
 --
   -- ===============================
@@ -1618,7 +1621,11 @@ AS
       AND     jrrr.delete_flag                             = 'N'
       AND     jrrr.start_date_active                      <= id_standard_date
       AND     NVL(jrrr.end_date_active, id_standard_date) >= id_standard_date
-      ORDER BY jrrr.start_date_active, jrrr.last_update_date DESC
+      /* 2009.05.20 K.Satomura T1_1082対応 START */
+      --ORDER BY jrrr.start_date_active, jrrr.last_update_date DESC
+      ORDER BY jrrr.start_date_active DESC
+              ,jrrr.last_update_date  DESC
+      /* 2009.05.20 K.Satomura T1_1082対応 END */
     ;
     -- ===============================
     -- ローカル変数
