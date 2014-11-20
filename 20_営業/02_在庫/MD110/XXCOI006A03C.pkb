@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI006A03C(body)
  * Description      : 月次在庫受払（日次）を元に、月次在庫受払表を作成します。
  * MD.050           : 月次在庫受払表作成<MD050_COI_006_A03>
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/07/30    1.13  N.Abe            [0000638]数量の取得項目修正
  *  2009/08/20    1.14  H.Sasaki         [0001003]夜間強制確定処理の分割（PT対応）
  *  2010/01/05    1.15  H.Sasaki         [E_本稼動_00850]日次データ取得SQLの分割（PT対応）
+ *  2010/04/09    1.16  N.Abe            [E_本稼動_02219]資材取引取得SQLの日付指定の修正
  *
  *****************************************************************************************/
 --
@@ -770,8 +771,12 @@ AS
     WHERE   mmt.organization_id                       =   gn_f_organization_id
     AND     mmt.transaction_id                        >   gn_f_last_transaction_id
     AND     mmt.transaction_id                       <=   gn_f_max_transaction_id
-    AND     mmt.transaction_date    BETWEEN   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
-                                    AND       LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
+-- == 2010/04/09 V1.16 Modified START ===============================================================
+--    AND     mmt.transaction_date    BETWEEN   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+--                                    AND       LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month))
+    AND     mmt.transaction_date                     >=   TRUNC(TO_DATE(gv_f_inv_acct_period, cv_month))
+    AND     mmt.transaction_date                      <   LAST_DAY(TO_DATE(gv_f_inv_acct_period, cv_month)) + 1
+-- == 2010/04/09 V1.16 Modified END   ===============================================================
     AND     mmt.subinventory_code                     =   msi1.secondary_inventory_name
     AND     mmt.organization_id                       =   msi1.organization_id
     AND     msi1.attribute7                           =   iv_base_code
