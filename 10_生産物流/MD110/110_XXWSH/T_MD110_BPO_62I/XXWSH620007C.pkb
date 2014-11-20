@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書（配送先明細）
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書（配送先明細） T_MD070_BPO_62I
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/07/10    1.3   Naoki Fukuda       ロットNo.がNULLだと品目が違っても一括りで出力される
  *  2008/08/05    1.4   Akiyoshi Shiina    ST不具合#519対応
  *  2008/10/23    1.5   Yuko Kawano        課題#32,#62 変更#183対応
+ *  2009/04/27    1.6   Y.Kazama           本番障害#1398対応
  *
  *****************************************************************************************/
 --
@@ -568,7 +569,11 @@ AS
         -------------------------------------------------------------------------------
         -- 顧客サイト情報VIEW2
         -------------------------------------------------------------------------------
-        AND  xoha.deliver_to_id         =  xcas2v.party_site_id
+-- Ver1.6 Y.Kazama 本番障害#1398対応 Mod Start
+        AND  xoha.deliver_to            =  xcas2v.party_site_number
+        AND  xcas2v.party_site_status   = 'A'
+--        AND  xoha.deliver_to_id         =  xcas2v.party_site_id
+-- Ver1.6 Y.Kazama 本番障害#1398対応 Mod Start
         AND  xcas2v.start_date_active  <=  xoha.schedule_ship_date
         AND  (xcas2v.end_date_active   >=  xoha.schedule_ship_date
           OR  xcas2v.end_date_active IS NULL

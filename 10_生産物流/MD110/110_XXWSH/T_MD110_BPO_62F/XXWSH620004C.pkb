@@ -7,7 +7,7 @@ AS
  * Description      : 倉庫払出指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 倉庫払出指示書  T_MD070_BPO_62F
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2008/08/07    1.4   Akiyoshi Shiina  内部変更要求#168,#183対応
  *  2008/10/20    1.5   Masayoshi Uehara T_TE080_BPO_620 指摘44(品目、ロット単位に合計して算出)
  *                                       課題#62変更#168 指示無し実績の帳票出力制御
+ *  2009/04/27    1.6   Y.Kazama         本番障害#1398対応
  *
  *****************************************************************************************/
 --
@@ -552,7 +553,11 @@ AS
       -------------------------------------------------------------------------------
       -- 顧客サイト情報VIEW2
       -------------------------------------------------------------------------------
-      AND   xoha.deliver_to_id                 = xcas2v.party_site_id
+-- Ver1.6 Y.Kazama 本番障害#1398対応 Mod Start
+      AND   xoha.deliver_to                    = xcas2v.party_site_number
+      AND   xcas2v.party_site_status           = 'A'
+--      AND   xoha.deliver_to_id                 = xcas2v.party_site_id
+-- Ver1.6 Y.Kazama 本番障害#1398対応 Mod Start
       AND   xcas2v.start_date_active          <= xoha.schedule_ship_date
       AND   (
               xcas2v.end_date_active          >= xoha.schedule_ship_date
