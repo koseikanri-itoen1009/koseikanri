@@ -20,8 +20,8 @@ HEIGHT=0
 
 [DATABASE]
 KIND=ODBC
-JDBC=OracleType4TEBS05
-LIBRARYPATH1=C:\Documents and Settings\initial\デスクトップ\sqldeveloper\jdbc\lib\ojdbc14.jar
+JDBC=OracleType4TEBS06
+LIBRARYPATH1=D:\oracle\product\10.2.0\client_1\jdbc\lib\ojdbc14.jar
 CLASSNAME=oracle.jdbc.driver.OracleDriver
 DATABASEURL=jdbc:oracle:thin:@{0}:{1}:{2}
 PARAM1="DBQ=tebsdb21"
