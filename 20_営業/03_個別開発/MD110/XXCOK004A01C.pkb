@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK004A01C(body)
  * Description      : 顧客移行日に顧客マスタの釣銭金額に基づき仕訳情報を作成します。
  * MD.050           : VD釣銭の振替仕訳作成 (MD050_COK_004_A01)
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ----------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/12/18    1.0   K.Motohashi      新規作成
  *  2009/02/02    1.1   K.Suenaga        [障害COK_002]夜バッチ対応/言語取得
+ *  2009/06/09    1.2   K.Yamaguchi      [障害T1_1335]貸借逆修正
  *****************************************************************************************/
 -- ====================
 -- グローバル定数宣言部
@@ -358,7 +359,10 @@ AS
     , gv_prof_category_change                         -- 釣銭振替の仕訳カテゴリ
     , gv_prof_source_cok                              -- 個別開発の仕訳ソース
     , gv_prof_company_code                            -- 会社コード
-    , g_cust_info_tab( in_idx ).xcsi_prev_base_code   -- 旧担当拠点
+-- 2009/06/09 Ver.1.2 [障害T1_1335] SCS K.Yamaguchi REPAIR START
+--    , g_cust_info_tab( in_idx ).xcsi_prev_base_code   -- 旧担当拠点
+    , g_cust_info_tab( in_idx ).xcsi_new_base_code    -- 新担当拠点
+-- 2009/06/09 Ver.1.2 [障害T1_1335] SCS K.Yamaguchi REPAIR END
     , gv_prof_aff3_change                             -- 仮払金（釣銭）勘定科目
     , gv_prof_subacct_dummy                           -- 補助科目のダミー値
     , g_cust_info_tab( in_idx ).xcsi_cust_code        -- 顧客コード
@@ -419,7 +423,10 @@ AS
     , gv_prof_category_change                         -- 釣銭振替の仕訳カテゴリ
     , gv_prof_source_cok                              -- 個別開発の仕訳ソース
     , gv_prof_company_code                            -- 会社コード
-    , g_cust_info_tab( in_idx ).xcsi_new_base_code    -- 新担当拠点
+-- 2009/06/09 Ver.1.2 [障害T1_1335] SCS K.Yamaguchi REPAIR START
+--    , g_cust_info_tab( in_idx ).xcsi_new_base_code    -- 新担当拠点
+    , g_cust_info_tab( in_idx ).xcsi_prev_base_code   -- 旧担当拠点
+-- 2009/06/09 Ver.1.2 [障害T1_1335] SCS K.Yamaguchi REPAIR START
     , gv_prof_aff3_change                             -- 仮払金（釣銭）勘定科目
     , gv_prof_subacct_dummy                           -- 補助科目のダミー値
     , g_cust_info_tab( in_idx ).xcsi_cust_code        -- 顧客コード
