@@ -7,7 +7,7 @@ AS
  * Description      : d“üæˆø–¾×•\
  * MD.050           : —Lx‹‹’ •[Issue1.0(T_MD050_BPO_360)
  * MD.070           : —Lx‹‹’ •[Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.28
+ * Version          : 1.29
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -66,6 +66,7 @@ AS
  *  2009/05/18    1.26  T.Yoshimoto      –{”ÔáŠQ#1478‘Î‰
  *  2009/06/02    1.27  T.Yoshimoto      –{”ÔáŠQ#1515,1516‘Î‰
  *  2009/07/03    1.28  T.Yoshimoto      –{”ÔáŠQ#1560‘Î‰
+ *  2009/07/06    1.29  T.Yoshimoto      –{”ÔáŠQ#1565‘Î‰
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -1611,10 +1612,15 @@ AS
         --·ˆø‹àŠz
         ln_sum_sasihiki     := ln_sum_siire - ln_sum_kosen - ln_sum_fuka;
 --
+-- 2009/07/06 v1.29 T.Yoshimoto Del Start –{”Ô#1565
+/*
         --Á”ïÅ(d“ü‹àŠz)
         ln_sum_tax_siire    := ROUND(NVL(ln_sum_siire, 0) * NVL(it_data_rec(ln_loop_index-1).zeiritu , 0) / 100 ,0);
         --Á”ïÅ(Œû‘K‹àŠz)
         ln_sum_tax_kousen   := ROUND(NVL(ln_sum_kosen, 0) * NVL(it_data_rec(ln_loop_index-1).zeiritu , 0) / 100 ,0);
+*/
+-- 2009/07/06 v1.29 T.Yoshimoto Del End –{”Ô#1565
+--
         --Á”ïÅ(·ˆø‹àŠz)
         ln_sum_tax_sasihiki := ln_sum_tax_siire - ln_sum_tax_kousen;
 --
