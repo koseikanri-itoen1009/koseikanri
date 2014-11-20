@@ -1,0 +1,2 @@
+CREATE INDEX xxcmm.xxcmm_system_items_b_n03 on xxcmm.xxcmm_system_items_b (search_update_date) TABLESPACE xxidx2
+/
