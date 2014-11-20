@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : ’ ‡–β‰®‚ΙΦ‚·‚ιΏ‹‘‚Ζ©Ο‘‚π“Λ‚«‡‚ν‚ΉA•i–Ϊ•Κ‚ΙΏ‹‘‚Ζ©Ο‘‚Μ“ΰ—e‚π•\¦
  * MD.050           : –β‰®”Μ”„πx•¥ƒ`ƒFƒbƒN•\ MD050_COK_021_A06
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,8 @@ AS
  *                                                     ’l‚ªo—Ν‚³‚κ‚Θ‚Ά‚ζ‚¤•ΟX
  *                                                     •β“U‚Μ’l‚ªƒ}ƒCƒiƒX‚Ε‚ ‚Α‚Δ‚ΰA‡v‚Μ’Òελ‚ª‡‚¤‚ζ‚¤•ΟX
  *  2009/09/01    1.5   S.Moriyama       [αQ0001230] OPM•i–Ϊƒ}ƒXƒ^ζ“Ύπ’Η‰Α
+ *  2009/12/01    1.6   S.Moriyama       [E_–{‰Ò“®_00229] x•¥‹ΰz=•β“U+–β‰®ƒ}[ƒWƒ“+g”„”ο‚π–‚½‚³‚Θ‚Άκ‡
+ *                                                        –β‰®ƒ}[ƒWƒ“‚Ε‹ΰz’²®‚πs‚¤‚ζ‚¤‚ΙC³i’[”’²®j
  *
  *****************************************************************************************/
   -- ===============================================
@@ -499,6 +501,9 @@ AS
     ln_expansion_sales_amt   NUMBER         DEFAULT NULL;              -- g”„”ο
     ln_misc_acct_amt         NUMBER         DEFAULT NULL;              -- ‚»‚Μ‘Ό‰Θ–Ϊ
     lv_selling_month         VARCHAR2(7)    DEFAULT NULL;              -- ”„γ‘ΞΫ”N
+-- 2009/12/01 Ver.1.6 [E_–{‰Ò“®_00229] SCS S.Moriyama ADD START
+    ln_fraction_amount       NUMBER         DEFAULT NULL;              -- ’[”vZ—p
+-- 2009/12/01 Ver.1.6 [E_–{‰Ò“®_00229] SCS S.Moriyama ADD END
 --
   BEGIN
     -- ===============================================
@@ -583,6 +588,57 @@ AS
           ln_cs_margin_amt := ( NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).inc_num, 0 );
         END IF;
       END IF;
+-- 2009/12/01 Ver.1.6 [E_–{‰Ò“®_00229] SCS S.Moriyama UPD START
+--      -- ===============================================
+--      -- •β“U(((ΐ)’l-’Κν“X”[)*x•¥”—Κ)
+--      -- Θ‰Ί‚Μκ‡•β“U‚Ν0
+--      -- (ΐ)’l-’Κν“X”[‚ª0‚ζ‚θ¬‚³‚Άκ‡
+--      -- A-3.”Μ”„θ”—Ώ‚ªNULL‚Μκ‡
+--      -- A-3.”Μ”„θ”—Ώ‚ª0Θ‰Ί‚Μκ‡
+--      -- ===============================================
+---- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
+----      IF ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 ) THEN
+--      IF ( ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 )
+--        OR ( ( in_backmargin_amt IS NULL ) OR ( in_backmargin_amt <= cn_number_0 ) ) )
+--      THEN
+---- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
+--        ln_coverage_amt := cn_number_0;
+--      ELSE
+--        ln_coverage_amt := ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+--      END IF;
+---- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
+--      -- ===============================================
+--      -- –β‰®ƒ}[ƒWƒ“
+--      -- T1_0414C³‘O ((΅‰ρ“X”[-NET‰Ώi)*x•¥”—Κ  ΅‰ρ“X”[‚ªNULLE0ΘO‚Μκ‡΅‰ρ“X”[ANULL‚ά‚½‚Ν0‚Μκ‡’Κν“X”[
+--      -- T1_0414C³γ A-3.”Μ”„θ”—Ώ‚ª0‚ζ‚θ‘ε‚«‚Άκ‡ A-3.”Μ”„θ”—Ώ ~ x•¥”—Κ | •β“U
+--      --               γ‹LΘO                        A-3.”Μ”„θ”—Ώ ~ x•¥”—Κ
+--      -- ===============================================
+----      IF (    gn_once_store_deliver_amt IS NOT NULL )
+----        AND ( gn_once_store_deliver_amt <> cn_number_0 )
+----      THEN
+----        ln_wholesale_margin_sum := ( gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+----      ELSE
+----        ln_wholesale_margin_sum := ( NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+----      END IF;
+--      IF ( in_backmargin_amt > cn_number_0 ) THEN
+--        ln_wholesale_margin_sum := NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ) - ln_coverage_amt;
+--      ELSE
+--        ln_wholesale_margin_sum := NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+--      END IF;
+--      -- ===============================================
+--      -- g”„”ο
+--      -- T1_0414C³‘O ((’Κν“X”[-΅‰ρ“X”[)*x•¥”—Κ)  ΅‰ρ“X”[‚ªNULL‚ά‚½‚Ν0‚Μκ‡Ag”„”ο‚Ν0
+--      -- T1_0414C³γ A-3.”Μ”„‹¦^‹ΰ ~ x•¥”—Κ
+--      -- ===============================================
+----      IF (   gn_once_store_deliver_amt IS NULL )
+----        OR ( gn_once_store_deliver_amt = cn_number_0 )
+----      THEN
+----        ln_expansion_sales_amt := cn_number_0;
+----      ELSE
+----        ln_expansion_sales_amt := ( gn_normal_store_deliver_amt - gn_once_store_deliver_amt ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+----      END IF;
+--      ln_expansion_sales_amt := NVL( in_sales_support_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+---- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
       -- ===============================================
       -- •β“U(((ΐ)’l-’Κν“X”[)*x•¥”—Κ)
       -- Θ‰Ί‚Μκ‡•β“U‚Ν0
@@ -590,49 +646,39 @@ AS
       -- A-3.”Μ”„θ”—Ώ‚ªNULL‚Μκ‡
       -- A-3.”Μ”„θ”—Ώ‚ª0Θ‰Ί‚Μκ‡
       -- ===============================================
--- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
---      IF ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 ) THEN
       IF ( ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) < cn_number_0 )
         OR ( ( in_backmargin_amt IS NULL ) OR ( in_backmargin_amt <= cn_number_0 ) ) )
       THEN
--- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
         ln_coverage_amt := cn_number_0;
       ELSE
-        ln_coverage_amt := ( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+        ln_coverage_amt := ROUND(( ln_market_amt - NVL( gn_normal_store_deliver_amt, 0) ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
       END IF;
--- Start 2009/04/16 Ver_1.4 T1_0414 M.Hiruta
       -- ===============================================
       -- –β‰®ƒ}[ƒWƒ“
-      -- T1_0414C³‘O ((΅‰ρ“X”[-NET‰Ώi)*x•¥”—Κ  ΅‰ρ“X”[‚ªNULLE0ΘO‚Μκ‡΅‰ρ“X”[ANULL‚ά‚½‚Ν0‚Μκ‡’Κν“X”[
-      -- T1_0414C³γ A-3.”Μ”„θ”—Ώ‚ª0‚ζ‚θ‘ε‚«‚Άκ‡ A-3.”Μ”„θ”—Ώ ~ x•¥”—Κ | •β“U
-      --               γ‹LΘO                        A-3.”Μ”„θ”—Ώ ~ x•¥”—Κ
+      -- A-3.”Μ”„θ”—Ώ‚ª0‚ζ‚θ‘ε‚«‚Άκ‡ A-3.”Μ”„θ”—Ώ ~ x•¥”—Κ | •β“U
+      -- γ‹LΘO                        A-3.”Μ”„θ”—Ώ ~ x•¥”—Κ
       -- ===============================================
---      IF (    gn_once_store_deliver_amt IS NOT NULL )
---        AND ( gn_once_store_deliver_amt <> cn_number_0 )
---      THEN
---        ln_wholesale_margin_sum := ( gn_once_store_deliver_amt - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
---      ELSE
---        ln_wholesale_margin_sum := ( NVL( gn_normal_store_deliver_amt, 0 ) - NVL( gn_net_selling_price, 0 ) ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
---      END IF;
       IF ( in_backmargin_amt > cn_number_0 ) THEN
-        ln_wholesale_margin_sum := NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ) - ln_coverage_amt;
+        ln_wholesale_margin_sum := ROUND(NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ) - ln_coverage_amt);
       ELSE
-        ln_wholesale_margin_sum := NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
+        ln_wholesale_margin_sum := ROUND(NVL( in_backmargin_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
       END IF;
       -- ===============================================
       -- g”„”ο
-      -- T1_0414C³‘O ((’Κν“X”[-΅‰ρ“X”[)*x•¥”—Κ)  ΅‰ρ“X”[‚ªNULL‚ά‚½‚Ν0‚Μκ‡Ag”„”ο‚Ν0
-      -- T1_0414C³γ A-3.”Μ”„‹¦^‹ΰ ~ x•¥”—Κ
+      -- A-3.”Μ”„‹¦^‹ΰ ~ x•¥”—Κ
       -- ===============================================
---      IF (   gn_once_store_deliver_amt IS NULL )
---        OR ( gn_once_store_deliver_amt = cn_number_0 )
---      THEN
---        ln_expansion_sales_amt := cn_number_0;
---      ELSE
---        ln_expansion_sales_amt := ( gn_normal_store_deliver_amt - gn_once_store_deliver_amt ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
---      END IF;
-      ln_expansion_sales_amt := NVL( in_sales_support_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 );
--- End   2009/04/16 Ver_1.4 T1_0414 M.Hiruta
+      ln_expansion_sales_amt := ROUND(NVL( in_sales_support_amt, cn_number_0 ) * NVL( g_target_tab( in_i ).payment_qty, 0 ));
+      -- ===============================================
+      -- ’[”—
+      -- x•¥‹ΰz=•β“U+–β‰®ƒ}[ƒWƒ“+g”„”ο‚π–‚½‚³‚Θ‚Άκ‡
+      -- –β‰®ƒ}[ƒWƒ“‚Ι‚Δ‹ΰz’²®‚πs‚¤
+      -- ===============================================
+      ln_fraction_amount := ROUND(ln_coverage_amt + ln_wholesale_margin_sum + ln_expansion_sales_amt);
+--
+      IF ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) != ln_fraction_amount ) THEN
+        ln_wholesale_margin_sum := ln_wholesale_margin_sum + ( NVL(ln_payment_amt,g_target_tab( in_i ).demand_amt) - ln_fraction_amount );
+      END IF;
+-- 2009/12/01 Ver.1.6 [E_–{‰Ò“®_00229] SCS S.Moriyama UPD END
       -- ===============================================
       -- ‚»‚Μ‘Ό‰Θ–Ϊ(x•¥‹ΰz) ¨’θ‰Θ–Ϊ‚Ι’l‚ª‚ ‚ικ‡‚Μ‚έ
       -- ===============================================
