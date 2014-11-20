@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_pkg(BODY)
  * Description            : 共通関数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.29
+ * Version                : 1.30
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -81,6 +81,7 @@ AS
  *  2008/10/15   1.27  Oracle 伊藤ひとみ[混載配送区分変換関数][最大パレット枚数算出関数] 統合テスト指摘298対応
  *  2008/10/23   1.28  Oracle 二瓶大輔  [配車解除関数] TE080_BPO_600 No22対応
  *  2008/11/13   1.29  Oracle 伊藤ひとみ[重量容積小口個数更新関数] 統合テスト指摘311対応
+ *  2008/11/25   1.30  Oracle 北寒寺正夫[配車解除関数] 本番障害#84対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -5298,7 +5299,10 @@ AS
       AND    NVL(xott.end_date_active,to_date('99991231','YYYYMMDD')) 
                                                         >= trunc( xoha.schedule_ship_date )
       AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
-      FOR UPDATE NOWAIT;
+-- Ver1.30 M.Hokkanji Start
+        FOR UPDATE OF xoha.order_header_id NOWAIT;
+--      FOR UPDATE NOWAIT;
+-- Ver1.30 M.Hokkanji End
 --
     -- 支給依頼のチェック
     -- 検索処理を行い、ロックを取得します。
@@ -5317,7 +5321,10 @@ AS
       AND    NVL(xott.end_date_active,to_date('99991231','YYYYMMDD')) 
                                                         >= trunc( xoha.schedule_ship_date )
       AND    NVL(xoha.latest_external_flag, cv_flag_no) =  cv_flag_yes
-      FOR UPDATE NOWAIT;
+-- Ver1.30 M.Hokkanji Start
+        FOR UPDATE OF xoha.order_header_id NOWAIT;
+--      FOR UPDATE NOWAIT;
+-- Ver1.30 M.Hokkanji End
 --
     -- 移動指示のチェック
     -- 検索処理を行い、ロックを取得します。
@@ -5328,7 +5335,10 @@ AS
              lv_delivery_no
       FROM   xxinv_mov_req_instr_headers        mrih        -- 移動依頼/指示ヘッダ(アドオン)
       WHERE  mrih.mov_num                       =  iv_request_no
-      FOR UPDATE NOWAIT;
+-- Ver1.30 M.Hokkanji Start
+        FOR UPDATE OF mrih.mov_hdr_id NOWAIT;
+--      FOR UPDATE NOWAIT;
+-- Ver1.30 M.Hokkanji End
 --
     END IF;
 --
@@ -6631,7 +6641,10 @@ AS
         INTO   ln_dummy
         FROM   xxwsh_carriers_schedule        xcs              -- 配車配送計画(アドオン)
         WHERE  xcs.delivery_no                = lv_delivery_no
-        FOR UPDATE NOWAIT;
+-- Ver1.30 M.Hokkanji Start
+        FOR UPDATE OF xcs.delivery_no NOWAIT;
+--        FOR UPDATE NOWAIT;
+-- Ver1.30 M.Hokkanji End
 --
         -- 配車配送計画(アドオン)削除処理
         DELETE
