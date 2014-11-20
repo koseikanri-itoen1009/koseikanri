@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/04/18    1.0  Oracle 上原正好   初回作成
  *  2008/06/16    1.1  Oracle 野村正幸   結合障害 #9対応
  *  2008/06/19    1.2  Oracle 上原正好   ST障害 #178対応
+ *  2008/06/24    1.3  Oracle 上原正好   配送L/Tアドオンのリレーションに配送区分を追加
  *
  *****************************************************************************************/
 --
@@ -1156,6 +1157,9 @@ AS
       ---------------------------------------------------------------------------------------------
       AND   xoha.deliver_from       =  xdl2v.entering_despatching_code1
       AND   xoha.deliver_to         =  xdl2v.entering_despatching_code2
+      -- Add start 2008/06/24 uehara
+      AND   xoha.shipping_method_code = xdl2v.ship_method
+      -- Add end 2008/06/24 uehara
       AND   xdl2v.code_class1          =  gv_whse_code
       AND   xdl2v.code_class2          =  lv_code_class2 -- コード区分(1:拠点 9:配送先)
       -- パラメータ条件．生産物流LT1
@@ -1237,6 +1241,9 @@ AS
       ---------------------------------------------------------------------------------------------
       AND   xoha.deliver_from       =  xdl2v.entering_despatching_code1
       AND   xoha.deliver_to         =  xdl2v.entering_despatching_code2
+      -- Add start 2008/06/24 uehara
+      AND   xoha.shipping_method_code = xdl2v.ship_method
+      -- Add end 2008/06/24 uehara
       AND   xdl2v.code_class1          =  gv_whse_code
       AND   xdl2v.code_class2          =  lv_code_class2 -- コード区分(1:拠点 9:配送先)
       -- パラメータ条件．生産物流LT2
@@ -1495,7 +1502,10 @@ AS
               ) ;
           END IF;
             IF ( lv_retcode = gv_status_error ) THEN
-              RAISE global_process_expt ;
+              -- MOD START 2008/06/23 UEHARA
+--              RAISE global_process_expt ;
+              RAISE global_api_others_expt ;
+              -- MOD END 2008/06/23
             END IF ;
         END IF;
         --------------------------------------------------
@@ -1534,7 +1544,10 @@ AS
                ,ov_errmsg         => lv_errmsg
               ) ;
             IF ( lv_retcode = gv_status_error ) THEN
-              RAISE global_process_expt ;
+              -- MOD START 2008/06/23 UEHARA
+--              RAISE global_process_expt ;
+              RAISE global_api_others_expt ;
+              -- MOD END 2008/06/23
             END IF ;
           END IF;
         END IF;
@@ -1565,7 +1578,10 @@ AS
              ,ov_errmsg         => lv_errmsg
             ) ;
           IF ( lv_retcode = gv_status_error ) THEN
-            RAISE global_process_expt ;
+            -- MOD START 2008/06/23 UEHARA
+--            RAISE global_process_expt ;
+            RAISE global_api_others_expt ;
+            -- MOD END 2008/06/23
           END IF ;
         END IF;
       END IF;
@@ -1596,7 +1612,10 @@ AS
            ,ov_errmsg         => lv_errmsg
           ) ;
         IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_process_expt ;
+          -- MOD START 2008/06/23 UEHARA
+--          RAISE global_process_expt ;
+          RAISE global_api_others_expt ;
+          -- MOD END 2008/06/23
         END IF;
       END IF;
     END IF;
@@ -1628,7 +1647,10 @@ AS
            ,ov_errmsg         => lv_errmsg
           ) ;
         IF ( lv_retcode = gv_status_error ) THEN
-          RAISE global_process_expt ;
+          -- MOD START 2008/06/23 UEHARA
+--          RAISE global_process_expt ;
+          RAISE global_api_others_expt ;
+          -- MOD END 2008/06/23
         END IF;
       END IF;
     END IF;
@@ -1731,7 +1753,9 @@ AS
       IF ( cur_sel_move%ISOPEN ) THEN
         CLOSE cur_sel_move ;
       END IF ;
-      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+--      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
       ov_retcode := gv_status_error;
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
