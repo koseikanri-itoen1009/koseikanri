@@ -58,6 +58,9 @@ SELECT    o_itm.item_id                               AS  item_id               
          ,xsib.item_status                            AS  item_status                    -- Disc品目アドオン 品目ステータス
          ,xsib.renewal_item_code                      AS  renewal_item_code              -- Disc品目アドオン リニューアル元商品コード
          ,xsib.search_update_date                     AS  search_update_date             -- Disc品目アドオン 検索対象日時
+-- Ver1.3  2009/05/07  Add H.Yoshikawa  障害No.T1_0906 対応
+         ,xsib.case_conv_inc_num                      AS  case_conv_inc_num              -- Disc品目アドオン ケース換算入数
+-- End
          ,d_itm.inventory_item_id                     AS  inventory_item_id              -- Disc品目 品目ID
          ,d_itm.organization_id                       AS  organization_id                -- Disc品目 組織ID
          ,d_itm.description                           AS  description                    -- Disc品目 摘要
@@ -189,6 +192,10 @@ COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.RENEWAL_ITEM_CODE IS 'Disc品目アドオン リ
 /
 COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.SEARCH_UPDATE_DATE IS 'Disc品目アドオン 検索対象日時'
 /
+-- Ver1.3  2009/05/07  Add H.Yoshikawa  障害No.T1_0906 対応
+COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.CASE_CONV_INC_NUM IS 'Disc品目アドオン ケース換算入数'
+/
+-- End
 COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.INVENTORY_ITEM_ID IS 'Disc品目 品目ID'
 /
 COMMENT ON COLUMN XXCMM_OPMMTL_ITEMS_V.ORGANIZATION_ID IS 'Disc品目 組織ID'

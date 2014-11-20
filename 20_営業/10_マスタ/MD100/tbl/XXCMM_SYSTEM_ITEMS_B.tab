@@ -25,6 +25,9 @@ CREATE TABLE xxcmm.xxcmm_system_items_b
     item_status                    NUMBER(2,0),
     renewal_item_code              VARCHAR2(40),
     search_update_date             DATE,
+-- Ver1.2  2009/05/07  MOD T1_0906対応
+    case_conv_inc_num              NUMBER(5,0),
+-- End
     created_by                     NUMBER(15,0) NOT NULL,
     creation_date                  DATE NOT NULL,
     last_updated_by                NUMBER(15,0) NOT NULL,
@@ -78,6 +81,10 @@ COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.renewal_item_code      IS 'リニュー
 /
 COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.search_update_date     IS '検索対象更新日'
 /
+-- Ver1.2  2009/05/07  MOD T1_0906対応
+COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.case_conv_inc_num      IS 'ケース換算入数'
+/
+-- End
 COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.created_by             IS '作成者'
 /
 COMMENT ON COLUMN xxcmm.xxcmm_system_items_b.creation_date          IS '作成日'
