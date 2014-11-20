@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteSalesRegistAMImpl
 * 概要説明   : 販売先用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.0
+* バージョン : 1.10
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -18,6 +18,7 @@
 * 2009-05-29 1.8  SCS柳平直人  【T1_1247】改訂時の顧客名、商品名設定処理追加
 *                              【T1_1249】CSV出力制御、見積書印刷制御を修正
 * 2009-06-16 1.9  SCS阿部大輔  【T1_1257】マージン額の変更修正
+* 2009-07-23 1.10 SCS阿部大輔  【0000806】マージン額／マージン率の計算対象変更
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -2348,25 +2349,27 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     // 値検証（見積明細）
     ///////////////////////////////////
     //価格がnullの場合意は「0」に置き換える
-    if ( lineRow.getUsuallyDelivPrice() == null )
-    {
-      lineRow.setUsuallyDelivPrice(XxcsoQuoteConstants.DEF_PRICE);
-    }
+/* 20090723_abe_0000806 START*/
+    //if ( lineRow.getUsuallyDelivPrice() == null )
+    //{
+    //  lineRow.setUsuallyDelivPrice(XxcsoQuoteConstants.DEF_PRICE);
+    //}
 
-    if ( lineRow.getUsuallyStoreSalePrice() == null )
-    {
-      lineRow.setUsuallyStoreSalePrice(XxcsoQuoteConstants.DEF_PRICE);
-    }
+    //if ( lineRow.getUsuallyStoreSalePrice() == null )
+    //{
+    //  lineRow.setUsuallyStoreSalePrice(XxcsoQuoteConstants.DEF_PRICE);
+    //}
 
-    if ( lineRow.getThisTimeDelivPrice() == null )
-    {
-      lineRow.setThisTimeDelivPrice(XxcsoQuoteConstants.DEF_PRICE);
-    }
+    //if ( lineRow.getThisTimeDelivPrice() == null )
+    //{
+    //  lineRow.setThisTimeDelivPrice(XxcsoQuoteConstants.DEF_PRICE);
+    //}
 
-    if ( lineRow.getThisTimeStoreSalePrice() == null )
-    {
-      lineRow.setThisTimeStoreSalePrice(XxcsoQuoteConstants.DEF_PRICE);
-    }
+    //if ( lineRow.getThisTimeStoreSalePrice() == null )
+    //{
+    //  lineRow.setThisTimeStoreSalePrice(XxcsoQuoteConstants.DEF_PRICE);
+    //}
+/* 20090723_abe_0000806 END*/
 
     // 商品コード
     errorList
@@ -2611,114 +2614,212 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 /* 20090616_abe_T1_1257 START*/
     if (lineRow.getInventoryItemId() != null) 
     {
-      // 入数のチェック
-      if ( lineRow.getCaseIncNum() != null &&
-           lineRow.getBowlIncNum() != null
+/* 20090723_abe_0000806 START*/
+//      // 入数のチェック
+//      if ( lineRow.getCaseIncNum() != null &&
+//           lineRow.getBowlIncNum() != null
+//         )
+//      {      
+//        double caseincnum      = lineRow.getCaseIncNum().doubleValue();
+//        double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
+//
+//        if(((caseincnum == 0) &&
+//            (headerRow.getUnitType().equals("2"))) ||
+//           ((bowlincnum == 0) &&
+//            (headerRow.getUnitType().equals("3")))
+//          )
+//        {
+//            OAException error
+//              = XxcsoMessage.createErrorMessage(
+//                  XxcsoConstants.APP_XXCSO1_00574,
+//                  XxcsoConstants.TOKEN_INDEX,
+//                  String.valueOf(index)
+//                );
+//            errorList.add(error);
+//        }
+/* 20090723_abe_0000806 END*/
+/* 20090616_abe_T1_1257 END*/
+      // 通常か特売の場合は、店納価格の原価割れチェック
+      if ( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(lineRow.getQuoteDiv()) ||
+           XxcsoQuoteConstants.QUOTE_DIV_BARGAIN.equals(lineRow.getQuoteDiv())
          )
-      {      
-        double caseincnum      = lineRow.getCaseIncNum().doubleValue();
-        double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
-
-        if(((caseincnum == 0) &&
-            (headerRow.getUnitType().equals("2"))) ||
-           ((bowlincnum == 0) &&
-            (headerRow.getUnitType().equals("3")))
-          )
+      {
+/* 20090723_abe_0000806 START*/
+        // 必須チェック
+        if(lineRow.getUsuallyDelivPrice() == null) 
         {
-            OAException error
-              = XxcsoMessage.createErrorMessage(
-                  XxcsoConstants.APP_XXCSO1_00574,
-                  XxcsoConstants.TOKEN_INDEX,
-                  String.valueOf(index)
-                );
-            errorList.add(error);
+          errorList
+            = util.requiredCheck(
+                errorList
+               ,lineRow.getUsuallyDelivPrice()
+               ,XxcsoQuoteConstants.TOKEN_VALUE_USUALLY_DELIV_PRICE
+               ,index
+              );
         }
-      
-  /* 20090616_abe_T1_1257 END*/
-        if ( XxcsoQuoteConstants.QUOTE_DIV_USUALLY.equals(lineRow.getQuoteDiv()) ||
-             XxcsoQuoteConstants.QUOTE_DIV_BARGAIN.equals(lineRow.getQuoteDiv())
-           )
+        else
         {
-          // 通常か特売の場合は、店納価格の原価割れチェック
-          String usuallyDelivPriceRep 
-            = lineRow.getUsuallyDelivPrice().replaceAll(",", "");
-          String thisTimeDelivPriceRep 
-            = lineRow.getThisTimeDelivPrice().replaceAll(",", "");
-
-          /* 20090518_abe_T1_1023 START*/
-          String unittype        = headerRow.getUnitType();
-          /* 20090616_abe_T1_1257 START*/
-          //double caseincnum      = lineRow.getCaseIncNum().doubleValue();
-          //double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
-          /* 20090616_abe_T1_1257 END*/
-          /* 20090518_abe_T1_1023 END*/
-          double businessPrice      = lineRow.getBusinessPrice().doubleValue();
-
-          try
+          // 入数のチェック
+          if ( lineRow.getCaseIncNum() != null &&
+               lineRow.getBowlIncNum() != null
+             )
           {
-            double usuallyDelivPrice  = Double.parseDouble(usuallyDelivPriceRep);
+            double caseincnum      = lineRow.getCaseIncNum().doubleValue();
+            double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
 
-            // 通常店納価格
-            /* 20090518_abe_T1_1023 START*/
-            if ( (usuallyDelivPrice <= businessPrice && unittype.equals("1") ) ||
-                 ((usuallyDelivPrice / caseincnum <= businessPrice ||
-                  caseincnum == 0) && unittype.equals("2") ) || 
-                 ((usuallyDelivPrice / bowlincnum <= businessPrice ||
-                  bowlincnum == 0) && unittype.equals("3"))
-               )
-            //if ( usuallyDelivPrice <= businessPrice )
-            /* 20090518_abe_T1_1023 END*/
+            if(((caseincnum == 0) &&
+                (headerRow.getUnitType().equals("2"))) ||
+               ((bowlincnum == 0) &&
+                (headerRow.getUnitType().equals("3")))
+              )
             {
               OAException error
                 = XxcsoMessage.createErrorMessage(
-                    XxcsoConstants.APP_XXCSO1_00461,
-                    XxcsoConstants.TOKEN_COLUMN,
-                    XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
+                    XxcsoConstants.APP_XXCSO1_00574,
                     XxcsoConstants.TOKEN_INDEX,
                     String.valueOf(index)
                   );
               errorList.add(error);
             }
-          }
-          catch ( NumberFormatException e )
-          {
-            XxcsoUtils.debug(txn, "NumberFormatException");
-          }
-
-          try
-          {
-            double thisTimeDelivPrice = Double.parseDouble(thisTimeDelivPriceRep);
-
-            // 今回店納価格
+/* 20090723_abe_0000806 END*/
+            String usuallyDelivPriceRep 
+              = lineRow.getUsuallyDelivPrice().replaceAll(",", "");
+/* 20090723_abe_0000806 START*/
+            //String thisTimeDelivPriceRep 
+            //  = lineRow.getThisTimeDelivPrice().replaceAll(",", "");
+/* 20090723_abe_0000806 END*/
             /* 20090518_abe_T1_1023 START*/
-            if ( (thisTimeDelivPrice <= businessPrice && unittype.equals("1") ) ||
-                 ((thisTimeDelivPrice / caseincnum <= businessPrice ||
-                  caseincnum == 0) && unittype.equals("2") ) || 
-                 ((thisTimeDelivPrice / bowlincnum <= businessPrice ||
-                  bowlincnum == 0) && unittype.equals("3"))
-               )
-            //if ( thisTimeDelivPrice <= businessPrice )
+            String unittype        = headerRow.getUnitType();
+            /* 20090616_abe_T1_1257 START*/
+            //double caseincnum      = lineRow.getCaseIncNum().doubleValue();
+            //double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
+            /* 20090616_abe_T1_1257 END*/
             /* 20090518_abe_T1_1023 END*/
+            double businessPrice      = lineRow.getBusinessPrice().doubleValue();
+
+            try
+            {
+              double usuallyDelivPrice  = Double.parseDouble(usuallyDelivPriceRep);
+              // 通常店納価格
+              /* 20090518_abe_T1_1023 START*/
+              if ( (usuallyDelivPrice <= businessPrice && unittype.equals("1") ) ||
+                   ((usuallyDelivPrice / caseincnum <= businessPrice ||
+                    caseincnum == 0) && unittype.equals("2") ) || 
+                   ((usuallyDelivPrice / bowlincnum <= businessPrice ||
+                    bowlincnum == 0) && unittype.equals("3"))
+                 )
+              //if ( usuallyDelivPrice <= businessPrice )
+              /* 20090518_abe_T1_1023 END*/
+              {
+                OAException error
+                  = XxcsoMessage.createErrorMessage(
+                      XxcsoConstants.APP_XXCSO1_00461,
+                      XxcsoConstants.TOKEN_COLUMN,
+                      XxcsoQuoteConstants.TOKEN_VALUE_USUALLY,
+                      XxcsoConstants.TOKEN_INDEX,
+                      String.valueOf(index)
+                    );
+                errorList.add(error);
+              }
+            }
+            catch ( NumberFormatException e )
+            {
+              XxcsoUtils.debug(txn, "NumberFormatException");
+            }
+/* 20090723_abe_0000806 START*/
+          }
+        }
+/* 20090723_abe_0000806 END*/
+        // 今回店納価格は、入力された場合のみ原価割れチェック
+        if(lineRow.getThisTimeDelivPrice() != null)
+        {
+          // 入数のチェック
+          if ( lineRow.getCaseIncNum() != null &&
+               lineRow.getBowlIncNum() != null
+             )
+          {
+            double caseincnum      = lineRow.getCaseIncNum().doubleValue();
+            double bowlincnum      = lineRow.getBowlIncNum().doubleValue();
+
+            if(((caseincnum == 0) &&
+                (headerRow.getUnitType().equals("2"))) ||
+               ((bowlincnum == 0) &&
+                (headerRow.getUnitType().equals("3")))
+              )
             {
               OAException error
                 = XxcsoMessage.createErrorMessage(
-                    XxcsoConstants.APP_XXCSO1_00461,
-                    XxcsoConstants.TOKEN_COLUMN,
-                    XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME,
+                    XxcsoConstants.APP_XXCSO1_00574,
                     XxcsoConstants.TOKEN_INDEX,
                     String.valueOf(index)
                   );
               errorList.add(error);
             }
-          }
-          catch ( NumberFormatException e )
-          {
-            XxcsoUtils.debug(txn, "NumberFormatException");
-          }
 
+            String unittype        = headerRow.getUnitType();
+            double businessPrice   = lineRow.getBusinessPrice().doubleValue();
+
+            try
+            {
+              /* 20090723_abe_0000806 START*/
+              //double thisTimeDelivPrice = Double.parseDouble(thisTimeDelivPriceRep);
+                String thisTimeDelivPriceRep 
+                  = lineRow.getThisTimeDelivPrice().replaceAll(",", "");
+                double thisTimeDelivPrice = Double.parseDouble(thisTimeDelivPriceRep);
+              /* 20090723_abe_0000806 END*/
+
+              // 今回店納価格
+              /* 20090518_abe_T1_1023 START*/
+              if ( (thisTimeDelivPrice <= businessPrice && unittype.equals("1") ) ||
+                   ((thisTimeDelivPrice / caseincnum <= businessPrice ||
+                    caseincnum == 0) && unittype.equals("2") ) || 
+                   ((thisTimeDelivPrice / bowlincnum <= businessPrice ||
+                    bowlincnum == 0) && unittype.equals("3"))
+                 )
+              //if ( thisTimeDelivPrice <= businessPrice )
+              /* 20090518_abe_T1_1023 END*/
+                {
+                  OAException error
+                    = XxcsoMessage.createErrorMessage(
+                        XxcsoConstants.APP_XXCSO1_00461,
+                        XxcsoConstants.TOKEN_COLUMN,
+                        XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME,
+                        XxcsoConstants.TOKEN_INDEX,
+                        String.valueOf(index)
+                      );
+                  errorList.add(error);
+                }
+
+            }
+            catch ( NumberFormatException e )
+            {
+              XxcsoUtils.debug(txn, "NumberFormatException");
+            }
+          }
+        /* 20090723_abe_0000806 START*/
+        }
+        /* 20090723_abe_0000806 END*/
+      }
+      /* 20090723_abe_0000806 START*/
+      // 新規導入か原価割れの場合
+      if ( XxcsoQuoteConstants.QUOTE_DIV_INTRO.equals(lineRow.getQuoteDiv()) ||
+           XxcsoQuoteConstants.QUOTE_DIV_COST.equals(lineRow.getQuoteDiv())
+         )
+      {
+        // 通常店納価格の必須チェック
+        if(lineRow.getUsuallyDelivPrice() == null) 
+        {
+          errorList
+            = util.requiredCheck(
+                errorList
+               ,lineRow.getUsuallyDelivPrice()
+               ,XxcsoQuoteConstants.TOKEN_VALUE_USUALLY_DELIV_PRICE
+               ,index
+              );
         }
       }
+      /* 20090723_abe_0000806 END*/
     }
+
     // 備考
     errorList
       = util.checkIllegalString(
