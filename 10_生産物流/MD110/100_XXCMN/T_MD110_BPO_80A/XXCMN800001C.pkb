@@ -7,7 +7,7 @@ AS
  * Description      : 顧客インタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 顧客インタフェース   T_MD070_BPO_80A
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -87,6 +87,7 @@ AS
  *  2008/08/25    1.9   Oracle 山根 一浩 T_S_442,T_S_548対応
  *  2008/10/01    1.10  Oracle 椎名 昭圭 統合障害#291対応
  *  2008/10/07    1.11  Oracle 椎名 昭圭 T_S_550対応
+ *  2009/01/09    1.12  Oracle 椎名 昭圭 本番#857対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -8044,6 +8045,9 @@ AS
     ln_cnt                          NUMBER;
     lv_primary_flag                 hz_cust_site_uses_all.primary_flag%TYPE;
 --
+-- 2009/01/09 v1.12 ADD START
+    lv_account_number               hz_cust_accounts.account_number%TYPE;
+-- 2009/01/09 v1.12 ADD END
     -- *** ローカル・カーソル ***
 --
     -- *** ローカル・レコード ***
@@ -8156,6 +8160,17 @@ AS
     -- 2008/04/17 変更要求No61 対応
     -- 顧客所在地マスタの検索
     BEGIN
+-- 2009/01/09 v1.12 ADD START
+--
+      -- 顧客コード=NULL
+      IF (ir_masters_rec.party_num = gv_def_party_num) THEN
+        lv_account_number := ir_masters_rec.base_code;       -- 拠点コード
+      -- 顧客コード<>NULL
+      ELSE
+        lv_account_number := ir_masters_rec.party_num;       -- 顧客コード
+      END IF;
+--
+-- 2009/01/09 v1.12 ADD END
       SELECT COUNT(hcas.cust_acct_site_id)
       INTO   ln_cnt
 -- 2008/08/25 Mod ↓
@@ -8164,6 +8179,8 @@ AS
       WHERE  hcas.attribute18 = ir_masters_rec.ship_to_code
       AND    ROWNUM = 1;
 */
+-- 2009/01/09 v1.12 UPDATE START
+/*
       FROM   hz_party_sites         hps,                 -- パーティサイトマスタ
              hz_cust_acct_sites_all hcas,                -- 顧客所在地マスタ
              hz_locations           hzl                  -- 顧客事業所マスタ
@@ -8172,6 +8189,16 @@ AS
       AND    hps.status         = gv_status_on
       AND    hzl.province       = ir_masters_rec.ship_to_code;   -- 配送先コード
 -- 2008/08/25 Mod ↑
+*/
+      FROM   hz_party_sites         hps,                 -- パーティサイトマスタ
+             hz_cust_acct_sites_all hcas,                -- 顧客所在地マスタ
+             hz_cust_accounts       hca                  -- 顧客マスタ
+      WHERE  hps.party_site_id  = hcas.party_site_id
+      AND    hps.party_id       = hca.party_id
+      AND    hps.status         = gv_status_on
+      AND    hca.account_number = lv_account_number
+      ;
+-- 2009/01/09 v1.12 UPDATE END
 --
     EXCEPTION
       WHEN NO_DATA_FOUND THEN
