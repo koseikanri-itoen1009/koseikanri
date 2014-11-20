@@ -12,6 +12,9 @@
  *  2009/01/01    1.0   S.Tomita         新規作成
  *  2009/07/13    1.1   K.Kakishita      [0000433] パフォーマンス障害
  *                                       ・ヒント句追加
+ *  2009/07/30    1.2   K.Kakishita      [0000433] パフォーマンス障害
+ *                                       ・④のWHERE句を変更
+ *
  ************************************************************************/
   CREATE OR REPLACE FORCE VIEW "APPS"."XXCOS_CUST_HIERARCHY_V" ("CASH_ACCOUNT_ID", "CASH_ACCOUNT_NUMBER", "CASH_ACCOUNT_NAME", "BILL_ACCOUNT_ID", "BILL_ACCOUNT_NUMBER", "BILL_ACCOUNT_NAME", "SHIP_ACCOUNT_ID", "SHIP_ACCOUNT_NUMBER", "SHIP_ACCOUNT_NAME", "CASH_RECEIV_BASE_CODE", "BILL_PARTY_ID", "BILL_BILL_BASE_CODE", "BILL_POSTAL_CODE", "BILL_STATE", "BILL_CITY", "BILL_ADDRESS1", "BILL_ADDRESS2", "BILL_TEL_NUM", "BILL_CONS_INV_FLAG", "BILL_TORIHIKISAKI_CODE", "BILL_STORE_CODE", "BILL_CUST_STORE_NAME", "BILL_TAX_DIV", "BILL_CRED_REC_CODE1", "BILL_CRED_REC_CODE2", "BILL_CRED_REC_CODE3", "BILL_INVOICE_TYPE", "BILL_PAYMENT_TERM_ID", "BILL_PAYMENT_TERM2", "BILL_PAYMENT_TERM3", "BILL_TAX_ROUND_RULE", "SHIP_SALE_BASE_CODE") AS
   SELECT
@@ -362,8 +365,15 @@
                       ROWNUM
                FROM   hz_cust_acct_relate     ex_hcar_4       --顧客関連マスタ
                WHERE
-                     (ex_hcar_4.cust_account_id = ship_hzca_4.cust_account_id           --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
-               OR     ex_hcar_4.related_cust_account_id = ship_hzca_4.cust_account_id)  --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
+                      ex_hcar_4.cust_account_id = ship_hzca_4.cust_account_id           --顧客関連マスタ(請求関連).顧客ID = 出荷先顧客マスタ.顧客ID
+               AND    ex_hcar_4.status = 'A'                                            --顧客関連マスタ(請求関連).ステータス = ‘A’
+                    )
+    AND    NOT EXISTS (
+               SELECT /*+ INDEX ( ex_hcar_4 ) */
+                      ROWNUM
+               FROM   hz_cust_acct_relate     ex_hcar_4       --顧客関連マスタ
+               WHERE
+                      ex_hcar_4.related_cust_account_id = ship_hzca_4.cust_account_id   --顧客関連マスタ(請求関連).関連先顧客ID = 出荷先顧客マスタ.顧客ID
                AND    ex_hcar_4.status = 'A'                                            --顧客関連マスタ(請求関連).ステータス = ‘A’
                     )
     AND    ship_hzca_4.cust_account_id = bill_hzad_4.customer_id             --請求先顧客マスタ.顧客ID = 顧客追加情報.顧客ID
