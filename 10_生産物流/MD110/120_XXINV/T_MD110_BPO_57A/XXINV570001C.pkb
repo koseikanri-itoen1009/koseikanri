@@ -7,7 +7,7 @@ AS
  * Description      : 移動入出庫実績登録
  * MD.050           : 移動入出庫実績登録(T_MD050_BPO_570)
  * MD.070           : 移動入出庫実績登録(T_MD070_BPO_57A)
- * Version          : 1.16
+ * Version          : 1.17
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/12/25    1.14  Hitomi Itou      本番障害#821(出庫実績日・着荷実績日の未来日チェックを追加)
  *  2008/12/25    1.15  Yuko  Kawano     本番障害#844(パラメータ予定日を実績日に変更)
  *  2009/01/16    1.16  Yuko  Kawano     本番障害#988(実績訂正(新規明細追加時の不具合対応))
+ *  2009/01/28    1.17  Yuko  Kawano     本番障害#1093(実績ロット不一致対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -829,124 +830,405 @@ AS
     -- ==================================
     -- 移動情報の取得カーソル
     -- ==================================
+--2009/01/28 Y.Kawano Mod Start #1093
+--    -- 抽出条件に移動番号あり
+--    CURSOR xxinv_mov_num_cur(lv_mov_num IN xxinv_mov_req_instr_headers.mov_num%TYPE)
+--    IS
+--      SELECT xmrih.mov_hdr_id                                -- 移動ヘッダID
+--            ,xmrih.mov_num                                   -- 移動番号
+--            ,xmrih.mov_type                                  -- 移動タイプ
+--            ,xmrih.comp_actual_flg                           -- 実績計上済フラグ
+--            ,xmrih.correct_actual_flg                        -- 実績訂正フラグ
+--            ,xmrih.shipped_locat_id                          -- 出庫元ID
+--            ,xmrih.shipped_locat_code                        -- 出庫元保管場所
+--            ,xmrih.ship_to_locat_id                          -- 入庫先ID
+--            ,xmrih.ship_to_locat_code                        -- 入庫先保管場所
+--            ,xmrih.schedule_ship_date                        -- 出庫予定日
+--            ,xmrih.schedule_arrival_date                     -- 入庫予定日
+--            ,xmrih.actual_ship_date                          -- 出庫実績日
+--            ,xmrih.actual_arrival_date                       -- 入庫実績日
+--            ,xmril.mov_line_id                               -- 移動明細ID
+--            ,xmril.line_number                               -- 明細番号
+--            ,xmril.item_id                                   -- OPM品目ID
+--            ,xmril.item_code                                 -- 品目
+--            ,xmril.uom_code                                  -- 単位
+--            ,xmril.shipped_quantity                          -- 出庫実績数量
+--            ,xmril.ship_to_quantity                          -- 入庫実績数量
+---- add start 1.3
+--            ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
+--            ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
+---- add end 1.3
+--            ,xmld.lot_id                                     -- ロットID
+--            ,xmld.lot_no                                     -- ロットNo
+--            ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
+--            ,xmld.actual_quantity   lot_out_actual_quantity  -- 実績数量[出庫]
+--            ,xmld2.actual_date      lot_in_actual_date       -- 実績日  [入庫]
+--            ,xmld2.actual_quantity  lot_in_actual_quantity   -- 実績数量[入庫]
+----2008/12/11 Y.Kawano Add Start
+--            ,xmld.before_actual_quantity   lot_out_bf_actual_quantity  -- 実績数量[出庫]
+--            ,xmld2.before_actual_quantity  lot_in_bf_actual_quantity   -- 実績数量[入庫]
+----2008/12/11 Y.Kawano Add End
+--      FROM   xxinv_mov_req_instr_headers xmrih                  -- 移動依頼/指示ヘッダ(アドオン)
+--            ,xxinv_mov_req_instr_lines   xmril                  -- 移動依頼/指示明細(アドオン)
+--            ,xxinv_mov_lot_details       xmld                   -- 移動ロット詳細(アドオン)  出庫用
+--            ,xxinv_mov_lot_details       xmld2                  -- 移動ロット詳細(アドオン)  入庫用
+--      WHERE  xmrih.mov_hdr_id          = xmril.mov_hdr_id            -- ヘッダID
+--      AND    xmril.mov_line_id         = xmld.mov_line_id            -- 明細ID 出庫
+--      AND    xmril.mov_line_id         = xmld2.mov_line_id           -- 明細ID 入庫
+--      AND    xmld.document_type_code   = gv_c_document_type      -- 文書タイプ[移動]
+--      AND    xmld2.document_type_code  = gv_c_document_type      -- 文書タイプ[移動]
+--      AND    xmld.record_type_code     = gv_c_document_type_out      -- レコードタイプ[出庫]
+--      AND    xmld2.record_type_code    = gv_c_document_type_in       -- レコードタイプ[入庫]
+--      AND    xmld.lot_id               = xmld2.lot_id                -- ロットID
+--      AND    xmrih.status              = gv_c_move_status            -- ステータス[ 入出庫報告有 ]
+--      AND  (
+--            (xmrih.comp_actual_flg    = gv_c_ynkbn_n)               -- 実績計上済フラグ[ OFF ]または
+--             OR
+--            ((xmrih.comp_actual_flg    = gv_c_ynkbn_y)  AND (xmrih.correct_actual_flg = gv_c_ynkbn_y))
+--           )                                        -- 実績訂正フラグ[ ON ]かつ実績計上済フラグ[ ON ]
+--      AND    xmril.delete_flg          = gv_c_ynkbn_n                -- 取消フラグ[N]
+--      AND    xmrih.mov_num             = lv_mov_num                  -- 移動番号
+----      ORDER BY xmrih.mov_hdr_id, xmril.line_number,
+--      FOR UPDATE OF xmrih.mov_hdr_id NOWAIT;
+--
+--    -- 抽出条件に移動番号なし
+--    CURSOR xxinv_move_cur
+--    IS
+--      SELECT xmrih.mov_hdr_id                                -- 移動ヘッダID
+--            ,xmrih.mov_num                                   -- 移動番号
+--            ,xmrih.mov_type                                  -- 移動タイプ
+--            ,xmrih.comp_actual_flg                           -- 実績計上済フラグ
+--            ,xmrih.correct_actual_flg                        -- 実績訂正フラグ
+--            ,xmrih.shipped_locat_id                          -- 出庫元ID
+--            ,xmrih.shipped_locat_code                        -- 出庫元保管場所
+--            ,xmrih.ship_to_locat_id                          -- 入庫先ID
+--            ,xmrih.ship_to_locat_code                        -- 入庫先保管場所
+--            ,xmrih.schedule_ship_date                        -- 出庫予定日
+--            ,xmrih.schedule_arrival_date                     -- 入庫予定日
+--            ,xmrih.actual_ship_date                          -- 出庫実績日
+--            ,xmrih.actual_arrival_date                       -- 入庫実績日
+--            ,xmril.mov_line_id                               -- 移動明細ID
+--            ,xmril.line_number                               -- 明細番号
+--            ,xmril.item_id                                   -- OPM品目ID
+--            ,xmril.item_code                                 -- 品目
+--            ,xmril.uom_code                                  -- 単位
+--            ,xmril.shipped_quantity                          -- 出庫実績数量
+--            ,xmril.ship_to_quantity                          -- 入庫実績数量
+---- add start 1.3
+--            ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
+--            ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
+---- add end 1.3
+--            ,xmld.lot_id                                     -- ロットID
+--            ,xmld.lot_no                                     -- ロット№
+--            ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
+--            ,xmld.actual_quantity   lot_out_actual_quantity  -- 実績数量[出庫]
+--            ,xmld2.actual_date      lot_in_actual_date       -- 実績日  [入庫]
+--            ,xmld2.actual_quantity  lot_in_actual_quantity   -- 実績数量[入庫]
+----2008/12/11 Y.Kawano Add Start
+--            ,xmld.before_actual_quantity   lot_out_bf_actual_quantity  -- 実績数量[出庫]
+--            ,xmld2.before_actual_quantity  lot_in_bf_actual_quantity   -- 実績数量[入庫]
+----2008/12/11 Y.Kawano Add End
+--      FROM   xxinv_mov_req_instr_headers xmrih                  -- 移動依頼/指示ヘッダ(アドオン)
+--            ,xxinv_mov_req_instr_lines   xmril                  -- 移動依頼/指示明細(アドオン)
+--            ,xxinv_mov_lot_details       xmld                   -- 移動ロット詳細(アドオン)  出庫用
+--            ,xxinv_mov_lot_details       xmld2                  -- 移動ロット詳細(アドオン)  入庫用
+--      WHERE  xmrih.mov_hdr_id          = xmril.mov_hdr_id            -- ヘッダID
+--      AND    xmril.mov_line_id         = xmld.mov_line_id            -- 明細ID 出庫
+--      AND    xmril.mov_line_id         = xmld2.mov_line_id           -- 明細ID 入庫
+--      AND    xmld.document_type_code   = gv_c_document_type      -- 文書タイプ[移動]
+--      AND    xmld2.document_type_code  = gv_c_document_type      -- 文書タイプ[移動]
+--      AND    xmld.record_type_code     = gv_c_document_type_out      -- レコードタイプ[出庫]
+--      AND    xmld2.record_type_code    = gv_c_document_type_in       -- レコードタイプ[入庫]
+--      AND    xmld.lot_id               = xmld2.lot_id                -- ロットID
+--      AND    xmrih.status              = gv_c_move_status            -- ステータス[ 入出庫報告有 ]
+--      AND   (
+--             (xmrih.comp_actual_flg    = gv_c_ynkbn_n)               -- 実績計上済フラグ[ OFF ]
+--              OR
+--             ((xmrih.comp_actual_flg    = gv_c_ynkbn_y) AND (xmrih.correct_actual_flg = gv_c_ynkbn_y))
+--             )                                          -- 実績訂正フラグ[ ON ] 実績計上済フラグ[ ON ]
+--      AND    xmril.delete_flg          = gv_c_ynkbn_n               -- 取消フラグ[N]
+--      ORDER BY xmrih.mov_num                                        -- 移動番号
+--      FOR UPDATE OF xmrih.mov_hdr_id NOWAIT;
+--
     -- 抽出条件に移動番号あり
     CURSOR xxinv_mov_num_cur(lv_mov_num IN xxinv_mov_req_instr_headers.mov_num%TYPE)
     IS
-      SELECT xmrih.mov_hdr_id                                -- 移動ヘッダID
-            ,xmrih.mov_num                                   -- 移動番号
-            ,xmrih.mov_type                                  -- 移動タイプ
-            ,xmrih.comp_actual_flg                           -- 実績計上済フラグ
-            ,xmrih.correct_actual_flg                        -- 実績訂正フラグ
-            ,xmrih.shipped_locat_id                          -- 出庫元ID
-            ,xmrih.shipped_locat_code                        -- 出庫元保管場所
-            ,xmrih.ship_to_locat_id                          -- 入庫先ID
-            ,xmrih.ship_to_locat_code                        -- 入庫先保管場所
-            ,xmrih.schedule_ship_date                        -- 出庫予定日
-            ,xmrih.schedule_arrival_date                     -- 入庫予定日
-            ,xmrih.actual_ship_date                          -- 出庫実績日
-            ,xmrih.actual_arrival_date                       -- 入庫実績日
-            ,xmril.mov_line_id                               -- 移動明細ID
-            ,xmril.line_number                               -- 明細番号
-            ,xmril.item_id                                   -- OPM品目ID
-            ,xmril.item_code                                 -- 品目
-            ,xmril.uom_code                                  -- 単位
-            ,xmril.shipped_quantity                          -- 出庫実績数量
-            ,xmril.ship_to_quantity                          -- 入庫実績数量
--- add start 1.3
-            ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
-            ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
--- add end 1.3
-            ,xmld.lot_id                                     -- ロットID
-            ,xmld.lot_no                                     -- ロットNo
-            ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
-            ,xmld.actual_quantity   lot_out_actual_quantity  -- 実績数量[出庫]
-            ,xmld2.actual_date      lot_in_actual_date       -- 実績日  [入庫]
-            ,xmld2.actual_quantity  lot_in_actual_quantity   -- 実績数量[入庫]
---2008/12/11 Y.Kawano Add Start
-            ,xmld.before_actual_quantity   lot_out_bf_actual_quantity  -- 実績数量[出庫]
-            ,xmld2.before_actual_quantity  lot_in_bf_actual_quantity   -- 実績数量[入庫]
---2008/12/11 Y.Kawano Add End
-      FROM   xxinv_mov_req_instr_headers xmrih                  -- 移動依頼/指示ヘッダ(アドオン)
-            ,xxinv_mov_req_instr_lines   xmril                  -- 移動依頼/指示明細(アドオン)
-            ,xxinv_mov_lot_details       xmld                   -- 移動ロット詳細(アドオン)  出庫用
-            ,xxinv_mov_lot_details       xmld2                  -- 移動ロット詳細(アドオン)  入庫用
-      WHERE  xmrih.mov_hdr_id          = xmril.mov_hdr_id            -- ヘッダID
-      AND    xmril.mov_line_id         = xmld.mov_line_id            -- 明細ID 出庫
-      AND    xmril.mov_line_id         = xmld2.mov_line_id           -- 明細ID 入庫
-      AND    xmld.document_type_code   = gv_c_document_type      -- 文書タイプ[移動]
-      AND    xmld2.document_type_code  = gv_c_document_type      -- 文書タイプ[移動]
-      AND    xmld.record_type_code     = gv_c_document_type_out      -- レコードタイプ[出庫]
-      AND    xmld2.record_type_code    = gv_c_document_type_in       -- レコードタイプ[入庫]
-      AND    xmld.lot_id               = xmld2.lot_id                -- ロットID
-      AND    xmrih.status              = gv_c_move_status            -- ステータス[ 入出庫報告有 ]
-      AND  (
-            (xmrih.comp_actual_flg    = gv_c_ynkbn_n)               -- 実績計上済フラグ[ OFF ]または
-             OR
-            ((xmrih.comp_actual_flg    = gv_c_ynkbn_y)  AND (xmrih.correct_actual_flg = gv_c_ynkbn_y))
-           )                                        -- 実績訂正フラグ[ ON ]かつ実績計上済フラグ[ ON ]
-      AND    xmril.delete_flg          = gv_c_ynkbn_n                -- 取消フラグ[N]
-      AND    xmrih.mov_num             = lv_mov_num                  -- 移動番号
---      ORDER BY xmrih.mov_hdr_id, xmril.line_number,
-      FOR UPDATE OF xmrih.mov_hdr_id NOWAIT;
+      SELECT main.mov_hdr_id                                -- 移動ヘッダID
+            ,main.mov_num                                   -- 移動番号
+            ,main.mov_type                                  -- 移動タイプ
+            ,main.comp_actual_flg                           -- 実績計上済フラグ
+            ,main.correct_actual_flg                        -- 実績訂正フラグ
+            ,main.shipped_locat_id                          -- 出庫元ID
+            ,main.shipped_locat_code                        -- 出庫元保管場所
+            ,main.ship_to_locat_id                          -- 入庫先ID
+            ,main.ship_to_locat_code                        -- 入庫先保管場所
+            ,main.schedule_ship_date                        -- 出庫予定日
+            ,main.schedule_arrival_date                     -- 入庫予定日
+            ,main.actual_ship_date                          -- 出庫実績日
+            ,main.actual_arrival_date                       -- 入庫実績日
+            ,main.mov_line_id                               -- 移動明細ID
+            ,main.line_number                               -- 明細番号
+            ,main.item_id                                   -- OPM品目ID
+            ,main.item_code                                 -- 品目
+            ,main.uom_code                                  -- 単位
+            ,main.shipped_quantity                          -- 出庫実績数量
+            ,main.ship_to_quantity                          -- 入庫実績数量
+            ,main.mov_lot_dtl_id                            -- ロット詳細ID(出庫用)
+            ,main.mov_lot_dtl_id2                           -- ロット詳細ID(入庫用)
+            ,main.lot_id                                     -- ロットID
+            ,main.lot_no                                     -- ロットNo
+            ,main.lot_out_actual_date                        -- 実績日  [出庫]
+            ,main.lot_out_actual_quantity                    -- 実績数量[出庫]
+            ,main.lot_in_actual_date                         -- 実績日  [入庫]
+            ,main.lot_in_actual_quantity                     -- 実績数量[入庫]
+            ,main.lot_out_bf_actual_quantity                 -- 実績数量[出庫]
+            ,main.lot_in_bf_actual_quantity                  -- 実績数量[入庫]
+      FROM (
+          SELECT xmrih.mov_hdr_id                                -- 移動ヘッダID
+                ,xmrih.mov_num                                   -- 移動番号
+                ,xmrih.mov_type                                  -- 移動タイプ
+                ,xmrih.comp_actual_flg                           -- 実績計上済フラグ
+                ,xmrih.correct_actual_flg                        -- 実績訂正フラグ
+                ,xmrih.shipped_locat_id                          -- 出庫元ID
+                ,xmrih.shipped_locat_code                        -- 出庫元保管場所
+                ,xmrih.ship_to_locat_id                          -- 入庫先ID
+                ,xmrih.ship_to_locat_code                        -- 入庫先保管場所
+                ,xmrih.schedule_ship_date                        -- 出庫予定日
+                ,xmrih.schedule_arrival_date                     -- 入庫予定日
+                ,xmrih.actual_ship_date                          -- 出庫実績日
+                ,xmrih.actual_arrival_date                       -- 入庫実績日
+                ,xmril.mov_line_id                               -- 移動明細ID
+                ,xmril.line_number                               -- 明細番号
+                ,xmril.item_id                                   -- OPM品目ID
+                ,xmril.item_code                                 -- 品目
+                ,xmril.uom_code                                  -- 単位
+                ,xmril.shipped_quantity                          -- 出庫実績数量
+                ,xmril.ship_to_quantity                          -- 入庫実績数量
+                ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
+                ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
+                ,xmld.lot_id                                     -- ロットID
+                ,xmld.lot_no                                     -- ロットNo
+                ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
+                ,xmld.actual_quantity   lot_out_actual_quantity  -- 実績数量[出庫]
+                ,xmld2.actual_date      lot_in_actual_date       -- 実績日  [入庫]
+                ,xmld2.actual_quantity  lot_in_actual_quantity   -- 実績数量[入庫]
+                ,xmld.before_actual_quantity   lot_out_bf_actual_quantity  -- 実績数量[出庫]
+                ,xmld2.before_actual_quantity  lot_in_bf_actual_quantity   -- 実績数量[入庫]
+          FROM   xxinv_mov_req_instr_headers xmrih                  -- 移動依頼/指示ヘッダ(アドオン)
+                ,xxinv_mov_req_instr_lines   xmril                  -- 移動依頼/指示明細(アドオン)
+                ,xxinv_mov_lot_details       xmld                   -- 移動ロット詳細(アドオン)  出庫用
+                ,xxinv_mov_lot_details       xmld2                  -- 移動ロット詳細(アドオン)  入庫用
+          WHERE  xmrih.mov_hdr_id             = xmril.mov_hdr_id            -- ヘッダID
+          AND    xmril.mov_line_id            = xmld.mov_line_id            -- 明細ID 出庫
+          AND    xmld.mov_line_id             = xmld2.mov_line_id(+)
+          AND    xmld.document_type_code      = gv_c_document_type      -- 文書タイプ[移動]
+          AND    xmld2.document_type_code(+)  = gv_c_document_type      -- 文書タイプ[移動]
+          AND    xmld.record_type_code        = gv_c_document_type_out      -- レコードタイプ[出庫]
+          AND    xmld2.record_type_code(+)    = gv_c_document_type_in       -- レコードタイプ[入庫]
+          AND    xmld.lot_id                  = xmld2.lot_id(+)             -- ロットID
+          AND    xmrih.status                 = gv_c_move_status            -- ステータス[ 入出庫報告有 ]
+          AND  (
+                (xmrih.comp_actual_flg        = gv_c_ynkbn_n)               -- 実績計上済フラグ[ OFF ]または
+                 OR
+                ((xmrih.comp_actual_flg       = gv_c_ynkbn_y) AND (xmrih.correct_actual_flg = gv_c_ynkbn_y))
+               )                                        -- 実績訂正フラグ[ ON ]かつ実績計上済フラグ[ ON ]
+          AND    xmril.delete_flg             = gv_c_ynkbn_n                -- 取消フラグ[N]
+          AND    xmrih.mov_num                = lv_mov_num                  -- 移動番号
+          UNION
+          SELECT xmrih.mov_hdr_id                                -- 移動ヘッダID
+                ,xmrih.mov_num                                   -- 移動番号
+                ,xmrih.mov_type                                  -- 移動タイプ
+                ,xmrih.comp_actual_flg                           -- 実績計上済フラグ
+                ,xmrih.correct_actual_flg                        -- 実績訂正フラグ
+                ,xmrih.shipped_locat_id                          -- 出庫元ID
+                ,xmrih.shipped_locat_code                        -- 出庫元保管場所
+                ,xmrih.ship_to_locat_id                          -- 入庫先ID
+                ,xmrih.ship_to_locat_code                        -- 入庫先保管場所
+                ,xmrih.schedule_ship_date                        -- 出庫予定日
+                ,xmrih.schedule_arrival_date                     -- 入庫予定日
+                ,xmrih.actual_ship_date                          -- 出庫実績日
+                ,xmrih.actual_arrival_date                       -- 入庫実績日
+                ,xmril.mov_line_id                               -- 移動明細ID
+                ,xmril.line_number                               -- 明細番号
+                ,xmril.item_id                                   -- OPM品目ID
+                ,xmril.item_code                                 -- 品目
+                ,xmril.uom_code                                  -- 単位
+                ,xmril.shipped_quantity                          -- 出庫実績数量
+                ,xmril.ship_to_quantity                          -- 入庫実績数量
+                ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
+                ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
+                ,xmld2.lot_id                                    -- ロットID
+                ,xmld2.lot_no                                    -- ロットNo
+                ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
+                ,xmld.actual_quantity   lot_out_actual_quantity  -- 実績数量[出庫]
+                ,xmld2.actual_date      lot_in_actual_date       -- 実績日  [入庫]
+                ,xmld2.actual_quantity  lot_in_actual_quantity   -- 実績数量[入庫]
+                ,xmld.before_actual_quantity   lot_out_bf_actual_quantity  -- 実績数量[出庫]
+                ,xmld2.before_actual_quantity  lot_in_bf_actual_quantity   -- 実績数量[入庫]
+          FROM   xxinv_mov_req_instr_headers xmrih                  -- 移動依頼/指示ヘッダ(アドオン)
+                ,xxinv_mov_req_instr_lines   xmril                  -- 移動依頼/指示明細(アドオン)
+                ,xxinv_mov_lot_details       xmld                   -- 移動ロット詳細(アドオン)  出庫用
+                ,xxinv_mov_lot_details       xmld2                  -- 移動ロット詳細(アドオン)  入庫用
+          WHERE  xmrih.mov_hdr_id             = xmril.mov_hdr_id            -- ヘッダID
+          AND    xmril.mov_line_id            = xmld2.mov_line_id           -- 明細ID 入庫
+          AND    xmld.mov_line_id(+)          = xmld2.mov_line_id
+          AND    xmld.document_type_code(+)   = gv_c_document_type      -- 文書タイプ[移動]
+          AND    xmld2.document_type_code     = gv_c_document_type      -- 文書タイプ[移動]
+          AND    xmld.record_type_code(+)     = gv_c_document_type_out      -- レコードタイプ[出庫]
+          AND    xmld2.record_type_code       = gv_c_document_type_in       -- レコードタイプ[入庫]
+          AND    xmld.lot_id(+)               = xmld2.lot_id                -- ロットID
+          AND    xmrih.status                 = gv_c_move_status            -- ステータス[ 入出庫報告有 ]
+          AND  (
+                (xmrih.comp_actual_flg        = gv_c_ynkbn_n)               -- 実績計上済フラグ[ OFF ]または
+                 OR
+                ((xmrih.comp_actual_flg    = gv_c_ynkbn_y)  AND (xmrih.correct_actual_flg = gv_c_ynkbn_y))
+               )                                        -- 実績訂正フラグ[ ON ]かつ実績計上済フラグ[ ON ]
+          AND    xmril.delete_flg             = gv_c_ynkbn_n                -- 取消フラグ[N]
+          AND    xmrih.mov_num                = lv_mov_num                  -- 移動番号
+          ) main
+         ,xxinv_mov_req_instr_headers xih
+      WHERE      main.mov_hdr_id = xih.mov_hdr_id
+      FOR UPDATE OF xih.mov_hdr_id NOWAIT;
 --
     -- 抽出条件に移動番号なし
     CURSOR xxinv_move_cur
     IS
-      SELECT xmrih.mov_hdr_id                                -- 移動ヘッダID
-            ,xmrih.mov_num                                   -- 移動番号
-            ,xmrih.mov_type                                  -- 移動タイプ
-            ,xmrih.comp_actual_flg                           -- 実績計上済フラグ
-            ,xmrih.correct_actual_flg                        -- 実績訂正フラグ
-            ,xmrih.shipped_locat_id                          -- 出庫元ID
-            ,xmrih.shipped_locat_code                        -- 出庫元保管場所
-            ,xmrih.ship_to_locat_id                          -- 入庫先ID
-            ,xmrih.ship_to_locat_code                        -- 入庫先保管場所
-            ,xmrih.schedule_ship_date                        -- 出庫予定日
-            ,xmrih.schedule_arrival_date                     -- 入庫予定日
-            ,xmrih.actual_ship_date                          -- 出庫実績日
-            ,xmrih.actual_arrival_date                       -- 入庫実績日
-            ,xmril.mov_line_id                               -- 移動明細ID
-            ,xmril.line_number                               -- 明細番号
-            ,xmril.item_id                                   -- OPM品目ID
-            ,xmril.item_code                                 -- 品目
-            ,xmril.uom_code                                  -- 単位
-            ,xmril.shipped_quantity                          -- 出庫実績数量
-            ,xmril.ship_to_quantity                          -- 入庫実績数量
--- add start 1.3
-            ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
-            ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
--- add end 1.3
-            ,xmld.lot_id                                     -- ロットID
-            ,xmld.lot_no                                     -- ロット№
-            ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
-            ,xmld.actual_quantity   lot_out_actual_quantity  -- 実績数量[出庫]
-            ,xmld2.actual_date      lot_in_actual_date       -- 実績日  [入庫]
-            ,xmld2.actual_quantity  lot_in_actual_quantity   -- 実績数量[入庫]
---2008/12/11 Y.Kawano Add Start
-            ,xmld.before_actual_quantity   lot_out_bf_actual_quantity  -- 実績数量[出庫]
-            ,xmld2.before_actual_quantity  lot_in_bf_actual_quantity   -- 実績数量[入庫]
---2008/12/11 Y.Kawano Add End
-      FROM   xxinv_mov_req_instr_headers xmrih                  -- 移動依頼/指示ヘッダ(アドオン)
-            ,xxinv_mov_req_instr_lines   xmril                  -- 移動依頼/指示明細(アドオン)
-            ,xxinv_mov_lot_details       xmld                   -- 移動ロット詳細(アドオン)  出庫用
-            ,xxinv_mov_lot_details       xmld2                  -- 移動ロット詳細(アドオン)  入庫用
-      WHERE  xmrih.mov_hdr_id          = xmril.mov_hdr_id            -- ヘッダID
-      AND    xmril.mov_line_id         = xmld.mov_line_id            -- 明細ID 出庫
-      AND    xmril.mov_line_id         = xmld2.mov_line_id           -- 明細ID 入庫
-      AND    xmld.document_type_code   = gv_c_document_type      -- 文書タイプ[移動]
-      AND    xmld2.document_type_code  = gv_c_document_type      -- 文書タイプ[移動]
-      AND    xmld.record_type_code     = gv_c_document_type_out      -- レコードタイプ[出庫]
-      AND    xmld2.record_type_code    = gv_c_document_type_in       -- レコードタイプ[入庫]
-      AND    xmld.lot_id               = xmld2.lot_id                -- ロットID
-      AND    xmrih.status              = gv_c_move_status            -- ステータス[ 入出庫報告有 ]
-      AND   (
-             (xmrih.comp_actual_flg    = gv_c_ynkbn_n)               -- 実績計上済フラグ[ OFF ]
-              OR
-             ((xmrih.comp_actual_flg    = gv_c_ynkbn_y) AND (xmrih.correct_actual_flg = gv_c_ynkbn_y))
-             )                                          -- 実績訂正フラグ[ ON ] 実績計上済フラグ[ ON ]
-      AND    xmril.delete_flg          = gv_c_ynkbn_n               -- 取消フラグ[N]
-      ORDER BY xmrih.mov_num                                        -- 移動番号
-      FOR UPDATE OF xmrih.mov_hdr_id NOWAIT;
+      SELECT main.mov_hdr_id                                -- 移動ヘッダID
+            ,main.mov_num                                   -- 移動番号
+            ,main.mov_type                                  -- 移動タイプ
+            ,main.comp_actual_flg                           -- 実績計上済フラグ
+            ,main.correct_actual_flg                        -- 実績訂正フラグ
+            ,main.shipped_locat_id                          -- 出庫元ID
+            ,main.shipped_locat_code                        -- 出庫元保管場所
+            ,main.ship_to_locat_id                          -- 入庫先ID
+            ,main.ship_to_locat_code                        -- 入庫先保管場所
+            ,main.schedule_ship_date                        -- 出庫予定日
+            ,main.schedule_arrival_date                     -- 入庫予定日
+            ,main.actual_ship_date                          -- 出庫実績日
+            ,main.actual_arrival_date                       -- 入庫実績日
+            ,main.mov_line_id                               -- 移動明細ID
+            ,main.line_number                               -- 明細番号
+            ,main.item_id                                   -- OPM品目ID
+            ,main.item_code                                 -- 品目
+            ,main.uom_code                                  -- 単位
+            ,main.shipped_quantity                          -- 出庫実績数量
+            ,main.ship_to_quantity                          -- 入庫実績数量
+            ,main.mov_lot_dtl_id                            -- ロット詳細ID(出庫用)
+            ,main.mov_lot_dtl_id2                           -- ロット詳細ID(入庫用)
+            ,main.lot_id                                    -- ロットID
+            ,main.lot_no                                    -- ロット№
+            ,main.lot_out_actual_date                       -- 実績日  [出庫]
+            ,main.lot_out_actual_quantity                   -- 実績数量[出庫]
+            ,main.lot_in_actual_date                        -- 実績日  [入庫]
+            ,main.lot_in_actual_quantity                    -- 実績数量[入庫]
+            ,main.lot_out_bf_actual_quantity                -- 実績数量[出庫]
+            ,main.lot_in_bf_actual_quantity                 -- 実績数量[入庫]
+      FROM (
+          SELECT xmrih.mov_hdr_id                                -- 移動ヘッダID
+                ,xmrih.mov_num                                   -- 移動番号
+                ,xmrih.mov_type                                  -- 移動タイプ
+                ,xmrih.comp_actual_flg                           -- 実績計上済フラグ
+                ,xmrih.correct_actual_flg                        -- 実績訂正フラグ
+                ,xmrih.shipped_locat_id                          -- 出庫元ID
+                ,xmrih.shipped_locat_code                        -- 出庫元保管場所
+                ,xmrih.ship_to_locat_id                          -- 入庫先ID
+                ,xmrih.ship_to_locat_code                        -- 入庫先保管場所
+                ,xmrih.schedule_ship_date                        -- 出庫予定日
+                ,xmrih.schedule_arrival_date                     -- 入庫予定日
+                ,xmrih.actual_ship_date                          -- 出庫実績日
+                ,xmrih.actual_arrival_date                       -- 入庫実績日
+                ,xmril.mov_line_id                               -- 移動明細ID
+                ,xmril.line_number                               -- 明細番号
+                ,xmril.item_id                                   -- OPM品目ID
+                ,xmril.item_code                                 -- 品目
+                ,xmril.uom_code                                  -- 単位
+                ,xmril.shipped_quantity                          -- 出庫実績数量
+                ,xmril.ship_to_quantity                          -- 入庫実績数量
+                ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
+                ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
+                ,xmld.lot_id                                     -- ロットID
+                ,xmld.lot_no                                     -- ロット№
+                ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
+                ,xmld.actual_quantity   lot_out_actual_quantity  -- 実績数量[出庫]
+                ,xmld2.actual_date      lot_in_actual_date       -- 実績日  [入庫]
+                ,xmld2.actual_quantity  lot_in_actual_quantity   -- 実績数量[入庫]
+                ,xmld.before_actual_quantity   lot_out_bf_actual_quantity  -- 実績数量[出庫]
+                ,xmld2.before_actual_quantity  lot_in_bf_actual_quantity   -- 実績数量[入庫]
+          FROM   xxinv_mov_req_instr_headers xmrih                  -- 移動依頼/指示ヘッダ(アドオン)
+                ,xxinv_mov_req_instr_lines   xmril                  -- 移動依頼/指示明細(アドオン)
+                ,xxinv_mov_lot_details       xmld                   -- 移動ロット詳細(アドオン)  出庫用
+                ,xxinv_mov_lot_details       xmld2                  -- 移動ロット詳細(アドオン)  入庫用
+          WHERE  xmrih.mov_hdr_id             = xmril.mov_hdr_id            -- ヘッダID
+          AND    xmril.mov_line_id            = xmld.mov_line_id            -- 明細ID 出庫
+          AND    xmld.mov_line_id             = xmld2.mov_line_id(+)
+          AND    xmld.document_type_code      = gv_c_document_type      -- 文書タイプ[移動]
+          AND    xmld2.document_type_code(+)  = gv_c_document_type      -- 文書タイプ[移動]
+          AND    xmld.record_type_code        = gv_c_document_type_out      -- レコードタイプ[出庫]
+          AND    xmld2.record_type_code(+)    = gv_c_document_type_in       -- レコードタイプ[入庫]
+          AND    xmld.lot_id                  = xmld2.lot_id(+)             -- ロットID
+          AND    xmrih.status                 = gv_c_move_status            -- ステータス[ 入出庫報告有 ]
+          AND   (
+                 (xmrih.comp_actual_flg     = gv_c_ynkbn_n)               -- 実績計上済フラグ[ OFF ]
+                  OR
+                 ((xmrih.comp_actual_flg    = gv_c_ynkbn_y) AND (xmrih.correct_actual_flg = gv_c_ynkbn_y))
+                 )                                          -- 実績訂正フラグ[ ON ] 実績計上済フラグ[ ON ]
+          AND    xmril.delete_flg             = gv_c_ynkbn_n               -- 取消フラグ[N]
+          UNION
+          SELECT xmrih.mov_hdr_id                                -- 移動ヘッダID
+                ,xmrih.mov_num                                   -- 移動番号
+                ,xmrih.mov_type                                  -- 移動タイプ
+                ,xmrih.comp_actual_flg                           -- 実績計上済フラグ
+                ,xmrih.correct_actual_flg                        -- 実績訂正フラグ
+                ,xmrih.shipped_locat_id                          -- 出庫元ID
+                ,xmrih.shipped_locat_code                        -- 出庫元保管場所
+                ,xmrih.ship_to_locat_id                          -- 入庫先ID
+                ,xmrih.ship_to_locat_code                        -- 入庫先保管場所
+                ,xmrih.schedule_ship_date                        -- 出庫予定日
+                ,xmrih.schedule_arrival_date                     -- 入庫予定日
+                ,xmrih.actual_ship_date                          -- 出庫実績日
+                ,xmrih.actual_arrival_date                       -- 入庫実績日
+                ,xmril.mov_line_id                               -- 移動明細ID
+                ,xmril.line_number                               -- 明細番号
+                ,xmril.item_id                                   -- OPM品目ID
+                ,xmril.item_code                                 -- 品目
+                ,xmril.uom_code                                  -- 単位
+                ,xmril.shipped_quantity                          -- 出庫実績数量
+                ,xmril.ship_to_quantity                          -- 入庫実績数量
+                ,xmld.mov_lot_dtl_id                             -- ロット詳細ID(出庫用)
+                ,xmld2.mov_lot_dtl_id   mov_lot_dtl_id2          -- ロット詳細ID(入庫用)
+                ,xmld2.lot_id                                    -- ロットID
+                ,xmld2.lot_no                                    -- ロット№
+                ,xmld.actual_date       lot_out_actual_date      -- 実績日  [出庫]
+                ,xmld.actual_quantity   lot_out_actual_quantity  -- 実績数量[出庫]
+                ,xmld2.actual_date      lot_in_actual_date       -- 実績日  [入庫]
+                ,xmld2.actual_quantity  lot_in_actual_quantity   -- 実績数量[入庫]
+                ,xmld.before_actual_quantity   lot_out_bf_actual_quantity  -- 実績数量[出庫]
+                ,xmld2.before_actual_quantity  lot_in_bf_actual_quantity   -- 実績数量[入庫]
+          FROM   xxinv_mov_req_instr_headers xmrih                  -- 移動依頼/指示ヘッダ(アドオン)
+                ,xxinv_mov_req_instr_lines   xmril                  -- 移動依頼/指示明細(アドオン)
+                ,xxinv_mov_lot_details       xmld                   -- 移動ロット詳細(アドオン)  出庫用
+                ,xxinv_mov_lot_details       xmld2                  -- 移動ロット詳細(アドオン)  入庫用
+          WHERE  xmrih.mov_hdr_id             = xmril.mov_hdr_id            -- ヘッダID
+          AND    xmril.mov_line_id            = xmld2.mov_line_id       -- 明細ID 入庫
+          AND    xmld.mov_line_id(+)          = xmld2.mov_line_id
+          AND    xmld.document_type_code(+)   = gv_c_document_type      -- 文書タイプ[移動]
+          AND    xmld2.document_type_code     = gv_c_document_type      -- 文書タイプ[移動]
+          AND    xmld.record_type_code(+)     = gv_c_document_type_out      -- レコードタイプ[出庫]
+          AND    xmld2.record_type_code       = gv_c_document_type_in       -- レコードタイプ[入庫]
+          AND    xmld.lot_id(+)               = xmld2.lot_id                -- ロットID
+          AND    xmrih.status                 = gv_c_move_status            -- ステータス[ 入出庫報告有 ]
+          AND   (
+                 (xmrih.comp_actual_flg     = gv_c_ynkbn_n)               -- 実績計上済フラグ[ OFF ]
+                  OR
+                 ((xmrih.comp_actual_flg    = gv_c_ynkbn_y) AND (xmrih.correct_actual_flg = gv_c_ynkbn_y))
+                 )                                          -- 実績訂正フラグ[ ON ] 実績計上済フラグ[ ON ]
+          AND    xmril.delete_flg             = gv_c_ynkbn_n               -- 取消フラグ[N]
+          ) main
+         ,xxinv_mov_req_instr_headers xih
+      WHERE      main.mov_hdr_id = xih.mov_hdr_id
+      ORDER BY   main.mov_num                                        -- 移動番号
+      FOR UPDATE OF xih.mov_hdr_id NOWAIT;
+--2009/01/29 Y.Kawano Mod  End #1093
 --
     -- *** ローカル・レコード ***
 --
@@ -1098,7 +1380,7 @@ AS
         gn_rec_idx := gn_rec_idx + 1;
 --
       END LOOP xxinv_mov_cur_loop;
---
+-- 
       IF gn_target_cnt = 0 THEN
         -- 0件の場合、正常終了にする
         gn_no_data_flg := 1;
@@ -1271,8 +1553,19 @@ AS
       -- *** 出庫実績数量と入庫実績数量の比較
       -- **************************************************
       -- 出庫実績数量と入庫実績数量が異なる場合
-      IF ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity
-           <> move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity ) THEN
+--2009/01/28 Y.Kawano Mod Start #1093
+--      IF ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity
+--           <> move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity ) THEN
+      IF (
+           ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity
+             <> move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity )
+        OR (  ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity IS NOT NULL )
+          AND ( move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity  IS NULL ) )
+        OR (  ( move_data_rec_tbl(gn_rec_idx).lot_out_actual_quantity IS NULL )
+          AND ( move_data_rec_tbl(gn_rec_idx).lot_in_actual_quantity  IS NOT NULL ) )
+         )
+      THEN
+--2009/01/28 Y.Kawano Mod End   #1093
 --
         move_data_rec_tbl(gn_rec_idx).ng_flag   := 1;  -- NGフラグ
 --add start 1.2
