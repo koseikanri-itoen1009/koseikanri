@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A01C (body)
  * Description      : 納品データの取込を行う
  * MD.050           : HHT納品データ取込 (MD050_COS_001_A01)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,7 +50,8 @@ AS
  *                                                H/C妥当性チェックの実行条件修正
  *  2009/10/01    1.16  N.Maeda          [0001378]エラーリスト登録時登録桁数指定
  *  2009/10/30    1.17  M.Sano           [0001373]参照View変更[xxcos_rs_info_v ⇒ xxcos_rs_info2_v]
- *  2009/11/25    1.18  N.Maeda          [E_本稼動_000XX] H/Cの整合性チェック削除
+ *  2009/11/25    1.18  N.Maeda          [E_本稼動_00053] H/Cの整合性チェック削除
+ *  2009/12/01    1.19  M.Sano           [E_本稼動_00234] 成績者、納品者の妥当性チェック修正
  *
  *****************************************************************************************/
 --
@@ -220,6 +221,9 @@ AS
 --****************************** 2009/05/15 1.14 N.Maeda ADD START  *****************************--
   cv_shot_date_type  CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
   cv_date_type       CONSTANT VARCHAR2(25)  := 'YYYY/MM/DD HH24:MI:SS';
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+  lv_time_type       CONSTANT VARCHAR2(16)  := 'YYYYMMDDHH24MISS';
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
   cv_spe_cha         CONSTANT VARCHAR2(1)   := ' ';
   cv_time_cha        CONSTANT VARCHAR2(1)   := ':';
 --****************************** 2009/05/15 1.14 N.Maeda ADD  END   *****************************--
@@ -308,17 +312,38 @@ AS
 --****************************** 2009/04/10 1.9 N.Maeda DEL START ******************************--
 --      charge_person   jtf_rs_resource_extns.source_number%TYPE,        -- 担当営業員
 --****************************** 2009/04/10 1.9 N.Maeda DEL END ******************************--
---****************************** 2009/04/06 1.6 T.Kitajima ADD START ******************************--
-      resource_id     jtf_rs_resource_extns.resource_id%TYPE,          -- リソースID
---****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/12/01 1.19 M.Sano DEL START *******************************--
+----****************************** 2009/04/06 1.6 T.Kitajima ADD START ******************************--
+--      resource_id     jtf_rs_resource_extns.resource_id%TYPE,          -- リソースID
+----****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
       bus_low_type    xxcmm_cust_accounts.business_low_type%TYPE,      -- 業態（小分類）
       base_name       hz_cust_accounts.account_name%TYPE,              -- 拠点名称
-      dept_hht_div    xxcmm_cust_accounts.dept_hht_div%TYPE,           -- 百貨店用HHT区分
-      base_perf       per_all_assignments_f.ass_attribute5%TYPE,       -- 拠点コード（成績者）
-      base_dlv        per_all_assignments_f.ass_attribute5%TYPE        -- 拠点コード（納品者）
+      dept_hht_div    xxcmm_cust_accounts.dept_hht_div%TYPE            -- 百貨店用HHT区分
+--****************************** 2009/12/01 1.19 M.Sano DEL START *******************************--
+--      base_perf       per_all_assignments_f.ass_attribute5%TYPE,       -- 拠点コード（成績者）
+--      base_dlv        per_all_assignments_f.ass_attribute5%TYPE        -- 拠点コード（納品者）
+--****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
     );
   TYPE g_tab_select_cus IS TABLE OF g_rec_select_cus INDEX BY VARCHAR2(9);
 --
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+  -- 成績者コードの妥当性チェック：抽出項目格納用変数
+  TYPE g_rec_select_perf IS RECORD
+    (
+      base_perf       per_all_assignments_f.ass_attribute5%TYPE        -- 拠点コード（成績者）
+    );
+  TYPE g_tab_select_perf IS TABLE OF g_rec_select_perf INDEX BY VARCHAR2(30);
+--
+  -- 納品者コードの妥当性チェック：抽出項目格納用変数
+  TYPE g_rec_select_dlv  IS RECORD
+    (
+      resource_id     jtf_rs_resource_extns.resource_id%TYPE,          -- リソースID
+      base_dlv        per_all_assignments_f.ass_attribute5%TYPE        -- 拠点コード（納品者）
+    );
+  TYPE g_tab_select_dlv IS TABLE OF g_rec_select_dlv INDEX BY VARCHAR2(30);
+--
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
   -- 品目コードの妥当性チェック：抽出項目格納用変数
   TYPE g_rec_select_item IS RECORD
     (
@@ -575,6 +600,10 @@ AS
   gt_headers_work_data      g_tab_headwk_data;              -- 納品ヘッダワークテーブル抽出データ
   gt_lines_work_data        g_tab_linewk_data;              -- 納品明細ワークテーブル抽出データ
   gt_select_cus             g_tab_select_cus;               -- 拠点コード、顧客コードの妥当性チェック：抽出項目
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+  gt_select_perf            g_tab_select_perf;              -- 成績者コードの妥当性チェック：抽出項目
+  gt_select_dlv             g_tab_select_dlv;               -- 納品者コードの妥当性チェック：抽出項目
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
   gt_select_item            g_tab_select_item;              -- 品目コードの妥当性チェック：抽出項目
 -- ******************** 2009/11/25 1.18 N.Maeda DEL START ******************** --
 --  gt_select_vd              g_tab_select_vd;                -- VDコラムマスタとの整合性チェック：抽出項目
@@ -1874,6 +1903,10 @@ AS
     ln_from_date            DATE;                                              -- AR会計期間チェック：会計（FROM）
     ln_to_date              DATE;                                              -- AR会計期間チェック：会計（TO）
     lt_resource_id          jtf_rs_resource_extns.resource_id%TYPE;            -- リソースID
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+    lv_tbl_key              VARCHAR2(20);                                      -- 参照テーブルのキー値
+    lv_time_fmt             CONSTANT VARCHAR2(16) := 'YYYYMMDDHH24MISS';
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
 --
     -- *** ローカル・カーソル ***
 --
@@ -1986,14 +2019,18 @@ AS
 --****************************** 2009/04/10 1.9 N.Maeda DEL START ******************************--
 --          lt_charge_person  := gt_select_cus(lt_customer_number).charge_person;   -- 担当営業員
 --****************************** 2009/04/10 1.9 N.Maeda DEL END ********************************--
---****************************** 2009/04/06 1.6 T.Kitajima ADD START ******************************--
-        lt_resource_id    := gt_select_cus(lt_customer_number).resource_id;     -- リソースID
---****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/12/01 1.19 M.Sano DEL START *******************************--
+----****************************** 2009/04/06 1.6 T.Kitajima ADD START ******************************--
+--        lt_resource_id    := gt_select_cus(lt_customer_number).resource_id;     -- リソースID
+----****************************** 2009/04/06 1.6 T.Kitajima ADD  END  ******************************--
+--****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
         lt_bus_low_type   := gt_select_cus(lt_customer_number).bus_low_type;    -- 業態（小分類）
         lt_base_name      := SUBSTRB( gt_select_cus(lt_customer_number).base_name, 1, 30 );       -- 拠点名称
         lt_hht_class      := gt_select_cus(lt_customer_number).dept_hht_div;    -- 百貨店用HHT区分
-        lt_base_perf      := gt_select_cus(lt_customer_number).base_perf;       -- 拠点コード（成績者）
-        lt_base_dlv       := gt_select_cus(lt_customer_number).base_dlv;        -- 拠点コード（納品者）
+--****************************** 2009/12/01 1.19 M.Sano DEL START *******************************--
+--        lt_base_perf      := gt_select_cus(lt_customer_number).base_perf;       -- 拠点コード（成績者）
+--        lt_base_dlv       := gt_select_cus(lt_customer_number).base_dlv;        -- 拠点コード（納品者）
+--****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
       ELSE
 --****************************** 2009/05/15 1.14 N.Maeda MOD START ******************************--
 --          SELECT SUBSTRB(parties.party_name,1,40)  party_name,                    -- 顧客名称
@@ -2360,6 +2397,21 @@ AS
             lv_err_flag := cv_hit;
         END;
 --
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+        IF ( lv_err_flag <> cv_hit ) THEN
+          gt_select_cus(lt_customer_number).customer_name  := lt_customer_name;   -- 顧客名称
+          gt_select_cus(lt_customer_number).customer_id    := lt_customer_id;     -- 顧客ID
+          gt_select_cus(lt_customer_number).party_id       := lt_party_id;        -- パーティID
+          gt_select_cus(lt_customer_number).sale_base      := lt_sale_base;       -- 売上拠点コード
+          gt_select_cus(lt_customer_number).past_sale_base := lt_past_sale_base;  -- 前月売上拠点コード
+          gt_select_cus(lt_customer_number).cus_status     := lt_cus_status;      -- 顧客ステータス
+          gt_select_cus(lt_customer_number).bus_low_type   := lt_bus_low_type;    -- 業態（小分類）
+          gt_select_cus(lt_customer_number).base_name      := lt_base_name;       -- 拠点名称
+          gt_select_cus(lt_customer_number).dept_hht_div   := lt_hht_class;       -- 百貨店用HHT区分
+        END IF;
+--
+      END IF;
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
 --****************************** 2009/04/14 1.10 T.Kitajima MOD START ******************************--
 --      --==============================================================
 --      --成績者コードの妥当性チェック（ヘッダ部）
@@ -2415,7 +2467,16 @@ AS
 --      END IF;
 --
 --****************************** 2009/05/15 1.14 N.Maeda ADD START ******************************--
-        BEGIN
+      BEGIN
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+        -- 成績者コード抽出項目テーブルのキー値を取得(成績者コード,納品日)
+        lv_tbl_key   := lt_performance_code || TO_CHAR(lt_dlv_date, lv_time_type);
+        -- 拠点コード（成績者）を取得
+        lt_base_perf := NULL;
+        IF ( gt_select_perf.EXISTS(lv_tbl_key) ) THEN
+          lt_base_perf := gt_select_perf(lv_tbl_key).base_perf;  -- 納品コード（成績者）
+        ELSE
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
           SELECT rivp.base_code       base_code              -- 拠点コード（成績者）
           INTO   lt_base_perf
 -- ******* 2009/10/30 M.Sano  MOD START ********* --
@@ -2430,82 +2491,99 @@ AS
           AND   lt_dlv_date >= rivp.paa_effective_start_date
           AND   lt_dlv_date <= rivp.paa_effective_end_date;
 --****************************** 2009/05/15 1.14 N.Maeda ADD  END  ******************************--
-          --一般拠点の場合はチェックする。
-          IF ( lt_hht_class IS NULL ) 
-            OR ( ( lt_hht_class = ct_hht_2 )
-              AND (lt_department_class = ct_disp_0 )
-          )
-          THEN
-            --==============================================================
-            --成績者コードの妥当性チェック（ヘッダ部）
-            --==============================================================
-            IF ( lt_base_perf != lt_sale_base ) THEN
-              -- ログ出力
-              lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_disagree );
-              FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
-              ov_retcode := cv_status_warn;
-              -- エラー変数へ格納
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+          -- 配列に格納
+          gt_select_perf(lv_tbl_key).base_perf := lt_base_perf;  -- 納品コード（成績者）
+        END IF;
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
+--
+        --一般拠点の場合はチェックする。
+        IF ( lt_hht_class IS NULL ) 
+          OR ( ( lt_hht_class = ct_hht_2 )
+            AND (lt_department_class = ct_disp_0 )
+        )
+        THEN
+          --==============================================================
+          --成績者コードの妥当性チェック（ヘッダ部）
+          --==============================================================
+          IF ( lt_base_perf != lt_sale_base ) THEN
+            -- ログ出力
+            lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_disagree );
+            FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+            ov_retcode := cv_status_warn;
+            -- エラー変数へ格納
 -- ******* 2009/10/01 N.Maeda MOD START ********* --
-              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+            gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
 --              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
-              gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
-              gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
-              gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+            gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
+            gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
+            gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
+            gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
 --              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-              gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
-              gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+            gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
+            gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
+            gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
 --              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
-              gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
-              gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+            gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
+            gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
 --              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
 -- ******* 2009/10/01 N.Maeda MOD  END  ********* --
-              gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
-              gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
-              ln_err_no := ln_err_no + 1;
-              -- エラーフラグ更新
-              lv_err_flag := cv_hit;
-            END IF;
---****************************** 2009/05/15 1.14 N.Maeda ADD START ******************************--
+            gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
+            gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
+            ln_err_no := ln_err_no + 1;
+            -- エラーフラグ更新
+            lv_err_flag := cv_hit;
           END IF;
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-          -- ログ出力
-          gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_emp_mst );
-          gv_tkn2   := xxccp_common_pkg.get_msg( cv_application, cv_msg_paf_emp );
-          lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_mst,
-                                               cv_tkn_table,   gv_tkn1,
-                                               cv_tkn_colmun,  gv_tkn2 );
-          FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
-          ov_retcode := cv_status_warn;
-          -- エラー変数へ格納
+--****************************** 2009/05/15 1.14 N.Maeda ADD START ******************************--
+        END IF;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        -- ログ出力
+        gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_emp_mst );
+        gv_tkn2   := xxccp_common_pkg.get_msg( cv_application, cv_msg_paf_emp );
+        lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_mst,
+                                             cv_tkn_table,   gv_tkn1,
+                                             cv_tkn_colmun,  gv_tkn2 );
+        FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+        ov_retcode := cv_status_warn;
+        -- エラー変数へ格納
 -- ******* 2009/10/01 N.Maeda MOD START ********* --
-          gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+        gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
 --          gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
-          gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
-          gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
-          gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-          gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+        gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
+        gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
+        gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
+        gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
 --          gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-          gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
-          gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-          gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+        gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
+        gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
+        gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
 --          gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
-          gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
-          gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
+        gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
+        gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
 --          gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
-          gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+        gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
 -- ******* 2009/10/01 N.Maeda MOD  END  ********* --
-          gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
-          gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
-          ln_err_no := ln_err_no + 1;
-          -- エラーフラグ更新
-          lv_err_flag := cv_hit;
-        END;
+        gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
+        gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
+        ln_err_no := ln_err_no + 1;
+        -- エラーフラグ更新
+        lv_err_flag := cv_hit;
+      END;
 --
-        BEGIN
+      BEGIN
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+        -- 成績者コード抽出項目テーブルのキー値を取得(成績者コード,納品日)
+        lv_tbl_key   := lt_dlv_code || TO_CHAR(lt_dlv_date, lv_time_type);
+        -- 拠点コード（納品者）、リソースIDを取得
+        lt_resource_id := NULL;
+        lt_base_dlv    := NULL;
+        IF ( gt_select_dlv.EXISTS(lv_tbl_key) ) THEN
+          lt_resource_id := gt_select_dlv(lv_tbl_key).resource_id;  -- リソースID
+          lt_base_dlv    := gt_select_dlv(lv_tbl_key).base_dlv;     -- 拠点コード（納品者）
+        ELSE
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
           SELECT rivd.base_code       base_code                           -- 拠点コード（納品者）
           INTO   lt_base_dlv
 -- ******* 2009/10/30 M.Sano  MOD START ********* --
@@ -2519,83 +2597,93 @@ AS
           AND    lt_dlv_date <= rivd.per_effective_end_date
           AND    lt_dlv_date >= rivd.paa_effective_start_date
           AND    lt_dlv_date <= rivd.paa_effective_end_date;
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+          -- SQLにて取得した場合、結果を配列に格納
+          gt_select_dlv(lv_tbl_key).resource_id := lt_resource_id; -- リソースID
+          gt_select_dlv(lv_tbl_key).base_dlv    := lt_base_dlv;    -- 拠点コード（納品者）
+        END IF;
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
 --
-          --一般拠点の場合はチェックする。
-          IF ( lt_hht_class IS NULL ) 
-          OR ( ( lt_hht_class = ct_hht_2 )
-            AND (lt_department_class = ct_disp_0 ) ) THEN
+        --一般拠点の場合はチェックする。
+        IF ( lt_hht_class IS NULL ) 
+        OR ( ( lt_hht_class = ct_hht_2 )
+          AND (lt_department_class = ct_disp_0 ) ) THEN
 --****************************** 2009/05/15 1.14 N.Maeda ADD  END  ******************************--
 --
-            --==============================================================
-            --納品者コードの妥当性チェック（ヘッダ部）
-            --==============================================================
-            IF ( lt_base_dlv != lt_sale_base ) THEN
-              -- ログ出力
-              lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_belong );
-              FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
-              ov_retcode := cv_status_warn;
-              -- エラー変数へ格納
--- ******* 2009/10/01 N.Maeda MOD START ********* --
-              gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
---              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
-              gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
-              gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
-              gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
-              gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
---              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
-              gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
-              gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
-              gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
---              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
-              gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
-              gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
---              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
--- ******* 2009/10/01 N.Maeda MOD  END  ********* --
-              gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
-              gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
-              ln_err_no := ln_err_no + 1;
-              -- エラーフラグ更新
-              lv_err_flag := cv_hit;
-            END IF;
-          END IF;
---****************************** 2009/04/14 1.10 T.Kitajima MOD  END  ******************************--
---****************************** 2009/05/15 1.14 N.Maeda ADD START ******************************--
-        EXCEPTION
-          WHEN NO_DATA_FOUND THEN
-          -- ログ出力
-            gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_emp_mst );
-            gv_tkn2   := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_emp );
-            lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_mst,
-                                                   cv_tkn_table,   gv_tkn1,
-                                                   cv_tkn_colmun,  gv_tkn2 );
+          --==============================================================
+          --納品者コードの妥当性チェック（ヘッダ部）
+          --==============================================================
+          IF ( lt_base_dlv != lt_sale_base ) THEN
+            -- ログ出力
+            lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_belong );
             FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
             ov_retcode := cv_status_warn;
             -- エラー変数へ格納
 -- ******* 2009/10/01 N.Maeda MOD START ********* --
             gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
---            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+--              gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
             gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
             gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
             gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
             gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
---            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+--              gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
             gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
             gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
             gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
---            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+--              gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
             gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
             gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
-              gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
---            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+--              gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
 -- ******* 2009/10/01 N.Maeda MOD  END  ********* --
             gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
             gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
             ln_err_no := ln_err_no + 1;
             -- エラーフラグ更新
             lv_err_flag := cv_hit;
-        END;
+          END IF;
+        END IF;
+--****************************** 2009/04/14 1.10 T.Kitajima MOD  END  ******************************--
+--****************************** 2009/05/15 1.14 N.Maeda ADD START ******************************--
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+        -- ログ出力
+          gv_tkn1   := xxccp_common_pkg.get_msg( cv_application, cv_msg_emp_mst );
+          gv_tkn2   := xxccp_common_pkg.get_msg( cv_application, cv_msg_dlv_emp );
+          lv_errmsg := xxccp_common_pkg.get_msg( cv_application, cv_msg_mst,
+                                                 cv_tkn_table,   gv_tkn1,
+                                                 cv_tkn_colmun,  gv_tkn2 );
+          FND_FILE.PUT_LINE( FND_FILE.LOG, lv_errmsg );
+          ov_retcode := cv_status_warn;
+          -- エラー変数へ格納
+-- ******* 2009/10/01 N.Maeda MOD START ********* --
+          gt_err_base_code(ln_err_no)        := SUBSTRB(lt_base_code,1,4);                  -- 拠点コード
+--            gt_err_base_code(ln_err_no)        := lt_base_code;                 -- 拠点コード
+          gt_err_base_name(ln_err_no)        := lt_base_name;                 -- 拠点名称
+          gt_err_data_name(ln_err_no)        := lt_data_name;                 -- データ名称
+          gt_err_order_no_hht(ln_err_no)     := lt_order_noh_hht;             -- 受注NO(HHT)
+          gt_err_entry_number(ln_err_no)     := SUBSTRB(lt_hht_invoice_no,1,12);            -- 伝票NO
+--            gt_err_entry_number(ln_err_no)     := lt_hht_invoice_no;            -- 伝票NO
+          gt_err_line_no(ln_err_no)          := NULL;                         -- 行NO
+          gt_err_order_no_ebs(ln_err_no)     := lt_order_noh_ebs;             -- 受注NO(EBS)
+          gt_err_party_num(ln_err_no)        := SUBSTRB(lt_customer_number,1,9);            -- 顧客コード
+--            gt_err_party_num(ln_err_no)        := lt_customer_number;           -- 顧客コード
+          gt_err_customer_name(ln_err_no)    := lt_customer_name;             -- 顧客名
+          gt_err_payment_dlv_date(ln_err_no) := lt_dlv_date;                  -- 入金/納品日
+            gt_err_perform_by_code(ln_err_no)  := SUBSTRB(lt_performance_code,1,5);           -- 成績者コード
+--            gt_err_perform_by_code(ln_err_no)  := lt_performance_code;          -- 成績者コード
+-- ******* 2009/10/01 N.Maeda MOD  END  ********* --
+          gt_err_item_code(ln_err_no)        := NULL;                         -- 品目コード
+          gt_err_error_message(ln_err_no)    := SUBSTRB( lv_errmsg, 1, 60 );  -- エラー内容
+          ln_err_no := ln_err_no + 1;
+          -- エラーフラグ更新
+          lv_err_flag := cv_hit;
+      END;
 --
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+      -- 納品者コード妥当性チェック用配列を検索
+      IF (lt_resource_id IS NULL ) THEN
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
         BEGIN
           SELECT rivp.resource_id     resource_id            -- リソースID
           INTO   lt_resource_id
@@ -2613,6 +2701,10 @@ AS
           AND   lt_dlv_date <= rivp.per_effective_end_date
           AND   lt_dlv_date >= rivp.paa_effective_start_date
           AND   lt_dlv_date <= rivp.paa_effective_end_date;
+--****************************** 2009/12/01 1.19 M.Sano ADD START *******************************--
+          -- 取得結果を配列に格納
+          gt_select_dlv(lt_dlv_code).resource_id := lt_resource_id; -- リソースID
+--****************************** 2009/12/01 1.19 M.Sano ADD END   *******************************--
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力
@@ -2644,20 +2736,22 @@ AS
               lv_err_flag := cv_hit;
         END;
 --
-        IF ( lv_err_flag <> cv_hit ) THEN
-          gt_select_cus(lt_customer_number).customer_name  := lt_customer_name;   -- 顧客名称
-          gt_select_cus(lt_customer_number).customer_id    := lt_customer_id;     -- 顧客ID
-          gt_select_cus(lt_customer_number).party_id       := lt_party_id;        -- パーティID
-          gt_select_cus(lt_customer_number).sale_base      := lt_sale_base;       -- 売上拠点コード
-          gt_select_cus(lt_customer_number).past_sale_base := lt_past_sale_base;  -- 前月売上拠点コード
-          gt_select_cus(lt_customer_number).cus_status     := lt_cus_status;      -- 顧客ステータス
-          gt_select_cus(lt_customer_number).resource_id    := lt_resource_id;     -- リソースID
-          gt_select_cus(lt_customer_number).bus_low_type   := lt_bus_low_type;    -- 業態（小分類）
-          gt_select_cus(lt_customer_number).base_name      := lt_base_name;       -- 拠点名称
-          gt_select_cus(lt_customer_number).dept_hht_div   := lt_hht_class;       -- 百貨店用HHT区分
-          gt_select_cus(lt_customer_number).base_perf      := lt_base_perf;       -- 拠点コード（成績者）
-          gt_select_cus(lt_customer_number).base_dlv       := lt_base_dlv;        -- 拠点コード（納品者）
-        END IF;
+--****************************** 2009/12/01 1.19 M.Sano DEL START *******************************--
+--        IF ( lv_err_flag <> cv_hit ) THEN
+--          gt_select_cus(lt_customer_number).customer_name  := lt_customer_name;   -- 顧客名称
+--          gt_select_cus(lt_customer_number).customer_id    := lt_customer_id;     -- 顧客ID
+--          gt_select_cus(lt_customer_number).party_id       := lt_party_id;        -- パーティID
+--          gt_select_cus(lt_customer_number).sale_base      := lt_sale_base;       -- 売上拠点コード
+--          gt_select_cus(lt_customer_number).past_sale_base := lt_past_sale_base;  -- 前月売上拠点コード
+--          gt_select_cus(lt_customer_number).cus_status     := lt_cus_status;      -- 顧客ステータス
+--          gt_select_cus(lt_customer_number).resource_id    := lt_resource_id;     -- リソースID
+--          gt_select_cus(lt_customer_number).bus_low_type   := lt_bus_low_type;    -- 業態（小分類）
+--          gt_select_cus(lt_customer_number).base_name      := lt_base_name;       -- 拠点名称
+--          gt_select_cus(lt_customer_number).dept_hht_div   := lt_hht_class;       -- 百貨店用HHT区分
+--          gt_select_cus(lt_customer_number).base_perf      := lt_base_perf;       -- 拠点コード（成績者）
+--          gt_select_cus(lt_customer_number).base_dlv       := lt_base_dlv;        -- 拠点コード（納品者）
+--        END IF;
+--****************************** 2009/12/01 1.19 M.Sano DEL END   *******************************--
 --
       END IF;
 --
