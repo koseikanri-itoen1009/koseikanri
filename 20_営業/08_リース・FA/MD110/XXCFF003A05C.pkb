@@ -35,6 +35,7 @@ AS
  * 2009/2/5       1.1   SCS礒崎祐次     [障害CFF_010] 支払回数算出不具合対応
  * 2009/7/9       1.2   SCS萱原伸哉     [統合テスト障害00000417]中途解約日更新時の条件変更
  * 2011/12/19     1.3   SCSK中村健一    [E_本稼動_08123] 中途解約時の更新条件変更
+ * 2012/2/6       1.4   SCSK菅原大輔    [E_本稼動_08356] 支払計画作成時の会計期間比較条件変更 
  *
  *****************************************************************************************/
 --
@@ -117,9 +118,17 @@ AS
   cv_msg_cff_00060   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00060';
   -- 業務処理日付取得エラー
   cv_msg_cff_00092   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00092';
+-- 2012/02/06 Ver.1.4 D.Sugahara ADD Start
+  --リース月次締期間取得エラー
+  cv_msg_cff_00194   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-00194';  
+-- 2012/02/06 Ver.1.4 D.Sugahara ADD End  
   -- メッセージトークン
   cv_tk_cff_00005_01 CONSTANT VARCHAR2(15)  := 'INPUT';       -- カラム論理名
   cv_tk_cff_00101_01 CONSTANT VARCHAR2(15)  := 'TABLE_NAME';  -- テーブル名
+-- 2012/02/06 Ver.1.4 D.Sugahara ADD Start
+  --リース月次締期間取得エラー
+  cv_tk_cff_00194_01 CONSTANT VARCHAR2(15)  := 'BOOK_ID';  -- テーブル名  
+-- 2012/02/06 Ver.1.4 D.Sugahara ADD End  
 --
   -- トークン
   cv_msg_cff_50028   CONSTANT fnd_new_messages.message_name%TYPE := 'APP-XXCFF1-50028';  -- 契約明細内部ID
@@ -494,6 +503,10 @@ AS
     ln_fin_debt_rem          xxcff_pay_planning.fin_debt_rem%TYPE;           -- ＦＩＮリース債務残
     ln_fin_tax_debt_rem      xxcff_pay_planning.fin_tax_debt_rem%TYPE;       -- ＦＩＮリース債務残_消費税
     ln_accounting_if_flag    xxcff_pay_planning.accounting_if_flag%TYPE;     -- 会計IFフラグ
+-- 2012/02/06 Ver.1.4 D.Sugahara ADD Start
+    lv_close_period_name     xxcff_lease_closed_periods.period_name%TYPE;    --リース月次締期間（締められた最終月）
+    ln_set_of_book_id        gl_sets_of_books.set_of_books_id%TYPE;          --会計帳簿ID
+-- 2012/02/06 Ver.1.4 D.Sugahara ADD End
 --
     -- ===============================
     -- ローカル・カーソル
@@ -550,6 +563,32 @@ AS
     --計算利子率は月率にする
     ln_calc_interested_rate := round(gn_calc_interested_rate/12,7);
 --
+-- 2012/02/06 Ver.1.4 D.Sugahara ADD Start
+    --会計帳簿IDの取得
+    ln_set_of_book_id := TO_NUMBER(fnd_profile.value('GL_SET_OF_BKS_ID'));
+    --リース月次締め期間より現会計期間の取得
+    BEGIN
+--
+      SELECT TO_CHAR(TO_DATE(period_name,'YYYY-MM'),'YYYY-MM') period_name  -- リース月次締め期間
+      INTO   lv_close_period_name                                           -- 締られた最終月
+      FROM   xxcff_lease_closed_periods xlcp                                -- リース月次締め期間
+      WHERE  xlcp.set_of_books_id = ln_set_of_book_id                       -- 会計帳簿ID
+      AND    xlcp.period_name IS NOT NULL
+      ;
+--
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errmsg := SUBSTRB(xxccp_common_pkg.get_msg( cv_app_kbn_cff                       -- XXCFF
+                                                      ,cv_msg_cff_00194                     -- リース月次締期間取得エラー
+                                                      ,cv_tk_cff_00194_01                   -- 帳簿ID：BOOK_ID
+                                                      ,TO_CHAR(ln_set_of_book_id))
+                                                      ,1
+                                                      ,5000);
+        lv_errbuf := CHR(10) || lv_errmsg;
+        RAISE global_api_expt;
+    END;
+--
+-- 2012/02/06 Ver.1.4 D.Sugahara ADD End
     --初期化
     ln_cnt           := 1;
     -- 該当件数分ループする
@@ -682,7 +721,13 @@ AS
       END IF;
 --
       --会計IFフラグ
-      IF ( ld_period_name < TO_CHAR(gd_process_date,'YYYY-MM')) THEN
+-- 2012/02/06 Ver.1.4 D.Sugahara MOD Start  
+-- ・月跨ぎ対応    
+--   対象支払計画の会計期間と業務日付ベースの会計期間の比較
+-- →対象支払計画の会計期間とリース月次締期間の比較　に修正
+--      IF ( ld_period_name < TO_CHAR(gd_process_date,'YYYY-MM')) THEN
+      IF ( ld_period_name <= lv_close_period_name ) THEN
+-- 2012/02/06 Ver.1.4 D.Sugahara MOD End      
 -- 00000417 2009/07/06  START
 --        ln_accounting_if_flag := cv_accounting_if_flag0;
         ln_accounting_if_flag := cv_accounting_if_flag2;
