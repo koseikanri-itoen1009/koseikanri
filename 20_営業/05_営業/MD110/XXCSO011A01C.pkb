@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.4
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -50,6 +50,10 @@ AS
  *  2009-04-03    1.3   N.Yabuki         【ST障害対応297】経費購買品（カテゴリ区分がNULL）を抽出対象外に修正
  *  2009-04-06    1.4   N.Yabuki         【ST障害対応101】作業依頼／発注情報連携対象テーブルの存在チェック、更新処理追加
  *  2009-04-10    1.5   D.Abe            【ST障害対応108】エラー通知の起動処理を追加。
+ *  2009-04-13    1.6   N.Yabuki         【ST障害対応170】作業希望日と依頼日のチェック追加
+ *                                       【ST障害対応171】設置場所区分が「1:屋外」の場合、設置場所階数不要のチェック追加
+ *                                       【ST障害対応198】リース情報のチェックをリース区分が「1:自社リース」時のみに修正
+ *                                       【ST障害対応527】引揚時の設置作業会社、事業所のチェックを削除
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -162,6 +166,12 @@ AS
   cv_tkn_number_43  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00379';  -- 追加属性値ID抽出エラー
   cv_tkn_number_44  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00380';  -- 廃棄用物件情報更新エラー
   cv_tkn_number_45  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00516';  -- 作業依頼／発注情報連携対象テーブル登録エラー
+/*20090413_yabuki_ST170 START*/
+  cv_tkn_number_46  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00561';  -- 作業希望日入力チェックエラーメッセージ
+/*20090413_yabuki_ST170 END*/
+/*20090413_yabuki_ST171 START*/
+  cv_tkn_number_47  CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00562';  -- 設置場所階数入力チェックエラーメッセージ
+/*20090413_yabuki_ST171 END*/
   --
   -- トークンコード
   cv_tkn_param_nm       CONSTANT VARCHAR2(20) := 'PARAM_NAME';
@@ -189,6 +199,9 @@ AS
 /*20090406_yabuki_ST101 START*/
   cv_tkn_process        CONSTANT VARCHAR2(20) := 'PROCESS';
 /*20090406_yabuki_ST101 START*/
+/*20090413_yabuki_ST170 START*/
+  cv_tkn_req_date       CONSTANT VARCHAR2(20) := 'REQUEST_DATE';
+/*20090413_yabuki_ST170 END*/
   --
   -- 複数エラーメッセージの区切り文字（カンマ）
   cv_msg_comma CONSTANT VARCHAR2(3) := ' , ';
@@ -229,6 +242,9 @@ AS
   cv_input_chk_kbn_07  CONSTANT VARCHAR2(2) := '07';  -- 作業関連情報入力チェック
   cv_input_chk_kbn_08  CONSTANT VARCHAR2(2) := '08';  -- 引揚関連情報入力チェック
   cv_input_chk_kbn_09  CONSTANT VARCHAR2(2) := '09';  -- 廃棄_物件コード必須入力チェック
+/*20090413_yabuki_ST170_ST171 START*/
+  cv_input_chk_kbn_10  CONSTANT VARCHAR2(2) := '10';  -- 引揚関連情報入力チェック２
+/*20090413_yabuki_ST170_ST171 END*/
   --
   -- リース物件ステータスチェック処理内のチェック区分番号
   cv_obj_sts_chk_kbn_01  CONSTANT VARCHAR2(2) := '01';  -- チェック対象：設置用物件
@@ -248,6 +264,9 @@ AS
 /*20090406_yabuki_ST101 START*/
   cv_interface_flg_off      CONSTANT VARCHAR2(1) := 'N';  -- 連携済フラグ「ＯＦＦ」
 /*20090406_yabuki_ST101 END*/
+/*20090413_yabuki_ST198 START*/
+  cv_own_company_lease      CONSTANT VARCHAR2(1) := '1';  -- リース区分「自社リース」
+/*20090413_yabuki_ST198 END*/
   --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -295,6 +314,12 @@ AS
     , work_location_code        xxcso_requisition_lines_v.work_location_code%TYPE        -- 事業所コード
     , withdraw_company_code     xxcso_requisition_lines_v.withdraw_company_code%TYPE     -- 引揚会社コード
     , withdraw_location_code    xxcso_requisition_lines_v.withdraw_location_code%TYPE    -- 引揚事業所コード
+/*20090413_yabuki_ST170 START*/
+    , work_hope_year            xxcso_requisition_lines_v.work_hope_year%TYPE            -- 作業希望年
+    , work_hope_month           xxcso_requisition_lines_v.work_hope_month%TYPE           -- 作業希望月
+    , work_hope_day             xxcso_requisition_lines_v.work_hope_day%TYPE             -- 作業希望日
+    , request_date              xxcso_requisition_lines_v.creation_date%TYPE             -- 依頼日
+/*20090413_yabuki_ST170 END*/
   );
   --
   -- 物件情報
@@ -304,6 +329,9 @@ AS
     , jotai_kbn1   xxcso_install_base_v.jotai_kbn1%TYPE             -- 機器状態１（稼動状態）
     , jotai_kbn3   xxcso_install_base_v.jotai_kbn3%TYPE             -- 機器状態３（廃棄情報）
     , obj_ver_num  xxcso_install_base_v.object_version_number%TYPE  -- オブジェクトバージョン番号
+/*20090413_yabuki_ST198 START*/
+    , lease_kbn    xxcso_install_base_v.lease_kbn%TYPE              -- リース区分
+/*20090413_yabuki_ST198 END*/
   );
   --
   -- ===============================
@@ -662,6 +690,12 @@ AS
            , xrlv.work_location_code        work_location_code        -- 事業所コード
            , xrlv.withdraw_company_code     withdraw_company_code     -- 引揚会社コード
            , xrlv.withdraw_location_code    withdraw_location_code    -- 引揚事業所コード
+           /*20090413_yabuki_ST170 START*/
+           , xrlv.work_hope_year            work_hope_year            -- 作業希望年
+           , xrlv.work_hope_month           work_hope_month           -- 作業希望月
+           , xrlv.work_hope_day             work_hope_day             -- 作業希望日
+           , xrlv.creation_date             request_date              -- 依頼日（作成日）
+           /*20090413_yabuki_ST170 END*/
       INTO   o_requisition_rec.requisition_header_id     -- 発注依頼ヘッダID
            , o_requisition_rec.requisition_line_id       -- 発注依頼明細ID
            , o_requisition_rec.requisition_number        -- 発注依頼番号
@@ -685,6 +719,12 @@ AS
            , o_requisition_rec.work_location_code        -- 事業所コード
            , o_requisition_rec.withdraw_company_code     -- 引揚会社コード
            , o_requisition_rec.withdraw_location_code    -- 引揚事業所コード
+           /*20090413_yabuki_ST170 START*/
+           , o_requisition_rec.work_hope_year            -- 作業希望年
+           , o_requisition_rec.work_hope_month           -- 作業希望月
+           , o_requisition_rec.work_hope_day             -- 作業希望日
+           , o_requisition_rec.request_date              -- 依頼日
+           /*20090413_yabuki_ST170 END*/
       FROM   po_requisition_headers     prh
            , xxcso_requisition_lines_v  xrlv
       WHERE  prh.segment1               = iv_requisition_number
@@ -789,6 +829,13 @@ AS
     -- *** ローカル定数 ***
     cv_wk_hp_time_type_asgn      CONSTANT VARCHAR2(1) := '1';  -- 作業希望時間区分=「指定」
     cv_inst_place_type_interior  CONSTANT VARCHAR2(1) := '2';  -- 設置場所区分=「屋内」
+/*20090413_yabuki_ST170 START*/
+    cv_date_fmt                  CONSTANT VARCHAR2(8)  := 'YYYYMMDD';
+    cv_date_fmt2                 CONSTANT VARCHAR2(10) := 'YYYY/MM/DD';
+/*20090413_yabuki_ST170 END*/
+/*20090413_yabuki_ST171 START*/
+    cv_inst_place_type_exterior  CONSTANT VARCHAR2(1) := '1';  -- 設置場所区分=「屋外」
+/*20090413_yabuki_ST171 END*/
     --
     -- トークン用定数
     cv_tkn_val_un_number         CONSTANT VARCHAR2(100) := '機種コード';
@@ -949,6 +996,47 @@ AS
         --
       END IF;
       --
+/*20090413_yabuki_ST170 START*/
+      -- 依頼日 ＞ 作業希望日（作業希望年||作業希望月||作業希望日）の場合
+      IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
+            > i_requisition_rec.work_hope_year
+               || i_requisition_rec.work_hope_month
+               || i_requisition_rec.work_hope_day ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_46          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_req_date           -- トークンコード1
+                        , iv_token_value1 => TO_CHAR( i_requisition_rec.request_date, cv_date_fmt2 )  -- トークン値1
+                      );
+        --
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+/*20090413_yabuki_ST170 END*/
+      --
+/*20090413_yabuki_ST171 START*/
+      -- 設置場所区分が「屋外」の場合
+      IF ( SUBSTRB( i_requisition_rec.install_place_type, 1, 1 ) = cv_inst_place_type_exterior ) THEN
+        -- 設置場所階数が入力されている場合
+        IF ( i_requisition_rec.install_place_floor IS NOT NULL ) THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_47          -- メッセージコード
+                        );
+          --
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          ov_retcode := cv_status_warn;
+          --
+        END IF;
+        --
+      END IF;
+/*20090413_yabuki_ST171 END*/
+      --
       -- 設置場所区分が「屋内」の場合
       IF ( SUBSTRB( i_requisition_rec.install_place_type, 1, 1 ) = cv_inst_place_type_interior ) THEN
         -- 設置場所階数が未入力の場合
@@ -1046,6 +1134,147 @@ AS
         --
       END IF;
       --
+/*20090413_yabuki_ST170_ST171 START*/
+    -- チェック区分が「引揚関連情報入力チェック２」の場合
+    ELSIF ( iv_chk_kbn = cv_input_chk_kbn_10 ) THEN
+      -- 引揚会社コードが未入力の場合
+      IF ( i_requisition_rec.withdraw_company_code IS NULL ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name    -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_09            -- メッセージコード
+                        , iv_token_name1  => cv_tkn_item                 -- トークンコード1
+                        , iv_token_value1 => cv_tkn_val_wthdrw_cmpny_cd  -- トークン値1
+                      );
+        --
+        lv_errbuf  := lv_errbuf2;
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 引揚事業所コードが未入力の場合
+      IF ( i_requisition_rec.withdraw_location_code IS NULL ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_09          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_item               -- トークンコード1
+                        , iv_token_value1 => cv_tkn_val_wthdrw_loc_cd  -- トークン値1
+                      );
+        --
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 作業希望時間区分が「指定」の場合
+      IF ( SUBSTRB( i_requisition_rec.work_hope_time_type, 1, 1 ) = cv_wk_hp_time_type_asgn ) THEN
+        -- 作業希望時、作業希望分のいずれかが未入力の場合
+        IF ( i_requisition_rec.work_hope_time_hour IS NULL 
+             OR i_requisition_rec.work_hope_time_minute IS NULL ) THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_11          -- メッセージコード
+                        );
+          --
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          ov_retcode := cv_status_warn;
+          --
+        END IF;
+        --
+      END IF;
+      --
+      -- 依頼日 ＞ 作業希望日（作業希望年||作業希望月||作業希望日）の場合
+      IF ( TO_CHAR( i_requisition_rec.request_date, cv_date_fmt )
+            > i_requisition_rec.work_hope_year
+               || i_requisition_rec.work_hope_month
+               || i_requisition_rec.work_hope_day ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_46          -- メッセージコード
+                        , iv_token_name1  => cv_tkn_req_date           -- トークンコード1
+                        , iv_token_value1 => TO_CHAR( i_requisition_rec.request_date, cv_date_fmt2 )  -- トークン値1
+                      );
+        --
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 設置場所区分が「屋外」の場合
+      IF ( SUBSTRB( i_requisition_rec.install_place_type, 1, 1 ) = cv_inst_place_type_exterior ) THEN
+        -- 設置場所階数が入力されている場合
+        IF ( i_requisition_rec.install_place_floor IS NOT NULL ) THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_47          -- メッセージコード
+                        );
+          --
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          ov_retcode := cv_status_warn;
+          --
+        END IF;
+        --
+      END IF;
+      --
+      -- 設置場所区分が「屋内」の場合
+      IF ( SUBSTRB( i_requisition_rec.install_place_type, 1, 1 ) = cv_inst_place_type_interior ) THEN
+        -- 設置場所階数が未入力の場合
+        IF ( i_requisition_rec.install_place_floor IS NULL ) THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_12          -- メッセージコード
+                        );
+          --
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          ov_retcode := cv_status_warn;
+          --
+        END IF;
+        --
+      END IF;
+      --
+      -- エレベータ間口、エレベータ奥行きのどちらか一方のみ入力されている場合
+      IF ( i_requisition_rec.elevator_frontage IS NULL AND i_requisition_rec.elevator_depth IS NOT NULL
+           OR i_requisition_rec.elevator_frontage IS NOT NULL AND i_requisition_rec.elevator_depth IS NULL ) THEN
+        lv_errbuf2 := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                        , iv_name         => cv_tkn_number_13          -- メッセージコード
+                      );
+        --
+        lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                           THEN lv_errbuf2
+                           ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+        ov_retcode := cv_status_warn;
+        --
+      END IF;
+      --
+      -- 延長コード区分が入力されている場合
+      IF ( i_requisition_rec.extension_code_type IS NOT NULL ) THEN
+        -- 延長コード(m)が未入力の場合
+        IF ( i_requisition_rec.extension_code_meter IS NULL ) THEN
+          lv_errbuf2 := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_sales_appl_short_name  -- アプリケーション短縮名
+                          , iv_name         => cv_tkn_number_14          -- メッセージコード
+                        );
+          --
+          lv_errbuf  := CASE WHEN ( lv_errbuf IS NULL )
+                             THEN lv_errbuf2
+                             ELSE SUBSTRB( lv_errbuf || cv_msg_comma ||  lv_errbuf2, 1, 5000 ) END;
+          ov_retcode := cv_status_warn;
+          --
+        END IF;
+        --
+      END IF;
+/*20090413_yabuki_ST170_ST171 END*/
+      --
     END IF;
     --
     ov_errbuf := lv_errbuf;
@@ -1118,11 +1347,17 @@ AS
            , xibv.jotai_kbn1                   jotai_kbn1             -- 機器状態１（稼動状態）
            , xibv.jotai_kbn3                   jotai_kbn3             -- 機器状態３（廃棄情報）
            , xibv.object_version_number        object_version_number  -- オブジェクトバージョン番号
+           /*20090413_yabuki_ST198 START*/
+           , xibv.lease_kbn                    lease_kbn              -- リース区分
+           /*20090413_yabuki_ST198 END*/
       INTO   o_instance_rec.instance_id  -- インスタンスID
            , o_instance_rec.op_req_flag  -- 作業依頼中フラグ
            , o_instance_rec.jotai_kbn1   -- 機器状態１（稼動状態）
            , o_instance_rec.jotai_kbn3   -- 機器状態３（廃棄情報）
            , o_instance_rec.obj_ver_num  -- オブジェクトバージョン番号
+           /*20090413_yabuki_ST198 START*/
+           , o_instance_rec.lease_kbn    -- リース区分
+           /*20090413_yabuki_ST198 END*/
       FROM   xxcso_install_base_v  xibv
       WHERE  xibv.install_code = iv_install_code
       ;
@@ -4208,20 +4443,27 @@ AS
           --
         END IF;
         --
-        -- ========================================
-        -- A-10. リース物件ステータスチェック処理
-        -- ========================================
-        check_object_status(
-            iv_chk_kbn      => cv_obj_sts_chk_kbn_01           -- チェック区分（チェック対象：設置用物件）
-          , iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
-          , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
-          , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE global_process_expt;
+/*20090413_yabuki_ST198 START*/
+        -- リース区分が「自社リース」の場合
+        IF ( l_instance_rec.lease_kbn = cv_own_company_lease ) THEN
+/*20090413_yabuki_ST198 END*/
+          -- ========================================
+          -- A-10. リース物件ステータスチェック処理
+          -- ========================================
+          check_object_status(
+              iv_chk_kbn      => cv_obj_sts_chk_kbn_01           -- チェック区分（チェック対象：設置用物件）
+            , iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
+            , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
+            , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
+          );
           --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+            --
+          END IF;
+/*20090413_yabuki_ST198 START*/
         END IF;
+/*20090413_yabuki_ST198 END*/
         --
         -- ========================================
         -- A-11. 所属マスタ存在チェック処理
@@ -4440,20 +4682,27 @@ AS
           --
         END IF;
         --
-        -- ========================================
-        -- A-10. リース物件ステータスチェック処理
-        -- ========================================
-        check_object_status(
-            iv_chk_kbn      => cv_obj_sts_chk_kbn_01           -- チェック区分（チェック対象：設置用物件）
-          , iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
-          , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
-          , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE global_process_expt;
+/*20090413_yabuki_ST198 START*/
+        -- リース区分が「自社リース」の場合
+        IF ( l_instance_rec.lease_kbn = cv_own_company_lease ) THEN
+/*20090413_yabuki_ST198 END*/
+          -- ========================================
+          -- A-10. リース物件ステータスチェック処理
+          -- ========================================
+          check_object_status(
+              iv_chk_kbn      => cv_obj_sts_chk_kbn_01           -- チェック区分（チェック対象：設置用物件）
+            , iv_install_code => l_requisition_rec.install_code  -- 設置用物件コード
+            , ov_errbuf       => lv_errbuf                       -- エラー・メッセージ  --# 固定 #
+            , ov_retcode      => lv_retcode                      -- リターン・コード    --# 固定 #
+          );
           --
+          IF ( lv_retcode <> cv_status_normal ) THEN
+            RAISE global_process_expt;
+            --
+          END IF;
+/*20090413_yabuki_ST198 START*/
         END IF;
+/*20090413_yabuki_ST198 END*/
         --
         -- ========================================
         -- A-11. 所属マスタ存在チェック処理
@@ -4577,7 +4826,10 @@ AS
         -- 引揚関連情報入力チェック
         ------------------------------
         input_check(
-            iv_chk_kbn        => cv_input_chk_kbn_08  -- チェック区分
+/*20090413_yabuki_ST170_171 START*/
+            iv_chk_kbn        => cv_input_chk_kbn_10  -- チェック区分
+--            iv_chk_kbn        => cv_input_chk_kbn_08  -- チェック区分
+/*20090413_yabuki_ST170_171 END*/
           , i_requisition_rec => l_requisition_rec    -- 発注依頼情報
           , ov_errbuf         => lv_errbuf2           -- エラー・メッセージ  --# 固定 #
           , ov_retcode        => lv_retcode2          -- リターン・コード    --# 固定 #
@@ -4638,20 +4890,22 @@ AS
         -- ========================================
         -- A-11. 所属マスタ存在チェック処理
         -- ========================================
-        ----------------------------------------
-        -- チェック対象：設置作業会社、事業所
-        ----------------------------------------
-        check_syozoku_mst(
-            iv_work_company_code  => l_requisition_rec.work_company_code   -- 作業会社コード
-          , iv_work_location_code => l_requisition_rec.work_location_code  -- 事業所コード
-          , ov_errbuf             => lv_errbuf                             -- エラー・メッセージ  --# 固定 #
-          , ov_retcode            => lv_retcode                            -- リターン・コード    --# 固定 #
-        );
-        --
-        IF ( lv_retcode <> cv_status_normal ) THEN
-          RAISE global_process_expt;
-          --
-        END IF;
+/*20090413_yabuki_ST527 START*/
+--        ----------------------------------------
+--        -- チェック対象：設置作業会社、事業所
+--        ----------------------------------------
+--        check_syozoku_mst(
+--            iv_work_company_code  => l_requisition_rec.work_company_code   -- 作業会社コード
+--          , iv_work_location_code => l_requisition_rec.work_location_code  -- 事業所コード
+--          , ov_errbuf             => lv_errbuf                             -- エラー・メッセージ  --# 固定 #
+--          , ov_retcode            => lv_retcode                            -- リターン・コード    --# 固定 #
+--        );
+--        --
+--        IF ( lv_retcode <> cv_status_normal ) THEN
+--          RAISE global_process_expt;
+--          --
+--        END IF;
+/*20090413_yabuki_ST527 END*/
         --
         ----------------------------------------
         -- チェック対象：引揚作業会社、事業所
