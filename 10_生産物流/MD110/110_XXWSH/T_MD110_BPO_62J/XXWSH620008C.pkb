@@ -7,7 +7,7 @@ AS
  * Description      : 積込指示書
  * MD.050           : 引当/配車(帳票) T_MD050_BPO_621
  * MD.070           : 積込指示書 T_MD070_BPO_62J
- * Version          : 1.2
+ * Version          : 1.4
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -31,6 +31,9 @@ AS
  *  2008/06/23    1.1   Yoshikatsu Shindou 配送区分情報VIEWのリレーションを外部結合に変更
  *                                         小口区分がNULLの時の処理を追加
  *  2008/07/03    1.2   Jun Nakada         ST不具合対応No412 重量容積の小数第一位切り上げ
+ *  2008/07/07    1.3   Akiyoshi Shiina    変更要求対応#92
+ *                                         禁則文字「'」「"」「<」「>」「＆」対応
+ *  2008/07/15    1.4   Masayoshi Uehara   入数の小数部を切り捨てて、整数で表示
  *
  *****************************************************************************************/
 --
@@ -205,6 +208,12 @@ AS
       ,sum_weight_irai        xxwsh_order_headers_all.sum_weight%TYPE
       -- 依頼容積(依頼合計単位)
       ,sum_capacity_irai      xxwsh_order_headers_all.sum_capacity%TYPE
+-- 2008/07/07 A.Shiina v1.3 ADD Start
+      -- 運賃区分
+      ,freight_charge_code    xxwsh_order_headers_all.freight_charge_class%TYPE
+      -- 強制出力区分
+      ,complusion_output_kbn  xxcmn_carriers2_v.complusion_output_code%TYPE
+-- 2008/07/07 A.Shiina v1.3 ADD End
     ) ;
   TYPE tab_data_type_dtl IS TABLE OF rec_data_type_dtl INDEX BY BINARY_INTEGER ;
 --
@@ -303,7 +312,7 @@ AS
 --
     --データの場合
     IF (ic_type = gc_tag_type_data) THEN
-      lv_convert_data := '<'||iv_name||'>'||iv_value||'</'||iv_name||'>' ;
+      lv_convert_data := '<'||iv_name||'><![CDATA['||iv_value||']]></'||iv_name||'>' ;
     ELSE
       lv_convert_data := '<'||iv_name||'>' ;
     END IF ;
@@ -586,9 +595,9 @@ AS
                           (xic4v1.item_class_code = lc_code_hanseihin))
                         AND 
                         (ilm.attribute6 IS NOT NULL)) THEN 
-                         ilm.attribute6
+                         TO_CHAR(TRUNC(ilm.attribute6))
                   -- 在庫入数が設定されていない,資材他,ロット管理していない場合
-                  WHEN ( ilm.attribute6 IS NULL ) THEN xim2v1.frequent_qty
+                  WHEN ( ilm.attribute6 IS NULL ) THEN TO_CHAR(TRUNC(xim2v1.frequent_qty))
                 END                               AS qty            -- 入数
                 ,CASE
                   WHEN  xmldt.mov_line_id IS NULL THEN
@@ -655,6 +664,10 @@ AS
                   ELSE
                     NULL
                 END                               AS sum_capacity   -- 依頼容積(依頼合計単位)
+-- 2008/07/07 A.Shiina v1.3 ADD Start
+                ,xoha.freight_charge_class        AS freight_charge_code    -- 運賃区分
+                ,xc2v.complusion_output_code      AS complusion_output_kbn  -- 強制出力区分
+-- 2008/07/07 A.Shiina v1.3 ADD End
 --
       FROM
                  xxwsh_order_headers_all          xoha              -- 受注ヘッダアドオン
@@ -886,9 +899,9 @@ AS
                   WHEN (((xic4v1.item_class_code = lc_code_genryou) 
                           OR  
                          (xic4v1.item_class_code = lc_code_hanseihin))
-                        AND (ilm.attribute6 IS NOT NULL)) THEN ilm.attribute6
+                        AND (ilm.attribute6 IS NOT NULL)) THEN TO_CHAR(TRUNC(ilm.attribute6))
                   -- 在庫入数が設定されていない,資材他,ロット管理していない場合
-                  WHEN ( ilm.attribute6 IS NULL ) THEN xim2v1.frequent_qty
+                  WHEN ( ilm.attribute6 IS NULL ) THEN TO_CHAR(TRUNC(xim2v1.frequent_qty))
                 END                               AS qty            -- 入数
                 ,CASE
                   WHEN  xmldt.mov_line_id IS NULL THEN
@@ -955,6 +968,10 @@ AS
                   ELSE
                     NULL
                 END                               AS sum_capacity   -- 依頼容積(依頼合計単位)
+-- 2008/07/07 A.Shiina v1.3 ADD Start
+                ,xmrih.freight_charge_class       AS freight_charge_code    -- 運賃区分
+                ,xc2v.complusion_output_code      AS complusion_output_kbn  -- 強制出力区分
+-- 2008/07/07 A.Shiina v1.3 ADD End
 --
       FROM
                  xxinv_mov_req_instr_headers      xmrih   -- 移動依頼/指示ヘッダ(アドオン)
@@ -1350,10 +1367,15 @@ AS
         prcsub_set_xml_data('shukko_saki_code', gt_main_data(i).deliver_from) ;
         -- 出庫元（名称） 
         prcsub_set_xml_data('shukko_saki_name', gt_main_data(i).description) ;
+-- 2008/07/03 A.Shiina v1.3 Update Start
+       IF  ((gt_main_data(i).freight_charge_code  = '1')
+        OR (gt_main_data(i).complusion_output_kbn = '1')) THEN
         -- 運送業者（コード） 
         prcsub_set_xml_data('unsou_gyousha_code', gt_main_data(i).freight_carrier_code) ;
         -- 運送業者（名称） 
         prcsub_set_xml_data('unsou_gyousha_name', gt_main_data(i).party_short_name1) ;
+       END IF;
+-- 2008/07/03 A.Shiina v1.3 Update End
         -- 依頼No/移動No
         prcsub_set_xml_data('irai_idou_no', gt_main_data(i).request_no) ;
         -- 出庫形態 

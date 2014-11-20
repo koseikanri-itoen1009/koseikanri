@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -36,6 +36,8 @@ AS
  *  2008/06/16    1.1  Oracle 野村正幸   結合障害 #9対応
  *  2008/06/19    1.2  Oracle 上原正好   ST障害 #178対応
  *  2008/06/24    1.3  Oracle 上原正好   配送L/Tアドオンのリレーションに配送区分を追加
+ *  2008/08/04    1.4  Oracle 二瓶大輔   結合テスト不具合対応(T_TE080_BPO_400#160)
+ *                                       カテゴリ情報VIEW変更
  *
  *****************************************************************************************/
 --
@@ -1110,7 +1112,26 @@ AS
       FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
            xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
            xxcmn_item_locations2_v            xil2v,    -- OPM保管場所情報
-           xxcmn_delivery_lt2_v               xdl2v       -- 配送L/Tアドオン
+-- 2008/08/04 D.Nihei MOD START
+--           xxcmn_delivery_lt2_v               xdl2v       -- 配送L/Tアドオン
+           (SELECT entering_despatching_code1
+                  ,entering_despatching_code2
+                  ,code_class1
+                  ,code_class2
+                  ,leaf_lead_time_day
+                  ,drink_lead_time_day
+                  ,lt_start_date_active
+                  ,lt_end_date_active
+            FROM   xxcmn_delivery_lt2_v    -- 配送L/Tアドオン
+            GROUP BY entering_despatching_code1
+                  ,entering_despatching_code2
+                  ,code_class1
+                  ,code_class2
+                  ,leaf_lead_time_day
+                  ,drink_lead_time_day
+                  ,lt_start_date_active
+                  ,lt_end_date_active)        xdl2v       -- 配送L/Tアドオン
+-- 2008/08/04 D.Nihei MOD END
       WHERE
       -- プロファイル．商品区分
            xoha.prod_class               = gv_item_div_security
@@ -1157,9 +1178,11 @@ AS
       ---------------------------------------------------------------------------------------------
       AND   xoha.deliver_from       =  xdl2v.entering_despatching_code1
       AND   xoha.deliver_to         =  xdl2v.entering_despatching_code2
-      -- Add start 2008/06/24 uehara
-      AND   xoha.shipping_method_code = xdl2v.ship_method
-      -- Add end 2008/06/24 uehara
+-- 2008/08/04 D.Nihei DEL START
+--      -- Add start 2008/06/24 uehara
+--      AND   xoha.shipping_method_code = xdl2v.ship_method
+--      -- Add end 2008/06/24 uehara
+-- 2008/08/04 D.Nihei DEL END
       AND   xdl2v.code_class1          =  gv_whse_code
       AND   xdl2v.code_class2          =  lv_code_class2 -- コード区分(1:拠点 9:配送先)
       -- パラメータ条件．生産物流LT1
@@ -1194,7 +1217,26 @@ AS
       FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
            xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
            xxcmn_item_locations2_v            xil2v,    -- OPM保管場所情報
-           xxcmn_delivery_lt2_v               xdl2v       -- 配送L/Tアドオン
+-- 2008/08/04 D.Nihei MOD START
+--           xxcmn_delivery_lt2_v               xdl2v       -- 配送L/Tアドオン
+           (SELECT entering_despatching_code1
+                  ,entering_despatching_code2
+                  ,code_class1
+                  ,code_class2
+                  ,leaf_lead_time_day
+                  ,drink_lead_time_day
+                  ,lt_start_date_active
+                  ,lt_end_date_active
+            FROM   xxcmn_delivery_lt2_v    -- 配送L/Tアドオン
+            GROUP BY entering_despatching_code1
+                  ,entering_despatching_code2
+                  ,code_class1
+                  ,code_class2
+                  ,leaf_lead_time_day
+                  ,drink_lead_time_day
+                  ,lt_start_date_active
+                  ,lt_end_date_active)        xdl2v       -- 配送L/Tアドオン
+-- 2008/08/04 D.Nihei MOD END
       WHERE
       -- プロファイル．商品区分
            xoha.prod_class               = gv_item_div_security
@@ -1241,9 +1283,11 @@ AS
       ---------------------------------------------------------------------------------------------
       AND   xoha.deliver_from       =  xdl2v.entering_despatching_code1
       AND   xoha.deliver_to         =  xdl2v.entering_despatching_code2
-      -- Add start 2008/06/24 uehara
-      AND   xoha.shipping_method_code = xdl2v.ship_method
-      -- Add end 2008/06/24 uehara
+-- 2008/08/04 D.Nihei DEL START
+--      -- Add start 2008/06/24 uehara
+--      AND   xoha.shipping_method_code = xdl2v.ship_method
+--      -- Add end 2008/06/24 uehara
+-- 2008/08/04 D.Nihei DEL END
       AND   xdl2v.code_class1          =  gv_whse_code
       AND   xdl2v.code_class2          =  lv_code_class2 -- コード区分(1:拠点 9:配送先)
       -- パラメータ条件．生産物流LT2
@@ -1277,7 +1321,7 @@ AS
            , gr_param.ship_date_from    AS base_date      -- 基準日
       FROM xxwsh_order_headers_all            xoha,       -- 受注ヘッダアドオン
            xxwsh_oe_transaction_types2_v      xott2v,       -- 受注タイプ
-           xxcmn_item_locations2_v             xil2v    -- OPM保管場所情報
+           xxcmn_item_locations2_v            xil2v    -- OPM保管場所情報
       WHERE
       -- プロファイル．商品区分
            xoha.prod_class               = gv_item_div_security
@@ -1811,7 +1855,7 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lr_temp_tab             rec_temp_tab_data ;   -- 中間テーブル登録用レコード変数
+    lr_temp_tab           rec_temp_tab_data ;   -- 中間テーブル登録用レコード変数
     lr_temp_tab_tab       rec_temp_tab_data_tab ;   -- 中間テーブル登録用レコード変数
 --
     -- *** ローカル・カーソル ***
@@ -1831,7 +1875,7 @@ AS
            , xicv.item_class_code       AS item_class_code      -- 品目区分
       FROM xxwsh_order_lines_all      xola      -- 受注明細アドオン
           ,xxcmn_item_mst2_v          ximv      -- ＯＰＭ品目情報VIEW2
-          ,xxcmn_item_categories4_v   xicv      -- ＯＰＭ品目カテゴリ割当情報VIEW4
+          ,xxcmn_item_categories5_v   xicv      -- ＯＰＭ品目カテゴリ割当情報VIEW5
       WHERE
       ---------------------------------------------------------------------------------------------
       -- ＯＰＭ品目
