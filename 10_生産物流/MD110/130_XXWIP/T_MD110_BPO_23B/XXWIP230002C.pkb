@@ -8,7 +8,7 @@ AS
  * Description      : 生産帳票機能（生産日報）
  * MD.050/070       : 生産帳票機能（生産日報）Issue1.0  (T_MD050_BPO_230)
  *                    生産帳票機能（生産日報）          (T_MD070_BPO_23B)
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -48,6 +48,7 @@ AS
  *  2008/10/28    1.5   Daisuke  Nihei      T_TE080_BPO_230 No15対応 入力日時の結合先を作成日から更新日に変更する
  *  2008/12/02    1.6   Daisuke  Nihei      本番障害#325対応
  *  2008/12/17    1.7   Daisuke  Nihei      本番障害#709対応
+ *  2008/12/24    1.8   Akiyoshi Shiina     本番障害#849,#823対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -129,6 +130,9 @@ AS
 --
   -- 業務ステータス
   gv_status_comp                CONSTANT gme_batch_header.attribute4%TYPE := '7';                     -- 完了
+-- 2008/12/24 v1.8 ADD START
+  gv_status_close               CONSTANT gme_batch_header.attribute4%TYPE := '8';                     -- クロ－ズ
+-- 2008/12/24 v1.8 ADD END
 --
   -- 生産原料詳細ラインタイプ
   gv_line_type_kbn_genryou      CONSTANT gme_material_details.line_type%TYPE := -1;       -- 原料
@@ -365,8 +369,11 @@ AS
         RAISE date_format_expt ;
     END ;
     -- 指定フォーマットへの変換
-    od_change_date := FND_DATE.STRING_TO_DATE(lv_validate_date_tmp
-                                             ,iv_date_format) ;
+-- 2008/12/24 v1.8 UPDATE START
+--    od_change_date := FND_DATE.STRING_TO_DATE(lv_validate_date_tmp
+--                                             ,iv_date_format) ;
+    od_change_date := TRUNC(TO_DATE(lv_validate_date_tmp, gv_date_format1)) ;
+-- 2008/12/24 v1.8 UPDATE END
 --
   EXCEPTION
 --
@@ -2437,7 +2444,10 @@ AS
     -- 以下固定条件
     ------------------------------------------------------------------------
     -- 生産バッチヘッダ条件
-          gbh.attribute4            =  gv_status_comp                   -- 業務ステータス＝「完了」
+-- 2008/12/24 v1.8 UPDATE START
+--          gbh.attribute4            =  gv_status_comp                   -- 業務ステータス＝「完了」
+          gbh.attribute4            IN (gv_status_comp, gv_status_close) -- 業務ステータスIN「完了、 クローズ」
+-- 2008/12/24 v1.8 UPDATE END
     ------------------------------------------------------------------------
     -- 生産原料詳細条件
     AND   gbh.batch_id              =  gmd.batch_id
