@@ -14,6 +14,7 @@
 * 2008-06-30 1.4  吉元強樹     ST不具合ログ#41を対応
 * 2008-07-02 1.5  吉元強樹     ST不具合ログ#104を対応
 * 2008-07-11 1.6  二瓶大輔     ST不具合ログ#421対応
+* 2008-07-17 1.7  伊藤ひとみ   ST不具合ログ#83対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -5396,6 +5397,9 @@ public class XxpoUtility
     sb.append("   lt_subinventory_code      mtl_item_locations.subinventory_code%TYPE; "                );
     sb.append("   lt_inventory_location_id  mtl_item_locations.inventory_location_id%TYPE; "            );
     sb.append("   lt_line_location_id       po_line_locations_all.line_location_id%TYPE; "              );
+// 2008-07-17 H.Itou Add Start
+    sb.append("   lt_closed_code            po_line_locations_all.closed_code%TYPE; "                   );
+// 2008-07-17 H.Itou Add End
     sb.append(" BEGIN "                                                                                 );
     // シーケンスを取得
     sb.append("   SELECT rcv_transactions_interface_s.NEXTVAL "                 );
@@ -5414,10 +5418,32 @@ public class XxpoUtility
   
     // 発注納入明細
     sb.append("   SELECT plla.line_location_id "                                );
+// 2008-07-17 H.Itou Add Start
+    sb.append("         ,plla.closed_code "                                     );
+// 2008-07-17 H.Itou Add End
     sb.append("   INTO   lt_line_location_id "                                  );
+// 2008-07-17 H.Itou Add Start
+    sb.append("         ,lt_closed_code "                                       );
+// 2008-07-17 H.Itou Add End
     sb.append("   FROM po_line_locations_all plla "                             );
     sb.append("   WHERE plla.po_line_id = :2; "                                 ); // 発注明細ID
-
+// 2008-07-17 H.Itou Add Start
+    // 発注納入明細.closed_codeがCLOSED FOR RECEIVINGの場合、OPENに変更
+    sb.append("   IF (lt_closed_code = 'CLOSED FOR RECEIVING') THEN  "          );
+    sb.append("     UPDATE po_line_locations_all plla "                         ); // 発注納入明細
+    sb.append("     SET    plla.closed_code               = 'OPEN' "            );
+    sb.append("           ,plla.closed_reason             = NULL "              );
+    sb.append("           ,plla.closed_date               = NULL "              );
+    sb.append("           ,plla.closed_by                 = NULL "              );
+    sb.append("           ,plla.shipment_closed_date      = NULL "              );
+    sb.append("           ,plla.closed_for_receiving_date = NULL "              );
+    sb.append("           ,plla.closed_for_invoice_date   = NULL "              );
+    sb.append("           ,plla.last_update_date          = SYSDATE "           );
+    sb.append("           ,plla.last_updated_by           = FND_GLOBAL.USER_ID "  );
+    sb.append("           ,plla.last_update_login         = FND_GLOBAL.LOGIN_ID " );
+    sb.append("     WHERE  plla.po_line_id  = :2;  "                            ); // 発注明細ID
+    sb.append("   END IF;  "                                                    );
+// 2008-07-17 H.Itou Add End
     // 受入ロットトランザクションオープンIF登録
     sb.append("   INSERT INTO rcv_transactions_interface rti ( "                );
     sb.append("      rti.interface_transaction_id "                             );
