@@ -7,7 +7,7 @@ AS
  * Description      : 品目振替
  * MD.050           : 品目振替 T_MD050_BPO_520
  * MD.070           : 品目振替 T_MD070_BPO_52C
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,8 +38,8 @@ AS
  *  get_validity_rule_id   妥当性ルールIDを取得するプロシージャ       (A-21)
  *  chk_mst_data           マスタ存在チェックを行うプロシージャ       (A-22)
  *  chk_close_period       在庫クローズチェックを行うプロシージャ     (A-23)
- *  chk_qty_plan           数量チェック(手持数＋入庫予定数－出庫予定数)を行うプロシージャ(A-24)
- *  chk_qty_actual         数量チェック(手持数－出庫予定数)を行うプロシージャ(A-25)
+ *  chk_qty_over_plan      引当可能数超過チェック(予定)を行うプロシージャ (A-24)
+ *  chk_qty_over_actual    引当可能数超過チェック(実績)を行うプロシージャ(A-25)
  *  get_batch_data         バッチデータ取得を行うプロシージャ         (A-26)
  *  get_item_data          品目データ取得を行うプロシージャ           (A-27)
  *  chk_and_ins_formula    フォーミュラ有無チェック 登録処理          (A-28)
@@ -49,14 +49,17 @@ AS
  *  output_lot_upd_ind     出力ロット割当更新(完了)を行うプロシージャ (A-32)
  *  release_batch          リリースバッチを行うプロシージャ           (A-33)
  *  chk_future_date        未来日チェックを行うプロシージャ           (A-34)
+ *  chk_qty_short_plan     引当可能在庫不足チェック(予定)を行うプロシージャ (A-35)
+ *  chk_location           保管倉庫チェックを行うプロシージャ(A-36)
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *
  * Change Record
- * ------------- ----- ---------------- -------------------------------------------------
- *  Date          Ver.  Editor           Description
- * ------------- ----- ---------------- -------------------------------------------------
- *  2008/11/11    1.0  Oracle 二瓶 大輔   初回作成
+ * ------------- ----- ------------------- -------------------------------------------------
+ *  Date          Ver.  Editor              Description
+ * ------------- ----- ------------------- -------------------------------------------------
+ *  2008/11/11    1.0  Oracle 二瓶 大輔    初回作成
+ *  2009/01/15    1.1  SCS    伊藤 ひとみ  指摘2,7対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -136,6 +139,11 @@ AS
   gv_msg_52a_69         CONSTANT VARCHAR2(15)   := 'APP-XXINV-10169'; -- ステータスエラー(妥当性ルール)
   gv_msg_52a_78         CONSTANT VARCHAR2(15)   := 'APP-XXINV-10178'; -- 工順未登録エラー
   gv_msg_52a_79         CONSTANT VARCHAR2(15)   := 'APP-XXINV-10179'; -- フォーミュラ複数登録エラー
+-- 2009/01/15 H.Itou Add Start 指摘2,7対応
+  gv_msg_xxinv_10183    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10183'; -- 保管倉庫不一致エラーメッセージ
+  gv_msg_xxinv_10184    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10184'; -- 引当可能在庫不足エラーメッセージ
+  gv_msg_xxinv_10185    CONSTANT VARCHAR2(15)   := 'APP-XXINV-10185'; -- 引当可能在庫数超過エラーメッセージ
+-- 2009/01/15 H.Itou Add End
 --
   -- トークン
   gv_tkn_parameter      CONSTANT VARCHAR2(15)   := 'PARAMETER';
@@ -148,6 +156,12 @@ AS
   gv_tkn_formula        CONSTANT VARCHAR2(15)   := 'FORMULA_NO';
   gv_tkn_recipe         CONSTANT VARCHAR2(15)   := 'RECIPE_NO';
   gv_tkn_ship_date      CONSTANT VARCHAR2(15)   := 'SHIP_DATE';
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+  gv_tkn_location       CONSTANT VARCHAR2(15)   := 'LOCATION';
+  gv_tkn_item           CONSTANT VARCHAR2(15)   := 'ITEM';
+  gv_tkn_lot            CONSTANT VARCHAR2(15)   := 'LOT';
+  gv_tkn_standard_date  CONSTANT VARCHAR2(15)   := 'STANDARD_DATE';
+-- 2009/01/15 H.Itou Add End
 --
   -- トークン値
   gv_tkn_inv_loc        CONSTANT VARCHAR2(20)   := '保管倉庫';
@@ -1167,11 +1181,15 @@ AS
   END chk_close_period;
 --
   /**********************************************************************************
-   * Procedure Name   : chk_qty_actual
-   * Description      : 数量チェック(手持数－出庫予定数)(A-25)
+   * Procedure Name   : chk_qty_over_actual
+   * Description      : 引当可能数超過チェック(実績)(A-25)
    ***********************************************************************************/
-  PROCEDURE chk_qty_actual(
+  PROCEDURE chk_qty_over_actual(
     ir_masters_rec IN OUT NOCOPY masters_rec -- 1.チェック対象レコード
+-- 2009/01/15 H.Itou Add Start 指摘8対応
+  , id_standard_date IN DATE                   -- 2.有効日付
+  , in_qty           IN NUMBER                 -- 3.実績数量
+-- 2009/01/15 H.Itou Add End
   , ov_errbuf      OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
   , ov_retcode     OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
   , ov_errmsg      OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1179,7 +1197,7 @@ AS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_qty_actual'; -- プログラム名
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_qty_over_actual'; -- プログラム名
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -1223,7 +1241,10 @@ AS
                                      ir_masters_rec.inventory_location_id     -- 1.保管倉庫ID
                                    , ir_masters_rec.from_item_id              -- 2.品目ID
                                    , ir_masters_rec.from_lot_id               -- 3.ロットID
-                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+-- 2009/01/15 H.Itou Mod Start 指摘8対応
+--                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+                                   , id_standard_date                         -- 4.有効日付
+-- 2009/01/15 H.Itou Mod End
                                    , ln_lot_ship_qty                          -- 5.数量
                                    , lv_errbuf     -- エラー・メッセージ           --# 固定 #
                                    , lv_retcode    -- リターン・コード             --# 固定 #
@@ -1233,7 +1254,10 @@ AS
                                      ir_masters_rec.inventory_location_id     -- 1.保管倉庫ID
                                    , ir_masters_rec.from_item_id              -- 2.品目ID
                                    , ir_masters_rec.from_lot_id               -- 3.ロットID
-                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+-- 2009/01/15 H.Itou Mod Start 指摘8対応
+--                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+                                   , id_standard_date                         -- 4.有効日付
+-- 2009/01/15 H.Itou Mod End
                                    , ln_lot_provide_qty                       -- 5.数量
                                    , lv_errbuf     -- エラー・メッセージ           --# 固定 #
                                    , lv_retcode    -- リターン・コード             --# 固定 #
@@ -1243,7 +1267,10 @@ AS
                                      ir_masters_rec.inventory_location_id     -- 1.保管倉庫ID
                                    , ir_masters_rec.from_item_id              -- 2.品目ID
                                    , ir_masters_rec.from_lot_id               -- 3.ロットID
-                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+-- 2009/01/15 H.Itou Mod Start 指摘8対応
+--                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+                                   , id_standard_date                         -- 4.有効日付
+-- 2009/01/15 H.Itou Mod End
                                    , ln_lot_inv_out_qty                       -- 5.数量
                                    , lv_errbuf     -- エラー・メッセージ           --# 固定 #
                                    , lv_retcode    -- リターン・コード             --# 固定 #
@@ -1253,7 +1280,10 @@ AS
                                      ir_masters_rec.inventory_location_id     -- 1.保管倉庫ID
                                    , ir_masters_rec.from_item_id              -- 2.品目ID
                                    , ir_masters_rec.from_lot_id               -- 3.ロットID
-                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+-- 2009/01/15 H.Itou Mod Start 指摘8対応
+--                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+                                   , id_standard_date                         -- 4.有効日付
+-- 2009/01/15 H.Itou Mod End
                                    , ln_lot_inv_in_qty                        -- 5.数量
                                    , lv_errbuf     -- エラー・メッセージ           --# 固定 #
                                    , lv_retcode    -- リターン・コード             --# 固定 #
@@ -1263,7 +1293,10 @@ AS
                                      ir_masters_rec.inventory_location_code   -- 1.保管倉庫コード
                                    , ir_masters_rec.from_item_id              -- 2.品目ID
                                    , ir_masters_rec.from_lot_id               -- 3.ロットID
-                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+-- 2009/01/15 H.Itou Mod Start 指摘8対応
+--                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+                                   , id_standard_date                         -- 4.有効日付
+-- 2009/01/15 H.Itou Mod End
                                    , ln_lot_produce_qty                       -- 5.数量
                                    , lv_errbuf     -- エラー・メッセージ           --# 固定 #
                                    , lv_retcode    -- リターン・コード             --# 固定 #
@@ -1273,7 +1306,10 @@ AS
                                      ir_masters_rec.inventory_location_code   -- 1.保管倉庫コード
                                    , ir_masters_rec.from_item_no              -- 2.品目コード
                                    , ir_masters_rec.from_lot_id               -- 3.ロットID
-                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+-- 2009/01/15 H.Itou Mod Start 指摘8対応
+--                                   , ir_masters_rec.item_sysdate              -- 4.有効日付
+                                   , id_standard_date                         -- 4.有効日付
+-- 2009/01/15 H.Itou Mod End
                                    , ln_lot_order_qty                         -- 5.数量
                                    , lv_errbuf    -- エラー・メッセージ           --# 固定 #
                                    , lv_retcode   -- リターン・コード             --# 固定 #
@@ -1292,10 +1328,21 @@ AS
                     - ln_fin_stk_qty;
 --
     -- 引当可能数より大きい場合
-    IF ( ir_masters_rec.qty -ir_masters_rec.trans_qty > ln_can_enc_qty ) THEN
+-- 2009/01/15 H.Itou Mod Start 指摘8対応
+--    IF ( ir_masters_rec.qty -ir_masters_rec.trans_qty > ln_can_enc_qty ) THEN
+    IF ( ln_can_enc_qty - in_qty < 0 ) THEN
+-- 2009/01/15 H.Itou Mod End
       -- エラーメッセージを取得
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+--                                          , gv_msg_52a_20);
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
-                                          , gv_msg_52a_20);
+                                          , gv_msg_xxinv_10185
+                                          , gv_tkn_location      , ir_masters_rec.inventory_location_code
+                                          , gv_tkn_item          , ir_masters_rec.from_item_no
+                                          , gv_tkn_lot           , ir_masters_rec.lot_no
+                                          , gv_tkn_standard_date , TO_CHAR(id_standard_date, gv_yyyymmdd));
+-- 2009/01/15 H.Itou Mod End
       -- 共通関数例外ハンドラ
       RAISE global_api_expt;
     END IF;
@@ -1320,14 +1367,19 @@ AS
 --
 --#####################################  固定部 END   ##########################################
 --
-  END chk_qty_actual;
+  END chk_qty_over_actual;
 --
   /**********************************************************************************
-   * Procedure Name   : chk_qty_plan
-   * Description      : 数量チェック(手持数＋入庫予定数－出庫予定数)(A-24)
+   * Procedure Name   : chk_qty_over_plan
+   * Description      : 引当可能数超過チェック(予定)(A-24)
    ***********************************************************************************/
-  PROCEDURE chk_qty_plan(
+  PROCEDURE chk_qty_over_plan(
     ir_masters_rec IN OUT NOCOPY masters_rec -- 1.チェック対象レコード
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+  , id_standard_date         IN DATE                               -- 3.有効日付
+  , in_before_qty            IN NUMBER                             -- 4.更新前数量
+  , in_after_qty             IN NUMBER                             -- 5.登録数量
+-- 2009/01/15 H.Itou Add End
   , ov_errbuf      OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
   , ov_retcode     OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
   , ov_errmsg      OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
@@ -1335,7 +1387,7 @@ AS
     -- ===============================
     -- 固定ローカル定数
     -- ===============================
-    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_qty_plan'; -- プログラム名
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_qty_over_plan'; -- プログラム名
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
@@ -1365,13 +1417,27 @@ AS
                          ir_masters_rec.inventory_location_id     -- 1.保管倉庫ID
                        , ir_masters_rec.from_item_id              -- 2.品目ID
                        , ir_masters_rec.from_lot_id               -- 3.ロットID
-                       , ir_masters_rec.item_sysdate);            -- 4.有効日付
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--                       , ir_masters_rec.item_sysdate);            -- 4.有効日付
+                       , id_standard_date);                       -- 4.有効日付
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
 --
     -- 引当可能数より大きい場合
-    IF ( ir_masters_rec.qty - ir_masters_rec.trans_qty > ln_can_enc_qty ) THEN
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    IF ( ir_masters_rec.qty - ir_masters_rec.trans_qty > ln_can_enc_qty ) THEN
+    IF ( ln_can_enc_qty + in_before_qty - in_after_qty < 0) THEN
+-- 2009/01/15 H.Itou Mod End
       -- エラーメッセージを取得
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+--                                          , gv_msg_52a_20);
       lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
-                                          , gv_msg_52a_20);
+                                          , gv_msg_xxinv_10185
+                                          , gv_tkn_location      , ir_masters_rec.inventory_location_code
+                                          , gv_tkn_item          , ir_masters_rec.from_item_no
+                                          , gv_tkn_lot           , ir_masters_rec.lot_no
+                                          , gv_tkn_standard_date , TO_CHAR(id_standard_date, gv_yyyymmdd));
+-- 2009/01/15 H.Itou Mod End
       -- 共通関数例外ハンドラ
       RAISE global_api_expt;
     END IF;
@@ -1396,7 +1462,7 @@ AS
 --
 --#####################################  固定部 END   ##########################################
 --
-  END chk_qty_plan;
+  END chk_qty_over_plan;
 --
   /**********************************************************************************
    * Procedure Name   : chk_routing
@@ -2844,8 +2910,12 @@ AS
     lr_tran_row_in.location           := ir_masters_rec.inventory_location_code; -- 4.保管場所
     lr_tran_row_in.doc_id             := ir_masters_rec.batch_id;                -- バッチID
     lr_tran_row_in.doc_type           := 'PROD';                                 -- 5.文書タイプ
-    lr_tran_row_in.trans_date         := ir_masters_rec.item_sysdate;            -- 実績日
-    lr_tran_row_in.trans_qty          := ir_masters_rec.qty;                     -- 6.数量１
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    lr_tran_row_in.trans_date         := ir_masters_rec.item_sysdate;            -- 実績日
+--    lr_tran_row_in.trans_qty          := ir_masters_rec.qty;                     -- 6.数量
+    lr_tran_row_in.trans_date         := NVL(ir_masters_rec.item_sysdate, ir_masters_rec.plan_start_date); -- 実績日
+    lr_tran_row_in.trans_qty          := NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty); -- 6.数量
+-- 2009/01/15 H.Itou Mod End
     lr_tran_row_in.trans_um           := ir_masters_rec.from_item_um;            -- 7.単位１
     lr_tran_row_in.material_detail_id := ir_masters_rec.from_material_detail_id; -- 生産原料詳細ID
 --
@@ -2937,7 +3007,10 @@ AS
     , ir_masters_rec.from_lot_id                    -- ロットID
     , ir_masters_rec.lot_no                         -- ロットNo
     , NULL                                          -- 実績日
-    , ir_masters_rec.qty                            -- 実績数量
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    , ir_masters_rec.qty                     -- 実績数量
+    , NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty) -- 実績数量
+-- 2009/01/15 H.Itou Mod End
     , FND_GLOBAL.USER_ID                            -- 作成者
     , SYSDATE                                       -- 作成日
     , FND_GLOBAL.USER_ID                            -- 最終更新者
@@ -2982,7 +3055,10 @@ AS
     , ir_masters_rec.from_material_detail_id        -- 生産原料詳細ID
     , ir_masters_rec.from_item_id                   -- 品目ID
     , ir_masters_rec.from_lot_id                    -- ロットID
-    , ir_masters_rec.qty                            -- 指示総数
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    , ir_masters_rec.qty                     -- 実績数量
+    , NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty) -- 実績数量
+-- 2009/01/15 H.Itou Mod End
     , 0                                             -- 投入数量
     , 0                                             -- 戻入数量
     , 0                                             -- 資材製造不良数
@@ -3080,8 +3156,12 @@ AS
     lr_tran_row_in.location           := ir_masters_rec.inventory_location_code; -- 4.保管場所
     lr_tran_row_in.doc_id             := ir_masters_rec.batch_id;                -- バッチID
     lr_tran_row_in.doc_type           := 'PROD';                                 -- 5.文書タイプ
-    lr_tran_row_in.trans_date         := ir_masters_rec.item_sysdate;            -- 実績日
-    lr_tran_row_in.trans_qty          := ir_masters_rec.qty;                     -- 6.数量１
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    lr_tran_row_in.trans_date         := ir_masters_rec.item_sysdate;            -- 実績日
+--    lr_tran_row_in.trans_qty          := ir_masters_rec.qty;                     -- 6.数量
+    lr_tran_row_in.trans_date         := NVL(ir_masters_rec.item_sysdate, ir_masters_rec.plan_start_date); -- 実績日
+    lr_tran_row_in.trans_qty          := NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty); -- 6.数量
+-- 2009/01/15 H.Itou Mod End
     lr_tran_row_in.trans_um           := ir_masters_rec.to_item_um;              -- 7.単位１
     lr_tran_row_in.material_detail_id := ir_masters_rec.to_material_detail_id;   -- 生産原料詳細ID
 --
@@ -3173,7 +3253,10 @@ AS
     , ir_masters_rec.to_lot_id               -- ロットID
     , ir_masters_rec.lot_no                  -- ロットNo
     , NULL                                   -- 実績日
-    , ir_masters_rec.qty                     -- 実績数量
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    , ir_masters_rec.qty                     -- 実績数量
+    , NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty) -- 実績数量
+-- 2009/01/15 H.Itou Mod End
     , FND_GLOBAL.USER_ID                     -- 作成者
     , SYSDATE                                -- 作成日
     , FND_GLOBAL.USER_ID                     -- 最終更新者
@@ -3786,8 +3869,12 @@ AS
 --###########################  固定部 END   ############################
 --
     lr_tran_row_in.trans_id      := ir_masters_rec.from_trans_id;  -- トランザクションID
-    lr_tran_row_in.trans_date    := ir_masters_rec.item_sysdate;   -- 実績日
-    lr_tran_row_in.trans_qty     := ir_masters_rec.qty;            -- 数量
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    lr_tran_row_in.trans_date    := ir_masters_rec.item_sysdate;   -- 実績日
+--    lr_tran_row_in.trans_qty     := ir_masters_rec.qty;            -- 数量
+    lr_tran_row_in.trans_date    := NVL(ir_masters_rec.item_sysdate, ir_masters_rec.plan_start_date);   -- 実績日
+    lr_tran_row_in.trans_qty     := NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty);  -- 数量
+-- 2009/01/15 H.Itou Mod End
     lr_tran_row_in.completed_ind := 0;
 --
     -- メッセージ初期化API
@@ -3839,7 +3926,10 @@ AS
     -- 移動ロット詳細へデータ更新
     -- ======================================
     UPDATE xxinv_mov_lot_details xmlv                                         -- 移動ロット詳細
-    SET    xmlv.actual_quantity             = ir_masters_rec.qty              -- 数量
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    SET    xmlv.actual_quantity             = ir_masters_rec.qty              -- 数量
+    SET    xmlv.actual_quantity             = NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty) -- 数量
+-- 2009/01/15 H.Itou Mod End
          , xmlv.lot_id                      = ir_masters_rec.from_lot_id      -- ロットID(振替元)
          , xmlv.lot_no                      = ir_masters_rec.lot_no           -- ロットNo
          , xmlv.last_updated_by             = FND_GLOBAL.USER_ID              -- 更新ユーザーID
@@ -3859,7 +3949,10 @@ AS
     -- 生産原料詳細アドオンへデータ更新
     -- ======================================
     UPDATE xxwip_material_detail xmd                                         -- 生産原料詳細アドオン
-    SET    xmd.instructions_qty            = ir_masters_rec.qty              -- 数量
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    SET    xmd.instructions_qty            = ir_masters_rec.qty              -- 数量
+    SET    xmd.instructions_qty            = NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty) -- 数量
+-- 2009/01/15 H.Itou Mod End
          , xmd.lot_id                      = ir_masters_rec.from_lot_id      -- ロットID(振替先)
          , xmd.last_updated_by             = FND_GLOBAL.USER_ID              -- 更新ユーザーID
          , xmd.last_update_date            = SYSDATE                         -- 最終更新日
@@ -3947,8 +4040,12 @@ AS
 --###########################  固定部 END   ############################
 --
     lr_tran_row_in.trans_id      := ir_masters_rec.to_trans_id;    -- トランザクションID
-    lr_tran_row_in.trans_date    := ir_masters_rec.item_sysdate;   -- 実績日
-    lr_tran_row_in.trans_qty     := ir_masters_rec.qty;            -- 数量
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    lr_tran_row_in.trans_date    := ir_masters_rec.item_sysdate;   -- 実績日
+--    lr_tran_row_in.trans_qty     := ir_masters_rec.qty;            -- 数量
+    lr_tran_row_in.trans_date    := NVL(ir_masters_rec.item_sysdate, ir_masters_rec.plan_start_date);   -- 実績日
+    lr_tran_row_in.trans_qty     := NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty);  -- 数量
+-- 2009/01/15 H.Itou Mod End
     lr_tran_row_in.completed_ind := 0;
 --
     -- メッセージ初期化API
@@ -4000,7 +4097,10 @@ AS
     -- 移動ロット詳細へデータ更新
     -- ======================================
     UPDATE xxinv_mov_lot_details xmlv                                         -- 移動ロット詳細
-    SET    xmlv.actual_quantity             = ir_masters_rec.qty              -- 数量
+-- 2009/01/15 H.Itou Mod Start 指摘2対応
+--    SET    xmlv.actual_quantity             = ir_masters_rec.qty              -- 数量
+    SET    xmlv.actual_quantity             = NVL(ir_masters_rec.qty, ir_masters_rec.trans_qty) -- 数量
+-- 2009/01/15 H.Itou Mod End
          , xmlv.lot_id                      = ir_masters_rec.to_lot_id        -- ロットID(振替元)
          , xmlv.lot_no                      = ir_masters_rec.lot_no           -- ロットNo
          , xmlv.last_updated_by             = FND_GLOBAL.USER_ID              -- 更新ユーザーID
@@ -4086,6 +4186,7 @@ AS
     -- メッセージ初期化API
     FND_MSG_PUB.INITIALIZE();
 --
+FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'ir_masters_rec.from_trans_id:'||ir_masters_rec.from_trans_id);
     -- ======================================
     -- ロット割当削除API
     -- ======================================
@@ -4218,6 +4319,7 @@ AS
     -- メッセージ初期化API
     FND_MSG_PUB.INITIALIZE();
 --
+FND_FILE.PUT_LINE(FND_FILE.OUTPUT,'ir_masters_rec.to_trans_id:'||ir_masters_rec.to_trans_id);
     -- ======================================
     -- ロット割当削除API
     -- ======================================
@@ -4997,6 +5099,159 @@ AS
 --
   END chk_future_date;
 --
+-- 2009/01/15 H.Itou Add Start 指摘2,7対応
+  /**********************************************************************************
+   * Procedure Name   : chk_qty_short_plan
+   * Description      : 引当可能在庫不足チェック(予定)(A-35)
+   ***********************************************************************************/
+  PROCEDURE chk_qty_short_plan(
+    ir_masters_rec    IN masters_rec                        -- 1.チェック対象レコード
+  , id_standard_date  IN DATE                               -- 2.有効日付
+  , in_before_qty     IN NUMBER                             -- 3.更新前数量
+  , in_after_qty      IN NUMBER                             -- 4.登録数量
+  , ov_errbuf      OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
+  , ov_retcode     OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
+  , ov_errmsg      OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_qty_short_plan'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+    ln_can_enc_qty     NUMBER;  -- 引当可能数
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- 有効日ベース引当可能数
+    ln_can_enc_qty := xxcmn_common_pkg.get_can_enc_in_time_qty(
+                         ir_masters_rec.inventory_location_id  -- 1.保管倉庫ID
+                       , ir_masters_rec.to_item_id             -- 2.品目ID
+                       , ir_masters_rec.to_lot_id              -- 3.ロットID
+                       , id_standard_date);                    -- 4.有効日付
+--
+    -- 引当可能数が不足する場合
+    IF ( ln_can_enc_qty - in_before_qty + in_after_qty < 0) THEN
+      -- エラーメッセージを取得
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+                                          , gv_msg_xxinv_10184
+                                          , gv_tkn_location      , ir_masters_rec.inventory_location_code
+                                          , gv_tkn_item          , ir_masters_rec.to_item_no
+                                          , gv_tkn_lot           , ir_masters_rec.lot_no
+                                          , gv_tkn_standard_date , TO_CHAR(id_standard_date, gv_yyyymmdd));
+      -- 共通関数例外ハンドラ
+      RAISE global_api_expt;
+    END IF;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_qty_short_plan;
+--
+  /**********************************************************************************
+   * Procedure Name   : chk_location
+   * Description      : 保管倉庫チェック(A-36)
+   ***********************************************************************************/
+  PROCEDURE chk_location(
+    it_location_code_01   IN xxcmn_item_locations_v.segment1%TYPE -- 1.保管倉庫01
+  , it_location_code_02   IN xxcmn_item_locations_v.segment1%TYPE -- 2.保管倉庫02
+  , ov_errbuf      OUT    NOCOPY VARCHAR2    -- エラー・メッセージ           --# 固定 #
+  , ov_retcode     OUT    NOCOPY VARCHAR2    -- リターン・コード             --# 固定 #
+  , ov_errmsg      OUT    NOCOPY VARCHAR2)   -- ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'chk_location'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+--
+    -- *** ローカル変数 ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+    -- 保管倉庫が異なる場合、エラー
+    IF (it_location_code_01 <> it_location_code_02) THEN
+      -- エラーメッセージを取得
+      lv_errmsg := xxcmn_common_pkg.get_msg(gv_msg_kbn_inv
+                                          , gv_msg_xxinv_10183);
+      RAISE global_api_expt;
+    END IF;
+--
+--###########################  固定部 END   ############################
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END chk_location;
+-- 2009/01/15 H.Itou Add End
+--
   /**********************************************************************************
    * Procedure Name   : submain
    * Description      : メイン処理プロシージャ
@@ -5126,7 +5381,7 @@ AS
       -- ===============================
       -- 在庫クローズチェック(A-23)
       -- ===============================
-      chk_close_period(lr_masters_rec.item_sysdate  -- 1.比較日付 = 品目振替日
+      chk_close_period(id_sysdate  -- 1.比較日付 = 品目振替日
                      , lv_errbuf                    -- エラー・メッセージ           --# 固定 #
                      , lv_retcode                   -- リターン・コード             --# 固定 #
                      , lv_errmsg);                  -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5138,12 +5393,18 @@ AS
       END IF;
 --
       -- ===============================
-      -- 数量チェック(手持数＋入庫予定数－出庫予定数)(A-24)
+      -- 引当可能数超過チェック(予定)(A-24)
       -- ===============================
-      chk_qty_plan(lr_masters_rec  -- 1.チェック対象レコード
-                 , lv_errbuf       -- エラー・メッセージ           --# 固定 #
-                 , lv_retcode      -- リターン・コード             --# 固定 #
-                 , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 振替元品目 出庫数新規チェック
+      chk_qty_over_plan(lr_masters_rec                       -- 1.チェック対象レコード
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+                      , id_sysdate                           -- 2.有効日付
+                      , 0                                    -- 3.更新前数量
+                      , TO_NUMBER(iv_quantity)               -- 4.登録数量
+-- 2009/01/15 H.Itou Add End
+                      , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                      , lv_retcode      -- リターン・コード             --# 固定 #
+                      , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
 --
       -- エラーの場合
       IF ( lv_retcode = gv_status_error ) THEN
@@ -5281,6 +5542,23 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2009/01/15 H.Itou Add Start 指摘7
+      -- ===============================
+      -- 保管倉庫チェック(A-36)
+      -- ===============================
+      chk_location( lr_masters_rec.inventory_location_code  -- 生産バッチに登録済の保管倉庫
+                  , iv_inv_loc_code                         -- INパラメータ.保管倉庫
+                  , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                  , lv_retcode      -- リターン・コード             --# 固定 #
+                  , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+-- 2009/01/15 H.Itou Add End
+--
       -- ===============================
       -- 品目データ取得(A-27)
       -- ===============================
@@ -5311,16 +5589,46 @@ AS
         RAISE global_process_expt;
       END IF;
 --
-      -- 数量に変更がある場合
-      IF (lr_masters_rec.trans_qty <> TO_NUMBER(iv_quantity)) THEN
+-- 2009/01/15 H.Itou Del Start 指摘2対応
+--      -- 数量に変更がある場合
+--      IF (lr_masters_rec.trans_qty <> TO_NUMBER(iv_quantity)) THEN
+--        -- ===============================
+--        -- 引当可能数超過チェック(予定)(A-24)
+--        -- ===============================
+--        -- 生産バッチNoに紐付く前回登録分の数量と入力した数量の差分で在庫数量チェック
+--        chk_qty_over_plan(lr_masters_rec  -- 1.チェック対象レコード
+--                   , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+--                   , lv_retcode      -- リターン・コード             --# 固定 #
+--                   , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+----
+--        -- エラーの場合
+--        IF ( lv_retcode = gv_status_error ) THEN
+--          gn_error_cnt := gn_error_cnt + 1;
+--          RAISE global_process_expt;
+--        END IF;
+----
+--      -- 数量に変更がない場合
+--      ELSE
+--        -- パラメータ.数量に前回登録分の数量をセット
+--        lr_masters_rec.qty := lr_masters_rec.trans_qty;
+--      END IF;
+-- 2009/01/15 H.Itou Del End
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+      -- 品目振替日(後倒し)かロットNoに変更がある場合
+      -- 登録済みのデータ内容を取り消しても引当可能数が不足しないか振替先品目をチェック
+      IF ( lr_masters_rec.plan_start_date < id_sysdate )
+      OR ( lr_masters_rec.lot_no         <> iv_lot_no ) THEN
         -- ===============================
-        -- 数量チェック(手持数＋入庫予定数－出庫予定数)(A-24)
+        -- 引当可能在庫不足チェック(予定)(A-35)
         -- ===============================
-        -- 生産バッチNoに紐付く前回登録分の数量と入力した数量の差分で在庫数量チェック
-        chk_qty_plan(lr_masters_rec  -- 1.チェック対象レコード
-                   , lv_errbuf       -- エラー・メッセージ           --# 固定 #
-                   , lv_retcode      -- リターン・コード             --# 固定 #
-                   , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+        -- 振替先品目 入庫取消チェック
+        chk_qty_short_plan(lr_masters_rec                       -- 1.チェック対象レコード
+                         , lr_masters_rec.plan_start_date       -- 2.有効日付
+                         , lr_masters_rec.trans_qty             -- 3.更新前数量
+                         , 0                                    -- 4.登録数量
+                         , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                         , lv_retcode      -- リターン・コード             --# 固定 #
+                         , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
 --
         -- エラーの場合
         IF ( lv_retcode = gv_status_error ) THEN
@@ -5328,11 +5636,47 @@ AS
           RAISE global_process_expt;
         END IF;
 --
-      -- 数量に変更がない場合
-      ELSE
-        -- パラメータ.数量に前回登録分の数量をセット
-        lr_masters_rec.qty := lr_masters_rec.trans_qty;
+      -- 数量のみ変更がある場合
+      -- 登録済みのデータ内容との数量の差分を考慮して引当可能数が超過・不足しないか振替元品目・振替先品目をチェック
+      ELSIF ( lr_masters_rec.trans_qty <> TO_NUMBER(iv_quantity) ) THEN
+        -- ===============================
+        -- 引当可能数超過チェック(予定)(A-24)
+        -- ===============================
+        -- 振替元品目 出庫数差分チェック
+        chk_qty_over_plan(lr_masters_rec                       -- 1.チェック対象レコード
+                        , lr_masters_rec.plan_start_date       -- 2.有効日付
+                        , lr_masters_rec.trans_qty             -- 3.更新前数量
+                        , TO_NUMBER(iv_quantity)               -- 4.登録数量
+                        , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                        , lv_retcode      -- リターン・コード             --# 固定 #
+                        , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        -- エラーの場合
+        IF ( lv_retcode = gv_status_error ) THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          RAISE global_process_expt;
+        END IF;
+--
+        -- ===============================
+        -- 引当可能在庫不足チェック(予定)(A-35)
+        -- ===============================
+        -- 振替先品目 入庫数差分チェック
+        chk_qty_short_plan(lr_masters_rec                       -- 1.チェック対象レコード
+                         , lr_masters_rec.plan_start_date       -- 2.有効日付
+                         , lr_masters_rec.trans_qty             -- 3.更新前数量
+                         , TO_NUMBER(iv_quantity)               -- 4.登録数量
+                         , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                         , lv_retcode      -- リターン・コード             --# 固定 #
+                         , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+        -- エラーの場合
+        IF ( lv_retcode = gv_status_error ) THEN
+          gn_error_cnt := gn_error_cnt + 1;
+          RAISE global_process_expt;
+        END IF;
+--
       END IF;
+-- 2009/01/15 H.Itou Add End
 --
       -- 品目振替日が変更された場合
       IF ( lr_masters_rec.plan_start_date <> id_sysdate ) THEN
@@ -5340,7 +5684,7 @@ AS
         -- 在庫クローズチェック(A-23)
         -- ===============================
         -- パラメータ.品目振替日のクローズチェック
-        chk_close_period(lr_masters_rec.item_sysdate  -- 1.比較日付 = 品目振替日
+        chk_close_period(id_sysdate  -- 1.比較日付 = 品目振替日
                        , lv_errbuf                    -- エラー・メッセージ           --# 固定 #
                        , lv_retcode                   -- リターン・コード             --# 固定 #
                        , lv_errmsg);                  -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5351,11 +5695,34 @@ AS
           RAISE global_process_expt;
         END IF;
 --
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+        IF ( iv_lot_no IS NULL) THEN -- ロットNoに変更がある場合、変更するロットIDが決まってからチェックを行うので、ここではチェックしない。
+          -- ===============================
+          -- 引当可能数超過チェック(予定)(A-24)
+          -- ===============================
+          -- 振替元品目 出庫数新規チェック
+          chk_qty_over_plan(lr_masters_rec                       -- 1.チェック対象レコード
+                          , id_sysdate                           -- 2.有効日付
+                          , 0                                                      -- 3.更新前数量
+                          , NVL(TO_NUMBER(iv_quantity), lr_masters_rec.trans_qty)  -- 4.登録数量
+                          , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                          , lv_retcode      -- リターン・コード             --# 固定 #
+                          , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+            -- エラーの場合
+            IF ( lv_retcode = gv_status_error ) THEN
+              gn_error_cnt := gn_error_cnt + 1;
+              RAISE global_process_expt;
+            END IF;
+          END IF;
+-- 2009/01/15 H.Itou Add End
         -- ===============================
         -- バッチ再スケジュール(A-16)
         -- ===============================
-        -- 生産予定日にパラメータ.品目振替日をセット
-        lr_masters_rec.plan_start_date := lr_masters_rec.item_sysdate;
+-- 2009/01/15 H.Itou Del Start 指摘2対応
+--        -- 生産予定日にパラメータ.品目振替日をセット
+--        lr_masters_rec.plan_start_date := lr_masters_rec.item_sysdate;
+-- 2009/01/15 H.Itou Del End
 --
         reschedule_batch(lr_masters_rec  -- 1.処理対象レコード
                        , lv_errbuf       -- エラー・メッセージ           --# 固定 #
@@ -5368,10 +5735,12 @@ AS
           RAISE global_process_expt;
         END IF;
 --
-      -- 品目振替日に変更がない場合
-      ELSE
-        -- パラメータ.品目振替日に生産予定日をセット
-        lr_masters_rec.item_sysdate := lr_masters_rec.plan_start_date;
+-- 2009/01/15 H.Itou Del Start 指摘2対応
+--      -- 品目振替日に変更がない場合
+--      ELSE
+--        -- パラメータ.品目振替日に生産予定日をセット
+--        lr_masters_rec.item_sysdate := lr_masters_rec.plan_start_date;
+-- 2009/01/15 H.Itou Del End
       END IF;
 --
       -- ロットNoが変更された場合
@@ -5433,6 +5802,26 @@ AS
                                               , gv_msg_52a_17);
           RAISE global_process_expt;
         END IF;
+--
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+        -- ===============================
+        -- 引当可能数超過チェック(予定)(A-24)
+        -- ===============================
+        -- 振替元品目 出庫数新規チェック
+        chk_qty_over_plan(lr_masters_rec                       -- 1.チェック対象レコード
+                        , NVL(id_sysdate, lr_masters_rec.plan_start_date)       -- 2.有効日付
+                        , 0                                                     -- 3.更新前数量
+                        , NVL(TO_NUMBER(iv_quantity), lr_masters_rec.trans_qty) -- 4.登録数量
+                        , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                        , lv_retcode      -- リターン・コード             --# 固定 #
+                        , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+          -- エラーの場合
+          IF ( lv_retcode = gv_status_error ) THEN
+            gn_error_cnt := gn_error_cnt + 1;
+            RAISE global_process_expt;
+          END IF;
+-- 2009/01/15 H.Itou Add End
 --
         -- ===============================
         -- 振替先ロット有無チェック 登録処理(A-30)
@@ -5546,6 +5935,57 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+      -- ===============================
+      -- 保管倉庫チェック(A-36)
+      -- ===============================
+      chk_location( lr_masters_rec.inventory_location_code  -- 生産バッチに登録済の保管倉庫
+                  , iv_inv_loc_code                         -- INパラメータ.保管倉庫
+                  , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                  , lv_retcode      -- リターン・コード             --# 固定 #
+                  , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+-- 2009/01/15 H.Itou Add End
+-- 2009/01/15 H.Itou Add Start 指摘7対応
+      -- ===============================
+      -- 品目データ取得(A-27)
+      -- ===============================
+      -- 生産バッチNoに紐付く前回登録分の品目データ・ロットデータを取得
+      get_item_data(lr_masters_rec  -- 1.チェック対象レコード
+                  , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                  , lv_retcode      -- リターン・コード             --# 固定 #
+                  , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+--
+      -- ===============================
+      -- 引当可能在庫不足チェック(予定)(A-35)
+      -- ===============================
+      -- 振替先品目 入庫取消チェック
+      chk_qty_short_plan(lr_masters_rec                       -- 1.チェック対象レコード
+                       , lr_masters_rec.plan_start_date       -- 2.有効日付
+                       , lr_masters_rec.trans_qty             -- 3.更新前数量
+                       , 0                                    -- 4.登録数量
+                       , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                       , lv_retcode      -- リターン・コード             --# 固定 #
+                       , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+-- 2009/01/15 H.Itou Add End
+--
       -- ===============================
       -- バッチ取消(A-15)
       -- ===============================
@@ -5592,6 +6032,23 @@ AS
         RAISE global_process_expt;
       END IF;
 --
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+      -- ===============================
+      -- 保管倉庫チェック(A-36)
+      -- ===============================
+      chk_location( lr_masters_rec.inventory_location_code  -- 生産バッチに登録済の保管倉庫
+                  , iv_inv_loc_code                         -- INパラメータ.保管倉庫
+                  , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                  , lv_retcode      -- リターン・コード             --# 固定 #
+                  , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+-- 2009/01/15 H.Itou Add End
+--
       -- ===============================
       -- 品目データ取得(A-27)
       -- ===============================
@@ -5634,6 +6091,25 @@ AS
         gn_error_cnt := gn_error_cnt + 1;
         RAISE global_process_expt;
       END IF;
+--
+-- 2009/01/15 H.Itou Add Start 指摘8対応
+      -- ===============================
+      -- 引当可能数超過チェック(実績)(A-25)
+      -- ===============================
+      -- 振替元品目 出庫数新規チェック(出庫予定数として登録済みなので、減算しない)
+      chk_qty_over_actual(lr_masters_rec                 -- 1.チェック対象レコード
+                        , lr_masters_rec.plan_start_date -- 2.有効日付
+                        , 0                              -- 3.実績数量
+                        , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                        , lv_retcode      -- リターン・コード             --# 固定 #
+                        , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+--
+      -- エラーの場合
+      IF ( lv_retcode = gv_status_error ) THEN
+        gn_error_cnt := gn_error_cnt + 1;
+        RAISE global_process_expt;
+      END IF;
+-- 2009/01/15 H.Itou Add End
 --
       -- ===============================
       -- リリースバッチ(A-33)
@@ -5741,7 +6217,7 @@ AS
       -- ===============================
       -- 在庫クローズチェック(A-23)
       -- ===============================
-      chk_close_period(lr_masters_rec.item_sysdate  -- 1.比較日付 = 品目振替日
+      chk_close_period(id_sysdate  -- 1.比較日付 = 品目振替日
                      , lv_errbuf       -- エラー・メッセージ           --# 固定 #
                      , lv_retcode      -- リターン・コード             --# 固定 #
                      , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5755,7 +6231,7 @@ AS
       -- ===============================
       -- 未来日チェック(A-34)
       -- ===============================
-      chk_future_date(lr_masters_rec.item_sysdate  -- 1.比較日付 = 品目振替日
+      chk_future_date(id_sysdate  -- 1.比較日付 = 品目振替日
                     , lv_errbuf       -- エラー・メッセージ           --# 固定 #
                     , lv_retcode      -- リターン・コード             --# 固定 #
                     , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
@@ -5767,12 +6243,17 @@ AS
       END IF;
 --
       -- ===============================
-      -- 数量チェック(手持数－出庫予定数)(A-25)
+      -- 引当可能数超過チェック(実績)(A-25)
       -- ===============================
-      chk_qty_actual(lr_masters_rec  -- 1.チェック対象レコード
-                   , lv_errbuf       -- エラー・メッセージ           --# 固定 #
-                   , lv_retcode      -- リターン・コード             --# 固定 #
-                   , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
+      -- 振替元品目 出庫数新規チェック
+      chk_qty_over_actual(lr_masters_rec          -- 1.チェック対象レコード
+-- 2009/01/15 H.Itou Add Start 指摘2対応
+                        , id_sysdate              -- 2.有効日付
+                        , TO_NUMBER(iv_quantity)  -- 3.実績数量
+-- 2009/01/15 H.Itou Add End
+                        , lv_errbuf       -- エラー・メッセージ           --# 固定 #
+                        , lv_retcode      -- リターン・コード             --# 固定 #
+                        , lv_errmsg);     -- ユーザー・エラー・メッセージ --# 固定 #
 --
       -- エラーの場合
       IF ( lv_retcode = gv_status_error ) THEN
@@ -5853,7 +6334,7 @@ AS
       -- リリースバッチ(A-33)
       -- ===============================
       -- 生産予定日にパラメータ.品目振替日をセット
-      lr_masters_rec.plan_start_date := lr_masters_rec.item_sysdate;
+      lr_masters_rec.plan_start_date := id_sysdate;
 --
       release_batch(lr_masters_rec  -- 1.処理対象レコード
                   , lv_errbuf       -- エラー・メッセージ           --# 固定 #
