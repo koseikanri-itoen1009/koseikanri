@@ -8,7 +8,7 @@ AS
  *                    自動販売機設置契約書を帳票に出力します。
  * MD.050           : MD050_CSO_010_A04_自動販売機設置契約書PDFファイル作成
  *                    
- * Version          : 1.6
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -37,6 +37,7 @@ AS
  *  2009-10-15    1.5   Daisuke.Abe      0001536,0001537対応
  *  2009-11-12    1.6   Kazuo.Satomura   I_E_658対応
  *  2009-11-30    1.7   T.Maruyama       E_本稼動_00193対応
+ *  2010-03-02    1.8   K.Hosoi          E_本稼動_01678対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -383,6 +384,10 @@ AS
     cv_sp_decision_lines     CONSTANT VARCHAR2(100) := 'ＳＰ専決明細テーブル';
     -- 郵便マーク
     cv_post_mark             CONSTANT VARCHAR2(2)   := '〒';
+    /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
+    -- ＢＭ支払方法・明細書
+    cv_csh_pymnt             CONSTANT VARCHAR2(1)   := '4';  -- 現金支払
+    /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
     
     -- *** ローカル変数 ***
     lv_cond_business_type    VARCHAR2(1);       -- 取引条件区分
@@ -537,10 +542,28 @@ AS
               ,(SUBSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial''')
                  , 1, INSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
                 ) install_date                                     -- 設置日
-              ,xba.bank_name bank_name                             -- 銀行名
-              ,xba.branch_name blanches_name                       -- 支店名
-              ,xba.bank_account_number bank_account_number         -- 口座番号
-              ,xba.bank_account_name_kana bank_account_name_kana   -- 口座名義カナ
+              /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
+              --,xba.bank_name bank_name                             -- 銀行名
+              --,xba.branch_name blanches_name                       -- 支店名
+              --,xba.bank_account_number bank_account_number         -- 口座番号
+              --,xba.bank_account_name_kana bank_account_name_kana   -- 口座名義カナ
+              ,(DECODE(xd.belling_details_div
+                          , cv_csh_pymnt, NULL
+                          , xba.bank_name)
+                ) bank_name                                        -- 銀行名
+              ,(DECODE(xd.belling_details_div
+                          , cv_csh_pymnt, NULL
+                          , xba.branch_name)
+                ) blanches_name                                    -- 支店名
+              ,(DECODE(xd.belling_details_div
+                          , cv_csh_pymnt, NULL
+                          , xba.bank_account_number)
+                ) bank_account_number                              -- 口座番号
+              ,(DECODE(xd.belling_details_div
+                          , cv_csh_pymnt, NULL
+                          , xba.bank_account_name_kana)
+                ) bank_account_name_kana                          -- 口座名義カナ
+              /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
               ,xcm.install_account_number account_number           -- 設置先顧客コード
               ,xcm.publish_dept_code publish_base_code             -- 担当所属コード
               ,xlv2.location_name publish_base_name                -- 担当拠点名
@@ -700,10 +723,28 @@ AS
               ,(SUBSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial''')
                  , 1, INSTR(TO_CHAR(xcm.install_date, 'eedl', 'nls_calendar=''japanese imperial'''), ' ') -1)
                 ) install_date                                         -- 設置日
-              ,xbav.bank_name bank_name                                -- 銀行名
-              ,xbav.bank_branch_name blanches_name                     -- 支店名
-              ,xbav.bank_account_num bank_account_number               -- 口座番号
-              ,xbav.account_holder_name_alt bank_account_name_kana     -- 口座名義カナ
+              /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
+              --,xbav.bank_name bank_name                                -- 銀行名
+              --,xbav.bank_branch_name blanches_name                     -- 支店名
+              --,xbav.bank_account_num bank_account_number               -- 口座番号
+              --,xbav.account_holder_name_alt bank_account_name_kana     -- 口座名義カナ
+              ,(DECODE(pvs.attribute4
+                          , cv_csh_pymnt, NULL
+                          , xbav.bank_name)
+                ) bank_name                                            -- 銀行名
+              ,(DECODE(pvs.attribute4
+                          , cv_csh_pymnt, NULL
+                          , xbav.bank_branch_name)
+                ) blanches_name                                        -- 支店名
+              ,(DECODE(pvs.attribute4
+                          , cv_csh_pymnt, NULL
+                          , xbav.bank_account_num)
+                ) bank_account_number                                  -- 口座番号
+              ,(DECODE(pvs.attribute4
+                          , cv_csh_pymnt, NULL
+                          , xbav.account_holder_name_alt)
+                ) bank_account_name_kana                               -- 口座名義カナ
+              /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
               ,xcm.install_account_number account_number               -- 設置先顧客コード
               ,xcm.publish_dept_code publish_base_code                 -- 担当所属コード
               ,xlv2.location_name publish_base_name                    -- 担当拠点名
@@ -751,7 +792,10 @@ AS
         FROM   xxcso_contract_managements xcm      -- 契約管理テーブル
               ,xxcso_cust_acct_sites_v    xcasv    -- 顧客マスタサイトビュー
               ,xxcso_sp_decision_headers  xsdh     -- ＳＰ専決ヘッダテーブル
-              ,xxcso_sp_decision_custs    xsdc     -- ＳＰ専決顧客テーブル
+              /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
+              --,xxcso_sp_decision_custs    xsdc     -- ＳＰ専決顧客テーブル
+              ,xxcso_destinations         xd       -- 送付先テーブル
+              /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
               ,xxcso_bank_accts_v         xbav     -- 銀行口座マスタ（最新）ビュー
               ,xxcso_locations_v2         xlv2     -- 事業所マスタ（最新）ビュー
               ,(SELECT (flvv.attribute1 || flvv.attribute2) attr
@@ -763,17 +807,29 @@ AS
                   AND  flvv.enabled_flag = cv_enabled_flag
                   AND  ROWNUM = 1
                ) flvv_con
-               ,po_vendors pv                      -- 仕入先マスタ
+               /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
+               --,po_vendors pv                      -- 仕入先マスタ
+               /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
                ,po_vendor_sites pvs                -- 仕入先サイトマスタ
         WHERE  xcm.contract_management_id = gt_con_mng_id
           AND  xcm.sp_decision_header_id = xsdh.sp_decision_header_id
-          AND  xsdc.sp_decision_header_id = xsdh.sp_decision_header_id
-          AND  xsdc.sp_decision_customer_class = cv_sp_d_cust_class_3
+          /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
+          --AND  xsdc.sp_decision_header_id = xsdh.sp_decision_header_id
+          --AND  xsdc.sp_decision_customer_class = cv_sp_d_cust_class_3
+          /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
           AND  xcm.install_account_id = xcasv.cust_account_id
-          AND  xsdc.customer_id = xbav.vendor_id(+)
+          /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
+          --AND  xsdc.customer_id = xbav.vendor_id(+)
+          /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
           AND  xlv2.dept_code = xcm.publish_dept_code
-          AND  pv.vendor_id(+) = NVL(xsdc.customer_id,fnd_api.g_miss_num)
-          AND  pvs.vendor_id(+) = NVL(xsdc.customer_id,fnd_api.g_miss_num);
+          /* 2010.03.02 K.Hosoi E_本稼動_01678対応 START */
+          AND  xd.supplier_id               = xbav.vendor_id(+)
+          AND  xd.contract_management_id(+) = xcm.contract_management_id
+          AND  xd.delivery_div(+)           = cv_delivery_div_1
+          AND  pvs.vendor_id(+)             = xd.supplier_id;
+          --AND  pv.vendor_id(+) = NVL(xsdc.customer_id,fnd_api.g_miss_num)
+          --AND  pvs.vendor_id(+) = NVL(xsdc.customer_id,fnd_api.g_miss_num);
+          /* 2010.03.02 K.Hosoi E_本稼動_01678対応 END */
 --
         /* 2009.11.12 K.Satomura I_E_658対応 START */
         --SELECT  (CASE

@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -80,6 +80,7 @@ AS
  *  2010-01-06    1.13  Kazuyo.Hosoi     E_本稼動_00890,00891対応
  *  2010-01-20    1.14  Daisuke.Abe      E_本稼動_01176対応
  *  2010-02-05    1.15  Daisuke.Abe      E_本稼動_01537対応
+ *  2010-03-04    1.16  Kazuyo.Hosoi     E_本稼動_01678対応
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -168,6 +169,11 @@ AS
   cv_un_cooperate           CONSTANT VARCHAR2(1)   := '0';                                               -- マスタ連携フラグ＝未連携
   cv_finish_cooperate       CONSTANT VARCHAR2(1)   := '1';                                               -- マスタ連携フラグ＝連携済
   ct_bm_payment_type_no     CONSTANT xxcso_sp_decision_custs.bm_payment_type%TYPE := '5';                -- 支払なし
+  /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+  ct_bllng_dtls_dv_cash     CONSTANT xxcso_destinations.belling_details_div%TYPE := '4';                 -- 現金支払
+  ct_dmmy_bnk_act           CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'XXCSO1_DUMMY_BANK_ACCOUNT'; -- ＢＭ現金支払ダミー口座参照コードタイプ
+  ct_dmmy_act               CONSTANT fnd_lookup_values_vl.lookup_code%TYPE := 'DUMMY_ACCOUNT';             -- ＢＭ現金支払ダミー口座クイックコード
+  /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
   ct_sp_dec_cust_class_bm1  CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '3';     -- ＳＰ専決顧客ＢＭ１
   ct_sp_dec_cust_class_bm2  CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '4';     -- ＳＰ専決顧客ＢＭ２
   ct_sp_dec_cust_class_bm3  CONSTANT xxcso_sp_decision_custs.sp_decision_customer_class%TYPE := '5';     -- ＳＰ専決顧客ＢＭ３
@@ -259,7 +265,10 @@ AS
   cv_debug_msg44 CONSTANT VARCHAR2(200) := '<< 更新前口座情報 >>';
   cv_debug_msg45 CONSTANT VARCHAR2(200) := 'bank_number = ';
   cv_debug_msg46 CONSTANT VARCHAR2(200) := 'bank_num    = ';
-  cv_debug_msg47 CONSTANT VARCHAR2(200) := '<< ダミー口座情報 >>';
+  /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+  --cv_debug_msg47 CONSTANT VARCHAR2(200) := '<< ダミー口座情報 >>';
+  cv_debug_msg47 CONSTANT VARCHAR2(200) := '<< ダミー口座キー情報 >>';
+  /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
   cv_debug_msg48 CONSTANT VARCHAR2(200) := 'bank_number = ';
   cv_debug_msg49 CONSTANT VARCHAR2(200) := 'bank_num    = ';
   cv_debug_msg50 CONSTANT VARCHAR2(200) := '<< 採番仕入先番号 >>';
@@ -295,10 +304,27 @@ AS
   /* 2009.10.15 D.Abe 0001537対応 START */
   cv_debug_msg80 CONSTANT VARCHAR2(200) := 'delivery_id             = ';
   /* 2009.10.15 D.Abe 0001537対応 END */
+  /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+  cv_debug_msg81 CONSTANT VARCHAR2(200) := 'bank_account_num = ';
+  cv_debug_msg82 CONSTANT VARCHAR2(200) := '<< ダミー口座情報 >>';
+  cv_debug_msg83 CONSTANT VARCHAR2(200) := 'bank_account_name = ';
+  cv_debug_msg84 CONSTANT VARCHAR2(200) := 'bank_account_type = ';
+  cv_debug_msg85 CONSTANT VARCHAR2(200) := 'account_holder_name = ';
+  cv_debug_msg86 CONSTANT VARCHAR2(200) := 'account_holder_name_alt = ';
+  /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
   --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
+  /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+  gt_bank_number             ap_bank_branches.bank_number%TYPE;                    -- 銀行コード
+  gt_bank_num                ap_bank_branches.bank_num%TYPE;                       -- 支店コード
+  gt_bank_account_num        ap_bank_accounts.bank_account_num%TYPE;               -- 口座番号
+  gt_bank_account_name       ap_bank_accounts.bank_account_name%TYPE;              -- 口座名称
+  gt_bank_account_type       ap_bank_accounts.bank_account_type%TYPE;              -- 預金種目
+  gt_account_holder_name     ap_bank_accounts.account_holder_name%TYPE;            -- 口座名義人
+  gt_account_holder_name_alt ap_bank_accounts.account_holder_name_alt%TYPE;        -- 口座名義人（カナ）
+  /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
   --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -377,6 +403,13 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_tkn_value_processdate CONSTANT VARCHAR2(30) := '業務日付';
+    /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+    cv_tkn_value_task_name2  CONSTANT VARCHAR2(50) := 'ＢＭ現金支払ダミー口座が';
+    cv_tkn_value_act_dmy_bk  CONSTANT VARCHAR2(50) := 'ダミー口座情報';
+    cv_tkn_val_ky_nm_bk_num1 CONSTANT VARCHAR2(50) := '銀行コード = ';
+    cv_tkn_val_ky_nm_bk_num2 CONSTANT VARCHAR2(50) := '、支店コード';
+    cv_tkn_val_ky_nm_bk_num3 CONSTANT VARCHAR2(50) := '、口座番号';
+    /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
     --
     -- *** ローカル変数 ***
     lv_msg_from VARCHAR2(5000);
@@ -413,6 +446,100 @@ AS
                  cv_debug_msg2 || TO_CHAR(cd_process_date, 'YYYY/MM/DD') || CHR(10) || ''
     );
     -- *** DEBUG_LOG END ***
+    /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+    -- ======================
+    -- ダミー口座情報取得
+    -- ======================
+    BEGIN
+      SELECT  flv.attribute1 bank_number         -- 銀行コード
+             ,flv.attribute2 bank_num            -- 支店コード
+             ,flv.attribute3 bank_account_num    -- 口座番号
+      INTO    gt_bank_number
+             ,gt_bank_num
+             ,gt_bank_account_num
+      FROM   fnd_lookup_values_vl flv -- 参照コード
+      WHERE  flv.lookup_type                            =  ct_dmmy_bnk_act
+      AND    flv.lookup_code                            =  ct_dmmy_act
+      AND    TRUNC(NVL(flv.start_date_active, SYSDATE)) <= TRUNC(SYSDATE)
+      AND    TRUNC(NVL(flv.end_date_active, SYSDATE))   >= TRUNC(SYSDATE)
+      AND    flv.enabled_flag                           =  cv_flag_yes
+      ;
+      --
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_04         -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_name         -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_value_task_name2  -- トークン値1
+                       ,iv_token_name2  => cv_tkn_lookup_type_name  -- トークンコード2
+                       ,iv_token_value2 => ct_dmmy_bnk_act          -- トークン値2
+                     );
+        --
+        RAISE global_api_expt;
+        --
+    END;
+    -- *** DEBUG_LOG START ***
+    -- ダミー口座キー情報をログ出力
+    fnd_file.put_line(
+       which  => fnd_file.log
+      ,buff   => cv_debug_msg47 || CHR(10) ||
+                 cv_debug_msg48 || gt_bank_number      || CHR(10) ||
+                 cv_debug_msg49 || gt_bank_num         || CHR(10) ||
+                 cv_debug_msg81 || gt_bank_account_num || CHR(10) ||
+                 ''
+    );
+    -- *** DEBUG_LOG END ***
+    -- ================================
+    -- ダミー口座情報取得
+    -- ================================
+    BEGIN
+      SELECT bac.bank_account_name                bank_account_name       -- 口座名称
+            ,bac.bank_account_type                bank_account_type       -- 預金種目
+            ,bac.account_holder_name              account_holder_name     -- 口座名義人
+            ,bac.account_holder_name_alt          account_holder_name_alt -- 口座名義人（カナ）
+      INTO   gt_bank_account_name
+            ,gt_bank_account_type
+            ,gt_account_holder_name
+            ,gt_account_holder_name_alt
+      FROM   ap_bank_branches     bbr -- 銀行マスタ
+            ,ap_bank_accounts     bac -- 口座マスタビュー
+      WHERE  bbr.bank_number          = gt_bank_number
+      AND    bbr.bank_num             = gt_bank_num
+      AND    bac.bank_branch_id       = bbr.bank_branch_id
+      AND    bac.bank_account_num     = gt_bank_account_num
+      ;
+    EXCEPTION
+      WHEN OTHERS THEN
+        lv_errbuf := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_sales_appl_short_name           -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_05                   -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_action                      -- トークンコード1
+                       ,iv_token_value1 => cv_tkn_value_act_dmy_bk            -- トークン値1
+                       ,iv_token_name2  => cv_tkn_key_name                    -- トークンコード2
+                       ,iv_token_value2 => cv_tkn_val_ky_nm_bk_num1     || gt_bank_number
+                                            || cv_tkn_val_ky_nm_bk_num2 || gt_bank_num
+                                            || cv_tkn_val_ky_nm_bk_num3       -- トークン値2
+                       ,iv_token_name3  => cv_tkn_key_id                      -- トークンコード3
+                       ,iv_token_value3 => gt_bank_account_num                -- トークン値3
+                     );
+        --
+        RAISE global_api_expt;
+        --
+    END;
+    -- *** DEBUG_LOG START ***
+    -- ダミー口座情報をログ出力
+    fnd_file.put_line(
+       which  => fnd_file.log
+      ,buff   => cv_debug_msg82 || CHR(10) ||
+                 cv_debug_msg83 || gt_bank_account_name       || CHR(10) ||
+                 cv_debug_msg84 || gt_bank_account_type       || CHR(10) ||
+                 cv_debug_msg85 || gt_account_holder_name     || CHR(10) ||
+                 cv_debug_msg86 || gt_account_holder_name_alt || CHR(10) ||
+                 ''
+    );
+    -- *** DEBUG_LOG END ***
+    /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
     --
   EXCEPTION
     --
@@ -577,9 +704,11 @@ AS
     --cv_bank_account_type     CONSTANT VARCHAR2(30)                          := 'JP_BANK_ACCOUNT_TYPE'; -- 預金種目参照コードタイプ
     cv_bank_account_type     CONSTANT VARCHAR2(30)                          := 'XXCSO1_KOZA_TYPE'; -- 預金種目参照コードタイプ
     /* 2010.01.20 D.Abe E_本稼動_01176対応 END */
-    ct_dummy_bank            CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'XXCSO1_DUMMY_BANK';    -- ダミー銀行参照コードタイプ
-    ct_dummy_bank_number     CONSTANT fnd_lookup_values_vl.lookup_code%TYPE := 'BANK_NUMBER';          -- ダミー銀行クイックコード
-    ct_dummy_bank_num        CONSTANT fnd_lookup_values_vl.lookup_code%TYPE := 'BANK_NUM';             -- ダミー支店クイックコード
+    /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+    --ct_dummy_bank            CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'XXCSO1_DUMMY_BANK';    -- ダミー銀行参照コードタイプ
+    --ct_dummy_bank_number     CONSTANT fnd_lookup_values_vl.lookup_code%TYPE := 'BANK_NUMBER';          -- ダミー銀行クイックコード
+    --ct_dummy_bank_num        CONSTANT fnd_lookup_values_vl.lookup_code%TYPE := 'BANK_NUM';             -- ダミー支店クイックコード
+    /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
     cv_vendor_type           CONSTANT VARCHAR2(30)                          := 'VD';                   -- 仕入先タイプ
     cv_country_code          CONSTANT VARCHAR2(30)                          := 'JP';                   -- 国コード
     cv_currency_code         CONSTANT VARCHAR2(3)                           := 'JPY';                  -- 通貨コード
@@ -596,8 +725,10 @@ AS
     --
     -- トークン用定数
     cv_tkn_value_task_name1    CONSTANT VARCHAR2(50) := '予期種目名称が';
-    cv_tkn_value_task_name2    CONSTANT VARCHAR2(50) := 'ダミー銀行コードが';
-    cv_tkn_value_task_name3    CONSTANT VARCHAR2(50) := 'ダミー支店コードが';
+    /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+    --cv_tkn_value_task_name2    CONSTANT VARCHAR2(50) := 'ダミー銀行コードが';
+    --cv_tkn_value_task_name3    CONSTANT VARCHAR2(50) := 'ダミー支店コードが';
+    /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
     cv_tkn_value_action_vendor CONSTANT VARCHAR2(50) := '仕入先情報';
     cv_tkn_value_action_bank   CONSTANT VARCHAR2(50) := '口座情報';
     cv_tkn_value_key_name      CONSTANT VARCHAR2(50) := '仕入先ＩＤ';
@@ -864,9 +995,24 @@ AS
           );
           -- *** DEBUG_LOG END ***
           --
-          IF ((NVL(it_mst_regist_info_rec.bank_number, fnd_api.g_miss_char) <> lt_bank_number)
-            OR (NVL(it_mst_regist_info_rec.branch_number, fnd_api.g_miss_char) <> lt_bank_num)
-            OR (NVL(it_mst_regist_info_rec.bank_account_number, fnd_api.g_miss_char) <> lt_bank_account_num))
+          /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+          IF ((it_mst_regist_info_rec.belling_details_div = ct_bllng_dtls_dv_cash)
+            AND  ((gt_bank_number      <> lt_bank_number)
+              OR  (gt_bank_num         <> lt_bank_num)
+              OR  (gt_bank_account_num <> lt_bank_account_num)
+                 )
+             )
+            OR
+          --IF ((NVL(it_mst_regist_info_rec.bank_number, fnd_api.g_miss_char) <> lt_bank_number)
+          --  OR (NVL(it_mst_regist_info_rec.branch_number, fnd_api.g_miss_char) <> lt_bank_num)
+          --  OR (NVL(it_mst_regist_info_rec.bank_account_number, fnd_api.g_miss_char) <> lt_bank_account_num))
+             ((it_mst_regist_info_rec.belling_details_div <> ct_bllng_dtls_dv_cash)
+            AND  ((NVL(it_mst_regist_info_rec.bank_number, fnd_api.g_miss_char)         <> lt_bank_number)
+              OR  (NVL(it_mst_regist_info_rec.branch_number, fnd_api.g_miss_char)       <> lt_bank_num)
+              OR  (NVL(it_mst_regist_info_rec.bank_account_number, fnd_api.g_miss_char) <> lt_bank_account_num)
+                 )
+             )
+          /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
           THEN
             -- 取得した銀行・支店コードと変更前の銀行・支店コード・口座番号が変わっていた場合
             -- ===================================================
@@ -999,82 +1145,96 @@ AS
         --
       END IF;
       --
-      IF (it_mst_regist_info_rec.bank_account_dummy_flag = cv_flag_on) THEN
-        -- 銀行口座ダミーフラグがONの場合
+      /* 2010.03.04 K.Hosoi E_本稼動_01678対応 START */
+      --IF (it_mst_regist_info_rec.bank_account_dummy_flag = cv_flag_on) THEN
+      --  -- 銀行口座ダミーフラグがONの場合
+      --  -- ================================
+      --  -- ダミー銀行コード取得
+      --  -- ================================
+      --  BEGIN
+      --    SELECT flv.meaning bank_number -- 銀行コード
+      --    INTO   lt_bank_number
+      --    FROM   fnd_lookup_values_vl flv -- 参照コード
+      --    WHERE  flv.lookup_type                            =  ct_dummy_bank
+      --    AND    flv.lookup_code                            =  ct_dummy_bank_number
+      --    AND    TRUNC(NVL(flv.start_date_active, SYSDATE)) <= TRUNC(SYSDATE)
+      --    AND    TRUNC(NVL(flv.end_date_active, SYSDATE))   >= TRUNC(SYSDATE)
+      --    AND    flv.enabled_flag                           = cv_flag_yes
+      --    ;
+      --    --
+      --  EXCEPTION
+      --    WHEN OTHERS THEN
+      --      lv_errbuf := xxccp_common_pkg.get_msg(
+      --                      iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+      --                     ,iv_name         => cv_tkn_number_04         -- メッセージコード
+      --                     ,iv_token_name1  => cv_tkn_task_name         -- トークンコード1
+      --                     ,iv_token_value1 => cv_tkn_value_task_name2  -- トークン値1
+      --                     ,iv_token_name2  => cv_tkn_lookup_type_name  -- トークンコード2
+      --                     ,iv_token_value2 => ct_dummy_bank            -- トークン値2
+      --                   );
+      --      --
+      --      RAISE global_api_expt;
+      --      --
+      --  END;
+      --  --
+      --  -- ================================
+      --  -- ダミー支店コード取得
+      --  -- ================================
+      --  BEGIN
+      --    SELECT flv.meaning bank_number -- 支店コード
+      --    INTO   lt_bank_num
+      --    FROM   fnd_lookup_values_vl flv -- 参照コード
+      --    WHERE  flv.lookup_type                            =  ct_dummy_bank
+      --    AND    flv.lookup_code                            =  ct_dummy_bank_num
+      --    AND    TRUNC(NVL(flv.start_date_active, SYSDATE)) <= TRUNC(SYSDATE)
+      --    AND    TRUNC(NVL(flv.end_date_active, SYSDATE))   >= TRUNC(SYSDATE)
+      --    AND    flv.enabled_flag                           = cv_flag_yes
+      --    ;
+      --    --
+      --  EXCEPTION
+      --    WHEN OTHERS THEN
+      --      lv_errbuf := xxccp_common_pkg.get_msg(
+      --                      iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
+      --                     ,iv_name         => cv_tkn_number_04         -- メッセージコード
+      --                     ,iv_token_name1  => cv_tkn_task_name         -- トークンコード1
+      --                     ,iv_token_value1 => cv_tkn_value_task_name3  -- トークン値1
+      --                     ,iv_token_name2  => cv_tkn_lookup_type_name  -- トークンコード2
+      --                     ,iv_token_value2 => ct_dummy_bank            -- トークン値2
+      --                   );
+      --      --
+      --      RAISE global_api_expt;
+      --      --
+      --  END;
+      --  --
+      --  -- *** DEBUG_LOG START ***
+      --  -- ダミー口座情報をログ出力
+      --  fnd_file.put_line(
+      --     which  => fnd_file.log
+      --    ,buff   => cv_debug_msg47 || CHR(10) ||
+      --               cv_debug_msg48 || lt_bank_number || CHR(10) ||
+      --               cv_debug_msg49 || lt_bank_num    || CHR(10) ||
+      --               ''
+      --  );
+      --  -- *** DEBUG_LOG END ***
+      --  --
+      --  lt_bank_account_name       := cv_dummy_bank_acct_name;       -- 口座名称
+      --  lt_bank_account_num        := cv_dummy_bank_acct_num;        -- 口座番号
+      --  lt_bank_account_type       := cv_dummy_bank_acct_type;       -- 預金種別
+      --  lt_account_holder_name     := cv_dummy_acct_holder_name;     -- 口座名義人名
+      --  lt_account_holder_name_alt := cv_dummy_acct_holder_name_alt; -- 口座名義人名（カナ）
+      IF (it_mst_regist_info_rec.belling_details_div = ct_bllng_dtls_dv_cash) THEN
+      -- ＢＭ支払区分が4：現金支払の場合
         -- ================================
-        -- ダミー銀行コード取得
+        -- ダミー口座情報設定
         -- ================================
-        BEGIN
-          SELECT flv.meaning bank_number -- 銀行コード
-          INTO   lt_bank_number
-          FROM   fnd_lookup_values_vl flv -- 参照コード
-          WHERE  flv.lookup_type                            =  ct_dummy_bank
-          AND    flv.lookup_code                            =  ct_dummy_bank_number
-          AND    TRUNC(NVL(flv.start_date_active, SYSDATE)) <= TRUNC(SYSDATE)
-          AND    TRUNC(NVL(flv.end_date_active, SYSDATE))   >= TRUNC(SYSDATE)
-          AND    flv.enabled_flag                           = cv_flag_yes
-          ;
-          --
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_04         -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_task_name         -- トークンコード1
-                           ,iv_token_value1 => cv_tkn_value_task_name2  -- トークン値1
-                           ,iv_token_name2  => cv_tkn_lookup_type_name  -- トークンコード2
-                           ,iv_token_value2 => ct_dummy_bank            -- トークン値2
-                         );
-            --
-            RAISE global_api_expt;
-            --
-        END;
-        --
-        -- ================================
-        -- ダミー支店コード取得
-        -- ================================
-        BEGIN
-          SELECT flv.meaning bank_number -- 支店コード
-          INTO   lt_bank_num
-          FROM   fnd_lookup_values_vl flv -- 参照コード
-          WHERE  flv.lookup_type                            =  ct_dummy_bank
-          AND    flv.lookup_code                            =  ct_dummy_bank_num
-          AND    TRUNC(NVL(flv.start_date_active, SYSDATE)) <= TRUNC(SYSDATE)
-          AND    TRUNC(NVL(flv.end_date_active, SYSDATE))   >= TRUNC(SYSDATE)
-          AND    flv.enabled_flag                           = cv_flag_yes
-          ;
-          --
-        EXCEPTION
-          WHEN OTHERS THEN
-            lv_errbuf := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_sales_appl_short_name -- アプリケーション短縮名
-                           ,iv_name         => cv_tkn_number_04         -- メッセージコード
-                           ,iv_token_name1  => cv_tkn_task_name         -- トークンコード1
-                           ,iv_token_value1 => cv_tkn_value_task_name3  -- トークン値1
-                           ,iv_token_name2  => cv_tkn_lookup_type_name  -- トークンコード2
-                           ,iv_token_value2 => ct_dummy_bank            -- トークン値2
-                         );
-            --
-            RAISE global_api_expt;
-            --
-        END;
-        --
-        -- *** DEBUG_LOG START ***
-        -- ダミー口座情報をログ出力
-        fnd_file.put_line(
-           which  => fnd_file.log
-          ,buff   => cv_debug_msg47 || CHR(10) ||
-                     cv_debug_msg48 || lt_bank_number || CHR(10) ||
-                     cv_debug_msg49 || lt_bank_num    || CHR(10) ||
-                     ''
-        );
-        -- *** DEBUG_LOG END ***
-        --
-        lt_bank_account_name       := cv_dummy_bank_acct_name;       -- 口座名称
-        lt_bank_account_num        := cv_dummy_bank_acct_num;        -- 口座番号
-        lt_bank_account_type       := cv_dummy_bank_acct_type;       -- 預金種別
-        lt_account_holder_name     := cv_dummy_acct_holder_name;     -- 口座名義人名
-        lt_account_holder_name_alt := cv_dummy_acct_holder_name_alt; -- 口座名義人名（カナ）
+        lt_bank_number              := gt_bank_number;                                -- 銀行コード
+        lt_bank_num                 := gt_bank_num;                                   -- 銀行支店コード
+        lt_bank_account_name        := gt_bank_account_name;                          -- 口座名称
+        lt_bank_account_num         := gt_bank_account_num;                           -- 口座番号
+        lt_bank_account_type        := gt_bank_account_type;                          -- 預金種別
+        lt_account_holder_name      := gt_account_holder_name;                        -- 口座名義人名
+        lt_account_holder_name_alt  := gt_account_holder_name_alt;                    -- 口座名義人名（カナ）
+      /* 2010.03.04 K.Hosoi E_本稼動_01678対応 END */
         --
       ELSE
         lt_bank_number             := it_mst_regist_info_rec.bank_number;             -- 銀行コード
