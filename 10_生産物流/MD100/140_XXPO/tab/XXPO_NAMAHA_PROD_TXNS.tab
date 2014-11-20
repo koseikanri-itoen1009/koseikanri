@@ -47,6 +47,7 @@ CREATE TABLE xxpo.xxpo_namaha_prod_txns (
      byproduct3_uom                  VARCHAR2(3)     ,
      final_unit_price_entered_flg    VARCHAR2(1)   DEFAULT 'N'  NOT NULL ,
      department_code                 VARCHAR2(60)     ,
+     company_final_unit_price        NUMBER(9,2),
      created_by                      NUMBER(15)    NOT NULL ,
      creation_date                   DATE          NOT NULL ,
      last_updated_by                 NUMBER(15)    NOT NULL ,
@@ -57,7 +58,7 @@ CREATE TABLE xxpo.xxpo_namaha_prod_txns (
      program_id                      NUMBER(15)     ,
      program_update_date             DATE  ,
      CONSTRAINT XXPO_NAMAHA_PROD_TXNS_PK PRIMARY KEY (TXNS_ID)
-       ) 
+       )
 ;
 --
 COMMENT ON TABLE XXPO.XXPO_NAMAHA_PROD_TXNS IS '生葉実績（アドオン）';
@@ -110,6 +111,7 @@ COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_QUANTITY IS '副産物3数量
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.BYPRODUCT3_UOM IS '副産物3単位';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.FINAL_UNIT_PRICE_ENTERED_FLG IS '正単価入力完了フラグ';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.DEPARTMENT_CODE IS '部署コード';
+COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.COMPANY_FINAL_UNIT_PRICE IS '社内単価(正)';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.CREATED_BY IS '作成者';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.CREATION_DATE IS '作成日';
 COMMENT ON COLUMN XXPO.XXPO_NAMAHA_PROD_TXNS.LAST_UPDATED_BY IS '最終更新者';
