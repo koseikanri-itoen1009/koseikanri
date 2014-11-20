@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  order_lines_upd                     受注明細アドオンUPDATE プロシージャ(A-8-5)
  *  order_lines_ins                     受注明細アドオンINSERT プロシージャ(A-8-6)
  *  order_movlot_detail_ins             受注データ移動ロット詳細INSERT プロシージャ(A-8-7)
+ *  order_movlot_detail_up              受注データ移動ロット詳細UPDATE プロシージャ(A-8-8)
  *  lot_reversal_prevention_check       ロット逆転防止チェック プロシージャ (A-9)
  *  drawing_enable_check                引当可能チェック プロシージャ (A-10)
  *  origin_record_delete                抽出元レコード削除 プロシージャ (A-11)
@@ -68,6 +69,7 @@ AS
  *  2008/06/13    1.3  Oracle 宮田 隆史  結合テスト実施に伴う改修
  *  2008/06/23    1.4  Oracle 宮田 隆史  ST不具合#230対応
  *  2008/06/24    1.5  Oracle 宮田 隆史  ST不具合#230対応(2)
+ *  2008/06/27    1.6  Oracle 宮田 隆史  ST不具合#299対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -9785,6 +9787,157 @@ AS
   END order_movlot_detail_ins;
 --
  /**********************************************************************************
+  * Procedure Name   : order_movlot_detail_up
+  * Description      : 受注データ移動ロット詳細UPDATE プロシージャ (A-8-8)
+  ***********************************************************************************/
+  PROCEDURE order_movlot_detail_up(
+    in_idx                  IN  NUMBER,              -- データindex
+    in_mov_lot_dtl_id       IN  NUMBER,              -- ロット詳細ID
+    ov_errbuf               OUT NOCOPY VARCHAR2,     -- エラー・メッセージ           --# 固定 #
+    ov_retcode              OUT NOCOPY VARCHAR2,     -- リターン・コード             --# 固定 #
+    ov_errmsg               OUT NOCOPY VARCHAR2      -- ユーザー・エラー・メッセージ --# 固定 #
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'order_movlot_detail_up'; -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+--
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := gv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--  初期化
+    gr_movlot_detail_rec := gr_movlot_detail_ini;
+--
+    -- 実績日を設定
+    gr_movlot_detail_rec.actual_date      := gr_interface_info_rec(in_idx).shipped_date; -- 出荷日
+--
+    -- 実績数量の設定を行う
+    -- EOSデータ種別 = 拠点出荷確定報告 又は 庭先出荷確定報告の場合
+    IF ((gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_210)  OR
+        (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_215))
+    THEN
+--
+      IF ((gr_interface_info_rec(in_idx).conv_unit  IS NOT NULL) AND         --入出庫換算単位が設定済み
+          (gr_interface_info_rec(in_idx).item_kbn_cd = gv_item_kbn_cd_5) AND --製品
+          ((gr_interface_info_rec(in_idx).prod_kbn_cd = gv_prod_kbn_cd_1) OR --リーフ又はドリンク
+           (gr_interface_info_rec(in_idx).prod_kbn_cd = gv_prod_kbn_cd_2)))
+      THEN
+--
+        --内訳数量 x ケース入数を設定
+        gr_movlot_detail_rec.actual_quantity
+         := gr_interface_info_rec(in_idx).detailed_quantity * gr_interface_info_rec(in_idx).num_of_cases;
+--
+      ELSE
+--
+        --内訳数量を設定
+        gr_movlot_detail_rec.actual_quantity := gr_interface_info_rec(in_idx).detailed_quantity;
+--
+      END IF;
+--
+      -- ロット数量0の対応
+      IF (gr_interface_info_rec(in_idx).lot_ctl <> gv_lotkr_kbn_cd_1) AND
+         (NVL(gr_interface_info_rec(in_idx).detailed_quantity,0) = 0) THEN
+--
+         --IF_L.出荷実績数量 を設定
+         gr_movlot_detail_rec.actual_quantity := gr_interface_info_rec(in_idx).shiped_quantity;
+--
+      END IF;
+--
+    --  EOSデータ種別 = 200 有償出荷報告
+    ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_200) THEN
+--
+        --内訳数量を設定
+        gr_movlot_detail_rec.actual_quantity := gr_interface_info_rec(in_idx).detailed_quantity;
+--
+        -- ロット数量0の対応
+        IF (gr_interface_info_rec(in_idx).lot_ctl <> gv_lotkr_kbn_cd_1) AND
+           (NVL(gr_interface_info_rec(in_idx).detailed_quantity,0) = 0) THEN
+--
+           --IF_L.出荷実績数量 を設定
+           gr_movlot_detail_rec.actual_quantity := gr_interface_info_rec(in_idx).shiped_quantity;
+--
+        END IF;
+--
+    END IF;
+--
+    -- **************************************************
+    -- *** 移動ロット詳細(アドオン)更新を行う
+    -- **************************************************
+    UPDATE
+      xxinv_mov_lot_details    xmld     -- 移動ロット詳細(アドオン)
+    SET
+       xmld.actual_date             = gr_movlot_detail_rec.actual_date        -- 実績日
+      ,xmld.actual_quantity         = gr_movlot_detail_rec.actual_quantity    -- 実績数量
+      ,xmld.last_updated_by         = gt_user_id                              -- 最終更新者
+      ,xmld.last_update_date        = gt_sysdate                              -- 最終更新日
+      ,xmld.last_update_login       = gt_login_id                             -- 最終更新ログイン
+      ,xmld.request_id              = gt_conc_request_id                      -- 要求ID
+      ,xmld.program_application_id  = gt_prog_appl_id                         -- アプリケーションID
+      ,xmld.program_id              = gt_conc_program_id                      -- プログラムID
+      ,xmld.program_update_date     = gt_sysdate                              -- プログラム更新日
+    WHERE
+        xmld.mov_lot_dtl_id         = in_mov_lot_dtl_id      -- ロット詳細ID
+    ;
+--
+    --ロット詳細新規作成件数(受注_実績計上) 加算
+    gn_ord_mov_ins_n_cnt := gn_ord_mov_ins_n_cnt + 1;
+--
+    --==============================================================
+    --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
+    --==============================================================
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := gv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := gv_pkg_name||gv_msg_cont||cv_prg_name||gv_msg_part||SQLERRM;
+      ov_retcode := gv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END order_movlot_detail_up;
+--
+ /**********************************************************************************
   * Procedure Name   : mov_req_instr_head_ins
   * Description      : 移動依頼/指示ヘッダアドオン(外部倉庫編集) プロシージャ(A-7-1)
   ***********************************************************************************/
@@ -11465,6 +11618,19 @@ AS
 --  初期化
     gr_movlot_detail_rec := gr_movlot_detail_ini;
 --
+    -- EOSデータ種別 = 移動出庫確定報告の場合
+    IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220) THEN
+--
+      -- 実績日を設定
+      gr_movlot_detail_rec.actual_date      := gr_interface_info_rec(in_idx).shipped_date; -- 出荷日
+--
+    -- EOSデータ種別 = 移動入庫確定報告の場合
+    ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_230) THEN
+--
+      -- 実績日を設定
+      gr_movlot_detail_rec.actual_date      := gr_interface_info_rec(in_idx).arrival_date; -- 着荷日
+    END IF;
+--
     --実績数量の設定を行う。
     IF ((gr_interface_info_rec(in_idx).conv_unit  IS NOT NULL) AND         --入出庫換算単位が設定済み
         (gr_interface_info_rec(in_idx).item_kbn_cd = gv_item_kbn_cd_5) AND --製品
@@ -11481,13 +11647,34 @@ AS
 --
     END IF;
 --
+    -- ロット数量0の対応
+    IF (gr_interface_info_rec(in_idx).lot_ctl <> gv_lotkr_kbn_cd_1) AND
+       (NVL(gr_interface_info_rec(in_idx).detailed_quantity,0) = 0) THEN
+--
+      -- EOSデータ種別 = 移動出庫確定報告の場合
+      IF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220) THEN
+--
+         --IF_L.出荷実績数量 を設定
+         gr_movlot_detail_rec.actual_quantity := gr_interface_info_rec(in_idx).shiped_quantity;
+--
+      -- EOSデータ種別 = 移動入庫確定報告の場合
+      ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_230) THEN
+--
+         --IF_L.入庫実績数量 を設定
+         gr_movlot_detail_rec.actual_quantity := gr_interface_info_rec(in_idx).ship_to_quantity;
+--
+      END IF;
+--
+    END IF;
+--
     -- **************************************************
     -- *** 移動ロット詳細(アドオン)更新を行う
     -- **************************************************
     UPDATE
       xxinv_mov_lot_details    xmld     -- 移動ロット詳細(アドオン)
     SET
-       xmld.actual_quantity         = gr_movlot_detail_rec.actual_quantity    -- 実績数量
+       xmld.actual_date             = gr_movlot_detail_rec.actual_date        -- 実績日
+      ,xmld.actual_quantity         = gr_movlot_detail_rec.actual_quantity    -- 実績数量
       ,xmld.last_updated_by         = gt_user_id                              -- 最終更新者
       ,xmld.last_update_date        = gt_sysdate                              -- 最終更新日
       ,xmld.last_update_login       = gt_login_id                             -- 最終更新ログイン
@@ -12263,8 +12450,11 @@ AS
           -- 移動ロット詳細(アドオン)の更新
           --------------------------------------
           -- ヘッダ登録・更新処理が正常終了の場合
-          IF  (lt_actual_confirm_class = gv_yesno_y) AND
-              (lb_header_warn = FALSE) THEN
+-- 20080627 MODIFY START
+--          IF  (lt_actual_confirm_class = gv_yesno_y) AND
+--              (lb_header_warn = FALSE) THEN
+          IF  (lb_header_warn = FALSE) THEN
+-- 20080627 MODIFY END
 --
             -- EOSデータ種別が、220:移動入庫確定報告の場合
             IF  (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_220) THEN
@@ -12275,9 +12465,12 @@ AS
                   (lr_tab_data(i).document_type_code = gv_document_type_20) AND
                   (lr_tab_data(i).record_type_code = gv_record_type_20))
               THEN
-                -- ロット管理品のみ移動ロット詳細UPDATE処理を行う
-                IF  (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_1) 
-                THEN
+--
+-- 20080627 DELETE START
+--              -- ロット管理品のみ移動ロット詳細UPDATE処理を行う
+--              IF  (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_1) 
+--              THEN
+-- 20080627 DELETE END
 --
                   -- 移動ロット詳細UPDATE プロシージャ (A-7-7) 実施
                   movlot_detail_upd(
@@ -12288,11 +12481,24 @@ AS
                     lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
                   );
 --
+--ZANTEI 20080627 ADD START
+                  IF (lt_actual_confirm_class <> gv_yesno_y) THEN
+--
+                    --ロット詳細新規作成件数(移動依頼_訂正ロットあり) 減算
+                    gn_mov_mov_upd_y_cnt := gn_mov_mov_upd_y_cnt - 1;
+--
+                    --ロット詳細新規作成件数(移動依頼_実績計上) 加算
+                    gn_mov_mov_ins_n_cnt := gn_mov_mov_ins_n_cnt + 1;
+                  END IF;
+--ZANTEI 20080627 ADD END
+--
                   IF (lv_retcode = gv_status_error) THEN
                     RAISE global_api_expt;
                   END IF;
 --
-                END IF;
+-- 20080627 DELETE START
+--              END IF;
+-- 20080627 DELETE END
 --
                 lb_lot_upd_flg := TRUE; --ロットデータを処理済に設定(ロット管理品外でも、訂正ロットが存在するので済に設定)
 --
@@ -12306,9 +12512,12 @@ AS
                   (lr_tab_data(i).document_type_code = gv_document_type_20) AND
                   (lr_tab_data(i).record_type_code = gv_record_type_30))
               THEN
-                -- ロット管理品のみ移動ロット詳細UPDATE処理を行う
-                IF  (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_1) 
-                THEN
+--
+-- 20080627 DELETE START
+--              -- ロット管理品のみ移動ロット詳細UPDATE処理を行う
+--              IF  (gr_interface_info_rec(in_idx).lot_ctl = gv_lotkr_kbn_cd_1) 
+--              THEN
+-- 20080627 DELETE END
 --
                   -- 移動ロット詳細UPDATE プロシージャ (A-7-7) 実施
                   movlot_detail_upd(
@@ -12319,11 +12528,25 @@ AS
                     lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
                   );
 --
+--ZANTEI 20080627 ADD START
+                  IF (lt_actual_confirm_class <> gv_yesno_y) THEN
+--
+                    --ロット詳細新規作成件数(移動依頼_訂正ロットあり) 減算
+                    gn_mov_mov_upd_y_cnt := gn_mov_mov_upd_y_cnt - 1;
+--
+                    --ロット詳細新規作成件数(移動依頼_実績計上) 加算
+                    gn_mov_mov_ins_n_cnt := gn_mov_mov_ins_n_cnt + 1;
+                  END IF;
+--ZANTEI 20080627 ADD END
+--
                   IF (lv_retcode = gv_status_error) THEN
                     RAISE global_api_expt;
                   END IF;
 --
-                END IF;
+
+-- 20080627 DELETE START
+--              END IF;
+-- 20080627 DELETE END
 --
                 lb_lot_upd_flg := TRUE; --ロットデータを処理済に設定(ロット管理品外でも、訂正ロットが存在するので済に設定)
 --
@@ -12705,6 +12928,8 @@ AS
     lb_break_flg            BOOLEAN := FALSE;       -- ブレイク判定
     lb_header_warn          BOOLEAN := FALSE;       -- ヘッダ処理ワーニング
 --
+    lv_document_type_code   VARCHAR2(2);            -- ドキュメントタイプ
+--
     ln_cnt_kbn              VARCHAR2(1);   -- データ件数カウント区分
 --
     -- 実績計上済区分
@@ -12726,6 +12951,7 @@ AS
               ,xmld.document_type_code          -- 文書タイプ
               ,xmld.record_type_code            -- レコードタイプ
               ,xmld.item_id                     -- opm品目ID
+              ,xmld.lot_no                      -- ロットNo
       FROM    xxwsh_order_headers_all   xoha    -- 受注ヘッダ(アドオン)
             , xxwsh_order_lines_all     xola    -- 受注明細(アドオン)
             , xxinv_mov_lot_details     xmld    -- 移動ロット詳細(アドオン)
@@ -12752,6 +12978,7 @@ AS
        ,document_type_code    xxinv_mov_lot_details.document_type_code%TYPE      -- 文書タイプ
        ,record_type_code      xxinv_mov_lot_details.record_type_code%TYPE        -- レコードタイプ
        ,item_id               xxinv_mov_lot_details.item_id%TYPE                 -- opm品目ID
+       ,lot_no                xxinv_mov_lot_details.lot_no%TYPE                  -- ロットNo
       );
 --
     TYPE tab_data IS TABLE OF rec_data INDEX BY BINARY_INTEGER ;
@@ -12904,6 +13131,65 @@ AS
 --              *****END IF;
 --
             END IF;
+--
+-- 20080627 ADD START
+            --------------------------------------
+            -- 移動ロット詳細(アドオン)の更新
+            --------------------------------------
+            -- ヘッダ登録・更新処理が正常終了の場合
+            IF  (lb_header_warn = FALSE) THEN
+--
+                -- 実績計上済区分＝'N' 又は NULLの場合
+              IF  ((lr_tab_data(i).actual_confirm_class = gv_yesno_n) OR
+                   (lr_tab_data(i).actual_confirm_class IS NULL))
+              THEN
+--
+                --文書タイプを設定
+                -- EOSデータ種別 = 拠点出荷確定報告 又は 庭先出荷確定報告の場合
+                lv_document_type_code := NULL;
+--
+                IF ((gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_210)  OR
+                    (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_215))
+                THEN
+--
+                  lv_document_type_code := gv_document_type_10; --出荷依頼
+--
+                --  EOSデータ種別 = 200 有償出荷報告
+                ELSIF (gr_interface_info_rec(in_idx).eos_data_type = gv_eos_data_cd_200) THEN
+--
+                  lv_document_type_code := gv_document_type_30; --支給指示
+--
+                END IF;
+--
+                -- 訂正ロットが存在する場合
+                IF (((gr_interface_info_rec(in_idx).lot_no = lr_tab_data(i).lot_no) OR
+                    (gr_interface_info_rec(in_idx).lot_no IS NULL)) AND
+                    (gr_interface_info_rec(in_idx).item_id = lr_tab_data(i).item_id) AND
+                    (lr_tab_data(i).document_type_code = lv_document_type_code) AND
+                    (lr_tab_data(i).record_type_code = gv_record_type_20))
+                THEN
+--
+                  -- 受注データ移動ロット詳細UPDATE プロシージャ (A-8-8) 実施
+                  order_movlot_detail_up(
+                    in_idx,                         -- データindex
+                    lr_tab_data(i).mov_lot_dtl_id,  -- ロット詳細ID
+                    lv_errbuf,                      -- エラー・メッセージ           --# 固定 #
+                    lv_retcode,                     -- リターン・コード             --# 固定 #
+                    lv_errmsg                       -- ユーザー・エラー・メッセージ --# 固定 #
+                  );
+--
+                  IF (lv_retcode = gv_status_error) THEN
+                    RAISE global_api_expt;
+                  END IF;
+--
+                  lb_lot_upd_flg := TRUE; --ロットデータを処理済に設定(ロット管理品外でも、訂正ロットが存在するので済に設定)
+--
+                END IF;
+--
+              END IF;
+--
+            END IF;
+-- 20080627 ADD END
 --
           END IF;
 --
