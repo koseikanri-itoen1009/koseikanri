@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM_CUST_STS_CHK_PKG(body)
  * Description      : 顧客ステータスを「中止」に変更する際、ステータス変更が可能か判定を行います。
  * MD.050           : MD050_CMM_003_A11_顧客ステータス変更チェック
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2009/02/19    1.1   Takuya.Kaihara   物件マスタ.削除フラグの修正
  *  2009/09/11    1.2   Yutaka.Kuboshima 障害0001350 業態(小分類)の必須チェックの削除
  *  2010/02/15    1.3   Yutaka.Kuboshima 障害E_本稼動_01528 PT対応：残高情報チェックSQL
+ *  2010/08/04    1.4   Shigeto.NIki     障害E_本稼動_04245 業態関係なく売掛残高チェック
  *
  *****************************************************************************************/
 --
@@ -542,7 +543,16 @@ AS
         ov_check_status =>  lv_check_status,   -- チェックステータス
         ov_err_message  =>  lv_err_message     -- エラーメッセージ
         );
-    ELSE
+-- 2010/08/04 Ver1.4 modify start by Shigeto.Niki
+--    ELSE
+--
+      IF ( lv_check_status = cv_sts_check_ng ) THEN
+        --(エラー処理)
+        RAISE global_process_expt;
+      END IF;
+--
+    END IF;
+-- 2010/08/04 Ver1.4 modify end by Shigeto.Niki
       -- ===============================
       -- <売掛残高チェック処理>
       -- ===============================
@@ -552,7 +562,9 @@ AS
         ov_check_status =>  lv_check_status,   -- チェックステータス
         ov_err_message  =>  lv_err_message     -- エラーメッセージ
         );
-    END IF;
+-- 2010/08/04 Ver1.4 delete start by Shigeto.Niki
+--    END IF;
+-- 2010/08/04 Ver1.4 delete end by Shigeto.Niki
 --
     IF ( lv_check_status = cv_sts_check_ng ) THEN
       --(エラー処理)
