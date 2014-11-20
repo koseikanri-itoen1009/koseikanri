@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,8 @@ AS
  *  2009/03/10    1.1   K.Kiriu         [COS_157]請求開始日NULL考慮の修正、届け先住所不正修正
  *  2009/04/15    1.2   K.Kiriu         [T1_0495]JP1起動の為パラメータの追加
  *  2009/04/28    1.3   K.Kiriu         [T1_0756]レコード長変更対応
+ *  2009/05/28    1.4   T.Tominaga      [T1_0540]販売実績の対象データ取得カーソルのORDER BY句の変更
+ *                                               ファイル出力の行Ｎｏのセット値を連番に変更
  *
  *****************************************************************************************/
 --
@@ -2027,7 +2029,11 @@ AS
       ORDER BY
               xseh.ship_to_customer_code
              ,xseh.dlv_invoice_number
-             ,xsel.dlv_invoice_line_number
+--************************************* 2009/05/28 T.Tominaga Var1.4 MOD START ******************************************
+--             ,xsel.dlv_invoice_line_number
+             ,xseh.sales_exp_header_id
+             ,xsel.sales_exp_line_id
+--************************************* 2009/05/28 T.Tominaga Var1.4 MOD END   ******************************************
       FOR UPDATE OF
               xseh.sales_exp_header_id
              ,xsel.sales_exp_line_id NOWAIT
@@ -2170,6 +2176,11 @@ AS
     lt_standard_unit_price  xxcos_sales_exp_lines.standard_unit_price%TYPE;    --原単価(発注)
     lt_header_break         xxcos_sales_exp_headers.sales_exp_header_id%TYPE;  --販売実績ヘッダブレーク用(A-9の処理用)
     ln_seq                  NUMBER;                                            --添字用(A-9の処理用)
+--************************************* 2009/05/28 T.Tominaga Var1.4 ADD START ******************************************
+    ln_line_no              NUMBER(3);                                         --行Ｎｏ
+    lv_ship_to_customer_code xxcos_sales_exp_headers.ship_to_customer_code%TYPE; --顧客【納品先】ブレイク処理用
+    lv_dlv_invoice_number   xxcos_sales_exp_headers.dlv_invoice_number%TYPE;   --納品伝票番号ブレイク処理用
+--************************************* 2009/05/28 T.Tominaga Var1.4 ADD END   ******************************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -2194,6 +2205,11 @@ AS
     --ループ外変数の初期化
     ln_seq               := cn_0;
     gt_update_header_id  := gt_update_header_id_c;
+--************************************* 2009/05/28 T.Tominaga Var1.4 ADD START ******************************************
+    --行Ｎｏの編集用変数の初期化
+    lv_ship_to_customer_code := NULL;
+    lv_dlv_invoice_number    := NULL;
+--************************************* 2009/05/28 T.Tominaga Var1.4 ADD END   ******************************************
     --A-5で取得したデータの編集、及び、ファイル出力
     <<output_loop>>
     FOR i IN 1.. gn_data_cnt LOOP
@@ -2390,6 +2406,21 @@ AS
       ELSIF ( iv_process_pattern = cv_5 ) THEN
         lv_whse_directly_class  := NULL;
       END IF;
+--************************************* 2009/05/28 T.Tominaga Var1.4 ADD START ******************************************
+      --------------------------
+      --行Ｎｏの編集
+      --------------------------
+      IF ( lv_ship_to_customer_code IS NULL AND lv_dlv_invoice_number IS NULL )
+        OR ( lv_ship_to_customer_code <> gt_edi_sales_data(i).ship_to_customer_code )
+        OR ( lv_dlv_invoice_number <> gt_edi_sales_data(i).dlv_invoice_number )
+      THEN
+        ln_line_no := 1;
+        lv_ship_to_customer_code := gt_edi_sales_data(i).ship_to_customer_code;
+        lv_dlv_invoice_number    := gt_edi_sales_data(i).dlv_invoice_number;
+      ELSE
+        ln_line_no := ln_line_no + 1;
+      END IF;
+--************************************* 2009/05/28 T.Tominaga Var1.4 ADD END   ******************************************
       --==============================================================
       --共通関数用の変数に値を設定
       --==============================================================
@@ -2609,7 +2640,10 @@ AS
       l_data_tab(cv_chain_pec_area_header)    := lv_bill_cred_rec_code2;  --チェーン店固有エリア(ヘッダー)
       l_data_tab(cv_order_connection_number)  := TO_CHAR(NULL);
       --明細部 --
-      l_data_tab(cv_line_no)                  := TO_CHAR(gt_edi_sales_data(i).dlv_invoice_line_number); --行NO
+--************************************* 2009/05/28 T.Tominaga Var1.4 MOD START ******************************************
+--      l_data_tab(cv_line_no)                  := TO_CHAR(gt_edi_sales_data(i).dlv_invoice_line_number); --行NO
+      l_data_tab(cv_line_no)                  := TO_CHAR(ln_line_no); --行NO
+--************************************* 2009/05/28 T.Tominaga Var1.4 MOD END   ******************************************
       l_data_tab(cv_stkout_class)             := TO_CHAR(NULL);
       l_data_tab(cv_stkout_reason)            := TO_CHAR(NULL);
       l_data_tab(cv_prod_code_itouen)         := gt_edi_sales_data(i).item_code;  --商品コード(伊藤園)
