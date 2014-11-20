@@ -25,6 +25,8 @@ AS
  *  2008/11/26    1.0   SCS 福間 貴子    初回作成
  *  2009/03/12    1.1   SCS R.Takigawa   抽出SQLを修正(在庫期間(INV)の抽出テーブルの変更)
  *  2009/05/26    1.2   SCS H.Yoshiawa   GLの連携モジュール名を修正（障害：T1_1200）
+ *  2009/09/04    1.3   SCS Y.Kuboshima  障害0001130の対応
+ *                                       在庫組織をS01 -> Z99 に変更
  *
  *****************************************************************************************/
 --
@@ -72,6 +74,9 @@ AS
   -- プロファイル
   cv_filepath               CONSTANT VARCHAR2(30)  := 'XXCMM1_JYOHO_OUT_DIR';       -- 情報系CSVファイル出力先
   cv_filename               CONSTANT VARCHAR2(30)  := 'XXCMM1_006A05_OUT_FILE';     -- 連携用CSVファイル名
+-- 2009/09/04 Ver1.3 add start by Y.Kuboshima
+  cv_org_code               CONSTANT VARCHAR2(30)  := 'XXCOI1_ORGANIZATION_CODE';   -- 在庫組織コード
+-- 2009/09/04 Ver1.3 add end by Y.Kuboshima
   -- トークン
   cv_tkn_profile            CONSTANT VARCHAR2(10)  := 'NG_PROFILE';                 -- プロファイル名
   cv_tkn_filepath_nm        CONSTANT VARCHAR2(20)  := 'CSVファイル出力先';
@@ -81,6 +86,9 @@ AS
   cv_tkn_word2              CONSTANT VARCHAR2(20)  := '、年月：';
   cv_tkn_data               CONSTANT VARCHAR2(10)  := 'NG_DATA';                    -- データ
   cv_tkn_filename           CONSTANT VARCHAR2(10)  := 'FILE_NAME';                  -- ファイル名
+-- 2009/09/04 Ver1.3 add start by Y.Kuboshima
+  cv_tkn_org_code           CONSTANT VARCHAR2(30)  := '在庫組織コード';             -- 在庫組織コード
+-- 2009/09/04 Ver1.3 add end by Y.Kuboshima
   -- メッセージ区分
   cv_msg_kbn_cmm            CONSTANT VARCHAR2(5)   := 'XXCMM';
   cv_msg_kbn_ccp            CONSTANT VARCHAR2(5)   := 'XXCCP';
@@ -115,7 +123,9 @@ AS
   cv_unsmr_close_status_nm  CONSTANT VARCHAR2(14)  := 'クローズ未要約';             -- クローズ未要約のステータス名
   cv_future_status_nm       CONSTANT VARCHAR2(4)   := '将来';                       -- 将来のステータス名
   cv_adj_period_flg_n       CONSTANT VARCHAR2(1)   := 'N';                          -- 調整期間：N
-  cv_organization_code      CONSTANT VARCHAR2(3)   := 'S01';                        -- 組織コード：S01
+-- 2009/09/04 Ver1.3 delete start by Y.Kuboshima
+--  cv_organization_code      CONSTANT VARCHAR2(3)   := 'S01';                        -- 組織コード：S01
+-- 2009/09/04 Ver1.3 delete end by Y.Kuboshima
 --End1.1
 --
   -- ===============================
@@ -143,6 +153,9 @@ AS
   gf_file_hand              UTL_FILE.FILE_TYPE;   -- ファイル・ハンドルの宣言
   gn_all_cnt                NUMBER;               -- 取得データ件数
   gc_del_flg                CHAR(1);              -- ファイル削除フラグ(対象データ無しの場合)
+-- 2009/09/04 Ver1.3 add start by Y.Kuboshima
+  gv_org_code               VARCHAR2(100);        -- 在庫組織コード
+-- 2009/09/04 Ver1.3 add end by Y.Kuboshima
 --
   -- ===============================
   -- ユーザー定義グローバルカーソル
@@ -229,7 +242,10 @@ AS
              mtl_parameters mp
     WHERE    oapv.period_year >= gn_before_year
     AND      oapv.period_year <= gn_next_year
-    AND      mp.organization_code = cv_organization_code
+-- 2009/09/04 Ver1.3 modify start by Y.Kuboshima
+--    AND      mp.organization_code = cv_organization_code
+    AND      mp.organization_code = gv_org_code
+-- 2009/09/04 Ver1.3 modify end by Y.Kuboshima
     AND  (
             ( oapv.organization_id = mp.organization_id )
         OR  ( oapv.accounted_period_type = gv_period_type
@@ -326,7 +342,7 @@ AS
     );
     --
     -- =========================================================
-    --  プロファイルの取得(CSVファイル出力先、CSVファイル名)
+    --  プロファイルの取得(CSVファイル出力先、CSVファイル名、在庫組織コード)
     -- =========================================================
     gv_filepath := fnd_profile.value(cv_filepath);
     IF (gv_filepath IS NULL) THEN
@@ -350,6 +366,20 @@ AS
       lv_errbuf := lv_errmsg;
       RAISE global_api_expt;
     END IF;
+-- 2009/09/04 Ver1.3 add start by Y.Kuboshima
+    -- 在庫組織コードの取得
+    gv_org_code := fnd_profile.value(cv_org_code);
+    IF (gv_org_code IS NULL) THEN
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_kbn_cmm       -- 'XXCMM'
+                      ,iv_name         => cv_msg_00002         -- プロファイル取得エラー
+                      ,iv_token_name1  => cv_tkn_profile       -- トークン(NG_PROFILE)
+                      ,iv_token_value1 => cv_tkn_org_code      -- プロファイル名(在庫組織コード)
+                     );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- 2009/09/04 Ver1.3 add end by Y.Kuboshima
     --
     -- =========================================================
     --  固定出力(I/Fファイル名部)
