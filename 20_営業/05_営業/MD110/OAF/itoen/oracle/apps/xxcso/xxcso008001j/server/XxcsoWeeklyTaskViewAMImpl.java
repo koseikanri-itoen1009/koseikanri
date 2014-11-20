@@ -8,6 +8,7 @@
 * ---------- ---- ------------ ----------------------------------------------
 * 2008-11-06 1.0  SCS柳平直人  新規作成
 * 2009-04-10 1.1  SCS柳平直人  [ST障害T1_0422,T1_0477]日付表示処理修正
+* 2009-06-23 1.2  SCS柳平直人  [障害0000102]CSV出力性能改善対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso008001j.server;
@@ -20,7 +21,9 @@ import itoen.oracle.apps.xxcso.common.util.XxcsoConstants;
 import itoen.oracle.apps.xxcso.common.util.XxcsoMessage;
 import itoen.oracle.apps.xxcso.common.util.XxcsoUtils;
 import itoen.oracle.apps.xxcso.xxcso008001j.util.XxcsoWeeklyTaskViewConstants;
-import java.sql.SQLException;
+// 2009-06-23 [障害0000102] Del Start
+//import java.sql.SQLException;
+// 2009-06-23 [障害0000102] Del Start
 import java.io.UnsupportedEncodingException;
 import oracle.apps.fnd.framework.OAException;
 import oracle.apps.fnd.framework.server.OAApplicationModuleImpl;
@@ -28,8 +31,10 @@ import oracle.apps.fnd.framework.server.OADBTransaction;
 import oracle.jbo.domain.BlobDomain;
 import oracle.jbo.domain.Date;
 import oracle.jbo.domain.Number;
-import oracle.jdbc.OracleCallableStatement;
-import oracle.jdbc.OracleResultSet;
+// 2009-06-23 [障害0000102] Del Start
+//import oracle.jdbc.OracleCallableStatement;
+//import oracle.jdbc.OracleResultSet;
+// 2009-06-23 [障害0000102] Del Start
 
 /*******************************************************************************
  * 週次活動状況照会画面のアプリケーション・モジュールクラス
@@ -330,20 +335,111 @@ public class XxcsoWeeklyTaskViewAMImpl extends OAApplicationModuleImpl
     // 部署の入力チェックをし、検索対象の拠点コードを取得
     String baseCodeSch = this.chkBaseName(taskAppSchVoRow);
 
-    // CSV実行SQL格納VOより、SQL文を取得
-    XxcsoCsvQueryVOImpl csvQueryVo = getXxcsoCsvQueryVO1();
-    if (csvQueryVo == null)
-    {
-      throw XxcsoMessage.createInstanceLostError("XxcsoCsvQueryVOImpl");
-    }
-    String csvQuery = csvQueryVo.getQuery();
-
-    // ****************************************
-    // *****CSVデータ生成処理 Start************
-    // ****************************************
-    OracleCallableStatement stmt = null;
-    OracleResultSet         rs   = null;
-
+// 2009-06-23 [障害0000102] Del Start
+//    // CSV実行SQL格納VOより、SQL文を取得
+//    XxcsoCsvQueryVOImpl csvQueryVo = getXxcsoCsvQueryVO1();
+//    if (csvQueryVo == null)
+//    {
+//      throw XxcsoMessage.createInstanceLostError("XxcsoCsvQueryVOImpl");
+//    }
+//    String csvQuery = csvQueryVo.getQuery();
+//
+//    // ****************************************
+//    // *****CSVデータ生成処理 Start************
+//    // ****************************************
+//    OracleCallableStatement stmt = null;
+//    OracleResultSet         rs   = null;
+//
+//    // プロファイルの取得
+//    String clientEnc = txt.getProfile(XxcsoConstants.XXCSO1_CLIENT_ENCODE);
+//    if ( clientEnc == null || "".equals(clientEnc.trim()) )
+//    {
+//      throw
+//        XxcsoMessage.createProfileNotFoundError(
+//          XxcsoConstants.XXCSO1_CLIENT_ENCODE
+//        );
+//    }
+//
+//    // CallableStatementによりQuery実行
+//    stmt = (OracleCallableStatement) txt.createCallableStatement(csvQuery, 0);
+//
+//    StringBuffer sbFileData = new StringBuffer();
+//    try
+//    {
+//      // バインドへの値の設定
+//      int idx = 1;
+//      stmt.setString(idx++, baseCodeSch); // 拠点コード
+//      stmt.setString(idx++, baseCodeSch); // 拠点コード
+//      stmt.setString(idx++, baseCodeSch); // 拠点コード
+//      stmt.setString(idx++, dateSch.dateValue().toString()); // 日付
+//      stmt.setString(idx++, dateSch.dateValue().toString()); // 日付
+//      stmt.setString(idx++, dateSch.dateValue().toString()); // 日付
+//
+//      rs = (OracleResultSet)stmt.executeQuery();
+//
+//      while (rs.next())
+//      {
+//        // 出力用バッファへ格納
+//        int rsIdx = 1;
+//        // 項目:従業員番号
+//        sbFileData
+//          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+//        // 項目:担当者名
+//        sbFileData
+//          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+//        // 項目:月日
+//        sbFileData
+//          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+//        // 項目:曜日
+//        sbFileData
+//          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+//        // 項目:予定／実績
+//        sbFileData
+//          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+//        // 項目:タスク詳細
+//        sbFileData
+//          .append("\"").append(rs.getString(rsIdx++)).append("\"").append("\n");
+//      }
+//    }
+//    catch ( SQLException e )
+//    {
+//      XxcsoUtils.unexpected(txt, e);
+//
+//      throw
+//        XxcsoMessage.createSqlErrorMessage(
+//          e
+//          ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
+//        );
+//    }
+//    finally
+//    {
+//      try
+//      {
+//        if ( rs != null )
+//        {
+//          rs.close();
+//        }
+//        if ( stmt != null )
+//        {
+//          stmt.close();
+//        }
+//      }
+//      catch ( SQLException e )
+//      {
+//        XxcsoUtils.unexpected(txt, e);
+//
+//        throw
+//          XxcsoMessage.createSqlErrorMessage(
+//            e
+//            ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
+//          );
+//      }
+//    }
+//    // ****************************************
+//    // *****CSVデータ生成処理 End**************
+//    // ****************************************
+// 2009-06-23 [障害0000102] Del End
+// 2009-06-23 [障害0000102] Add Start
     // プロファイルの取得
     String clientEnc = txt.getProfile(XxcsoConstants.XXCSO1_CLIENT_ENCODE);
     if ( clientEnc == null || "".equals(clientEnc.trim()) )
@@ -354,84 +450,60 @@ public class XxcsoWeeklyTaskViewAMImpl extends OAApplicationModuleImpl
         );
     }
 
-    // CallableStatementによりQuery実行
-    stmt = (OracleCallableStatement) txt.createCallableStatement(csvQuery, 0);
+    // 拠点所属従業員の取得
+    XxcsoEmpSelSummaryVOImpl empSelCsvVo = getXxcsoEmpSelSummaryCsvVO();
+    if ( empSelCsvVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoEmpSelSummaryVOImpl");
+    }
+    empSelCsvVo.initQuery( baseCodeSch );
+
+    XxcsoEmpSelSummaryVORowImpl empSelCsvRow
+      = (XxcsoEmpSelSummaryVORowImpl) empSelCsvVo.first();
 
     StringBuffer sbFileData = new StringBuffer();
-    try
+
+    while ( empSelCsvRow != null)
     {
-      // バインドへの値の設定
-      int idx = 1;
-      stmt.setString(idx++, baseCodeSch); // 拠点コード
-      stmt.setString(idx++, baseCodeSch); // 拠点コード
-      stmt.setString(idx++, baseCodeSch); // 拠点コード
-      stmt.setString(idx++, dateSch.dateValue().toString()); // 日付
-      stmt.setString(idx++, dateSch.dateValue().toString()); // 日付
-      stmt.setString(idx++, dateSch.dateValue().toString()); // 日付
+      XxcsoCsvQueryVOImpl csvVo = getXxcsoCsvQueryVO1();
+      if ( csvVo == null )
+      {
+        throw XxcsoMessage.createInstanceLostError("XxcsoCsvQueryVOImpl");
+      }
 
-      rs = (OracleResultSet)stmt.executeQuery();
+      String empNum   = empSelCsvRow.getEmployeeNumber().toString();
+      String fullName = empSelCsvRow.getFullName();
 
-      while (rs.next())
+      // CSV出力VOの実行
+      csvVo.initQuery(
+        dateSch.dateValue().toString()
+       ,empSelCsvRow.getResourceId()
+      );
+
+      XxcsoCsvQueryVORowImpl csvRow = (XxcsoCsvQueryVORowImpl) csvVo.first();
+
+      while ( csvRow != null )
       {
         // 出力用バッファへ格納
-        int rsIdx = 1;
         // 項目:従業員番号
-        sbFileData
-          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+        setLineBuf(sbFileData, empNum, false);
         // 項目:担当者名
-        sbFileData
-          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+        setLineBuf(sbFileData, fullName, false);
         // 項目:月日
-        sbFileData
-          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+        setLineBuf(sbFileData, csvRow.getTaskDate(), false);
         // 項目:曜日
-        sbFileData
-          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+        setLineBuf(sbFileData, csvRow.getTaskDy(), false);
         // 項目:予定／実績
-        sbFileData
-          .append("\"").append(rs.getString(rsIdx++)).append("\"").append(",");
+        setLineBuf(sbFileData, csvRow.getTaskPlanOrResult(), false);
         // 項目:タスク詳細
-        sbFileData
-          .append("\"").append(rs.getString(rsIdx++)).append("\"").append("\n");
+        setLineBuf(sbFileData, csvRow.getTaskDescription(), true);
+        
+        csvRow = (XxcsoCsvQueryVORowImpl) csvVo.next();
       }
-    }
-    catch ( SQLException e )
-    {
-      XxcsoUtils.unexpected(txt, e);
 
-      throw
-        XxcsoMessage.createSqlErrorMessage(
-          e
-          ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
-        );
+      empSelCsvRow = (XxcsoEmpSelSummaryVORowImpl) empSelCsvVo.next();
     }
-    finally
-    {
-      try
-      {
-        if ( rs != null )
-        {
-          rs.close();
-        }
-        if ( stmt != null )
-        {
-          stmt.close();
-        }
-      }
-      catch ( SQLException e )
-      {
-        XxcsoUtils.unexpected(txt, e);
-
-        throw
-          XxcsoMessage.createSqlErrorMessage(
-            e
-            ,XxcsoConstants.TOKEN_VALUE_CSV_CREATE
-          );
-      }
-    }
-    // ****************************************
-    // *****CSVデータ生成処理 End**************
-    // ****************************************
+// 2009-06-23 [障害0000102] Add End
 
     // VOへのファイル名、ファイルデータの設定
     XxcsoCsvDownVOImpl csvVo = getXxcsoCsvDownVO1();
@@ -963,6 +1035,38 @@ public class XxcsoWeeklyTaskViewAMImpl extends OAApplicationModuleImpl
   }
 // 2009/04/10 [ST障害T1_0422,T1_0477] Add End
 
+// 2009-06-23 [障害0000102] Add Start
+  /*****************************************************************************
+   * CSV行作成処理
+   * @param sbBuf   文字出力buffer(StringBuffer)
+   * @param value   buffer格納値
+   * @param endFlag true:行終端, false:否行終端
+   *****************************************************************************
+   */
+  private void setLineBuf(
+    StringBuffer sbBuf
+   ,String       value
+   ,boolean      endFlag
+  )
+  {
+    if ( value == null || "".equals( value ) )
+    {
+      value = "";
+    }
+
+    sbBuf.append("\"").append(value).append("\"");
+
+    if ( endFlag )
+    {
+      sbBuf.append("\r\n");
+    }
+    else
+    {
+      sbBuf.append(",");
+    }
+  }
+// 2009-06-23 [障害0000102] Add End
+
   /**
    * 
    * Sample main for debugging Business Components code using the tester.
@@ -1294,6 +1398,15 @@ public class XxcsoWeeklyTaskViewAMImpl extends OAApplicationModuleImpl
   public XxcsoBaseSearchVOImpl getXxcsoBaseSearchVO1()
   {
     return (XxcsoBaseSearchVOImpl)findViewObject("XxcsoBaseSearchVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoEmpSelSummaryCsvVO
+   */
+  public XxcsoEmpSelSummaryVOImpl getXxcsoEmpSelSummaryCsvVO()
+  {
+    return (XxcsoEmpSelSummaryVOImpl)findViewObject("XxcsoEmpSelSummaryCsvVO");
   }
 
 

@@ -3,7 +3,7 @@
 
 <ViewObject
    Name="XxcsoCsvQueryVO"
-   OrderBy="POSITION_SORT_CODE,USER_ID,DISP_DATE,TASK_ACCOUNT_NUMBER,TASK_ACTUAL_END_DATE"
+   OrderBy="DISP_DATE,TASK_ACCOUNT_NUMBER,TASK_ACTUAL_END_DATE"
    BindingStyle="Oracle"
    CustomQuery="true"
    RowClass="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoCsvQueryVORowImpl"
@@ -11,8 +11,10 @@
    MsgBundleClass="oracle.jbo.common.JboResourceBundle"
    UseGlueCode="false" >
    <SQLQuery><![CDATA[
-SELECT  xrv2.employee_number                     AS employee_number
-       ,xrv2.full_name                           AS full_name
+SELECT  task_calendar.disp_date                  AS disp_date
+       ,task.task_id                             AS task_id
+       ,task.task_name                           AS task_name
+       ,task.account_number                      AS task_account_number
        ,TO_CHAR(task_calendar.disp_date, 'fmdd') AS task_date
        ,TO_CHAR(task_calendar.disp_date, 'DY')   AS task_dy
        ,xxcso_008001j_pkg.get_plan_or_result(
@@ -22,61 +24,38 @@ SELECT  xrv2.employee_number                     AS employee_number
          ,task.scheduled_end_date
          ,task.source_object_type_code
          ,task.party_name
-        )                                        AS task_plan_or_result
-       ,NVL(task.description, ' ')               AS task_description
-       ,xxcso_util_common_pkg.get_emp_parameter(
-         xrv2.position_sort_code_new
-        ,xrv2.position_sort_code_old
-        ,xrv2.issue_date
-        ,TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
-        )                                        AS position_sort_code
-       ,xrv2.user_id                             AS user_id
-       ,task_calendar.disp_date                  AS disp_date
-       ,task.account_number                      AS task_account_number
-       ,task.actual_end_date                     AS task_actual_end_date
-FROM    xxcso_resources_v2 xrv2
-       ,(
-          SELECT   base_code
-                  ,child_base_code
-          FROM     (
-                     SELECT  xablv2.base_code AS base_code
-                            ,xablv2.child_base_code AS child_base_code
-                     FROM    xxcso_aff_base_level_v2 xablv2
-                             START WITH
-                               xablv2.base_code = :1
-                             CONNECT BY NOCYCLE
-                               PRIOR xablv2.child_base_code = xablv2.base_code
-                   ) aff
-                   UNION ALL
-                   SELECT  :2
-                           ,:3
-                   FROM    DUAL
-        ) tree_aff
-       ,(
-          SELECT  jtv.task_id                 AS task_id
-                 ,jtv.task_name               AS task_name
-                 ,jtv.description             AS description
-                 ,jtv.task_status_id          AS task_status_id
-                 ,jtv.scheduled_end_date      AS scheduled_end_date
-                 ,jtv.actual_end_date         AS actual_end_date
+        )                                       AS task_plan_or_result
+       ,NVL(task.description, ' ')              AS task_description
+       ,task.owner_id                           AS task_owner_id
+       ,task.actual_end_date                    AS task_actual_end_date
+FROM    (
+          SELECT  jtv.task_id            AS task_id
+                 ,jtv.task_name          AS task_name
+                 ,jtv.description        AS description
+                 ,jtv.task_status_id     AS task_status_id
+                 ,jtv.scheduled_end_date AS scheduled_end_date
+                 ,jtv.actual_end_date    AS actual_end_date
                  ,jtv.source_object_type_code AS source_object_type_code
-                 ,jtv.owner_id                AS owner_id
-                 ,jtv.task_type_id            AS task_type_id
-                 ,NULL                        AS party_id
-                 ,NULL                        AS party_name
-                 ,NULL                        AS account_number
+                 ,jtv.owner_id           AS owner_id
+                 ,jtv.task_type_id       AS task_type_id
+                 ,NULL                   AS party_id
+                 ,NULL                   AS party_name
+                 ,NULL                   AS account_number
           FROM    jtf_tasks_vl           jtv
-                 ,xxcso_resources_v2     xrv2
           WHERE   jtv.source_object_type_code = 'TASK'
             AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
             AND   jtv.deleted_flag            = 'N'
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             >= TO_DATE(:1, 'yyyy/mm/dd') - 7
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             <= TO_DATE(:2, 'yyyy/mm/dd') + 14
             AND   (
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
                     OR
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
                   )
             AND   (
-                    (jtv.owner_id = xrv2.resource_id)
+                    (jtv.owner_id = :3)
                     OR
                     (
                       EXISTS
@@ -85,36 +64,39 @@ FROM    xxcso_resources_v2 xrv2
                         FROM    jtf_task_all_assignments jtaa
                         WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
                           AND   jtaa.task_id            = jtv.task_id
-                          AND   jtaa.resource_id        = xrv2.resource_id
+                          AND   jtaa.resource_id        = :4
                       )
                     )
                   )
           UNION
-          SELECT  jtv.task_id                 AS task_id
-                 ,jtv.task_name               AS task_name
-                 ,jtv.description             AS description
-                 ,jtv.task_status_id          AS task_status_id
-                 ,jtv.scheduled_end_date      AS scheduled_end_date
-                 ,jtv.actual_end_date         AS actual_end_date
+          SELECT  jtv.task_id            AS task_id
+                 ,jtv.task_name          AS task_name
+                 ,jtv.description        AS description
+                 ,jtv.task_status_id     AS task_status_id
+                 ,jtv.scheduled_end_date AS scheduled_end_date
+                 ,jtv.actual_end_date    AS actual_end_date
                  ,jtv.source_object_type_code AS source_object_type_code
-                 ,jtv.owner_id                AS owner_id
-                 ,jtv.task_type_id            AS task_type_id
-                 ,xcav.party_id               AS party_id
-                 ,xcav.party_name             AS party_name
-                 ,xcav.account_number         AS account_number
+                 ,jtv.owner_id           AS owner_id
+                 ,jtv.task_type_id       AS task_type_id
+                 ,xcav.party_id          AS party_id
+                 ,xcav.party_name        AS party_name
+                 ,xcav.account_number    AS account_number
           FROM    jtf_tasks_vl           jtv
-                 ,xxcso_cust_accounts_v  xcav
-                 ,xxcso_resources_v2     xrv2
+                 ,xxcso_cust_accounts_v xcav
           WHERE   jtv.source_object_type_code = 'PARTY'
             AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
             AND   jtv.deleted_flag            = 'N'
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             >= TO_DATE(:5, 'yyyy/mm/dd') - 7
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             <= TO_DATE(:6, 'yyyy/mm/dd') + 14
             AND   (
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
                     OR
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
                   )
             AND   (
-                    (jtv.owner_id = xrv2.resource_id)
+                    (jtv.owner_id = :7)
                     OR
                     (
                       EXISTS
@@ -123,38 +105,41 @@ FROM    xxcso_resources_v2 xrv2
                         FROM    jtf_task_all_assignments jtaa
                         WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
                           AND   jtaa.task_id            = jtv.task_id
-                          AND   jtaa.resource_id        = xrv2.resource_id
+                          AND   jtaa.resource_id        = :8
                       )
                     )
                   )
             AND   xcav.party_id = jtv.source_object_id
           UNION
-          SELECT  jtv.task_id                 AS task_id
-                 ,jtv.task_name               AS task_name
-                 ,jtv.description             AS description
-                 ,jtv.task_status_id          AS task_status_id
-                 ,jtv.scheduled_end_date      AS scheduled_end_date
-                 ,jtv.actual_end_date         AS actual_end_date
+          SELECT  jtv.task_id            AS task_id
+                 ,jtv.task_name          AS task_name
+                 ,jtv.description        AS description
+                 ,jtv.task_status_id     AS task_status_id
+                 ,jtv.scheduled_end_date AS scheduled_end_date
+                 ,jtv.actual_end_date    AS actual_end_date
                  ,jtv.source_object_type_code AS source_object_type_code
-                 ,jtv.owner_id                AS owner_id
-                 ,jtv.task_type_id            AS task_type_id
-                 ,xcav.party_id               AS party_id
-                 ,xcav.party_name             AS party_name
-                 ,xcav.account_number         AS account_number
+                 ,jtv.owner_id           AS owner_id
+                 ,jtv.task_type_id       AS task_type_id
+                 ,xcav.party_id          AS party_id
+                 ,xcav.party_name        AS party_name
+                 ,xcav.account_number    AS account_number
           FROM    jtf_tasks_vl           jtv
                  ,as_leads_all           ala
                  ,xxcso_cust_accounts_v  xcav
-                 ,xxcso_resources_v2     xrv2
           WHERE   jtv.source_object_type_code = 'OPPORTUNITY'
             AND   jtv.owner_type_code         = 'RS_EMPLOYEE'
             AND   jtv.deleted_flag            = 'N'
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             >= TO_DATE(:9, 'yyyy/mm/dd') - 7
+            AND   TRUNC(NVL(jtv.actual_end_date, jtv.scheduled_end_date))
+                                             <= TO_DATE(:10, 'yyyy/mm/dd') + 14
             AND   (
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_OPEN_ID'))
                     OR
                     (jtv.task_status_id = FND_PROFILE.VALUE('XXCSO1_TASK_STATUS_CLOSED_ID'))
                   )
             AND   (
-                    (jtv.owner_id = xrv2.resource_id)
+                    (jtv.owner_id = :11)
                     OR
                     (
                       EXISTS
@@ -163,7 +148,7 @@ FROM    xxcso_resources_v2 xrv2
                         FROM    jtf_task_all_assignments jtaa
                         WHERE   jtaa.resource_type_code = 'RS_EMPLOYEE'
                           AND   jtaa.task_id            = jtv.task_id
-                          AND   jtaa.resource_id        = xrv2.resource_id
+                          AND   jtaa.resource_id        = :12
                       )
                     )
                   )
@@ -171,71 +156,58 @@ FROM    xxcso_resources_v2 xrv2
             AND   xcav.party_id               = ala.customer_id
         ) task
        ,(
-          SELECT  first_day.monday + two_week.day_index AS disp_date
-          FROM    (
-                    SELECT  0 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  1 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  2 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  3 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  4 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  5 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  6 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  7 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  8 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  9 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  10 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  11 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  12 day_index
-                    FROM    DUAL
-                    UNION ALL
-                    SELECT  13 day_index
-                    FROM DUAL
-                  ) two_week
-                 ,(
-                    SELECT  TO_DATE(:4, 'yyyy/mm/dd') -
-                              DECODE(TO_NUMBER(TO_CHAR(TO_DATE(:5, 'yyyy/mm/dd'), 'D')), 1, 8, TO_NUMBER(TO_CHAR(TO_DATE(:6, 'yyyy/mm/dd'), 'D')))
-                              + 2 AS monday
-                    FROM    DUAL
-                  ) first_day
+         SELECT  first_day.monday + two_week.day_index AS disp_date
+         FROM    (
+                   SELECT  0 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  1 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  2 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  3 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  4 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  5 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  6 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  7 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  8 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  9 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  10 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  11 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  12 day_index
+                   FROM    DUAL
+                   UNION ALL
+                   SELECT  13 day_index
+                   FROM DUAL
+                ) two_week
+               ,(
+                   SELECT  TO_DATE(:13, 'yyyy/mm/dd') -
+                             DECODE(TO_NUMBER(TO_CHAR(TO_DATE(:14, 'yyyy/mm/dd'), 'D')), 1, 8, TO_NUMBER(TO_CHAR(TO_DATE(:15, 'yyyy/mm/dd'), 'D')))
+                             + 2 AS monday
+                   FROM    DUAL
+                ) first_day
         ) task_calendar
-WHERE   xrv2.sales_dashboad_use_flag = 'Y'
-  AND   (
-          (
-              TO_DATE(xrv2.issue_date) > TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
-          AND (xrv2.work_base_code_old = tree_aff.child_base_code)
-          )
-          OR
-          (
-              TO_DATE(xrv2.issue_date) <= TRUNC(XXCSO_UTIL_COMMON_PKG.get_online_sysdate)
-          AND (xrv2.work_base_code_new = tree_aff.child_base_code)
-          )
-        )
-  AND   xrv2.resource_id = task.owner_id
-  AND   TRUNC(NVL(task.actual_end_date, task.scheduled_end_date)) = task_calendar.disp_date
+WHERE   TRUNC(NVL(task.actual_end_date, task.scheduled_end_date)) = task_calendar.disp_date
    ]]></SQLQuery>
    <DesignTime>
       <Attr Name="_isCodegen" Value="true" />
@@ -243,96 +215,7 @@ WHERE   xrv2.sales_dashboad_use_flag = 'Y'
       <Attr Name="_CodeGenFlagNew" Value="36" />
    </DesignTime>
    <ViewAttribute
-      Name="EmployeeNumber"
-      IsUpdateable="false"
-      IsPersistent="false"
-      Precision="30"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="EMPLOYEENUMBER"
-      Expression="EmployeeNumber"
-      SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="FullName"
-      IsUpdateable="false"
-      IsPersistent="false"
-      Precision="301"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="FULLNAME"
-      Expression="FullName"
-      SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="TaskDate"
-      IsUpdateable="false"
-      IsPersistent="false"
-      Precision="2"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="TASKDATE"
-      Expression="TaskDate"
-      SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="TaskDy"
-      IsUpdateable="false"
-      IsPersistent="false"
-      Precision="4"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="TASKDY"
-      Expression="TaskDy"
-      SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="TaskPlanOrResult"
-      IsUpdateable="false"
-      IsPersistent="false"
-      Precision="371"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="TASKPLANORRESULT"
-      Expression="TaskPlanOrResult"
-      SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="TaskDescription"
-      IsUpdateable="false"
-      IsPersistent="false"
-      Precision="4000"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="TASKDESCRIPTION"
-      Expression="TaskDescription"
-      SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="PositionSortCode"
-      IsUpdateable="false"
-      IsPersistent="false"
-      Precision="150"
-      Type="java.lang.String"
-      ColumnType="VARCHAR2"
-      AliasName="POSITIONSORTCODE"
-      Expression="PositionSortCode"
-      SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="UserId"
-      IsUpdateable="false"
-      IsPersistent="false"
-      Precision="15"
-      Type="oracle.jbo.domain.Number"
-      ColumnType="NUMBER"
-      AliasName="USERID"
-      Expression="UserId"
-      SQLType="NUMERIC" >
-   </ViewAttribute>
-   <ViewAttribute
       Name="DispDate"
-      IsUpdateable="false"
       IsPersistent="false"
       Type="oracle.jbo.domain.Date"
       ColumnType="DATE"
@@ -341,6 +224,31 @@ WHERE   xrv2.sales_dashboad_use_flag = 'Y'
       SQLType="DATE" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="7" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TASK_ID"
+      Expression="TASK_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskName"
+      IsPersistent="false"
+      Precision="80"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_NAME"
+      Expression="TASK_NAME"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="80" />
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute
@@ -354,6 +262,70 @@ WHERE   xrv2.sales_dashboad_use_flag = 'Y'
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="30" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskDate"
+      IsPersistent="false"
+      Precision="2"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_DATE"
+      Expression="TASK_DATE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="2" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskDy"
+      IsPersistent="false"
+      Precision="4"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_DY"
+      Expression="TASK_DY"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskPlanOrResult"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_PLAN_OR_RESULT"
+      Expression="TASK_PLAN_OR_RESULT"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskDescription"
+      IsPersistent="false"
+      Precision="4000"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="TASK_DESCRIPTION"
+      Expression="TASK_DESCRIPTION"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="4000" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="TaskOwnerId"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="TASK_OWNER_ID"
+      Expression="TASK_OWNER_ID"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
       </DesignTime>
    </ViewAttribute>
    <ViewAttribute

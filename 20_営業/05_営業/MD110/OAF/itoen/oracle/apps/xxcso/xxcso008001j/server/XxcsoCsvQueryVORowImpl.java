@@ -24,19 +24,16 @@ import oracle.jbo.domain.Date;
 public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl 
 {
 
-
-
-  protected static final int EMPLOYEENUMBER = 0;
-  protected static final int FULLNAME = 1;
-  protected static final int TASKDATE = 2;
-  protected static final int TASKDY = 3;
-  protected static final int TASKPLANORRESULT = 4;
-  protected static final int TASKDESCRIPTION = 5;
-  protected static final int POSITIONSORTCODE = 6;
-  protected static final int USERID = 7;
-  protected static final int DISPDATE = 8;
-  protected static final int TASKACCOUNTNUMBER = 9;
-  protected static final int TASKACTUALENDDATE = 10;
+  protected static final int DISPDATE = 0;
+  protected static final int TASKID = 1;
+  protected static final int TASKNAME = 2;
+  protected static final int TASKACCOUNTNUMBER = 3;
+  protected static final int TASKDATE = 4;
+  protected static final int TASKDY = 5;
+  protected static final int TASKPLANORRESULT = 6;
+  protected static final int TASKDESCRIPTION = 7;
+  protected static final int TASKOWNERID = 8;
+  protected static final int TASKACTUALENDDATE = 9;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -52,10 +49,14 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
   {
     switch (index)
       {
-      case EMPLOYEENUMBER:
-        return getEmployeeNumber();
-      case FULLNAME:
-        return getFullName();
+      case DISPDATE:
+        return getDispDate();
+      case TASKID:
+        return getTaskId();
+      case TASKNAME:
+        return getTaskName();
+      case TASKACCOUNTNUMBER:
+        return getTaskAccountNumber();
       case TASKDATE:
         return getTaskDate();
       case TASKDY:
@@ -64,14 +65,8 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
         return getTaskPlanOrResult();
       case TASKDESCRIPTION:
         return getTaskDescription();
-      case POSITIONSORTCODE:
-        return getPositionSortCode();
-      case USERID:
-        return getUserId();
-      case DISPDATE:
-        return getDispDate();
-      case TASKACCOUNTNUMBER:
-        return getTaskAccountNumber();
+      case TASKOWNERID:
+        return getTaskOwnerId();
       case TASKACTUALENDDATE:
         return getTaskActualEndDate();
       default:
@@ -84,8 +79,32 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
   {
     switch (index)
       {
+      case DISPDATE:
+        setDispDate((Date)value);
+        return;
+      case TASKID:
+        setTaskId((Number)value);
+        return;
+      case TASKNAME:
+        setTaskName((String)value);
+        return;
       case TASKACCOUNTNUMBER:
         setTaskAccountNumber((String)value);
+        return;
+      case TASKDATE:
+        setTaskDate((String)value);
+        return;
+      case TASKDY:
+        setTaskDy((String)value);
+        return;
+      case TASKPLANORRESULT:
+        setTaskPlanOrResult((String)value);
+        return;
+      case TASKDESCRIPTION:
+        setTaskDescription((String)value);
+        return;
+      case TASKOWNERID:
+        setTaskOwnerId((Number)value);
         return;
       case TASKACTUALENDDATE:
         setTaskActualEndDate((Date)value);
@@ -94,6 +113,78 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
       }
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute DispDate
+   */
+  public Date getDispDate()
+  {
+    return (Date)getAttributeInternal(DISPDATE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute DispDate
+   */
+  public void setDispDate(Date value)
+  {
+    setAttributeInternal(DISPDATE, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute TaskId
+   */
+  public Number getTaskId()
+  {
+    return (Number)getAttributeInternal(TASKID);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute TaskId
+   */
+  public void setTaskId(Number value)
+  {
+    setAttributeInternal(TASKID, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute TaskName
+   */
+  public String getTaskName()
+  {
+    return (String)getAttributeInternal(TASKNAME);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute TaskName
+   */
+  public void setTaskName(String value)
+  {
+    setAttributeInternal(TASKNAME, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute TaskAccountNumber
+   */
+  public String getTaskAccountNumber()
+  {
+    return (String)getAttributeInternal(TASKACCOUNTNUMBER);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute TaskAccountNumber
+   */
+  public void setTaskAccountNumber(String value)
+  {
+    setAttributeInternal(TASKACCOUNTNUMBER, value);
   }
 
   /**
@@ -114,7 +205,23 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
     setAttributeInternal(TASKDATE, value);
   }
 
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute TaskDy
+   */
+  public String getTaskDy()
+  {
+    return (String)getAttributeInternal(TASKDY);
+  }
 
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute TaskDy
+   */
+  public void setTaskDy(String value)
+  {
+    setAttributeInternal(TASKDY, value);
+  }
 
   /**
    * 
@@ -154,132 +261,20 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
 
   /**
    * 
-   * Gets the attribute value for the calculated attribute PositionSortCode
+   * Gets the attribute value for the calculated attribute TaskOwnerId
    */
-  public String getPositionSortCode()
+  public Number getTaskOwnerId()
   {
-    return (String)getAttributeInternal(POSITIONSORTCODE);
+    return (Number)getAttributeInternal(TASKOWNERID);
   }
 
   /**
    * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute PositionSortCode
+   * Sets <code>value</code> as the attribute value for the calculated attribute TaskOwnerId
    */
-  public void setPositionSortCode(String value)
+  public void setTaskOwnerId(Number value)
   {
-    setAttributeInternal(POSITIONSORTCODE, value);
-  }
-
-
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute DispDate
-   */
-  public Date getDispDate()
-  {
-    return (Date)getAttributeInternal(DISPDATE);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute DispDate
-   */
-  public void setDispDate(Date value)
-  {
-    setAttributeInternal(DISPDATE, value);
-  }
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute EmployeeNumber
-   */
-  public String getEmployeeNumber()
-  {
-    return (String)getAttributeInternal(EMPLOYEENUMBER);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute EmployeeNumber
-   */
-  public void setEmployeeNumber(String value)
-  {
-    setAttributeInternal(EMPLOYEENUMBER, value);
-  }
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute FullName
-   */
-  public String getFullName()
-  {
-    return (String)getAttributeInternal(FULLNAME);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute FullName
-   */
-  public void setFullName(String value)
-  {
-    setAttributeInternal(FULLNAME, value);
-  }
-
-
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute UserId
-   */
-  public Number getUserId()
-  {
-    return (Number)getAttributeInternal(USERID);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute UserId
-   */
-  public void setUserId(Number value)
-  {
-    setAttributeInternal(USERID, value);
-  }
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute TaskDy
-   */
-  public String getTaskDy()
-  {
-    return (String)getAttributeInternal(TASKDY);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute TaskDy
-   */
-  public void setTaskDy(String value)
-  {
-    setAttributeInternal(TASKDY, value);
-  }
-
-  /**
-   * 
-   * Gets the attribute value for the calculated attribute TaskAccountNumber
-   */
-  public String getTaskAccountNumber()
-  {
-    return (String)getAttributeInternal(TASKACCOUNTNUMBER);
-  }
-
-  /**
-   * 
-   * Sets <code>value</code> as the attribute value for the calculated attribute TaskAccountNumber
-   */
-  public void setTaskAccountNumber(String value)
-  {
-    setAttributeInternal(TASKACCOUNTNUMBER, value);
+    setAttributeInternal(TASKOWNERID, value);
   }
 
   /**
@@ -299,7 +294,5 @@ public class XxcsoCsvQueryVORowImpl extends OAViewRowImpl
   {
     setAttributeInternal(TASKACTUALENDDATE, value);
   }
-
-
 
 }

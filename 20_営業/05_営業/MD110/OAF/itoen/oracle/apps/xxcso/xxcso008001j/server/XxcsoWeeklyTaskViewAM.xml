@@ -157,4 +157,8 @@
       Name="XxcsoBaseSearchVO1"
       ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoBaseSearchVO" >
    </ViewUsage>
+   <ViewUsage
+      Name="XxcsoEmpSelSummaryCsvVO"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso008001j.server.XxcsoEmpSelSummaryVO" >
+   </ViewUsage>
 </AppModule>
