@@ -3,7 +3,7 @@
  * VIEW Name       : XXCSO_AFF_BASE_V2
  * Description     : 共通用：AFF部門マスタ（最新）ビュー
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ------------ -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ------------ -------------------------------------
  *  2009/02/01    1.0  T.Maruyama    初回作成
  *  2009/05/19    1.1  H.Ogawa       障害番号：T1_1029対応
+ *  2009/09/16    1.2  D.Abe         SCS障害対応(0001242対応)
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXCSO_AFF_BASE_V2
 (
@@ -27,8 +28,24 @@ AS
 SELECT
  ffv.flex_value
 ,ffv.attribute4
-,ffv.attribute6
-,ffv.attribute7
+/* 20090916_Abe_0001242 START*/
+--,ffv.attribute6
+--,ffv.attribute7
+,(CASE
+      WHEN NVL(ffv.attribute6,TO_CHAR(xxcso_util_common_pkg.get_online_sysdate,'YYYYMMDD'))
+              <=  TO_CHAR(xxcso_util_common_pkg.get_online_sysdate,'YYYYMMDD') THEN
+        SUBSTR(ffv.attribute9,5,2)
+      ELSE 
+        SUBSTR(ffv.attribute7,5,2)
+  END) attribute6
+,(CASE
+      WHEN NVL(ffv.attribute6,TO_CHAR(xxcso_util_common_pkg.get_online_sysdate,'YYYYMMDD'))
+              <=  TO_CHAR(xxcso_util_common_pkg.get_online_sysdate,'YYYYMMDD') THEN
+        SUBSTR(ffv.ATTRIBUTE9,1,4)
+      ELSE 
+        SUBSTR(ffv.attribute7,1,4)
+  END) attribute7
+/* 20090916_Abe_0001242 END*/
 ,ffv.attribute5
 /* 20090519_Ogawa_T1_1029 START*/
 ,ffv.summary_flag
@@ -50,8 +67,12 @@ WITH READ ONLY
 ;
 COMMENT ON COLUMN XXCSO_AFF_BASE_V2.base_code IS '拠点コード';
 COMMENT ON COLUMN XXCSO_AFF_BASE_V2.base_name IS '拠点名';
-COMMENT ON COLUMN XXCSO_AFF_BASE_V2.row_order IS '拠点並び順';
-COMMENT ON COLUMN XXCSO_AFF_BASE_V2.old_head_office_code IS '旧本部コード';
+/* 20090916_Abe_0001242 START*/
+--COMMENT ON COLUMN XXCSO_AFF_BASE_V2.row_order IS '拠点並び順';
+--COMMENT ON COLUMN XXCSO_AFF_BASE_V2.old_head_office_code IS '旧本部コード';
+COMMENT ON COLUMN XXCSO_AFF_BASE_V2.row_order IS '新旧拠点並び順';
+COMMENT ON COLUMN XXCSO_AFF_BASE_V2.old_head_office_code IS '新旧本部コード';
+/* 20090916_Abe_0001242 END*/
 COMMENT ON COLUMN XXCSO_AFF_BASE_V2.base_short_name IS '拠点名（略称）';
 /* 20090519_Ogawa_T1_1029 START*/
 COMMENT ON COLUMN XXCSO_AFF_BASE_V2.summary_flag IS '集計区分';
