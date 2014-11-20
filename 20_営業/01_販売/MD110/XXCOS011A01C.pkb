@@ -7,7 +7,7 @@ AS
  * Description      : SQL-LOADERによってEDI納品返品情報ワークテーブルに取込まれたEDI返品確定データを
  *                    EDIヘッダ情報テーブル、EDI明細情報テーブルにそれぞれ登録します。
  * MD.050           : 返品確定データ取込（MD050_COS_011_A01）
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ----------------------------------- ----------------------------------------------------------
@@ -60,6 +60,7 @@ AS
  *  2009/09/28    1.6   K.Satomura      [0001156,0001289]
  *  2010/03/02    1.7   M.Sano          [E_本稼動_01159]パラメータ(チェーン店)に「DEFAULT NULL」追加
  *  2010/04/23    1.8   T.Yoshimoto     [E_本稼動_02427]chain_peculiar_area_header登録データ変更
+ *  2011/07/26    1.9   K.Kiriu         [E_本稼動_07906]流通BMS対応
  *
  *****************************************************************************************/
 --
@@ -1012,7 +1013,16 @@ AS
                --ステータス
       err_status                   xxcos_edi_delivery_work.err_status%TYPE,
                -- インタフェースファイル名
-      if_file_name                 xxcos_edi_delivery_work.if_file_name%TYPE
+/* 2011/07/26 Ver1.9 Mod Start */
+--      if_file_name                 xxcos_edi_delivery_work.if_file_name%TYPE
+      if_file_name                 xxcos_edi_delivery_work.if_file_name%TYPE,
+/* 2011/07/26 Ver1.9 Mod End   */
+/* 2011/07/26 Ver1.9 Add Start */
+               -- 流通ＢＭＳヘッダデータ
+      bms_header_data              xxcos_edi_delivery_work.bms_header_data%TYPE,
+               -- 流通ＢＭＳ明細データ
+      bms_line_data                xxcos_edi_delivery_work.bms_line_data%TYPE
+/* 2011/07/26 Ver1.9 Add End   */
     );
   --
   -- ===============================
@@ -1434,7 +1444,14 @@ AS
                                                                  -- EDI納品予定送信済フラグ
        edi_deli_sche_flg            xxcos_edi_headers.edi_delivery_schedule_flag%TYPE,
                                                                  -- 価格表ヘッダID
-       price_list_header_id         xxcos_edi_headers.price_list_header_id%TYPE
+/* 2011/07/26 Ver1.9 Mod Start */
+--       price_list_header_id         xxcos_edi_headers.price_list_header_id%TYPE
+       price_list_header_id         xxcos_edi_headers.price_list_header_id%TYPE,
+/* 2011/07/26 Ver1.9 Mod End   */
+/* 2011/07/26 Ver1.9 Add Start */
+                                                                 -- 流通ＢＭＳヘッダデータ
+       bms_header_data              xxcos_edi_headers.bms_header_data%TYPE
+/* 2011/07/26 Ver1.9 Add End   */
    );
   -- ===============================
   -- ユーザー定義グローバルTABLE型
@@ -1544,7 +1561,13 @@ AS
         item_code                    xxcos_edi_lines.item_code%TYPE,               -- 品目コード
         line_uom                     xxcos_edi_lines.line_uom%TYPE,                -- 明細単位
                                                                                    -- 受注関連明細番号
-        order_con_line_num           xxcos_edi_lines.order_connection_line_number%TYPE
+/* 2011/07/26 Ver1.9 Mod Start */
+--        order_con_line_num           xxcos_edi_lines.order_connection_line_number%TYPE
+        order_con_line_num           xxcos_edi_lines.order_connection_line_number%TYPE,
+/* 2011/07/26 Ver1.9 Mod End   */
+/* 2011/07/26 Ver1.9 Add Start */
+        bms_line_data                xxcos_edi_lines.bms_line_data%TYPE            -- 流通ＢＭＳ明細データ
+/* 2011/07/26 Ver1.9 Add End   */
     );
   -- ===============================
   -- ユーザー定義グローバルTABLE型
@@ -2787,6 +2810,11 @@ AS
                 -- チェーン店固有エリア（フッター）
     gt_req_edi_headers_data(in_line_cnt1).chain_pe_area_foot
                                                    := gt_edideli_work_data(in_line_cnt).chain_peculiar_area_footer;
+/* 2011/07/26 Ver1.9 Add Start */
+                --流通ＢＭＳヘッダデータ
+    gt_req_edi_headers_data(in_line_cnt1).bms_header_data
+                                                   := gt_edideli_work_data(in_line_cnt).bms_header_data;
+/* 2011/07/26 Ver1.9 Add End   */
 --
     -- ***************************************
     -- ***        実処理の記述             ***
@@ -3082,6 +3110,10 @@ AS
     gt_req_edi_lines_data(in_line_cnt).gen_add_item10   := gt_edideli_work_data(in_line_cnt).general_add_item10;
                 -- チェーン店固有エリア（明細）
     gt_req_edi_lines_data(in_line_cnt).chain_pec_a_line := gt_edideli_work_data(in_line_cnt).chain_peculiar_area_line;
+/* 2011/07/26 Ver1.9 Add Start */
+                -- 流通ＢＭＳ明細データ
+   gt_req_edi_lines_data(in_line_cnt).bms_line_data     := gt_edideli_work_data(in_line_cnt).bms_line_data;
+/* 2011/07/26 Ver1.9 Add End   */
 --
     -- ***************************************
     -- ***        実処理の記述             ***
@@ -4391,7 +4423,13 @@ AS
           request_id,                           -- 要求ID
           program_application_id,               -- コンカレント・プログラム・アプリケーションID
           program_id,                           -- コンカレント・プログラムID
-          program_update_date                   -- プログラム更新日
+/* 2011/07/26 Ver1.9 Mod Start */
+--          program_update_date                   -- プログラム更新日
+          program_update_date,                  -- プログラム更新日
+/* 2011/07/26 Ver1.9 Mod End   */
+/* 2011/07/26 Ver1.9 Add Start */
+          bms_header_data                       -- 流通ＢＭＳヘッダデータ
+/* 2011/07/26 Ver1.9 Add End   */
         )
       VALUES
         (
@@ -4671,7 +4709,13 @@ AS
           cn_request_id,                      -- 要求ID
           cn_program_application_id,          -- コンカレント・プログラム・アプリケーションID
           cn_program_id,                      -- コンカレント・プログラムID
-          cd_program_update_date              -- プログラム更新日
+/* 2011/07/26 Ver1.9 Mod Start */
+--          cd_program_update_date              -- プログラム更新日
+          cd_program_update_date,             -- プログラム更新日
+/* 2011/07/26 Ver1.9 Mod End   */
+/* 2011/07/26 Ver1.9 Add Start */
+          gt_req_edi_headers_data(ln_no).bms_header_data         -- 流通ＢＭＳヘッダデータ
+/* 2011/07/26 Ver1.9 Add End   */
         );
 --
     END LOOP xxcos_edi_headers_insert;
@@ -4860,7 +4904,13 @@ AS
           request_id,
           program_application_id,
           program_id,
-          program_update_date
+/* 2011/07/26 Ver1.9 Mod Start */
+--          program_update_date
+          program_update_date,
+/* 2011/07/26 Ver1.9 Mod End   */
+/* 2011/07/26 Ver1.9 Add Start */
+          bms_line_data
+/* 2011/07/26 Ver1.9 Add End   */
         )
       VALUES
         (
@@ -4966,7 +5016,13 @@ AS
           cn_request_id,                          -- 要求ID
           cn_program_application_id,              -- コンカレント・プログラム・アプリケーションID
           cn_program_id,                          -- コンカレント・プログラムID
-          cd_program_update_date                  -- プログラム更新日
+/* 2011/07/26 Ver1.9 Mod Start */
+--          cd_program_update_date                  -- プログラム更新日
+          cd_program_update_date,                 -- プログラム更新日
+/* 2011/07/26 Ver1.9 Mod End   */
+/* 2011/07/26 Ver1.9 Add Start */
+          gt_req_edi_lines_data(ln_no).bms_line_data            -- 流通ＢＭＳヘッダデータ
+/* 2011/07/26 Ver1.9 Add End   */
         );
 --
     END LOOP  xxcos_edi_lines_insert;
@@ -6162,7 +6218,14 @@ AS
       edideliwk.total_invoice_qty             total_invoice_qty,           -- トータル伝票枚数
       edideliwk.chain_peculiar_area_footer    chain_peculiar_area_footer,  -- チェーン店固有エリア（フッター）
       edideliwk.err_status                    err_status,                  -- ステータス
-      edideliwk.if_file_name                  if_file_name                 -- インタフェースファイル名
+/* 2011/07/26 Ver1.9 Mod Start */
+--      edideliwk.if_file_name                  if_file_name                 -- インタフェースファイル名
+      edideliwk.if_file_name                  if_file_name,                -- インタフェースファイル名
+/* 2011/07/26 Ver1.9 Mod End   */
+/* 2011/07/26 Ver1.9 Add Start */
+      edideliwk.bms_header_data               bms_header_data,             -- 流通ＢＭＳヘッダデータ
+      edideliwk.bms_line_data                 bms_line_data                -- 流通ＢＭＳ明細データ
+/* 2011/07/26 Ver1.9 Add End   */
     FROM    xxcos_edi_delivery_work    edideliwk                           -- EDI納品返品情報ワークテーブル
     WHERE   edideliwk.if_file_name     = lv_cur_param4          -- インタフェースファイル名
       AND   edideliwk.err_status       =    lv_cur_param1                  -- ステータス

@@ -6,7 +6,7 @@
 --                 EDI納品返品情報ワークテーブルに格納する
 -- MD.050       :返品確定データ取込（MD050_COS_011_A01）
 -- MD.070       :
--- Version      :1.4
+-- Version      :1.5
 --
 -- Target Table :xxcos_in_edi_delivery_work(EDI納品返品情報ワークテーブル)
 --
@@ -19,6 +19,7 @@
 --  2009/02/24     1.2 T.Nakamura       結合テスト不具合#131 IFファイル名の設定値を修正
 --  2009/06/11     1.3 M.Sano           [T1_1353]前スペース削除対応
 --  2009/12/01     1.4 M.Sano           [E_本稼動_00255]2桁以上の少数点不正対応
+--  2011/07/26     1.5 K.Kiriu          [E_本稼動_07906]流通BMS対応
 --  
 -- **************************************************************************************
 LOAD DATA
@@ -403,6 +404,10 @@ APPEND INTO TABLE XXCOS_EDI_DELIVERY_WORK
     TOTAL_LINE_QTY                 POSITION(4141:4145) INTEGER EXTERNAL(5)  NULLIF TOTAL_LINE_QTY = "00000",                                                                                                                                                   -- トータル行数
     TOTAL_INVOICE_QTY              POSITION(4146:4150) INTEGER EXTERNAL(5)  NULLIF TOTAL_INVOICE_QTY = "00000",                                                                                                                                                -- トータル伝票枚数
     CHAIN_PECULIAR_AREA_FOOTER     POSITION(4151:4350) CHAR(200)            NULLIF CHAIN_PECULIAR_AREA_FOOTER = BLANKS,                                                                                                                                        -- チェーン店固有エリア（フッター）
+-- 2011/07/26 K.Kiriu Ver.1.5 Add start
+    BMS_HEADER_DATA                POSITION(4500:6499) CHAR(2000)           NULLIF BMS_HEADER_DATA = BLANKS,                                                                                                                                                   -- 流通ＢＭＳヘッダデータ
+    BMS_LINE_DATA                  POSITION(6500:7999) CHAR(1500)           NULLIF BMS_LINE_DATA   = BLANKS,                                                                                                                                                   -- 流通ＢＭＳ明細データ
+-- 2011/07/26 K.Kiriu Ver.1.5 Add end
 -- 2009/02/24 T.Nakamura Ver.1.2 mod start
 --    IF_FILE_NAME                   CHAR(255),           --インターフェースファイル名
     IF_FILE_NAME                   CONSTANT "???????????",  --インターフェースファイル名
