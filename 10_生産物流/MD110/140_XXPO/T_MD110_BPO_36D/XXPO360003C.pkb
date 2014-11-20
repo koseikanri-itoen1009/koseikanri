@@ -7,7 +7,7 @@ AS
  * Description      : 入庫予定表
  * MD.050/070       : 有償支給帳票Issue1.0 (T_MD050_BPO_360)
  *                    有償支給帳票Issue1.0 (T_MD070_BPO_36D)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -35,7 +35,7 @@ AS
  *                                       されない現象への対応
  *  2008/07/04    1.7   Y.Ishikawa       xxcmn_item_categories4_vを使用しないようにする
  *  2009/03/30    1.8   A.Shiina         本番#1346対応
- *
+ *  2009/09/24    1.9   T.Yoshimoto      本番#1523対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -534,7 +534,9 @@ AS
              || ' AND poh.segment1             = xxpo.po_header_number'
              || ' AND poh.po_header_id         = pln.po_header_id'
              || ' AND pln.po_line_id           = plc.po_line_id'
-             || ' AND poh.authorization_status = ''' || cv_poh_status  || ''''
+-- 2009/09/24 v1.9 T.Yoshimoto Del Start 本番#1523
+             --|| ' AND poh.authorization_status = ''' || cv_poh_status  || ''''
+-- 2009/09/24 v1.9 T.Yoshimoto Del End 本番#1523
              || ' AND poh.attribute1          >= ''' || cv_poh_make    || ''''
              || ' AND poh.attribute1           < ''' || cv_poh_cancel  || ''''
              || ' AND pln.cancel_flag         <> ''' || cv_pln_cancel_flag   || ''''

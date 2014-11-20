@@ -7,7 +7,7 @@ AS
  * Description      : Žd“üŽæˆø–¾×•\
  * MD.050           : —LžŽx‹‹’ •[Issue1.0(T_MD050_BPO_360)
  * MD.070           : —LžŽx‹‹’ •[Issue1.0(T_MD070_BPO_36G)
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2009/07/03    1.28  T.Yoshimoto      –{”ÔáŠQ#1560‘Î‰ž
  *  2009/07/06    1.29  T.Yoshimoto      –{”ÔáŠQ#1565‘Î‰ž
  *  2009/08/10    1.30  T.Yoshimoto      –{”ÔáŠQ#1596‘Î‰ž
+ *  2009/09/24    1.31  T.Yoshimoto      –{”ÔáŠQ#1523‘Î‰ž
  *****************************************************************************************/
 --
 --#######################  ŒÅ’èƒOƒ[ƒoƒ‹’è”éŒ¾•” START   #######################
@@ -1308,8 +1309,10 @@ AS
       lv_where := lv_where
         || ' AND DECODE(ph.po_header_id, NULL, ''' || gn_sales_class || ''',ph.org_id)'
         ||     ' = '''|| gn_sales_class || ''''
-        || ' AND DECODE(ph.po_header_id, NULL, ' || cv_approved || ' , ph.authorization_status) '
-        ||     ' = ' || cv_approved
+-- 2009/09/24 v1.31 T.Yoshimoto Del Start –{”Ô#1523
+        --|| ' AND DECODE(ph.po_header_id, NULL, ' || cv_approved || ' , ph.authorization_status) '
+        --||     ' = ' || cv_approved
+-- 2009/09/24 v1.31 T.Yoshimoto Del End –{”Ô#1523
         || ' AND DECODE(ph.po_header_id, NULL, ' || cv_kakutei || ', ph.attribute1)'
         ||     ' >= ' || cv_kakutei
         || ' AND DECODE(ph.po_header_id, NULL, '|| cv_kakutei ||', ph.attribute1)'

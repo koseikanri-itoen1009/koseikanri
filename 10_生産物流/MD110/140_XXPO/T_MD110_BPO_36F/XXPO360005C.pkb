@@ -7,7 +7,7 @@ AS
  * Description      : 仕入（帳票）
  * MD.050/070       : 仕入（帳票）Issue1.0  (T_MD050_BPO_360)
  *                    代行請求書            (T_MD070_BPO_36F)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/06/02    1.16  T.Yoshimoto      本番障害#1516
  *  2009/06/22    1.17  T.Yoshimoto      本番障害#1516(再)※v1.15対応時の障害
  *  2009/08/10    1.18  T.Yoshimoto      本番障害#1596
+ *  2009/09/24    1.19  T.Yoshimoto      本番障害#1523
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -788,7 +789,9 @@ AS
 -- 2009/05/26 v1.15 T.Yoshimoto Add Start
       || '        AND plla.po_line_id = pla.po_line_id '
 -- 2009/05/26 v1.15 T.Yoshimoto Add End
-      || '        AND poh.authorization_status =  ''' || cv_poh_approved || ''''
+-- 2009/09/24 v1.19 T.Yoshimoto Del Start 本番#1523
+      --|| '        AND poh.authorization_status =  ''' || cv_poh_approved || ''''
+-- 2009/09/24 v1.19 T.Yoshimoto Del End 本番#1523
       || '        AND poh.attribute1           >= ''' || cv_poh_decision || '''' -- 金額確定
       || '        AND poh.attribute1           <  ''' || cv_poh_cancel   || '''' -- 取消
       || '        AND ( '
@@ -929,7 +932,9 @@ AS
       || '            poh.org_id        = ''' || gn_sales_class || ''''
       || '        AND poh.segment1      = xha.po_header_number'
       || '        AND poh.po_header_id  = pla.po_header_id'
-      || '        AND poh.authorization_status =  ''' || cv_poh_approved || ''''
+-- 2009/09/24 v1.19 T.Yoshimoto Del Start 本番#1523
+      --|| '        AND poh.authorization_status =  ''' || cv_poh_approved || ''''
+-- 2009/09/24 v1.19 T.Yoshimoto Del End 本番#1523
       || '        AND poh.attribute1           >= ''' || cv_poh_decision || '''' -- 金額確定
       || '        AND poh.attribute1           <  ''' || cv_poh_cancel   || '''' -- 取消
       || '        AND ( '

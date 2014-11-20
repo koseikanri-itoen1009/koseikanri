@@ -7,7 +7,7 @@ AS
  * Description      : 入出庫差異表
  * MD.050/070       : 仕入（帳票）Issue2.0 (T_MD050_BPO_360)
  *                    仕入（帳票）Issue2.0 (T_MD070_BPO_36H)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -39,6 +39,7 @@ AS
  *  2008/07/04    1.8   Y.Ishikawa       xxcmn_item_categories4_vを使用しないようにする
  *  2008/11/21    1.9   T.Yoshimoto      統合指摘#703
  *  2009/03/30    1.10  A.Shiina         本番#1346対応
+ *  2009/09/24    1.11  T.Yoshimoto      本番#1523対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -649,7 +650,9 @@ AS
     lv_where := ' WHERE '
              || '     poh.org_id               = ' || gn_sales_class
              || ' AND poh.po_header_id         = pln.po_header_id'
-             || ' AND poh.authorization_status = ''' || cv_poh_status  || ''''
+-- 2009/09/24 v1.11 T.Yoshimoto Del Start 本番#1523
+             --|| ' AND poh.authorization_status = ''' || cv_poh_status  || ''''
+-- 2009/09/24 v1.11 T.Yoshimoto Del End 本番#1523
              || ' AND poh.attribute1          >= ''' || cv_poh_make    || ''''
              || ' AND poh.attribute1           < ''' || cv_poh_cancel  || ''''
              || ' AND pln.cancel_flag         <> ''' || cv_pln_cancel_flag   || ''''

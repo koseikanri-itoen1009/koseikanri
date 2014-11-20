@@ -7,7 +7,7 @@ AS
  * Description      : 発注書
  * MD.050/070       : 仕入（帳票）Issue1.0(T_MD050_BPO_360)
  *                    仕入（帳票）Issue1.0(T_MD070_BPO_36B)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/04/01    1.12  T.Yoshimoto      本番#1363対応
  *  2009/04/01    1.13  T.Yoshimoto      本番#1363対応(再)
  *  2009/09/15    1.14  T.Yoshimoto      本番#1624対応
+ *  2009/09/24    1.15  T.Yoshimoto      本番#1523対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -684,7 +685,9 @@ AS
              || ' AND poh.segment1             = xpoh.po_header_number'
              || ' AND poh.po_header_id         = pol.po_header_id'
              || ' AND pol.po_line_id           = polo.po_line_id'
-             || ' AND poh.authorization_status = ''' || cv_poh_status  || ''''
+-- 2009/09/24 v1.15 T.Yoshimoto Del Start 本番#1523
+             --|| ' AND poh.authorization_status = ''' || cv_poh_status  || ''''
+-- 2009/09/24 v1.15 T.Yoshimoto Del End 本番#1523
              || ' AND poh.attribute1          >= ''' || cv_poh_make    || ''''
              || ' AND poh.attribute1           < ''' || cv_poh_cancel  || ''''
              || ' AND pol.cancel_flag         <> ''' || cv_pln_cancel_flag   || ''''
