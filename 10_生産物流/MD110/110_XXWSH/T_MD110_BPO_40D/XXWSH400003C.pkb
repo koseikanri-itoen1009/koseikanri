@@ -46,6 +46,7 @@ AS
  *  2008/08/11    1.15  M.Hokkanji      内部課題#32対応、内部変更要求#173,178対応
  *  2008/09/01    1.16  N.Yoshida       PT対応(起票なし)
  *  2008/09/24    1.17  M.Hokkanji       TE080_400指摘66対応
+ *  2008/10/15    1.18  Marushita        I_S_387対応
  *
  *****************************************************************************************/
 --
@@ -750,9 +751,9 @@ AS
 --
 --#####################  固定ローカル変数宣言部 START   ########################
 --
-    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_errbuf  VARCHAR2(32000);  -- エラー・メッセージ
     lv_retcode VARCHAR2(1);     -- リターン・コード
-    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+    lv_errmsg  VARCHAR2(32000);  -- ユーザー・エラー・メッセージ
 --
 --###########################  固定部 END   ####################################
 --
@@ -772,8 +773,8 @@ AS
     ln_target_cnt                    NUMBER := 0;  -- 処理件数
     ln_normal_cnt                    NUMBER := 0;  -- 正常件数
     ln_warn_cnt                      NUMBER := 0;  -- ワーニング処理件数
-    lv_err_message                   VARCHAR2(4000); -- エラーメッセージ
-    lv_warn_message                  VARCHAR2(4000); -- ワーニングメッセージ
+    lv_err_message                   VARCHAR2(32000); -- エラーメッセージ
+    lv_warn_message                  VARCHAR2(32000); -- ワーニングメッセージ
 --
     ln_lead_time                     NUMBER;       -- 生産物流LT／引取変更LT
     ln_delivery_lt                   NUMBER;       -- 配送LT
@@ -1444,10 +1445,13 @@ AS
                                                   'REQUEST_NO',
                                                   loop_cnt.request_no) || gv_line_feed;
             -- 警告をセット
-            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
             ln_warn_cnt := 1;
             IF (gv_callfrom_flg = '1') THEN
               FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+            -- Ver1.18 MARUSHITA START
+            ELSE
+              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+            -- Ver1.18 MARUSHITA END
             END IF;
           END IF;
 -- Ver1.15 M.Hokkanji START
@@ -1811,10 +1815,13 @@ AS
                                                   'ITEM_CODE',
                                                   loop_cnt.shipping_item_code);
             -- 警告をセット
-            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
             ln_warn_flg := 1;
             IF (gv_callfrom_flg = '1') THEN
               FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+            -- Ver1.18 MARUSHITA START
+            ELSE
+              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+            -- Ver1.18 MARUSHITA END
             END IF;
 --
           END IF;
@@ -1907,10 +1914,13 @@ AS
                                                        'REQUEST_NO',
                                                        loop_cnt.request_no);
             -- 警告をセット
-            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
             ln_warn_flg := 1;
             IF (gv_callfrom_flg = '1') THEN
               FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+            -- Ver1.18 MARUSHITA START
+            ELSE
+              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+            -- Ver1.18 MARUSHITA END
             END IF;
 --
           ELSIF (( lv_retcode = '0' )
@@ -1930,10 +1940,13 @@ AS
                                                        'REQUEST_NO',
                                                        loop_cnt.request_no);
             -- 警告をセット
-            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
             ln_warn_flg := 1;
             IF (gv_callfrom_flg = '1') THEN
               FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+            -- Ver1.18 MARUSHITA START
+            ELSE
+              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+            -- Ver1.18 MARUSHITA END
             END IF;
 --
           -- リターン・コードにエラーが返された場合はエラー
@@ -2001,10 +2014,14 @@ AS
                                                   'REQUEST_NO',
                                                   loop_cnt.request_no);
             -- 警告をセット
-            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+
             ln_warn_flg := 1;
             IF (gv_callfrom_flg = '1') THEN
               FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+            -- Ver1.18 MARUSHITA START
+            ELSE
+              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+            -- Ver1.18 MARUSHITA END
             END IF;
 --
           ELSIF (( lv_retcode = '0' )
@@ -2040,10 +2057,13 @@ AS
                                                   'REQUEST_NO',
                                                   loop_cnt.request_no);
             -- 警告をセット
-            lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
             ln_warn_flg := 1;
             IF (gv_callfrom_flg = '1') THEN
               FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+            -- Ver1.18 MARUSHITA START
+            ELSE
+              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+            -- Ver1.18 MARUSHITA END
             END IF;
 --
           -- リターン・コードにエラーが返された場合はエラー
@@ -2124,11 +2144,14 @@ AS
 --                                       loop_cnt.shipping_item_code,
 -- Ver1.15 M.Hokkanji END
                 -- 警告をセット
-                lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
                 ln_warn_flg := 1;
                 lv_retcode := gv_status_warn;
                 IF (gv_callfrom_flg = '1') THEN
                   FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+                -- Ver1.18 MARUSHITA START
+                ELSE
+                  lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+                -- Ver1.18 MARUSHITA END
                 END IF;
 --
               ELSIF (( lv_retcode = '0' )
@@ -2146,11 +2169,14 @@ AS
                                          'CHK_TYPE',
                                          cv_c_s_j_chk4);
                 -- 警告をセット
-                lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
                 ln_warn_cnt := 1;
                 lv_retcode := gv_status_warn;
                 IF (gv_callfrom_flg = '1') THEN
                   FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+                -- Ver1.18 MARUSHITA START
+                ELSE
+                  lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+                -- Ver1.18 MARUSHITA END
                 END IF;
 --
               -- リターン・コードにエラーが返された場合はエラー
@@ -2213,10 +2239,13 @@ AS
 --                                       loop_cnt.shipping_item_code,
 -- Ver1.15 M.Hokkanji END
               -- 警告をセット
-              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
               ln_warn_flg := 1;
               IF (gv_callfrom_flg = '1') THEN
                 FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+              -- Ver1.18 MARUSHITA START
+              ELSE
+                lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+              -- Ver1.18 MARUSHITA END
               END IF;
 --
             ELSIF (( lv_retcode = '0' )
@@ -2234,10 +2263,13 @@ AS
 --                                       loop_cnt.shipping_item_code,
 -- Ver1.15 M.Hokkanji END
               -- 警告をセット
-              lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
               ln_warn_flg := 1;
               IF (gv_callfrom_flg = '1') THEN
                 FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg );
+              -- Ver1.18 MARUSHITA START
+              ELSE
+                lv_warn_message := lv_warn_message || lv_errmsg || gv_line_feed;
+              -- Ver1.18 MARUSHITA END
               END IF;
 --
             -- リターン・コードにエラーが返された場合はエラー
