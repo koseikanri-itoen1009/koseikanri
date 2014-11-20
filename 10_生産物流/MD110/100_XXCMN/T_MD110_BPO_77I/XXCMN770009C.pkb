@@ -7,7 +7,7 @@ AS
  * Description      : 他勘定振替原価差異表
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77I)
- * Version          : 1.13
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -47,6 +47,7 @@ AS
  *  2008/11/19    1.12  N.Yoshida        移行データ検証不具合対応
  *  2008/11/29    1.13  N.Yoshida        本番#213、214対応
  *  2008/12/08    1.14  N.Yoshida        本番障害対応 受注ヘッダアドオンで最新フラグYを追加
+ *  2008/12/18    1.15  A.Shiina         本番#789対応
  *
  *****************************************************************************************/
 --
@@ -132,10 +133,16 @@ AS
   -- 入力パラメータ格納用レコード変数
   TYPE rec_param_data IS RECORD(
       proc_from            VARCHAR2(6)   -- 処理年月FROM
-     ,proc_from_date_ch    VARCHAR2(10)  -- 処理年月FROM(日付文字列)
+-- 2008/12/18 v1.15 UPDATE START
+--     ,proc_from_date_ch    VARCHAR2(10)  -- 処理年月FROM(日付文字列)
+     ,proc_from_date_ch    VARCHAR2(20)  -- 処理年月FROM(時分秒文字列)
+-- 2008/12/18 v1.15 UPDATE END
      ,proc_from_date       DATE          -- 処理年月FROM(日付) - 1(先月の末日)
      ,proc_to              VARCHAR2(6)   -- 処理年月to
-     ,proc_to_date_ch      VARCHAR2(10)  -- 処理年月to(日付文字列)
+-- 2008/12/18 v1.15 UPDATE START
+--     ,proc_to_date_ch      VARCHAR2(10)  -- 処理年月to(日付文字列)
+     ,proc_to_date_ch      VARCHAR2(20)  -- 処理年月to(時分秒文字列)
+-- 2008/12/18 v1.15 UPDATE END
      ,proc_to_date         DATE          -- 処理年月to(日付) - 1(翌月の1日)
      ,prod_div             VARCHAR2(10)  -- 商品区分
      ,item_div             VARCHAR2(10)  -- 品目区分
@@ -286,6 +293,12 @@ AS
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
+-- 2008/12/18 v1.15 ADD START
+    -- *** ローカル定数 ***
+    lc_f_time          CONSTANT VARCHAR2(10) := ' 00:00:00';
+    lc_e_time          CONSTANT VARCHAR2(10) := ' 23:59:59';
+--
+-- 2008/12/18 v1.15 ADD END
     -- *** ローカル変数 ***
     lv_f_date      VARCHAR2(20);
     lv_e_date      VARCHAR2(20);
@@ -312,9 +325,15 @@ AS
                       gr_param.proc_from , gc_char_y_format),gc_char_y_format);
     --日付型設定
     gr_param.proc_from_date_ch := SUBSTR(gr_param.proc_from,1,4) || gc_sla
-                               || SUBSTR(gr_param.proc_from,5,2) || gc_sla_zero_one;
+-- 2008/12/18 v1.15 UPDATE START
+--                               || SUBSTR(gr_param.proc_from,5,2) || gc_sla_zero_one;
+                               || SUBSTR(gr_param.proc_from,5,2) || gc_sla_zero_one || lc_f_time;
+-- 2008/12/18 v1.15 UPDATE END
     gr_param.proc_from_date    :=  FND_DATE.STRING_TO_DATE( gr_param.proc_from_date_ch
-                                                          , gc_char_d_format) - 1;
+-- 2008/12/18 v1.15 UPDATE START
+--                                                          , gc_char_d_format) - 1;
+                                                          , gc_char_dt_format);
+-- 2008/12/18 v1.15 UPDATE END
 --
     -- 日付変換
     gr_header.proc_from_char := SUBSTR(lv_f_date,1,4) || gc_jp_yy
@@ -334,8 +353,12 @@ AS
 --
     gr_param.proc_to_date_ch   := SUBSTR(gr_param.proc_to,1,4) || gc_sla
                                || SUBSTR(gr_param.proc_to,5,2) || gc_sla_zero_one;
-    gr_param.proc_to_date      := ADD_MONTHS(FND_DATE.STRING_TO_DATE( gr_param.proc_to_date_ch
-                                                         , gc_char_d_format), 1);
+-- 2008/12/18 v1.15 UPDATE START
+--    gr_param.proc_to_date      := ADD_MONTHS(FND_DATE.STRING_TO_DATE( gr_param.proc_to_date_ch
+--                                                         , gc_char_d_format), 1);
+    gr_param.proc_to_date      := LAST_DAY(FND_DATE.STRING_TO_DATE( gr_param.proc_to_date_ch
+                                                         , gc_char_d_format));
+-- 2008/12/18 v1.15 UPDATE END
     -- 日付変換
     gr_header.proc_to_char   := SUBSTR(lv_e_date,1,4)   || gc_jp_yy
                              || SUBSTR(lv_e_date,5,2)   || gc_jp_mm;
@@ -348,7 +371,10 @@ AS
                                               , gr_param.proc_to ) ;
       RAISE get_value_expt ;
     END IF;
-    gr_param.proc_to_date_ch   := TO_CHAR(gr_param.proc_to_date,gc_char_d_format);
+-- 2008/12/18 v1.15 UPDATE START
+--    gr_param.proc_to_date_ch   := TO_CHAR(gr_param.proc_to_date,gc_char_d_format);
+    gr_param.proc_to_date_ch   := TO_CHAR(gr_param.proc_to_date,gc_char_d_format) || lc_e_time;
+-- 2008/12/18 v1.15 UPDATE END
 --
     -- ====================================================
     -- 担当部署・担当者名
@@ -516,8 +542,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -639,8 +669,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -765,8 +799,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -896,8 +934,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -1027,8 +1069,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -1153,8 +1199,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -1307,8 +1357,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -1393,8 +1447,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -1553,8 +1611,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -1674,8 +1736,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -1812,8 +1878,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -1896,8 +1966,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -2026,8 +2100,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -2150,8 +2228,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -2277,8 +2359,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -2409,8 +2495,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -2541,8 +2631,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -2668,8 +2762,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -2823,8 +2921,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -2910,8 +3012,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -3071,8 +3177,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -3193,8 +3303,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -3332,8 +3446,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -3417,8 +3535,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -3548,8 +3670,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -3672,8 +3798,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -3799,8 +3929,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -3931,8 +4065,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -4063,8 +4201,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -4190,8 +4332,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -4345,8 +4491,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -4432,8 +4582,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -4593,8 +4747,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -4715,8 +4873,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -4854,8 +5016,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -4939,8 +5105,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -5070,8 +5240,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -5195,8 +5369,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -5323,8 +5501,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -5456,8 +5638,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -5589,8 +5775,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -5717,8 +5907,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -5873,8 +6067,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -5961,8 +6159,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -6123,8 +6325,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -6246,8 +6452,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '2'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -6386,8 +6596,12 @@ AS
       AND    ((otta.attribute4           <> '2')
              OR  (otta.attribute4       IS NULL))
       AND    otta.attribute1         = '1'
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
@@ -6472,8 +6686,12 @@ AS
             ,xxcmn_stnd_unit_price_v          xsup
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = 1
-      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
-      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+-- 2008/12/18 v1.15 UPDATE START
+--      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_d_format)
+--      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_d_format)
+      AND  xoha.arrival_date >= FND_DATE.STRING_TO_DATE(gr_param.proc_from_date_ch,gc_char_dt_format)
+      AND  xoha.arrival_date <= FND_DATE.STRING_TO_DATE(gr_param.proc_to_date_ch,gc_char_dt_format)
+-- 2008/12/18 v1.15 UPDATE END
 -- ADD START 1.14
       AND  xoha.latest_external_flag = 'Y'
 -- ADD END 1.14
