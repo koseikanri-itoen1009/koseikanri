@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.27
+ * Version          : 1.28
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -65,6 +65,7 @@ AS
  *  2010-03-08    1.25  K.Hosoi          E_本稼動_01838対応
  *  2010-04-05    1.26  T.Yoshimoto      E_本稼動_02102対応
  *  2010-05-10    1.26  D.Abe            E_本稼動_02598対応
+ *  2011-02-02    1.28  N.Horigome       E_本稼動_02369対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -209,6 +210,10 @@ AS
   /* 2009.11.27 K.Satomura E_本稼動_00121対応 START */
   cv_phone_num            CONSTANT VARCHAR2(6)   := '999999';
   /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
+
+  /* 2011.02.02 N.Horigome E_本稼動_02369対応 START */
+  cv_sep_com              CONSTANT VARCHAR2(1)  := ',';
+  /* 2011.02.02 N.Horigome E_本稼動_02369対応 END */
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -4279,7 +4284,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
-    cv_sep_com         CONSTANT VARCHAR2(1)  := ',';
+    /* 2011.02.02 N.Horigome E_本稼動_02369対応 START */
+--    cv_sep_com         CONSTANT VARCHAR2(1)  := ',';
+    /* 2011.02.02 N.Horigome E_本稼動_02369対応 END */
     cv_sep_wquot       CONSTANT VARCHAR2(1)  := '"';
 --
     -- *** ローカル変数 ***
@@ -4902,6 +4909,9 @@ AS
     cv_log_inst_code1         CONSTANT VARCHAR2(100) := '物件コード1：';
     cv_log_inst_code2         CONSTANT VARCHAR2(100) := '物件コード2：';
     /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
+    /* 2011.02.02 N.Horigome E_本稼動_02369対応 START */
+    cv_sep_punc               CONSTANT VARCHAR2(2)   := '、';
+    /* 2011.02.02 N.Horigome E_本稼動_02369対応 END */
     -- *** ローカル変数 ***
     -- OUTパラメータ格納用
     ld_sysdate                DATE;           -- システム日付
@@ -5741,8 +5751,12 @@ AS
           /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
 --          lv_remarks := substrb(lv_remarks 
 --                          || l_get_ipro_po_data_rec.remarks1,cv_remarks_byte);
+          /* 2011.02.02 N.Horigome E_本稼動_02369対応 START */
+--          lv_remarks := substrb(lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks1,1,cv_remarks_byte);
           lv_remarks := substrb(lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks1,1,cv_remarks_byte);
+                          || REPLACE(l_get_ipro_po_data_rec.remarks1,cv_sep_com,cv_sep_punc),1,cv_remarks_byte);
+          /* 2011.02.02 N.Horigome E_本稼動_02369対応 END */
           /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         END IF;
@@ -5764,8 +5778,12 @@ AS
           /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
 --          lv_remarks := substrb(lv_remarks 
 --                          || l_get_ipro_po_data_rec.remarks2,cv_remarks_byte);
+          /* 2011.02.02 N.Horigome E_本稼動_02369対応 START */
+--          lv_remarks := substrb(lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks2,1,cv_remarks_byte);
           lv_remarks := substrb(lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks2,1,cv_remarks_byte);
+                          || REPLACE(l_get_ipro_po_data_rec.remarks2,cv_sep_com,cv_sep_punc),1,cv_remarks_byte);
+          /* 2011.02.02 N.Horigome E_本稼動_02369対応 END */
           /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */
         END IF;
@@ -5787,8 +5805,12 @@ AS
           /* 2010.02.17 T.Maruyama E_本稼動_01603対応 START */
 --          lv_remarks := substrb(lv_remarks 
 --                          || l_get_ipro_po_data_rec.remarks3,cv_remarks_byte);
+          /* 2011.02.02 N.Horigome E_本稼動_02369対応 START */
+--          lv_remarks := substrb(lv_remarks 
+--                          || l_get_ipro_po_data_rec.remarks3,1,cv_remarks_byte);
           lv_remarks := substrb(lv_remarks 
-                          || l_get_ipro_po_data_rec.remarks3,1,cv_remarks_byte);
+                          || REPLACE(l_get_ipro_po_data_rec.remarks3,cv_sep_com,cv_sep_punc),1,cv_remarks_byte);
+          /* 2011.02.02 N.Horigome E_本稼動_02369対応 END */
           /* 2010.02.17 T.Maruyama E_本稼動_01603対応 END */
             /* 2009.11.27 K.Satomura E_本稼動_00121対応 END */ 
         END IF;
