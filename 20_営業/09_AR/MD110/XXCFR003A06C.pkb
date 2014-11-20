@@ -6,7 +6,7 @@ create or replace PACKAGE BODY XXCFR003A06C AS
  * Description     : 汎用店別請求データ作成
  * MD.050          : MD050_CFR_003_A06_汎用店別請求データ作成
  * MD.070          : MD050_CFR_003_A06_汎用店別請求データ作成
- * Version         : 1.1
+ * Version         : 1.3
  * 
  * Program List
  * --------------- ---- ----- --------------------------------------------
@@ -29,6 +29,7 @@ create or replace PACKAGE BODY XXCFR003A06C AS
  *  2008-11-19    1.0  SCS 吉村 憲司  初回作成
  *  2009-02-20    1.1  SCS 大川 恵    [障害CFR_009] VD請求額更新不具合対応
  *  2009-04-13    1.2  SCS 萱原 伸哉  T1_0129 BM金額取得不可対応
+ *  2009-07-14    1.3  SCS 廣瀬真佐人 0000031 パフォーマンス改善
  ************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -484,7 +485,11 @@ create or replace PACKAGE BODY XXCFR003A06C AS
                     AND     xil.ship_cust_code = xmbc.cust_code)
       AND    NVL(xmbc.start_date_active,TO_DATE('19000101','YYYYMMDD')) <= id_target_date
       AND    NVL(xmbc.end_date_active,TO_DATE('22001231','YYYYMMDD'))   >= id_target_date
-      AND    calc_type  NOT IN (ct_calc_type_20,ct_calc_type_50) ;
+-- Modify 2009.07.14 Ver1.3 Start
+--      AND    calc_type  NOT IN (ct_calc_type_20,ct_calc_type_50) ;
+      AND    calc_type IN (ct_calc_type_10,ct_calc_type_30,ct_calc_type_40)
+      ;
+-- Modify 2009.07.14 Ver1.3 End
     --
     chk_bm_rec   chk_bm_cur%ROWTYPE;
 --
