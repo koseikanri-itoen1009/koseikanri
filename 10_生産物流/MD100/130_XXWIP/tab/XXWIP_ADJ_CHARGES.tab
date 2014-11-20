@@ -1,6 +1,6 @@
 CREATE TABLE xxwip.xxwip_adj_charges
 (
-  adj_charges_id                VARCHAR2(1)  NOT NULL
+  adj_charges_id                NUMBER(10)   NOT NULL
 , goods_classe                  VARCHAR2(1)  NOT NULL
 , delivery_company_code         VARCHAR2(4)  NOT NULL
 , billing_code                  VARCHAR2(4)  NOT NULL
