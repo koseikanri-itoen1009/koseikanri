@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS009A06R
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS009A06R
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS009A06R (body)
  * Description      : EDI納品予定未納リスト
  * MD.050           : EDI納品予定未納リスト MD050_COS_009_A06
- * Version          : 1.1
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,12 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/07    1.0   H.Ri             新規作成
  *  2009/02/17    1.1   H.Ri             get_msgのパッケージ名修正
+ *  2009/06/18    1.2   T.Tominaga       障害対応[T1_1436]
+ *                                       EDI納品予定未納リスト情報取得SQLにorg_idを条件に加える
+ *  2009/06/19    1.3   T.Tominaga       障害対応[T1_1439]
+ *                                       対象データ0件の場合、警告終了から正常終了に変更
+ *  2009/06/26    1.4   N.Nishimura      障害対応[T1_1437]データパージ不具合対応
+ *  2009/07/13    1.5   K.Kiriu          障害対応[0000488]PT対応
  *
  *****************************************************************************************/
 --
@@ -146,6 +152,15 @@ AS
   cv_ol_status_closed       CONSTANT  VARCHAR2(100) := 'CLOSED';               -- 受注明細ステータス(クローズ)
   cv_ol_status_cancelled    CONSTANT  VARCHAR2(100) := 'CANCELLED';            -- 受注明細ステータス(取消)
   cv_order_return           CONSTANT  VARCHAR2(100) := 'RETURN';               -- マイナス受注タイプ
+/* 2009/07/13 Ver1.5 Add Start */
+  --取引タイプ(受注明細)
+  cv_line                   CONSTANT  VARCHAR2(100) := 'LINE';                 -- 受注明細取引タイプ
+/* 2009/07/13 Ver1.5 Add End   */
+-- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD START  *****************************************
+  --MO:営業単位
+  ct_prof_org_id            CONSTANT  fnd_profile_options.profile_option_name%TYPE := 'ORG_ID'; -- MO:営業単位
+  cv_str_profile_nm         CONSTANT  VARCHAR2(100) := 'APP-XXCOS1-00047';     -- MO:営業単位
+-- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD END    *****************************************
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -160,6 +175,10 @@ AS
   gd_proc_date              DATE;                                               --業務日付
   gd_min_date               DATE;                                               --MIN日付
   gd_max_date               DATE;                                               --MAX日付
+-- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD START  *****************************************
+  -- 営業単位
+  gn_org_id                 NUMBER;
+-- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD END    *****************************************
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -192,6 +211,9 @@ AS
     -- *** ローカル変数 ***
     lv_no_para_msg  VARCHAR2(5000);  -- パラメータ無しメッセージ
     lv_date_item    VARCHAR2(100);   -- MIN日付/MAX日付
+-- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD START  *****************************************
+    lv_profile_name VARCHAR2(5000);  -- MO:営業単位
+-- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD END    *****************************************
 --
     -- *** ローカル・カーソル ***
 --
@@ -274,6 +296,30 @@ AS
       RAISE global_api_expt;
     END IF;
 --
+-- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD START  *****************************************
+    --==================================
+    -- 5.MO:営業単位取得処理
+    --==================================
+    gn_org_id := FND_PROFILE.VALUE( ct_prof_org_id );
+--
+    -- プロファイルが取得できない場合はエラー
+    IF ( gn_org_id IS NULL ) THEN
+      --プロファイル名文字列取得
+      lv_profile_name := xxccp_common_pkg.get_msg(
+                           iv_application => cv_xxcos_short_name,
+                           iv_name        => cv_str_profile_nm
+                         );
+--
+      lv_errmsg               :=  xxccp_common_pkg.get_msg(
+        iv_application        =>  cv_xxcos_short_name,
+        iv_name               =>  cv_msg_prof_err,
+        iv_token_name1        =>  cv_tkn_nm_profile,
+        iv_token_value1       =>  lv_profile_name
+      );
+      lv_errbuf := lv_errmsg;
+      RAISE global_api_expt;
+    END IF;
+-- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD END    *****************************************
 --#################################  固定例外処理部 START   ####################################
 --
   EXCEPTION
@@ -348,96 +394,159 @@ AS
           oola.ordered_quantity * DECODE( otta.order_category_code, cv_order_return, -1, 1 ) * oola.unit_selling_price
         )                                 amount            --金額
       FROM  
-        oe_order_headers_all      ooha,                     --受注ヘッダテーブル
+/* 2009/07/13 Ver1.5 Mod Start */
+--        oe_order_headers_all      ooha,                     --受注ヘッダテーブル
+--        oe_order_lines_all        oola,                     --受注明細テーブル
+--        mtl_secondary_inventories msi,                      --保管場所マスタ
+--        oe_order_sources          oos,                      --受注ソースマスタ
+--        xxcos_login_base_info_v   lbiv,                     --ログインユーザ拠点ビュー
+--        hz_cust_accounts          hca,                      --顧客マスタ
+--        xxcmm_cust_accounts       xca,                      --顧客アドオン
+--        hz_parties                hp,                       --パーティ
+--        jtf_rs_resource_extns     jrre,                     --リソースマスタ
+--        jtf_rs_salesreps          jrs,                      --jtf_rs_salesreps
+--        per_all_people_f          papf,                     --従業員マスタ
+--        per_person_types          ppt,                      --従業員タイプマスタ
+--        oe_transaction_types_tl   ottt,                     --受注明細摘要用取引タイプ
+--        oe_transaction_types_all  otta                      --受注明細用取引タイプ
+--      WHERE ooha.header_id       = oola.header_id           --受注ヘッダ.ヘッダID = 受注明細.ヘッダID
+--      AND   ooha.order_source_id = oos.order_source_id      --受注ヘッダ.受注ソースID = 受注ソース.受注ソースID
+--      --受注ソースのクイック参照(EDI受注)
+--      AND   EXISTS(
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                      fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_ord_src_type
+--              AND     look_val.lookup_code        = cv_ord_src_code
+--              AND     look_val.meaning            = oos.name
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+--                  )
+---- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD START  *****************************************
+--      AND   ooha.org_id             = gn_org_id             --組織ID
+---- ******************** 2009/06/18 Var.1.2 T.Tominaga ADD END    *****************************************
+--      AND   ooha.flow_status_code   = cv_oh_status_booked   --受注ヘッダ.ステータス = 記帳済
+--                                                            --受注明細.ステータス <> クローズ、取消
+--      AND   oola.flow_status_code   NOT IN ( cv_ol_status_closed, cv_ol_status_cancelled )
+--      AND   oola.request_date       < gd_proc_date          --受注明細.要求日 < 業務日付
+--      AND   oola.subinventory       = msi.secondary_inventory_name  --受注明細.保管場所 = 保管場所マスタ.名称
+--      AND   oola.ship_from_org_id   = msi.organization_id   --受注明細.出荷元組織ID = 保管場所マスタ.在庫組織ID
+--      --保管場所のクイック参照(営業車)
+--      AND   EXISTS(
+--              SELECT  'Y'                         ext_flg
+--              FROM    fnd_lookup_values           look_val,
+--                     fnd_lookup_types_tl         types_tl,
+--                      fnd_lookup_types            types,
+--                      fnd_application_tl          appl,
+--                      fnd_application             app
+--              WHERE   appl.application_id         = types.application_id
+--              AND     app.application_id          = appl.application_id
+--              AND     types_tl.lookup_type        = look_val.lookup_type
+--              AND     types.lookup_type           = types_tl.lookup_type
+--              AND     types.security_group_id     = types_tl.security_group_id
+--              AND     types.view_application_id   = types_tl.view_application_id
+--              AND     types_tl.language           = cv_lang
+--              AND     look_val.language           = cv_lang
+--              AND     appl.language               = cv_lang
+--              AND     app.application_short_name  = cv_xxcos_short_name
+--              AND     look_val.lookup_type        = cv_hokan_type
+--              AND     look_val.lookup_code        = cv_hokan_code
+--              AND     look_val.meaning            = msi.attribute13
+--              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
+--              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
+--              AND     look_val.enabled_flag       = ct_enabled_flg_y
+--                    )
+--      AND   ooha.sold_to_org_id     = hca.cust_account_id   --受注ヘッダ.顧客ID = 顧客マスタ.顧客ID
+--      AND   hca.party_id            = hp.party_id           --顧客マスタ.パーティーID = パーティ.パーティーID
+--      AND   hca.cust_account_id     = xca.customer_id       --顧客マスタ.顧客ID = 顧客アドオン.顧客ID
+--      AND   xca.delivery_base_code  = lbiv.base_code        --顧客アドオン.納品拠点コード = 拠点ビュー.拠点コード
+--      --営業担当者の取得用
+--      AND   ooha.salesrep_id        = jrs.salesrep_id       --受注ヘッダ.営業担当ID = jtf_rs_salesreps.営業担当ID
+--      AND   jrs.resource_id         = jrre.resource_id
+--      AND   jrre.source_id          = papf.person_id
+--      AND   gd_proc_date            >= NVL( papf.effective_start_date, gd_min_date )
+--      AND   gd_proc_date            <= NVL( papf.effective_end_date, gd_max_date )
+--      AND   ppt.business_group_id   = cn_per_business_group_id
+--      AND   ppt.system_person_type  = cv_emp
+--      AND   ppt.active_flag         = ct_enabled_flg_y
+--      AND   papf.person_type_id     = ppt.person_type_id
+--      --プラス／マイナス受注タイプ判定用
+--      AND   oola.line_type_id         = ottt.transaction_type_id
+--      AND   ottt.transaction_type_id  = otta.transaction_type_id
+--      AND   ottt.language             = cv_lang
         oe_order_lines_all        oola,                     --受注明細テーブル
-        mtl_secondary_inventories msi,                      --保管場所マスタ
-        oe_order_sources          oos,                      --受注ソースマスタ
-        xxcos_login_base_info_v   lbiv,                     --ログインユーザ拠点ビュー
+        oe_order_headers_all      ooha,                     --受注ヘッダテーブル
+        hz_parties                hp,                       --パーティ
         hz_cust_accounts          hca,                      --顧客マスタ
         xxcmm_cust_accounts       xca,                      --顧客アドオン
-        hz_parties                hp,                       --パーティ
+        per_all_people_f          papf,                     --従業員マスタ
+        mtl_secondary_inventories msi,                      --保管場所マスタ
         jtf_rs_resource_extns     jrre,                     --リソースマスタ
         jtf_rs_salesreps          jrs,                      --jtf_rs_salesreps
-        per_all_people_f          papf,                     --従業員マスタ
+        oe_transaction_types_all  otta,                     --受注明細用取引タイプ
         per_person_types          ppt,                      --従業員タイプマスタ
-        oe_transaction_types_tl   ottt,                     --受注明細摘要用取引タイプ
-        oe_transaction_types_all  otta                      --受注明細用取引タイプ
-      WHERE ooha.header_id       = oola.header_id           --受注ヘッダ.ヘッダID = 受注明細.ヘッダID
-      AND   ooha.order_source_id = oos.order_source_id      --受注ヘッダ.受注ソースID = 受注ソース.受注ソースID
-      --受注ソースのクイック参照(EDI受注)
-      AND   EXISTS(
-              SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
-              AND     look_val.lookup_type        = cv_ord_src_type
-              AND     look_val.lookup_code        = cv_ord_src_code
-              AND     look_val.meaning            = oos.name
-              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
-              AND     look_val.enabled_flag       = ct_enabled_flg_y
-                  )
-      AND   ooha.flow_status_code   = cv_oh_status_booked   --受注ヘッダ.ステータス = 記帳済
+        oe_order_sources          oos,                      --受注ソースマスタ
+        xxcos_login_base_info_v   lbiv,                     --ログインユーザ拠点ビュー
+        ( SELECT  look_val.meaning   meaning
+          FROM    fnd_lookup_values  look_val
+          WHERE   look_val.lookup_type  = cv_ord_src_type
+          AND     look_val.lookup_code  = cv_ord_src_code
+          AND     look_val.enabled_flag = ct_enabled_flg_y
+          AND     look_val.language     = cv_lang
+          AND     gd_proc_date BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                               AND     NVL( look_val.end_date_active, gd_max_date )
+        )                         flv_osc,                  --クイックコード(受注ソース:EDI受注)
+        ( SELECT  look_val.meaning   meaning
+          FROM    fnd_lookup_values  look_val
+          WHERE   look_val.lookup_type  = cv_hokan_type
+          AND     look_val.lookup_code  = cv_hokan_code
+          AND     look_val.enabled_flag = ct_enabled_flg_y
+          AND     look_val.language     = cv_lang
+          AND     gd_proc_date BETWEEN NVL( look_val.start_date_active, gd_min_date )
+                               AND     NVL( look_val.end_date_active, gd_max_date )
+        )                         flv_hc                    --クイックコード(保管場所:営業車)
+      WHERE ooha.flow_status_code   = cv_oh_status_booked   --受注ヘッダ.ステータス = 記帳済
+      AND   ooha.org_id             = gn_org_id             --組織ID
                                                             --受注明細.ステータス <> クローズ、取消
       AND   oola.flow_status_code   NOT IN ( cv_ol_status_closed, cv_ol_status_cancelled )
       AND   oola.request_date       < gd_proc_date          --受注明細.要求日 < 業務日付
+      AND   msi.attribute13         = flv_hc.meaning        --クイックコード(保管場所:営業車) = 保管場所マスタ.保管場所分類
+      AND   gd_proc_date            BETWEEN NVL( papf.effective_start_date, gd_min_date )
+                                    AND     NVL( papf.effective_end_date, gd_max_date )
+      AND   ppt.business_group_id   = cn_per_business_group_id
+      AND   ppt.system_person_type  = cv_emp
+      AND   ppt.active_flag         = ct_enabled_flg_y
+      AND   otta.transaction_type_code = cv_line
+      AND   oos.name                = flv_osc.meaning       --クイックコード(受注ソース:EDI受注) = 受注ソースマスタ.名称
+      AND   ooha.order_source_id    = oos.order_source_id   --受注ヘッダ.受注ソースID = 受注ソース.受注ソースID
+      AND   ooha.header_id          = oola.header_id        --受注ヘッダ.ヘッダID = 受注明細.ヘッダID
       AND   oola.subinventory       = msi.secondary_inventory_name  --受注明細.保管場所 = 保管場所マスタ.名称
       AND   oola.ship_from_org_id   = msi.organization_id   --受注明細.出荷元組織ID = 保管場所マスタ.在庫組織ID
-      --保管場所のクイック参照(営業車)
-      AND   EXISTS(
-              SELECT  'Y'                         ext_flg
-              FROM    fnd_lookup_values           look_val,
-                      fnd_lookup_types_tl         types_tl,
-                      fnd_lookup_types            types,
-                      fnd_application_tl          appl,
-                      fnd_application             app
-              WHERE   appl.application_id         = types.application_id
-              AND     app.application_id          = appl.application_id
-              AND     types_tl.lookup_type        = look_val.lookup_type
-              AND     types.lookup_type           = types_tl.lookup_type
-              AND     types.security_group_id     = types_tl.security_group_id
-              AND     types.view_application_id   = types_tl.view_application_id
-              AND     types_tl.language           = cv_lang
-              AND     look_val.language           = cv_lang
-              AND     appl.language               = cv_lang
-              AND     app.application_short_name  = cv_xxcos_short_name
-              AND     look_val.lookup_type        = cv_hokan_type
-              AND     look_val.lookup_code        = cv_hokan_code
-              AND     look_val.meaning            = msi.attribute13
-              AND     gd_proc_date                >= NVL( look_val.start_date_active, gd_min_date )
-              AND     gd_proc_date                <= NVL( look_val.end_date_active, gd_max_date )
-              AND     look_val.enabled_flag       = ct_enabled_flg_y
-                    )
       AND   ooha.sold_to_org_id     = hca.cust_account_id   --受注ヘッダ.顧客ID = 顧客マスタ.顧客ID
       AND   hca.party_id            = hp.party_id           --顧客マスタ.パーティーID = パーティ.パーティーID
       AND   hca.cust_account_id     = xca.customer_id       --顧客マスタ.顧客ID = 顧客アドオン.顧客ID
       AND   xca.delivery_base_code  = lbiv.base_code        --顧客アドオン.納品拠点コード = 拠点ビュー.拠点コード
-      --営業担当者の取得用
+            --営業担当者の取得用
       AND   ooha.salesrep_id        = jrs.salesrep_id       --受注ヘッダ.営業担当ID = jtf_rs_salesreps.営業担当ID
       AND   jrs.resource_id         = jrre.resource_id
       AND   jrre.source_id          = papf.person_id
-      AND   gd_proc_date            >= NVL( papf.effective_start_date, gd_min_date )
-      AND   gd_proc_date            <= NVL( papf.effective_end_date, gd_max_date )
-      AND   ppt.business_group_id   = cn_per_business_group_id
-      AND   ppt.system_person_type  = cv_emp
-      AND   ppt.active_flag         = ct_enabled_flg_y
       AND   papf.person_type_id     = ppt.person_type_id
-      --プラス／マイナス受注タイプ判定用
-      AND   oola.line_type_id         = ottt.transaction_type_id
-      AND   ottt.transaction_type_id  = otta.transaction_type_id
-      AND   ottt.language             = cv_lang
+      AND   oola.line_type_id       = otta.transaction_type_id  --受注明細.取引タイプID = 受注明細用取引タイプ.取引タイプID
+/* 2009/07/13 Ver1.5 Mod End   */
       GROUP BY  lbiv.base_code,                                       --納品拠点コード
                 ooha.request_date,                                    --要求日
                 jrre.source_number,                                   --従業員番号
@@ -929,6 +1038,12 @@ AS
     ld_dlv_date_from    DATE;         --   納品日(FROM)
     ld_dlv_date_to      DATE;         --   納品日(TO)
 --
+--2009/06/26  Ver1.4 T1_1437  Add start
+    lv_errbuf_svf  VARCHAR2(5000);  -- エラー・メッセージ(SVF実行結果保持用)
+    lv_retcode_svf VARCHAR2(1);     -- リターン・コード(SVF実行結果保持用)
+    lv_errmsg_svf  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ(SVF実行結果保持用)
+--2009/06/26  Ver1.4 T1_1437  Add end
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -989,11 +1104,19 @@ AS
       lv_errbuf,         -- エラー・メッセージ           --# 固定 #
       lv_retcode,        -- リターン・コード             --# 固定 #
       lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
-    IF ( lv_retcode = cv_status_normal ) THEN
-      NULL;
-    ELSE
-      RAISE global_process_expt;
-    END IF;
+--
+-- 2009/06/26  Ver1.4  T1_1437  Mod Start
+--    IF ( lv_retcode = cv_status_normal ) THEN
+--      NULL;
+--    ELSE
+--      RAISE global_process_expt;
+--    END IF;
+    --
+    --エラーでもワークテーブルを削除する為、エラー情報を保持
+    lv_errbuf_svf  := lv_errbuf;
+    lv_retcode_svf := lv_retcode;
+    lv_errmsg_svf  := lv_errmsg;
+-- 2009/06/26  Ver1.4 T1_1437  Mod End
 --
     -- ===============================
     -- A-5  帳票ワークテーブル削除
@@ -1008,10 +1131,26 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    --明細0件時ステータス制御処理
-    IF ( gn_target_cnt = 0 ) THEN
+-- 2009/06/26  Ver1.4 T1_1437  Add start
+    --エラーの場合、ロールバックするのでここでコミット
+    COMMIT;
+--
+    --SVF実行結果確認
+    IF ( lv_retcode_svf = cv_status_error ) THEN
+      lv_errbuf  := lv_errbuf_svf;
+      lv_retcode := lv_retcode_svf;
+      lv_errmsg  := lv_errmsg_svf;
+      RAISE global_process_expt;
+    END IF;
+-- 2009/06/26  Ver1.4 T1_1437  Add End
+--
+-- ******************** 2009/06/19 Var.1.3 T.Tominaga MOD START  *****************************************
+--    --明細0件時ステータス制御処理
+--  IF ( gn_target_cnt = 0 ) THEN
+    IF ( gn_target_cnt <> 0 ) THEN
       ov_retcode := cv_status_warn;
     END IF;
+-- ******************** 2009/06/19 Var.1.3 T.Tominaga MOD END    *****************************************
 --
   EXCEPTION
       -- *** 任意で例外処理を記述する ****
