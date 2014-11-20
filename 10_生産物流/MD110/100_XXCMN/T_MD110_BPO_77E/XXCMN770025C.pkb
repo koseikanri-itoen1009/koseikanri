@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2008/12/04    1.11  N.Yoshida        本番#389対応
  *  2008/12/05    1.12  A.Shiina         本番#500対応
  *  2008/12/05    1.13  A.Shiina         本番#473対応
+ *  2008/12/12    1.14  A.Shiina         本番#425対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1362,6 +1363,8 @@ AS
     -- SELECT句生成
     -- ----------------------------------------------------
     lv_select := 'SELECT ';
+-- 2008/12/12 v1.14 UPDATE START
+/*
     -- 成績部署
     IF ( ir_param.result_post IS NULL ) THEN
       lv_select := lv_select
@@ -1387,6 +1390,21 @@ AS
         || '      ,NULL                      AS vendor_code '
         || '      ,NULL                      AS vendor_name ';
     END IF;
+*/
+    -- 成績部署
+    lv_select := lv_select
+      || '       mst.result_post             AS result_post '
+      || '      ,mst.location_name           AS location_name ';
+--
+    lv_select := lv_select
+      || '      ,mst.item_div                AS item_div '
+      || '      ,mst.item_div_name           AS item_div_name ';
+--
+    -- 仕入先
+    lv_select := lv_select
+      || '      ,mst.segment1                AS vendor_code '
+      || '      ,mst.vendor_name             AS vendor_name ';
+-- 2008/12/12 v1.14 UPDATE END
 --
     -- 群種別
     IF ( ir_param.crowd_type = cv_crowd_type ) THEN
@@ -1450,8 +1468,11 @@ AS
 --      || '       SELECT /*+ leading(itp gic1 mcb1 rsl rt pha pla plla) use_nl(itp gic1 mcb1)*/ '
       || '       SELECT /*+ leading(itp xrpm gic1 mcb1 rsl rt pha pla plla) use_nl(itp xrpm gic1 mcb1)*/ '
 -- 2008/11/13 v1.8 UPDATE END
-      || '              pha.attribute10         AS result_post '
-      || '             ,mcb2.segment1           AS item_div '
+-- 2008/12/12 v1.14 UPDATE START
+--      || '              pha.attribute10         AS result_post '
+--      || '             ,mcb2.segment1           AS item_div '
+      || '              mcb2.segment1           AS item_div '
+-- 2008/12/12 v1.14 UPDATE END
       || '             ,mct2.description        AS item_div_name '
       || '             ,iimb.item_id            AS item_id '
       || '             ,iimb.item_no            AS item_code '
@@ -1490,11 +1511,35 @@ AS
 --      || '                    AND    ((xsupv.end_date_active >= TRUNC(itp.trans_date)) '
 --      || '                             OR (xsupv.end_date_active IS NULL)) '
 --      || '                    AND    xsupv.item_id = itp.item_id), 0)) AS stnd_unit_price '
-      || '             ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price '
+-- 2008/12/12 v1.14 UPDATE START
+--      || '             ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price '
 -- 2008/10/28 H.Itou Mod End
-      || '             ,xvv.segment1            AS segment1 '
-      || '             ,xvv.vendor_short_name   AS vendor_name '
-      || '             ,xl.location_short_name  AS location_name '
+--      || '             ,xvv.segment1            AS segment1 '
+--      || '             ,xvv.vendor_short_name   AS vendor_name '
+--      || '             ,xl.location_short_name  AS location_name '
+      || '             ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price ';
+    -- 成績部署
+    IF ( ir_param.result_post IS NULL ) THEN
+    lv_porc_po := lv_porc_po
+      || '      ,pha.attribute10                AS result_post '
+      || '      ,xl.location_short_name         AS location_name ';
+    ELSE
+    lv_porc_po := lv_porc_po
+      || '      ,NULL                           AS result_post '
+      || '      ,NULL                           AS location_name ';
+    END IF;
+    -- 仕入先
+    IF ( ir_param.party_code IS NULL ) THEN
+    lv_porc_po := lv_porc_po
+      || '      ,xvv.segment1                   AS segment1 '
+      || '      ,xvv.vendor_short_name          AS vendor_name ';
+    ELSE
+    lv_porc_po := lv_porc_po
+      || '      ,NULL                           AS segment1 '
+      || '      ,NULL                           AS vendor_name ';
+    END IF;
+    lv_porc_po := lv_porc_po
+-- 2008/12/12 v1.14 UPDATE END
       || '       FROM   ic_tran_pnd              itp '
       || '             ,rcv_shipment_lines       rsl '
       || '             ,rcv_transactions         rt '
@@ -1650,8 +1695,11 @@ AS
 --      || '       SELECT /*+ leading(itc gic1 mcb1 iaj ijm xrrt ) use_nl(itc gic1 mcb1) */ '
       || '       SELECT /*+ leading(itc xrpm gic1 mcb1 iaj ijm xrrt ) use_nl(itc xrpm gic1 mcb1) */ '
 -- 2008/11/13 v1.8 UPDATE END
-      || '              xrrt.department_code    AS result_post '
-      || '             ,mcb2.segment1           AS item_div '
+-- 2008/12/12 v1.14 UPDATE START
+--      || '              xrrt.department_code    AS result_post '
+--      || '             ,mcb2.segment1           AS item_div '
+      || '              mcb2.segment1           AS item_div '
+-- 2008/12/12 v1.14 UPDATE END
       || '             ,mct2.description        AS item_div_name '
       || '             ,iimb.item_id            AS item_id '
       || '             ,iimb.item_no            AS item_code '
@@ -1686,11 +1734,35 @@ AS
 --      || '                    AND    ((xsupv.end_date_active >= TRUNC(itc.trans_date)) '
 --      || '                             OR (xsupv.end_date_active IS NULL)) '
 --      || '                    AND    xsupv.item_id = itc.item_id), 0)) AS stnd_unit_price '
-      || '             ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price '
+-- 2008/12/12 v1.14 UPDATE START
+--      || '             ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price '
 -- 2008/10/28 H.Itou Mod End
-      || '             ,xvv.segment1            AS segment1 '
-      || '             ,xvv.vendor_short_name   AS vendor_name '
-      || '             ,xl.location_short_name  AS location_name '
+--      || '             ,xvv.segment1            AS segment1 '
+--      || '             ,xvv.vendor_short_name   AS vendor_name '
+--      || '             ,xl.location_short_name  AS location_name '
+      || '             ,NVL(xsupv.stnd_unit_price,0) AS stnd_unit_price ';
+    -- 成績部署
+    IF ( ir_param.result_post IS NULL ) THEN
+    lv_adji := lv_adji
+      || '      ,xrrt.department_code                AS result_post '
+      || '      ,xl.location_short_name              AS location_name ';
+    ELSE
+    lv_adji := lv_adji
+      || '      ,NULL                                AS result_post '
+      || '      ,NULL                                AS location_name ';
+    END IF;
+    -- 仕入先
+    IF ( ir_param.party_code IS NULL ) THEN
+    lv_adji := lv_adji
+      || '      ,xvv.segment1                        AS segment1 '
+      || '      ,xvv.vendor_short_name               AS vendor_name ';
+    ELSE
+    lv_adji := lv_adji
+      || '      ,NULL                                AS segment1 '
+      || '      ,NULL                                AS vendor_name ';
+    END IF;
+    lv_adji := lv_adji
+-- 2008/12/12 v1.14 UPDATE END
       || '       FROM   ic_tran_cmp               itc '
       || '             ,ic_adjs_jnl               iaj '
       || '             ,ic_jrnl_mst               ijm '

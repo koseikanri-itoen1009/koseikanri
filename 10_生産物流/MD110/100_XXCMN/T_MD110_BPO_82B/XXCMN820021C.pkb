@@ -7,7 +7,7 @@ AS
  * Description      : 原価差異表作成
  * MD.050/070       : 標準原価マスタIssue1.0(T_MD050_BPO_820)
  *                    原価差異表作成Issue1.0(T_MD070_BPO_82B/T_MD070_BPO_82C)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -46,7 +46,7 @@ AS
  *  2008/07/02    1.6   Satoshi Yunba    禁則文字対応
  *  2008/12/09    1.7   T.Miyata         本番#542対応
  *  2008/12/11    1.8   T.Miyata         本番#542対応(バグ修正)
- *
+ *  2008/12/12    1.9   H.Itou           本番#681対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -91,6 +91,12 @@ AS
   gc_cat_name_item        CONSTANT VARCHAR2(100) := '品目区分' ;
   gc_cat_name_crowd       CONSTANT VARCHAR2(100) := '群コード' ;
 --
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+  -- 実績区分
+  gc_txns_type_uke        CONSTANT VARCHAR2(100) := '1' ;            -- 受入
+  gc_txns_type_hen_y      CONSTANT VARCHAR2(100) := '2' ;            -- 発注あり返品
+  gc_txns_type_hen_n      CONSTANT VARCHAR2(100) := '3' ;            -- 発注なし返品
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 
   -- エラーコード
   gc_application          CONSTANT VARCHAR2(5)  := 'XXCMN' ;            -- アプリケーション
   gc_err_code_no_data     CONSTANT VARCHAR2(15) := 'APP-XXCMN-10122' ;  -- データ０件メッセージ
@@ -608,6 +614,9 @@ AS
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
       FROM
         (
+          --------------------------------------
+          -- 【標準金額】
+          --------------------------------------
           SELECT
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
                 xph.item_id
@@ -617,13 +626,27 @@ AS
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS s_amount
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
-                -- ,xrart.quantity * xpl.unit_price AS s_amount
-                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+--                 ,xrart.quantity * xpl.unit_price AS s_amount
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+                ,SUM((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price) AS s_amount
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681 
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                 ,0                                    AS r_amount
 -- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
-                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+                ,SUM(CASE
+                       WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                            xrart.quantity
+                       ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                     END) / count(*) AS s_quantity
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681 
                 ,0                                              AS r_quantity
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542                                              AS r_amount
           FROM xxpo_rcv_and_rtn_txns    xrart
@@ -647,6 +670,9 @@ AS
 -- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
           GROUP BY xph.item_id, flv.attribute1, flv.meaning
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
+          --------------------------------------
+          -- 【実質金額】受入・発注あり返品取得
+          --------------------------------------
           UNION ALL
           SELECT
 -- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
@@ -659,12 +685,27 @@ AS
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
 -- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
 --                ,xrart.quantity * xpl.unit_price AS r_amount
-                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+                ,SUM((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price) AS r_amount
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
+                
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
 --mod end 1.3.3
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
                 ,0                                              AS s_quantity
-                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+                ,SUM(CASE
+                       WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                            xrart.quantity
+                       ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                     END) / count(*) AS r_quantity
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681 
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,ic_item_mst_b            iimc
@@ -702,9 +743,54 @@ AS
           AND   xrart.department_code = NVL( p_dept_code, department_code )
           AND   xrart.item_id         = ilm.item_id(+)
           AND   xrart.lot_number      = ilm.lot_no(+)
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+          AND   xrart.txns_type      <> gc_txns_type_hen_n   -- 発注なし返品でない
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
           -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
           GROUP BY xph.item_id, flv.attribute1, flv.meaning
           -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+          --------------------------------------
+          -- 【実質金額】発注なし返品取得
+          --------------------------------------
+          UNION ALL
+          SELECT
+                 xph.item_id
+                ,flv.attribute1         AS detail_code
+                ,flv.meaning            AS detail_name
+                ,0                                           AS s_amount
+                ,SUM(xrart.quantity * xpl.unit_price) * -1   AS r_amount
+                ,0                                           AS s_quantity
+                ,SUM(xrart.quantity ) * -1 / count(*)        AS r_quantity
+          FROM xxpo_rcv_and_rtn_txns    xrart
+              ,ic_item_mst_b            iimc
+              ,xxpo_price_headers       xph
+              ,xxpo_price_lines         xpl
+              ,xxcmn_lookup_values_v    flv
+              ,ic_lots_mst              ilm
+          WHERE flv.lookup_type               = gc_lookup_item_detail
+          AND   xpl.expense_item_detail_type  = flv.attribute1
+          AND   xpl.expense_item_type = p_type_id
+          AND   xph.price_header_id   = xpl.price_header_id
+          AND   DECODE( iimc.attribute20
+                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
+                                           , xrart.txns_date
+                      )               BETWEEN xph.start_date_active AND xph.end_date_active
+          AND   xph.price_type        = gc_price_type_r
+          AND   xph.supply_to_id IS NULL
+          AND   xrart.item_id         = xph.item_id
+          AND   xrart.futai_code      = xph.futai_code
+          AND   xrart.factory_code    = xph.factory_code
+          AND   xrart.item_id         = iimc.item_id
+          AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
+          AND   xrart.item_id         = p_item_id
+          AND   xrart.vendor_id       = p_vendor_id
+          AND   xrart.department_code = NVL( p_dept_code, department_code )
+          AND   xrart.item_id         = ilm.item_id(+)
+          AND   xrart.lot_number      = ilm.lot_no(+)
+          AND   xrart.txns_type       = gc_txns_type_hen_n   -- 発注なし返品
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
         )
       GROUP BY detail_code
               ,detail_name
@@ -981,6 +1067,9 @@ AS
             ,type_name
       FROM
         (
+          --------------------------------------
+          -- 【標準金額】
+          --------------------------------------
           SELECT xpl.expense_item_type  AS type_id
                 ,flv.attribute1         AS type_code
                 ,flv.meaning            AS type_name
@@ -1001,6 +1090,9 @@ AS
           AND   xrart.item_id         = p_item_id
           AND   xrart.vendor_id       = p_vendor_id
           AND   xrart.department_code = NVL( p_dept_code, department_code )
+          --------------------------------------
+          -- 【実質金額】受入・発注あり返品取得
+          --------------------------------------
           UNION ALL
           SELECT xpl.expense_item_type  AS type_id
                 ,flv.attribute1         AS type_code
@@ -1040,6 +1132,44 @@ AS
           AND   xrart.department_code = NVL( p_dept_code, department_code )
           AND   xrart.item_id         = ilm.item_id(+)
           AND   xrart.lot_number      = ilm.lot_no(+)
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+          AND   xrart.txns_type      <> gc_txns_type_hen_n   -- 発注なし返品でない
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+          --------------------------------------
+          -- 【実質金額】発注なし返品取得
+          --------------------------------------
+          UNION ALL
+          SELECT xpl.expense_item_type  AS type_id
+                ,flv.attribute1         AS type_code
+                ,flv.meaning            AS type_name
+          FROM xxpo_rcv_and_rtn_txns    xrart
+              ,ic_item_mst_b            iimc
+              ,xxpo_price_headers       xph
+              ,xxpo_price_lines         xpl
+              ,xxcmn_lookup_values_v    flv
+              ,ic_lots_mst              ilm
+          WHERE flv.lookup_type      = gc_lookup_item_type
+          AND   xpl.expense_item_type = flv.attribute1
+          AND   xph.price_header_id   = xpl.price_header_id
+          AND   DECODE( iimc.attribute20
+                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
+                                           , xrart.txns_date
+                      )               BETWEEN xph.start_date_active AND xph.end_date_active
+          AND   xph.price_type        = gc_price_type_r
+          AND   xph.supply_to_id IS NULL
+          AND   xrart.item_id         = xph.item_id
+          AND   xrart.futai_code      = xph.futai_code
+          AND   xrart.factory_code    = xph.factory_code
+          AND   xrart.item_id         = iimc.item_id
+          AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
+          AND   xrart.item_id         = p_item_id
+          AND   xrart.vendor_id       = p_vendor_id
+          AND   xrart.department_code = NVL( p_dept_code, department_code )
+          AND   xrart.item_id         = ilm.item_id(+)
+          AND   xrart.lot_number      = ilm.lot_no(+)
+          AND   xrart.txns_type       = gc_txns_type_hen_n   -- 発注なし返品
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
         )
       GROUP BY type_id
               ,type_code
@@ -1199,7 +1329,14 @@ AS
       || '  ,ximc.item_short_name   AS item_name'   -- 品目名称
       || '  ,xrart.uom              AS uom'         -- 単位
       || '  ,iimc.attribute11       AS case_quant'  -- ケース入数
-      || '  ,SUM( xrart.quantity )  AS quant'       -- 取引数量
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--      || '  ,SUM( xrart.quantity )  AS quant'       -- 取引数量
+      || '  ,SUM(CASE '
+      || '          WHEN (xrart.txns_type = ''' || gc_txns_type_uke || ''') THEN ' -- 実績区分が受入の場合
+      || '               xrart.quantity '
+      || '          ELSE xrart.quantity * -1 '                       -- 実績区分が返品の場合、マイナス
+      || '        END) AS quant '
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
       ;
     lv_sql_from
       := ' FROM'
@@ -1400,7 +1537,14 @@ AS
       || '  ,pv.segment1            AS vendor_code'   -- 取引先コード
       || '  ,xv.vendor_short_name   AS vendor_name'   -- 取引先名称
       || '  ,xrart.uom              AS uom'           -- 単位
-      || '  ,SUM( xrart.quantity )  AS quant'         -- 取引数量
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--      || '  ,SUM( xrart.quantity )  AS quant'         -- 取引数量
+      || '  ,SUM(CASE '
+      || '          WHEN (xrart.txns_type = ''' || gc_txns_type_uke || ''') THEN ' -- 実績区分が受入の場合
+      || '               xrart.quantity '
+      || '          ELSE xrart.quantity * -1 '                       -- 実績区分が返品の場合、マイナス
+      || '        END) AS quant '
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
       ;
     lv_sql_from
       := ' FROM'
@@ -1624,6 +1768,9 @@ AS
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
       FROM
         (
+          --------------------------------------
+          -- 【標準金額】
+          --------------------------------------
           SELECT
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
                 xph.item_id
@@ -1634,12 +1781,26 @@ AS
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS s_amount
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
                 -- ,xrart.quantity * xpl.unit_price AS s_amount
-                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+                ,SUM((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price) AS s_amount
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                 ,0                                              AS r_amount
 -- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
-                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+                ,SUM(CASE
+                       WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                            xrart.quantity
+                       ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                     END) / count(*) AS s_quantity
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681 
                 ,0                                              AS r_quantity
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
@@ -1661,6 +1822,9 @@ AS
 -- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
           GROUP BY xph.item_id, flv.attribute1, flv.meaning
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
+          --------------------------------------
+          -- 【実質金額】受入・発注あり返品取得
+          --------------------------------------
           UNION ALL
           SELECT
 -- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
@@ -1673,12 +1837,26 @@ AS
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
 -- S  2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
 --                ,xrart.quantity * xpl.unit_price AS r_amount
-                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+                ,SUM((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price) AS r_amount
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E  2008/12/09 1.7 MOD BY T.Miyata 本番#542
 --mod end 1.3.3
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
                 ,0                                              AS s_quantity
-                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+                ,SUM(CASE
+                       WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                            xrart.quantity
+                       ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                     END) / count(*) AS r_quantity
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681 
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,ic_item_mst_b            iimc
@@ -1714,9 +1892,52 @@ AS
           AND   xrart.department_code = NVL( p_dept_code, department_code )
           AND   xrart.item_id         = ilm.item_id(+)
           AND   xrart.lot_number      = ilm.lot_no(+)
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+          AND   xrart.txns_type      <> gc_txns_type_hen_n   -- 発注なし返品でない
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
           -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
           GROUP BY xph.item_id, flv.attribute1, flv.meaning
           -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+          --------------------------------------
+          -- 【実質金額】発注なし返品取得
+          --------------------------------------
+          UNION ALL
+          SELECT
+                xph.item_id
+                ,flv.attribute1
+                ,flv.meaning
+                ,0                                           AS s_amount
+                ,SUM(xrart.quantity * xpl.unit_price) * -1   AS r_amount
+                ,0                                           AS s_quantity
+                ,SUM(xrart.quantity ) * -1 / count(*)        AS r_quantity
+          FROM xxpo_rcv_and_rtn_txns    xrart
+              ,ic_item_mst_b            iimc
+              ,xxpo_price_headers       xph
+              ,xxpo_price_lines         xpl
+              ,xxcmn_lookup_values_v    flv
+              ,ic_lots_mst              ilm
+          WHERE flv.lookup_type              = gc_lookup_item_detail
+          AND   xpl.expense_item_detail_type  = flv.attribute1
+          AND   xph.price_header_id   = xpl.price_header_id
+          AND   DECODE( iimc.attribute20
+                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
+                                           , xrart.txns_date
+                      )               BETWEEN xph.start_date_active AND xph.end_date_active
+          AND   xph.price_type        = gc_price_type_r
+          AND   xph.supply_to_id IS NULL
+          AND   xrart.item_id         = xph.item_id
+          AND   xrart.futai_code      = xph.futai_code
+          AND   xrart.factory_code    = xph.factory_code
+          AND   xrart.item_id         = iimc.item_id
+          AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
+          AND   xrart.item_id         = p_item_id
+          AND   xrart.department_code = NVL( p_dept_code, department_code )
+          AND   xrart.item_id         = ilm.item_id(+)
+          AND   xrart.lot_number      = ilm.lot_no(+)
+          AND   xrart.txns_type       = gc_txns_type_hen_n   -- 発注なし返品
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
         )
       GROUP BY attribute1
               ,meaning
@@ -1738,7 +1959,14 @@ AS
       || '  ,iimc.item_no           AS item_code'   -- 品目コード
       || '  ,ximc.item_short_name   AS item_name'   -- 品目名称
       || '  ,iimc.attribute11       AS case_quant'  -- ケース入数
-      || '  ,SUM( xrart.quantity )  AS quant'       -- 取引数量
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--      || '  ,SUM( xrart.quantity )  AS quant'         -- 取引数量
+      || '  ,SUM(CASE '
+      || '          WHEN (xrart.txns_type = ''' || gc_txns_type_uke || ''') THEN ' -- 実績区分が受入の場合
+      || '               xrart.quantity '
+      || '          ELSE xrart.quantity * -1 '                       -- 実績区分が返品の場合、マイナス
+      || '        END) AS quant '
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
       ;
     lv_sql_from
       := ' FROM'
@@ -1892,11 +2120,21 @@ AS
               ,lr_amount_rcv.r_amount
         FROM
           (
+            --------------------------------------
+            -- 【標準金額】
+            --------------------------------------
             SELECT CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
-                          xrart.quantity * xpl.unit_price
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                          xrart.quantity * xpl.unit_price
+                         (CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                      ELSE 0
                    END s_dif_amount
@@ -1904,7 +2142,14 @@ AS
                      WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
-                          xrart.quantity * xpl.unit_price
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                          xrart.quantity * xpl.unit_price
+                         (CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                      ELSE 0
                    END s_rcv_amount
@@ -1926,6 +2171,9 @@ AS
             AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
             AND   xrart.item_id         = lr_ref.item_id
             AND   xrart.department_code = NVL( iv_dept_code, department_code )
+            --------------------------------------
+            -- 【実質金額】受入・発注あり返品取得
+            --------------------------------------
             UNION ALL
             SELECT 0  AS s_dif_amount
                   ,0  AS s_rcv_amount
@@ -1933,7 +2181,14 @@ AS
                      WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
 --mod start 1.3.3
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
-                          xrart.quantity * xpl.unit_price
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                          xrart.quantity * xpl.unit_price
+                         (CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 --mod end 1.3.3
                      ELSE 0
                    END r_dif_amount
@@ -1941,7 +2196,14 @@ AS
                      WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
 --mod start 1.3.3
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
-                          xrart.quantity * xpl.unit_price
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                          xrart.quantity * xpl.unit_price
+                         (CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 --mod end 1.3.3
                      ELSE 0
                    END r_rcv_amount
@@ -1979,6 +2241,52 @@ AS
             AND   xrart.department_code = NVL( iv_dept_code, department_code )
             AND   xrart.item_id         = ilm.item_id(+)
             AND   xrart.lot_number      = ilm.lot_no(+)
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+            AND   xrart.txns_type      <> gc_txns_type_hen_n   -- 発注なし返品でない
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+            --------------------------------------
+            -- 【実質金額】発注なし返品取得
+            --------------------------------------
+            UNION ALL
+            SELECT 0  AS s_dif_amount
+                  ,0  AS s_rcv_amount
+                  ,CASE
+                     WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
+                          xrart.quantity * xpl.unit_price * -1
+                     ELSE 0
+                   END r_dif_amount
+                  ,CASE
+                     WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
+                          xrart.quantity * xpl.unit_price * -1
+                     ELSE 0
+                   END r_rcv_amount
+            FROM xxpo_rcv_and_rtn_txns  xrart
+                ,ic_item_mst_b          iimc
+                ,xxpo_price_headers     xph
+                ,xxpo_price_lines       xpl
+                ,xxcmn_lookup_values_v  flv
+                ,ic_lots_mst            ilm
+            WHERE flv.lookup_type       = gc_lookup_item_type
+            AND   xpl.expense_item_type = flv.attribute1
+            AND   xph.price_header_id   = xpl.price_header_id
+            AND   DECODE( iimc.attribute20
+                         ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
+                                             , xrart.txns_date
+                        )               BETWEEN xph.start_date_active AND xph.end_date_active
+            AND   xph.price_type        = gc_price_type_r
+            AND   xph.supply_to_id IS NULL
+            AND   xrart.item_id         = xph.item_id
+            AND   xrart.futai_code      = xph.futai_code
+            AND   xrart.factory_code    = xph.factory_code
+            AND   xrart.item_id         = iimc.item_id
+            AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
+            AND   xrart.item_id         = lr_ref.item_id
+            AND   xrart.department_code = NVL( iv_dept_code, department_code )
+            AND   xrart.item_id         = ilm.item_id(+)
+            AND   xrart.lot_number      = ilm.lot_no(+)
+            AND   xrart.txns_type       = gc_txns_type_hen_n   -- 発注なし返品
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
           )
         ;
       EXCEPTION
@@ -2456,6 +2764,9 @@ AS
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
       FROM
         (
+          --------------------------------------
+          -- 【標準金額】
+          --------------------------------------
           SELECT 
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
                  xph.item_id
@@ -2466,12 +2777,26 @@ AS
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS s_amount
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
 --                ,xrart.quantity * xpl.unit_price AS s_amount
-                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity * xpl.unit_price) AS s_amount
+                ,SUM((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price) AS s_amount
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                 ,0                                              AS r_amount
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
-                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity)/count(*)                   AS s_quantity
+                ,SUM(CASE
+                       WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                            xrart.quantity
+                       ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                     END) / count(*) AS s_quantity
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681 
                 ,0                                              AS r_quantity
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
@@ -2500,6 +2825,9 @@ AS
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
           GROUP BY xph.item_id, flv.attribute1, flv.meaning
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
+          --------------------------------------
+          -- 【実質金額】受入・発注あり返品取得
+          --------------------------------------
           UNION ALL
           SELECT
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
@@ -2512,12 +2840,26 @@ AS
 --                ,xrart.quantity * xpl.unit_price * xpl.quantity AS r_amount
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
 --                ,xrart.quantity * xpl.unit_price AS r_amount
-                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity * xpl.unit_price) AS r_amount
+                ,SUM((CASE
+                        WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                             xrart.quantity
+                        ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                      END) * xpl.unit_price) AS r_amount
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
 --mod end 1.3.3
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
                 ,0                                              AS s_quantity
-                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                ,SUM(xrart.quantity)/count(*)                   AS r_quantity
+                ,SUM(CASE
+                       WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                            xrart.quantity
+                       ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                     END) / count(*) AS r_quantity
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681 
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
           FROM xxpo_rcv_and_rtn_txns    xrart
               ,xxcmn_item_categories4_v xicv
@@ -2560,9 +2902,59 @@ AS
                                    ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
           AND   xrart.item_id         = ilm.item_id(+)
           AND   xrart.lot_number      = ilm.lot_no(+)
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+          AND   xrart.txns_type      <> gc_txns_type_hen_n   -- 発注なし返品でない
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
-        GROUP BY xph.item_id, flv.attribute1, flv.meaning
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
 -- E 2008/12/09 1.7 MOD BY T.Miyata 本番#542
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+          --------------------------------------
+          -- 【実質金額】発注なし返品取得
+          --------------------------------------
+          UNION ALL
+          SELECT
+                xph.item_id
+                ,flv.attribute1
+                ,flv.meaning
+                ,0                                              AS s_amount
+                ,SUM(xrart.quantity * xpl.unit_price) * -1      AS r_amount
+                ,0                                              AS s_quantity
+                ,SUM(xrart.quantity)/count(*) * -1              AS r_quantity
+          FROM xxpo_rcv_and_rtn_txns    xrart
+              ,xxcmn_item_categories4_v xicv
+              ,ic_item_mst_b            iimc
+              ,xxpo_price_headers       xph
+              ,xxpo_price_lines         xpl
+              ,xxcmn_lookup_values_v    flv
+              ,ic_lots_mst              ilm
+          WHERE flv.lookup_type              = gc_lookup_item_detail
+          AND   xpl.expense_item_detail_type  = flv.attribute1
+          AND   xph.price_header_id          = xpl.price_header_id
+          AND   DECODE( iimc.attribute20
+                       ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
+                                           , xrart.txns_date
+                      )               BETWEEN xph.start_date_active AND xph.end_date_active
+          AND   xph.price_type        = gc_price_type_r
+          AND   xph.supply_to_id IS NULL
+          AND   xrart.item_id         = xph.item_id
+          AND   xrart.futai_code      = xph.futai_code
+          AND   xrart.factory_code    = xph.factory_code
+          AND   xrart.item_id         = iimc.item_id
+          AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
+          AND   xrart.vendor_id       = p_vendor_id
+          AND   xrart.department_code = NVL( p_dept_code, department_code )
+          AND   xicv.item_id          = xrart.item_id
+          AND   xicv.prod_class_code  = gr_param.prod_div
+          AND   xicv.item_class_code  = gr_param.item_div
+          AND   xicv.crowd_code IN( NVL( gr_param.crowd_code_01, xicv.crowd_code )
+                                   ,NVL( gr_param.crowd_code_02, xicv.crowd_code )
+                                   ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
+          AND   xrart.item_id         = ilm.item_id(+)
+          AND   xrart.lot_number      = ilm.lot_no(+)
+          AND   xrart.txns_type       = gc_txns_type_hen_n   -- 発注なし返品
+          GROUP BY xph.item_id, flv.attribute1, flv.meaning
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
         )
       GROUP BY attribute1
               ,meaning
@@ -2583,7 +2975,14 @@ AS
       || '   pv.vendor_id           AS vendor_id'     -- 取引先ＩＤ
       || '  ,pv.segment1            AS vendor_code'   -- 取引先コード
       || '  ,xv.vendor_short_name   AS vendor_name'   -- 取引先名称
-      || '  ,SUM( xrart.quantity )  AS quant'         -- 取引数量
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--      || '  ,SUM( xrart.quantity )  AS quant'         -- 取引数量
+      || '  ,SUM(CASE '
+      || '          WHEN (xrart.txns_type = ''' || gc_txns_type_uke || ''') THEN ' -- 実績区分が受入の場合
+      || '               xrart.quantity '
+      || '          ELSE xrart.quantity * -1 '                       -- 実績区分が返品の場合、マイナス
+      || '        END) AS quant '
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
       ;
     lv_sql_from
       := ' FROM'
@@ -2730,11 +3129,21 @@ AS
               ,lr_amount_rcv.r_amount
         FROM
           (
+            --------------------------------------
+            -- 【標準金額】
+            --------------------------------------
             SELECT CASE
                      WHEN flv.attribute3 = gc_temp_rcv_div_n THEN
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
-                          xrart.quantity * xpl.unit_price
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                          xrart.quantity * xpl.unit_price
+                         (CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                           ELSE 0
                    END s_dif_amount
@@ -2742,7 +3151,14 @@ AS
                      WHEN flv.attribute3 = gc_temp_rcv_div_y THEN
 -- S 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ S --
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
-                          xrart.quantity * xpl.unit_price
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                          xrart.quantity * xpl.unit_price
+                         (CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 -- E 2008/05/21 1.1 MOD BY M.Ikeda ------------------------------------------------------------ E --
                      ELSE 0
                    END s_rcv_amount
@@ -2771,6 +3187,9 @@ AS
             AND   xicv.crowd_code IN( NVL( gr_param.crowd_code_01, xicv.crowd_code )
                                      ,NVL( gr_param.crowd_code_02, xicv.crowd_code )
                                      ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
+            --------------------------------------
+            -- 【実質金額】受入・発注あり返品取得
+            --------------------------------------
             UNION ALL
             SELECT 0  AS s_dif_amount
                   ,0  AS s_rcv_amount
@@ -2778,7 +3197,14 @@ AS
                      WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
 --mod start 1.3.3
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
-                          xrart.quantity * xpl.unit_price
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                          xrart.quantity * xpl.unit_price
+                         (CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 --mod end 1.3.3
                      ELSE 0
                    END r_dif_amount
@@ -2786,7 +3212,14 @@ AS
                      WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
 --mod start 1.3.3
 --                          xrart.quantity * xpl.unit_price * xpl.quantity
-                          xrart.quantity * xpl.unit_price
+-- S 2008/12/12 1.9 MOD BY H.Itou 本番#681 受入でない場合は数量はマイナスで取得
+--                          xrart.quantity * xpl.unit_price
+                         (CASE
+                            WHEN (xrart.txns_type = gc_txns_type_uke) THEN -- 実績区分が受入の場合
+                                 xrart.quantity
+                            ELSE xrart.quantity * -1                       -- 実績区分が返品の場合、マイナス
+                          END) * xpl.unit_price
+-- E 2008/12/12 1.9 MOD BY H.Itou 本番#681
 --mod end 1.3.3
                      ELSE 0
                    END r_rcv_amount
@@ -2831,6 +3264,59 @@ AS
                                      ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
             AND   xrart.item_id         = ilm.item_id(+)
             AND   xrart.lot_number      = ilm.lot_no(+)
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+            AND   xrart.txns_type      <> gc_txns_type_hen_n   -- 発注なし返品でない
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
+-- S 2008/12/12 1.9 ADD BY H.Itou 本番#681 発注なし返品は別に取得
+            --------------------------------------
+            -- 【実質金額】発注なし返品取得
+            --------------------------------------
+            UNION ALL
+            SELECT 0  AS s_dif_amount
+                  ,0  AS s_rcv_amount
+                  ,CASE
+                     WHEN flv.attribute3 = gc_temp_rcv_div_n THEN 
+                          xrart.quantity * xpl.unit_price * -1
+                     ELSE 0
+                   END r_dif_amount
+                  ,CASE
+                     WHEN flv.attribute3 = gc_temp_rcv_div_y THEN 
+                          xrart.quantity * xpl.unit_price * -1
+                     ELSE 0
+                   END r_rcv_amount
+            FROM xxpo_rcv_and_rtn_txns    xrart
+                ,xxcmn_item_categories4_v xicv
+                ,ic_item_mst_b            iimc
+                ,xxpo_price_headers       xph
+                ,xxpo_price_lines         xpl
+                ,xxcmn_lookup_values_v    flv
+                ,ic_lots_mst              ilm
+            WHERE flv.lookup_type       = gc_lookup_item_type
+            AND   xpl.expense_item_type = flv.attribute1
+            AND   xph.price_header_id   = xpl.price_header_id
+            AND   DECODE( iimc.attribute20
+                         ,gc_price_day_type_s, FND_DATE.CANONICAL_TO_DATE( ilm.attribute1 )
+                                             , xrart.txns_date
+                        )               BETWEEN xph.start_date_active AND xph.end_date_active
+            AND   xph.price_type        = gc_price_type_r
+            AND   xph.supply_to_id IS NULL
+            AND   xrart.item_id         = xph.item_id
+            AND   xrart.futai_code      = xph.futai_code
+            AND   xrart.factory_code    = xph.factory_code
+            AND   xrart.item_id         = iimc.item_id
+            AND   xrart.txns_date       BETWEEN gd_fiscal_date_from AND gd_fiscal_date_to
+            AND   xrart.vendor_id       = lr_ref.vendor_id
+            AND   xrart.department_code = NVL( iv_dept_code, department_code )
+            AND   xicv.item_id          = xrart.item_id
+            AND   xicv.prod_class_code  = gr_param.prod_div
+            AND   xicv.item_class_code  = gr_param.item_div
+            AND   xicv.crowd_code IN( NVL( gr_param.crowd_code_01, xicv.crowd_code )
+                                     ,NVL( gr_param.crowd_code_02, xicv.crowd_code )
+                                     ,NVL( gr_param.crowd_code_03, xicv.crowd_code ) )
+            AND   xrart.item_id         = ilm.item_id(+)
+            AND   xrart.lot_number      = ilm.lot_no(+)
+            AND   xrart.txns_type       = gc_txns_type_hen_n   -- 発注なし返品
+-- E 2008/12/12 1.9 ADD BY H.Itou 本番#681
           )
         ;
       EXCEPTION
@@ -3003,8 +3489,8 @@ AS
           lr_amount_dtl.d_unit_price := 0 ;
         ELSE
 -- S 2008/12/09 1.7 MOD BY T.Miyata 本番#542 項目単位での取引数値を取得
---          lr_amount_dtl.s_unit_price := ROUND( re_sum_dtl.s_amount / lr_ref.quant, 2 ) ;	
---          lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / lr_ref.quant, 2 ) ; 	
+--          lr_amount_dtl.s_unit_price := ROUND( re_sum_dtl.s_amount / lr_ref.quant, 2 ) ;  
+--          lr_amount_dtl.r_unit_price := ROUND( re_sum_dtl.r_amount / lr_ref.quant, 2 ) ;   
           IF ( re_sum_dtl.s_quantity = 0 ) THEN
             lr_amount_dtl.s_unit_price := 0;
           ELSE
