@@ -59,11 +59,16 @@ LEASE_CLASS                  --リース種別コード
 ,LAST_UPDATE_LOGIN           --最終更新ログイン
 )
 AS 
-SELECT  XOH.LEASE_CLASS                 --リース種別コード
-       ,XLCV.LEASE_CLASS_NAME           --リース種別
+SELECT
+       XOH.LEASE_CLASS                 --リース種別コード
+       ,(SELECT XLCV.LEASE_CLASS_NAME
+         FROM XXCFF_LEASE_CLASS_V       XLCV
+         WHERE XOH.LEASE_CLASS = XLCV.LEASE_CLASS_CODE) AS LEASE_CLASS_NAME --リース種別
        ,CON.CONTRACT_NUMBER             --契約番号
        ,XOH.LEASE_TYPE                  --リース区分
-       ,XLTV.LEASE_TYPE_NAME            --リース区分名称
+       ,(SELECT XLTV.LEASE_TYPE_NAME
+         FROM XXCFF_LEASE_TYPE_V        XLTV
+         WHERE XOH.LEASE_TYPE = XLTV.LEASE_TYPE_CODE) AS LEASE_TYPE_NAME --リース区分名称
        ,CON.LEASE_COMPANY               --リース会社コード
        ,CON.PAYMENT_FREQUENCY           --支払回数
        ,CON.PAYMENT_TYPE                --頻度
@@ -104,12 +109,16 @@ SELECT  XOH.LEASE_CLASS                 --リース種別コード
        ,XOH.INSTALLATION_ADDRESS        --現設置場所
        ,XOH.INSTALLATION_PLACE          --現設置先
        ,XOH.CANCELLATION_TYPE           --中途解約区分
-       ,XCTV.CANCELLATION_TYPE_NAME     --中途解約区分名称
+       ,(SELECT XCTV.CANCELLATION_TYPE_NAME
+         FROM XXCFF_CANCELLATION_TYPE_V XCTV
+         WHERE XOH.CANCELLATION_TYPE = XCTV.CANCELLATION_TYPE_CODE(+)) AS CANCELLATION_TYPE_NAME --中途解約区分名称
        ,XOH.BOND_ACCEPTANCE_DATE        --証書受領日
        ,XOH.OBJECT_STATUS AS  SEGMENT2_DESC--物件ステータス
-       ,XDV.DEPARTMENT_NAME              --管理部門
-       ,XLCV.LEASE_CLASS_CODE           --リース種類
-       ,CON.LEASE_COMPANY_CODE        --リース会社
+       ,(SELECT XDV.DEPARTMENT_NAME
+         FROM XXCFF_DEPARTMENT_V        XDV
+         WHERE XOH.DEPARTMENT_CODE      = XDV.DEPARTMENT_CODE(+)) AS DEPARTMENT_NAME --管理部門
+       ,XOH.LEASE_CLASS           --リース種類
+       ,CON.LEASE_COMPANY             --リース会社
        ,CON.LEASE_COMPANY_NAME        --リース会社名
        ,XOH.LAST_UPDATE_DATE          --最終更新日
        ,XOH.LAST_UPDATED_BY           --最終更新者
@@ -117,14 +126,13 @@ SELECT  XOH.LEASE_CLASS                 --リース種別コード
        ,XOH.CREATION_DATE             --作成日
        ,XOH.LAST_UPDATE_LOGIN         --最終更新ログイン
 FROM    XXCFF_OBJECT_HEADERS      XOH    --リース物件
-       ,XXCFF_DEPARTMENT_V        XDV   --事業所マスタVIEW
-       ,XXCFF_LEASE_CLASS_V       XLCV   --リース種別ビュー
-       ,XXCFF_LEASE_TYPE_V        XLTV   --リース区分ビュー
-       ,XXCFF_CANCELLATION_TYPE_V XCTV   --リース解約区分ビュー
-       ,(SELECT  XCH.LEASE_CLASS                 --リース種別コード
+       ,(SELECT  
+                 /*+
+                 INDEX(XCL XXCFF_CONTRACT_LINES_U01)
+                 */
+                 XCH.LEASE_CLASS                 --リース種別コード
                 ,XCH.RE_LEASE_TIMES
                 ,XCH.CONTRACT_NUMBER             --契約番号
---                ,XCH.LEASE_TYPE                  --リース区分
                 ,XCH.LEASE_COMPANY               --リース会社コード
                 ,XCH.PAYMENT_FREQUENCY           --支払回数
                 ,XCH.PAYMENT_TYPE                --頻度
@@ -154,19 +162,16 @@ FROM    XXCFF_OBJECT_HEADERS      XOH    --リース物件
                 ,XCL.GROSS_DEDUCTION             --控除額総額（税抜）
                 ,XCL.GROSS_TAX_DEDUCTION         --控除額消費税総額
                 ,XCL.GROSS_TOTAL_DEDUCTION       --控除額総額（税込）
-                ,XLCOV.LEASE_COMPANY_CODE        --リース会社
-                ,XLCOV.LEASE_COMPANY_NAME        --リース会社名
-         FROM    XXCFF_CONTRACT_HEADERS XCH      --リース契約
+                ,(SELECT XLCOV.LEASE_COMPANY_NAME
+                  FROM XXCFF_LEASE_COMPANY_V  XLCOV
+                  WHERE XCH.LEASE_COMPANY = XLCOV.LEASE_COMPANY_CODE) AS LEASE_COMPANY_NAME --リース会社名
+         FROM    
+                 XXCFF_CONTRACT_HEADERS XCH      --リース契約
                 ,XXCFF_CONTRACT_LINES   XCL      --リース契約明細
-                ,XXCFF_LEASE_COMPANY_V  XLCOV    --リース会社ビュー
-         WHERE   XCH.CONTRACT_HEADER_ID   = XCL.CONTRACT_HEADER_ID
-         AND     XCH.LEASE_COMPANY        = XLCOV.LEASE_COMPANY_CODE) CON
+         WHERE   XCL.CONTRACT_HEADER_ID = XCH.CONTRACT_HEADER_ID
+                                                                      ) CON
 WHERE XOH.OBJECT_HEADER_ID     = CON.OBJECT_HEADER_ID(+)
 AND   XOH.RE_LEASE_TIMES       = CON.RE_LEASE_TIMES(+)
-AND   XOH.DEPARTMENT_CODE      = XDV.DEPARTMENT_CODE(+)
-AND   XOH.LEASE_CLASS          = XLCV.LEASE_CLASS_CODE
-AND   XOH.LEASE_TYPE           = XLTV.LEASE_TYPE_CODE
-AND   XOH.CANCELLATION_TYPE    = XCTV.CANCELLATION_TYPE_CODE(+)
 ;
 COMMENT ON COLUMN XXCFF_LEASED_ASSETS_V.LEASE_CLASS IS                 'リース種別コード';
 COMMENT ON COLUMN XXCFF_LEASED_ASSETS_V.LEASE_CLASS_NAME IS            'リース種別';
