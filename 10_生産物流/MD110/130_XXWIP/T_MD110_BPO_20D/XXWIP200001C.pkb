@@ -7,7 +7,7 @@ AS
  * Description      : 生産バッチ情報ダウンロード
  * MD.050           : 生産バッチ T_MD050_BPO_202
  * MD.070           : 生産バッチ情報ダウンロード T_MD070_BPO_20D
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/01/16    1.0  Oracle 野村 正幸  初回作成
+ *  2008/06/18    1.1  Oracle 二瓶 大輔  ST不具合対応#160(日付書式修正)
  *
  *****************************************************************************************/
 --
@@ -471,7 +472,10 @@ AS
                         || cv_sep_com 
                         || cv_sep_wquot   || gt_material_info_tbl(i).item_no || cv_sep_wquot 
                         || cv_sep_com 
-                        || cv_sep_wquot   || TO_CHAR(gt_material_info_tbl(i).plan_start_date, 'YYYYMMDD') || cv_sep_wquot 
+-- 2008/06/18 D.Nihei MOD START
+--                        || cv_sep_wquot   || TO_CHAR(gt_material_info_tbl(i).plan_start_date, 'YYYYMMDD') || cv_sep_wquot 
+                        || cv_sep_wquot   || TO_CHAR(gt_material_info_tbl(i).plan_start_date, 'YYYY/MM/DD') || cv_sep_wquot 
+-- 2008/06/18 D.Nihei MOD END
                         || cv_sep_com 
                         || cv_sep_wquot   || gt_material_info_tbl(i).routing_no || cv_sep_wquot 
                         || cv_sep_com 

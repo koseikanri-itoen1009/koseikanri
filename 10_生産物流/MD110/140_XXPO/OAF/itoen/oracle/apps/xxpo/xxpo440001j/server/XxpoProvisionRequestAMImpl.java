@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.1
+* バージョン : 1.2
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-03-03 1.0  二瓶大輔     新規作成
 * 2008-06-06 1.0  二瓶大輔     内部変更要求#137対応
 * 2008-06-17 1.1  二瓶大輔     ST不具合#126対応
+* 2008-06-18 1.2  二瓶大輔     不具合対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -40,7 +41,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.0
+ * @version 1.2
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -3725,23 +3726,21 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         // 挿入チェック処理
         if (!chkOrderLineIns(hdrRow, vo, insRow, exceptions, exeType))
         {
-          if (XxcmnUtility.isBlankOrNull(insRow.getAttribute("ItemNo"))
+          if (!(XxcmnUtility.isBlankOrNull(insRow.getAttribute("ItemNo"))
            && XxcmnUtility.isBlankOrNull(insRow.getAttribute("ReqQuantity"))
-           && XxcmnUtility.isBlankOrNull(insRow.getAttribute("LineDescription"))) 
+           && XxcmnUtility.isBlankOrNull(insRow.getAttribute("LineDescription")))) 
           {
-            break;  
+            // 単価導出フラグをtrueにする
+            priceFlag = true;  
+            // 明細導出処理
+            getLineData(vo,
+                        insRow,
+                        arrivalDate,
+                        listIdRepresent,
+                        listIdVendor,
+                        priceFlag,
+                        exceptions);
           }
-          // 単価導出フラグをtrueにする
-          priceFlag = true;  
-          // 明細導出処理
-          getLineData(vo,
-                      insRow,
-                      arrivalDate,
-                      listIdRepresent,
-                      listIdVendor,
-                      priceFlag,
-                      exceptions);
-
         }
       }
     }
