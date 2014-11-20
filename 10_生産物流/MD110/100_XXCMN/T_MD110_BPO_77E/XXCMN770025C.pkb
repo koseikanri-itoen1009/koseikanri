@@ -7,7 +7,7 @@ AS
  * Description      : 仕入実績表作成
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77E)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -46,6 +46,7 @@ AS
  *  2008/12/05    1.13  A.Shiina         本番#473対応
  *  2008/12/12    1.14  A.Shiina         本番#425対応
  *  2009/01/09    1.15  N.Yoshida        本番#986対応
+ *  2009/07/09    1.16  Marushita        本番#1574対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1729,7 +1730,10 @@ AS
 --      || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
       || '      ,ROUND(NVL(xrrt.kousen_rate_or_unit_price, :para_zero) '
       || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS commission_price '
-      || '             ,NVL(xrrt.fukakin_price, :para_zero) AS assessment '
+--2009/07/09 MOD START
+--      || '             ,NVL(xrrt.fukakin_price, :para_zero) AS assessment '
+      || '             ,(NVL(xrrt.fukakin_price, :para_zero) * -1 ) AS assessment '
+--2009/07/09 MOD END
 -- 2008/11/29 v1.10 UPDATE END
 -- 2008/10/28 H.Itou Mod Start T_S_524対応(再対応)
 --      || '             ,(NVL((SELECT xsupv.stnd_unit_price '
