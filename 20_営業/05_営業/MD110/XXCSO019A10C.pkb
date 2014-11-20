@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCSO019A10C(body)
  * Description      : –K–â”„ãŒv‰æŠÇ—•\iÀs‚Ì’ •[j—p‚ÉƒTƒ}ƒŠƒe[ƒuƒ‹‚ğì¬‚µ‚Ü‚·B
  * MD.050           :  MD050_CSO_019_A10_–K–â”„ãŒv‰æŠÇ—WŒvƒoƒbƒ`
- * Version          : 1.1
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -44,6 +44,9 @@ AS
  *  2009-05-01    1.3   Daisuke.Abe      y”„ãŒv‰æo—Í‘Î‰zT1_0689,T1_0692,T1_0694,T1_0695
  *  2009-05-01    1.3   Daisuke.Abe      y”„ãŒv‰æo—Í‘Î‰zT1_0734,T1_0739,T1_0744,T1_0745
  *  2009-05-01    1.3   Daisuke.Abe      y”„ãŒv‰æo—Í‘Î‰zT1_0751
+ *  2009-05-19    1.4   H.Ogawa          áŠQ”Ô†FT1_1024,T1_1037,T1_1038
+ *  2009-05-25    1.4   T.Mori           ‹Æ–±ˆ—“ú•tA‰ïŒvŠúŠÔŠJn“ú‚ªNULL‚Å‚ ‚éê‡A
+ *                                       ƒGƒ‰[ƒƒbƒZ[ƒW‚ªo—Í‚³‚ê‚¸AƒGƒ‰[I—¹‚µ‚È‚¢
  *
  *****************************************************************************************/
 --
@@ -238,956 +241,1292 @@ AS
   -- “ú•ÊŒÚ‹q•Êƒf[ƒ^æ“¾—pƒJ[ƒ\ƒ‹
   CURSOR g_get_day_acct_data_cur
   IS
-    SELECT
-      union_res.sum_org_code                sum_org_code         -- ŒÚ‹qƒR[ƒh
-     ,union_res.gvm_type                    gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-     ,MAX(union_res.cust_new_num      )     cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-     ,MAX(union_res.cust_vd_new_num   )     cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
-     ,MAX(union_res.cust_other_new_num)     cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
-     ,union_res.sales_date                  sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-     ,MAX(union_res.tgt_amt              )  tgt_amt              -- ”„ãŒv‰æ
-     ,MAX(union_res.tgt_vd_amt           )  tgt_vd_amt           -- ”„ãŒv‰æiVDj
-     ,MAX(union_res.tgt_other_amt        )  tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
-     ,MAX(union_res.tgt_vis_num          )  tgt_vis_num          -- –K–âŒv‰æ
-     ,MAX(union_res.tgt_vis_vd_num       )  tgt_vis_vd_num       -- –K–âŒv‰æiVDj
-     ,MAX(union_res.tgt_vis_other_num    )  tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
-     ,MAX(union_res.rslt_amt             )  rslt_amt             -- ”„ãÀÑ
-     ,MAX(union_res.rslt_new_amt         )  rslt_new_amt         -- ”„ãÀÑiV‹Kj
-     ,MAX(union_res.rslt_vd_new_amt      )  rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
-     ,MAX(union_res.rslt_vd_amt          )  rslt_vd_amt          -- ”„ãÀÑiVDj
-     ,MAX(union_res.rslt_other_new_amt   )  rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
-     ,MAX(union_res.rslt_other_amt       )  rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
-     ,MAX(union_res.rslt_center_amt      )  rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
-     ,MAX(union_res.rslt_center_vd_amt   )  rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
-     ,MAX(union_res.rslt_center_other_amt)  rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-     ,MAX(union_res.vis_num              )  vis_num              -- –K–âÀÑ
-     ,MAX(union_res.vis_new_num          )  vis_new_num          -- –K–âÀÑiV‹Kj
-     ,MAX(union_res.vis_vd_new_num       )  vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
-     ,MAX(union_res.vis_vd_num           )  vis_vd_num           -- –K–âÀÑiVDj
-     ,MAX(union_res.vis_other_new_num    )  vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
-     ,MAX(union_res.vis_other_num        )  vis_other_num        -- –K–âÀÑiVDˆÈŠOj
-     ,MAX(union_res.vis_mc_num           )  vis_mc_num           -- –K–âÀÑiMCj
-     ,MAX(union_res.vis_sales_num        )  vis_sales_num        -- —LŒøŒ¬”
-     ,MAX(union_res.vis_a_num            )  vis_a_num            -- –K–â‚`Œ”
-     ,MAX(union_res.vis_b_num            )  vis_b_num            -- –K–â‚aŒ”
-     ,MAX(union_res.vis_c_num            )  vis_c_num            -- –K–â‚bŒ”
-     ,MAX(union_res.vis_d_num            )  vis_d_num            -- –K–â‚cŒ”
-     ,MAX(union_res.vis_e_num            )  vis_e_num            -- –K–â‚dŒ”
-     ,MAX(union_res.vis_f_num            )  vis_f_num            -- –K–â‚eŒ”
-     ,MAX(union_res.vis_g_num            )  vis_g_num            -- –K–â‚fŒ”
-     ,MAX(union_res.vis_h_num            )  vis_h_num            -- –K–â‚gŒ”
-     ,MAX(union_res.vis_i_num            )  vis_i_num            -- –K–âú@Œ”
-     ,MAX(union_res.vis_j_num            )  vis_j_num            -- –K–â‚iŒ”
-     ,MAX(union_res.vis_k_num            )  vis_k_num            -- –K–â‚jŒ”
-     ,MAX(union_res.vis_l_num            )  vis_l_num            -- –K–â‚kŒ”
-     ,MAX(union_res.vis_m_num            )  vis_m_num            -- –K–â‚lŒ”
-     ,MAX(union_res.vis_n_num            )  vis_n_num            -- –K–â‚mŒ”
-     ,MAX(union_res.vis_o_num            )  vis_o_num            -- –K–â‚nŒ”
-     ,MAX(union_res.vis_p_num            )  vis_p_num            -- –K–â‚oŒ”
-     ,MAX(union_res.vis_q_num            )  vis_q_num            -- –K–â‚pŒ”
-     ,MAX(union_res.vis_r_num            )  vis_r_num            -- –K–â‚qŒ”
-     ,MAX(union_res.vis_s_num            )  vis_s_num            -- –K–â‚rŒ”
-     ,MAX(union_res.vis_t_num            )  vis_t_num            -- –K–â‚sŒ”
-     ,MAX(union_res.vis_u_num            )  vis_u_num            -- –K–â‚tŒ”
-     ,MAX(union_res.vis_v_num            )  vis_v_num            -- –K–â‚uŒ”
-     ,MAX(union_res.vis_w_num            )  vis_w_num            -- –K–â‚vŒ”
-     ,MAX(union_res.vis_x_num            )  vis_x_num            -- –K–â‚wŒ”
-     ,MAX(union_res.vis_y_num            )  vis_y_num            -- –K–â‚xŒ”
-     ,MAX(union_res.vis_z_num            )  vis_z_num            -- –K–â‚yŒ”
-    FROM
-      (
-       SELECT
-         inn_v.sum_org_code               sum_org_code         -- ŒÚ‹qƒR[ƒh
-        ,inn_v.gvm_type                   gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-        ,inn_v.cust_new_num               cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-              AND  (inn_v.cust_new_num = 1)
-              THEN  1
-         END                              cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-              AND  (inn_v.cust_new_num = 1)
-              THEN  1
-         END                              cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
-        ,inn_v.sales_date                 sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-        ,inn_v.tgt_amt                    tgt_amt              -- ”„ãŒv‰æ
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-              THEN  inn_v.tgt_amt
-         END                              tgt_vd_amt           -- ”„ãŒv‰æiVDj
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-              THEN  inn_v.tgt_amt
-         END                              tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
-        ,inn_v.tgt_vis_num                              tgt_vis_num          -- –K–âŒv‰æ
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-              THEN  inn_v.tgt_vis_num
-         END                              tgt_vis_vd_num       -- –K–âŒv‰æiVDj
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-              THEN  inn_v.tgt_vis_num
-         END                              tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
-        ,inn_v.rslt_amt                   rslt_amt             -- ”„ãÀÑ
-        ,inn_v.rslt_new_amt               rslt_new_amt         -- ”„ãÀÑiV‹Kj
-        ,inn_v.rslt_vd_new_amt            rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
-        ,inn_v.rslt_vd_amt                rslt_vd_amt          -- ”„ãÀÑiVDj
-        ,inn_v.rslt_other_new_amt         rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
-        ,inn_v.rslt_other_amt             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
-        ,inn_v.rslt_center_amt            rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
-        ,inn_v.rslt_center_vd_amt         rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
-        ,inn_v.rslt_center_other_amt      rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-        ,inn_v.vis_num                    vis_num              -- –K–âÀÑ
-        ,inn_v.vis_new_num                vis_new_num          -- –K–âÀÑiV‹Kj
-        ,inn_v.vis_vd_new_num             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
-        ,inn_v.vis_vd_num                 vis_vd_num           -- –K–âÀÑiVDj
-        ,inn_v.vis_other_new_num          vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
-        ,inn_v.vis_other_num              vis_other_num        -- –K–âÀÑiVDˆÈŠOj
-        ,inn_v.vis_mc_num                 vis_mc_num           -- –K–âÀÑiMCj
-        ,inn_v.vis_sales_num              vis_sales_num        -- —LŒøŒ¬”
-        ,inn_v.vis_a_num                  vis_a_num            -- –K–â‚`Œ”
-        ,inn_v.vis_b_num                  vis_b_num            -- –K–â‚aŒ”
-        ,inn_v.vis_c_num                  vis_c_num            -- –K–â‚bŒ”
-        ,inn_v.vis_d_num                  vis_d_num            -- –K–â‚cŒ”
-        ,inn_v.vis_e_num                  vis_e_num            -- –K–â‚dŒ”
-        ,inn_v.vis_f_num                  vis_f_num            -- –K–â‚eŒ”
-        ,inn_v.vis_g_num                  vis_g_num            -- –K–â‚fŒ”
-        ,inn_v.vis_h_num                  vis_h_num            -- –K–â‚gŒ”
-        ,inn_v.vis_i_num                  vis_i_num            -- –K–âú@Œ”
-        ,inn_v.vis_j_num                  vis_j_num            -- –K–â‚iŒ”
-        ,inn_v.vis_k_num                  vis_k_num            -- –K–â‚jŒ”
-        ,inn_v.vis_l_num                  vis_l_num            -- –K–â‚kŒ”
-        ,inn_v.vis_m_num                  vis_m_num            -- –K–â‚lŒ”
-        ,inn_v.vis_n_num                  vis_n_num            -- –K–â‚mŒ”
-        ,inn_v.vis_o_num                  vis_o_num            -- –K–â‚nŒ”
-        ,inn_v.vis_p_num                  vis_p_num            -- –K–â‚oŒ”
-        ,inn_v.vis_q_num                  vis_q_num            -- –K–â‚pŒ”
-        ,inn_v.vis_r_num                  vis_r_num            -- –K–â‚qŒ”
-        ,inn_v.vis_s_num                  vis_s_num            -- –K–â‚rŒ”
-        ,inn_v.vis_t_num                  vis_t_num            -- –K–â‚sŒ”
-        ,inn_v.vis_u_num                  vis_u_num            -- –K–â‚tŒ”
-        ,inn_v.vis_v_num                  vis_v_num            -- –K–â‚uŒ”
-        ,inn_v.vis_w_num                  vis_w_num            -- –K–â‚vŒ”
-        ,inn_v.vis_x_num                  vis_x_num            -- –K–â‚wŒ”
-        ,inn_v.vis_y_num                  vis_y_num            -- –K–â‚xŒ”
-        ,inn_v.vis_z_num                  vis_z_num            -- –K–â‚yŒ”
-       FROM
-         (
-          SELECT
-            xcav.account_number              sum_org_code         -- ŒÚ‹qƒR[ƒh
-           ,CASE WHEN (
-                       xcav.customer_status IN ('20', '25', '30')
-                      )
-                 THEN  cv_emp_div_mc
-                 WHEN (
-                       xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type)
-                         = cv_true
-                      )
-                 THEN  cv_emp_div_jihan
-                 ELSE  cv_emp_div_gen
-            END                              gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-           ,CASE WHEN (
-                       TO_CHAR(xcav.cnvs_date, 'YYYYMMDD') = xasp.plan_date
-                      )
-                  AND (
-                       xcav.new_point_div = cv_new_point_div_1
-                      )
-                  AND (
-                       xcav.cnvs_business_person = xcrv2.employee_number
-                      )
-                 THEN  1
-            END                              cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-           ,xasp.plan_date                   sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-           ,xasp.sales_plan_day_amt          tgt_amt              -- ”„ãŒv‰æ
-           ,CASE WHEN (
-                       xcav.vist_target_div = cv_vist_target_div_1
-                      )
-                  AND (xasp.sales_plan_day_amt > 0
-                      )
-                 THEN  1
-                 ELSE  NULL
-            END                              tgt_vis_num          -- –K–âŒv‰æ
-           ,NULL                             rslt_amt             -- ”„ãÀÑ
-           ,NULL                             rslt_new_amt         -- ”„ãÀÑiV‹Kj
-           ,NULL                             rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
-           ,NULL                             rslt_vd_amt          -- ”„ãÀÑiVDj
-           ,NULL                             rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
-           ,NULL                             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
-           ,NULL                             rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
-           ,NULL                             rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
-           ,NULL                             rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-           ,NULL                             vis_num              -- –K–âÀÑ
-           ,NULL                             vis_new_num          -- –K–âÀÑiV‹Kj
-           ,NULL                             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
-           ,NULL                             vis_vd_num           -- –K–âÀÑiVDj
-           ,NULL                             vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
-           ,NULL                             vis_other_num        -- –K–âÀÑiVDˆÈŠOj
-           ,NULL                             vis_mc_num           -- –K–âÀÑiMCj
-           ,NULL                             vis_sales_num        -- —LŒøŒ¬”
-           ,NULL                             vis_a_num            -- –K–â‚`Œ”
-           ,NULL                             vis_b_num            -- –K–â‚aŒ”
-           ,NULL                             vis_c_num            -- –K–â‚bŒ”
-           ,NULL                             vis_d_num            -- –K–â‚cŒ”
-           ,NULL                             vis_e_num            -- –K–â‚dŒ”
-           ,NULL                             vis_f_num            -- –K–â‚eŒ”
-           ,NULL                             vis_g_num            -- –K–â‚fŒ”
-           ,NULL                             vis_h_num            -- –K–â‚gŒ”
-           ,NULL                             vis_i_num            -- –K–âú@Œ”
-           ,NULL                             vis_j_num            -- –K–â‚iŒ”
-           ,NULL                             vis_k_num            -- –K–â‚jŒ”
-           ,NULL                             vis_l_num            -- –K–â‚kŒ”
-           ,NULL                             vis_m_num            -- –K–â‚lŒ”
-           ,NULL                             vis_n_num            -- –K–â‚mŒ”
-           ,NULL                             vis_o_num            -- –K–â‚nŒ”
-           ,NULL                             vis_p_num            -- –K–â‚oŒ”
-           ,NULL                             vis_q_num            -- –K–â‚pŒ”
-           ,NULL                             vis_r_num            -- –K–â‚qŒ”
-           ,NULL                             vis_s_num            -- –K–â‚rŒ”
-           ,NULL                             vis_t_num            -- –K–â‚sŒ”
-           ,NULL                             vis_u_num            -- –K–â‚tŒ”
-           ,NULL                             vis_v_num            -- –K–â‚uŒ”
-           ,NULL                             vis_w_num            -- –K–â‚vŒ”
-           ,NULL                             vis_x_num            -- –K–â‚wŒ”
-           ,NULL                             vis_y_num            -- –K–â‚xŒ”
-           ,NULL                             vis_z_num            -- –K–â‚yŒ”
-          FROM
-            xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
-           ,xxcso_account_sales_plans xasp  -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹
-           ,xxcso_cust_resources_v2 xcrv2  -- ŒÚ‹q’S“–‰c‹ÆˆõiÅVjƒrƒ…[
-          WHERE  xcav.account_number = xasp.account_number  -- ŒÚ‹qƒR[ƒh
-            AND  xasp.plan_date BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMMDD')
-                                    AND TO_CHAR(LAST_DAY(gd_process_date)     , 'YYYYMMDD') -- ”NŒ“ú
-            AND  xasp.month_date_div = cv_month_date_div_day  -- Œ“ú‹æ•ª
-            AND  ((
-                        (
-                         xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_10
-                                                  ,cv_customer_status_20
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_25
-                                                  ,cv_customer_status_30
-                                                  ,cv_customer_status_40
-                                                  ,cv_customer_status_50
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_30
-                                                  ,cv_customer_status_40
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                 ))
-            AND  xcav.account_number = xcrv2.account_number(+)
-         ) inn_v
-       -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹i“ú•Êj
-       UNION ALL
-       SELECT
-         inn_v.sum_org_code               sum_org_code         -- ŒÚ‹qƒR[ƒh
-        ,inn_v.gvm_type                   gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-        ,inn_v.cust_new_num               cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-              AND  (inn_v.cust_new_num = 1)
-              THEN  1
-         END                              cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-              AND  (inn_v.cust_new_num = 1)
-              THEN  1
-         END                              cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
-        ,inn_v.sales_date                 sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-        ,inn_v.tgt_amt                    tgt_amt              -- ”„ãŒv‰æ
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-              THEN  inn_v.tgt_amt
-         END                              tgt_vd_amt           -- ”„ãŒv‰æiVDj
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-              THEN  inn_v.tgt_amt
-         END                              tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
-        ,inn_v.tgt_vis_num                              tgt_vis_num          -- –K–âŒv‰æ
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-              THEN  inn_v.tgt_vis_num
-         END                              tgt_vis_vd_num       -- –K–âŒv‰æiVDj
-        ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-              THEN  inn_v.tgt_vis_num
-         END                              tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
-        ,inn_v.rslt_amt                   rslt_amt             -- ”„ãÀÑ
-        ,inn_v.rslt_new_amt               rslt_new_amt         -- ”„ãÀÑiV‹Kj
-        ,inn_v.rslt_vd_new_amt            rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
-        ,inn_v.rslt_vd_amt                rslt_vd_amt          -- ”„ãÀÑiVDj
-        ,inn_v.rslt_other_new_amt         rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
-        ,inn_v.rslt_other_amt             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
-        ,inn_v.rslt_center_amt            rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
-        ,inn_v.rslt_center_vd_amt         rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
-        ,inn_v.rslt_center_other_amt      rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-        ,inn_v.vis_num                    vis_num              -- –K–âÀÑ
-        ,inn_v.vis_new_num                vis_new_num          -- –K–âÀÑiV‹Kj
-        ,inn_v.vis_vd_new_num             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
-        ,inn_v.vis_vd_num                 vis_vd_num           -- –K–âÀÑiVDj
-        ,inn_v.vis_other_new_num          vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
-        ,inn_v.vis_other_num              vis_other_num        -- –K–âÀÑiVDˆÈŠOj
-        ,inn_v.vis_mc_num                 vis_mc_num           -- –K–âÀÑiMCj
-        ,inn_v.vis_sales_num              vis_sales_num        -- —LŒøŒ¬”
-        ,inn_v.vis_a_num                  vis_a_num            -- –K–â‚`Œ”
-        ,inn_v.vis_b_num                  vis_b_num            -- –K–â‚aŒ”
-        ,inn_v.vis_c_num                  vis_c_num            -- –K–â‚bŒ”
-        ,inn_v.vis_d_num                  vis_d_num            -- –K–â‚cŒ”
-        ,inn_v.vis_e_num                  vis_e_num            -- –K–â‚dŒ”
-        ,inn_v.vis_f_num                  vis_f_num            -- –K–â‚eŒ”
-        ,inn_v.vis_g_num                  vis_g_num            -- –K–â‚fŒ”
-        ,inn_v.vis_h_num                  vis_h_num            -- –K–â‚gŒ”
-        ,inn_v.vis_i_num                  vis_i_num            -- –K–âú@Œ”
-        ,inn_v.vis_j_num                  vis_j_num            -- –K–â‚iŒ”
-        ,inn_v.vis_k_num                  vis_k_num            -- –K–â‚jŒ”
-        ,inn_v.vis_l_num                  vis_l_num            -- –K–â‚kŒ”
-        ,inn_v.vis_m_num                  vis_m_num            -- –K–â‚lŒ”
-        ,inn_v.vis_n_num                  vis_n_num            -- –K–â‚mŒ”
-        ,inn_v.vis_o_num                  vis_o_num            -- –K–â‚nŒ”
-        ,inn_v.vis_p_num                  vis_p_num            -- –K–â‚oŒ”
-        ,inn_v.vis_q_num                  vis_q_num            -- –K–â‚pŒ”
-        ,inn_v.vis_r_num                  vis_r_num            -- –K–â‚qŒ”
-        ,inn_v.vis_s_num                  vis_s_num            -- –K–â‚rŒ”
-        ,inn_v.vis_t_num                  vis_t_num            -- –K–â‚sŒ”
-        ,inn_v.vis_u_num                  vis_u_num            -- –K–â‚tŒ”
-        ,inn_v.vis_v_num                  vis_v_num            -- –K–â‚uŒ”
-        ,inn_v.vis_w_num                  vis_w_num            -- –K–â‚vŒ”
-        ,inn_v.vis_x_num                  vis_x_num            -- –K–â‚wŒ”
-        ,inn_v.vis_y_num                  vis_y_num            -- –K–â‚xŒ”
-        ,inn_v.vis_z_num                  vis_z_num            -- –K–â‚yŒ”
-       FROM
-         (
-          SELECT
-            xcav.account_number              sum_org_code         -- ŒÚ‹qƒR[ƒh
-           ,CASE WHEN (
-                       xcav.customer_status IN ('20', '25', '30')
-                      )
-                 THEN  cv_emp_div_mc
-                 WHEN (
-                       xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type)
-                         = cv_true
-                      )
-                 THEN  cv_emp_div_jihan
-                 ELSE  cv_emp_div_gen
-            END                              gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-           ,CASE WHEN (
-                       TO_CHAR(xcav.cnvs_date, 'YYYYMM') = xasp.year_month
-                      )
-                  AND (
-                       xcav.new_point_div = cv_new_point_div_1
-                      )
-                  AND (
-                       xcav.cnvs_business_person = xcrv2.employee_number
-                      )
-                 THEN  1
-            END                              cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-           ,xasp.year_month || '01'          sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-           ,xasp.sales_plan_month_amt        tgt_amt              -- ”„ãŒv‰æ
-           ,CASE WHEN (
-                       xcav.vist_target_div = cv_vist_target_div_1
-                      )
-                  AND (xasp.sales_plan_month_amt > 0
-                      )
-                 THEN  1
-                 ELSE  NULL
-            END                              tgt_vis_num          -- –K–âŒv‰æ
-           ,NULL                             rslt_amt             -- ”„ãÀÑ
-           ,NULL                             rslt_new_amt         -- ”„ãÀÑiV‹Kj
-           ,NULL                             rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
-           ,NULL                             rslt_vd_amt          -- ”„ãÀÑiVDj
-           ,NULL                             rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
-           ,NULL                             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
-           ,NULL                             rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
-           ,NULL                             rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
-           ,NULL                             rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-           ,NULL                             vis_num              -- –K–âÀÑ
-           ,NULL                             vis_new_num          -- –K–âÀÑiV‹Kj
-           ,NULL                             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
-           ,NULL                             vis_vd_num           -- –K–âÀÑiVDj
-           ,NULL                             vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
-           ,NULL                             vis_other_num        -- –K–âÀÑiVDˆÈŠOj
-           ,NULL                             vis_mc_num           -- –K–âÀÑiMCj
-           ,NULL                             vis_sales_num        -- —LŒøŒ¬”
-           ,NULL                             vis_a_num            -- –K–â‚`Œ”
-           ,NULL                             vis_b_num            -- –K–â‚aŒ”
-           ,NULL                             vis_c_num            -- –K–â‚bŒ”
-           ,NULL                             vis_d_num            -- –K–â‚cŒ”
-           ,NULL                             vis_e_num            -- –K–â‚dŒ”
-           ,NULL                             vis_f_num            -- –K–â‚eŒ”
-           ,NULL                             vis_g_num            -- –K–â‚fŒ”
-           ,NULL                             vis_h_num            -- –K–â‚gŒ”
-           ,NULL                             vis_i_num            -- –K–âú@Œ”
-           ,NULL                             vis_j_num            -- –K–â‚iŒ”
-           ,NULL                             vis_k_num            -- –K–â‚jŒ”
-           ,NULL                             vis_l_num            -- –K–â‚kŒ”
-           ,NULL                             vis_m_num            -- –K–â‚lŒ”
-           ,NULL                             vis_n_num            -- –K–â‚mŒ”
-           ,NULL                             vis_o_num            -- –K–â‚nŒ”
-           ,NULL                             vis_p_num            -- –K–â‚oŒ”
-           ,NULL                             vis_q_num            -- –K–â‚pŒ”
-           ,NULL                             vis_r_num            -- –K–â‚qŒ”
-           ,NULL                             vis_s_num            -- –K–â‚rŒ”
-           ,NULL                             vis_t_num            -- –K–â‚sŒ”
-           ,NULL                             vis_u_num            -- –K–â‚tŒ”
-           ,NULL                             vis_v_num            -- –K–â‚uŒ”
-           ,NULL                             vis_w_num            -- –K–â‚vŒ”
-           ,NULL                             vis_x_num            -- –K–â‚wŒ”
-           ,NULL                             vis_y_num            -- –K–â‚xŒ”
-           ,NULL                             vis_z_num            -- –K–â‚yŒ”
-          FROM
-            xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
-           ,xxcso_account_sales_plans xasp  -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹
-           ,xxcso_cust_resources_v2 xcrv2  -- ŒÚ‹q’S“–‰c‹ÆˆõiÅVjƒrƒ…[
-          WHERE  xcav.account_number = xasp.account_number  -- ŒÚ‹qƒR[ƒh
-            AND  xasp.year_month BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMM')
-                                     AND TO_CHAR(gd_process_date, 'YYYYMM')  -- ”NŒ
-            AND  xasp.month_date_div = cv_month_date_div_mon  -- Œ“ú‹æ•ª
-            AND  EXISTS
-                 (
-                  SELECT  xasp_m.account_number account_number
-                  FROM  xxcso_account_sales_plans xasp_m  -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹iŒ•Êj
-                  WHERE  xasp_m.account_number = xasp.account_number  -- ŒÚ‹qƒR[ƒh
-                    AND  xasp_m.year_month = xasp.year_month  -- ”NŒ
-                    AND  xasp.month_date_div = cv_month_date_div_day  -- Œ“ú‹æ•ª
-                 )
-            AND  ((
-                        (
-                         xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_10
-                                                  ,cv_customer_status_20
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_25
-                                                  ,cv_customer_status_30
-                                                  ,cv_customer_status_40
-                                                  ,cv_customer_status_50
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_30
-                                                  ,cv_customer_status_40
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                 ))
-            AND  xcav.account_number = xcrv2.account_number(+)
-         ) inn_v
-       -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹iŒ•Êj
-       UNION ALL
-       SELECT
-         inn_v.sum_org_code               sum_org_code         -- ŒÚ‹qƒR[ƒh
-        ,inn_v.gvm_type                   gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-        ,MAX(
-             inn_v.cust_new_num
-            )                             cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-        ,MAX(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-                   AND (inn_v.cust_new_num = 1)
-                  THEN  1
-             END
-            )                             cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
-        ,MAX(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-                   AND (inn_v.cust_new_num = 1)
-                  THEN  1
-             END
-            )                             cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
-        ,inn_v.sales_date                 sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-        ,NULL                             tgt_amt              -- ”„ãŒv‰æ
-        ,NULL                             tgt_vd_amt           -- ”„ãŒv‰æiVDj
-        ,NULL                             tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
-        ,NULL                             tgt_vis_num          -- –K–âŒv‰æ
-        ,NULL                             tgt_vis_vd_num       -- –K–âŒv‰æiVDj
-        ,NULL                             tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
-        ,SUM(inn_v.pure_amount)           rslt_amt             -- ”„ãÀÑ
-        ,SUM(
-             CASE WHEN (inn_v.cust_new_num = 1)
-                  THEN  inn_v.pure_amount
-             END
-            )                             rslt_new_amt         -- ”„ãÀÑiV‹Kj
-        ,SUM(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-                   AND (inn_v.cust_new_num = 1)
-                  THEN  inn_v.pure_amount
-             END
-            )                             rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
-        ,SUM(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-                  THEN  inn_v.pure_amount
-             END
-            )                            rslt_vd_amt          -- ”„ãÀÑiVDj
-        ,SUM(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-                   AND (inn_v.cust_new_num = 1)
-                  THEN  inn_v.pure_amount
-             END
-            )                             rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
-        ,SUM(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-                  THEN  inn_v.pure_amount
-             END
-            )                             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
-        ,SUM(inn_v.pure_amount_2)         rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
-        ,SUM(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-                  THEN inn_v.pure_amount_2
-                  ELSE NULL
-                  END
-            )                             rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
-        ,SUM(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-                  THEN inn_v.pure_amount_2
-                  ELSE NULL
-                  END
-            )                             rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-        ,NULL                             vis_num              -- –K–âÀÑ
-        ,NULL                             vis_new_num          -- –K–âÀÑiV‹Kj
-        ,NULL                             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
-        ,NULL                             vis_vd_num           -- –K–âÀÑiVDj
-        ,NULL                             vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
-        ,NULL                             vis_other_num        -- –K–âÀÑiVDˆÈŠOj
-        ,NULL                             vis_mc_num           -- –K–âÀÑiMCj
-        ,NULL                             vis_sales_num        -- —LŒøŒ¬”
-        ,NULL                             vis_a_num            -- –K–â‚`Œ”
-        ,NULL                             vis_b_num            -- –K–â‚aŒ”
-        ,NULL                             vis_c_num            -- –K–â‚bŒ”
-        ,NULL                             vis_d_num            -- –K–â‚cŒ”
-        ,NULL                             vis_e_num            -- –K–â‚dŒ”
-        ,NULL                             vis_f_num            -- –K–â‚eŒ”
-        ,NULL                             vis_g_num            -- –K–â‚fŒ”
-        ,NULL                             vis_h_num            -- –K–â‚gŒ”
-        ,NULL                             vis_i_num            -- –K–âú@Œ”
-        ,NULL                             vis_j_num            -- –K–â‚iŒ”
-        ,NULL                             vis_k_num            -- –K–â‚jŒ”
-        ,NULL                             vis_l_num            -- –K–â‚kŒ”
-        ,NULL                             vis_m_num            -- –K–â‚lŒ”
-        ,NULL                             vis_n_num            -- –K–â‚mŒ”
-        ,NULL                             vis_o_num            -- –K–â‚nŒ”
-        ,NULL                             vis_p_num            -- –K–â‚oŒ”
-        ,NULL                             vis_q_num            -- –K–â‚pŒ”
-        ,NULL                             vis_r_num            -- –K–â‚qŒ”
-        ,NULL                             vis_s_num            -- –K–â‚rŒ”
-        ,NULL                             vis_t_num            -- –K–â‚sŒ”
-        ,NULL                             vis_u_num            -- –K–â‚tŒ”
-        ,NULL                             vis_v_num            -- –K–â‚uŒ”
-        ,NULL                             vis_w_num            -- –K–â‚vŒ”
-        ,NULL                             vis_x_num            -- –K–â‚wŒ”
-        ,NULL                             vis_y_num            -- –K–â‚xŒ”
-        ,NULL                             vis_z_num            -- –K–â‚yŒ”
-       FROM
-         (
-          SELECT
-            xcav.account_number              sum_org_code         -- ŒÚ‹qƒR[ƒh
-           ,CASE WHEN (
-                       xcav.customer_status IN ('20', '25', '30')
-                      )
-                 THEN  cv_emp_div_mc
-                 WHEN (
-                       xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type)
-                         = cv_true
-                      )
-                 THEN  cv_emp_div_jihan
-                 ELSE  cv_emp_div_gen
-            END                              gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-           ,CASE WHEN (
-                       TRUNC(xcav.cnvs_date) = TRUNC(xsv.delivery_date)
-                      )
-                  AND (
-                       xcav.new_point_div = cv_new_point_div_1
-                      )
-                  AND (
-                       xcav.cnvs_business_person = xcrv2.employee_number
-                      )
-                 THEN  1
-            END                              cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-           ,TO_CHAR(xsv.delivery_date, 'YYYYMMDD')
-                                             sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-           ,xsv.pure_amount                  pure_amount          -- –{‘Ì‹àŠz
-           ,CASE WHEN xsv.delivery_pattern_class = cv_delivery_pattern_cls_5
-                 THEN xsv.pure_amount
-                 ELSE NULL
-            END                              pure_amount_2        -- –{‘Ì‹àŠz2
-          FROM
-            xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
-           ,xxcso_sales_v xsv  -- ”„ãÀÑƒrƒ…[
-           ,xxcso_cust_resources_v2 xcrv2  -- ŒÚ‹q’S“–‰c‹ÆˆõiÅVjƒrƒ…[
-          WHERE  xcav.account_number = xsv.account_number  -- ŒÚ‹qƒR[ƒh
-            AND  xsv.delivery_date BETWEEN gd_ar_gl_period_from
-                                       AND gd_process_date  -- ”[•i“ú
-            AND  ((
-                        (
-                         xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_10
-                                                  ,cv_customer_status_20
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_25
-                                                  ,cv_customer_status_30
-                                                  ,cv_customer_status_40
-                                                  ,cv_customer_status_50
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_30
-                                                  ,cv_customer_status_40
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                 ))
-            AND  xcav.account_number = xcrv2.account_number(+)
-         ) inn_v
-       GROUP BY  inn_v.sum_org_code
-                ,inn_v.gvm_type
-                ,inn_v.sales_date
-       -- ”„ãÀÑVIEW
-       UNION ALL
-       SELECT
-         inn_v.sum_org_code               sum_org_code         -- ŒÚ‹qƒR[ƒh
-        ,inn_v.gvm_type                   gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-        ,MAX(
-             inn_v.cust_new_num
-            )                             cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-        ,MAX(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-                   AND (inn_v.cust_new_num = 1)
-                  THEN  1
-             END
-            )                             cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
-        ,MAX(
-             CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-                   AND (inn_v.cust_new_num = 1)
-                  THEN  1
-             END
-            )                             cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
-        ,inn_v.sales_date                 sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-        ,NULL                             tgt_amt              -- ”„ãŒv‰æ
-        ,NULL                             tgt_vd_amt           -- ”„ãŒv‰æiVDj
-        ,NULL                             tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
-        ,NULL                             tgt_vis_num          -- –K–âŒv‰æ
-        ,NULL                             tgt_vis_vd_num       -- –K–âŒv‰æiVDj
-        ,NULL                             tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
-        ,NULL                             rslt_amt             -- ”„ãÀÑ
-        ,NULL                             rslt_new_amt         -- ”„ãÀÑiV‹Kj
-        ,NULL                             rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
-        ,NULL                             rslt_vd_amt          -- ”„ãÀÑiVDj
-        ,NULL                             rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
-        ,NULL                             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
-        ,NULL                             rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
-        ,NULL                             rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
-        ,NULL                             rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-        ,COUNT(inn_v.task_id)             vis_num              -- –K–âÀÑ
-        ,COUNT
-              (
-               CASE WHEN (inn_v.cust_new_num = 1)
-                    THEN  inn_v.task_id
-               END
-              )                           vis_new_num          -- –K–âÀÑiV‹Kj
-        ,COUNT
-              (
-               CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-                     AND (inn_v.cust_new_num = 1)
-                    THEN  inn_v.task_id
-               END
-              )                           vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
-        ,COUNT(
-               CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
-                    THEN  inn_v.task_id
-               END
-              )                           vis_vd_num           -- –K–âÀÑiVDj
-        ,COUNT(
-               CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-                     AND (inn_v.cust_new_num = 1)
-                    THEN  inn_v.task_id
-               END
-              )                           vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
-        ,COUNT
-              (
-               CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
-                    THEN  inn_v.task_id
-               END
-              )                           vis_other_num        -- –K–âÀÑiVDˆÈŠOj
-        ,COUNT
-              (
-               CASE WHEN (inn_v.gvm_type = cv_emp_div_mc)
-                    THEN  inn_v.task_id
-               END
-              )                           vis_mc_num           -- –K–âÀÑiMCj
-        ,COUNT
-              (
-               CASE WHEN (
-                          inn_v.eff_visit_flag = cv_eff_visit_flag_1
-                         )
-                    THEN  inn_v.task_id
-                    ELSE  NULL
-               END
-              )                           vis_sales_num        -- —LŒøŒ¬”
-        ,SUM(inn_v.vis_a_num)             vis_a_num            -- –K–â‚`Œ”
-        ,SUM(inn_v.vis_b_num)             vis_b_num            -- –K–â‚aŒ”
-        ,SUM(inn_v.vis_c_num)             vis_c_num            -- –K–â‚bŒ”
-        ,SUM(inn_v.vis_d_num)             vis_d_num            -- –K–â‚cŒ”
-        ,SUM(inn_v.vis_e_num)             vis_e_num            -- –K–â‚dŒ”
-        ,SUM(inn_v.vis_f_num)             vis_f_num            -- –K–â‚eŒ”
-        ,SUM(inn_v.vis_g_num)             vis_g_num            -- –K–â‚fŒ”
-        ,SUM(inn_v.vis_h_num)             vis_h_num            -- –K–â‚gŒ”
-        ,SUM(inn_v.vis_i_num)             vis_i_num            -- –K–âú@Œ”
-        ,SUM(inn_v.vis_j_num)             vis_j_num            -- –K–â‚iŒ”
-        ,SUM(inn_v.vis_k_num)             vis_k_num            -- –K–â‚jŒ”
-        ,SUM(inn_v.vis_l_num)             vis_l_num            -- –K–â‚kŒ”
-        ,SUM(inn_v.vis_m_num)             vis_m_num            -- –K–â‚lŒ”
-        ,SUM(inn_v.vis_n_num)             vis_n_num            -- –K–â‚mŒ”
-        ,SUM(inn_v.vis_o_num)             vis_o_num            -- –K–â‚nŒ”
-        ,SUM(inn_v.vis_p_num)             vis_p_num            -- –K–â‚oŒ”
-        ,SUM(inn_v.vis_q_num)             vis_q_num            -- –K–â‚pŒ”
-        ,SUM(inn_v.vis_r_num)             vis_r_num            -- –K–â‚qŒ”
-        ,SUM(inn_v.vis_s_num)             vis_s_num            -- –K–â‚rŒ”
-        ,SUM(inn_v.vis_t_num)             vis_t_num            -- –K–â‚sŒ”
-        ,SUM(inn_v.vis_u_num)             vis_u_num            -- –K–â‚tŒ”
-        ,SUM(inn_v.vis_v_num)             vis_v_num            -- –K–â‚uŒ”
-        ,SUM(inn_v.vis_w_num)             vis_w_num            -- –K–â‚vŒ”
-        ,SUM(inn_v.vis_x_num)             vis_x_num            -- –K–â‚wŒ”
-        ,SUM(inn_v.vis_y_num)             vis_y_num            -- –K–â‚xŒ”
-        ,SUM(inn_v.vis_z_num)             vis_z_num            -- –K–â‚yŒ”
-       FROM
-         (
-          SELECT
-            xcav.account_number              sum_org_code         -- ŒÚ‹qƒR[ƒh
-           ,CASE WHEN (
-                       xcav.customer_status IN ('20', '25', '30')
-                      )
-                 THEN  cv_emp_div_mc
-                 WHEN (
-                       xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type)
-                         = cv_true
-                      )
-                 THEN  cv_emp_div_jihan
-                 ELSE  cv_emp_div_gen
-            END                              gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
-           ,CASE WHEN (
-                       TRUNC(xcav.cnvs_date) = TRUNC(xvv.actual_end_date)
-                      )
-                  AND (
-                       xcav.new_point_div = cv_new_point_div_1
-                      )
-                  AND (
-                       xcav.cnvs_business_person = xcrv2.employee_number
-                      )
-                 THEN  1
-            END                              cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
-           ,TO_CHAR(xvv.actual_end_date, 'YYYYMMDD')
-                                             sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
-           ,xvv.task_id                      task_id              -- ƒ^ƒXƒNID
-           ,xvv.eff_visit_flag               eff_visit_flag       -- —LŒø–K–â‹æ•ª
-           ,xvv.visit_num_a                  vis_a_num            -- –K–â‚`Œ”
-           ,xvv.visit_num_b                  vis_b_num            -- –K–â‚aŒ”
-           ,xvv.visit_num_c                  vis_c_num            -- –K–â‚bŒ”
-           ,xvv.visit_num_d                  vis_d_num            -- –K–â‚cŒ”
-           ,xvv.visit_num_e                  vis_e_num            -- –K–â‚dŒ”
-           ,xvv.visit_num_f                  vis_f_num            -- –K–â‚eŒ”
-           ,xvv.visit_num_g                  vis_g_num            -- –K–â‚fŒ”
-           ,xvv.visit_num_h                  vis_h_num            -- –K–â‚gŒ”
-           ,xvv.visit_num_i                  vis_i_num            -- –K–âú@Œ”
-           ,xvv.visit_num_j                  vis_j_num            -- –K–â‚iŒ”
-           ,xvv.visit_num_k                  vis_k_num            -- –K–â‚jŒ”
-           ,xvv.visit_num_l                  vis_l_num            -- –K–â‚kŒ”
-           ,xvv.visit_num_m                  vis_m_num            -- –K–â‚lŒ”
-           ,xvv.visit_num_n                  vis_n_num            -- –K–â‚mŒ”
-           ,xvv.visit_num_o                  vis_o_num            -- –K–â‚nŒ”
-           ,xvv.visit_num_p                  vis_p_num            -- –K–â‚oŒ”
-           ,xvv.visit_num_q                  vis_q_num            -- –K–â‚pŒ”
-           ,xvv.visit_num_r                  vis_r_num            -- –K–â‚qŒ”
-           ,xvv.visit_num_s                  vis_s_num            -- –K–â‚rŒ”
-           ,xvv.visit_num_t                  vis_t_num            -- –K–â‚sŒ”
-           ,xvv.visit_num_u                  vis_u_num            -- –K–â‚tŒ”
-           ,xvv.visit_num_v                  vis_v_num            -- –K–â‚uŒ”
-           ,xvv.visit_num_w                  vis_w_num            -- –K–â‚vŒ”
-           ,xvv.visit_num_x                  vis_x_num            -- –K–â‚wŒ”
-           ,xvv.visit_num_y                  vis_y_num            -- –K–â‚xŒ”
-           ,xvv.visit_num_z                  vis_z_num            -- –K–â‚yŒ”
-          FROM
-            xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
-           ,xxcso_visit_v xvv  -- –K–âÀÑƒrƒ…[
-           ,xxcso_cust_resources_v2 xcrv2  -- ŒÚ‹q’S“–‰c‹ÆˆõiÅVjƒrƒ…[
-          WHERE  xcav.party_id = xvv.party_id  -- ƒp[ƒeƒBID
-            AND  TRUNC(xvv.actual_end_date) BETWEEN gd_ar_gl_period_from
-                                                AND gd_process_date  -- ÀÑI—¹“ú
-            AND  ((
-                        (
-                         xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_10
-                                                  ,cv_customer_status_20
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_25
-                                                  ,cv_customer_status_30
-                                                  ,cv_customer_status_40
-                                                  ,cv_customer_status_50
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status IN (
-                                                   cv_customer_status_30
-                                                  ,cv_customer_status_40
-                                                 )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                  )
-              OR  (
-                        (
-                         xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
-                        )
-                   AND  (
-                         xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                        )
-                 ))
-            AND  xcav.account_number = xcrv2.account_number(+)
-         ) inn_v
-       GROUP BY  inn_v.sum_org_code
-                ,inn_v.gvm_type
-                ,inn_v.sales_date
-       ) union_res
-    GROUP BY
-      union_res.sum_org_code                         -- ŒÚ‹qƒR[ƒh
-     ,union_res.gvm_type                             -- ˆê”Ê^©”Ì‹@^‚l‚b
-     ,union_res.sales_date                           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+/* 20090519_Ogawa_T1_1024 START*/
+/* 20090519_Ogawa_T1_1037 START*/
+/* 20090519_Ogawa_T1_1038 START*/
+--  SELECT
+--    union_res.sum_org_code                sum_org_code         -- ŒÚ‹qƒR[ƒh
+--    union_res.group_base_code             group_base_code      -- ƒOƒ‹[ƒv‹’“_ƒR[ƒh
+--   ,union_res.gvm_type                    gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--   ,MAX(union_res.cust_new_num      )     cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--   ,MAX(union_res.cust_vd_new_num   )     cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
+--   ,MAX(union_res.cust_other_new_num)     cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+--   ,union_res.sales_date                  sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--   ,MAX(union_res.tgt_amt              )  tgt_amt              -- ”„ãŒv‰æ
+--   ,MAX(union_res.tgt_vd_amt           )  tgt_vd_amt           -- ”„ãŒv‰æiVDj
+--   ,MAX(union_res.tgt_other_amt        )  tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
+--   ,MAX(union_res.tgt_vis_num          )  tgt_vis_num          -- –K–âŒv‰æ
+--   ,MAX(union_res.tgt_vis_vd_num       )  tgt_vis_vd_num       -- –K–âŒv‰æiVDj
+--   ,MAX(union_res.tgt_vis_other_num    )  tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
+--   ,MAX(union_res.rslt_amt             )  rslt_amt             -- ”„ãÀÑ
+--   ,MAX(union_res.rslt_new_amt         )  rslt_new_amt         -- ”„ãÀÑiV‹Kj
+--   ,MAX(union_res.rslt_vd_new_amt      )  rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
+--   ,MAX(union_res.rslt_vd_amt          )  rslt_vd_amt          -- ”„ãÀÑiVDj
+--   ,MAX(union_res.rslt_other_new_amt   )  rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+--   ,MAX(union_res.rslt_other_amt       )  rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
+--   ,MAX(union_res.rslt_center_amt      )  rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
+--   ,MAX(union_res.rslt_center_vd_amt   )  rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
+--   ,MAX(union_res.rslt_center_other_amt)  rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--   ,MAX(union_res.vis_num              )  vis_num              -- –K–âÀÑ
+--   ,MAX(union_res.vis_new_num          )  vis_new_num          -- –K–âÀÑiV‹Kj
+--   ,MAX(union_res.vis_vd_new_num       )  vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
+--   ,MAX(union_res.vis_vd_num           )  vis_vd_num           -- –K–âÀÑiVDj
+--   ,MAX(union_res.vis_other_new_num    )  vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
+--   ,MAX(union_res.vis_other_num        )  vis_other_num        -- –K–âÀÑiVDˆÈŠOj
+--   ,MAX(union_res.vis_mc_num           )  vis_mc_num           -- –K–âÀÑiMCj
+--   ,MAX(union_res.vis_sales_num        )  vis_sales_num        -- —LŒøŒ¬”
+--   ,MAX(union_res.vis_a_num            )  vis_a_num            -- –K–â‚`Œ”
+--   ,MAX(union_res.vis_b_num            )  vis_b_num            -- –K–â‚aŒ”
+--   ,MAX(union_res.vis_c_num            )  vis_c_num            -- –K–â‚bŒ”
+--   ,MAX(union_res.vis_d_num            )  vis_d_num            -- –K–â‚cŒ”
+--   ,MAX(union_res.vis_e_num            )  vis_e_num            -- –K–â‚dŒ”
+--   ,MAX(union_res.vis_f_num            )  vis_f_num            -- –K–â‚eŒ”
+--   ,MAX(union_res.vis_g_num            )  vis_g_num            -- –K–â‚fŒ”
+--   ,MAX(union_res.vis_h_num            )  vis_h_num            -- –K–â‚gŒ”
+--   ,MAX(union_res.vis_i_num            )  vis_i_num            -- –K–âú@Œ”
+--   ,MAX(union_res.vis_j_num            )  vis_j_num            -- –K–â‚iŒ”
+--   ,MAX(union_res.vis_k_num            )  vis_k_num            -- –K–â‚jŒ”
+--   ,MAX(union_res.vis_l_num            )  vis_l_num            -- –K–â‚kŒ”
+--   ,MAX(union_res.vis_m_num            )  vis_m_num            -- –K–â‚lŒ”
+--   ,MAX(union_res.vis_n_num            )  vis_n_num            -- –K–â‚mŒ”
+--   ,MAX(union_res.vis_o_num            )  vis_o_num            -- –K–â‚nŒ”
+--   ,MAX(union_res.vis_p_num            )  vis_p_num            -- –K–â‚oŒ”
+--   ,MAX(union_res.vis_q_num            )  vis_q_num            -- –K–â‚pŒ”
+--   ,MAX(union_res.vis_r_num            )  vis_r_num            -- –K–â‚qŒ”
+--   ,MAX(union_res.vis_s_num            )  vis_s_num            -- –K–â‚rŒ”
+--   ,MAX(union_res.vis_t_num            )  vis_t_num            -- –K–â‚sŒ”
+--   ,MAX(union_res.vis_u_num            )  vis_u_num            -- –K–â‚tŒ”
+--   ,MAX(union_res.vis_v_num            )  vis_v_num            -- –K–â‚uŒ”
+--   ,MAX(union_res.vis_w_num            )  vis_w_num            -- –K–â‚vŒ”
+--   ,MAX(union_res.vis_x_num            )  vis_x_num            -- –K–â‚wŒ”
+--   ,MAX(union_res.vis_y_num            )  vis_y_num            -- –K–â‚xŒ”
+--   ,MAX(union_res.vis_z_num            )  vis_z_num            -- –K–â‚yŒ”
+--  FROM
+--    (
+--     SELECT
+--       inn_v.sum_org_code               sum_org_code         -- ŒÚ‹qƒR[ƒh
+--      ,inn_v.gvm_type                   gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--      ,inn_v.cust_new_num               cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--            AND  (inn_v.cust_new_num = 1)
+--            THEN  1
+--       END                              cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--            AND  (inn_v.cust_new_num = 1)
+--            THEN  1
+--       END                              cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+--      ,inn_v.sales_date                 sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--      ,inn_v.tgt_amt                    tgt_amt              -- ”„ãŒv‰æ
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--            THEN  inn_v.tgt_amt
+--       END                              tgt_vd_amt           -- ”„ãŒv‰æiVDj
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--            THEN  inn_v.tgt_amt
+--       END                              tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
+--      ,inn_v.tgt_vis_num                              tgt_vis_num          -- –K–âŒv‰æ
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--            THEN  inn_v.tgt_vis_num
+--       END                              tgt_vis_vd_num       -- –K–âŒv‰æiVDj
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--            THEN  inn_v.tgt_vis_num
+--       END                              tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
+--      ,inn_v.rslt_amt                   rslt_amt             -- ”„ãÀÑ
+--      ,inn_v.rslt_new_amt               rslt_new_amt         -- ”„ãÀÑiV‹Kj
+--      ,inn_v.rslt_vd_new_amt            rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
+--      ,inn_v.rslt_vd_amt                rslt_vd_amt          -- ”„ãÀÑiVDj
+--      ,inn_v.rslt_other_new_amt         rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+--      ,inn_v.rslt_other_amt             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
+--      ,inn_v.rslt_center_amt            rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
+--      ,inn_v.rslt_center_vd_amt         rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
+--      ,inn_v.rslt_center_other_amt      rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--      ,inn_v.vis_num                    vis_num              -- –K–âÀÑ
+--      ,inn_v.vis_new_num                vis_new_num          -- –K–âÀÑiV‹Kj
+--      ,inn_v.vis_vd_new_num             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
+--      ,inn_v.vis_vd_num                 vis_vd_num           -- –K–âÀÑiVDj
+--      ,inn_v.vis_other_new_num          vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
+--      ,inn_v.vis_other_num              vis_other_num        -- –K–âÀÑiVDˆÈŠOj
+--      ,inn_v.vis_mc_num                 vis_mc_num           -- –K–âÀÑiMCj
+--      ,inn_v.vis_sales_num              vis_sales_num        -- —LŒøŒ¬”
+--      ,inn_v.vis_a_num                  vis_a_num            -- –K–â‚`Œ”
+--      ,inn_v.vis_b_num                  vis_b_num            -- –K–â‚aŒ”
+--      ,inn_v.vis_c_num                  vis_c_num            -- –K–â‚bŒ”
+--      ,inn_v.vis_d_num                  vis_d_num            -- –K–â‚cŒ”
+--      ,inn_v.vis_e_num                  vis_e_num            -- –K–â‚dŒ”
+--      ,inn_v.vis_f_num                  vis_f_num            -- –K–â‚eŒ”
+--      ,inn_v.vis_g_num                  vis_g_num            -- –K–â‚fŒ”
+--      ,inn_v.vis_h_num                  vis_h_num            -- –K–â‚gŒ”
+--      ,inn_v.vis_i_num                  vis_i_num            -- –K–âú@Œ”
+--      ,inn_v.vis_j_num                  vis_j_num            -- –K–â‚iŒ”
+--      ,inn_v.vis_k_num                  vis_k_num            -- –K–â‚jŒ”
+--      ,inn_v.vis_l_num                  vis_l_num            -- –K–â‚kŒ”
+--      ,inn_v.vis_m_num                  vis_m_num            -- –K–â‚lŒ”
+--      ,inn_v.vis_n_num                  vis_n_num            -- –K–â‚mŒ”
+--      ,inn_v.vis_o_num                  vis_o_num            -- –K–â‚nŒ”
+--      ,inn_v.vis_p_num                  vis_p_num            -- –K–â‚oŒ”
+--      ,inn_v.vis_q_num                  vis_q_num            -- –K–â‚pŒ”
+--      ,inn_v.vis_r_num                  vis_r_num            -- –K–â‚qŒ”
+--      ,inn_v.vis_s_num                  vis_s_num            -- –K–â‚rŒ”
+--      ,inn_v.vis_t_num                  vis_t_num            -- –K–â‚sŒ”
+--      ,inn_v.vis_u_num                  vis_u_num            -- –K–â‚tŒ”
+--      ,inn_v.vis_v_num                  vis_v_num            -- –K–â‚uŒ”
+--      ,inn_v.vis_w_num                  vis_w_num            -- –K–â‚vŒ”
+--      ,inn_v.vis_x_num                  vis_x_num            -- –K–â‚wŒ”
+--      ,inn_v.vis_y_num                  vis_y_num            -- –K–â‚xŒ”
+--      ,inn_v.vis_z_num                  vis_z_num            -- –K–â‚yŒ”
+--     FROM
+--       (
+--        SELECT
+--          xcav.account_number              sum_org_code         -- ŒÚ‹qƒR[ƒh
+--         ,CASE WHEN (
+--                     xcav.customer_status IN ('20', '25', '30')
+--                    )
+--               THEN  cv_emp_div_mc
+--               WHEN (
+--                     xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type)
+--                       = cv_true
+--                    )
+--               THEN  cv_emp_div_jihan
+--               ELSE  cv_emp_div_gen
+--          END                              gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--         ,CASE WHEN (
+--                     TO_CHAR(xcav.cnvs_date, 'YYYYMMDD') = xasp.plan_date
+--                    )
+--                AND (
+--                     xcav.new_point_div = cv_new_point_div_1
+--                    )
+--                AND (
+--                     xcav.cnvs_business_person = xcrv2.employee_number
+--                    )
+--               THEN  1
+--          END                              cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--         ,xasp.plan_date                   sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--         ,xasp.sales_plan_day_amt          tgt_amt              -- ”„ãŒv‰æ
+--         ,CASE WHEN (
+--                     xcav.vist_target_div = cv_vist_target_div_1
+--                    )
+--                AND (xasp.sales_plan_day_amt > 0
+--                    )
+--               THEN  1
+--               ELSE  NULL
+--          END                              tgt_vis_num          -- –K–âŒv‰æ
+--         ,NULL                             rslt_amt             -- ”„ãÀÑ
+--         ,NULL                             rslt_new_amt         -- ”„ãÀÑiV‹Kj
+--         ,NULL                             rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
+--         ,NULL                             rslt_vd_amt          -- ”„ãÀÑiVDj
+--         ,NULL                             rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+--         ,NULL                             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
+--         ,NULL                             rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
+--         ,NULL                             rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
+--         ,NULL                             rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--         ,NULL                             vis_num              -- –K–âÀÑ
+--         ,NULL                             vis_new_num          -- –K–âÀÑiV‹Kj
+--         ,NULL                             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
+--         ,NULL                             vis_vd_num           -- –K–âÀÑiVDj
+--         ,NULL                             vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
+--         ,NULL                             vis_other_num        -- –K–âÀÑiVDˆÈŠOj
+--         ,NULL                             vis_mc_num           -- –K–âÀÑiMCj
+--         ,NULL                             vis_sales_num        -- —LŒøŒ¬”
+--         ,NULL                             vis_a_num            -- –K–â‚`Œ”
+--         ,NULL                             vis_b_num            -- –K–â‚aŒ”
+--         ,NULL                             vis_c_num            -- –K–â‚bŒ”
+--         ,NULL                             vis_d_num            -- –K–â‚cŒ”
+--         ,NULL                             vis_e_num            -- –K–â‚dŒ”
+--         ,NULL                             vis_f_num            -- –K–â‚eŒ”
+--         ,NULL                             vis_g_num            -- –K–â‚fŒ”
+--         ,NULL                             vis_h_num            -- –K–â‚gŒ”
+--         ,NULL                             vis_i_num            -- –K–âú@Œ”
+--         ,NULL                             vis_j_num            -- –K–â‚iŒ”
+--         ,NULL                             vis_k_num            -- –K–â‚jŒ”
+--         ,NULL                             vis_l_num            -- –K–â‚kŒ”
+--         ,NULL                             vis_m_num            -- –K–â‚lŒ”
+--         ,NULL                             vis_n_num            -- –K–â‚mŒ”
+--         ,NULL                             vis_o_num            -- –K–â‚nŒ”
+--         ,NULL                             vis_p_num            -- –K–â‚oŒ”
+--         ,NULL                             vis_q_num            -- –K–â‚pŒ”
+--         ,NULL                             vis_r_num            -- –K–â‚qŒ”
+--         ,NULL                             vis_s_num            -- –K–â‚rŒ”
+--         ,NULL                             vis_t_num            -- –K–â‚sŒ”
+--         ,NULL                             vis_u_num            -- –K–â‚tŒ”
+--         ,NULL                             vis_v_num            -- –K–â‚uŒ”
+--         ,NULL                             vis_w_num            -- –K–â‚vŒ”
+--         ,NULL                             vis_x_num            -- –K–â‚wŒ”
+--         ,NULL                             vis_y_num            -- –K–â‚xŒ”
+--         ,NULL                             vis_z_num            -- –K–â‚yŒ”
+--        FROM
+--          xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
+--         ,xxcso_account_sales_plans xasp  -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹
+--         ,xxcso_cust_resources_v2 xcrv2  -- ŒÚ‹q’S“–‰c‹ÆˆõiÅVjƒrƒ…[
+--        WHERE  xcav.account_number = xasp.account_number  -- ŒÚ‹qƒR[ƒh
+--          AND  xasp.plan_date BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMMDD')
+--                                  AND TO_CHAR(LAST_DAY(gd_process_date)     , 'YYYYMMDD') -- ”NŒ“ú
+--          AND  xasp.month_date_div = cv_month_date_div_day  -- Œ“ú‹æ•ª
+--          AND  ((
+--                      (
+--                       xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_10
+--                                                ,cv_customer_status_20
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_25
+--                                                ,cv_customer_status_30
+--                                                ,cv_customer_status_40
+--                                                ,cv_customer_status_50
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_30
+--                                                ,cv_customer_status_40
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--               ))
+--          AND  xcav.account_number = xcrv2.account_number(+)
+--       ) inn_v
+--     -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹i“ú•Êj
+--     UNION ALL
+--     SELECT
+--       inn_v.sum_org_code               sum_org_code         -- ŒÚ‹qƒR[ƒh
+--      ,inn_v.gvm_type                   gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--      ,inn_v.cust_new_num               cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--            AND  (inn_v.cust_new_num = 1)
+--            THEN  1
+--       END                              cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--            AND  (inn_v.cust_new_num = 1)
+--            THEN  1
+--       END                              cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+--      ,inn_v.sales_date                 sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--      ,inn_v.tgt_amt                    tgt_amt              -- ”„ãŒv‰æ
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--            THEN  inn_v.tgt_amt
+--       END                              tgt_vd_amt           -- ”„ãŒv‰æiVDj
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--            THEN  inn_v.tgt_amt
+--       END                              tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
+--      ,inn_v.tgt_vis_num                              tgt_vis_num          -- –K–âŒv‰æ
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--            THEN  inn_v.tgt_vis_num
+--       END                              tgt_vis_vd_num       -- –K–âŒv‰æiVDj
+--      ,CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--            THEN  inn_v.tgt_vis_num
+--       END                              tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
+--      ,inn_v.rslt_amt                   rslt_amt             -- ”„ãÀÑ
+--      ,inn_v.rslt_new_amt               rslt_new_amt         -- ”„ãÀÑiV‹Kj
+--      ,inn_v.rslt_vd_new_amt            rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
+--      ,inn_v.rslt_vd_amt                rslt_vd_amt          -- ”„ãÀÑiVDj
+--      ,inn_v.rslt_other_new_amt         rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+--      ,inn_v.rslt_other_amt             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
+--      ,inn_v.rslt_center_amt            rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
+--      ,inn_v.rslt_center_vd_amt         rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
+--      ,inn_v.rslt_center_other_amt      rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--      ,inn_v.vis_num                    vis_num              -- –K–âÀÑ
+--      ,inn_v.vis_new_num                vis_new_num          -- –K–âÀÑiV‹Kj
+--      ,inn_v.vis_vd_new_num             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
+--      ,inn_v.vis_vd_num                 vis_vd_num           -- –K–âÀÑiVDj
+--      ,inn_v.vis_other_new_num          vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
+--      ,inn_v.vis_other_num              vis_other_num        -- –K–âÀÑiVDˆÈŠOj
+--      ,inn_v.vis_mc_num                 vis_mc_num           -- –K–âÀÑiMCj
+--      ,inn_v.vis_sales_num              vis_sales_num        -- —LŒøŒ¬”
+--      ,inn_v.vis_a_num                  vis_a_num            -- –K–â‚`Œ”
+--      ,inn_v.vis_b_num                  vis_b_num            -- –K–â‚aŒ”
+--      ,inn_v.vis_c_num                  vis_c_num            -- –K–â‚bŒ”
+--      ,inn_v.vis_d_num                  vis_d_num            -- –K–â‚cŒ”
+--      ,inn_v.vis_e_num                  vis_e_num            -- –K–â‚dŒ”
+--      ,inn_v.vis_f_num                  vis_f_num            -- –K–â‚eŒ”
+--      ,inn_v.vis_g_num                  vis_g_num            -- –K–â‚fŒ”
+--      ,inn_v.vis_h_num                  vis_h_num            -- –K–â‚gŒ”
+--      ,inn_v.vis_i_num                  vis_i_num            -- –K–âú@Œ”
+--      ,inn_v.vis_j_num                  vis_j_num            -- –K–â‚iŒ”
+--      ,inn_v.vis_k_num                  vis_k_num            -- –K–â‚jŒ”
+--      ,inn_v.vis_l_num                  vis_l_num            -- –K–â‚kŒ”
+--      ,inn_v.vis_m_num                  vis_m_num            -- –K–â‚lŒ”
+--      ,inn_v.vis_n_num                  vis_n_num            -- –K–â‚mŒ”
+--      ,inn_v.vis_o_num                  vis_o_num            -- –K–â‚nŒ”
+--      ,inn_v.vis_p_num                  vis_p_num            -- –K–â‚oŒ”
+--      ,inn_v.vis_q_num                  vis_q_num            -- –K–â‚pŒ”
+--      ,inn_v.vis_r_num                  vis_r_num            -- –K–â‚qŒ”
+--      ,inn_v.vis_s_num                  vis_s_num            -- –K–â‚rŒ”
+--      ,inn_v.vis_t_num                  vis_t_num            -- –K–â‚sŒ”
+--      ,inn_v.vis_u_num                  vis_u_num            -- –K–â‚tŒ”
+--      ,inn_v.vis_v_num                  vis_v_num            -- –K–â‚uŒ”
+--      ,inn_v.vis_w_num                  vis_w_num            -- –K–â‚vŒ”
+--      ,inn_v.vis_x_num                  vis_x_num            -- –K–â‚wŒ”
+--      ,inn_v.vis_y_num                  vis_y_num            -- –K–â‚xŒ”
+--      ,inn_v.vis_z_num                  vis_z_num            -- –K–â‚yŒ”
+--     FROM
+--       (
+--        SELECT
+--          xcav.account_number              sum_org_code         -- ŒÚ‹qƒR[ƒh
+--         ,CASE WHEN (
+--                     xcav.customer_status IN ('20', '25', '30')
+--                    )
+--               THEN  cv_emp_div_mc
+--               WHEN (
+--                     xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type)
+--                       = cv_true
+--                    )
+--               THEN  cv_emp_div_jihan
+--               ELSE  cv_emp_div_gen
+--          END                              gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--         ,CASE WHEN (
+--                     TO_CHAR(xcav.cnvs_date, 'YYYYMM') = xasp.year_month
+--                    )
+--                AND (
+--                     xcav.new_point_div = cv_new_point_div_1
+--                    )
+--                AND (
+--                     xcav.cnvs_business_person = xcrv2.employee_number
+--                    )
+--               THEN  1
+--          END                              cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--         ,xasp.year_month || '01'          sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--         ,xasp.sales_plan_month_amt        tgt_amt              -- ”„ãŒv‰æ
+--         ,CASE WHEN (
+--                     xcav.vist_target_div = cv_vist_target_div_1
+--                    )
+--                AND (xasp.sales_plan_month_amt > 0
+--                    )
+--               THEN  1
+--               ELSE  NULL
+--          END                              tgt_vis_num          -- –K–âŒv‰æ
+--         ,NULL                             rslt_amt             -- ”„ãÀÑ
+--         ,NULL                             rslt_new_amt         -- ”„ãÀÑiV‹Kj
+--         ,NULL                             rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
+--         ,NULL                             rslt_vd_amt          -- ”„ãÀÑiVDj
+--         ,NULL                             rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+--         ,NULL                             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
+--         ,NULL                             rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
+--         ,NULL                             rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
+--         ,NULL                             rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--         ,NULL                             vis_num              -- –K–âÀÑ
+--         ,NULL                             vis_new_num          -- –K–âÀÑiV‹Kj
+--         ,NULL                             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
+--         ,NULL                             vis_vd_num           -- –K–âÀÑiVDj
+--         ,NULL                             vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
+--         ,NULL                             vis_other_num        -- –K–âÀÑiVDˆÈŠOj
+--         ,NULL                             vis_mc_num           -- –K–âÀÑiMCj
+--         ,NULL                             vis_sales_num        -- —LŒøŒ¬”
+--         ,NULL                             vis_a_num            -- –K–â‚`Œ”
+--         ,NULL                             vis_b_num            -- –K–â‚aŒ”
+--         ,NULL                             vis_c_num            -- –K–â‚bŒ”
+--         ,NULL                             vis_d_num            -- –K–â‚cŒ”
+--         ,NULL                             vis_e_num            -- –K–â‚dŒ”
+--         ,NULL                             vis_f_num            -- –K–â‚eŒ”
+--         ,NULL                             vis_g_num            -- –K–â‚fŒ”
+--         ,NULL                             vis_h_num            -- –K–â‚gŒ”
+--         ,NULL                             vis_i_num            -- –K–âú@Œ”
+--         ,NULL                             vis_j_num            -- –K–â‚iŒ”
+--         ,NULL                             vis_k_num            -- –K–â‚jŒ”
+--         ,NULL                             vis_l_num            -- –K–â‚kŒ”
+--         ,NULL                             vis_m_num            -- –K–â‚lŒ”
+--         ,NULL                             vis_n_num            -- –K–â‚mŒ”
+--         ,NULL                             vis_o_num            -- –K–â‚nŒ”
+--         ,NULL                             vis_p_num            -- –K–â‚oŒ”
+--         ,NULL                             vis_q_num            -- –K–â‚pŒ”
+--         ,NULL                             vis_r_num            -- –K–â‚qŒ”
+--         ,NULL                             vis_s_num            -- –K–â‚rŒ”
+--         ,NULL                             vis_t_num            -- –K–â‚sŒ”
+--         ,NULL                             vis_u_num            -- –K–â‚tŒ”
+--         ,NULL                             vis_v_num            -- –K–â‚uŒ”
+--         ,NULL                             vis_w_num            -- –K–â‚vŒ”
+--         ,NULL                             vis_x_num            -- –K–â‚wŒ”
+--         ,NULL                             vis_y_num            -- –K–â‚xŒ”
+--         ,NULL                             vis_z_num            -- –K–â‚yŒ”
+--        FROM
+--          xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
+--         ,xxcso_account_sales_plans xasp  -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹
+--         ,xxcso_cust_resources_v2 xcrv2  -- ŒÚ‹q’S“–‰c‹ÆˆõiÅVjƒrƒ…[
+--        WHERE  xcav.account_number = xasp.account_number  -- ŒÚ‹qƒR[ƒh
+--          AND  xasp.year_month BETWEEN TO_CHAR(gd_ar_gl_period_from, 'YYYYMM')
+--                                   AND TO_CHAR(gd_process_date, 'YYYYMM')  -- ”NŒ
+--          AND  xasp.month_date_div = cv_month_date_div_mon  -- Œ“ú‹æ•ª
+--          AND  EXISTS
+--               (
+--                SELECT  xasp_m.account_number account_number
+--                FROM  xxcso_account_sales_plans xasp_m  -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹iŒ•Êj
+--                WHERE  xasp_m.account_number = xasp.account_number  -- ŒÚ‹qƒR[ƒh
+--                  AND  xasp_m.year_month = xasp.year_month  -- ”NŒ
+--                  AND  xasp.month_date_div = cv_month_date_div_day  -- Œ“ú‹æ•ª
+--               )
+--          AND  ((
+--                      (
+--                       xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_10
+--                                                ,cv_customer_status_20
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_25
+--                                                ,cv_customer_status_30
+--                                                ,cv_customer_status_40
+--                                                ,cv_customer_status_50
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_30
+--                                                ,cv_customer_status_40
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--               ))
+--          AND  xcav.account_number = xcrv2.account_number(+)
+--       ) inn_v
+--     -- ŒÚ‹q•Ê”„ãŒv‰æƒe[ƒuƒ‹iŒ•Êj
+--     UNION ALL
+--     SELECT
+--       inn_v.sum_org_code               sum_org_code         -- ŒÚ‹qƒR[ƒh
+--      ,inn_v.gvm_type                   gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--      ,MAX(
+--           inn_v.cust_new_num
+--          )                             cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--      ,MAX(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--                 AND (inn_v.cust_new_num = 1)
+--                THEN  1
+--           END
+--          )                             cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
+--      ,MAX(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--                 AND (inn_v.cust_new_num = 1)
+--                THEN  1
+--           END
+--          )                             cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+--      ,inn_v.sales_date                 sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--      ,NULL                             tgt_amt              -- ”„ãŒv‰æ
+--      ,NULL                             tgt_vd_amt           -- ”„ãŒv‰æiVDj
+--      ,NULL                             tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
+--      ,NULL                             tgt_vis_num          -- –K–âŒv‰æ
+--      ,NULL                             tgt_vis_vd_num       -- –K–âŒv‰æiVDj
+--      ,NULL                             tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
+--      ,SUM(inn_v.pure_amount)           rslt_amt             -- ”„ãÀÑ
+--      ,SUM(
+--           CASE WHEN (inn_v.cust_new_num = 1)
+--                THEN  inn_v.pure_amount
+--           END
+--          )                             rslt_new_amt         -- ”„ãÀÑiV‹Kj
+--      ,SUM(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--                 AND (inn_v.cust_new_num = 1)
+--                THEN  inn_v.pure_amount
+--           END
+--          )                             rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
+--      ,SUM(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--                THEN  inn_v.pure_amount
+--           END
+--          )                            rslt_vd_amt          -- ”„ãÀÑiVDj
+--      ,SUM(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--                 AND (inn_v.cust_new_num = 1)
+--                THEN  inn_v.pure_amount
+--           END
+--          )                             rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+--      ,SUM(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--                THEN  inn_v.pure_amount
+--           END
+--          )                             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
+--      ,SUM(inn_v.pure_amount_2)         rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
+--      ,SUM(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--                THEN inn_v.pure_amount_2
+--                ELSE NULL
+--                END
+--          )                             rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
+--      ,SUM(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--                THEN inn_v.pure_amount_2
+--                ELSE NULL
+--                END
+--          )                             rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--      ,NULL                             vis_num              -- –K–âÀÑ
+--      ,NULL                             vis_new_num          -- –K–âÀÑiV‹Kj
+--      ,NULL                             vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
+--      ,NULL                             vis_vd_num           -- –K–âÀÑiVDj
+--      ,NULL                             vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
+--      ,NULL                             vis_other_num        -- –K–âÀÑiVDˆÈŠOj
+--      ,NULL                             vis_mc_num           -- –K–âÀÑiMCj
+--      ,NULL                             vis_sales_num        -- —LŒøŒ¬”
+--      ,NULL                             vis_a_num            -- –K–â‚`Œ”
+--      ,NULL                             vis_b_num            -- –K–â‚aŒ”
+--      ,NULL                             vis_c_num            -- –K–â‚bŒ”
+--      ,NULL                             vis_d_num            -- –K–â‚cŒ”
+--      ,NULL                             vis_e_num            -- –K–â‚dŒ”
+--      ,NULL                             vis_f_num            -- –K–â‚eŒ”
+--      ,NULL                             vis_g_num            -- –K–â‚fŒ”
+--      ,NULL                             vis_h_num            -- –K–â‚gŒ”
+--      ,NULL                             vis_i_num            -- –K–âú@Œ”
+--      ,NULL                             vis_j_num            -- –K–â‚iŒ”
+--      ,NULL                             vis_k_num            -- –K–â‚jŒ”
+--      ,NULL                             vis_l_num            -- –K–â‚kŒ”
+--      ,NULL                             vis_m_num            -- –K–â‚lŒ”
+--      ,NULL                             vis_n_num            -- –K–â‚mŒ”
+--      ,NULL                             vis_o_num            -- –K–â‚nŒ”
+--      ,NULL                             vis_p_num            -- –K–â‚oŒ”
+--      ,NULL                             vis_q_num            -- –K–â‚pŒ”
+--      ,NULL                             vis_r_num            -- –K–â‚qŒ”
+--      ,NULL                             vis_s_num            -- –K–â‚rŒ”
+--      ,NULL                             vis_t_num            -- –K–â‚sŒ”
+--      ,NULL                             vis_u_num            -- –K–â‚tŒ”
+--      ,NULL                             vis_v_num            -- –K–â‚uŒ”
+--      ,NULL                             vis_w_num            -- –K–â‚vŒ”
+--      ,NULL                             vis_x_num            -- –K–â‚wŒ”
+--      ,NULL                             vis_y_num            -- –K–â‚xŒ”
+--      ,NULL                             vis_z_num            -- –K–â‚yŒ”
+--     FROM
+--       (
+--        SELECT
+--          xcav.account_number              sum_org_code         -- ŒÚ‹qƒR[ƒh
+--         ,CASE WHEN (
+--                     xcav.customer_status IN ('20', '25', '30')
+--                    )
+--               THEN  cv_emp_div_mc
+--               WHEN (
+--                     xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type)
+--                       = cv_true
+--                    )
+--               THEN  cv_emp_div_jihan
+--               ELSE  cv_emp_div_gen
+--          END                              gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--         ,CASE WHEN (
+--                     TRUNC(xcav.cnvs_date) = TRUNC(xsv.delivery_date)
+--                    )
+--                AND (
+--                     xcav.new_point_div = cv_new_point_div_1
+--                    )
+--                AND (
+--                     xcav.cnvs_business_person = xcrv2.employee_number
+--                    )
+--               THEN  1
+--          END                              cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--         ,TO_CHAR(xsv.delivery_date, 'YYYYMMDD')
+--                                           sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--         ,xsv.pure_amount                  pure_amount          -- –{‘Ì‹àŠz
+--         ,CASE WHEN xsv.delivery_pattern_class = cv_delivery_pattern_cls_5
+--               THEN xsv.pure_amount
+--               ELSE NULL
+--          END                              pure_amount_2        -- –{‘Ì‹àŠz2
+--        FROM
+--          xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
+--         ,xxcso_sales_v xsv  -- ”„ãÀÑƒrƒ…[
+--         ,xxcso_cust_resources_v2 xcrv2  -- ŒÚ‹q’S“–‰c‹ÆˆõiÅVjƒrƒ…[
+--        WHERE  xcav.account_number = xsv.account_number  -- ŒÚ‹qƒR[ƒh
+--          AND  xsv.delivery_date BETWEEN gd_ar_gl_period_from
+--                                     AND gd_process_date  -- ”[•i“ú
+--          AND  ((
+--                      (
+--                       xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_10
+--                                                ,cv_customer_status_20
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_25
+--                                                ,cv_customer_status_30
+--                                                ,cv_customer_status_40
+--                                                ,cv_customer_status_50
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_30
+--                                                ,cv_customer_status_40
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--               ))
+--          AND  xcav.account_number = xcrv2.account_number(+)
+--       ) inn_v
+--     GROUP BY  inn_v.sum_org_code
+--              ,inn_v.gvm_type
+--              ,inn_v.sales_date
+--     -- ”„ãÀÑVIEW
+--     UNION ALL
+--     SELECT
+--       inn_v.sum_org_code               sum_org_code         -- ŒÚ‹qƒR[ƒh
+--      ,inn_v.gvm_type                   gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--      ,MAX(
+--           inn_v.cust_new_num
+--          )                             cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--      ,MAX(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--                 AND (inn_v.cust_new_num = 1)
+--                THEN  1
+--           END
+--          )                             cust_vd_new_num      -- ŒÚ‹qŒ”iVDFV‹Kj
+--      ,MAX(
+--           CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--                 AND (inn_v.cust_new_num = 1)
+--                THEN  1
+--           END
+--          )                             cust_other_new_num   -- ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
+--      ,inn_v.sales_date                 sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--      ,NULL                             tgt_amt              -- ”„ãŒv‰æ
+--      ,NULL                             tgt_vd_amt           -- ”„ãŒv‰æiVDj
+--      ,NULL                             tgt_other_amt        -- ”„ãŒv‰æiVDˆÈŠOj
+--      ,NULL                             tgt_vis_num          -- –K–âŒv‰æ
+--      ,NULL                             tgt_vis_vd_num       -- –K–âŒv‰æiVDj
+--      ,NULL                             tgt_vis_other_num    -- –K–âŒv‰æiVDˆÈŠOj
+--      ,NULL                             rslt_amt             -- ”„ãÀÑ
+--      ,NULL                             rslt_new_amt         -- ”„ãÀÑiV‹Kj
+--      ,NULL                             rslt_vd_new_amt      -- ”„ãÀÑiVDFV‹Kj
+--      ,NULL                             rslt_vd_amt          -- ”„ãÀÑiVDj
+--      ,NULL                             rslt_other_new_amt   -- ”„ãÀÑiVDˆÈŠOFV‹Kj
+--      ,NULL                             rslt_other_amt       -- ”„ãÀÑiVDˆÈŠOj
+--      ,NULL                             rslt_center_amt      -- “à‘¼‹’“_Q”„ãÀÑ
+--      ,NULL                             rslt_center_vd_amt   -- “à‘¼‹’“_Q”„ãÀÑiVDj
+--      ,NULL                             rslt_center_other_amt-- “à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--      ,COUNT(inn_v.task_id)             vis_num              -- –K–âÀÑ
+--      ,COUNT
+--            (
+--             CASE WHEN (inn_v.cust_new_num = 1)
+--                  THEN  inn_v.task_id
+--             END
+--            )                           vis_new_num          -- –K–âÀÑiV‹Kj
+--      ,COUNT
+--            (
+--             CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--                   AND (inn_v.cust_new_num = 1)
+--                  THEN  inn_v.task_id
+--             END
+--            )                           vis_vd_new_num       -- –K–âÀÑiVDFV‹Kj
+--      ,COUNT(
+--             CASE WHEN (inn_v.gvm_type = cv_emp_div_jihan)
+--                  THEN  inn_v.task_id
+--             END
+--            )                           vis_vd_num           -- –K–âÀÑiVDj
+--      ,COUNT(
+--             CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--                   AND (inn_v.cust_new_num = 1)
+--                  THEN  inn_v.task_id
+--             END
+--            )                           vis_other_new_num    -- –K–âÀÑiVDˆÈŠOFV‹Kj
+--      ,COUNT
+--            (
+--             CASE WHEN (inn_v.gvm_type = cv_emp_div_gen)
+--                  THEN  inn_v.task_id
+--             END
+--            )                           vis_other_num        -- –K–âÀÑiVDˆÈŠOj
+--      ,COUNT
+--            (
+--             CASE WHEN (inn_v.gvm_type = cv_emp_div_mc)
+--                  THEN  inn_v.task_id
+--             END
+--            )                           vis_mc_num           -- –K–âÀÑiMCj
+--      ,COUNT
+--            (
+--             CASE WHEN (
+--                        inn_v.eff_visit_flag = cv_eff_visit_flag_1
+--                       )
+--                  THEN  inn_v.task_id
+--                  ELSE  NULL
+--             END
+--            )                           vis_sales_num        -- —LŒøŒ¬”
+--      ,SUM(inn_v.vis_a_num)             vis_a_num            -- –K–â‚`Œ”
+--      ,SUM(inn_v.vis_b_num)             vis_b_num            -- –K–â‚aŒ”
+--      ,SUM(inn_v.vis_c_num)             vis_c_num            -- –K–â‚bŒ”
+--      ,SUM(inn_v.vis_d_num)             vis_d_num            -- –K–â‚cŒ”
+--      ,SUM(inn_v.vis_e_num)             vis_e_num            -- –K–â‚dŒ”
+--      ,SUM(inn_v.vis_f_num)             vis_f_num            -- –K–â‚eŒ”
+--      ,SUM(inn_v.vis_g_num)             vis_g_num            -- –K–â‚fŒ”
+--      ,SUM(inn_v.vis_h_num)             vis_h_num            -- –K–â‚gŒ”
+--      ,SUM(inn_v.vis_i_num)             vis_i_num            -- –K–âú@Œ”
+--      ,SUM(inn_v.vis_j_num)             vis_j_num            -- –K–â‚iŒ”
+--      ,SUM(inn_v.vis_k_num)             vis_k_num            -- –K–â‚jŒ”
+--      ,SUM(inn_v.vis_l_num)             vis_l_num            -- –K–â‚kŒ”
+--      ,SUM(inn_v.vis_m_num)             vis_m_num            -- –K–â‚lŒ”
+--      ,SUM(inn_v.vis_n_num)             vis_n_num            -- –K–â‚mŒ”
+--      ,SUM(inn_v.vis_o_num)             vis_o_num            -- –K–â‚nŒ”
+--      ,SUM(inn_v.vis_p_num)             vis_p_num            -- –K–â‚oŒ”
+--      ,SUM(inn_v.vis_q_num)             vis_q_num            -- –K–â‚pŒ”
+--      ,SUM(inn_v.vis_r_num)             vis_r_num            -- –K–â‚qŒ”
+--      ,SUM(inn_v.vis_s_num)             vis_s_num            -- –K–â‚rŒ”
+--      ,SUM(inn_v.vis_t_num)             vis_t_num            -- –K–â‚sŒ”
+--      ,SUM(inn_v.vis_u_num)             vis_u_num            -- –K–â‚tŒ”
+--      ,SUM(inn_v.vis_v_num)             vis_v_num            -- –K–â‚uŒ”
+--      ,SUM(inn_v.vis_w_num)             vis_w_num            -- –K–â‚vŒ”
+--      ,SUM(inn_v.vis_x_num)             vis_x_num            -- –K–â‚wŒ”
+--      ,SUM(inn_v.vis_y_num)             vis_y_num            -- –K–â‚xŒ”
+--      ,SUM(inn_v.vis_z_num)             vis_z_num            -- –K–â‚yŒ”
+--     FROM
+--       (
+--        SELECT
+--          xcav.account_number              sum_org_code         -- ŒÚ‹qƒR[ƒh
+--         ,CASE WHEN (
+--                     xcav.customer_status IN ('20', '25', '30')
+--                    )
+--               THEN  cv_emp_div_mc
+--               WHEN (
+--                     xxcso_route_common_pkg.iscustomervendor(xcav.business_low_type)
+--                       = cv_true
+--                    )
+--               THEN  cv_emp_div_jihan
+--               ELSE  cv_emp_div_gen
+--          END                              gvm_type             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--         ,CASE WHEN (
+--                     TRUNC(xcav.cnvs_date) = TRUNC(xvv.actual_end_date)
+--                    )
+--                AND (
+--                     xcav.new_point_div = cv_new_point_div_1
+--                    )
+--                AND (
+--                     xcav.cnvs_business_person = xcrv2.employee_number
+--                    )
+--               THEN  1
+--          END                              cust_new_num         -- ŒÚ‹qŒ”iV‹Kj
+--         ,TO_CHAR(xvv.actual_end_date, 'YYYYMMDD')
+--                                           sales_date           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+--         ,xvv.task_id                      task_id              -- ƒ^ƒXƒNID
+--         ,xvv.eff_visit_flag               eff_visit_flag       -- —LŒø–K–â‹æ•ª
+--         ,xvv.visit_num_a                  vis_a_num            -- –K–â‚`Œ”
+--         ,xvv.visit_num_b                  vis_b_num            -- –K–â‚aŒ”
+--         ,xvv.visit_num_c                  vis_c_num            -- –K–â‚bŒ”
+--         ,xvv.visit_num_d                  vis_d_num            -- –K–â‚cŒ”
+--         ,xvv.visit_num_e                  vis_e_num            -- –K–â‚dŒ”
+--         ,xvv.visit_num_f                  vis_f_num            -- –K–â‚eŒ”
+--         ,xvv.visit_num_g                  vis_g_num            -- –K–â‚fŒ”
+--         ,xvv.visit_num_h                  vis_h_num            -- –K–â‚gŒ”
+--         ,xvv.visit_num_i                  vis_i_num            -- –K–âú@Œ”
+--         ,xvv.visit_num_j                  vis_j_num            -- –K–â‚iŒ”
+--         ,xvv.visit_num_k                  vis_k_num            -- –K–â‚jŒ”
+--         ,xvv.visit_num_l                  vis_l_num            -- –K–â‚kŒ”
+--         ,xvv.visit_num_m                  vis_m_num            -- –K–â‚lŒ”
+--         ,xvv.visit_num_n                  vis_n_num            -- –K–â‚mŒ”
+--         ,xvv.visit_num_o                  vis_o_num            -- –K–â‚nŒ”
+--         ,xvv.visit_num_p                  vis_p_num            -- –K–â‚oŒ”
+--         ,xvv.visit_num_q                  vis_q_num            -- –K–â‚pŒ”
+--         ,xvv.visit_num_r                  vis_r_num            -- –K–â‚qŒ”
+--         ,xvv.visit_num_s                  vis_s_num            -- –K–â‚rŒ”
+--         ,xvv.visit_num_t                  vis_t_num            -- –K–â‚sŒ”
+--         ,xvv.visit_num_u                  vis_u_num            -- –K–â‚tŒ”
+--         ,xvv.visit_num_v                  vis_v_num            -- –K–â‚uŒ”
+--         ,xvv.visit_num_w                  vis_w_num            -- –K–â‚vŒ”
+--         ,xvv.visit_num_x                  vis_x_num            -- –K–â‚wŒ”
+--         ,xvv.visit_num_y                  vis_y_num            -- –K–â‚xŒ”
+--         ,xvv.visit_num_z                  vis_z_num            -- –K–â‚yŒ”
+--        FROM
+--          xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
+--         ,xxcso_visit_v xvv  -- –K–âÀÑƒrƒ…[
+--         ,xxcso_cust_resources_v2 xcrv2  -- ŒÚ‹q’S“–‰c‹ÆˆõiÅVjƒrƒ…[
+--        WHERE  xcav.party_id = xvv.party_id  -- ƒp[ƒeƒBID
+--          AND  TRUNC(xvv.actual_end_date) BETWEEN gd_ar_gl_period_from
+--                                              AND gd_process_date  -- ÀÑI—¹“ú
+--          AND  ((
+--                      (
+--                       xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_10
+--                                                ,cv_customer_status_20
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_25
+--                                                ,cv_customer_status_30
+--                                                ,cv_customer_status_40
+--                                                ,cv_customer_status_50
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status IN (
+--                                                 cv_customer_status_30
+--                                                ,cv_customer_status_40
+--                                               )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--                )
+--            OR  (
+--                      (
+--                       xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
+--                      )
+--                 AND  (
+--                       xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                      )
+--               ))
+--          AND  xcav.account_number = xcrv2.account_number(+)
+--       ) inn_v
+--     GROUP BY  inn_v.sum_org_code
+--              ,inn_v.gvm_type
+--              ,inn_v.sales_date
+--     ) union_res
+--  GROUP BY
+--    union_res.sum_org_code                         -- ŒÚ‹qƒR[ƒh
+--   ,union_res.gvm_type                             -- ˆê”Ê^©”Ì‹@^‚l‚b
+--   ,union_res.sales_date                           -- ”Ì”„”NŒ“ú^”Ì”„”NŒ
+    SELECT  inn_v.sum_org_code                 sum_org_code
+           ,inn_v.group_base_code              group_base_code
+           ,inn_v.sales_date                   sales_date
+           ,NULL                               gvm_type
+           ,NULL                               cust_new_num
+           ,NULL                               cust_vd_new_num
+           ,NULL                               cust_other_new_num
+           ,SUM(inn_v.rslt_amt)                rslt_amt
+           ,NULL                               rslt_new_amt
+           ,NULL                               rslt_vd_new_amt
+           ,NULL                               rslt_vd_amt
+           ,NULL                               rslt_other_new_amt
+           ,NULL                               rslt_other_amt
+           ,SUM(inn_v.rslt_center_amt)         rslt_center_amt
+           ,NULL                               rslt_center_vd_amt
+           ,NULL                               rslt_center_other_amt
+           ,MAX(inn_v.tgt_amt)                 tgt_amt
+           ,NULL                               tgt_vd_amt
+           ,NULL                               tgt_other_amt
+           ,MAX(inn_v.vis_num)                 vis_num
+           ,NULL                               vis_new_num
+           ,NULL                               vis_vd_new_num
+           ,NULL                               vis_vd_num
+           ,NULL                               vis_other_new_num
+           ,NULL                               vis_other_num
+           ,NULL                               vis_mc_num
+           ,MAX(inn_v.vis_sales_num)           vis_sales_num
+           ,NULL                               tgt_vis_num
+           ,NULL                               tgt_vis_vd_num
+           ,NULL                               tgt_vis_other_num
+           ,MAX(inn_v.vis_a_num)               vis_a_num
+           ,MAX(inn_v.vis_b_num)               vis_b_num
+           ,MAX(inn_v.vis_c_num)               vis_c_num
+           ,MAX(inn_v.vis_d_num)               vis_d_num
+           ,MAX(inn_v.vis_e_num)               vis_e_num
+           ,MAX(inn_v.vis_f_num)               vis_f_num
+           ,MAX(inn_v.vis_g_num)               vis_g_num
+           ,MAX(inn_v.vis_h_num)               vis_h_num
+           ,MAX(inn_v.vis_i_num)               vis_i_num
+           ,MAX(inn_v.vis_j_num)               vis_j_num
+           ,MAX(inn_v.vis_k_num)               vis_k_num
+           ,MAX(inn_v.vis_l_num)               vis_l_num
+           ,MAX(inn_v.vis_m_num)               vis_m_num
+           ,MAX(inn_v.vis_n_num)               vis_n_num
+           ,MAX(inn_v.vis_o_num)               vis_o_num
+           ,MAX(inn_v.vis_p_num)               vis_p_num
+           ,MAX(inn_v.vis_q_num)               vis_q_num
+           ,MAX(inn_v.vis_r_num)               vis_r_num
+           ,MAX(inn_v.vis_s_num)               vis_s_num
+           ,MAX(inn_v.vis_t_num)               vis_t_num
+           ,MAX(inn_v.vis_u_num)               vis_u_num
+           ,MAX(inn_v.vis_v_num)               vis_v_num
+           ,MAX(inn_v.vis_w_num)               vis_w_num
+           ,MAX(inn_v.vis_x_num)               vis_x_num
+           ,MAX(inn_v.vis_y_num)               vis_y_num
+           ,MAX(inn_v.vis_z_num)               vis_z_num
+    FROM    (
+             --------------------------------
+             -- ŒÚ‹q•Ê”„ãŒv‰æi“ú•Êj
+             --------------------------------
+             SELECT  xasp.base_code                       group_base_code
+                    ,xasp.account_number                  sum_org_code
+                    ,xasp.plan_date                       sales_date
+                    ,xasp.sales_plan_day_amt              tgt_amt
+                    ,NULL                                 rslt_amt
+                    ,NULL                                 rslt_center_amt
+                    ,NULL                                 vis_num
+                    ,NULL                                 vis_sales_num
+                    ,NULL                                 vis_a_num
+                    ,NULL                                 vis_b_num
+                    ,NULL                                 vis_c_num
+                    ,NULL                                 vis_d_num
+                    ,NULL                                 vis_e_num
+                    ,NULL                                 vis_f_num
+                    ,NULL                                 vis_g_num
+                    ,NULL                                 vis_h_num
+                    ,NULL                                 vis_i_num
+                    ,NULL                                 vis_j_num
+                    ,NULL                                 vis_k_num
+                    ,NULL                                 vis_l_num
+                    ,NULL                                 vis_m_num
+                    ,NULL                                 vis_n_num
+                    ,NULL                                 vis_o_num
+                    ,NULL                                 vis_p_num
+                    ,NULL                                 vis_q_num
+                    ,NULL                                 vis_r_num
+                    ,NULL                                 vis_s_num
+                    ,NULL                                 vis_t_num
+                    ,NULL                                 vis_u_num
+                    ,NULL                                 vis_v_num
+                    ,NULL                                 vis_w_num
+                    ,NULL                                 vis_x_num
+                    ,NULL                                 vis_y_num
+                    ,NULL                                 vis_z_num
+             FROM    xxcso_account_sales_plans  xasp
+             WHERE   xasp.plan_date BETWEEN TO_CHAR(gd_ar_gl_period_from,'YYYYMMDD')
+                                        AND TO_CHAR(LAST_DAY(gd_process_date),'YYYYMMDD') 
+               AND   xasp.month_date_div = cv_month_date_div_day
+               AND   xasp.sales_plan_day_amt IS NOT NULL
+             --------------------------------
+             -- ŒÚ‹q•Ê”„ãŒv‰æiŒ•Ê‚Ì‚İj
+             --------------------------------
+             UNION ALL
+             SELECT  xasp.base_code                       group_base_code
+                    ,xasp.account_number                  sum_org_code
+                    ,xasp.year_month || '01'              sales_date
+                    ,xasp.sales_plan_month_amt            tgt_amt
+                    ,NULL                                 rslt_amt
+                    ,NULL                                 rslt_center_amt
+                    ,NULL                                 vis_num
+                    ,NULL                                 vis_sales_num
+                    ,NULL                                 vis_a_num
+                    ,NULL                                 vis_b_num
+                    ,NULL                                 vis_c_num
+                    ,NULL                                 vis_d_num
+                    ,NULL                                 vis_e_num
+                    ,NULL                                 vis_f_num
+                    ,NULL                                 vis_g_num
+                    ,NULL                                 vis_h_num
+                    ,NULL                                 vis_i_num
+                    ,NULL                                 vis_j_num
+                    ,NULL                                 vis_k_num
+                    ,NULL                                 vis_l_num
+                    ,NULL                                 vis_m_num
+                    ,NULL                                 vis_n_num
+                    ,NULL                                 vis_o_num
+                    ,NULL                                 vis_p_num
+                    ,NULL                                 vis_q_num
+                    ,NULL                                 vis_r_num
+                    ,NULL                                 vis_s_num
+                    ,NULL                                 vis_t_num
+                    ,NULL                                 vis_u_num
+                    ,NULL                                 vis_v_num
+                    ,NULL                                 vis_w_num
+                    ,NULL                                 vis_x_num
+                    ,NULL                                 vis_y_num
+                    ,NULL                                 vis_z_num
+             FROM    xxcso_account_sales_plans  xasp
+             WHERE   xasp.year_month BETWEEN TO_CHAR(gd_ar_gl_period_from,'YYYYMM')
+                                         AND TO_CHAR(gd_process_date,'YYYYMM')
+               AND   xasp.month_date_div = cv_month_date_div_mon
+               AND   NOT EXISTS (
+                       -- “ú•ÊŒv‰æ‚ª‚ ‚éê‡‚Ío—Í‚µ‚È‚¢
+                       SELECT  1
+                       FROM    xxcso_account_sales_plans  xaspd
+                       WHERE   xaspd.base_code      = xasp.base_code
+                         AND   xaspd.account_number = xasp.account_number
+                         AND   xaspd.month_date_div = cv_month_date_div_day
+                         AND   xaspd.year_month     = xasp.year_month
+                         AND   xaspd.sales_plan_day_amt IS NOT NULL
+                     )
+             --------------------------------
+             -- ŒÚ‹q•Ê”„ãÀÑWŒv
+             --------------------------------
+             UNION ALL
+             SELECT  xcav.sale_base_code                     group_base_code
+                    ,xsv2.account_number                     sum_org_code
+                    ,TO_CHAR(xsv2.delivery_date,'YYYYMMDD')  sales_date
+                    ,NULL                                    tgt_amt
+                    ,xsv2.pure_amount                        rslt_amt
+                    ,(CASE
+                        WHEN (xsv2.other_flag = 'Y') THEN
+                          xsv2.pure_amount
+                        ELSE
+                          NULL
+                      END
+                     )                                       rslt_center_amt
+                    ,NULL                                    vis_num
+                    ,NULL                                    vis_sales_num
+                    ,NULL                                    vis_a_num
+                    ,NULL                                    vis_b_num
+                    ,NULL                                    vis_c_num
+                    ,NULL                                    vis_d_num
+                    ,NULL                                    vis_e_num
+                    ,NULL                                    vis_f_num
+                    ,NULL                                    vis_g_num
+                    ,NULL                                    vis_h_num
+                    ,NULL                                    vis_i_num
+                    ,NULL                                    vis_j_num
+                    ,NULL                                    vis_k_num
+                    ,NULL                                    vis_l_num
+                    ,NULL                                    vis_m_num
+                    ,NULL                                    vis_n_num
+                    ,NULL                                    vis_o_num
+                    ,NULL                                    vis_p_num
+                    ,NULL                                    vis_q_num
+                    ,NULL                                    vis_r_num
+                    ,NULL                                    vis_s_num
+                    ,NULL                                    vis_t_num
+                    ,NULL                                    vis_u_num
+                    ,NULL                                    vis_v_num
+                    ,NULL                                    vis_w_num
+                    ,NULL                                    vis_x_num
+                    ,NULL                                    vis_y_num
+                    ,NULL                                    vis_z_num
+             FROM    (SELECT  xsv1.account_number
+                             ,xsv1.delivery_date
+                             ,xsv1.other_flag
+                             ,(CASE
+                                 WHEN (xsv1.pure_amount < 0)
+                                  AND (xsv1.pure_amount > -500)
+                                 THEN
+                                   -1
+                                 WHEN (xsv1.pure_amount = 0)
+                                 THEN
+                                   0
+                                 WHEN (xsv1.pure_amount > 0)
+                                  AND (xsv1.pure_amount < 500)
+                                 THEN
+                                   1
+                                 ELSE
+                                   ROUND(xsv1.pure_amount / 1000)
+                               END
+                              ) pure_amount
+                      FROM    (SELECT  xsv.account_number     account_number
+                                      ,xsv.delivery_date      delivery_date
+                                      ,'N'                    other_flag
+                                      ,SUM(xsv.pure_amount)   pure_amount
+                               FROM    xxcso_sales_v  xsv
+                               WHERE   xsv.delivery_date BETWEEN gd_ar_gl_period_from
+                                                             AND gd_process_date
+                                 AND   xsv.delivery_pattern_class <> cv_delivery_pattern_cls_5
+                               GROUP BY xsv.account_number, xsv.delivery_date
+                               UNION ALL
+                               SELECT  xsv.account_number     account_number
+                                      ,xsv.delivery_date      delivery_date
+                                      ,'Y'                    other_flag
+                                      ,SUM(xsv.pure_amount)   pure_amount
+                               FROM    xxcso_sales_v  xsv
+                               WHERE   xsv.delivery_date BETWEEN gd_ar_gl_period_from
+                                                             AND gd_process_date
+                                 AND   xsv.delivery_pattern_class = cv_delivery_pattern_cls_5
+                               GROUP BY xsv.account_number, xsv.delivery_date
+                              ) xsv1
+                     )                       xsv2
+                    ,xxcso_cust_accounts_v   xcav
+             WHERE   xcav.account_number = xsv2.account_number
+             --------------------------------
+             -- ŒÚ‹q•Ê–K–âÀÑWŒv
+             --------------------------------
+             UNION ALL
+             SELECT  xcav.sale_base_code                       group_base_code
+                    ,xcav.account_number                       sum_org_code
+                    ,TO_CHAR(xvv1.actual_end_date,'YYYYMMDD')  sales_date
+                    ,NULL                                      tgt_amt
+                    ,NULL                                      rslt_amt
+                    ,NULL                                      rslt_center_amt
+                    ,xvv1.vis_num                              vis_num
+                    ,(CASE
+                        WHEN (xvv1.vis_sales_num > 0) THEN
+                          xvv1.vis_sales_num
+                        ELSE
+                          NULL
+                      END
+                     )                                         vis_sales_num
+                    ,xvv1.visit_num_a                          vis_a_num
+                    ,xvv1.visit_num_b                          vis_b_num
+                    ,xvv1.visit_num_c                          vis_c_num
+                    ,xvv1.visit_num_d                          vis_d_num
+                    ,xvv1.visit_num_e                          vis_e_num
+                    ,xvv1.visit_num_f                          vis_f_num
+                    ,xvv1.visit_num_g                          vis_g_num
+                    ,xvv1.visit_num_h                          vis_h_num
+                    ,xvv1.visit_num_i                          vis_i_num
+                    ,xvv1.visit_num_j                          vis_j_num
+                    ,xvv1.visit_num_k                          vis_k_num
+                    ,xvv1.visit_num_l                          vis_l_num
+                    ,xvv1.visit_num_m                          vis_m_num
+                    ,xvv1.visit_num_n                          vis_n_num
+                    ,xvv1.visit_num_o                          vis_o_num
+                    ,xvv1.visit_num_p                          vis_p_num
+                    ,xvv1.visit_num_q                          vis_q_num
+                    ,xvv1.visit_num_r                          vis_r_num
+                    ,xvv1.visit_num_s                          vis_s_num
+                    ,xvv1.visit_num_t                          vis_t_num
+                    ,xvv1.visit_num_u                          vis_u_num
+                    ,xvv1.visit_num_v                          vis_v_num
+                    ,xvv1.visit_num_w                          vis_w_num
+                    ,xvv1.visit_num_x                          vis_x_num
+                    ,xvv1.visit_num_y                          vis_y_num
+                    ,xvv1.visit_num_z                          vis_z_num
+             FROM    (SELECT  xvv.party_id                                party_id
+                             ,TRUNC(xvv.actual_end_date)                  actual_end_date
+                             ,COUNT(xvv.task_id)                          vis_num
+                             ,SUM(
+                                CASE
+                                  WHEN (xvv.eff_visit_flag = cv_eff_visit_flag_1) THEN
+                                    1
+                                  ELSE
+                                    0
+                                END
+                              )                                           vis_sales_num
+                             ,SUM(xvv.visit_num_a)                        visit_num_a
+                             ,SUM(xvv.visit_num_b)                        visit_num_b
+                             ,SUM(xvv.visit_num_c)                        visit_num_c
+                             ,SUM(xvv.visit_num_d)                        visit_num_d
+                             ,SUM(xvv.visit_num_e)                        visit_num_e
+                             ,SUM(xvv.visit_num_f)                        visit_num_f
+                             ,SUM(xvv.visit_num_g)                        visit_num_g
+                             ,SUM(xvv.visit_num_h)                        visit_num_h
+                             ,SUM(xvv.visit_num_i)                        visit_num_i
+                             ,SUM(xvv.visit_num_j)                        visit_num_j
+                             ,SUM(xvv.visit_num_k)                        visit_num_k
+                             ,SUM(xvv.visit_num_l)                        visit_num_l
+                             ,SUM(xvv.visit_num_m)                        visit_num_m
+                             ,SUM(xvv.visit_num_n)                        visit_num_n
+                             ,SUM(xvv.visit_num_o)                        visit_num_o
+                             ,SUM(xvv.visit_num_p)                        visit_num_p
+                             ,SUM(xvv.visit_num_q)                        visit_num_q
+                             ,SUM(xvv.visit_num_r)                        visit_num_r
+                             ,SUM(xvv.visit_num_s)                        visit_num_s
+                             ,SUM(xvv.visit_num_t)                        visit_num_t
+                             ,SUM(xvv.visit_num_u)                        visit_num_u
+                             ,SUM(xvv.visit_num_v)                        visit_num_v
+                             ,SUM(xvv.visit_num_w)                        visit_num_w
+                             ,SUM(xvv.visit_num_x)                        visit_num_x
+                             ,SUM(xvv.visit_num_y)                        visit_num_y
+                             ,SUM(xvv.visit_num_z)                        visit_num_z
+                      FROM    xxcso_visit_v xvv
+                      WHERE   TRUNC(xvv.actual_end_date) BETWEEN gd_ar_gl_period_from
+                                                             AND gd_process_date
+                      GROUP BY xvv.party_id, TRUNC(xvv.actual_end_date)
+                     )                       xvv1
+                    ,xxcso_cust_accounts_v   xcav
+             WHERE   xcav.party_id = xvv1.party_id
+            ) inn_v
+    GROUP BY  inn_v.sum_org_code
+             ,inn_v.group_base_code
+             ,inn_v.sales_date
+/* 20090519_Ogawa_T1_1024 END*/
+/* 20090519_Ogawa_T1_1037 END*/
+/* 20090519_Ogawa_T1_1038 END*/
     ;
     -- –K–âÀÑVIEW
   -- ===============================
@@ -1261,13 +1600,19 @@ AS
                  cv_debug_msg2  || TO_CHAR(gd_process_date,'yyyy/mm/dd hh24:mi:ss') || CHR(10) ||
                  ''
     );
-    IF (gd_process_date = NULL) THEN
+/* 20090525_Mori START*/
+    IF (gd_process_date IS NULL) THEN
+--    IF (gd_process_date = NULL) THEN
+/* 20090525_Mori END*/
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_app_name                  --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
                     ,iv_name         => cv_tkn_number_01             --ƒƒbƒZ[ƒWƒR[ƒh
                    );
       lv_errbuf := lv_errmsg || SQLERRM;
-      RAISE global_api_others_expt;
+/* 20090525_Mori START*/
+      RAISE global_api_expt;
+--      RAISE global_api_others_expt;
+/* 20090525_Mori END*/
     END IF;
     -- ===========================
     -- ‰ïŒvŠúŠÔŠJn“úæ“¾ˆ— 
@@ -1282,13 +1627,19 @@ AS
                  CHR(10) ||
                  ''
     );
-    IF (gd_ar_gl_period_from = NULL) THEN
+/* 20090525_Mori START*/
+    IF (gd_ar_gl_period_from IS NULL) THEN
+--    IF (gd_ar_gl_period_from = NULL) THEN
+/* 20090525_Mori END*/
       lv_errmsg := xxccp_common_pkg.get_msg(
                      iv_application  => cv_app_name                  --ƒAƒvƒŠƒP[ƒVƒ‡ƒ“’Zk–¼
                     ,iv_name         => cv_tkn_number_02             --ƒƒbƒZ[ƒWƒR[ƒh
                    );
       lv_errbuf := lv_errmsg || SQLERRM;
-      RAISE global_api_others_expt;
+/* 20090525_Mori START*/
+      RAISE global_api_expt;
+--      RAISE global_api_others_expt;
+/* 20090525_Mori END*/
     END IF;
     -- ===========================
     -- ’Šo‘ÎÛ‚Ì”NŒƒŠƒXƒgæ“¾ˆ— 
@@ -1666,105 +2017,123 @@ AS
        ,cd_program_update_date                       --ƒvƒƒOƒ‰ƒ€XV“ú
        ,cv_sum_org_type_accnt                        --WŒv‘gDí—Ş
        ,g_get_day_acct_data_rec.sum_org_code               --WŒv‘gD‚b‚c
-       ,cv_null                                            --ƒOƒ‹[ƒve‹’“_‚b‚c
+/* 20090519_Ogawa_T1_1037 START*/
+--     ,cv_null                                            --ƒOƒ‹[ƒve‹’“_‚b‚c
+       ,g_get_day_acct_data_rec.group_base_code            --ƒOƒ‹[ƒve‹’“_‚b‚c
+/* 20090519_Ogawa_T1_1037 END*/
        ,cv_month_date_div_day                              --Œ“ú‹æ•ª
        ,g_get_day_acct_data_rec.sales_date                 --”Ì”„”NŒ“ú^”Ì”„”NŒ
        ,g_get_day_acct_data_rec.gvm_type                   --ˆê”Ê^©”Ì‹@^‚l‚b
        ,g_get_day_acct_data_rec.cust_new_num               --ŒÚ‹qŒ”iV‹Kj
        ,g_get_day_acct_data_rec.cust_vd_new_num            --ŒÚ‹qŒ”iVDFV‹Kj
        ,g_get_day_acct_data_rec.cust_other_new_num         --ŒÚ‹qŒ”iVDˆÈŠOFV‹Kj
-       /* 20090501_abe_”„ãŒv‰æo—Í‘Î‰ START*/
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --”„ãÀÑ
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_new_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_new_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_new_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --”„ãÀÑiV‹Kj
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_vd_new_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_vd_new_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_vd_new_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --”„ãÀÑiVDFV‹Kj
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_vd_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_vd_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_vd_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --”„ãÀÑiVDj
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_other_new_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_other_new_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_other_new_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --”„ãÀÑiVDˆÈŠOFV‹Kj
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_other_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_other_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_other_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --”„ãÀÑiVDˆÈŠOj
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_center_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_center_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_center_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --“à‘¼‹’“_Q”„ãÀÑ
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_center_vd_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_center_vd_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_center_vd_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --“à‘¼‹’“_Q”„ãÀÑiVDj
-       ,(CASE 
-           WHEN NVL(g_get_day_acct_data_rec.rslt_center_other_amt  ,0) >= 500
-             THEN ROUND(g_get_day_acct_data_rec.rslt_center_other_amt   / 1000)
-           WHEN NVL(g_get_day_acct_data_rec.rslt_center_other_amt  ,0) >= 1
-             THEN 1
-           ELSE
-             NULL
-         END
-        )                                                  --“à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-       --,g_get_day_acct_data_rec.rslt_amt                   --”„ãÀÑ
-       --,g_get_day_acct_data_rec.rslt_new_amt               --”„ãÀÑiV‹Kj
-       --,g_get_day_acct_data_rec.rslt_vd_new_amt            --”„ãÀÑiVDFV‹Kj
-       --,g_get_day_acct_data_rec.rslt_vd_amt                --”„ãÀÑiVDj
-       --,g_get_day_acct_data_rec.rslt_other_new_amt         --”„ãÀÑiVDˆÈŠOFV‹Kj
-       --,g_get_day_acct_data_rec.rslt_other_amt             --”„ãÀÑiVDˆÈŠOj
-       --,g_get_day_acct_data_rec.rslt_center_amt            --“à‘¼‹’“_Q”„ãÀÑ
-       --,g_get_day_acct_data_rec.rslt_center_vd_amt         --“à‘¼‹’“_Q”„ãÀÑiVDj
-       --,g_get_day_acct_data_rec.rslt_center_other_amt      --“à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
-       /* 20090501_abe_”„ãŒv‰æo—Í‘Î‰ END*/
+/* 20090519_Ogawa_T1_1024 START*/
+/* 20090519_Ogawa_T1_1037 START*/
+/* 20090519_Ogawa_T1_1038 START*/
+--     /* 20090501_abe_”„ãŒv‰æo—Í‘Î‰ START*/
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --”„ãÀÑ
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_new_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_new_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_new_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --”„ãÀÑiV‹Kj
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_vd_new_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_vd_new_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_vd_new_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --”„ãÀÑiVDFV‹Kj
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_vd_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_vd_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_vd_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --”„ãÀÑiVDj
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_other_new_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_other_new_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_other_new_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --”„ãÀÑiVDˆÈŠOFV‹Kj
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_other_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_other_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_other_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --”„ãÀÑiVDˆÈŠOj
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_center_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_center_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_center_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --“à‘¼‹’“_Q”„ãÀÑ
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_center_vd_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_center_vd_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_center_vd_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --“à‘¼‹’“_Q”„ãÀÑiVDj
+--     ,(CASE 
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_center_other_amt  ,0) >= 500
+--           THEN ROUND(g_get_day_acct_data_rec.rslt_center_other_amt   / 1000)
+--         WHEN NVL(g_get_day_acct_data_rec.rslt_center_other_amt  ,0) >= 1
+--           THEN 1
+--         ELSE
+--           NULL
+--       END
+--      )                                                  --“à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--     --,g_get_day_acct_data_rec.rslt_amt                   --”„ãÀÑ
+--     --,g_get_day_acct_data_rec.rslt_new_amt               --”„ãÀÑiV‹Kj
+--     --,g_get_day_acct_data_rec.rslt_vd_new_amt            --”„ãÀÑiVDFV‹Kj
+--     --,g_get_day_acct_data_rec.rslt_vd_amt                --”„ãÀÑiVDj
+--     --,g_get_day_acct_data_rec.rslt_other_new_amt         --”„ãÀÑiVDˆÈŠOFV‹Kj
+--     --,g_get_day_acct_data_rec.rslt_other_amt             --”„ãÀÑiVDˆÈŠOj
+--     --,g_get_day_acct_data_rec.rslt_center_amt            --“à‘¼‹’“_Q”„ãÀÑ
+--     --,g_get_day_acct_data_rec.rslt_center_vd_amt         --“à‘¼‹’“_Q”„ãÀÑiVDj
+--     --,g_get_day_acct_data_rec.rslt_center_other_amt      --“à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+--     /* 20090501_abe_”„ãŒv‰æo—Í‘Î‰ END*/
+       ,g_get_day_acct_data_rec.rslt_amt                   --”„ãÀÑ
+       ,g_get_day_acct_data_rec.rslt_new_amt               --”„ãÀÑiV‹Kj
+       ,g_get_day_acct_data_rec.rslt_vd_new_amt            --”„ãÀÑiVDFV‹Kj
+       ,g_get_day_acct_data_rec.rslt_vd_amt                --”„ãÀÑiVDj
+       ,g_get_day_acct_data_rec.rslt_other_new_amt         --”„ãÀÑiVDˆÈŠOFV‹Kj
+       ,g_get_day_acct_data_rec.rslt_other_amt             --”„ãÀÑiVDˆÈŠOj
+       ,g_get_day_acct_data_rec.rslt_center_amt            --“à‘¼‹’“_Q”„ãÀÑ
+       ,g_get_day_acct_data_rec.rslt_center_vd_amt         --“à‘¼‹’“_Q”„ãÀÑiVDj
+       ,g_get_day_acct_data_rec.rslt_center_other_amt      --“à‘¼‹’“_Q”„ãÀÑiVDˆÈŠOj
+/* 20090519_Ogawa_T1_1024 END*/
+/* 20090519_Ogawa_T1_1037 END*/
+/* 20090519_Ogawa_T1_1038 END*/
        ,g_get_day_acct_data_rec.tgt_amt                    --”„ãŒv‰æ
        ,NULL                                               --”„ãŒv‰æiV‹Kj
        ,NULL                                               --”„ãŒv‰æiVDFV‹Kj
@@ -3976,6 +4345,9 @@ AS
     IS
       SELECT
         xsvsr.sum_org_code               sum_org_code               --WŒv‘gD‚b‚c
+/* 20090519_Ogawa_T1_1024 START*/
+       ,xsvsr.group_base_code            group_base_code            --ƒOƒ‹[ƒve‹’“_‚b‚c
+/* 20090519_Ogawa_T1_1024 END*/
        ,SUBSTRB(xsvsr.sales_date, 1, 6)  sales_date                 --”Ì”„”NŒ“ú^”Ì”„”NŒ
        ,xsvsr.gvm_type                   gvm_type                   --ˆê”Ê^©”Ì‹@^‚l‚b
        ,MAX(xsvsr.cust_new_num         ) cust_new_num               --ŒÚ‹qŒ”iV‹Kj
@@ -4038,10 +4410,15 @@ AS
        ,SUM(xsvsr.vis_y_num            ) vis_y_num                  --–K–â‚xŒ”
        ,SUM(xsvsr.vis_z_num            ) vis_z_num                  --–K–â‚yŒ”
       FROM
-        xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
-       ,xxcso_sum_visit_sale_rep xsvsr  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠƒe[ƒuƒ‹
+/* 20090519_Ogawa_T1_1024 START*/
+--      xxcso_cust_accounts_v xcav  -- ŒÚ‹qƒ}ƒXƒ^ƒrƒ…[
+--     ,xxcso_sum_visit_sale_rep xsvsr  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠƒe[ƒuƒ‹
+        xxcso_sum_visit_sale_rep xsvsr  -- –K–â”„ãŒv‰æŠÇ—•\ƒTƒ}ƒŠƒe[ƒuƒ‹
+/* 20090519_Ogawa_T1_1024 END*/
       WHERE  xsvsr.sum_org_type = cv_sum_org_type_accnt  -- WŒv‘gDí—Ş
-        AND  xcav.account_number = xsvsr.sum_org_code  -- ŒÚ‹qƒR[ƒh
+/* 20090519_Ogawa_T1_1024 START*/
+--      AND  xcav.account_number = xsvsr.sum_org_code  -- ŒÚ‹qƒR[ƒh
+/* 20090519_Ogawa_T1_1024 END*/
         AND  xsvsr.month_date_div = cv_month_date_div_day  -- Œ“ú‹æ•ª
         AND  SUBSTRB(xsvsr.sales_date, 1, 6) IN (
                                                   gv_ym_lst_1
@@ -4051,66 +4428,71 @@ AS
                                                  ,gv_ym_lst_5
                                                  ,gv_ym_lst_6
                                                 )  -- ”Ì”„”NŒ“ú
-        AND  ((
-                    (
-                     xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
-                    )
-               AND  (
-                     xcav.customer_status IN (
-                                               cv_customer_status_10
-                                              ,cv_customer_status_20
-                                             )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                    )
-              )
-          OR  (
-                    (
-                     xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
-                    )
-               AND  (
-                     xcav.customer_status IN (
-                                               cv_customer_status_25
-                                              ,cv_customer_status_30
-                                              ,cv_customer_status_40
-                                              ,cv_customer_status_50
-                                             )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                    )
-              )
-          OR  (
-                    (
-                     xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
-                    )
-               AND  (
-                     xcav.customer_status IN (
-                                               cv_customer_status_30
-                                              ,cv_customer_status_40
-                                             )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                    )
-              )
-          OR  (
-                    (
-                     xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
-                    )
-               AND  (
-                     xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                    )
-              )
-          OR  (
-                    (
-                     xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
-                    )
-               AND  (
-                     xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                    )
-              )
-          OR  (
-                    (
-                     xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
-                    )
-               AND  (
-                     xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
-                    )
-             ))
+/* 20090519_Ogawa_T1_1024 START*/
+--      AND  ((
+--                  (
+--                   xcav.customer_class_code IS NULL -- ŒÚ‹q‹æ•ª
+--                  )
+--             AND  (
+--                   xcav.customer_status IN (
+--                                             cv_customer_status_10
+--                                            ,cv_customer_status_20
+--                                           )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                  )
+--            )
+--        OR  (
+--                  (
+--                   xcav.customer_class_code = cv_customer_class_code_10 -- ŒÚ‹q‹æ•ª
+--                  )
+--             AND  (
+--                   xcav.customer_status IN (
+--                                             cv_customer_status_25
+--                                            ,cv_customer_status_30
+--                                            ,cv_customer_status_40
+--                                            ,cv_customer_status_50
+--                                           )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                  )
+--            )
+--        OR  (
+--                  (
+--                   xcav.customer_class_code = cv_customer_class_code_12 -- ŒÚ‹q‹æ•ª
+--                  )
+--             AND  (
+--                   xcav.customer_status IN (
+--                                             cv_customer_status_30
+--                                            ,cv_customer_status_40
+--                                           )  -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                  )
+--            )
+--        OR  (
+--                  (
+--                   xcav.customer_class_code = cv_customer_class_code_15 -- ŒÚ‹q‹æ•ª
+--                  )
+--             AND  (
+--                   xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                  )
+--            )
+--        OR  (
+--                  (
+--                   xcav.customer_class_code = cv_customer_class_code_16 -- ŒÚ‹q‹æ•ª
+--                  )
+--             AND  (
+--                   xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                  )
+--            )
+--        OR  (
+--                  (
+--                   xcav.customer_class_code = cv_customer_class_code_17 -- ŒÚ‹q‹æ•ª
+--                  )
+--             AND  (
+--                   xcav.customer_status = cv_customer_status_99 -- ŒÚ‹qƒXƒe[ƒ^ƒX
+--                  )
+--           ))
+/* 20090519_Ogawa_T1_1024 END*/
       GROUP BY  sum_org_code  --ŒÚ‹qƒR[ƒh
+/* 20090519_Ogawa_T1_1024 START*/
+               ,xsvsr.group_base_code  --ƒOƒ‹[ƒve‹’“_‚b‚c
+/* 20090519_Ogawa_T1_1024 END*/
                ,SUBSTRB(xsvsr.sales_date, 1, 6)       --”Ì”„”NŒ“ú
                ,gvm_type         --ˆê”Ê^©”Ì‹@^‚l‚b
     ;
@@ -4243,7 +4625,10 @@ AS
          ,cd_program_update_date                     --ƒvƒƒOƒ‰ƒ€XV“ú
          ,cv_sum_org_type_accnt                      --WŒv‘gDí—Ş
          ,mon_acct_dt_rec.sum_org_code               --WŒv‘gD‚b‚c
-         ,cv_null                                    --ƒOƒ‹[ƒve‹’“_‚b‚c
+/* 20090519_Ogawa_T1_1024 START*/
+--       ,cv_null                                    --ƒOƒ‹[ƒve‹’“_‚b‚c
+         ,mon_acct_dt_rec.group_base_code
+/* 20090519_Ogawa_T1_1024 END*/
          ,cv_month_date_div_mon                      --Œ“ú‹æ•ª
          ,mon_acct_dt_rec.sales_date                 --”Ì”„”NŒ“ú^”Ì”„”NŒ
          ,mon_acct_dt_rec.gvm_type                   --ˆê”Ê^©”Ì‹@^‚l‚b
