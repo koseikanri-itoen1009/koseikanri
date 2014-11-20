@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS014A01C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS014A01C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -41,6 +41,8 @@ AS
  *                                       [T1_1088] 受注明細タイプ「30_値引」の出力時の項目不正対応
  *  2009/05/28    1.11  M.Sano           [T1_0968] 1明細目の伝票計不正対応
  *  2009/06/19    1.12  N.Maeda          [T1_1158] チェーン店セキュリティービューの結合方法変更
+ *  2009/06/29    1.12  T.Kitajima       [T1_0975] 値引品目対応
+ *  2009/07/02    1.12  N.Maeda          [T1_0975] 値引品目数量修正
  *
  *****************************************************************************************/
 --
@@ -2585,68 +2587,172 @@ AS
             ,NULL                                                               product_group_code            --商品群コード
             ,NULL                                                               case_dismantle_flag           --ケース解体不可フラグ
             ,NULL                                                               case_class                    --ケース区分
-            ,CASE
-               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
-                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
-                  THEN
-                    TO_CHAR( oola.ordered_quantity )
-               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+-- *********************************** 2009/07/02 1.12 N.Maeda MOD START *************************************************** --
+            ,CASE 
+               WHEN ottt_l.description <> i_msg_rec.line_type30 THEN
+                 CASE
+                   WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+                   AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code  THEN
+                      TO_CHAR( oola.ordered_quantity )
+                   WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+                      NULL
+                   WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
                     NULL
-               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
-                    NULL
-             END                                                                indv_order_qty                --発注数量（バラ）
-            ,CASE
-               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
-                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
-                  THEN
-                    NULL
-               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
-                    TO_CHAR( oola.ordered_quantity )
-               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
-                    NULL
+                 END
+               ELSE
+                 TO_CHAR( 0 )
+             END                                                                  indv_order_qty                --発注数量（バラ）
+--            ,CASE
+--               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+--                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+--                  THEN
+--                    TO_CHAR( oola.ordered_quantity )
+--               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+--                    NULL
+--               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+--                    NULL
+--             END                                                                indv_order_qty                --発注数量（バラ）
+            ,CASE 
+               WHEN ottt_l.description <> i_msg_rec.line_type30 THEN
+                 CASE
+                   WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+                    AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+                      THEN
+                        NULL
+                   WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+                        TO_CHAR( oola.ordered_quantity )
+                   WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+                        NULL
+                 END
+               ELSE
+                 TO_CHAR( 0 )
              END                                                                case_order_qty                --発注数量（ケース）
+--              ,CASE
+--                 WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+--                  AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+--                    THEN
+--                      NULL
+--                 WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+--                      TO_CHAR( oola.ordered_quantity )
+--                 WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+--                      NULL
+--               END                                                            case_order_qty                --発注数量（ケース）
+--
             ,CASE
-               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
-                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
-                  THEN
-                    NULL
-               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
-                    NULL
-               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
-                    TO_CHAR( oola.ordered_quantity )
+               WHEN ottt_l.description <> i_msg_rec.line_type30 THEN
+                 CASE
+                   WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+                    AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+                      THEN
+                        NULL
+                   WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+                        NULL
+                   WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+                        TO_CHAR( oola.ordered_quantity )
+                 END
+               ELSE
+                 TO_CHAR( 0 )
              END                                                                ball_order_qty                --発注数量（ボール）
-            ,TO_CHAR( oola.ordered_quantity )                                   sum_order_qty                 --発注数量（合計、バラ）
+--            ,CASE
+--               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+--                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+--                  THEN
+--                    NULL
+--               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+--                    NULL
+--               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+--                    TO_CHAR( oola.ordered_quantity )
+--             END                                                                ball_order_qty                --発注数量（ボール）
             ,CASE
-               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
-                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
-                  THEN
-                    TO_CHAR( oola.ordered_quantity )
-               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
-                    NULL
-               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
-                    NULL
+               WHEN ottt_l.description <> i_msg_rec.line_type30 THEN
+                 TO_CHAR( oola.ordered_quantity )
+               ELSE
+                 TO_CHAR( 0 )
+             END                                                                sum_order_qty                 --発注数量（合計、バラ）
+--            ,TO_CHAR( oola.ordered_quantity )                                   sum_order_qty                 --発注数量（合計、バラ）
+            ,CASE
+               WHEN ottt_l.description <> i_msg_rec.line_type30 THEN
+                 CASE
+                   WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+                    AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+                      THEN
+                        TO_CHAR( oola.ordered_quantity )
+                   WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+                        NULL
+                   WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+                        NULL
+                 END
+               ELSE
+                 TO_CHAR( 0 )
              END                                                                indv_shipping_qty             --出荷数量（バラ）
+--            ,CASE
+--               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+--                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+--                  THEN
+--                    TO_CHAR( oola.ordered_quantity )
+--               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+--                    NULL
+--               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+--                    NULL
+--             END                                                                indv_shipping_qty             --出荷数量（バラ）
             ,CASE
-               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
-                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
-                  THEN
-                    NULL
-               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
-                    TO_CHAR( oola.ordered_quantity )
-               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
-                    NULL
+               WHEN ottt_l.description <> i_msg_rec.line_type30 THEN
+                 CASE
+                   WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+                    AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+                      THEN
+                        NULL
+                   WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+                        TO_CHAR( oola.ordered_quantity )
+                   WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+                        NULL
+                 END
+               ELSE
+                 TO_CHAR( 0 )
              END                                                                case_shipping_qty             --出荷数量（ケース）
+--            ,CASE
+--               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+--                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+--                  THEN
+--                    NULL
+--               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+--                    TO_CHAR( oola.ordered_quantity )
+--               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+--                    NULL
+--             END                                                                case_shipping_qty             --出荷数量（ケース）
             ,CASE
-               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
-                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
-                  THEN
-                    NULL
-               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
-                    NULL
-               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
-                    TO_CHAR( oola.ordered_quantity )
-             END                                                                ball_shipping_qty             --出荷数量（ボール）
-            ,NULL                                                               pallet_shipping_qty           --出荷数量（パレット）
+               WHEN ottt_l.description <> i_msg_rec.line_type30 THEN
+                 CASE
+                   WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+                    AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+                      THEN
+                        NULL
+                   WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+                        NULL
+                   WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+                        TO_CHAR( oola.ordered_quantity )
+                 END
+               ELSE
+                 TO_CHAR( 0 )
+               END                                                                ball_shipping_qty             --出荷数量（ボール）
+--            ,CASE
+--               WHEN oola.order_quantity_uom  != i_prf_rec.case_uom_code
+--                AND oola.order_quantity_uom  != i_prf_rec.bowl_uom_code
+--                  THEN
+--                    NULL
+--               WHEN oola.order_quantity_uom   = i_prf_rec.case_uom_code THEN
+--                    NULL
+--               WHEN oola.order_quantity_uom   = i_prf_rec.bowl_uom_code THEN
+--                    TO_CHAR( oola.ordered_quantity )
+--             END                                                                ball_shipping_qty             --出荷数量（ボール）
+            ,CASE
+               WHEN ottt_l.description <> i_msg_rec.line_type30 THEN
+                 NULL
+               ELSE
+                 TO_CHAR( 0 )
+             END                                                               pallet_shipping_qty           --出荷数量（パレット）
+--            ,NULL                                                               pallet_shipping_qty           --出荷数量（パレット）
+--*********************************** 2009/07/02 1.12 N.Maeda MOD  END  *************************************************** --
             ,CASE
 --******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************
 --               WHEN ottt_l.description        = ct_msg_line_type30 THEN
@@ -2663,15 +2769,18 @@ AS
             ,NULL                                                               case_qty                      --ケース個口数
             ,NULL                                                               fold_container_indv_qty       --オリコン（バラ）個口数
             ,NULL                                                               order_unit_price              --原単価（発注）
-            ,CASE
---******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************
---               WHEN ottt_l.description        = ct_msg_line_type30 THEN
-               WHEN ottt_l.description        = i_msg_rec.line_type30 THEN
---******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
-                 TO_CHAR( 0 )
-               ELSE
-                 TO_CHAR( oola.unit_selling_price )
-             END                                                                shipping_unit_price           --原単価（出荷）
+--****************************** 2009/06/29 1.12 T.Kitajima ADD START ******************************--
+--            ,CASE
+----******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************
+----               WHEN ottt_l.description        = ct_msg_line_type30 THEN
+--               WHEN ottt_l.description        = i_msg_rec.line_type30 THEN
+----******************************************* 2009/05/21 Ver.1.10 M.Sano ADD  END  *****************************************
+--                 TO_CHAR( 0 )
+--               ELSE
+--                 TO_CHAR( oola.unit_selling_price )
+--             END                                                                shipping_unit_price           --原単価（出荷）
+            ,oola.unit_selling_price                                            shipping_unit_price           --原単価（出荷）
+----****************************** 2009/06/29 1.12 T.Kitajima ADD  END  ******************************--
             ,NULL                                                               order_cost_amt                --原価金額（発注）
             ,CASE
 --******************************************* 2009/05/21 Ver.1.10 M.Sano ADD START *****************************************

@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS014A11C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定情報データ作成 (MD050_COS_014_A11)
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/03/16    1.0   K.Kiriu          新規作成
+ *  2009/07/01    1.1   K.Kiriu          [T1_1359]数量換算対応
  *
  *****************************************************************************************/
 --
@@ -122,6 +123,9 @@ AS
   cv_msg_tax_err        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-13753';             --税率取得エラー
   ct_msg_fopen_err      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00009';             --ファイルオープンエラーメッセージ
   cv_msg_no_target      CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00003';             --対象データなしエラー
+/* 2009/07/01 Ver1.10 Add Start */
+  cv_msg_proc_err       CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00037';             -- 共通関数エラー
+/* 2009/07/01 Ver1.10 Add End   */
   -- トークンコード
   cv_tkn_param1         CONSTANT VARCHAR2(6)   := 'PARAM1';                       --入力パラメータ1
   cv_tkn_param2         CONSTANT VARCHAR2(6)   := 'PARAM2';                       --入力パラメータ2
@@ -139,6 +143,9 @@ AS
   cv_tkn_layout         CONSTANT VARCHAR2(6)   := 'LAYOUT';                       --レイアウト
   cv_tkn_chain_s        CONSTANT VARCHAR2(15)  := 'CHAIN_SHOP_CODE';              --チェーン店
   cv_tkn_table          CONSTANT VARCHAR2(5)   := 'TABLE';                        --テーブル
+/* 2009/07/01 Ver1.10 Add Start */
+  cv_tkn_err_msg        CONSTANT VARCHAR2(6)   := 'ERRMSG';                       -- 共通関数エラー
+/* 2009/07/01 Ver1.10 Add End   */
   --日付
   cd_sysdate            CONSTANT DATE          := SYSDATE;                            --システム日付
   cd_process_date       CONSTANT DATE          := xxccp_common_pkg2.get_process_date; --業務処理日
@@ -161,6 +168,9 @@ AS
   cv_siege              CONSTANT VARCHAR2(1)   := CHR(34);                                  --ダブルクォーテーション
   cv_delimiter          CONSTANT VARCHAR2(1)   := CHR(44);                                  --カンマ
   cv_file_num           CONSTANT VARCHAR2(2)   := '00';                                     --ファイルNo
+/* 2009/07/01 Ver1.10 Add Start */
+  cv_uom_code_dummy     CONSTANT VARCHAR2(1)   := 'X';                           --単位コード(共通関数用のダミー)
+/* 2009/07/01 Ver1.10 Add End   */
   --その他
   cv_1                  CONSTANT VARCHAR2(1)   := '1';                           --固定値:1(VARCHAR)
   cv_2                  CONSTANT VARCHAR2(1)   := '2';                           --固定値:2(VARCHAR)
@@ -1253,6 +1263,15 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
+/* 2009/07/01 Ver1.10 Add Start */
+    ln_indv_shipping_qty  NUMBER;  --出荷数量(バラ)
+    ln_case_shipping_qty  NUMBER;  --出荷数量(ケース)
+    ln_ball_shipping_qty  NUMBER;  --出荷数量(ボール)
+    ln_indv_stockout_qty  NUMBER;  --欠品数量(バラ)
+    ln_case_stockout_qty  NUMBER;  --欠品数量(ケース)
+    ln_ball_stockout_qty  NUMBER;  --欠品数量(ボール)
+    ln_sum_stockout_qty   NUMBER;  --欠品数量(合計、バラ)
+/* 2009/07/01 Ver1.10 Add End   */
 --
     lt_invc_break  xxcos_edi_stc_headers.header_id%TYPE;  --ブレーク用
     ln_line_no     NUMBER;                                --行No用
@@ -1751,6 +1770,31 @@ AS
     --==============================================================
     <<sum_qty_loop>>
     FOR i IN 1.. gn_target_cnt LOOP
+/* 2009/07/01 Ver1.10 Add Start */
+      -- 出荷数量を取得する。
+      xxcos_common2_pkg.convert_quantity(
+        iv_uom_code           => cv_uom_code_dummy                --(IN)基準単位
+       ,in_case_qty           => gt_edi_stc_date(i).case_inc_num  --(IN)ケース入数
+       ,in_ball_qty           => gt_edi_stc_date(i).bowl_inc_num  --(IN)ボール入数
+       ,in_sum_indv_order_qty => gt_edi_stc_date(i).ship_qty      --(IN)発注数量(合計・バラ)
+       ,in_sum_shipping_qty   => gt_edi_stc_date(i).ship_qty      --(IN)出荷数量(合計・バラ)
+       ,on_indv_shipping_qty  => ln_indv_shipping_qty             --(OUT)出荷数量(バラ)
+       ,on_case_shipping_qty  => ln_case_shipping_qty             --(OUT)出荷数量(ケース)
+       ,on_ball_shipping_qty  => ln_ball_shipping_qty             --(OUT)出荷数量(ボール)
+       ,on_indv_stockout_qty  => ln_indv_stockout_qty             --(OUT)欠品数量(バラ)
+       ,on_case_stockout_qty  => ln_case_stockout_qty             --(OUT)欠品数量(ケース)
+       ,on_ball_stockout_qty  => ln_ball_stockout_qty             --(OUT)欠品数量(ボール)
+       ,on_sum_stockout_qty   => ln_sum_stockout_qty              --(OUT)欠品数量(バラ･合計)
+       ,ov_errbuf             => lv_errbuf
+       ,ov_retcode            => lv_retcode
+       ,ov_errmsg             => lv_errmsg
+      );
+--
+      IF  ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+/* 2009/07/01 Ver1.10 Add End   */
       --ループ初回、もしくはブレイクの場合
       IF ( lt_invc_break IS NULL )
         OR ( lt_invc_break <> gt_edi_stc_date(i).header_id )
@@ -1758,16 +1802,24 @@ AS
         --初期化
         lt_invc_break :=  gt_edi_stc_date(i).header_id;   --ブレーク変数
         ln_line_no    :=  cn_1;                           --行No
-        gt_sum_qty(lt_invc_break).invc_case_qty_sum := gt_edi_stc_date(i).case_qty;  --ケース数
-        gt_sum_qty(lt_invc_break).invc_indv_qty_sum := gt_edi_stc_date(i).indv_qty;  --バラ数
+/* 2009/07/01 Ver1.10 Mod Start */
+--        gt_sum_qty(lt_invc_break).invc_case_qty_sum := gt_edi_stc_date(i).case_qty;  --ケース数
+--        gt_sum_qty(lt_invc_break).invc_indv_qty_sum := gt_edi_stc_date(i).indv_qty;  --バラ数
+        gt_sum_qty(lt_invc_break).invc_case_qty_sum := ln_case_shipping_qty;         --ケース数
+        gt_sum_qty(lt_invc_break).invc_indv_qty_sum := ln_indv_shipping_qty;         --バラ数
+/* 2009/07/01 Ver1.10 Mod End   */
         gt_sum_qty(lt_invc_break).invc_ship_qty_sum := gt_edi_stc_date(i).ship_qty;  --出荷数量(合計、バラ)
       ELSE
         --加算
         ln_line_no := ln_line_no + cn_1;  --行No
+/* 2009/07/01 Ver1.10 Mod Start */
         gt_sum_qty(lt_invc_break).invc_case_qty_sum
-          := gt_sum_qty(lt_invc_break).invc_case_qty_sum + gt_edi_stc_date(i).case_qty;  --ケース数
+--          := gt_sum_qty(lt_invc_break).invc_case_qty_sum + gt_edi_stc_date(i).case_qty;  --ケース数
+          := gt_sum_qty(lt_invc_break).invc_case_qty_sum + ln_case_shipping_qty;  --ケース数
         gt_sum_qty(lt_invc_break).invc_indv_qty_sum
-          := gt_sum_qty(lt_invc_break).invc_indv_qty_sum + gt_edi_stc_date(i).indv_qty;  --バラ数
+--          := gt_sum_qty(lt_invc_break).invc_indv_qty_sum + gt_edi_stc_date(i).indv_qty;  --バラ数
+          := gt_sum_qty(lt_invc_break).invc_indv_qty_sum + ln_indv_shipping_qty;  --バラ数
+/* 2009/07/01 Ver1.10 Mod End   */
         gt_sum_qty(lt_invc_break).invc_ship_qty_sum
           := gt_sum_qty(lt_invc_break).invc_ship_qty_sum + gt_edi_stc_date(i).ship_qty;  --出荷数量(合計、バラ)
       END IF;
@@ -1904,6 +1956,15 @@ AS
     -- *** ローカル変数 ***
 --
     lv_data_record  VARCHAR2(32767);         --編集後のデータ取得用
+/* 2009/07/01 Ver1.10 Add Start */
+    ln_indv_shipping_qty  NUMBER;            --出荷数量(バラ)
+    ln_case_shipping_qty  NUMBER;            --出荷数量(ケース)
+    ln_ball_shipping_qty  NUMBER;            --出荷数量(ボール)
+    ln_indv_stockout_qty  NUMBER;            --欠品数量(バラ)
+    ln_case_stockout_qty  NUMBER;            --欠品数量(ケース)
+    ln_ball_stockout_qty  NUMBER;            --欠品数量(ボール)
+    ln_sum_stockout_qty   NUMBER;            --欠品数量(合計、バラ)
+/* 2009/07/01 Ver1.10 Add End   */
 --
     -- *** ローカル・カーソル ***
 --
@@ -1931,6 +1992,33 @@ AS
     --==============================================================
     <<output_loop>>
     FOR i IN 1.. gn_target_cnt  LOOP
+/* 2009/07/01 Ver1.10 Add Start */
+      --------------------------------
+      --出荷数量の取得
+      --------------------------------
+      xxcos_common2_pkg.convert_quantity(
+        iv_uom_code           => cv_uom_code_dummy                --(IN)基準単位
+       ,in_case_qty           => gt_edi_stc_date(i).case_inc_num  --(IN)ケース入数
+       ,in_ball_qty           => gt_edi_stc_date(i).bowl_inc_num  --(IN)ボール入数
+       ,in_sum_indv_order_qty => gt_edi_stc_date(i).ship_qty      --(IN)発注数量(合計・バラ)
+       ,in_sum_shipping_qty   => gt_edi_stc_date(i).ship_qty      --(IN)出荷数量(合計・バラ)
+       ,on_indv_shipping_qty  => ln_indv_shipping_qty             --(OUT)出荷数量(バラ)
+       ,on_case_shipping_qty  => ln_case_shipping_qty             --(OUT)出荷数量(ケース)
+       ,on_ball_shipping_qty  => ln_ball_shipping_qty             --(OUT)出荷数量(ボール)
+       ,on_indv_stockout_qty  => ln_indv_stockout_qty             --(OUT)欠品数量(バラ)
+       ,on_case_stockout_qty  => ln_case_stockout_qty             --(OUT)欠品数量(ケース)
+       ,on_ball_stockout_qty  => ln_ball_stockout_qty             --(OUT)欠品数量(ボール)
+       ,on_sum_stockout_qty   => ln_sum_stockout_qty              --(OUT)欠品数量(バラ･合計)
+       ,ov_errbuf             => lv_errbuf
+       ,ov_retcode            => lv_retcode
+       ,ov_errmsg             => lv_errmsg
+      );
+--
+      IF  ( lv_retcode <> cv_status_normal ) THEN
+        RAISE global_api_expt;
+      END IF;
+--
+/* 2009/07/01 Ver1.10 Add End   */
       --------------------------------
       --共通関数用の変数に値を設定
       --------------------------------
@@ -2200,8 +2288,12 @@ AS
       l_data_tab(cv_case_order_qty)           := TO_CHAR(NULL);
       l_data_tab(cv_ball_order_qty)           := TO_CHAR(NULL);
       l_data_tab(cv_sum_order_qty)            := TO_CHAR(NULL);
-      l_data_tab(cv_indv_ship_qty)            := TO_CHAR( gt_edi_stc_date(i).indv_qty );
-      l_data_tab(cv_case_ship_qty)            := TO_CHAR( gt_edi_stc_date(i).case_qty );
+/* 2009/07/01 Ver1.1 Mod Start */
+--      l_data_tab(cv_indv_ship_qty)            := TO_CHAR( gt_edi_stc_date(i).indv_qty );
+--      l_data_tab(cv_case_ship_qty)            := TO_CHAR( gt_edi_stc_date(i).case_qty );
+      l_data_tab(cv_indv_ship_qty)            := TO_CHAR( ln_indv_shipping_qty );
+      l_data_tab(cv_case_ship_qty)            := TO_CHAR( ln_case_shipping_qty );
+/* 2009/07/01 Ver1.1 Mod End   */
       l_data_tab(cv_ball_ship_qty)            := TO_CHAR(NULL);
       l_data_tab(cv_pallet_ship_qty)          := TO_CHAR(NULL);
       l_data_tab(cv_sum_ship_qty)             := TO_CHAR( gt_edi_stc_date(i).ship_qty );

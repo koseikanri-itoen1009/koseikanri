@@ -47,7 +47,11 @@ AS
  *  2009/06/12    1.10  T.Kitajima       [T1_1356]ファイルNo→顧客アドオン.EDI伝送追番
  *  2009/06/12    1.10  T.Kitajima       [T1_1357]伝票番号数値チェック
  *  2009/06/12    1.10  T.Kitajima       [T1_1358]定番特売区分0→00,1→01,2→02
+ *  2009/06/19    1.10  T.Kitajima       [T1_1436]受注データ、営業単位絞込み追加
+ *  2009/06/24    1.10  T.Kitajima       [T1_1359]数量換算対応
  *  2009/07/08    1.10  M.Sano           [T1_1357]レビュー指摘事項対応
+ *  2009/07/13    1.10  N.Maeda          [T1_1359]レビュー指摘事項対応
+ *  2009/07/23    1.10  K.Kiriu          [T1_1359]レビュー指摘事項対応
  *
  *****************************************************************************************/
 --
@@ -1021,6 +1025,9 @@ AS
 --****************************** 2009/06/11 1.10 T.Kitajima ADD START ******************************--
           ,xca3.edi_forward_number              edi_forward_number             -- 顧客追加情報.EDI伝送追番
 --****************************** 2009/06/11 1.10 T.Kitajima ADD  END ******************************--
+--****************************** 2009/06/24 1.10 T.Kitajima ADD START ******************************--
+          ,oola.order_quantity_uom              order_quantity_uom             -- 受注明細.単位
+--****************************** 2009/06/24 1.10 T.Kitajima ADD  END ******************************--
     FROM   xxcos_edi_headers                    xeh    -- EDIヘッダ情報
           ,xxcos_edi_lines                      xel    -- EDI明細情報
           ,oe_order_headers_all                 ooha   -- 受注ヘッダ
@@ -1130,6 +1137,9 @@ AS
     AND    papf.attribute11               = cv_position                       -- 従業員ﾏｽﾀ.職位(新)='002'(支店長)
     AND    papf.effective_start_date     <= cd_process_date                   -- 従業員ﾏｽﾀ.適用開始日<=業務日付
     AND    papf.effective_end_date       >= cd_process_date                   -- 従業員ﾏｽﾀ.適用終了日>=業務日付
+--****************************** 2009/06/19 1.10 T.Kitajima MOD START ******************************--
+    AND    ooha.org_id                    = gn_org_id                         -- 受注ﾍｯﾀﾞ.組織ID=[A-2].営業単位
+--****************************** 2009/06/19 1.10 T.Kitajima MOD  END  ******************************--
     AND    ooha.header_id                 = oola.header_id                    -- 受注ﾍｯﾀﾞ.受注ﾍｯﾀﾞID=受注明細.受注ﾍｯﾀﾞID
     AND    ooha.orig_sys_document_ref     = xeh.order_connection_number       -- 受注ﾍｯﾀﾞ.外部ｼｽﾃﾑ受注関連番号=EDIﾍｯﾀﾞ情報.受注関連番号
     AND    oola.orig_sys_line_ref         = xel.order_connection_line_number  -- 受注明細.外部ｼｽﾃﾑ受注明細番号=EDI明細情報.受注関連明細番号
@@ -3736,25 +3746,58 @@ AS
         gt_data_tab(ln_data_cnt)(cv_ball_order_qty)         := gt_edi_order_tab(ln_loop_cnt).ball_order_qty;               -- 発注数量(ﾎﾞｰﾙ)
         gt_data_tab(ln_data_cnt)(cv_sum_order_qty)          := gt_edi_order_tab(ln_loop_cnt).sum_order_qty;                -- 発注数量(合計､ﾊﾞﾗ)
       END IF;
-      -- 「明細単位」が、'ケース単位コード'の場合
-      IF ( gt_edi_order_tab(ln_loop_cnt).line_uom = gv_case_uom_code ) THEN
-        gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾊﾞﾗ)
-        gt_data_tab(ln_data_cnt)(cv_case_ship_qty)          := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(ｹｰｽ)
-        gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾎﾞｰﾙ)
-        gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)           := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
-      -- 「明細単位」が、'ボール単位コード'の場合
-      ELSIF ( gt_edi_order_tab(ln_loop_cnt).line_uom = gv_ball_uom_code ) THEN
-        gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾊﾞﾗ)
-        gt_data_tab(ln_data_cnt)(cv_case_ship_qty)          := cn_0;                                                       -- 出荷数量(ｹｰｽ)
-        gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)          := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(ﾎﾞｰﾙ)
-        gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)           := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
-      -- 上記以外の場合
-      ELSE
-        gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)          := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(ﾊﾞﾗ)
-        gt_data_tab(ln_data_cnt)(cv_case_ship_qty)          := cn_0;                                                       -- 出荷数量(ｹｰｽ)
-        gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾎﾞｰﾙ)
-        gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)           := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
+--
+--****************************** 2009/06/24 1.10 T.Kitajima MOD START ******************************--
+--      -- 「明細単位」が、'ケース単位コード'の場合
+--      IF ( gt_edi_order_tab(ln_loop_cnt).line_uom = gv_case_uom_code ) THEN
+--        gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾊﾞﾗ)
+--        gt_data_tab(ln_data_cnt)(cv_case_ship_qty)          := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(ｹｰｽ)
+--        gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾎﾞｰﾙ)
+--        gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)           := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
+--      -- 「明細単位」が、'ボール単位コード'の場合
+--      ELSIF ( gt_edi_order_tab(ln_loop_cnt).line_uom = gv_ball_uom_code ) THEN
+--        gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾊﾞﾗ)
+--        gt_data_tab(ln_data_cnt)(cv_case_ship_qty)          := cn_0;                                                       -- 出荷数量(ｹｰｽ)
+--        gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)          := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(ﾎﾞｰﾙ)
+--        gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)           := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
+--      -- 上記以外の場合
+--      ELSE
+--        gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)          := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(ﾊﾞﾗ)
+--        gt_data_tab(ln_data_cnt)(cv_case_ship_qty)          := cn_0;                                                       -- 出荷数量(ｹｰｽ)
+--        gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)          := cn_0;                                                       -- 出荷数量(ﾎﾞｰﾙ)
+--        gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)           := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
+--      END IF;
+--
+--      gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)             := gt_edi_order_tab(ln_loop_cnt).ordered_quantity;             -- 出荷数量(合計､ﾊﾞﾗ)
+      gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)             := gt_edi_order_tab(ln_loop_cnt).sum_shipping_qty;             -- 出荷数量(合計､ﾊﾞﾗ)
+--
+      xxcos_common2_pkg.convert_quantity(
+/* 2009/07/23 Ver1.10 Mod Start */
+--               iv_uom_code             => gt_data_tab(ln_data_cnt)(cv_uom_code)               --IN :単位コード
+               iv_uom_code             => gt_edi_order_tab(ln_loop_cnt).order_quantity_uom --IN :単位コード
+/* 2009/07/23 Ver1.10 Mod End   */
+              ,in_case_qty             => gt_data_tab(ln_data_cnt)(cv_num_of_cases)        --IN :ケース入数
+              ,in_ball_qty             => NVL( gt_edi_order_tab(ln_loop_cnt).num_of_ball
+                                              ,gt_edi_order_tab(ln_loop_cnt).bowl_inc_num
+                                             )                                             --IN :ボール入数
+              ,in_sum_indv_order_qty   => gt_data_tab(ln_data_cnt)(cv_sum_order_qty)       --IN :発注数量(合計・バラ)
+              ,in_sum_shipping_qty     => gt_data_tab(ln_data_cnt)(cv_sum_ship_qty)        --IN :出荷数量(合計・バラ)
+              ,on_indv_shipping_qty    => gt_data_tab(ln_data_cnt)(cv_indv_ship_qty)       --OUT:出荷数量(バラ)
+              ,on_case_shipping_qty    => gt_data_tab(ln_data_cnt)(cv_case_ship_qty)       --OUT:出荷数量(ケース)
+              ,on_ball_shipping_qty    => gt_data_tab(ln_data_cnt)(cv_ball_ship_qty)       --OUT:出荷数量(ボール)
+              ,on_indv_stockout_qty    => gt_data_tab(ln_data_cnt)(cv_indv_stkout_qty)     --OUT:欠品数量(バラ)
+              ,on_case_stockout_qty    => gt_data_tab(ln_data_cnt)(cv_case_stkout_qty)     --OUT:欠品数量(ケース)
+              ,on_ball_stockout_qty    => gt_data_tab(ln_data_cnt)(cv_ball_stkout_qty)     --OUT:欠品数量(ボール)
+              ,on_sum_stockout_qty     => gt_data_tab(ln_data_cnt)(cv_sum_stkout_qty)      --OUT:欠品数量(合計・バラ)
+              ,ov_errbuf               => lv_errbuf                                        --OUT:エラー・メッセージエラー #固定#
+              ,ov_retcode              => lv_retcode                                       --OUT:リターン・コード         #固定#
+              ,ov_errmsg               => lv_errmsg                                        --ユーザー・エラー・メッセージ #固定#
+              );
+      IF ( lv_retcode = cv_status_error ) THEN
+--        lv_errmsg := lv_errbuf;
+        RAISE global_api_expt;
       END IF;
+--****************************** 2009/06/24 1.10 T.Kitajima MOD  END  ******************************--
 -- 2009/05/22 Ver1.9 Add Start
       -- 商品コード(伊藤園)」が、ダミー品目の場合、全て"0"に変更
       IF ( ln_dummy_item = cn_1) THEN
@@ -3765,7 +3808,8 @@ AS
       END IF;
 -- 2009/05/22 Ver1.9 Add End
       gt_data_tab(ln_data_cnt)(cv_pallet_ship_qty)          := NULL;                                                       -- 出荷数量(ﾊﾟﾚｯﾄ)
-/* 2009/02/25 Ver1.4 Mod Start */
+--****************************** 2009/06/24 1.10 T.Kitajima DEL START ******************************--
+--/* 2009/02/25 Ver1.4 Mod Start */
 --    gt_data_tab(ln_data_cnt)(cv_indv_stkout_qty)          := gt_data_tab(ln_data_cnt)(cv_indv_order_qty)
 --                                                           - gt_data_tab(ln_data_cnt)(cv_indv_ship_qty);                 -- 欠品数量(ﾊﾞﾗ)
 --    gt_data_tab(ln_data_cnt)(cv_case_stkout_qty)          := gt_data_tab(ln_data_cnt)(cv_case_order_qty)
@@ -3774,15 +3818,16 @@ AS
 --                                                           - gt_data_tab(ln_data_cnt)(cv_ball_ship_qty);                 -- 欠品数量(ﾎﾞｰﾙ)
 --    gt_data_tab(ln_data_cnt)(cv_sum_stkout_qty)           := gt_data_tab(ln_data_cnt)(cv_sum_order_qty)
 --                                                           - gt_data_tab(ln_data_cnt)(cv_sum_ship_qty);                  -- 欠品数量(合計､ﾊﾞﾗ)
-      gt_data_tab(ln_data_cnt)(cv_indv_stkout_qty)          := NVL(gt_data_tab(ln_data_cnt)(cv_indv_order_qty), 0)
-                                                             - NVL(gt_data_tab(ln_data_cnt)(cv_indv_ship_qty), 0);         -- 欠品数量(ﾊﾞﾗ)
-      gt_data_tab(ln_data_cnt)(cv_case_stkout_qty)          := NVL(gt_data_tab(ln_data_cnt)(cv_case_order_qty), 0)
-                                                             - NVL(gt_data_tab(ln_data_cnt)(cv_case_ship_qty), 0);         -- 欠品数量(ｹｰｽ)
-      gt_data_tab(ln_data_cnt)(cv_ball_stkout_qty)          := NVL(gt_data_tab(ln_data_cnt)(cv_ball_order_qty), 0)
-                                                             - NVL(gt_data_tab(ln_data_cnt)(cv_ball_ship_qty), 0);         -- 欠品数量(ﾎﾞｰﾙ)
-      gt_data_tab(ln_data_cnt)(cv_sum_stkout_qty)           := NVL(gt_data_tab(ln_data_cnt)(cv_sum_order_qty), 0)
-                                                             - NVL(gt_data_tab(ln_data_cnt)(cv_sum_ship_qty), 0);          -- 欠品数量(合計､ﾊﾞﾗ)
-/* 2009/02/25 Ver1.4 Mod  End  */
+--      gt_data_tab(ln_data_cnt)(cv_indv_stkout_qty)          := NVL(gt_data_tab(ln_data_cnt)(cv_indv_order_qty), 0)
+--                                                             - NVL(gt_data_tab(ln_data_cnt)(cv_indv_ship_qty), 0);         -- 欠品数量(ﾊﾞﾗ)
+--      gt_data_tab(ln_data_cnt)(cv_case_stkout_qty)          := NVL(gt_data_tab(ln_data_cnt)(cv_case_order_qty), 0)
+--                                                             - NVL(gt_data_tab(ln_data_cnt)(cv_case_ship_qty), 0);         -- 欠品数量(ｹｰｽ)
+--      gt_data_tab(ln_data_cnt)(cv_ball_stkout_qty)          := NVL(gt_data_tab(ln_data_cnt)(cv_ball_order_qty), 0)
+--                                                             - NVL(gt_data_tab(ln_data_cnt)(cv_ball_ship_qty), 0);         -- 欠品数量(ﾎﾞｰﾙ)
+--      gt_data_tab(ln_data_cnt)(cv_sum_stkout_qty)           := NVL(gt_data_tab(ln_data_cnt)(cv_sum_order_qty), 0)
+--                                                             - NVL(gt_data_tab(ln_data_cnt)(cv_sum_ship_qty), 0);          -- 欠品数量(合計､ﾊﾞﾗ)
+--/* 2009/02/25 Ver1.4 Mod  End  */
+--****************************** 2009/06/24 1.10 T.Kitajima DEL  END  ******************************--
       -- 欠品数量(受注数量－出荷数量)＝０の場合
       IF ( gt_data_tab(ln_data_cnt)(cv_sum_stkout_qty) = cn_0 ) THEN
         gt_data_tab(ln_data_cnt)(cv_stkout_class)           := cv_stockout_class_00;                                       -- 欠品区分

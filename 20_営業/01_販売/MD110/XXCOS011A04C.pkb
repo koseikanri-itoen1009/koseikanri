@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCOS011A04C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCOS011A04C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -33,7 +33,9 @@ AS
  *  2009/04/06    1.3  T.Kitajima       [T1_0043]顧客品目の絞り込み条件に単位を追加
  *  2009/04/28    1.4  K.Kiriu          [T1_0756]レコード長変更対応
  *  2009/06/15    1.5  N.Maeda          [T1_1356]出力データファイルNo値修正
- *  2009/07/08         N.Maeda          [T1_1356]レビュー指摘対応
+ *  2009/07/02    1.5  T.Tominaga       [T1_1359]数量換算対応
+ *  2009/07/08    1.5  N.Maeda          [T1_1356]レビュー指摘対応
+ *  2009/07/15    1.5  N.Maeda          [T1_1357]レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -188,6 +190,9 @@ AS
   cv_y                  CONSTANT VARCHAR2(1)   := 'Y';                 -- 固定値:Y
   cv_n                  CONSTANT VARCHAR2(1)   := 'N';                 -- 固定値:N
   cv_w                  CONSTANT VARCHAR2(1)   := 'W';                 -- 固定値:W
+--****************************** 2009/07/02 1.5 T.Tominaga ADD START ******************************
+  cv_x                  CONSTANT VARCHAR2(1)   := 'X';                 -- 単位（ダミー値）
+--****************************** 2009/07/02 1.5 T.Tominaga ADD END   ******************************
   -- データ編集共通関数用
   cv_medium_class             CONSTANT VARCHAR2(50)  := 'MEDIUM_CLASS';                  --媒体区分
   cv_data_type_code           CONSTANT VARCHAR2(50)  := 'DATA_TYPE_CODE';                --データ種コード
@@ -567,9 +572,9 @@ AS
   gv_outbound_d         VARCHAR2(100);                                 --アウトバウンド用ディレクトリパス
   gn_bks_id             NUMBER;                                        --会計帳簿ID
   gn_org_id             NUMBER;                                        --営業単位
---********************  2009/07/08    1.5  N.Maeda MOD Start ********************
-  gt_edi_f_number       xxcmm_cust_accounts.edi_forward_number%TYPE;   --ファイルNo.
---********************  2009/07/08    1.5  N.Maeda MOD  End  ********************
+--********************  2009/07/08    1.5  N.Maeda ADD Start ********************
+  gt_edi_f_number       xxcmm_cust_accounts.edi_forward_number%TYPE;   --EDI伝票追番
+--********************  2009/07/08    1.5  N.Maeda ADD  End  ********************
   -- ===============================
   -- ユーザー定義グローバルRECORD型宣言
   -- ===============================
@@ -625,7 +630,7 @@ AS
 --    ship_qty                     NUMBER                                                   --出荷数量(合計、バラ)
     ship_qty                     NUMBER,                                                  --出荷数量(合計、バラ)
     inactive_flag                mtl_customer_items.inactive_flag%TYPE,                   --顧客品目.有効フラグ
-    inactive_ref_flag            mtl_customer_item_xrefs.inactive_flag%TYPE               --顧客品目相互参照.有効フラグ
+    inactive_ref_flag            mtl_customer_item_xrefs.inactive_flag%TYPE              --顧客品目相互参照.有効フラグ
 --********************  2009/03/10    1.2  T.Kitajima ADD  End  ********************
 --********************  2009/07/08    1.5  N.Maeda DEL Start ********************
 ----********************  2009/06/15    1.5  N.Maeda ADD Start ********************
@@ -633,6 +638,12 @@ AS
 ----********************  2009/06/15    1.5  N.Maeda ADD  End  ********************
 --********************  2009/07/08    1.5  N.Maeda DEL  End  ********************
   );
+-- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda ADD start ********************* --
+  TYPE g_inv_qty_sum_rtype IS RECORD(
+     case_inc_num                ic_item_mst_b.attribute11%TYPE                            -- ケース入数
+    ,indv_qty_sum                NUMBER                                                    --バラ、合計数量
+    );
+-- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda ADD  end  ********************* --
   -- ===============================
   -- ユーザー定義グローバルTABLE型
   -- ===============================
@@ -642,6 +653,11 @@ AS
   --フラグ行進用伝票番号 テーブル型
   TYPE g_invoice_num_ttype IS TABLE OF xxcos_edi_stc_headers.invoice_number%TYPE INDEX BY BINARY_INTEGER;
   gt_invoice_num    g_invoice_num_ttype;
+-- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda ADD start ********************* --
+  --ヘッダ数量算出用
+  TYPE g_inv_qty_sum_ttype IS TABLE OF g_inv_qty_sum_rtype INDEX BY PLS_INTEGER;
+  g_inv_qty_sum     g_inv_qty_sum_ttype;
+-- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda ADD  end  ********************* --
 --
 --
   /**********************************************************************************
@@ -2016,6 +2032,23 @@ AS
     ln_invc_case_qty_sum  NUMBER;                                     --(伝票計)ケース数
     ln_invc_indv_qty_sum  NUMBER;                                     --(伝票計)バラ数
     ln_invc_ship_qty_sum  NUMBER;                                     --(伝票計)出荷数量(合計、バラ)
+--****************************** 2009/07/02 1.5 T.Tominaga ADD START ******************************
+    lv_ball_ship_qty      NUMBER;                                     --出荷数量(ボール)
+    lv_indv_stkout_qty    NUMBER;                                     --欠品数量(バラ)
+    lv_case_stkout_qty    NUMBER;                                     --欠品数量(ケース)
+    lv_ball_stkout_qty    NUMBER;                                     --欠品数量(ボール)
+    lv_sum_stkout_qty     NUMBER;                                     --欠品数量(合計・バラ)
+--****************************** 2009/07/02 1.5 T.Tominaga ADD END   ******************************
+-- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda ADD start ********************* --
+    ln_invc_case_qty      NUMBER;                                     --ケース数
+    ln_invc_indv_qty      NUMBER;                                     --バラ数
+    ln_invc_ship_qty      NUMBER;                                     --出荷数量(合計、バラ)
+    ln_invc_ball_ship_qty      NUMBER;                                --(伝票計)出荷数量(ボール)
+    ln_invc_indv_stkout_qty    NUMBER;                                --(伝票計)欠品数量(バラ)
+    ln_invc_case_stkout_qty    NUMBER;                                --(伝票計)欠品数量(ケース)
+    ln_invc_ball_stkout_qty    NUMBER;                                --(伝票計)欠品数量(ボール)
+    ln_invc_sum_stkout_qty     NUMBER;                                --(伝票計)欠品数量(合計・バラ)
+-- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda ADD  end  ********************* --
 --
     -- *** ローカル・カーソル ***
 --
@@ -2053,15 +2086,18 @@ AS
         ln_line_no                      := cn_1;                               --行Noを1に戻す
         ln_seq                          := ln_seq + cn_1;                      --添字の編集
         gt_invoice_num(ln_seq)          := gt_edi_stc_date(i).invoice_number;  --更新用に伝票番号を保持
+-- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda MOD start ********************* --
+        ln_invc_case_qty_sum            := 0;
+        ln_invc_indv_qty_sum            := 0;
+        ln_invc_ship_qty_sum            := 0;
+        -- 配列の初期化
+        g_inv_qty_sum.DELETE;
+--
         --伝票計の取得
-        SELECT  SUM( xesl.case_qty ) invc_case_qty_sum  --(伝票計)ケース数
-               ,SUM( xesl.indv_qty ) invc_indv_qty_sum  --(伝票計)バラ数
-               ,SUM(
-                  ( xesl.case_qty * TO_NUMBER( NVL( iimb.attribute11, cn_1 ) ) ) + xesl.indv_qty
-                )                    invc_ship_qty_sum  --(伝票計)出荷数量(合計、バラ)
-        INTO    ln_invc_case_qty_sum
-               ,ln_invc_indv_qty_sum
-               ,ln_invc_ship_qty_sum
+        SELECT iimb.attribute11 case_inc_num
+               ,( xesl.case_qty * TO_NUMBER( NVL( iimb.attribute11, cn_1 ) ) ) + xesl.indv_qty
+                                    indv_qty_sum  --(伝票計)出荷数量(合計、バラ)
+        BULK COLLECT INTO g_inv_qty_sum
         FROM    xxcos_edi_stc_lines   xesl
                ,mtl_system_items_b    msi
                ,ic_item_mst_b         iimb
@@ -2072,9 +2108,64 @@ AS
         AND    msi.organization_id     = gt_edi_stc_date(i).organization_id
         AND    msi.inventory_item_id   = xesl.inventory_item_id
         AND    xesl.header_id          = gt_edi_stc_date(i).header_id
-        GROUP BY
-               xesl.header_id
         ;
+     <<head_loop>>
+     FOR h IN g_inv_qty_sum.FIRST..g_inv_qty_sum.LAST LOOP
+       --===============
+       --伝票計算出 
+       --===============
+       xxcos_common2_pkg.convert_quantity(
+                                       cv_x                                             --IN :単位コード
+                                      ,g_inv_qty_sum(h).case_inc_num                    --IN :ケース入数
+                                      ,NULL                                             --IN :ボール入数
+                                      ,g_inv_qty_sum(h).indv_qty_sum                    --IN :(伝票計)発注数量(合計・バラ)
+                                      ,g_inv_qty_sum(h).indv_qty_sum                    --IN :(伝票計)出荷数量(合計・バラ)
+                                      ,ln_invc_indv_qty                                 --OUT:(伝票計)出荷数量(バラ)
+                                      ,ln_invc_case_qty                                 --OUT:(伝票計)出荷数量(ケース)
+                                      ,ln_invc_ball_ship_qty                            --OUT:(伝票計)出荷数量(ボール)
+                                      ,ln_invc_indv_stkout_qty                          --OUT:(伝票計)欠品数量(バラ)
+                                      ,ln_invc_case_stkout_qty                          --OUT:(伝票計)欠品数量(ケース)
+                                      ,ln_invc_ball_stkout_qty                          --OUT:(伝票計)欠品数量(ボール)
+                                      ,ln_invc_sum_stkout_qty                           --OUT:(伝票計)欠品数量(合計・バラ)
+                                      ,lv_errbuf                                        --OUT:エラー・メッセージエラー
+                                      ,lv_retcode                                       --OUT:リターン・コード
+                                      ,lv_errmsg                                        --ユーザー・エラー・メッセージ 
+                                      );
+       IF ( lv_retcode = cv_status_error ) THEN
+         RAISE global_api_expt;
+       END IF;
+       --伝票計算出
+       -- ケース数
+       ln_invc_case_qty_sum := ln_invc_case_qty_sum + ln_invc_case_qty;
+       -- バラ数
+       ln_invc_indv_qty_sum := ln_invc_indv_qty_sum + ln_invc_indv_qty;
+       -- 合計、バラ
+       ln_invc_ship_qty_sum := ln_invc_ship_qty_sum + g_inv_qty_sum(h).indv_qty_sum;
+--
+     END LOOP head_loop;
+--
+--        SELECT  SUM( xesl.case_qty ) invc_case_qty_sum  --(伝票計)ケース数
+--               ,SUM( xesl.indv_qty ) invc_indv_qty_sum  --(伝票計)バラ数
+--               ,SUM(
+--                  ( xesl.case_qty * TO_NUMBER( NVL( iimb.attribute11, cn_1 ) ) ) + xesl.indv_qty
+--                )                    invc_ship_qty_sum  --(伝票計)出荷数量(合計、バラ)
+--        INTO    ln_invc_case_qty_sum
+--               ,ln_invc_indv_qty_sum
+--               ,ln_invc_ship_qty_sum
+--        FROM    xxcos_edi_stc_lines   xesl
+--               ,mtl_system_items_b    msi
+--               ,ic_item_mst_b         iimb
+--               ,xxcmn_item_mst_b      ximb
+--        WHERE  ( cd_process_date BETWEEN ximb.start_date_active AND  ximb.end_date_active )
+--        AND    iimb.item_id            = ximb.item_id
+--        AND    msi.segment1            = iimb.item_no
+--        AND    msi.organization_id     = gt_edi_stc_date(i).organization_id
+--        AND    msi.inventory_item_id   = xesl.inventory_item_id
+--        AND    xesl.header_id          = gt_edi_stc_date(i).header_id
+--        GROUP BY
+--               xesl.header_id
+--        ;
+-- ************************ 2009/07/15 N.Maeda 1.5 N.Maeda MOD  end  ********************* --
       ELSE
         ln_line_no                      := ln_line_no + cn_1;                  --行Noインクリメント
       END IF;
@@ -2351,6 +2442,28 @@ AS
       l_data_tab(cv_case_order_qty)           := TO_CHAR(NULL);
       l_data_tab(cv_ball_order_qty)           := TO_CHAR(NULL);
       l_data_tab(cv_sum_order_qty)            := TO_CHAR(NULL);
+--****************************** 2009/07/02 1.5 T.Tominaga ADD START ******************************
+      xxcos_common2_pkg.convert_quantity(
+                                          cv_x                                             --IN :単位コード
+                                         ,gt_edi_stc_date(i).case_inc_num                  --IN :ケース入数
+                                         ,NULL                                             --IN :ボール入数
+                                         ,gt_edi_stc_date(i).ship_qty                      --IN :発注数量(合計・バラ)
+                                         ,gt_edi_stc_date(i).ship_qty                      --IN :出荷数量(合計・バラ)
+                                         ,gt_edi_stc_date(i).indv_qty                      --OUT:出荷数量(バラ)
+                                         ,gt_edi_stc_date(i).case_qty                      --OUT:出荷数量(ケース)
+                                         ,lv_ball_ship_qty                                 --OUT:出荷数量(ボール)
+                                         ,lv_indv_stkout_qty                               --OUT:欠品数量(バラ)
+                                         ,lv_case_stkout_qty                               --OUT:欠品数量(ケース)
+                                         ,lv_ball_stkout_qty                               --OUT:欠品数量(ボール)
+                                         ,lv_sum_stkout_qty                                --OUT:欠品数量(合計・バラ)
+                                         ,lv_errbuf                                        --OUT:エラー・メッセージエラー
+                                         ,lv_retcode                                       --OUT:リターン・コード
+                                         ,lv_errmsg                                        --ユーザー・エラー・メッセージ 
+                                        );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_api_expt;
+      END IF;
+--****************************** 2009/07/02 1.5 T.Tominaga ADD END   ******************************
       l_data_tab(cv_indv_ship_qty)            := TO_CHAR( gt_edi_stc_date(i).indv_qty );
       l_data_tab(cv_case_ship_qty)            := TO_CHAR( gt_edi_stc_date(i).case_qty );
       l_data_tab(cv_ball_ship_qty)            := TO_CHAR(NULL);
@@ -2944,7 +3057,7 @@ AS
     iv_file_name      IN  VARCHAR2,     --   1.ファイル名
     iv_to_s_code      IN  VARCHAR2,     --   2.搬送先保管場所
     iv_edi_c_code     IN  VARCHAR2,     --   3.EDIチェーン店コード
-    iv_edi_f_number   IN  VARCHAR2,     --   4.EDI伝送追番
+    iv_edi_f_number   IN  VARCHAR2,     --   4.EDI伝送対版
     ov_errbuf         OUT VARCHAR2,     --   エラー・メッセージ           --# 固定 #
     ov_retcode        OUT VARCHAR2,     --   リターン・コード             --# 固定 #
     ov_errmsg         OUT VARCHAR2)     --   ユーザー・エラー・メッセージ --# 固定 #

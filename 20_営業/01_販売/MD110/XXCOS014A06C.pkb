@@ -40,6 +40,10 @@ AS
  *  2009/04/27    1.10  K.Kiriu          [T1_0112] 単位項目内容不正対応
  *  2009/06/17    1.11  M.Sano           [T1_1348] 行Noの結合条件変更
  *                                       [T1_1358] 定番特売区分0→00,1→01,2→02変更
+ *  2009/06/22          M.Sano           [T1_1158] 店舗コードNULL対応
+ *  2009/07/01          N.Maeda          [T1_1359] 数量出力項目の編集追加(共通関数による処理)
+ *  2009/07/03          N.Maeda          [T1_1158] 店舗コードNULL対応(ログイン拠点出力)
+ *  2009/07/23          N.Maeda          [T1_1359] レビュー指摘修正
  *
 *** 開発中の変更内容 ***
 *****************************************************************************************/
@@ -311,6 +315,9 @@ AS
   g_msg_rec                  g_msg_rtype;                                        --メッセージ情報
   g_other_rec                g_other_rtype;                                      --その他情報
   g_record_layout_tab        xxcos_common2_pkg.g_record_layout_ttype;            --レイアウト定義情報
+-- ********************* 2009/07/03 1.11 N.Maeda ADD START *********************** --
+  gt_base_name_kana          hz_parties.organization_name_phonetic%TYPE;              -- 拠点名称(カナ)
+-- ********************* 2009/07/03 1.11 N.Maeda ADD  END  *********************** --
 --
   -- ===============================
   -- ユーザー定義グローバル定数
@@ -948,6 +955,19 @@ AS
                                     ,lt_tkn
                                    );
 --
+-- ********************* 2009/07/03 1.11 N.Maeda ADD START *********************** --
+--
+    --==============================================================
+    -- パラメータ顧客情報取得(カナ)
+    --==============================================================
+    SELECT hp.organization_name_phonetic  base_name_kana--拠点名(カナ)
+    INTO   gt_base_name_kana
+    FROM   hz_cust_accounts     hca  -- 顧客マスタ
+           ,hz_parties          hp   --パーティマスタ
+    WHERE  hp.party_id         = hca.party_id
+    AND    hca.account_number  = g_input_rec.base_code;
+--
+-- ********************* 2009/07/03 1.11 N.Maeda ADD  END  *********************** --
     --==============================================================
     --グローバル変数のセット
     --==============================================================
@@ -1471,6 +1491,9 @@ AS
 -- 2009/02/19 T.Nakamura Ver.1.6 add start
     lv_errbuf_all                      VARCHAR2(32767);                           --ログ出力メッセージ格納変数
 -- 2009/02/19 T.Nakamura Ver.1.6 add end
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
+    lt_order_quantity_uom              oe_order_lines_all.order_quantity_uom%TYPE;-- 単位(受注明細)
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
 --
     -- *** ローカル・カーソル ***
     CURSOR cur_data_record(i_input_rec    g_input_rtype
@@ -1483,6 +1506,684 @@ AS
     IS
       SELECT *
       FROM   (
+-- 2009/06/22 1.11 M.Sano MOD Start
+--              SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
+--                    ,ooha.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
+--                    ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
+--                    ,xlvv.attribute10                                                   outbound_flag                 --OUTBOUND可否
+--                    ,ore.reason_id                                                      reason_id                     --事由ID
+--                    ,xlvv3.attribute1                                                   stockout_cancel_flag          --欠品事由取消フラグ
+--                    ------------------------------------------------ヘッダ情報------------------------------------------------
+--                    ,xeh.medium_class                                                   medium_class                  --媒体区分
+--                    ,i_input_rec.data_type_code                                         data_type_code                --データ種コード
+--                    ,xeh.file_no                                                        file_no                       --ファイルＮｏ
+--                    ,xeh.info_class                                                     info_class                    --情報区分
+--                    ,i_other_rec.proc_date                                              process_date                  --処理日
+--                    ,i_other_rec.proc_time                                              process_time                  --処理時刻
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
+----                    ,i_input_rec.base_code                                              base_code                     --拠点（部門）コード
+----                    ,i_base_rec.base_name                                               base_name                     --拠点名（正式名）
+----                    ,i_base_rec.base_name_kana                                          base_name_alt                 --拠点名（カナ）
+--                    ,cdm.account_number                                                 base_code                     --拠点（部門）コード
+--                    ,DECODE( cdm.account_number
+--                            ,NULL
+--                            ,g_msg_rec.customer_notfound
+--                            ,cdm.base_name
+--                     )                                                                  base_name                     --拠点名（正式名）
+--                    ,cdm.base_name_kana                                                 base_name_alt                 --拠点名（カナ）
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+--                    ,xeh.edi_chain_code                                                 edi_chain_code                --ＥＤＩチェーン店コード
+--                    ,i_chain_rec.chain_name                                             edi_chain_name                --ＥＤＩチェーン店名（漢字）
+--                    ,i_chain_rec.chain_name_kana                                        edi_chain_name_alt            --ＥＤＩチェーン店名（カナ）
+--                    ,xeh.chain_code                                                     chain_code                    --チェーン店コード
+--                    ,xeh.chain_name                                                     chain_name                    --チェーン店名（漢字）
+--                    ,xeh.chain_name_alt                                                 chain_name_alt                --チェーン店名（カナ）
+--                    ,i_input_rec.report_code                                            report_code                   --帳票コード
+--                    ,i_input_rec.report_name                                            report_name                   --帳票表示名
+--                    ,hca.account_number                                                 customer_code                 --顧客コード
+--                    ,hp.party_name                                                      customer_name                 --顧客名（漢字）
+--                    ,hp.organization_name_phonetic                                      customer_name_alt             --顧客名（カナ）
+--                    ,xeh.company_code                                                   company_code                  --社コード
+--                    ,xeh.company_name                                                   company_name                  --社名（漢字）
+--                    ,xeh.company_name_alt                                               company_name_alt              --社名（カナ）
+--                    ,xeh.shop_code                                                      shop_code                     --店コード
+--                    ,NVL(xeh.shop_name,NVL(xca.cust_store_name
+--                                          ,i_msg_rec.customer_notfound))                shop_name                     --店名（漢字）
+--                    ,NVL(xeh.shop_name_alt,hp.organization_name_phonetic)               shop_name_alt                 --店名（カナ）
+--                    ,NVL(xeh.delivery_center_code,xca.deli_center_code)                 delivery_center_code          --納入センターコード
+--                    ,NVL(delivery_center_name,xca.deli_center_name)                     delivery_center_name          --納入センター名（漢字）
+--                    ,xeh.delivery_center_name_alt                                       delivery_center_name_alt      --納入センター名（カナ）
+--                    ,TO_CHAR(xeh.order_date,cv_date_fmt)                                order_date                    --発注日
+--                    ,NVL(i_input_rec.center_delivery_date_from
+--                        ,TO_CHAR(xeh.center_delivery_date,cv_date_fmt))                 center_delivery_date          --センター納品日
+--                    ,TO_CHAR(xeh.result_delivery_date,cv_date_fmt)                      result_delivery_date          --実納品日
+--                    ,TO_CHAR(xeh.shop_delivery_date,cv_date_fmt)                        shop_delivery_date            --店舗納品日
+--                    ,TO_CHAR(xeh.data_creation_date_edi_data,cv_date_fmt)               data_creation_date_edi_data   --データ作成日（ＥＤＩデータ中）
+--                    ,xeh.data_creation_time_edi_data                                    data_creation_time_edi_data   --データ作成時刻（ＥＤＩデータ中）
+--                    ,xeh.invoice_class                                                  invoice_class                 --伝票区分
+--                    ,xeh.small_classification_code                                      small_classification_code     --小分類コード
+--                    ,xeh.small_classification_name                                      small_classification_name     --小分類名
+--                    ,xeh.middle_classification_code                                     middle_classification_code    --中分類コード
+--                    ,xeh.middle_classification_name                                     middle_classification_name    --中分類名
+--                    ,xeh.big_classification_code                                        big_classification_code       --大分類コード
+--                    ,xeh.big_classification_name                                        big_classification_name       --大分類名
+--                    ,xeh.other_party_department_code                                    other_party_department_code   --相手先部門コード
+--                    ,xeh.other_party_order_number                                       other_party_order_number      --相手先発注番号
+--                    ,xeh.check_digit_class                                              check_digit_class             --チェックデジット有無区分
+--                    ,xeh.invoice_number                                                 invoice_number                --伝票番号
+--                    ,xeh.check_digit                                                    check_digit                   --チェックデジット
+--                    ,TO_CHAR(xeh.close_date, cv_date_fmt)                               close_date                    --月限
+--                    ,TO_CHAR(ooha.order_number)                                         order_no_ebs                  --受注Ｎｏ（ＥＢＳ）
+--                    ,xlvv.attribute8                                                    ar_sale_class                 --特売区分
+--                    ,xeh.delivery_classe                                                delivery_classe               --配送区分
+--                    ,xeh.opportunity_no                                                 opportunity_no                --便Ｎｏ
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
+----                    ,NVL(xeh.contact_to, i_base_rec.phone_number)                       contact_to                    --連絡先
+--                    ,NVL(xeh.contact_to, cdm.phone_number)                              contact_to                    --連絡先
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+--                    ,xeh.route_sales                                                    route_sales                   --ルートセールス
+--                    ,xeh.corporate_code                                                 corporate_code                --法人コード
+--                    ,xeh.maker_name                                                     maker_name                    --メーカー名
+--                    ,xeh.area_code                                                      area_code                     --地区コード
+--                    ,NVL2(xeh.area_code,xca.edi_district_name,NULL)                     area_name                     --地区名（漢字）
+--                    ,NVL2(xeh.area_code,xca.edi_district_kana,NULL)                     area_name_alt                 --地区名（カナ）
+--                    ,NVL(xeh.vendor_code,xca.torihikisaki_code)                         vendor_code                   --取引先コード
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
+----                    ,DECODE(i_base_rec.notfound_flag
+----                           ,cv_notfound,i_base_rec.base_name
+----                           ,cv_found,i_prf_rec.company_name || cv_space ||  i_base_rec.base_name)
+----                                                                                        vendor_name                   --取引先名（漢字）
+----                    ,CASE
+----                       WHEN xeh.vendor_name1_alt IS NULL
+----                        AND xeh.vendor_name2_alt IS NULL THEN
+----                         i_prf_rec.company_name_kana
+----                       ELSE
+----                         xeh.vendor_name1_alt
+----                     END                                                                vendor_name1_alt              --取引先名１（カナ）
+----                    ,CASE
+----                       WHEN xeh.vendor_name1_alt IS NULL
+----                        AND xeh.vendor_name2_alt IS NULL THEN
+----                         i_base_rec.base_name_kana
+----                       ELSE
+----                         xeh.vendor_name2_alt
+----                     END                                                                vendor_name2_alt              --取引先名２（カナ）
+----                    ,i_base_rec.phone_number                                            vendor_tel                    --取引先ＴＥＬ
+----                    ,NVL(xeh.vendor_charge,i_base_rec.manager_name_kana)                vendor_charge                 --取引先担当者
+----                    ,i_base_rec.state ||
+----                     i_base_rec.city ||
+----                     i_base_rec.address1 ||
+----                     i_base_rec.address2                                                vendor_address                --取引先住所（漢字）
+--                    ,DECODE(cdm.account_number
+--                           ,NULL,g_msg_rec.customer_notfound
+--                           ,i_prf_rec.company_name || cv_space ||  cdm.base_name)
+--                                                                                        vendor_name                   --取引先名（漢字）
+--                    ,CASE
+--                       WHEN xeh.vendor_name1_alt IS NULL
+--                        AND xeh.vendor_name2_alt IS NULL THEN
+--                         i_prf_rec.company_name_kana
+--                       ELSE
+--                         xeh.vendor_name1_alt
+--                     END                                                                vendor_name1_alt              --取引先名１（カナ）
+--                    ,CASE
+--                       WHEN xeh.vendor_name1_alt IS NULL
+--                        AND xeh.vendor_name2_alt IS NULL THEN
+--                         cdm.base_name_kana
+--                       ELSE
+--                         xeh.vendor_name2_alt
+--                     END                                                                vendor_name2_alt              --取引先名２（カナ）
+--                    ,cdm.phone_number                                                   vendor_tel                    --取引先ＴＥＬ
+--                    ,NVL(xeh.vendor_charge,i_base_rec.manager_name_kana)                vendor_charge                 --取引先担当者
+--                    ,cdm.state    ||
+--                     cdm.city     ||
+--                     cdm.address1 ||
+--                     cdm.address2                                                       vendor_address                --取引先住所（漢字）
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+--                    ,xeh.deliver_to_code_itouen                                         deliver_to_code_itouen        --届け先コード（伊藤園）
+--                    ,xeh.deliver_to_code_chain                                          deliver_to_code_chain         --届け先コード（チェーン店）
+--                    ,xeh.deliver_to                                                     deliver_to                    --届け先（漢字）
+--                    ,xeh.deliver_to1_alt                                                deliver_to1_alt               --届け先１（カナ）
+--                    ,xeh.deliver_to2_alt                                                deliver_to2_alt               --届け先２（カナ）
+--                    ,xeh.deliver_to_address                                             deliver_to_address            --届け先住所（漢字）
+--                    ,xeh.deliver_to_address_alt                                         deliver_to_address_alt        --届け先住所（カナ）
+--                    ,xeh.deliver_to_tel                                                 deliver_to_tel                --届け先ＴＥＬ
+--                    ,xeh.balance_accounts_code                                          balance_accounts_code         --帳合先コード
+--                    ,xeh.balance_accounts_company_code                                  balance_accounts_company_code --帳合先社コード
+--                    ,xeh.balance_accounts_shop_code                                     balance_accounts_shop_code    --帳合先店コード
+--                    ,xeh.balance_accounts_name                                          balance_accounts_name         --帳合先名（漢字）
+--                    ,xeh.balance_accounts_name_alt                                      balance_accounts_name_alt     --帳合先名（カナ）
+--                    ,xeh.balance_accounts_address                                       balance_accounts_address      --帳合先住所（漢字）
+--                    ,xeh.balance_accounts_address_alt                                   balance_accounts_address_alt  --帳合先住所（カナ）
+--                    ,xeh.balance_accounts_tel                                           balance_accounts_tel          --帳合先ＴＥＬ
+--                    ,TO_CHAR(xeh.order_possible_date, cv_date_fmt)                      order_possible_date           --受注可能日
+--                    ,TO_CHAR(xeh.permission_possible_date, cv_date_fmt)                 permission_possible_date      --許容可能日
+--                    ,TO_CHAR(xeh.forward_month, cv_date_fmt)                            forward_month                 --先限年月日
+--                    ,TO_CHAR(xeh.payment_settlement_date, cv_date_fmt)                  payment_settlement_date       --支払決済日
+--                    ,TO_CHAR(xeh.handbill_start_date_active, cv_date_fmt)               handbill_start_date_active    --チラシ開始日
+--                    ,TO_CHAR(xeh.billing_due_date, cv_date_fmt)                         billing_due_date              --請求締日
+--                    ,xeh.shipping_time                                                  shipping_time                 --出荷時刻
+--                    ,xeh.delivery_schedule_time                                         delivery_schedule_time        --納品予定時間
+--                    ,xeh.order_time                                                     order_time                    --発注時間
+--                    ,TO_CHAR(xeh.general_date_item1, cv_date_fmt)                       general_date_item1            --汎用日付項目１
+--                    ,TO_CHAR(xeh.general_date_item2, cv_date_fmt)                       general_date_item2            --汎用日付項目２
+--                    ,TO_CHAR(xeh.general_date_item3, cv_date_fmt)                       general_date_item3            --汎用日付項目３
+--                    ,TO_CHAR(xeh.general_date_item4, cv_date_fmt)                       general_date_item4            --汎用日付項目４
+--                    ,TO_CHAR(xeh.general_date_item5, cv_date_fmt)                       general_date_item5            --汎用日付項目５
+--                    ,xeh.arrival_shipping_class                                         arrival_shipping_class        --入出荷区分
+--                    ,xeh.vendor_class                                                   vendor_class                  --取引先区分
+--                    ,xeh.invoice_detailed_class                                         invoice_detailed_class        --伝票内訳区分
+--                    ,xeh.unit_price_use_class                                           unit_price_use_class          --単価使用区分
+--                    ,xeh.sub_distribution_center_code                                   sub_distribution_center_code  --サブ物流センターコード
+--                    ,xeh.sub_distribution_center_name                                   sub_distribution_center_name  --サブ物流センターコード名
+--                    ,xeh.center_delivery_method                                         center_delivery_method        --センター納品方法
+--                    ,xeh.center_use_class                                               center_use_class              --センター利用区分
+--                    ,xeh.center_whse_class                                              center_whse_class             --センター倉庫区分
+--                    ,xeh.center_area_class                                              center_area_class             --センター地域区分
+--                    ,xeh.center_arrival_class                                           center_arrival_class          --センター入荷区分
+--                    ,xeh.depot_class                                                    depot_class                   --デポ区分
+--                    ,xeh.tcdc_class                                                     tcdc_class                    --ＴＣＤＣ区分
+--                    ,xeh.upc_flag                                                       upc_flag                      --ＵＰＣフラグ
+--                    ,xeh.simultaneously_class                                           simultaneously_class          --一斉区分
+--                    ,xeh.business_id                                                    business_id                   --業務ＩＤ
+--                    ,xeh.whse_directly_class                                            whse_directly_class           --倉直区分
+--                    ,xeh.premium_rebate_class                                           premium_rebate_class          --項目種別
+--                    ,xeh.item_type                                                      item_type                     --景品割戻区分
+--                    ,xeh.cloth_house_food_class                                         cloth_house_food_class        --衣家食区分
+--                    ,xeh.mix_class                                                      mix_class                     --混在区分
+--                    ,xeh.stk_class                                                      stk_class                     --在庫区分
+--                    ,xeh.last_modify_site_class                                         last_modify_site_class        --最終修正場所区分
+--                    ,xeh.report_class                                                   report_class                  --帳票区分
+--                    ,xeh.addition_plan_class                                            addition_plan_class           --追加・計画区分
+--                    ,xeh.registration_class                                             registration_class            --登録区分
+--                    ,xeh.specific_class                                                 specific_class                --特定区分
+--                    ,xeh.dealings_class                                                 dealings_class                --取引区分
+--                    ,xeh.order_class                                                    order_class                   --発注区分
+--                    ,xeh.sum_line_class                                                 sum_line_class                --集計明細区分
+--                    ,xeh.shipping_guidance_class                                        shipping_guidance_class       --出荷案内以外区分
+--                    ,xeh.shipping_class                                                 shipping_class                --出荷区分
+--                    ,xeh.product_code_use_class                                         product_code_use_class        --商品コード使用区分
+--                    ,xeh.cargo_item_class                                               cargo_item_class              --積送品区分
+--                    ,xeh.ta_class                                                       ta_class                      --Ｔ／Ａ区分
+--                    ,xeh.plan_code                                                      plan_code                     --企画コード
+--                    ,xeh.category_code                                                  category_code                 --カテゴリーコード
+--                    ,xeh.category_class                                                 category_class                --カテゴリー区分
+--                    ,xeh.carrier_means                                                  carrier_means                 --運送手段
+--                    ,xeh.counter_code                                                   counter_code                  --売場コード
+--                    ,xeh.move_sign                                                      move_sign                     --移動サイン
+--                    ,xeh.medium_class                                                   eos_handwriting_class         --ＥＯＳ・手書区分
+--                    ,xeh.delivery_to_section_code                                       delivery_to_section_code      --納品先課コード
+--                    ,xeh.invoice_detailed                                               invoice_detailed              --伝票内訳
+--                    ,xeh.attach_qty                                                     attach_qty                    --添付数
+--                    ,xeh.other_party_floor                                              other_party_floor             --フロア
+--                    ,xeh.text_no                                                        text_no                       --ＴＥＸＴＮｏ
+--                    ,xeh.in_store_code                                                  in_store_code                 --インストアコード
+--                    ,xeh.tag_data                                                       tag_data                      --タグ
+--                    ,xeh.competition_code                                               competition_code              --競合
+--                    ,xeh.billing_chair                                                  billing_chair                 --請求口座
+--                    ,xeh.chain_store_code                                               chain_store_code              --チェーンストアーコード
+--                    ,xeh.chain_store_short_name                                         chain_store_short_name        --チェーンストアーコード略式名称
+--                    ,xeh.direct_delivery_rcpt_fee                                       direct_delivery_rcpt_fee      --直配送／引取料
+--                    ,xeh.bill_info                                                      bill_info                     --手形情報
+--                    ,xeh.description                                                    description                   --摘要
+--                    ,xeh.interior_code                                                  interior_code                 --内部コード
+--                    ,xeh.order_info_delivery_category                                   order_info_delivery_category  --発注情報　納品カテゴリー
+--                    ,xeh.purchase_type                                                  purchase_type                 --仕入形態
+--                    ,xeh.delivery_to_name_alt                                           delivery_to_name_alt          --納品場所名（カナ）
+--                    ,xeh.shop_opened_site                                               shop_opened_site              --店出場所
+--                    ,xeh.counter_name                                                   counter_name                  --売場名
+--                    ,xeh.extension_number                                               extension_number              --内線番号
+--                    ,xeh.charge_name                                                    charge_name                   --担当者名
+--                    ,xeh.price_tag                                                      price_tag                     --値札
+--                    ,xeh.tax_type                                                       tax_type                      --税種
+--                    ,xeh.consumption_tax_class                                          consumption_tax_class         --消費税区分
+--                    ,xeh.brand_class                                                    brand_class                   --ＢＲ
+--                    ,xeh.id_code                                                        id_code                       --ＩＤコード
+--                    ,xeh.department_code                                                department_code               --百貨店コード
+--                    ,xeh.department_name                                                department_name               --百貨店名
+--                    ,xeh.item_type_number                                               item_type_number              --品別番号
+--                    ,xeh.description_department                                         description_department        --摘要（百貨店）
+--                    ,xeh.price_tag_method                                               price_tag_method              --値札方法
+--                    ,xeh.reason_column                                                  reason_column                 --自由欄
+--                    ,xeh.a_column_header                                                a_column_header               --Ａ欄ヘッダ
+--                    ,xeh.d_column_header                                                d_column_header               --Ｄ欄ヘッダ
+--                    ,xeh.brand_code                                                     brand_code                    --ブランドコード
+--                    ,xeh.line_code                                                      line_code                     --ラインコード
+--                    ,xeh.class_code                                                     class_code                    --クラスコード
+--                    ,xeh.a1_column                                                      a1_column                     --Ａ－１欄
+--                    ,xeh.b1_column                                                      b1_column                     --Ｂ－１欄
+--                    ,xeh.c1_column                                                      c1_column                     --Ｃ－１欄
+--                    ,xeh.d1_column                                                      d1_column                     --Ｄ－１欄
+--                    ,xeh.e1_column                                                      e1_column                     --Ｅ－１欄
+--                    ,xeh.a2_column                                                      a2_column                     --Ａ－２欄
+--                    ,xeh.b2_column                                                      b2_column                     --Ｂ－２欄
+--                    ,xeh.c2_column                                                      c2_column                     --Ｃ－２欄
+--                    ,xeh.d2_column                                                      d2_column                     --Ｄ－２欄
+--                    ,xeh.e2_column                                                      e2_column                     --Ｅ－２欄
+--                    ,xeh.a3_column                                                      a3_column                     --Ａ－３欄
+--                    ,xeh.b3_column                                                      b3_column                     --Ｂ－３欄
+--                    ,xeh.c3_column                                                      c3_column                     --Ｃ－３欄
+--                    ,xeh.d3_column                                                      d3_column                     --Ｄ－３欄
+--                    ,xeh.e3_column                                                      e3_column                     --Ｅ－３欄
+--                    ,xeh.f1_column                                                      f1_column                     --Ｆ－１欄
+--                    ,xeh.g1_column                                                      g1_column                     --Ｇ－１欄
+--                    ,xeh.h1_column                                                      h1_column                     --Ｈ－１欄
+--                    ,xeh.i1_column                                                      i1_column                     --Ｉ－１欄
+--                    ,xeh.j1_column                                                      j1_column                     --Ｊ－１欄
+--                    ,xeh.k1_column                                                      k1_column                     --Ｋ－１欄
+--                    ,xeh.l1_column                                                      l1_column                     --Ｌ－１欄
+--                    ,xeh.f2_column                                                      f2_column                     --Ｆ－２欄
+--                    ,xeh.g2_column                                                      g2_column                     --Ｇ－２欄
+--                    ,xeh.h2_column                                                      h2_column                     --Ｈ－２欄
+--                    ,xeh.i2_column                                                      i2_column                     --Ｉ－２欄
+--                    ,xeh.j2_column                                                      j2_column                     --Ｊ－２欄
+--                    ,xeh.k2_column                                                      k2_column                     --Ｋ－２欄
+--                    ,xeh.l2_column                                                      l2_column                     --Ｌ－２欄
+--                    ,xeh.f3_column                                                      f3_column                     --Ｆ－３欄
+--                    ,xeh.g3_column                                                      g3_column                     --Ｇ－３欄
+--                    ,xeh.h3_column                                                      h3_column                     --Ｈ－３欄
+--                    ,xeh.i3_column                                                      i3_column                     --Ｉ－３欄
+--                    ,xeh.j3_column                                                      j3_column                     --Ｊ－３欄
+--                    ,xeh.k3_column                                                      k3_column                     --Ｋ－３欄
+--                    ,xeh.l3_column                                                      l3_column                     --Ｌ－３欄
+--                    ,xeh.chain_peculiar_area_header                                     chain_peculiar_area_header    --チェーン店固有エリア（ヘッダー）
+--                    ,xeh.order_connection_number                                        order_connection_number       --受注関連番号（仮）
+--                    ------------------------------------------------明細情報------------------------------------------------
+--                    ,TO_CHAR(xel.line_no)                                               line_no                       --行Ｎｏ
+--                    ,CASE
+--                       WHEN xel.sum_order_qty 
+--                          - oola.ordered_quantity = 0 THEN
+--                         cv_number00
+--                       ELSE
+--                         DECODE(xlvv3.attribute1
+--                               ,cv_reason_flag_ok,ore.reason_code
+--                                                 ,cv_err_reason_code)
+--                     END                                                                stockout_class                --欠品区分
+--                    ,NULL                                                               stockout_reason               --欠品理由
+--                    ,xel.item_code                                                      item_code                     --商品コード（伊藤園）
+--                    ,xel.product_code1                                                  product_code1                 --商品コード１
+--                    ,xel.product_code2                                                  product_code2                 --商品コード２
+--                    ,CASE
+---- 2009/02/17 T.Nakamura Ver.1.4 mod start
+----                       WHEN xel.uom_code = i_prf_rec.case_uom_code THEN
+--                       WHEN xel.line_uom = i_prf_rec.case_uom_code THEN
+---- 2009/02/17 T.Nakamura Ver.1.4 mod end
+--                         xsib.case_jan_code
+--                       ELSE
+--                         iimb.attribute21
+--                     END                                                                jan_code                      --ＪＡＮコード
+--                    ,NVL(xel.itf_code, iimb.attribute22)                                itf_code                      --ＩＴＦコード
+--                    ,xel.extension_itf_code                                             extension_itf_code            --内箱ＩＴＦコード
+--                    ,xel.case_product_code                                              case_product_code             --ケース商品コード
+--                    ,xel.ball_product_code                                              ball_product_code             --ボール商品コード
+--                    ,xel.product_code_item_type                                         product_code_item_type        --商品コード品種
+--                    ,xhpc.item_div_h_code                                               prod_class                    --商品区分
+--                    ,NVL(ximb.item_name,i_msg_rec.item_notfound)                        product_name                  --商品名（漢字）
+--                    ,xel.product_name1_alt                                              product_name1_alt             --商品名１（カナ）
+--                    ,xel.product_name2_alt                                              product_name2_alt             --商品名２（カナ）
+--                    ,xel.item_standard1                                                 item_standard1                --規格１
+--                    ,xel.item_standard2                                                 item_standard2                --規格２
+--                    ,TO_CHAR(xel.qty_in_case)                                           qty_in_case                   --入数
+--                    ,iimb.attribute11                                                   num_of_cases                  --ケース入数
+--                    ,TO_CHAR(NVL(xel.num_of_ball,xsib.bowl_inc_num))                    num_of_ball                   --ボール入数
+--                    ,xel.item_color                                                     item_color                    --色
+--                    ,xel.item_size                                                      item_size                     --サイズ
+--                    ,TO_CHAR(xel.expiration_date,cv_date_fmt)                           expiration_date               --賞味期限日
+--                    ,TO_CHAR(xel.product_date,cv_date_fmt)                              product_date                  --製造日
+--                    ,TO_CHAR(xel.order_uom_qty)                                         order_uom_qty                 --発注単位数
+--                    ,TO_CHAR(xel.shipping_uom_qty)                                      shipping_uom_qty              --出荷単位数
+--                    ,TO_CHAR(xel.packing_uom_qty)                                       packing_uom_qty               --梱包単位数
+--                    ,xel.deal_code                                                      deal_code                     --引合
+--                    ,xel.deal_class                                                     deal_class                    --引合区分
+--                    ,xel.collation_code                                                 collation_code                --照合
+---- 2009/04/27 K.Kiriu Ver.1.10 mod start
+---- 2009/02/17 T.Nakamura Ver.1.4 mod start
+--                    ,xel.uom_code                                                       uom_code                      --単位
+----                    ,xel.line_uom                                                       uom_code                      --単位
+---- 2009/02/17 T.Nakamura Ver.1.4 mod end
+---- 2009/04/27 K.Kiriu Ver.1.10 mod end
+--                    ,xel.unit_price_class                                               unit_price_class              --単価区分
+--                    ,xel.parent_packing_number                                          parent_packing_number         --親梱包番号
+--                    ,xel.packing_number                                                 packing_number                --梱包番号
+--                    ,xel.product_group_code                                             product_group_code            --商品群コード
+--                    ,xel.case_dismantle_flag                                            case_dismantle_flag           --ケース解体不可フラグ
+--                    ,xel.case_class                                                     case_class                    --ケース区分
+--                    ,TO_CHAR(xel.indv_order_qty)                                        indv_order_qty                --発注数量（バラ）
+--                    ,TO_CHAR(xel.case_order_qty)                                        case_order_qty                --発注数量（ケース）
+--                    ,TO_CHAR(xel.ball_order_qty)                                        ball_order_qty                --発注数量（ボール）
+--                    ,TO_CHAR(xel.sum_order_qty)                                         sum_order_qty                 --発注数量（合計、バラ）
+--                    ,CASE
+--                       WHEN oola.order_quantity_uom != i_prf_rec.case_uom_code
+--                        AND oola.order_quantity_uom != i_prf_rec.bowl_uom_code THEN
+--                         TO_CHAR(oola.ordered_quantity)
+--                       ELSE
+--                         cv_number0
+--                     END                                                                indv_shipping_qty             --出荷数量（バラ）
+--                    ,CASE
+--                       WHEN oola.order_quantity_uom = i_prf_rec.case_uom_code THEN
+--                         TO_CHAR(oola.ordered_quantity)
+--                       ELSE
+--                         cv_number0
+--                     END                                                                case_shipping_qty             --出荷数量（ケース）
+--                    ,CASE
+--                       WHEN oola.order_quantity_uom = i_prf_rec.bowl_uom_code THEN
+--                         TO_CHAR(oola.ordered_quantity)
+--                       ELSE
+--                         cv_number0
+--                     END                                                                ball_shipping_qty             --出荷数量（ボール）
+--                    ,TO_CHAR(xel.pallet_shipping_qty)                                   pallet_shipping_qty           --出荷数量（パレット）
+--                    ,TO_CHAR(oola.ordered_quantity)                                     sum_shipping_qty              --出荷数量（合計、バラ）
+--                    ,TO_CHAR(xel.indv_order_qty 
+--                           - oola.ordered_quantity)                                     indv_stockout_qty             --欠品数量（バラ）
+--                    ,TO_CHAR(xel.case_order_qty
+--                           - oola.ordered_quantity)                                     case_stockout_qty             --欠品数量（ケース）
+--                    ,TO_CHAR(xel.ball_order_qty 
+--                           - oola.ordered_quantity)                                     ball_stockout_qty             --欠品数量（ボール）
+--                    ,TO_CHAR(xel.sum_order_qty
+--                           - oola.ordered_quantity)                                     sum_stockout_qty              --欠品数量（合計、バラ）
+--                    ,TO_CHAR(xel.case_qty)                                              case_qty                      --ケース個口数
+--                    ,TO_CHAR(xel.fold_container_indv_qty)                               fold_container_indv_qty       --オリコン（バラ）個口数
+--                    ,TO_CHAR(xel.order_unit_price)                                      order_unit_price              --原単価（発注）
+--                    ,TO_CHAR(oola.unit_selling_price)                                   shipping_unit_price           --原単価（出荷）
+--                    ,TO_CHAR(xel.order_cost_amt)                                        order_cost_amt                --原価金額（発注）
+--                    ,TO_CHAR(oola.unit_selling_price
+--                           * oola.ordered_quantity)                                     shipping_cost_amt             --原価金額（出荷）
+--                    ,TO_CHAR(xel.stockout_cost_amt)                                     stockout_cost_amt             --原価金額（欠品）
+--                    ,TO_CHAR(xel.selling_price)                                         selling_price                 --売単価
+--                    ,TO_CHAR(xel.order_price_amt)                                       order_price_amt               --売価金額（発注）
+--                    ,TO_CHAR(xel.shipping_price_amt)                                    shipping_price_amt            --売価金額（出荷）
+--                    ,TO_CHAR(xel.stockout_price_amt)                                    stockout_price_amt            --売価金額（欠品）
+--                    ,TO_CHAR(xel.a_column_department)                                   a_column_department           --Ａ欄（百貨店）
+--                    ,TO_CHAR(xel.d_column_department)                                   d_column_department           --Ｄ欄（百貨店）
+--                    ,TO_CHAR(xel.standard_info_depth)                                   standard_info_depth           --規格情報・奥行き
+--                    ,TO_CHAR(xel.standard_info_height)                                  standard_info_height          --規格情報・高さ
+--                    ,TO_CHAR(xel.standard_info_width)                                   standard_info_width           --規格情報・幅
+--                    ,TO_CHAR(xel.standard_info_weight)                                  standard_info_weight          --規格情報・重量
+--                    ,xel.general_succeeded_item1                                        general_succeeded_item1       --汎用引継ぎ項目１
+--                    ,xel.general_succeeded_item2                                        general_succeeded_item2       --汎用引継ぎ項目２
+--                    ,xel.general_succeeded_item3                                        general_succeeded_item3       --汎用引継ぎ項目３
+--                    ,xel.general_succeeded_item4                                        general_succeeded_item4       --汎用引継ぎ項目４
+--                    ,xel.general_succeeded_item5                                        general_succeeded_item5       --汎用引継ぎ項目５
+--                    ,xel.general_succeeded_item6                                        general_succeeded_item6       --汎用引継ぎ項目６
+--                    ,xel.general_succeeded_item7                                        general_succeeded_item7       --汎用引継ぎ項目７
+--                    ,xel.general_succeeded_item8                                        general_succeeded_item8       --汎用引継ぎ項目８
+--                    ,xel.general_succeeded_item9                                        general_succeeded_item9       --汎用引継ぎ項目９
+--                    ,xel.general_succeeded_item10                                       general_succeeded_item10      --汎用引継ぎ項目１０
+--                    ,TO_CHAR(avtab.tax_rate)                                            general_add_item1             --汎用付加項目１(税率)
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
+----                    ,SUBSTRB(i_base_rec.phone_number, 1, 10)                            general_add_item2             --汎用付加項目２
+----                    ,SUBSTRB(i_base_rec.phone_number, 11, 10)                           general_add_item3             --汎用付加項目３
+--                    ,SUBSTRB(cdm.phone_number, 1, 10)                                   general_add_item2             --汎用付加項目２
+--                    ,SUBSTRB(cdm.phone_number, 11, 10)                                  general_add_item3             --汎用付加項目３
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+--                    ,xel.general_add_item4                                              general_add_item4             --汎用付加項目４
+--                    ,xel.general_add_item5                                              general_add_item5             --汎用付加項目５
+--                    ,xel.general_add_item6                                              general_add_item6             --汎用付加項目６
+--                    ,xel.general_add_item7                                              general_add_item7             --汎用付加項目７
+--                    ,xel.general_add_item8                                              general_add_item8             --汎用付加項目８
+--                    ,xel.general_add_item9                                              general_add_item9             --汎用付加項目９
+--                    ,xel.general_add_item10                                             general_add_item10            --汎用付加項目１０
+--                    ,xel.chain_peculiar_area_line                                       chain_peculiar_area_line      --チェーン店固有エリア（明細）
+--                    ------------------------------------------------フッタ情報------------------------------------------------
+--                    ,NULL                                                               invoice_indv_order_qty        --（伝票計）発注数量（バラ）
+--                    ,NULL                                                               invoice_case_order_qty        --（伝票計）発注数量（ケース）
+--                    ,NULL                                                               invoice_ball_order_qty        --（伝票計）発注数量（ボール）
+--                    ,NULL                                                               invoice_sum_order_qty         --（伝票計）発注数量（合計、バラ）
+--                    ,NULL                                                               invoice_indv_shipping_qty     --（伝票計）出荷数量（バラ）
+--                    ,NULL                                                               invoice_case_shipping_qty     --（伝票計）出荷数量（ケース）
+--                    ,NULL                                                               invoice_ball_shipping_qty     --（伝票計）出荷数量（ボール）
+--                    ,NULL                                                               invoice_pallet_shipping_qty   --（伝票計）出荷数量（パレット）
+--                    ,NULL                                                               invoice_sum_shipping_qty      --（伝票計）出荷数量（合計、バラ）
+--                    ,NULL                                                               invoice_indv_stockout_qty     --（伝票計）欠品数量（バラ）
+--                    ,NULL                                                               invoice_case_stockout_qty     --（伝票計）欠品数量（ケース）
+--                    ,NULL                                                               invoice_ball_stockout_qty     --（伝票計）欠品数量（ボール）
+--                    ,NULL                                                               invoice_sum_stockout_qty      --（伝票計）欠品数量（合計、バラ）
+--                    ,NULL                                                               invoice_case_qty              --（伝票計）ケース個口数
+--                    ,NULL                                                               invoice_fold_container_qty    --（伝票計）オリコン（バラ）個口数
+--                    ,NULL                                                               invoice_order_cost_amt        --（伝票計）原価金額（発注）
+--                    ,NULL                                                               invoice_shipping_cost_amt     --（伝票計）原価金額（出荷）
+--                    ,NULL                                                               invoice_stockout_cost_amt     --（伝票計）原価金額（欠品）
+--                    ,NULL                                                               invoice_order_price_amt       --（伝票計）売価金額（発注）
+--                    ,NULL                                                               invoice_shipping_price_amt    --（伝票計）売価金額（出荷）
+--                    ,NULL                                                               invoice_stockout_price_amt    --（伝票計）売価金額（欠品）
+--                    ,TO_CHAR(xeh.total_indv_order_qty)                                  total_indv_order_qty          --（総合計）発注数量（バラ）
+--                    ,TO_CHAR(xeh.total_case_order_qty)                                  total_case_order_qty          --（総合計）発注数量（ケース）
+--                    ,TO_CHAR(xeh.total_ball_order_qty)                                  total_ball_order_qty          --（総合計）発注数量（ボール）
+--                    ,TO_CHAR(xeh.total_sum_order_qty)                                   total_sum_order_qty           --（総合計）発注数量（合計、バラ）
+--                    ,TO_CHAR(xeh.total_indv_shipping_qty)                               total_indv_shipping_qty       --（総合計）出荷数量（バラ）
+--                    ,TO_CHAR(xeh.total_case_shipping_qty)                               total_case_shipping_qty       --（総合計）出荷数量（ケース）
+--                    ,TO_CHAR(xeh.total_ball_shipping_qty)                               total_ball_shipping_qty       --（総合計）出荷数量（ボール）
+--                    ,TO_CHAR(xeh.total_pallet_shipping_qty)                             total_pallet_shipping_qty     --（総合計）出荷数量（パレット）
+--                    ,TO_CHAR(xeh.total_sum_shipping_qty)                                total_sum_shipping_qty        --（総合計）出荷数量（合計、バラ）
+--                    ,TO_CHAR(xeh.total_indv_stockout_qty)                               total_indv_stockout_qty       --（総合計）欠品数量（バラ）
+--                    ,TO_CHAR(xeh.total_case_stockout_qty)                               total_case_stockout_qty       --（総合計）欠品数量（ケース）
+--                    ,TO_CHAR(xeh.total_ball_stockout_qty)                               total_ball_stockout_qty       --（総合計）欠品数量（ボール）
+--                    ,TO_CHAR(xeh.total_sum_stockout_qty)                                total_sum_stockout_qty        --（総合計）欠品数量（合計、バラ）
+--                    ,TO_CHAR(xeh.total_case_qty)                                        total_case_qty                --（総合計）ケース個口数
+--                    ,TO_CHAR(xeh.total_fold_container_qty)                              total_fold_container_qty      --（総合計）オリコン（バラ）個口数
+--                    ,TO_CHAR(xeh.total_order_cost_amt)                                  total_order_cost_amt          --（総合計）原価金額（発注）
+--                    ,TO_CHAR(xeh.total_shipping_cost_amt)                               total_shipping_cost_amt       --（総合計）原価金額（出荷）
+--                    ,TO_CHAR(xeh.total_stockout_cost_amt)                               total_stockout_cost_amt       --（総合計）原価金額（欠品）
+--                    ,TO_CHAR(xeh.total_order_price_amt)                                 total_order_price_amt         --（総合計）売価金額（発注）
+--                    ,TO_CHAR(xeh.total_shipping_price_amt)                              total_shipping_price_amt      --（総合計）売価金額（出荷）
+--                    ,TO_CHAR(xeh.total_stockout_price_amt)                              total_stockout_price_amt      --（総合計）売価金額（欠品）
+--                    ,TO_CHAR(xeh.total_line_qty)                                        total_line_qty                --トータル行数
+--                    ,TO_CHAR(xeh.total_invoice_qty)                                     total_invoice_qty             --トータル伝票枚数
+--                    ,xeh.chain_peculiar_area_footer                                     chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
+--              FROM   xxcos_edi_headers                                                  xeh                           --EDIヘッダ情報テーブル
+--                    ,xxcos_edi_lines                                                    xel                           --EDI明細情報テーブル
+--                    ,oe_order_headers_all                                               ooha                          --受注ヘッダ情報テーブル
+--                    ,oe_order_lines_all                                                 oola                          --受注明細情報テーブル
+--                    ,(SELECT ore.reason_id                                              reason_id
+--                            ,ore.reason_code                                            reason_code
+--                            ,ore.entity_id                                              entity_id
+--                      FROM oe_reasons                                         ore
+--                          ,(SELECT entity_id,MAX(creation_date) creation_date
+--                            FROM   oe_reasons
+--                            WHERE  reason_type = cv_reason_type
+--                            AND    entity_code = cv_entity_code_line
+--                            GROUP BY entity_id
+--                           )                                                  ore_max
+--                      WHERE ore.entity_id     = ore_max.entity_id
+--                      AND   ore.creation_date = ore_max.creation_date
+--                     )                                                                  ore                           --受注理由ビュー
+--                    ,xxcos_lookup_values_v                                              xlvv3                         --事由コードマスタ
+--                    ,oe_order_sources                                                   oos                           --受注ソーステーブル
+--                    ,xxcmm_cust_accounts                                                xca                           --顧客マスタアドオン
+--                    ,hz_cust_accounts                                                   hca                           --顧客マスタ
+--                    ,hz_parties                                                         hp                            --パーティマスタ
+--                    ,ic_item_mst_b                                                      iimb                          --OPM品目マスタ
+--                    ,xxcmn_item_mst_b                                                   ximb                          --OPM品目マスタアドオン
+--                    ,mtl_system_items_b                                                 msib                          --DISC品目マスタ
+--                    ,xxcmm_system_items_b                                               xsib                          --DISC品目マスタアドオン
+--                    ,xxcos_head_prod_class_v                                            xhpc                          --本社商品区分ビュー
+--                    ,xxcos_chain_store_security_v                                       xcss                          --チェーン店店舗セキュリティビュー
+--                    ,xxcos_lookup_values_v                                              xlvv                          --売上区分マスタ
+--                    ,oe_transaction_types_tl                                            ottt_l                        --受注タイプ(明細)
+--                    ,oe_transaction_types_tl                                            ottt_h                        --受注タイプ(ヘッダ)
+--                    ,xxcos_lookup_values_v                                              xlvv2                         --税コードマスタ
+--                    ,ar_vat_tax_all_b                                                   avtab                         --税率マスタ
+-- --******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
+--                   ,(
+--                    SELECT hca.account_number                                                  account_number               --顧客コード
+--                          ,hp.party_name                                                       base_name                    --顧客名称
+--                          ,hp.organization_name_phonetic                                       base_name_kana               --顧客名称(カナ)
+--                          ,hl.state                                                            state                        --都道府県
+--                          ,hl.city                                                             city                         --市・区
+--                          ,hl.address1                                                         address1                     --住所１
+--                          ,hl.address2                                                         address2                     --住所２
+--                          ,hl.address_lines_phonetic                                           phone_number                 --電話番号
+--                          ,xca.torihikisaki_code                                               customer_code                --取引先コード
+--                    FROM   hz_cust_accounts                                                    hca                          --顧客マスタ
+--                          ,xxcmm_cust_accounts                                                 xca                          --顧客マスタアドオン
+--                          ,hz_parties                                                          hp                           --パーティマスタ
+--                          ,hz_cust_acct_sites_all                                              hcas                         --顧客所在地
+--                          ,hz_party_sites                                                      hps                          --パーティサイトマスタ
+--                          ,hz_locations                                                        hl                           --事業所マスタ
+--                    WHERE  hca.customer_class_code = cv_cust_class_base
+--                    AND    xca.customer_id         = hca.cust_account_id
+--                    AND    hp.party_id             = hca.party_id
+--                    AND    hps.party_id            = hca.party_id
+--                    AND    hl.location_id          = hps.location_id
+--                    AND    hcas.cust_account_id    = hca.cust_account_id
+--                    AND    hps.party_site_id       = hcas.party_site_id
+--                    AND    hcas.org_id             = g_prf_rec.org_id
+--                    )                                                                  cdm
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+--             --EDIヘッダ情報テーブル抽出条件
+--              WHERE  xeh.data_type_code         = cv_data_type_edi_order                                              --データ種コード
+--              AND (
+--                     i_input_rec.info_div       IS NULL                                                               --情報区分
+--                OR   i_input_rec.info_div       IS NOT NULL AND xeh.info_class = i_input_rec.info_div
+--              )
+--              AND    xeh.edi_chain_code         = i_input_rec.chain_code                                              --EDIチェーン店コード
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
+----              AND (
+----                     i_input_rec.store_code     IS NOT NULL AND xeh.shop_code = i_input_rec.store_code                --店舗コード
+----                AND  xeh.shop_code              = xcss.chain_store_code
+----                OR   i_input_rec.store_code     IS NULL     AND xeh.shop_code = xcss.chain_store_code
+----              )
+--              AND  xeh.shop_code                = NVL( i_input_rec.store_code, xeh.shop_code)
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+--              AND    NVL(TRUNC(xeh.shop_delivery_date)
+--                        ,NVL(TRUNC(xeh.center_delivery_date)
+--                            ,NVL(TRUNC(xeh.order_date)
+--                                ,TRUNC(xeh.data_creation_date_edi_data))))
+--                     BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
+--                     AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
+---- 2009/02/18 T.Nakamura Ver.1.5 add start
+--              AND ( 
+--                    i_input_rec.center_delivery_date_from IS NULL AND i_input_rec.center_delivery_date_to IS NULL
+--                OR  (
+--                      xeh.center_delivery_date IS NOT NULL
+--                  AND (
+--                         i_input_rec.center_delivery_date_to   IS NULL
+--                    AND  TRUNC(xeh.center_delivery_date)       >= TO_DATE(i_input_rec.center_delivery_date_from, cv_date_fmt)
+--                    OR   i_input_rec.center_delivery_date_from IS NULL
+--                    AND  TRUNC(xeh.center_delivery_date)       <= TO_DATE(i_input_rec.center_delivery_date_to, cv_date_fmt)
+--                    OR   TRUNC(xeh.center_delivery_date)
+--                         BETWEEN TO_DATE(i_input_rec.center_delivery_date_from, cv_date_fmt)
+--                         AND     TO_DATE(i_input_rec.center_delivery_date_to, cv_date_fmt)
+--                  )
+--                )
+--              )
+---- 2009/02/18 T.Nakamura Ver.1.5 add end
+--              --EDI明細情報テーブル抽出条件
+--              AND    xel.edi_header_info_id     = xeh.edi_header_info_id
+--              --受注ソーステーブル抽出条件
+--              AND    oos.description            = i_msg_rec.order_source                                              --受注ソース
+--              AND    oos.enabled_flag           = cv_enabled_flag                                                     --有効フラグ
+--              --受注タイプ(ヘッダ)抽出条件
+--              AND    ottt_h.language            = USERENV('LANG')
+--              AND    ottt_h.source_lang         = USERENV('LANG')
+--              AND    ottt_h.description         = i_msg_rec.header_type
+--              --受注タイプ(明細)抽出条件
+--              AND    ottt_l.language            = USERENV('LANG')
+--              AND    ottt_l.source_lang         = USERENV('LANG')
+--              AND    ottt_l.description         = i_msg_rec.line_type10
+--              --受注ヘッダテーブル抽出条件
+--              AND    ooha.orig_sys_document_ref = xeh.order_connection_number                                         --外部システム受注番号 = 受注関連番号
+--              AND    ooha.order_source_id       = oos.order_source_id                                                 --受注ソースID
+--              AND    ooha.order_type_id         = ottt_h.transaction_type_id                                          --受注ヘッダタイプ
+--              --受注明細情報テーブル抽出条件
+--              AND    oola.header_id             = ooha.header_id                                                      --ヘッダID
+---- 2009/06/17 M.Sano Ver.1.11 mod Start
+----              AND    oola.line_number           = xel.line_no                                                         --行No
+--              AND    oola.orig_sys_line_ref     = xel.order_connection_line_number                                    --外部ｼｽﾃﾑ受注明細番号 = 受注関連明細番号
+---- 2009/06/17 M.Sano Ver.1.11 mod End
+--              AND    oola.line_type_id          = ottt_l.transaction_type_id                                          --受注明細タイプ
+--              --受注理由ビュー抽出条件
+--              AND    ore.entity_id(+)           = oola.line_id
+--              --受注理由テーブル抽出条件
+--              AND    xlvv3.lookup_type(+)       = 'CANCEL_CODE'
+--              AND    xlvv3.lookup_code(+)       = ore.reason_code
+--              AND    i_other_rec.process_date
+--                BETWEEN NVL(xlvv3.start_date_active,i_other_rec.process_date)
+--                AND     NVL(xlvv3.end_date_active  ,i_other_rec.process_date)
+--              --顧客マスタアドオン(店舗)抽出条件
+--              AND    xca.chain_store_code(+)    = xeh.edi_chain_code                                                  --EDIチェーン店コード
+--              AND    xca.store_code(+)          = xeh.shop_code                                                       --店舗コード
+--              --顧客マスタ(店舗)抽出条件
+--              AND    hca.cust_account_id(+)     = xca.customer_id                                                     --顧客ID
+--              AND   (hca.cust_account_id        IS NOT NULL
+--                AND  hca.customer_class_code    IN (cv_cust_class_chain_store, cv_cust_class_uesama)
+--                OR   hca.cust_account_id        IS NULL
+--              )                                                                                                       --顧客区分
+--              --パーティマスタ(店舗)抽出条件
+--              AND    hp.party_id(+)             = hca.party_id                                                        --パーティID
+--              --OPM品目マスタ抽出条件
+--              AND    iimb.item_no(+)            = xel.item_code                                                       --品目コード
+--              --OPM品目マスタアドオン抽出条件
+--              AND    ximb.item_id(+)            = iimb.item_id                                                        --品目ID
+--              AND    NVL(xeh.shop_delivery_date
+--                        ,NVL(xeh.center_delivery_date
+--                            ,NVL(xeh.order_date
+--                                ,xeh.data_creation_date_edi_data)))
+--                BETWEEN NVL(ximb.start_date_active
+--                           ,NVL(xeh.shop_delivery_date
+--                               ,NVL(xeh.center_delivery_date
+--                                   ,NVL(xeh.order_date
+--                                       ,xeh.data_creation_date_edi_data))))
+--                AND     NVL(ximb.end_date_active
+--                            ,NVL(xeh.shop_delivery_date
+--                               ,NVL(xeh.center_delivery_date
+--                                   ,NVL(xeh.order_date
+--                                       ,xeh.data_creation_date_edi_data))))
+--              --DISC品目マスタ抽出条件
+--              AND    msib.segment1(+)           = xel.item_code                                                       --品目コード
+--              AND    msib.organization_id(+)    = i_other_rec.organization_id                                         --在庫組織ID
+--              --DISC品目アドオン抽出条件
+--              AND    xsib.item_code(+)          = msib.segment1                                                       --INV品目ID
+--              --本社商品区分ビュー抽出条件
+--              AND    xhpc.segment1(+)           = iimb.item_no                                                        --品目コード
+--              --チェーン店店舗セキュリティビュー抽出条件
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
+----              AND    xcss.chain_code            = i_input_rec.chain_code                                              --チェーン店コード
+----              AND    xcss.user_id               = i_input_rec.user_id                                                 --ユーザID
+--              AND    xcss.chain_code(+)         = xeh.edi_chain_code                                                  --チェーン店コード
+--              AND    xcss.chain_store_code(+)   = xeh.shop_code                                                       --店コード
+--              AND    xcss.user_id(+)            = i_input_rec.user_id                                                 --ユーザID
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+--              --売上区分マスタ抽出条件
+--              AND    xlvv.lookup_type(+)        = ct_qc_sale_class                                                    --参照タイプ＝売上区分
+--              AND    xlvv.lookup_code(+)        = oola.attribute5                                                     --参照コード＝売上区分
+--              AND    i_other_rec.process_date
+--                BETWEEN NVL(xlvv.start_date_active,i_other_rec.process_date)
+--                AND     NVL(xlvv.end_date_active,i_other_rec.process_date)
+--              AND  ( i_input_rec.bargain_class  = cv_bargain_class_all
+--                OR   i_input_rec.bargain_class != cv_bargain_class_all
+--                AND  i_input_rec.bargain_class  = xlvv.attribute8
+--              )
+--              --税コードマスタ抽出条件
+--              AND xlvv2.lookup_type(+)          = ct_qc_consumption_tax_class
+--              AND xlvv2.attribute3(+)           = xca.tax_div
+--              AND    NVL(xeh.shop_delivery_date
+--                        ,NVL(xeh.center_delivery_date
+--                            ,NVL(xeh.order_date
+--                                ,xeh.data_creation_date_edi_data)))
+--              BETWEEN NVL(xlvv2.start_date_active
+--                         ,NVL(xeh.shop_delivery_date
+--                             ,NVL(xeh.center_delivery_date
+--                                 ,NVL(xeh.order_date
+--                               ,xeh.data_creation_date_edi_data))))
+--              AND     NVL(xlvv2.end_date_active
+--                          ,NVL(xeh.shop_delivery_date
+--                             ,NVL(xeh.center_delivery_date
+--                                 ,NVL(xeh.order_date
+--                                     ,xeh.data_creation_date_edi_data))))
+--              --税率マスタ抽出条件
+--              AND avtab.tax_code(+)             = xlvv2.attribute2
+--              AND avtab.set_of_books_id(+)      = i_prf_rec.set_of_books_id
+---- 2009/02/16 T.Nakamura Ver.1.3 add start
+--              AND   avtab.org_id                   = i_prf_rec.org_id                                                 --MO:営業単位
+--              AND   avtab.enabled_flag             = cv_enabled_flag                                                  --使用可能フラグ
+--              AND   i_other_rec.process_date
+--                BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
+--                AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+--              AND   ooha.org_id                 = i_prf_rec.org_id                                                    --MO:営業単位
+--              AND   oola.org_id                 = ooha.org_id                                                         --MO:営業単位
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
+--              AND xca.delivery_base_code        = cdm.account_number(+)
+----******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+---- 2009/02/16 T.Nakamura Ver.1.3 add end
               SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
                     ,ooha.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
                     ,xlvv.attribute8                                                    bargain_class                 --定番特売区分
@@ -1496,18 +2197,37 @@ AS
                     ,xeh.info_class                                                     info_class                    --情報区分
                     ,i_other_rec.proc_date                                              process_date                  --処理日
                     ,i_other_rec.proc_time                                              process_time                  --処理時刻
---******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
---                    ,i_input_rec.base_code                                              base_code                     --拠点（部門）コード
---                    ,i_base_rec.base_name                                               base_name                     --拠点名（正式名）
---                    ,i_base_rec.base_name_kana                                          base_name_alt                 --拠点名（カナ）
-                    ,cdm.account_number                                                 base_code                     --拠点（部門）コード
-                    ,DECODE( cdm.account_number
+-- ******************************* 2009/07/03 N.Maeda 1.11 MOD START ************************************************ --
+                    ,CASE
+                      WHEN ( xeh.conv_customer_code IS NOT NULL ) THEN
+                        cdm.account_number
+                      ELSE
+                        g_input_rec.base_code
+                    END                                                                base_code                     --拠点（部門）コード
+                    ,CASE
+                      WHEN ( xeh.conv_customer_code IS NOT NULL ) THEN
+                        DECODE( cdm.account_number
                             ,NULL
                             ,g_msg_rec.customer_notfound
                             ,cdm.base_name
-                     )                                                                  base_name                     --拠点名（正式名）
-                    ,cdm.base_name_kana                                                 base_name_alt                 --拠点名（カナ）
---******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
+                            )
+                      ELSE
+                        g_input_rec.base_name
+                    END                                                                 base_name                     --拠点名（正式名）
+                    ,CASE
+                      WHEN ( xeh.conv_customer_code IS NOT NULL ) THEN
+                        cdm.base_name_kana
+                      ELSE
+                        gt_base_name_kana
+                    END                                                                 base_name_alt                 --拠点名（カナ）
+--                    ,cdm.account_number                                                base_code                     --拠点（部門）コード
+--                    ,DECODE( cdm.account_number
+--                            ,NULL
+--                            ,g_msg_rec.customer_notfound
+--                            ,cdm.base_name
+--                            )                                                          base_name                     --拠点名（正式名）
+--                    ,cdm.base_name_kana                                                base_name_alt                 --拠点名（カナ）
+-- ******************************* 2009/07/03 N.Maeda 1.11 MOD  END  ************************************************ --
                     ,xeh.edi_chain_code                                                 edi_chain_code                --ＥＤＩチェーン店コード
                     ,i_chain_rec.chain_name                                             edi_chain_name                --ＥＤＩチェーン店名（漢字）
                     ,i_chain_rec.chain_name_kana                                        edi_chain_name_alt            --ＥＤＩチェーン店名（カナ）
@@ -1516,18 +2236,38 @@ AS
                     ,xeh.chain_name_alt                                                 chain_name_alt                --チェーン店名（カナ）
                     ,i_input_rec.report_code                                            report_code                   --帳票コード
                     ,i_input_rec.report_name                                            report_name                   --帳票表示名
-                    ,hca.account_number                                                 customer_code                 --顧客コード
-                    ,hp.party_name                                                      customer_name                 --顧客名（漢字）
-                    ,hp.organization_name_phonetic                                      customer_name_alt             --顧客名（カナ）
+-- ******************************* 2009/07/03 N.Maeda 1.11 MOD START ************************************************ --
+                    ,CASE
+                      WHEN ( xeh.conv_customer_code IS NOT NULL ) THEN
+                       xeh.account_number
+                      ELSE
+                       NULL
+                     END                                                                customer_code                 --顧客コード
+                    ,CASE
+                      WHEN ( xeh.conv_customer_code IS NOT NULL ) THEN
+                       xeh.party_name
+                      ELSE
+                       NULL
+                     END                                                                customer_name                 --顧客名（漢字）
+                    ,CASE
+                      WHEN ( xeh.conv_customer_code IS NOT NULL ) THEN
+                       xeh.organization_name_phonetic
+                      ELSE
+                       NULL
+                      END                                                               customer_name_alt             --顧客名（カナ）
+--                    ,xeh.account_number                                                 customer_code                 --顧客コード
+--                    ,xeh.party_name                                                     customer_name                 --顧客名（漢字）
+--                    ,xeh.organization_name_phonetic                                     customer_name_alt             --顧客名（カナ）
+-- ******************************* 2009/07/03 N.Maeda 1.11 MOD  END  ************************************************ --
                     ,xeh.company_code                                                   company_code                  --社コード
                     ,xeh.company_name                                                   company_name                  --社名（漢字）
                     ,xeh.company_name_alt                                               company_name_alt              --社名（カナ）
                     ,xeh.shop_code                                                      shop_code                     --店コード
-                    ,NVL(xeh.shop_name,NVL(xca.cust_store_name
+                    ,NVL(xeh.shop_name,NVL(xeh.cust_store_name
                                           ,i_msg_rec.customer_notfound))                shop_name                     --店名（漢字）
-                    ,NVL(xeh.shop_name_alt,hp.organization_name_phonetic)               shop_name_alt                 --店名（カナ）
-                    ,NVL(xeh.delivery_center_code,xca.deli_center_code)                 delivery_center_code          --納入センターコード
-                    ,NVL(delivery_center_name,xca.deli_center_name)                     delivery_center_name          --納入センター名（漢字）
+                    ,NVL(xeh.shop_name_alt,xeh.organization_name_phonetic)               shop_name_alt                 --店名（カナ）
+                    ,NVL(xeh.delivery_center_code,xeh.deli_center_code)                 delivery_center_code          --納入センターコード
+                    ,NVL(xeh.delivery_center_name,xeh.deli_center_name)                 delivery_center_name          --納入センター名（漢字）
                     ,xeh.delivery_center_name_alt                                       delivery_center_name_alt      --納入センター名（カナ）
                     ,TO_CHAR(xeh.order_date,cv_date_fmt)                                order_date                    --発注日
                     ,NVL(i_input_rec.center_delivery_date_from
@@ -1553,42 +2293,14 @@ AS
                     ,xlvv.attribute8                                                    ar_sale_class                 --特売区分
                     ,xeh.delivery_classe                                                delivery_classe               --配送区分
                     ,xeh.opportunity_no                                                 opportunity_no                --便Ｎｏ
---******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
---                    ,NVL(xeh.contact_to, i_base_rec.phone_number)                       contact_to                    --連絡先
                     ,NVL(xeh.contact_to, cdm.phone_number)                              contact_to                    --連絡先
---******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
                     ,xeh.route_sales                                                    route_sales                   --ルートセールス
                     ,xeh.corporate_code                                                 corporate_code                --法人コード
                     ,xeh.maker_name                                                     maker_name                    --メーカー名
                     ,xeh.area_code                                                      area_code                     --地区コード
-                    ,NVL2(xeh.area_code,xca.edi_district_name,NULL)                     area_name                     --地区名（漢字）
-                    ,NVL2(xeh.area_code,xca.edi_district_kana,NULL)                     area_name_alt                 --地区名（カナ）
-                    ,NVL(xeh.vendor_code,xca.torihikisaki_code)                         vendor_code                   --取引先コード
---******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
---                    ,DECODE(i_base_rec.notfound_flag
---                           ,cv_notfound,i_base_rec.base_name
---                           ,cv_found,i_prf_rec.company_name || cv_space ||  i_base_rec.base_name)
---                                                                                        vendor_name                   --取引先名（漢字）
---                    ,CASE
---                       WHEN xeh.vendor_name1_alt IS NULL
---                        AND xeh.vendor_name2_alt IS NULL THEN
---                         i_prf_rec.company_name_kana
---                       ELSE
---                         xeh.vendor_name1_alt
---                     END                                                                vendor_name1_alt              --取引先名１（カナ）
---                    ,CASE
---                       WHEN xeh.vendor_name1_alt IS NULL
---                        AND xeh.vendor_name2_alt IS NULL THEN
---                         i_base_rec.base_name_kana
---                       ELSE
---                         xeh.vendor_name2_alt
---                     END                                                                vendor_name2_alt              --取引先名２（カナ）
---                    ,i_base_rec.phone_number                                            vendor_tel                    --取引先ＴＥＬ
---                    ,NVL(xeh.vendor_charge,i_base_rec.manager_name_kana)                vendor_charge                 --取引先担当者
---                    ,i_base_rec.state ||
---                     i_base_rec.city ||
---                     i_base_rec.address1 ||
---                     i_base_rec.address2                                                vendor_address                --取引先住所（漢字）
+                    ,NVL2(xeh.area_code,xeh.edi_district_name,NULL)                     area_name                     --地区名（漢字）
+                    ,NVL2(xeh.area_code,xeh.edi_district_kana,NULL)                     area_name_alt                 --地区名（カナ）
+                    ,NVL(xeh.vendor_code,xeh.torihikisaki_code)                         vendor_code                   --取引先コード
                     ,DECODE(cdm.account_number
                            ,NULL,g_msg_rec.customer_notfound
                            ,i_prf_rec.company_name || cv_space ||  cdm.base_name)
@@ -1613,7 +2325,6 @@ AS
                      cdm.city     ||
                      cdm.address1 ||
                      cdm.address2                                                       vendor_address                --取引先住所（漢字）
---******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
                     ,xeh.deliver_to_code_itouen                                         deliver_to_code_itouen        --届け先コード（伊藤園）
                     ,xeh.deliver_to_code_chain                                          deliver_to_code_chain         --届け先コード（チェーン店）
                     ,xeh.deliver_to                                                     deliver_to                    --届け先（漢字）
@@ -1778,10 +2489,7 @@ AS
                     ,xel.product_code1                                                  product_code1                 --商品コード１
                     ,xel.product_code2                                                  product_code2                 --商品コード２
                     ,CASE
--- 2009/02/17 T.Nakamura Ver.1.4 mod start
---                       WHEN xel.uom_code = i_prf_rec.case_uom_code THEN
                        WHEN xel.line_uom = i_prf_rec.case_uom_code THEN
--- 2009/02/17 T.Nakamura Ver.1.4 mod end
                          xsib.case_jan_code
                        ELSE
                          iimb.attribute21
@@ -1810,12 +2518,7 @@ AS
                     ,xel.deal_code                                                      deal_code                     --引合
                     ,xel.deal_class                                                     deal_class                    --引合区分
                     ,xel.collation_code                                                 collation_code                --照合
--- 2009/04/27 K.Kiriu Ver.1.10 mod start
--- 2009/02/17 T.Nakamura Ver.1.4 mod start
                     ,xel.uom_code                                                       uom_code                      --単位
---                    ,xel.line_uom                                                       uom_code                      --単位
--- 2009/02/17 T.Nakamura Ver.1.4 mod end
--- 2009/04/27 K.Kiriu Ver.1.10 mod end
                     ,xel.unit_price_class                                               unit_price_class              --単価区分
                     ,xel.parent_packing_number                                          parent_packing_number         --親梱包番号
                     ,xel.packing_number                                                 packing_number                --梱包番号
@@ -1883,13 +2586,9 @@ AS
                     ,xel.general_succeeded_item8                                        general_succeeded_item8       --汎用引継ぎ項目８
                     ,xel.general_succeeded_item9                                        general_succeeded_item9       --汎用引継ぎ項目９
                     ,xel.general_succeeded_item10                                       general_succeeded_item10      --汎用引継ぎ項目１０
-                    ,TO_CHAR(avtab.tax_rate)                                            general_add_item1             --汎用付加項目１(税率)
---******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
---                    ,SUBSTRB(i_base_rec.phone_number, 1, 10)                            general_add_item2             --汎用付加項目２
---                    ,SUBSTRB(i_base_rec.phone_number, 11, 10)                           general_add_item3             --汎用付加項目３
+                    ,TO_CHAR(xeh.tax_rate)                                              general_add_item1             --汎用付加項目１(税率)
                     ,SUBSTRB(cdm.phone_number, 1, 10)                                   general_add_item2             --汎用付加項目２
                     ,SUBSTRB(cdm.phone_number, 11, 10)                                  general_add_item3             --汎用付加項目３
---******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
                     ,xel.general_add_item4                                              general_add_item4             --汎用付加項目４
                     ,xel.general_add_item5                                              general_add_item5             --汎用付加項目５
                     ,xel.general_add_item6                                              general_add_item6             --汎用付加項目６
@@ -1944,7 +2643,580 @@ AS
                     ,TO_CHAR(xeh.total_line_qty)                                        total_line_qty                --トータル行数
                     ,TO_CHAR(xeh.total_invoice_qty)                                     total_invoice_qty             --トータル伝票枚数
                     ,xeh.chain_peculiar_area_footer                                     chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
-              FROM   xxcos_edi_headers                                                  xeh                           --EDIヘッダ情報テーブル
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
+                    ,oola.order_quantity_uom                                            order_quantity_uom            -- 単位(受注明細)
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
+              FROM   (SELECT xeh.medium_class                                            medium_class                  --媒体区分
+                            ,xeh.file_no                                                 file_no                       --ファイルＮｏ
+                            ,xeh.info_class                                              info_class                    --情報区分
+                            ,xeh.edi_chain_code                                          edi_chain_code                --ＥＤＩチェーン店コード
+                            ,xeh.chain_code                                              chain_code                    --チェーン店コード
+                            ,xeh.chain_name                                              chain_name                    --チェーン店名（漢字）
+                            ,xeh.chain_name_alt                                          chain_name_alt                --チェーン店名（カナ）
+                            ,hca.account_number                                          account_number                --顧客コード
+                            ,hp.party_name                                               party_name                    --顧客名（漢字）
+                            ,hp.organization_name_phonetic                               organization_name_phonetic    --顧客名（カナ）
+                            ,xeh.company_code                                            company_code                  --社コード
+                            ,xeh.company_name                                            company_name                  --社名（漢字）
+                            ,xeh.company_name_alt                                        company_name_alt              --社名（カナ）
+                            ,xeh.shop_code                                               shop_code                     --店コード
+                            ,xeh.shop_name                                               shop_name                     --店名（漢字）
+                            ,xca.cust_store_name                                         cust_store_name               --
+                            ,xeh.shop_name_alt                                           shop_name_alt                 --店名（カナ）
+                            ,xeh.delivery_center_code                                    delivery_center_code          --納入センターコード
+                            ,xca.deli_center_code                                        deli_center_code
+                            ,xeh.delivery_center_name                                    delivery_center_name          --納入センター名（漢字）
+                            ,xca.deli_center_name                                        deli_center_name
+                            ,xeh.delivery_center_name_alt                                delivery_center_name_alt      --納入センター名（カナ）
+                            ,xeh.order_date                                              order_date                    --発注日
+                            ,xeh.center_delivery_date                                    center_delivery_date          --センター納品日
+                            ,xeh.result_delivery_date                                    result_delivery_date          --実納品日
+                            ,xeh.shop_delivery_date                                      shop_delivery_date            --店舗納品日
+                            ,xeh.data_creation_date_edi_data                             data_creation_date_edi_data   --データ作成日（ＥＤＩデータ中）
+                            ,xeh.data_creation_time_edi_data                             data_creation_time_edi_data   --データ作成時刻（ＥＤＩデータ中）
+                            ,xeh.invoice_class                                           invoice_class                 --伝票区分
+                            ,xeh.small_classification_code                               small_classification_code     --小分類コード
+                            ,xeh.small_classification_name                               small_classification_name     --小分類名
+                            ,xeh.middle_classification_code                              middle_classification_code    --中分類コード
+                            ,xeh.middle_classification_name                              middle_classification_name    --中分類名
+                            ,xeh.big_classification_code                                 big_classification_code       --大分類コード
+                            ,xeh.big_classification_name                                 big_classification_name       --大分類名
+                            ,xeh.other_party_department_code                             other_party_department_code   --相手先部門コード
+                            ,xeh.other_party_order_number                                other_party_order_number      --相手先発注番号
+                            ,xeh.check_digit_class                                       check_digit_class             --チェックデジット有無区分
+                            ,xeh.invoice_number                                          invoice_number                --伝票番号
+                            ,xeh.check_digit                                             check_digit                   --チェックデジット
+                            ,xeh.close_date                                              close_date                    --月限
+                            ,xeh.delivery_classe                                         delivery_classe               --配送区分
+                            ,xeh.opportunity_no                                          opportunity_no                --便Ｎｏ
+                            ,xeh.contact_to                                              contact_to                    --連絡先
+                            ,xeh.route_sales                                             route_sales                   --ルートセールス
+                            ,xeh.corporate_code                                          corporate_code                --法人コード
+                            ,xeh.maker_name                                              maker_name                    --メーカー名
+                            ,xeh.area_code                                               area_code                     --地区コード
+                            ,xca.edi_district_name                                       edi_district_name             --地区名（漢字）
+                            ,xca.edi_district_kana                                       edi_district_kana             --地区名（カナ）
+                            ,xeh.vendor_code                                             vendor_code                   --取引先コード
+                            ,xca.torihikisaki_code                                       torihikisaki_code
+                            ,xeh.vendor_name1_alt                                        vendor_name1_alt              --取引先名１（カナ）
+                            ,xeh.vendor_name2_alt                                        vendor_name2_alt              --取引先名２（カナ）
+                            ,xeh.vendor_charge                                           vendor_charge                 --取引先担当者
+                            ,xeh.deliver_to_code_itouen                                  deliver_to_code_itouen        --届け先コード（伊藤園）
+                            ,xeh.deliver_to_code_chain                                   deliver_to_code_chain         --届け先コード（チェーン店）
+                            ,xeh.deliver_to                                              deliver_to                    --届け先（漢字）
+                            ,xeh.deliver_to1_alt                                         deliver_to1_alt               --届け先１（カナ）
+                            ,xeh.deliver_to2_alt                                         deliver_to2_alt               --届け先２（カナ）
+                            ,xeh.deliver_to_address                                      deliver_to_address            --届け先住所（漢字）
+                            ,xeh.deliver_to_address_alt                                  deliver_to_address_alt        --届け先住所（カナ）
+                            ,xeh.deliver_to_tel                                          deliver_to_tel                --届け先ＴＥＬ
+                            ,xeh.balance_accounts_code                                   balance_accounts_code         --帳合先コード
+                            ,xeh.balance_accounts_company_code                           balance_accounts_company_code --帳合先社コード
+                            ,xeh.balance_accounts_shop_code                              balance_accounts_shop_code    --帳合先店コード
+                            ,xeh.balance_accounts_name                                   balance_accounts_name         --帳合先名（漢字）
+                            ,xeh.balance_accounts_name_alt                               balance_accounts_name_alt     --帳合先名（カナ）
+                            ,xeh.balance_accounts_address                                balance_accounts_address      --帳合先住所（漢字）
+                            ,xeh.balance_accounts_address_alt                            balance_accounts_address_alt  --帳合先住所（カナ）
+                            ,xeh.balance_accounts_tel                                    balance_accounts_tel          --帳合先ＴＥＬ
+                            ,xeh.order_possible_date                                     order_possible_date           --受注可能日
+                            ,xeh.permission_possible_date                                permission_possible_date      --許容可能日
+                            ,xeh.forward_month                                           forward_month                 --先限年月日
+                            ,xeh.payment_settlement_date                                 payment_settlement_date       --支払決済日
+                            ,xeh.handbill_start_date_active                              handbill_start_date_active    --チラシ開始日
+                            ,xeh.billing_due_date                                        billing_due_date              --請求締日
+                            ,xeh.shipping_time                                           shipping_time                 --出荷時刻
+                            ,xeh.delivery_schedule_time                                  delivery_schedule_time        --納品予定時間
+                            ,xeh.order_time                                              order_time                    --発注時間
+                            ,xeh.general_date_item1                                      general_date_item1            --汎用日付項目１
+                            ,xeh.general_date_item2                                      general_date_item2            --汎用日付項目２
+                            ,xeh.general_date_item3                                      general_date_item3            --汎用日付項目３
+                            ,xeh.general_date_item4                                      general_date_item4            --汎用日付項目４
+                            ,xeh.general_date_item5                                      general_date_item5            --汎用日付項目５
+                            ,xeh.arrival_shipping_class                                  arrival_shipping_class        --入出荷区分
+                            ,xeh.vendor_class                                            vendor_class                  --取引先区分
+                            ,xeh.invoice_detailed_class                                  invoice_detailed_class        --伝票内訳区分
+                            ,xeh.unit_price_use_class                                    unit_price_use_class          --単価使用区分
+                            ,xeh.sub_distribution_center_code                            sub_distribution_center_code  --サブ物流センターコード
+                            ,xeh.sub_distribution_center_name                            sub_distribution_center_name  --サブ物流センターコード名
+                            ,xeh.center_delivery_method                                  center_delivery_method        --センター納品方法
+                            ,xeh.center_use_class                                        center_use_class              --センター利用区分
+                            ,xeh.center_whse_class                                       center_whse_class             --センター倉庫区分
+                            ,xeh.center_area_class                                       center_area_class             --センター地域区分
+                            ,xeh.center_arrival_class                                    center_arrival_class          --センター入荷区分
+                            ,xeh.depot_class                                             depot_class                   --デポ区分
+                            ,xeh.tcdc_class                                              tcdc_class                    --ＴＣＤＣ区分
+                            ,xeh.upc_flag                                                upc_flag                      --ＵＰＣフラグ
+                            ,xeh.simultaneously_class                                    simultaneously_class          --一斉区分
+                            ,xeh.business_id                                             business_id                   --業務ＩＤ
+                            ,xeh.whse_directly_class                                     whse_directly_class           --倉直区分
+                            ,xeh.premium_rebate_class                                    premium_rebate_class          --項目種別
+                            ,xeh.item_type                                               item_type                     --景品割戻区分
+                            ,xeh.cloth_house_food_class                                  cloth_house_food_class        --衣家食区分
+                            ,xeh.mix_class                                               mix_class                     --混在区分
+                            ,xeh.stk_class                                               stk_class                     --在庫区分
+                            ,xeh.last_modify_site_class                                  last_modify_site_class        --最終修正場所区分
+                            ,xeh.report_class                                            report_class                  --帳票区分
+                            ,xeh.addition_plan_class                                     addition_plan_class           --追加・計画区分
+                            ,xeh.registration_class                                      registration_class            --登録区分
+                            ,xeh.specific_class                                          specific_class                --特定区分
+                            ,xeh.dealings_class                                          dealings_class                --取引区分
+                            ,xeh.order_class                                             order_class                   --発注区分
+                            ,xeh.sum_line_class                                          sum_line_class                --集計明細区分
+                            ,xeh.shipping_guidance_class                                 shipping_guidance_class       --出荷案内以外区分
+                            ,xeh.shipping_class                                          shipping_class                --出荷区分
+                            ,xeh.product_code_use_class                                  product_code_use_class        --商品コード使用区分
+                            ,xeh.cargo_item_class                                        cargo_item_class              --積送品区分
+                            ,xeh.ta_class                                                ta_class                      --Ｔ／Ａ区分
+                            ,xeh.plan_code                                               plan_code                     --企画コード
+                            ,xeh.category_code                                           category_code                 --カテゴリーコード
+                            ,xeh.category_class                                          category_class                --カテゴリー区分
+                            ,xeh.carrier_means                                           carrier_means                 --運送手段
+                            ,xeh.counter_code                                            counter_code                  --売場コード
+                            ,xeh.move_sign                                               move_sign                     --移動サイン
+                            ,xeh.medium_class                                            eos_handwriting_class         --ＥＯＳ・手書区分
+                            ,xeh.delivery_to_section_code                                delivery_to_section_code      --納品先課コード
+                            ,xeh.invoice_detailed                                        invoice_detailed              --伝票内訳
+                            ,xeh.attach_qty                                              attach_qty                    --添付数
+                            ,xeh.other_party_floor                                       other_party_floor             --フロア
+                            ,xeh.text_no                                                 text_no                       --ＴＥＸＴＮｏ
+                            ,xeh.in_store_code                                           in_store_code                 --インストアコード
+                            ,xeh.tag_data                                                tag_data                      --タグ
+                            ,xeh.competition_code                                        competition_code              --競合
+                            ,xeh.billing_chair                                           billing_chair                 --請求口座
+                            ,xeh.chain_store_code                                        chain_store_code              --チェーンストアーコード
+                            ,xeh.chain_store_short_name                                  chain_store_short_name        --チェーンストアーコード略式名称
+                            ,xeh.direct_delivery_rcpt_fee                                direct_delivery_rcpt_fee      --直配送／引取料
+                            ,xeh.bill_info                                               bill_info                     --手形情報
+                            ,xeh.description                                             description                   --摘要
+                            ,xeh.interior_code                                           interior_code                 --内部コード
+                            ,xeh.order_info_delivery_category                            order_info_delivery_category  --発注情報　納品カテゴリー
+                            ,xeh.purchase_type                                           purchase_type                 --仕入形態
+                            ,xeh.delivery_to_name_alt                                    delivery_to_name_alt          --納品場所名（カナ）
+                            ,xeh.shop_opened_site                                        shop_opened_site              --店出場所
+                            ,xeh.counter_name                                            counter_name                  --売場名
+                            ,xeh.extension_number                                        extension_number              --内線番号
+                            ,xeh.charge_name                                             charge_name                   --担当者名
+                            ,xeh.price_tag                                               price_tag                     --値札
+                            ,xeh.tax_type                                                tax_type                      --税種
+                            ,xeh.consumption_tax_class                                   consumption_tax_class         --消費税区分
+                            ,xeh.brand_class                                             brand_class                   --ＢＲ
+                            ,xeh.id_code                                                 id_code                       --ＩＤコード
+                            ,xeh.department_code                                         department_code               --百貨店コード
+                            ,xeh.department_name                                         department_name               --百貨店名
+                            ,xeh.item_type_number                                        item_type_number              --品別番号
+                            ,xeh.description_department                                  description_department        --摘要（百貨店）
+                            ,xeh.price_tag_method                                        price_tag_method              --値札方法
+                            ,xeh.reason_column                                           reason_column                 --自由欄
+                            ,xeh.a_column_header                                         a_column_header               --Ａ欄ヘッダ
+                            ,xeh.d_column_header                                         d_column_header               --Ｄ欄ヘッダ
+                            ,xeh.brand_code                                              brand_code                    --ブランドコード
+                            ,xeh.line_code                                               line_code                     --ラインコード
+                            ,xeh.class_code                                              class_code                    --クラスコード
+                            ,xeh.a1_column                                               a1_column                     --Ａ－１欄
+                            ,xeh.b1_column                                               b1_column                     --Ｂ－１欄
+                            ,xeh.c1_column                                               c1_column                     --Ｃ－１欄
+                            ,xeh.d1_column                                               d1_column                     --Ｄ－１欄
+                            ,xeh.e1_column                                               e1_column                     --Ｅ－１欄
+                            ,xeh.a2_column                                               a2_column                     --Ａ－２欄
+                            ,xeh.b2_column                                               b2_column                     --Ｂ－２欄
+                            ,xeh.c2_column                                               c2_column                     --Ｃ－２欄
+                            ,xeh.d2_column                                               d2_column                     --Ｄ－２欄
+                            ,xeh.e2_column                                               e2_column                     --Ｅ－２欄
+                            ,xeh.a3_column                                               a3_column                     --Ａ－３欄
+                            ,xeh.b3_column                                               b3_column                     --Ｂ－３欄
+                            ,xeh.c3_column                                               c3_column                     --Ｃ－３欄
+                            ,xeh.d3_column                                               d3_column                     --Ｄ－３欄
+                            ,xeh.e3_column                                               e3_column                     --Ｅ－３欄
+                            ,xeh.f1_column                                               f1_column                     --Ｆ－１欄
+                            ,xeh.g1_column                                               g1_column                     --Ｇ－１欄
+                            ,xeh.h1_column                                               h1_column                     --Ｈ－１欄
+                            ,xeh.i1_column                                               i1_column                     --Ｉ－１欄
+                            ,xeh.j1_column                                               j1_column                     --Ｊ－１欄
+                            ,xeh.k1_column                                               k1_column                     --Ｋ－１欄
+                            ,xeh.l1_column                                               l1_column                     --Ｌ－１欄
+                            ,xeh.f2_column                                               f2_column                     --Ｆ－２欄
+                            ,xeh.g2_column                                               g2_column                     --Ｇ－２欄
+                            ,xeh.h2_column                                               h2_column                     --Ｈ－２欄
+                            ,xeh.i2_column                                               i2_column                     --Ｉ－２欄
+                            ,xeh.j2_column                                               j2_column                     --Ｊ－２欄
+                            ,xeh.k2_column                                               k2_column                     --Ｋ－２欄
+                            ,xeh.l2_column                                               l2_column                     --Ｌ－２欄
+                            ,xeh.f3_column                                               f3_column                     --Ｆ－３欄
+                            ,xeh.g3_column                                               g3_column                     --Ｇ－３欄
+                            ,xeh.h3_column                                               h3_column                     --Ｈ－３欄
+                            ,xeh.i3_column                                               i3_column                     --Ｉ－３欄
+                            ,xeh.j3_column                                               j3_column                     --Ｊ－３欄
+                            ,xeh.k3_column                                               k3_column                     --Ｋ－３欄
+                            ,xeh.l3_column                                               l3_column                     --Ｌ－３欄
+                            ,xeh.chain_peculiar_area_header                              chain_peculiar_area_header    --チェーン店固有エリア（ヘッダー）
+                            ,xeh.order_connection_number                                 order_connection_number       --受注関連番号（仮）
+                            ,avtab.tax_rate                                              tax_rate                      --汎用付加項目１(税率)
+                            ,xeh.total_indv_order_qty                                    total_indv_order_qty          --（総合計）発注数量（バラ）
+                            ,xeh.total_case_order_qty                                    total_case_order_qty          --（総合計）発注数量（ケース）
+                            ,xeh.total_ball_order_qty                                    total_ball_order_qty          --（総合計）発注数量（ボール）
+                            ,xeh.total_sum_order_qty                                     total_sum_order_qty           --（総合計）発注数量（合計、バラ）
+                            ,xeh.total_indv_shipping_qty                                 total_indv_shipping_qty       --（総合計）出荷数量（バラ）
+                            ,xeh.total_case_shipping_qty                                 total_case_shipping_qty       --（総合計）出荷数量（ケース）
+                            ,xeh.total_ball_shipping_qty                                 total_ball_shipping_qty       --（総合計）出荷数量（ボール）
+                            ,xeh.total_pallet_shipping_qty                               total_pallet_shipping_qty     --（総合計）出荷数量（パレット）
+                            ,xeh.total_sum_shipping_qty                                  total_sum_shipping_qty        --（総合計）出荷数量（合計、バラ）
+                            ,xeh.total_indv_stockout_qty                                 total_indv_stockout_qty       --（総合計）欠品数量（バラ）
+                            ,xeh.total_case_stockout_qty                                 total_case_stockout_qty       --（総合計）欠品数量（ケース）
+                            ,xeh.total_ball_stockout_qty                                 total_ball_stockout_qty       --（総合計）欠品数量（ボール）
+                            ,xeh.total_sum_stockout_qty                                  total_sum_stockout_qty        --（総合計）欠品数量（合計、バラ）
+                            ,xeh.total_case_qty                                          total_case_qty                --（総合計）ケース個口数
+                            ,xeh.total_fold_container_qty                                total_fold_container_qty      --（総合計）オリコン（バラ）個口数
+                            ,xeh.total_order_cost_amt                                    total_order_cost_amt          --（総合計）原価金額（発注）
+                            ,xeh.total_shipping_cost_amt                                 total_shipping_cost_amt       --（総合計）原価金額（出荷）
+                            ,xeh.total_stockout_cost_amt                                 total_stockout_cost_amt       --（総合計）原価金額（欠品）
+                            ,xeh.total_order_price_amt                                   total_order_price_amt         --（総合計）売価金額（発注）
+                            ,xeh.total_shipping_price_amt                                total_shipping_price_amt      --（総合計）売価金額（出荷）
+                            ,xeh.total_stockout_price_amt                                total_stockout_price_amt      --（総合計）売価金額（欠品）
+                            ,xeh.total_line_qty                                          total_line_qty                --トータル行数
+                            ,xeh.total_invoice_qty                                       total_invoice_qty             --トータル伝票枚数
+                            ,xeh.chain_peculiar_area_footer                              chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
+                            ,xca.delivery_base_code                                      delivery_base_code            --
+                            ,xeh.edi_header_info_id                                      edi_header_info_id
+-- ********************************** 2009/07/03 N.Maeda 1.11 ADD START ********************************************************** --
+                            ,xeh.conv_customer_code                                      conv_customer_code
+-- ********************************** 2009/07/03 N.Maeda 1.11 ADD START ********************************************************** --
+                      FROM   xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
+                            ,xxcmm_cust_accounts                                         xca                           --顧客マスタアドオン
+                            ,hz_cust_accounts                                            hca                           --顧客マスタ
+                            ,hz_parties                                                  hp                            --パーティマスタ
+                            ,xxcos_chain_store_security_v                                xcss                          --チェーン店店舗セキュリティビュー
+                            ,xxcos_lookup_values_v                                       xlvv2                         --税コードマスタ
+                            ,ar_vat_tax_all_b                                            avtab                         --税率マスタ
+                      WHERE  xeh.data_type_code         = cv_data_type_edi_order                                              --データ種コード
+                      AND (
+                             i_input_rec.info_div       IS NULL                                                               --情報区分
+                        OR   i_input_rec.info_div       IS NOT NULL AND xeh.info_class = i_input_rec.info_div
+                      )
+                      AND    xeh.edi_chain_code         = i_input_rec.chain_code                                              --EDIチェーン店コード
+                      AND    xeh.shop_code              = NVL( i_input_rec.store_code, xeh.shop_code)                         --店舗コード
+                      AND    NVL(TRUNC(xeh.shop_delivery_date)
+                                ,NVL(TRUNC(xeh.center_delivery_date)
+                                    ,NVL(TRUNC(xeh.order_date)
+                                        ,TRUNC(xeh.data_creation_date_edi_data))))
+                             BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
+                             AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)                                  --店舗納品日
+                      AND ( 
+                            i_input_rec.center_delivery_date_from IS NULL AND i_input_rec.center_delivery_date_to IS NULL
+                        OR  (
+                              xeh.center_delivery_date IS NOT NULL
+                          AND (
+                                 i_input_rec.center_delivery_date_to   IS NULL
+                            AND  TRUNC(xeh.center_delivery_date)       >= TO_DATE(i_input_rec.center_delivery_date_from, cv_date_fmt)
+                            OR   i_input_rec.center_delivery_date_from IS NULL
+                            AND  TRUNC(xeh.center_delivery_date)       <= TO_DATE(i_input_rec.center_delivery_date_to, cv_date_fmt)
+                            OR   TRUNC(xeh.center_delivery_date)
+                                 BETWEEN TO_DATE(i_input_rec.center_delivery_date_from, cv_date_fmt)
+                                 AND     TO_DATE(i_input_rec.center_delivery_date_to, cv_date_fmt)                            --センター納品日
+                          )
+                        )
+                      )
+                      AND    xeh.conv_customer_code IS NOT NULL
+                      --顧客マスタアドオン(店舗)抽出条件
+                      AND    xca.chain_store_code = xeh.edi_chain_code --EDIチェーン店コード
+                      AND    xca.store_code       = xeh.shop_code      --店舗コード
+                      --顧客マスタ(店舗)抽出条件
+                      AND    hca.cust_account_id        = xca.customer_id                                                     --顧客ID
+                      AND    hca.customer_class_code    IN (cv_cust_class_chain_store, cv_cust_class_uesama)                  --顧客区分
+                      --パーティマスタ(店舗)抽出条件
+                      AND    hp.party_id                = hca.party_id                                                        --パーティID
+                      --チェーン店店舗セキュリティビュー抽出条件
+                      AND    xcss.chain_code            = xeh.edi_chain_code                                                  --チェーン店コード
+                      AND    xcss.chain_store_code      = xeh.shop_code                                                       --店コード
+                      AND    xcss.user_id               = i_input_rec.user_id                                                 --ユーザID
+                      --税コードマスタ抽出条件
+                      AND    xlvv2.lookup_type          = ct_qc_consumption_tax_class
+                      AND    xlvv2.attribute3           = xca.tax_div
+                      AND    NVL(xeh.shop_delivery_date
+                                ,NVL(xeh.center_delivery_date
+                                    ,NVL(xeh.order_date
+                                        ,xeh.data_creation_date_edi_data)))
+                      BETWEEN NVL(xlvv2.start_date_active
+                                 ,NVL(xeh.shop_delivery_date
+                                     ,NVL(xeh.center_delivery_date
+                                         ,NVL(xeh.order_date
+                                       ,xeh.data_creation_date_edi_data))))
+                      AND     NVL(xlvv2.end_date_active
+                                  ,NVL(xeh.shop_delivery_date
+                                     ,NVL(xeh.center_delivery_date
+                                         ,NVL(xeh.order_date
+                                             ,xeh.data_creation_date_edi_data))))
+                      --税率マスタ抽出条件
+                      AND    avtab.tax_code             = xlvv2.attribute2
+                      AND    avtab.set_of_books_id      = i_prf_rec.set_of_books_id
+                      AND    avtab.org_id               = i_prf_rec.org_id                                                 --MO:営業単位
+                      AND    avtab.enabled_flag         = cv_enabled_flag                                                  --使用可能フラグ
+                      AND    i_other_rec.process_date
+                        BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
+                        AND     NVL( avtab.end_date   ,i_other_rec.process_date )
+                      UNION ALL
+                      SELECT xeh.medium_class                                            medium_class                  --媒体区分
+                            ,xeh.file_no                                                 file_no                       --ファイルＮｏ
+                            ,xeh.info_class                                              info_class                    --情報区分
+                            ,xeh.edi_chain_code                                          edi_chain_code                --ＥＤＩチェーン店コード
+                            ,xeh.chain_code                                              chain_code                    --チェーン店コード
+                            ,xeh.chain_name                                              chain_name                    --チェーン店名（漢字）
+                            ,xeh.chain_name_alt                                          chain_name_alt                --チェーン店名（カナ）
+                            ,NULL                                                        account_number                --顧客コード
+                            ,NULL                                                        party_name                    --顧客名（漢字）
+                            ,NULL                                                        organization_name_phonetic    --顧客名（カナ）
+                            ,xeh.company_code                                            company_code                  --社コード
+                            ,xeh.company_name                                            company_name                  --社名（漢字）
+                            ,xeh.company_name_alt                                        company_name_alt              --社名（カナ）
+                            ,xeh.shop_code                                               shop_code                     --店コード
+                            ,xeh.shop_name                                               shop_name                     --店名（漢字）
+                            ,NULL                                                        cust_store_name               --
+                            ,xeh.shop_name_alt                                           shop_name_alt                 --店名（カナ）
+                            ,xeh.delivery_center_code                                    delivery_center_code          --納入センターコード
+                            ,NULL                                                        deli_center_code
+                            ,xeh.delivery_center_name                                    delivery_center_name          --納入センター名（漢字）
+                            ,NULL                                                        deli_center_name
+                            ,xeh.delivery_center_name_alt                                delivery_center_name_alt      --納入センター名（カナ）
+                            ,xeh.order_date                                              order_date                    --発注日
+                            ,xeh.center_delivery_date                                    center_delivery_date          --センター納品日
+                            ,xeh.result_delivery_date                                    result_delivery_date          --実納品日
+                            ,xeh.shop_delivery_date                                      shop_delivery_date            --店舗納品日
+                            ,xeh.data_creation_date_edi_data                             data_creation_date_edi_data   --データ作成日（ＥＤＩデータ中）
+                            ,xeh.data_creation_time_edi_data                             data_creation_time_edi_data   --データ作成時刻（ＥＤＩデータ中）
+                            ,xeh.invoice_class                                           invoice_class                 --伝票区分
+                            ,xeh.small_classification_code                               small_classification_code     --小分類コード
+                            ,xeh.small_classification_name                               small_classification_name     --小分類名
+                            ,xeh.middle_classification_code                              middle_classification_code    --中分類コード
+                            ,xeh.middle_classification_name                              middle_classification_name    --中分類名
+                            ,xeh.big_classification_code                                 big_classification_code       --大分類コード
+                            ,xeh.big_classification_name                                 big_classification_name       --大分類名
+                            ,xeh.other_party_department_code                             other_party_department_code   --相手先部門コード
+                            ,xeh.other_party_order_number                                other_party_order_number      --相手先発注番号
+                            ,xeh.check_digit_class                                       check_digit_class             --チェックデジット有無区分
+                            ,xeh.invoice_number                                          invoice_number                --伝票番号
+                            ,xeh.check_digit                                             check_digit                   --チェックデジット
+                            ,xeh.close_date                                              close_date                    --月限
+                            ,xeh.delivery_classe                                         delivery_classe               --配送区分
+                            ,xeh.opportunity_no                                          opportunity_no                --便Ｎｏ
+                            ,xeh.contact_to                                              contact_to                    --連絡先
+                            ,xeh.route_sales                                             route_sales                   --ルートセールス
+                            ,xeh.corporate_code                                          corporate_code                --法人コード
+                            ,xeh.maker_name                                              maker_name                    --メーカー名
+                            ,xeh.area_code                                               area_code                     --地区コード
+                            ,NULL                                                        edi_district_name             --地区名（漢字）
+                            ,NULL                                                        edi_district_kana             --地区名（カナ）
+                            ,xeh.vendor_code                                             vendor_code                   --取引先コード
+                            ,NULL                                                        torihikisaki_code
+                            ,xeh.vendor_name1_alt                                        vendor_name1_alt              --取引先名１（カナ）
+                            ,xeh.vendor_name2_alt                                        vendor_name2_alt              --取引先名２（カナ）
+                            ,xeh.vendor_charge                                           vendor_charge                 --取引先担当者
+                            ,xeh.deliver_to_code_itouen                                  deliver_to_code_itouen        --届け先コード（伊藤園）
+                            ,xeh.deliver_to_code_chain                                   deliver_to_code_chain         --届け先コード（チェーン店）
+                            ,xeh.deliver_to                                              deliver_to                    --届け先（漢字）
+                            ,xeh.deliver_to1_alt                                         deliver_to1_alt               --届け先１（カナ）
+                            ,xeh.deliver_to2_alt                                         deliver_to2_alt               --届け先２（カナ）
+                            ,xeh.deliver_to_address                                      deliver_to_address            --届け先住所（漢字）
+                            ,xeh.deliver_to_address_alt                                  deliver_to_address_alt        --届け先住所（カナ）
+                            ,xeh.deliver_to_tel                                          deliver_to_tel                --届け先ＴＥＬ
+                            ,xeh.balance_accounts_code                                   balance_accounts_code         --帳合先コード
+                            ,xeh.balance_accounts_company_code                           balance_accounts_company_code --帳合先社コード
+                            ,xeh.balance_accounts_shop_code                              balance_accounts_shop_code    --帳合先店コード
+                            ,xeh.balance_accounts_name                                   balance_accounts_name         --帳合先名（漢字）
+                            ,xeh.balance_accounts_name_alt                               balance_accounts_name_alt     --帳合先名（カナ）
+                            ,xeh.balance_accounts_address                                balance_accounts_address      --帳合先住所（漢字）
+                            ,xeh.balance_accounts_address_alt                            balance_accounts_address_alt  --帳合先住所（カナ）
+                            ,xeh.balance_accounts_tel                                    balance_accounts_tel          --帳合先ＴＥＬ
+                            ,xeh.order_possible_date                                     order_possible_date           --受注可能日
+                            ,xeh.permission_possible_date                                permission_possible_date      --許容可能日
+                            ,xeh.forward_month                                           forward_month                 --先限年月日
+                            ,xeh.payment_settlement_date                                 payment_settlement_date       --支払決済日
+                            ,xeh.handbill_start_date_active                              handbill_start_date_active    --チラシ開始日
+                            ,xeh.billing_due_date                                        billing_due_date              --請求締日
+                            ,xeh.shipping_time                                           shipping_time                 --出荷時刻
+                            ,xeh.delivery_schedule_time                                  delivery_schedule_time        --納品予定時間
+                            ,xeh.order_time                                              order_time                    --発注時間
+                            ,xeh.general_date_item1                                      general_date_item1            --汎用日付項目１
+                            ,xeh.general_date_item2                                      general_date_item2            --汎用日付項目２
+                            ,xeh.general_date_item3                                      general_date_item3            --汎用日付項目３
+                            ,xeh.general_date_item4                                      general_date_item4            --汎用日付項目４
+                            ,xeh.general_date_item5                                      general_date_item5            --汎用日付項目５
+                            ,xeh.arrival_shipping_class                                  arrival_shipping_class        --入出荷区分
+                            ,xeh.vendor_class                                            vendor_class                  --取引先区分
+                            ,xeh.invoice_detailed_class                                  invoice_detailed_class        --伝票内訳区分
+                            ,xeh.unit_price_use_class                                    unit_price_use_class          --単価使用区分
+                            ,xeh.sub_distribution_center_code                            sub_distribution_center_code  --サブ物流センターコード
+                            ,xeh.sub_distribution_center_name                            sub_distribution_center_name  --サブ物流センターコード名
+                            ,xeh.center_delivery_method                                  center_delivery_method        --センター納品方法
+                            ,xeh.center_use_class                                        center_use_class              --センター利用区分
+                            ,xeh.center_whse_class                                       center_whse_class             --センター倉庫区分
+                            ,xeh.center_area_class                                       center_area_class             --センター地域区分
+                            ,xeh.center_arrival_class                                    center_arrival_class          --センター入荷区分
+                            ,xeh.depot_class                                             depot_class                   --デポ区分
+                            ,xeh.tcdc_class                                              tcdc_class                    --ＴＣＤＣ区分
+                            ,xeh.upc_flag                                                upc_flag                      --ＵＰＣフラグ
+                            ,xeh.simultaneously_class                                    simultaneously_class          --一斉区分
+                            ,xeh.business_id                                             business_id                   --業務ＩＤ
+                            ,xeh.whse_directly_class                                     whse_directly_class           --倉直区分
+                            ,xeh.premium_rebate_class                                    premium_rebate_class          --項目種別
+                            ,xeh.item_type                                               item_type                     --景品割戻区分
+                            ,xeh.cloth_house_food_class                                  cloth_house_food_class        --衣家食区分
+                            ,xeh.mix_class                                               mix_class                     --混在区分
+                            ,xeh.stk_class                                               stk_class                     --在庫区分
+                            ,xeh.last_modify_site_class                                  last_modify_site_class        --最終修正場所区分
+                            ,xeh.report_class                                            report_class                  --帳票区分
+                            ,xeh.addition_plan_class                                     addition_plan_class           --追加・計画区分
+                            ,xeh.registration_class                                      registration_class            --登録区分
+                            ,xeh.specific_class                                          specific_class                --特定区分
+                            ,xeh.dealings_class                                          dealings_class                --取引区分
+                            ,xeh.order_class                                             order_class                   --発注区分
+                            ,xeh.sum_line_class                                          sum_line_class                --集計明細区分
+                            ,xeh.shipping_guidance_class                                 shipping_guidance_class       --出荷案内以外区分
+                            ,xeh.shipping_class                                          shipping_class                --出荷区分
+                            ,xeh.product_code_use_class                                  product_code_use_class        --商品コード使用区分
+                            ,xeh.cargo_item_class                                        cargo_item_class              --積送品区分
+                            ,xeh.ta_class                                                ta_class                      --Ｔ／Ａ区分
+                            ,xeh.plan_code                                               plan_code                     --企画コード
+                            ,xeh.category_code                                           category_code                 --カテゴリーコード
+                            ,xeh.category_class                                          category_class                --カテゴリー区分
+                            ,xeh.carrier_means                                           carrier_means                 --運送手段
+                            ,xeh.counter_code                                            counter_code                  --売場コード
+                            ,xeh.move_sign                                               move_sign                     --移動サイン
+                            ,xeh.medium_class                                            eos_handwriting_class         --ＥＯＳ・手書区分
+                            ,xeh.delivery_to_section_code                                delivery_to_section_code      --納品先課コード
+                            ,xeh.invoice_detailed                                        invoice_detailed              --伝票内訳
+                            ,xeh.attach_qty                                              attach_qty                    --添付数
+                            ,xeh.other_party_floor                                       other_party_floor             --フロア
+                            ,xeh.text_no                                                 text_no                       --ＴＥＸＴＮｏ
+                            ,xeh.in_store_code                                           in_store_code                 --インストアコード
+                            ,xeh.tag_data                                                tag_data                      --タグ
+                            ,xeh.competition_code                                        competition_code              --競合
+                            ,xeh.billing_chair                                           billing_chair                 --請求口座
+                            ,xeh.chain_store_code                                        chain_store_code              --チェーンストアーコード
+                            ,xeh.chain_store_short_name                                  chain_store_short_name        --チェーンストアーコード略式名称
+                            ,xeh.direct_delivery_rcpt_fee                                direct_delivery_rcpt_fee      --直配送／引取料
+                            ,xeh.bill_info                                               bill_info                     --手形情報
+                            ,xeh.description                                             description                   --摘要
+                            ,xeh.interior_code                                           interior_code                 --内部コード
+                            ,xeh.order_info_delivery_category                            order_info_delivery_category  --発注情報　納品カテゴリー
+                            ,xeh.purchase_type                                           purchase_type                 --仕入形態
+                            ,xeh.delivery_to_name_alt                                    delivery_to_name_alt          --納品場所名（カナ）
+                            ,xeh.shop_opened_site                                        shop_opened_site              --店出場所
+                            ,xeh.counter_name                                            counter_name                  --売場名
+                            ,xeh.extension_number                                        extension_number              --内線番号
+                            ,xeh.charge_name                                             charge_name                   --担当者名
+                            ,xeh.price_tag                                               price_tag                     --値札
+                            ,xeh.tax_type                                                tax_type                      --税種
+                            ,xeh.consumption_tax_class                                   consumption_tax_class         --消費税区分
+                            ,xeh.brand_class                                             brand_class                   --ＢＲ
+                            ,xeh.id_code                                                 id_code                       --ＩＤコード
+                            ,xeh.department_code                                         department_code               --百貨店コード
+                            ,xeh.department_name                                         department_name               --百貨店名
+                            ,xeh.item_type_number                                        item_type_number              --品別番号
+                            ,xeh.description_department                                  description_department        --摘要（百貨店）
+                            ,xeh.price_tag_method                                        price_tag_method              --値札方法
+                            ,xeh.reason_column                                           reason_column                 --自由欄
+                            ,xeh.a_column_header                                         a_column_header               --Ａ欄ヘッダ
+                            ,xeh.d_column_header                                         d_column_header               --Ｄ欄ヘッダ
+                            ,xeh.brand_code                                              brand_code                    --ブランドコード
+                            ,xeh.line_code                                               line_code                     --ラインコード
+                            ,xeh.class_code                                              class_code                    --クラスコード
+                            ,xeh.a1_column                                               a1_column                     --Ａ－１欄
+                            ,xeh.b1_column                                               b1_column                     --Ｂ－１欄
+                            ,xeh.c1_column                                               c1_column                     --Ｃ－１欄
+                            ,xeh.d1_column                                               d1_column                     --Ｄ－１欄
+                            ,xeh.e1_column                                               e1_column                     --Ｅ－１欄
+                            ,xeh.a2_column                                               a2_column                     --Ａ－２欄
+                            ,xeh.b2_column                                               b2_column                     --Ｂ－２欄
+                            ,xeh.c2_column                                               c2_column                     --Ｃ－２欄
+                            ,xeh.d2_column                                               d2_column                     --Ｄ－２欄
+                            ,xeh.e2_column                                               e2_column                     --Ｅ－２欄
+                            ,xeh.a3_column                                               a3_column                     --Ａ－３欄
+                            ,xeh.b3_column                                               b3_column                     --Ｂ－３欄
+                            ,xeh.c3_column                                               c3_column                     --Ｃ－３欄
+                            ,xeh.d3_column                                               d3_column                     --Ｄ－３欄
+                            ,xeh.e3_column                                               e3_column                     --Ｅ－３欄
+                            ,xeh.f1_column                                               f1_column                     --Ｆ－１欄
+                            ,xeh.g1_column                                               g1_column                     --Ｇ－１欄
+                            ,xeh.h1_column                                               h1_column                     --Ｈ－１欄
+                            ,xeh.i1_column                                               i1_column                     --Ｉ－１欄
+                            ,xeh.j1_column                                               j1_column                     --Ｊ－１欄
+                            ,xeh.k1_column                                               k1_column                     --Ｋ－１欄
+                            ,xeh.l1_column                                               l1_column                     --Ｌ－１欄
+                            ,xeh.f2_column                                               f2_column                     --Ｆ－２欄
+                            ,xeh.g2_column                                               g2_column                     --Ｇ－２欄
+                            ,xeh.h2_column                                               h2_column                     --Ｈ－２欄
+                            ,xeh.i2_column                                               i2_column                     --Ｉ－２欄
+                            ,xeh.j2_column                                               j2_column                     --Ｊ－２欄
+                            ,xeh.k2_column                                               k2_column                     --Ｋ－２欄
+                            ,xeh.l2_column                                               l2_column                     --Ｌ－２欄
+                            ,xeh.f3_column                                               f3_column                     --Ｆ－３欄
+                            ,xeh.g3_column                                               g3_column                     --Ｇ－３欄
+                            ,xeh.h3_column                                               h3_column                     --Ｈ－３欄
+                            ,xeh.i3_column                                               i3_column                     --Ｉ－３欄
+                            ,xeh.j3_column                                               j3_column                     --Ｊ－３欄
+                            ,xeh.k3_column                                               k3_column                     --Ｋ－３欄
+                            ,xeh.l3_column                                               l3_column                     --Ｌ－３欄
+                            ,xeh.chain_peculiar_area_header                              chain_peculiar_area_header    --チェーン店固有エリア（ヘッダー）
+                            ,xeh.order_connection_number                                 order_connection_number       --受注関連番号（仮）
+                            ,NULL                                                        tax_rate                      --汎用付加項目１(税率)
+                            ,xeh.total_indv_order_qty                                    total_indv_order_qty          --（総合計）発注数量（バラ）
+                            ,xeh.total_case_order_qty                                    total_case_order_qty          --（総合計）発注数量（ケース）
+                            ,xeh.total_ball_order_qty                                    total_ball_order_qty          --（総合計）発注数量（ボール）
+                            ,xeh.total_sum_order_qty                                     total_sum_order_qty           --（総合計）発注数量（合計、バラ）
+                            ,xeh.total_indv_shipping_qty                                 total_indv_shipping_qty       --（総合計）出荷数量（バラ）
+                            ,xeh.total_case_shipping_qty                                 total_case_shipping_qty       --（総合計）出荷数量（ケース）
+                            ,xeh.total_ball_shipping_qty                                 total_ball_shipping_qty       --（総合計）出荷数量（ボール）
+                            ,xeh.total_pallet_shipping_qty                               total_pallet_shipping_qty     --（総合計）出荷数量（パレット）
+                            ,xeh.total_sum_shipping_qty                                  total_sum_shipping_qty        --（総合計）出荷数量（合計、バラ）
+                            ,xeh.total_indv_stockout_qty                                 total_indv_stockout_qty       --（総合計）欠品数量（バラ）
+                            ,xeh.total_case_stockout_qty                                 total_case_stockout_qty       --（総合計）欠品数量（ケース）
+                            ,xeh.total_ball_stockout_qty                                 total_ball_stockout_qty       --（総合計）欠品数量（ボール）
+                            ,xeh.total_sum_stockout_qty                                  total_sum_stockout_qty        --（総合計）欠品数量（合計、バラ）
+                            ,xeh.total_case_qty                                          total_case_qty                --（総合計）ケース個口数
+                            ,xeh.total_fold_container_qty                                total_fold_container_qty      --（総合計）オリコン（バラ）個口数
+                            ,xeh.total_order_cost_amt                                    total_order_cost_amt          --（総合計）原価金額（発注）
+                            ,xeh.total_shipping_cost_amt                                 total_shipping_cost_amt       --（総合計）原価金額（出荷）
+                            ,xeh.total_stockout_cost_amt                                 total_stockout_cost_amt       --（総合計）原価金額（欠品）
+                            ,xeh.total_order_price_amt                                   total_order_price_amt         --（総合計）売価金額（発注）
+                            ,xeh.total_shipping_price_amt                                total_shipping_price_amt      --（総合計）売価金額（出荷）
+                            ,xeh.total_stockout_price_amt                                total_stockout_price_amt      --（総合計）売価金額（欠品）
+                            ,xeh.total_line_qty                                          total_line_qty                --トータル行数
+                            ,xeh.total_invoice_qty                                       total_invoice_qty             --トータル伝票枚数
+                            ,xeh.chain_peculiar_area_footer                              chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
+                            ,NULL                                                        delivery_base_code            --
+                            ,xeh.edi_header_info_id                                      edi_header_info_id
+-- ********************************** 2009/07/03 N.Maeda 1.11 ADD START ********************************************************** --
+                            ,xeh.conv_customer_code                                      conv_customer_code
+-- ********************************** 2009/07/03 N.Maeda 1.11 ADD START ********************************************************** --
+                      FROM   xxcos_edi_headers                                           xeh                           --EDIヘッダ情報テーブル
+                      WHERE  xeh.data_type_code         = cv_data_type_edi_order                                              --データ種コード
+                      AND (
+                             i_input_rec.info_div       IS NULL                                                               --情報区分
+                        OR   i_input_rec.info_div       IS NOT NULL AND xeh.info_class = i_input_rec.info_div
+                      )
+                      AND    xeh.edi_chain_code         = i_input_rec.chain_code                                              --EDIチェーン店コード
+                      AND    i_input_rec.store_code IS NULL                                                                   --店舗コード
+                      AND    NVL(TRUNC(xeh.shop_delivery_date)
+                                ,NVL(TRUNC(xeh.center_delivery_date)
+                                    ,NVL(TRUNC(xeh.order_date)
+                                        ,TRUNC(xeh.data_creation_date_edi_data))))
+                             BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
+                             AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)                                  --店舗納品日
+                      AND ( 
+                            i_input_rec.center_delivery_date_from IS NULL AND i_input_rec.center_delivery_date_to IS NULL
+                        OR  (
+                              xeh.center_delivery_date IS NOT NULL
+                          AND (
+                                 i_input_rec.center_delivery_date_to   IS NULL
+                            AND  TRUNC(xeh.center_delivery_date)       >= TO_DATE(i_input_rec.center_delivery_date_from, cv_date_fmt)
+                            OR   i_input_rec.center_delivery_date_from IS NULL
+                            AND  TRUNC(xeh.center_delivery_date)       <= TO_DATE(i_input_rec.center_delivery_date_to, cv_date_fmt)
+                            OR   TRUNC(xeh.center_delivery_date)
+                                 BETWEEN TO_DATE(i_input_rec.center_delivery_date_from, cv_date_fmt)
+                                 AND     TO_DATE(i_input_rec.center_delivery_date_to, cv_date_fmt)                            --センター納品日
+                          )
+                        )
+                      )
+                      AND    xeh.conv_customer_code IS NULL
+                     )                                                                  xeh
                     ,xxcos_edi_lines                                                    xel                           --EDI明細情報テーブル
                     ,oe_order_headers_all                                               ooha                          --受注ヘッダ情報テーブル
                     ,oe_order_lines_all                                                 oola                          --受注明細情報テーブル
@@ -1963,87 +3235,41 @@ AS
                      )                                                                  ore                           --受注理由ビュー
                     ,xxcos_lookup_values_v                                              xlvv3                         --事由コードマスタ
                     ,oe_order_sources                                                   oos                           --受注ソーステーブル
-                    ,xxcmm_cust_accounts                                                xca                           --顧客マスタアドオン
-                    ,hz_cust_accounts                                                   hca                           --顧客マスタ
-                    ,hz_parties                                                         hp                            --パーティマスタ
                     ,ic_item_mst_b                                                      iimb                          --OPM品目マスタ
                     ,xxcmn_item_mst_b                                                   ximb                          --OPM品目マスタアドオン
                     ,mtl_system_items_b                                                 msib                          --DISC品目マスタ
                     ,xxcmm_system_items_b                                               xsib                          --DISC品目マスタアドオン
                     ,xxcos_head_prod_class_v                                            xhpc                          --本社商品区分ビュー
-                    ,xxcos_chain_store_security_v                                       xcss                          --チェーン店店舗セキュリティビュー
                     ,xxcos_lookup_values_v                                              xlvv                          --売上区分マスタ
                     ,oe_transaction_types_tl                                            ottt_l                        --受注タイプ(明細)
                     ,oe_transaction_types_tl                                            ottt_h                        --受注タイプ(ヘッダ)
-                    ,xxcos_lookup_values_v                                              xlvv2                         --税コードマスタ
-                    ,ar_vat_tax_all_b                                                   avtab                         --税率マスタ
- --******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
-                   ,(
-                    SELECT hca.account_number                                                  account_number               --顧客コード
-                          ,hp.party_name                                                       base_name                    --顧客名称
-                          ,hp.organization_name_phonetic                                       base_name_kana               --顧客名称(カナ)
-                          ,hl.state                                                            state                        --都道府県
-                          ,hl.city                                                             city                         --市・区
-                          ,hl.address1                                                         address1                     --住所１
-                          ,hl.address2                                                         address2                     --住所２
-                          ,hl.address_lines_phonetic                                           phone_number                 --電話番号
-                          ,xca.torihikisaki_code                                               customer_code                --取引先コード
-                    FROM   hz_cust_accounts                                                    hca                          --顧客マスタ
-                          ,xxcmm_cust_accounts                                                 xca                          --顧客マスタアドオン
-                          ,hz_parties                                                          hp                           --パーティマスタ
-                          ,hz_cust_acct_sites_all                                              hcas                         --顧客所在地
-                          ,hz_party_sites                                                      hps                          --パーティサイトマスタ
-                          ,hz_locations                                                        hl                           --事業所マスタ
-                    WHERE  hca.customer_class_code = cv_cust_class_base
-                    AND    xca.customer_id         = hca.cust_account_id
-                    AND    hp.party_id             = hca.party_id
-                    AND    hps.party_id            = hca.party_id
-                    AND    hl.location_id          = hps.location_id
-                    AND    hcas.cust_account_id    = hca.cust_account_id
-                    AND    hps.party_site_id       = hcas.party_site_id
-                    AND    hcas.org_id             = g_prf_rec.org_id
-                    )                                                                  cdm
---******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
-             --EDIヘッダ情報テーブル抽出条件
-              WHERE  xeh.data_type_code         = cv_data_type_edi_order                                              --データ種コード
-              AND (
-                     i_input_rec.info_div       IS NULL                                                               --情報区分
-                OR   i_input_rec.info_div       IS NOT NULL AND xeh.info_class = i_input_rec.info_div
-              )
-              AND    xeh.edi_chain_code         = i_input_rec.chain_code                                              --EDIチェーン店コード
---******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
---              AND (
---                     i_input_rec.store_code     IS NOT NULL AND xeh.shop_code = i_input_rec.store_code                --店舗コード
---                AND  xeh.shop_code              = xcss.chain_store_code
---                OR   i_input_rec.store_code     IS NULL     AND xeh.shop_code = xcss.chain_store_code
---              )
-              AND  xeh.shop_code                = NVL( i_input_rec.store_code, xeh.shop_code)
---******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
-              AND    NVL(TRUNC(xeh.shop_delivery_date)
-                        ,NVL(TRUNC(xeh.center_delivery_date)
-                            ,NVL(TRUNC(xeh.order_date)
-                                ,TRUNC(xeh.data_creation_date_edi_data))))
-                     BETWEEN TO_DATE(i_input_rec.shop_delivery_date_from, cv_date_fmt)
-                     AND     TO_DATE(i_input_rec.shop_delivery_date_to, cv_date_fmt)
--- 2009/02/18 T.Nakamura Ver.1.5 add start
-              AND ( 
-                    i_input_rec.center_delivery_date_from IS NULL AND i_input_rec.center_delivery_date_to IS NULL
-                OR  (
-                      xeh.center_delivery_date IS NOT NULL
-                  AND (
-                         i_input_rec.center_delivery_date_to   IS NULL
-                    AND  TRUNC(xeh.center_delivery_date)       >= TO_DATE(i_input_rec.center_delivery_date_from, cv_date_fmt)
-                    OR   i_input_rec.center_delivery_date_from IS NULL
-                    AND  TRUNC(xeh.center_delivery_date)       <= TO_DATE(i_input_rec.center_delivery_date_to, cv_date_fmt)
-                    OR   TRUNC(xeh.center_delivery_date)
-                         BETWEEN TO_DATE(i_input_rec.center_delivery_date_from, cv_date_fmt)
-                         AND     TO_DATE(i_input_rec.center_delivery_date_to, cv_date_fmt)
-                  )
-                )
-              )
--- 2009/02/18 T.Nakamura Ver.1.5 add end
+                    ,(
+                      SELECT hca.account_number                                  account_number                --顧客コード
+                            ,hp.party_name                                       base_name                     --顧客名称
+                            ,hp.organization_name_phonetic                       base_name_kana                --顧客名称(カナ)
+                            ,hl.state                                            state                         --都道府県
+                            ,hl.city                                             city                          --市・区
+                            ,hl.address1                                         address1                      --住所１
+                            ,hl.address2                                         address2                      --住所２
+                            ,hl.address_lines_phonetic                           phone_number                  --電話番号
+                            ,xca.torihikisaki_code                               customer_code                 --取引先コード
+                      FROM   hz_cust_accounts                                    hca                           --顧客マスタ
+                            ,xxcmm_cust_accounts                                 xca                           --顧客マスタアドオン
+                            ,hz_parties                                          hp                            --パーティマスタ
+                            ,hz_cust_acct_sites_all                              hcas                          --顧客所在地
+                            ,hz_party_sites                                      hps                           --パーティサイトマスタ
+                            ,hz_locations                                        hl                            --事業所マスタ
+                      WHERE  hca.customer_class_code = cv_cust_class_base
+                      AND    xca.customer_id         = hca.cust_account_id
+                      AND    hp.party_id             = hca.party_id
+                      AND    hps.party_id            = hca.party_id
+                      AND    hl.location_id          = hps.location_id
+                      AND    hcas.cust_account_id    = hca.cust_account_id
+                      AND    hps.party_site_id       = hcas.party_site_id
+                      AND    hcas.org_id             = g_prf_rec.org_id
+                     )                                                          cdm
               --EDI明細情報テーブル抽出条件
-              AND    xel.edi_header_info_id     = xeh.edi_header_info_id
+              WHERE  xel.edi_header_info_id     = xeh.edi_header_info_id
               --受注ソーステーブル抽出条件
               AND    oos.description            = i_msg_rec.order_source                                              --受注ソース
               AND    oos.enabled_flag           = cv_enabled_flag                                                     --有効フラグ
@@ -2061,10 +3287,7 @@ AS
               AND    ooha.order_type_id         = ottt_h.transaction_type_id                                          --受注ヘッダタイプ
               --受注明細情報テーブル抽出条件
               AND    oola.header_id             = ooha.header_id                                                      --ヘッダID
--- 2009/06/17 M.Sano Ver.1.11 mod Start
---              AND    oola.line_number           = xel.line_no                                                         --行No
               AND    oola.orig_sys_line_ref     = xel.order_connection_line_number                                    --外部ｼｽﾃﾑ受注明細番号 = 受注関連明細番号
--- 2009/06/17 M.Sano Ver.1.11 mod End
               AND    oola.line_type_id          = ottt_l.transaction_type_id                                          --受注明細タイプ
               --受注理由ビュー抽出条件
               AND    ore.entity_id(+)           = oola.line_id
@@ -2074,17 +3297,6 @@ AS
               AND    i_other_rec.process_date
                 BETWEEN NVL(xlvv3.start_date_active,i_other_rec.process_date)
                 AND     NVL(xlvv3.end_date_active  ,i_other_rec.process_date)
-              --顧客マスタアドオン(店舗)抽出条件
-              AND    xca.chain_store_code(+)    = xeh.edi_chain_code                                                  --EDIチェーン店コード
-              AND    xca.store_code(+)          = xeh.shop_code                                                       --店舗コード
-              --顧客マスタ(店舗)抽出条件
-              AND    hca.cust_account_id(+)     = xca.customer_id                                                     --顧客ID
-              AND   (hca.cust_account_id        IS NOT NULL
-                AND  hca.customer_class_code    IN (cv_cust_class_chain_store, cv_cust_class_uesama)
-                OR   hca.cust_account_id        IS NULL
-              )                                                                                                       --顧客区分
-              --パーティマスタ(店舗)抽出条件
-              AND    hp.party_id(+)             = hca.party_id                                                        --パーティID
               --OPM品目マスタ抽出条件
               AND    iimb.item_no(+)            = xel.item_code                                                       --品目コード
               --OPM品目マスタアドオン抽出条件
@@ -2110,14 +3322,6 @@ AS
               AND    xsib.item_code(+)          = msib.segment1                                                       --INV品目ID
               --本社商品区分ビュー抽出条件
               AND    xhpc.segment1(+)           = iimb.item_no                                                        --品目コード
-              --チェーン店店舗セキュリティビュー抽出条件
---******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
---              AND    xcss.chain_code            = i_input_rec.chain_code                                              --チェーン店コード
---              AND    xcss.user_id               = i_input_rec.user_id                                                 --ユーザID
-              AND    xcss.chain_code(+)         = xeh.edi_chain_code                                                  --チェーン店コード
-              AND    xcss.chain_store_code(+)   = xeh.shop_code                                                       --店コード
-              AND    xcss.user_id(+)            = i_input_rec.user_id                                                 --ユーザID
---******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
               --売上区分マスタ抽出条件
               AND    xlvv.lookup_type(+)        = ct_qc_sale_class                                                    --参照タイプ＝売上区分
               AND    xlvv.lookup_code(+)        = oola.attribute5                                                     --参照コード＝売上区分
@@ -2128,38 +3332,10 @@ AS
                 OR   i_input_rec.bargain_class != cv_bargain_class_all
                 AND  i_input_rec.bargain_class  = xlvv.attribute8
               )
-              --税コードマスタ抽出条件
-              AND xlvv2.lookup_type(+)          = ct_qc_consumption_tax_class
-              AND xlvv2.attribute3(+)           = xca.tax_div
-              AND    NVL(xeh.shop_delivery_date
-                        ,NVL(xeh.center_delivery_date
-                            ,NVL(xeh.order_date
-                                ,xeh.data_creation_date_edi_data)))
-              BETWEEN NVL(xlvv2.start_date_active
-                         ,NVL(xeh.shop_delivery_date
-                             ,NVL(xeh.center_delivery_date
-                                 ,NVL(xeh.order_date
-                               ,xeh.data_creation_date_edi_data))))
-              AND     NVL(xlvv2.end_date_active
-                          ,NVL(xeh.shop_delivery_date
-                             ,NVL(xeh.center_delivery_date
-                                 ,NVL(xeh.order_date
-                                     ,xeh.data_creation_date_edi_data))))
-              --税率マスタ抽出条件
-              AND avtab.tax_code(+)             = xlvv2.attribute2
-              AND avtab.set_of_books_id(+)      = i_prf_rec.set_of_books_id
--- 2009/02/16 T.Nakamura Ver.1.3 add start
-              AND   avtab.org_id                   = i_prf_rec.org_id                                                 --MO:営業単位
-              AND   avtab.enabled_flag             = cv_enabled_flag                                                  --使用可能フラグ
-              AND   i_other_rec.process_date
-                BETWEEN NVL( avtab.start_date ,i_other_rec.process_date )
-                AND     NVL( avtab.end_date   ,i_other_rec.process_date )
               AND   ooha.org_id                 = i_prf_rec.org_id                                                    --MO:営業単位
               AND   oola.org_id                 = ooha.org_id                                                         --MO:営業単位
---******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
-              AND xca.delivery_base_code        = cdm.account_number(+)
---******************************************* 2009/04/02 1.9 T.Kitajima MOD  END  *************************************
--- 2009/02/16 T.Nakamura Ver.1.3 add end
+              AND   xeh.delivery_base_code     = cdm.account_number(+)
+-- 2009/06/22 1.11 M.Sano MOD End
               UNION ALL
               SELECT TO_CHAR(ooha.header_id)                                            header_id                     --ヘッダID(更新キー)
                     ,ooha.cust_po_number                                                cust_po_number                --受注ヘッダ（顧客発注）
@@ -2642,6 +3818,9 @@ AS
                     ,NULL                                                               total_line_qty                --トータル行数
                     ,NULL                                                               total_invoice_qty             --トータル伝票枚数
                     ,NULL                                                               chain_peculiar_area_footer    --チェーン店固有エリア（フッター）
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
+                    ,oola.order_quantity_uom                                            order_quantity_uom            -- 単位(受注明細)
+-- ******************************* 2009/07/23 N.Maeda 1.11 ******************************* --
                     --受注ヘッダ情報インラインビュー
               FROM (SELECT ooha.header_id                                               header_id
 -- 2009/02/16 T.Nakamura Ver.1.3 add start
@@ -2803,22 +3982,33 @@ AS
               AND   avtab.tax_code(+)               = xlvv2.attribute2
               AND   avtab.set_of_books_id(+)        = i_prf_rec.set_of_books_id
               --店舗セキュリティビュー抽出条件
+-- ********************* 2009/07/03 1.11 N.Maeda MOD START *********************** --
 --******************************************* 2009/04/02 1.9 T.Kitajima MOD START *************************************
---              AND   xcss.chain_code                 = i_input_rec.chain_code
---              AND   xcss.account_number             = ooha.account_number
---              AND   xcss.user_id                    = i_input_rec.user_id
---              AND  (i_input_rec.store_code          IS NOT NULL
---                AND i_input_rec.store_code          = ooha.store_code
---                OR  i_input_rec.store_code          IS NULL
---                AND xcss.chain_store_code           = ooha.store_code
---              )
---              AND   xcss.chain_code                 = i_input_rec.chain_code
-              AND   xcss.account_number(+)          = ooha.account_number
-              AND   xcss.chain_code(+)              = ooha.chain_store_code
-              AND   xcss.chain_store_code(+)        = ooha.store_code                                       --店コード
-              AND   xcss.user_id(+)                 = i_input_rec.user_id
-              AND   ooha.store_code                 = NVL( i_input_rec.store_code, ooha.store_code)
+----              AND   xcss.chain_code                 = i_input_rec.chain_code
+----              AND   xcss.account_number             = ooha.account_number
+----              AND   xcss.user_id                    = i_input_rec.user_id
+----              AND  (i_input_rec.store_code          IS NOT NULL
+----                AND i_input_rec.store_code          = ooha.store_code
+----                OR  i_input_rec.store_code          IS NULL
+----                AND xcss.chain_store_code           = ooha.store_code
+----              )
+----              AND   xcss.chain_code                 = i_input_rec.chain_code
+--              AND   xcss.account_number(+)          = ooha.account_number
+--              AND   xcss.chain_code(+)              = ooha.chain_store_code
+--              AND   xcss.chain_store_code(+)        = ooha.store_code                                       --店コード
+--              AND   xcss.user_id(+)                 = i_input_rec.user_id
+--              AND   ooha.store_code                 = NVL( i_input_rec.store_code, ooha.store_code)
+              AND   xcss.chain_code                 = i_input_rec.chain_code
+              AND   xcss.account_number             = ooha.account_number
+              AND   xcss.user_id                    = i_input_rec.user_id
+              AND  (i_input_rec.store_code          IS NOT NULL
+                AND i_input_rec.store_code          = ooha.store_code
+                OR  i_input_rec.store_code          IS NULL
+                AND xcss.chain_store_code           = ooha.store_code
+              )
+              AND   xcss.chain_code                 = i_input_rec.chain_code
 --******************************************* 2009/04/02 1.9 T.Kitajima MOD  END *************************************
+-- ********************* 2009/07/03 1.11 N.Maeda MOD  END  *********************** --
               AND  (i_input_rec.info_div            IS NOT NULL
                 AND 1                               = 2
                 OR  i_input_rec.info_div            IS NULL
@@ -3368,6 +4558,9 @@ AS
        ,l_data_tab('TOTAL_LINE_QTY')                                                                          --トータル行数
        ,l_data_tab('TOTAL_INVOICE_QTY')                                                                       --トータル伝票枚数
        ,l_data_tab('CHAIN_PECULIAR_AREA_FOOTER')                                                              --チェーン店固有エリア（フッター）
+-- ********************************** 2009/07/23 N.Maeda 1.11 ADD START **************************************** --
+       ,lt_order_quantity_uom                                                                                 --単位(受注明細)
+-- ********************************** 2009/07/23 N.Maeda 1.11 ADD  END  **************************************** --
       ;            
 out_line(buff => '1');
       EXIT WHEN cur_data_record%NOTFOUND;
@@ -3545,6 +4738,36 @@ out_line(buff => 'i:' || i);
     --親テーブルインデックスの初期化
         ln_cnt := 0;
       END IF;
+--
+--*************************** 2009/07/01 Var1.11 N.Maeda ADD START **********************************--
+--
+        xxcos_common2_pkg.convert_quantity(
+--*************************** 2009/07/23 Var1.11 N.Maeda MOD START **********************************--
+--                     iv_uom_code           =>  l_data_tab('UOM_CODE')                              --単位コード
+                     iv_uom_code           =>  lt_order_quantity_uom
+--*************************** 2009/07/23 Var1.11 N.Maeda MOD  END  **********************************--
+                    ,in_case_qty           =>  NVL( TO_NUMBER(l_data_tab('NUM_OF_CASES') ),0 )     --ケース入数
+                    ,in_ball_qty           =>  NVL( TO_NUMBER(l_data_tab('NUM_OF_BALL') ),0 )      --ボール入数
+                    ,in_sum_indv_order_qty =>  NVL( TO_NUMBER(l_data_tab('SUM_ORDER_QTY') ),0 )    --発注数量(合計・バラ)
+                    ,in_sum_shipping_qty   =>  NVL( TO_NUMBER(l_data_tab('SUM_SHIPPING_QTY') ),0 ) --出荷数量(合計・バラ)
+                    ,on_indv_shipping_qty  =>  l_data_tab('INDV_SHIPPING_QTY')         --出荷数量(バラ)
+                    ,on_case_shipping_qty  =>  l_data_tab('CASE_SHIPPING_QTY')         --出荷数量(ケース)
+                    ,on_ball_shipping_qty  =>  l_data_tab('BALL_SHIPPING_QTY')         --出荷数量(ボール)
+                    ,on_indv_stockout_qty  =>  l_data_tab('INDV_STOCKOUT_QTY')         --欠品数量(バラ)
+                    ,on_case_stockout_qty  =>  l_data_tab('CASE_STOCKOUT_QTY')         --欠品数量(ケース)
+                    ,on_ball_stockout_qty  =>  l_data_tab('BALL_STOCKOUT_QTY')         --欠品数量(ボール)
+                    ,on_sum_stockout_qty   =>  l_data_tab('SUM_STOCKOUT_QTY')          --欠品数量(合計・バラ)
+                    ,ov_errbuf             =>  lv_errbuf                               --エラー・メッセージエラー       #固定#
+                    ,ov_retcode            =>  lv_retcode                              --リターン・コード               #固定#
+                    ,ov_errmsg             =>  lv_errmsg                               --ユーザー・エラー・メッセージ   #固定#
+        );
+--
+        IF (lv_retcode = cv_status_error) THEN
+          RAISE global_api_expt;
+        END IF;
+--
+--*************************** 2009/07/01 Var1.11 N.Maeda ADD END **********************************--
+--
   --親テーブルインデックスのインクリメント
       ln_cnt := ln_cnt + 1;
   --合計数量の加算
