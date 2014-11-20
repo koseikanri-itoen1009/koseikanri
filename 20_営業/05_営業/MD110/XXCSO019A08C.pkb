@@ -7,7 +7,7 @@ AS
  * Description      : 要求の発行画面から、営業員ごとに指定日を含む月の1日～指定日まで
  *                    訪問実績の無い顧客を表示します。
  * MD.050           : MD050_CSO_019_A08_未訪問顧客一覧表
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -40,6 +40,7 @@ AS
  *  2009-06-03    1.6   Kazuo.Satomura   ＳＴ障害対応(T1_0696 SQLERRMを削除)
  *  2009-06-04    1.7   Kazuo.Satomura   ＳＴ障害対応(T1_1329)
  *  2010-05-25    1.8   T.Maruyama       E_本稼動_02809 訪問回数取得できない場合ゼロとする
+ *  2011-07-14    1.9   K.Kiriu          E_本稼動_07825 PT対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1103,6 +1104,9 @@ AS
     cv_accnt_sts4          CONSTANT VARCHAR2(5)   := '50'; -- 顧客ステータス（休止）
     cv_accnt_sts5          CONSTANT VARCHAR2(5)   := '99'; -- 顧客ステータス（対象外）
     cv_target_div          CONSTANT VARCHAR2(5)   := '1';  -- 訪問対象
+    /* 2011-07-14 E_本稼動_07825 ADD START */
+    cd_sysdate             CONSTANT DATE          := TRUNC(xxcso_util_common_pkg.get_online_sysdate); -- システム日付
+    /* 2011-07-14 E_本稼動_07825 ADD END */
     -- OUTパラメータ格納用
     ld_current_date        DATE;                     -- 基準日
     ld_first_date          DATE;                     -- 基準日の月初
@@ -1133,12 +1137,15 @@ AS
     IS
       SELECT  xrv.employee_number         employee_number       -- 従業員番号
              ,SUBSTRB(xrv.last_name || xrv.first_name, 1, 40)   employee_name         -- 漢字氏名
-             ,CASE
-                WHEN  xcav.customer_status <= cv_accnt_sts2 THEN
-                  xcav.customer_status
-                ELSE
-                  xcrv.route_number
-              END                         route_customer       -- ルートNO/顧客ステータス
+             /* 2011-07-14 E_本稼動_07825 MOD START */
+             --,CASE
+             --   WHEN  xcav.customer_status <= cv_accnt_sts2 THEN
+             --     xcav.customer_status
+             --   ELSE
+             --     xcrv.route_number
+             -- END                         route_customer       -- ルートNO/顧客ステータス
+             ,xcav.customer_status        customer_status      -- 顧客ステータス
+             /* 2011-07-14 E_本稼動_07825 MOD END */
              ,xcav.account_number         account_number       -- 顧客コード
              ,xcav.party_name             party_name           -- 顧客名
              ,xcav.final_tran_date        final_tran_date      -- 最終取引日
@@ -1152,18 +1159,29 @@ AS
               END                         status_sort          -- 顧客ステータス（ソート用）
       FROM    xxcso_resources_v2      xrv                      -- リソースマスタ(最新)VIEW
              ,xxcso_cust_accounts_v   xcav                     -- 顧客マスタVIEW
-             ,xxcso_cust_routes_v2    xcrv                     -- 顧客ルートNo（最新）VIEW
+             /* 2011-07-14 E_本稼動_07825 DEL START */
+             --,xxcso_cust_routes_v2    xcrv                     -- 顧客ルートNo（最新）VIEW
+             /* 2011-07-14 E_本稼動_07825 DEL END */
              ,xxcso_cust_resources_v2 xcrev                    -- 営業員担当顧客（最新）VIEW
-             ,(
-                SELECT employee_number
-                      ,xxcso_util_common_pkg.get_emp_parameter(
-                         xrv2.work_base_code_new
-                        ,xrv2.work_base_code_old
-                        ,xrv2.issue_date
-                        ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)) work_base_code
-                FROM xxcso_resources_v2 xrv2
-              ) xrv3
-      WHERE   xrv3.work_base_code   = iv_wb_cd
+             /* 2011-07-14 E_本稼動_07825 DEL START */
+             --,(
+             --   SELECT employee_number
+             --         ,xxcso_util_common_pkg.get_emp_parameter(
+             --            xrv2.work_base_code_new
+             --           ,xrv2.work_base_code_old
+             --           ,xrv2.issue_date
+             --           ,TRUNC(xxcso_util_common_pkg.get_online_sysdate)) work_base_code
+             --   FROM xxcso_resources_v2 xrv2
+             -- ) xrv3
+             /* 2011-07-14 E_本稼動_07825 DEL END */
+      /* 2011-07-14 E_本稼動_07825 MOD START */
+      --WHERE   xrv3.work_base_code   = iv_wb_cd
+      WHERE   xxcso_util_common_pkg.get_emp_parameter(
+                         xrv.work_base_code_new
+                        ,xrv.work_base_code_old
+                        ,xrv.issue_date
+                        ,cd_sysdate ) = iv_wb_cd
+      /* 2011-07-14 E_本稼動_07825 MOD END */
         AND   (
                 xcav.final_call_date < id_frt_dt
                 OR
@@ -1185,10 +1203,14 @@ AS
             OR (iv_emp_chk_cd   =  cv_false
                AND 1 = 1
               ))
-        AND   xrv3.employee_number  = xrv.employee_number
+        /* 2011-07-14 E_本稼動_07825 DEL START */
+        --AND   xrv3.employee_number  = xrv.employee_number
+        /* 2011-07-14 E_本稼動_07825 DEL END */
         AND   xcrev.employee_number = xrv.employee_number
         AND   xcrev.account_number  = xcav.account_number
-        AND   xcav.account_number   = xcrv.account_number(+)
+        /* 2011-07-14 E_本稼動_07825 DEL START */
+        --AND   xcav.account_number   = xcrv.account_number(+)
+        /* 2011-07-14 E_本稼動_07825 DEL END */
       ;
 --
     -- *** ローカル・カーソル ***
@@ -1299,7 +1321,25 @@ AS
       l_rp_nov_dt_rec.hub_name                   := lv_hub_name;                             -- 拠点名称
       l_rp_nov_dt_rec.employee_number            := l_get_novisit_dt_rec.employee_number;    -- 従業員番号
       l_rp_nov_dt_rec.employee_name              := l_get_novisit_dt_rec.employee_name;      -- 漢字氏名
-      l_rp_nov_dt_rec.route_no                   := l_get_novisit_dt_rec.route_customer;     -- ルートNO/顧客ステータス
+      /* 2011-07-14 E_本稼動_07825 MOD START */
+      --l_rp_nov_dt_rec.route_no                   := l_get_novisit_dt_rec.route_customer;     -- ルートNO/顧客ステータス
+      -- ルートNO/顧客ステータス
+      IF ( l_get_novisit_dt_rec.customer_status <= cv_accnt_sts2  ) THEN
+        l_rp_nov_dt_rec.route_no                 := l_get_novisit_dt_rec.customer_status;
+      ELSE
+        BEGIN
+          --ルートNo取得
+          SELECT xcrv.route_number route_number
+          INTO   l_rp_nov_dt_rec.route_no
+          FROM   xxcso_cust_routes_v2 xcrv
+          WHERE  xcrv.account_number = l_get_novisit_dt_rec.account_number
+          ;
+        EXCEPTION
+          WHEN OTHERS THEN
+            l_rp_nov_dt_rec.route_no := NULL;
+        END;
+      END IF;
+      /* 2011-07-14 E_本稼動_07825 MOD END */
       l_rp_nov_dt_rec.account_number             := l_get_novisit_dt_rec.account_number;     -- 顧客コード
       l_rp_nov_dt_rec.account_name               := l_get_novisit_dt_rec.party_name;         -- 顧客名
       l_rp_nov_dt_rec.final_tran_date            := l_get_novisit_dt_rec.final_tran_date;    -- 最終取引日
