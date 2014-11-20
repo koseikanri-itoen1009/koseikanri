@@ -1,0 +1,1 @@
+CREATE DIRECTORY xxcmn_tdxfam_butsuryu_dir AS '/ebsif/outbound/TDXFAM_BUTSURYU';

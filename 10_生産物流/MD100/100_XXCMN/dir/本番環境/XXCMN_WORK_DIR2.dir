@@ -1,0 +1,1 @@
+CREATE DIRECTORY xxcmn_work_dir2 AS '/ebsif/outbound';
