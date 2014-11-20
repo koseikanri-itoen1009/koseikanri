@@ -53,6 +53,10 @@ AS
  *  2009/06/29    1.5   T.Tominaga      [T1_0022, T1_0023, T1_0024, T1_0042, T1_0201]
  *                                      ・ブレイク条件に店舗コードを追加
  *                                      ・各種チェック処理でエラーにしない対応
+ *  2009/07/21    1.5   N.Maeda         [000644]端数処理追加
+ *                                      [000437]PT考慮の追加
+ *  2009/08/05    1.5   N.Maeda         [000437]レビュー指摘追加
+ *  2009/08/06    1.5   M.Sano          [0000644]レビュー指摘対応
  *
  *****************************************************************************************/
 --
@@ -235,6 +239,11 @@ AS
 --****************************** 2009/05/19 1.2 T.Kitajima ADD START ******************************--
   cv_format_yyyymmdd        CONSTANT   VARCHAR2(20)  := 'YYYY/MM/DD';        -- 日付フォーマット
 --****************************** 2009/05/19 1.2 T.Kitajima ADD  END  ******************************--
+-- ************** 2009/07/22 N.Maeda ADD START ****************** --
+  cv_date_time              CONSTANT   VARCHAR2(25)  := 'YYYY/MM/DD HH24:MI:SS';
+  cv_time                   CONSTANT   VARCHAR2(25)  := '23:59:59';
+  cv_space                  CONSTANT   VARCHAR2(1)   := ' ';
+-- ************** 2009/07/22 N.Maeda ADD  END  ****************** --
   -- ===============================
   -- ユーザー定義グローバル変数
   -- ===============================
@@ -273,6 +282,9 @@ AS
 --****************************** 2009/06/04 1.4 T.Kitajima ADD START ******************************--
   gn_msg_cnt                 NUMBER;                        -- メッセージ件数
 --****************************** 2009/06/04 1.4 T.Kitajima ADD  END  ******************************--
+-- ************** 2009/07/22 N.Maeda ADD START ****************** --
+  gd_edi_del_consider_date   DATE;             -- EDI情報削除期間考慮日付作成
+-- ************** 2009/07/22 N.Maeda ADD  END  ****************** --
   --
   --* -------------------------------------------------------------------------------------------
   -- ===============================
@@ -3412,7 +3424,10 @@ AS
                                                      -- 在庫組織ID
                          AND msi.organization_id = gv_prf_orga_id
                          AND xim.item_id         = iim.item_id         --OPM品目.品目ID        =OPM品目アドオン.品目ID
-                         AND xim.item_id         = xim.parent_item_id  --OPM品目アドオン.品目ID=OPM品目アドオン.親品目ID
+-- ******************** 2009/08/05 1.5 N.Maeda MOD START *********************** --
+                         AND iim.item_id         = xim.parent_item_id  --OPM品目.品目ID=OPM品目アドオン.親品目ID
+--                         AND xim.item_id         = xim.parent_item_id  --OPM品目アドオン.品目ID=OPM品目アドオン.親品目ID
+-- ******************** 2009/08/05 1.5 N.Maeda MOD  END  *********************** --
                          AND TO_DATE(iim.attribute13,cv_format_yyyymmdd) <= NVL( gt_edideli_work_data(in_line_cnt).shop_delivery_date, 
                                                                            NVL( gt_edideli_work_data(in_line_cnt).center_delivery_date, 
                                                                                 NVL( gt_edideli_work_data(in_line_cnt).order_date, 
@@ -3694,6 +3709,16 @@ AS
         END IF;
 --****************************** 2009/05/19 1.2 T.Kitajima MOD  END  ******************************--
       END IF;
+-- ***************************** 2009/08/06 1.5 M.Sano    ADD  START ***************************** --
+      --* -------------------------------------------------------------
+      --  原価金額（発注）の再計算
+      -- 「原価金額（発注）」が未設定（NULLまたは０）の場合
+      --* -------------------------------------------------------------
+      IF ( NVL(gt_edideli_work_data(in_line_cnt).order_cost_amt,0) = cv_0 ) THEN
+        gt_edideli_work_data(in_line_cnt).order_cost_amt :=
+          TRUNC( gt_req_edi_lines_data(in_line_cnt).order_unit_price * gt_req_edi_lines_data(in_line_cnt).sum_order_qty );
+      END IF;
+-- ***************************** 2009/08/06 1.5 M.Sano    ADD   END  ***************************** --
     END IF;
     -- * -------------------------------------------------------------
     -- * リターンコードの保持、
@@ -5036,7 +5061,10 @@ AS
         AND  NVL(head.shop_delivery_date,
              NVL(head.center_delivery_date,
              NVL(head.order_date, TRUNC(head.data_creation_date_edi_data))))
-          < TRUNC(cd_creation_date - TO_NUMBER(gv_prf_edi_del_date))
+-- ************** 2009/07/22 N.Maeda MOD START ****************** --
+          <= gd_edi_del_consider_date
+--          < TRUNC(cd_creation_date - TO_NUMBER(gv_prf_edi_del_date))
+-- ************** 2009/07/22 N.Maeda MOD  END  ****************** --
       FOR UPDATE NOWAIT;
 --
     -- *** ローカル・レコード ***
@@ -5160,7 +5188,10 @@ AS
         AND  NVL(head.shop_delivery_date,
              NVL(head.center_delivery_date,
              NVL(head.order_date, TRUNC(head.data_creation_date_edi_data))))
-          < TRUNC(cd_creation_date - TO_NUMBER(gv_prf_edi_del_date));
+-- ************** 2009/07/22 N.Maeda MOD START ****************** --
+          <= gd_edi_del_consider_date;
+--          < TRUNC(cd_creation_date - TO_NUMBER(gv_prf_edi_del_date));
+-- ************** 2009/07/22 N.Maeda MOD  END  ****************** --
     -- ===============================
     -- EDI明細情報ＴＢＬカーソル
     -- EDIヘッダ情報ＴＢＬのEDIヘッダID
@@ -5314,7 +5345,10 @@ AS
         AND  NVL(head.shop_delivery_date,
              NVL(head.center_delivery_date,
              NVL(head.order_date, TRUNC(head.data_creation_date_edi_data))))
-          < TRUNC(cd_creation_date - TO_NUMBER(gv_prf_edi_del_date));
+-- ************** 2009/07/22 N.Maeda MOD START ****************** --
+          <= gd_edi_del_consider_date;
+--          < TRUNC(cd_creation_date - TO_NUMBER(gv_prf_edi_del_date));
+-- ************** 2009/07/22 N.Maeda MOD  END  ****************** --
 --
     EXCEPTION
       WHEN OTHERS THEN
@@ -5410,7 +5444,10 @@ AS
         AND  NVL(head.shop_delivery_date,
              NVL(head.center_delivery_date,
              NVL(head.order_date, TRUNC(head.data_creation_date_edi_data))))
-          < TRUNC(cd_creation_date - TO_NUMBER(gv_prf_edi_del_date))
+-- ************** 2009/07/22 N.Maeda MOD START ****************** --
+          <= gd_edi_del_consider_date
+--          < TRUNC(cd_creation_date - TO_NUMBER(gv_prf_edi_del_date))
+-- ************** 2009/07/22 N.Maeda MOD  END  ****************** --
       FOR UPDATE NOWAIT;
 --
     -- *** ローカル・レコード ***
@@ -5536,6 +5573,12 @@ AS
 --###########################  固定部 END   ############################
 --
 --
+-- ************** 2009/07/22 N.Maeda ADD START ****************** --
+   -- EDI情報削除期間考慮日付作成
+   gd_edi_del_consider_date :=
+     TO_DATE( ( TO_CHAR( TRUNC( cd_creation_date - TO_NUMBER( gv_prf_edi_del_date ) ) 
+     , cv_format_yyyymmdd ) || cv_space || cv_time ) ,cv_date_time );
+-- ************** 2009/07/22 N.Maeda ADD  END  ****************** --
     -- ***************************************
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
@@ -5935,8 +5978,12 @@ AS
       edideliwk.order_unit_price              order_unit_price,            -- 原単価（発注）
       edideliwk.shipping_unit_price           shipping_unit_price,         -- 原単価（出荷）
       edideliwk.order_cost_amt                order_cost_amt,              -- 原価金額（発注）
-      edideliwk.shipping_cost_amt             shipping_cost_amt,           -- 原価金額（出荷）
-      edideliwk.stockout_cost_amt             stockout_cost_amt,           -- 原価金額（欠品）
+-- ***************************** 2009/07/21 1.5 N.Maeda    MOD  START ***************************** --
+      TRUNC( edideliwk.shipping_cost_amt )    shipping_cost_amt,           -- 原価金額（出荷）
+      TRUNC( edideliwk.stockout_cost_amt )    stockout_cost_amt,           -- 原価金額（欠品）
+--      edideliwk.shipping_cost_amt             shipping_cost_amt,           -- 原価金額（出荷）
+--      edideliwk.stockout_cost_amt             stockout_cost_amt,           -- 原価金額（欠品）
+-- ***************************** 2009/07/21 1.5 N.Maeda    MOD   END  ***************************** --
       edideliwk.selling_price                 selling_price,               -- 売単価
       edideliwk.order_price_amt               order_price_amt,             -- 売価金額（発注）
       edideliwk.shipping_price_amt            shipping_price_amt,          -- 売価金額（出荷）
@@ -6015,7 +6062,7 @@ AS
       edideliwk.chain_peculiar_area_footer    chain_peculiar_area_footer,  -- チェーン店固有エリア（フッター）
       edideliwk.err_status                    err_status,                  -- ステータス
       edideliwk.if_file_name                  if_file_name                 -- インタフェースファイル名
-    FROM    xxcos_edi_delivery_work    edideliwk                           -- ED納品返品情報ワークテーブル
+    FROM    xxcos_edi_delivery_work    edideliwk                           -- EDI納品返品情報ワークテーブル
     WHERE   edideliwk.if_file_name     = lv_cur_param4          -- インタフェースファイル名
       AND   edideliwk.err_status       =    lv_cur_param1                  -- ステータス
 -- ******************** 2009/06/29 Var.1.5 T.Tominaga MOD START  ******************************************
