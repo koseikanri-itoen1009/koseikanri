@@ -1,0 +1,3 @@
+CREATE INDEX xxcfr.xxcfr_rep_sales_r_p_s_n01 ON xxcfr.xxcfr_rep_sales_rep_pay_sch(
+  request_id
+) TABLESPACE xxidx2;

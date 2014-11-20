@@ -1,0 +1,3 @@
+CREATE INDEX xxcfr.xxcfr_invoice_headers_n02 ON xxcfr.xxcfr_invoice_headers(
+  request_id
+) TABLESPACE xxidx2;

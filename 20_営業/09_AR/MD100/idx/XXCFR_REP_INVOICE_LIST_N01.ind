@@ -1,0 +1,3 @@
+CREATE INDEX xxcfr.xxcfr_rep_invoice_list_n01 ON xxcfr.xxcfr_rep_invoice_list(
+  request_id
+) TABLESPACE xxidx2;
