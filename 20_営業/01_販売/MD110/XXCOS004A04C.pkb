@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS004A04C (body)
  * Description      : Á‰»‚u‚c”[•iƒf[ƒ^ì¬
  * MD.050           : Á‰»‚u‚c”[•iƒf[ƒ^ì¬ MD050_COS_004_A04
- * Version          : 1.20
+ * Version          : 1.21
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -56,6 +56,7 @@ AS
  *  2009/06/12   1.18  T.kitajima        [T1_1432]VDƒRƒ‰ƒ€•Êæˆøƒwƒbƒ_XVğŒ•ÏX
  *  2009/08/10   1.19  K.Kiriu           [0000431]PT‘Î‰
  *  2009/09/14   1.20  M.Sano            [0001345]PT‘Î‰
+ *  2009/12/15   1.21  K.Atsushiba       [E_–{‰Ò“®_00433]·Šz’²®‚ÌÁ”ïÅ‹àŠz‚ÌZoˆ—•ÏX
  *
  *****************************************************************************************/
 --
@@ -2923,27 +2924,33 @@ AS
             ln_amount_work_max := ln_amount_work_max + ln_difference_money;
             --Á”ïÅŠz‚ÌÄŒvZ
             --·Šz‚ğ‰ÁZ‚µ‚½Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz|i·Šz‚ğ‰ÁZ‚µ‚½Å‘å‚ÌÁ‰»ŒvZŠ|—¦Ï‚İ•i–Ú•Ê”Ì”„‹àŠz^i‚P{Á”ïÅ—¦^‚P‚O‚Ojj
-            ln_tax_work := ln_amount_work_max - ( ln_amount_work_max / ( cn_1 + gt_tab_work_data(ln_i_max).tax_rate / cn_100 ) );
+/* 2009/12/15 Ver1.21 Mod Start */
+            ln_tax_work := ln_amount_work_max - gt_tab_sales_exp_lines(ln_m_max).pure_amount;
+             gt_tab_sales_exp_lines(ln_m_max).tax_amount := ln_tax_work;
+--            ln_tax_work := ln_amount_work_max - ( ln_amount_work_max / ( cn_1 + gt_tab_work_data(ln_i_max).tax_rate / cn_100 ) );
+/* 2009/12/15 Ver1.21 Mod End */
             --”„ã‹àŠz
             gt_tab_sales_exp_lines(ln_m_max).sale_amount      := ln_amount_work_max;
             --
-            --Á”ïÅŠz‚Ì¬”“_‚ğ’[”ˆ—‚µAÁ”ïÅ‹àŠz‚Æ–{‘Ì‹àŠz‚ğÄŒvZ‚µAo—Í•Ï”‚ÖÄ‚ÑƒZƒbƒg‚µ’¼‚·B
-            IF ( gt_tab_work_data(ln_i_max).tax_rounding_rule    = cv_tax_rounding_rule_UP )      THEN    --Øã‚°
---****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
---             gt_tab_sales_exp_lines(ln_m_max).tax_amount     := CEIL( ln_tax_work );                       --Á”ïÅ‹àŠz
---              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - CEIL( ln_tax_work );  --–{‘Ì‹àŠz
-             gt_tab_sales_exp_lines(ln_m_max).tax_amount     := roundup( ln_tax_work );                       --Á”ïÅ‹àŠz
-              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - roundup( ln_tax_work );  --–{‘Ì‹àŠz
---****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
-            ELSIF ( gt_tab_work_data(ln_i_max).tax_rounding_rule = cv_tax_rounding_rule_DOWN )    THEN    --ØÌ‚Ä
-              gt_tab_sales_exp_lines(ln_m_max).tax_amount     := TRUNC( ln_tax_work );                      --Á”ïÅ‹àŠz
-              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - TRUNC( ln_tax_work ); --–{‘Ì‹àŠz
-            ELSIF ( gt_tab_work_data(ln_i_max).tax_rounding_rule = cv_tax_rounding_rule_NEAREST ) THEN    --lÌŒÜ“ü
-              gt_tab_sales_exp_lines(ln_m_max).tax_amount     := ROUND( ln_tax_work );                      --Á”ïÅ‹àŠz
-              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - ROUND( ln_tax_work ); --–{‘Ì‹àŠz
-            ELSE
-              RAISE global_api_others_expt;
-            END IF;
+/* 2009/12/15 Ver1.21 Del Start */
+--            --Á”ïÅŠz‚Ì¬”“_‚ğ’[”ˆ—‚µAÁ”ïÅ‹àŠz‚Æ–{‘Ì‹àŠz‚ğÄŒvZ‚µAo—Í•Ï”‚ÖÄ‚ÑƒZƒbƒg‚µ’¼‚·B
+--            IF ( gt_tab_work_data(ln_i_max).tax_rounding_rule    = cv_tax_rounding_rule_UP )      THEN    --Øã‚°
+----****************************** 2009/05/25 1.15 T.Kitajima MOD START ******************************--
+----             gt_tab_sales_exp_lines(ln_m_max).tax_amount     := CEIL( ln_tax_work );                       --Á”ïÅ‹àŠz
+----              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - CEIL( ln_tax_work );  --–{‘Ì‹àŠz
+--             gt_tab_sales_exp_lines(ln_m_max).tax_amount     := roundup( ln_tax_work );                       --Á”ïÅ‹àŠz
+--              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - roundup( ln_tax_work );  --–{‘Ì‹àŠz
+----****************************** 2009/05/25 1.15 T.Kitajima MOD  END  ******************************--
+--            ELSIF ( gt_tab_work_data(ln_i_max).tax_rounding_rule = cv_tax_rounding_rule_DOWN )    THEN    --ØÌ‚Ä
+--              gt_tab_sales_exp_lines(ln_m_max).tax_amount     := TRUNC( ln_tax_work );                      --Á”ïÅ‹àŠz
+--              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - TRUNC( ln_tax_work ); --–{‘Ì‹àŠz
+--            ELSIF ( gt_tab_work_data(ln_i_max).tax_rounding_rule = cv_tax_rounding_rule_NEAREST ) THEN    --lÌŒÜ“ü
+--              gt_tab_sales_exp_lines(ln_m_max).tax_amount     := ROUND( ln_tax_work );                      --Á”ïÅ‹àŠz
+--              gt_tab_sales_exp_lines(ln_m_max).pure_amount    := ln_amount_work_max - ROUND( ln_tax_work ); --–{‘Ì‹àŠz
+--            ELSE
+--              RAISE global_api_others_expt;
+--            END IF;
+/* 2009/12/15 Ver1.21 Del End */
 --****************************** 2009/05/25 1.15 T.Kitajima MOD START  ******************************--
             --’²®Œã’P‰¿ŒvZ
             gt_tab_sales_exp_lines(ln_m_max).dlv_unit_price               :=
