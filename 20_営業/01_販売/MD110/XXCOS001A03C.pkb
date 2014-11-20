@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A03C (body)
  * Description      : VD納品データ作成
  * MD.050           : VD納品データ作成(MD050_COS_001_A03)
- * Version          : 1.7
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,7 +34,10 @@ AS
  *  2009/02/20    1.5     N.Maeda          パラメータのログファイル出力対応
  *  2009/03/18    1.6     T.Kitajima       [T1_0066] HHT納品データの販売実績連携時における設定項目の不備
  *                                         [T1_0078] 金額の端数計算が正しく行われていない
- *  2009/03/23    1.7     N.Maeda          [T1_0078]金額の端数処理の修正
+ *  2009/03/23    1.7     N.Maeda          [T1_0078] 金額の端数処理の修正
+ *  2009/04/07    1.8     N.Maeda          [T1_0256] 保管場所取得方法の修正
+ *  2009/04/09    1.9     N.Maeda          [T1_0401] 外税、内税(伝票課税)時の売上金額の計算方法修正
+ *                                                   外税時の売上金額合計の計算方法修正
  *
  *****************************************************************************************/
 --
@@ -55,8 +58,8 @@ AS
   cn_program_id             CONSTANT NUMBER      := fnd_global.conc_program_id; --PROGRAM_ID
   cd_program_update_date    CONSTANT DATE        := SYSDATE;                    --PROGRAM_UPDATE_DATE
 --
-  cv_msg_part      CONSTANT VARCHAR2(3) := ' : ';
-  cv_msg_cont      CONSTANT VARCHAR2(3) := '.';
+  cv_msg_part               CONSTANT VARCHAR2(3) := ' : ';
+  cv_msg_cont               CONSTANT VARCHAR2(3) := '.';
 --
 --################################  固定部 END   ##################################
 --
@@ -153,8 +156,11 @@ AS
   cv_head_edi_interface_flag_n   CONSTANT VARCHAR(25)  := 'N';
   cv_tkn_yes                     CONSTANT VARCHAR(10)  := 'Y';
 --  cv_tkn_ja                      CONSTANT VARCHAR(10)  := 'JA';
---  cv_depart_type                 CONSTANT VARCHAR(10)  := '1';
+  cv_depart_type                 CONSTANT VARCHAR(10)  := '1';
 --  cv_depart_car                  CONSTANT VARCHAR(10)  := '2';
+  cv_depart_type_k               CONSTANT VARCHAR2(10)  := '2';               -- HHT百貨店入力区分(百貨店_拠点)
+  cv_depart_screen_class_base    CONSTANT VARCHAR2(10)  := '0';               -- HHT百貨店画面種別(拠点)
+  cv_depart_screen_class_dep     CONSTANT VARCHAR2(10)  := '2';               -- HHT百貨店画面種別(百貨店)
   cv_line_order_invoice_l_num    CONSTANT VARCHAR(10)  := NULL;
   cv_head_order_source_id        CONSTANT VARCHAR(10)  := NULL;
   cv_head_order_invoice_number   CONSTANT VARCHAR(10)  := NULL;
@@ -1253,8 +1259,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      IF ( lv_depart_code = cv_depart_car ) THEN
-      IF ( lv_depart_code IS NULL ) THEN
-/*--==============2009/2/3-END=========================--*/
+      IF ( lv_depart_code IS NULL ) 
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_base ) ) THEN
+/*--==============2009/2/3-END===========================--*/
         --参照コードマスタ：営業車の保管場所分類コード取得
         BEGIN
           SELECT  look_val.meaning      --保管場所分類コード
@@ -1313,7 +1320,9 @@ AS
 --
 /*--==============2009/2/3-START=========================--*/
 --      ELSIF ( lv_depart_code = cv_depart_type ) THEN
-      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+--      ELSIF ( lv_depart_code IS NOT NULL ) THEN
+      ELSIF ( lv_depart_code = cv_depart_type ) 
+        OR (( lv_depart_code = cv_depart_type_k ) AND ( lt_department_screen_class = cv_depart_screen_class_dep ) )THEN
 /*--==============2009/2/3-END=========================--*/
         --参照コードマスタ：百貨店の保管場所分類コード取得
         BEGIN
@@ -1358,7 +1367,7 @@ AS
           FROM   mtl_secondary_inventories msi    -- 保管場所マスタ
           WHERE  msi.attribute7 = lt_base_code
           AND    msi.attribute13 = lt_depart_location_type_code
-          AND    msi.attribute4 = lt_customer_number;
+          AND    msi.attribute4 = lt_keep_in_code;
         EXCEPTION
           WHEN NO_DATA_FOUND THEN
             -- ログ出力
@@ -1609,7 +1618,7 @@ AS
 --              lt_tax_amount := ROUND( lt_tax_amount );
 --            END IF;
 --          END IF;
-          ln_amount            := (  ( lt_pure_amount * ln_tax_data ) - lt_pure_amount );
+          ln_amount            := ( lt_pure_amount *( ln_tax_data - 1 ));
           IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_tax_amount := ( TRUNC( ln_amount ) + 1 );
@@ -1626,7 +1635,7 @@ AS
 --************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
 --************************** 2009/03/23 1.7 N.Maeda MOD START ************************************
           -- 売上金額
-          ln_sal_amount_data    := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) * ln_tax_data;
+          ln_sal_amount_data    := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
           IF ( ln_sal_amount_data <> TRUNC( ln_sal_amount_data ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_sal_amount_data ) + 1 );
@@ -1679,7 +1688,7 @@ AS
 --************************** 2009/03/18 1.6 T.kitajima MOD  END  ************************************
 --************************** 2009/03/23 1.7 N.Maeda MOD START ************************************
           -- 売上金額
-          ln_sal_amount_data    := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number ) * ln_tax_data;
+          ln_sal_amount_data    := ( lt_lin_wholesale_unit_ploce * lt_lin_replenish_number );
           IF ( ln_sal_amount_data <> TRUNC( ln_sal_amount_data ) ) THEN
             IF ( lt_tax_odd = cv_amount_up ) THEN
               lt_sale_amount := ( TRUNC( ln_sal_amount_data ) + 1 );
@@ -1848,7 +1857,7 @@ AS
 --            lt_sale_amount_sum := ROUND( lt_sale_amount_sum );
 --          END IF;
 --        END IF;
-        ln_amount := ( lt_total_amount * ln_tax_data );
+        ln_amount := lt_total_amount;
         IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
           IF ( lt_tax_odd = cv_amount_up ) THEN
           lt_sale_amount_sum := ( TRUNC( ln_amount ) + 1 );
@@ -1866,7 +1875,20 @@ AS
         -- 本体金額合計
         lt_pure_amount_sum := lt_total_amount;
         -- 消費税金額合計
-        lt_tax_amount_sum  := ( lt_sale_amount_sum - lt_pure_amount_sum );
+        ln_amount  := ( lt_sale_amount_sum * ( ln_tax_data - 1 ) );
+        IF ( ln_amount <> TRUNC( ln_amount ) ) THEN
+          IF ( lt_tax_odd = cv_amount_up ) THEN
+          lt_tax_amount_sum := ( TRUNC( ln_amount ) + 1 );
+          -- 切捨て
+          ELSIF ( lt_tax_odd = cv_amount_down ) THEN
+            lt_tax_amount_sum := TRUNC( ln_amount );
+          -- 四捨五入
+          ELSIF ( lt_tax_odd = cv_amount_nearest ) THEN
+            lt_tax_amount_sum := ROUND( ln_amount );
+          END IF;
+        ELSE
+          lt_tax_amount_sum := ln_amount;
+        END IF;
 --
       ELSIF ( lt_consumption_tax_class = cv_ins_slip_tax ) THEN -- 内税（伝票課税）
 --
