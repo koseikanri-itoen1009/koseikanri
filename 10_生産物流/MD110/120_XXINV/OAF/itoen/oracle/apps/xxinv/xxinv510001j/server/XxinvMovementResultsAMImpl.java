@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxinvMovementResultsAMImpl
 * 概要説明   : 入出庫実績要約:検索アプリケーションモジュール
-* バージョン : 1.10
+* バージョン : 1.11
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -16,6 +16,7 @@
 * 2008-10-21 1.8  伊藤ひとみ   統合テスト 指摘353対応
 * 2008-12-01 1.9  伊藤ひとみ   本番障害#236対応
 * 2008-12-25 1.10 伊藤ひとみ   本番障害#797,821対応
+* 2009-02-09 1.11 伊藤ひとみ   本番障害#1143対応
 *============================================================================
 */
 package itoen.oracle.apps.xxinv.xxinv510001j.server;
@@ -45,7 +46,7 @@ import itoen.oracle.apps.xxinv.util.XxinvConstants;
 /***************************************************************************
  * 入出庫実績要約:検索アプリケーションモジュールです。
  * @author  ORACLE 大橋 孝郎
- * @version 1.10
+ * @version 1.11
  ***************************************************************************
  */
 public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -2045,6 +2046,9 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
     OAViewObject makeHdrVO = getXxinvMovementResultsHdVO1();
     OARow makeHdrVORow = (OARow)makeHdrVO.first();
     Number movHdrId = (Number)makeHdrVORow.getAttribute("MovHdrId");
+// 2009-02-09 H.Itou Add Start 本番障害#1143対応
+    String movNum   = (String)makeHdrVORow.getAttribute("MovNum");
+// 2009-02-09 H.Itou Add End
 
     // *************************** //
     // *   ヘッダー更新処理      * //
@@ -2123,7 +2127,23 @@ public class XxinvMovementResultsAMImpl extends XxcmnOAApplicationModuleImpl
         makeHdrVORow.setAttribute("DbInPalletQty", makeHdrVORow.getAttribute("InPalletQty"));
       }
       
+// 2009-02-09 H.Itou Add Start 本番障害#1143対応
+      // *********************************** // 
+      // *  重量容積小口個数更新関数実行   * //
+      // *********************************** //
+      Number ret = XxinvUtility.doUpdateLineItems(getOADBTransaction(), XxcmnConstants.BIZ_TYPE_MOV, movNum);
 
+      // 重量容積小口更新関数の戻り値が1：エラーの場合
+      if (XxinvConstants.RETURN_NOT_EXE.equals(ret))
+      {
+        // ロールバック
+        XxinvUtility.rollBack(getOADBTransaction());
+        // 重量容積小口個数更新関数エラーメッセージ出力
+        throw new OAException(
+            XxcmnConstants.APPL_XXINV, 
+            XxinvConstants.XXINV10127);
+      }
+// 2009-02-09 H.Itou Add End
       updFlag = XxcmnConstants.STRING_Y;
     }
 
