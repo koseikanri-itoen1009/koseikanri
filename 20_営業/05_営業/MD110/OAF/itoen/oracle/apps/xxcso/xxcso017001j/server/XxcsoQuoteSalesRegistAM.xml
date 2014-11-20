@@ -77,6 +77,10 @@
       Name="XxcsoAccountTypeVO1"
       ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoAccountTypeVO" >
    </ViewUsage>
+   <ViewUsage
+      Name="XxcsoQtApTaxRateVO1"
+      ViewObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQtApTaxRateVO" >
+   </ViewUsage>
    <ViewLinkUsage
       Name="XxcsoQuoteHeaderLineSalesVL1"
       ViewLinkObjectName="itoen.oracle.apps.xxcso.xxcso017001j.server.XxcsoQuoteHeaderLineSalesVL"

@@ -24,6 +24,7 @@
 * 2010-03-23 1.12 SCS阿部大輔  [E_本稼動_01942]管理元拠点対応
 * 2011-01-06 1.13 SCS桐生和幸  [E_本稼動_02498]銀行支店マスタチェック対応
 * 2011-04-04 1.14 SCS吉元強樹  [E_本稼動_02496]SP専決回送先承認者必須チェック対応
+* 2011-05-17 1.15 SCS桐生和幸  [E_本稼動_02500]原価割れチェック方法の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.common.util;
@@ -218,6 +219,9 @@ public class XxcsoConstants
   public static final String APP_XXCSO1_00607    = "APP-XXCSO1-00607";
   public static final String APP_XXCSO1_00608    = "APP-XXCSO1-00608";
 // 2011-01-06 Ver1.13 [E_本稼動_02498] Add End
+// 2011-05-17 Ver1.15 [E_本稼動_02500] Add Start
+  public static final String APP_XXCSO1_00613    = "APP-XXCSO1-00613";
+// 2011-05-17 Ver1.15 [E_本稼動_02500] Add Start
 
   /*****************************************************************************
    * トークン名

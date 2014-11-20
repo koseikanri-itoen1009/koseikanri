@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoQuoteSalesRegistAMImpl
 * 概要説明   : 販売先用見積入力画面アプリケーション・モジュールクラス
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -21,6 +21,7 @@
 * 2009-07-23 1.10 SCS阿部大輔  【0000806】マージン額／マージン率の計算対象変更
 * 2009-08-31 1.11 SCS阿部大輔  【0001212】通常店納価格導出ボタンの見積区分を変更
 * 2009-12-21 1.12 SCS阿部大輔  【E_本稼動_00535】営業原価対応
+* 2011-05-17 1.13 SCS桐生和幸  【E_本稼動_02500】原価割れチェック方法の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -2122,6 +2123,14 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         XxcsoMessage.createInstanceLostError("XxcsoQuoteLinesSalesFullVO1");
     }
 
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+    XxcsoQtApTaxRateVOImpl taxVo = getXxcsoQtApTaxRateVO1();
+    if ( taxVo == null )
+    {
+      throw XxcsoMessage.createInstanceLostError("XxcsoQtApTaxRateVO1");
+    }
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
+
     errorList = validateHeader(errorList);
 
     /* 20090518_abe_T1_1023 START*/
@@ -2131,6 +2140,11 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
 
     XxcsoQuoteLinesSalesFullVORowImpl lineRow
       = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
+
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+    XxcsoQtApTaxRateVORowImpl taxRow
+      = (XxcsoQtApTaxRateVORowImpl)taxVo.first();
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
 
     /* 20090324_abe_課題77 START*/
     //プロファイルの取得
@@ -2143,6 +2157,15 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       period_Day = 0;
     }
     /* 20090324_abe_課題77 END*/
+
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+    //仮払税率の存在チェック
+    double taxrate = -1;
+    if ( taxRow != null )
+    {
+      taxrate = taxRow.getApTaxRate().doubleValue();
+    }
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
 
     int index = 0;
     while ( lineRow != null )
@@ -2164,6 +2187,9 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
        /* 20090324_abe_課題77 START*/
        ,period_Day
        /* 20090324_abe_課題77 END*/
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+       ,taxrate
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
       );
 
       lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
@@ -2489,9 +2515,16 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
    /* 20090324_abe_課題77 START*/
    ,int                               period_Daye
    /* 20090324_abe_課題77 END*/
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+   ,double                            taxrate
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
   )
   {
     OADBTransaction txn = getOADBTransaction();
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+    double taxratecul = 0;
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
+
     XxcsoUtils.debug(txn, "[START]");
 
     XxcsoQuoteSalesInitVOImpl initVo = getXxcsoQuoteSalesInitVO1();
@@ -2701,7 +2734,42 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
             /* 20090616_abe_T1_1257 END*/
             /* 20090518_abe_T1_1023 END*/
             /* 20091221_abe_E_本稼動_00535 START*/
-            if (lineRow.getBusinessPrice() != null)
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+            //店納価格税区分が"2"(税込価格)の場合、仮払税率のチェック
+            if (headerRow.getDelivPriceTaxType().equals("2"))
+            {
+              //仮払消費税が取得できている場合
+              if (taxrate != -1)
+              {
+                //引数の税率を設定
+                taxratecul = taxrate;
+              }
+              else
+              {
+                OAException error
+                  = XxcsoMessage.createErrorMessage(
+                      XxcsoConstants.APP_XXCSO1_00613,
+                      XxcsoConstants.TOKEN_COLUMN,
+                      XxcsoQuoteConstants.TOKEN_VALUE_USUALLY_DELIV_PRICE,
+                      XxcsoConstants.TOKEN_INDEX,
+                      String.valueOf(index)
+                    );
+                errorList.add(error);
+              }
+            }
+            //店納価格税区分が"1"(税抜価格)の場合
+            else
+            {
+              //営業原価でチェックする為、税率に1を設定
+              taxratecul = 1;
+            }
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Mod Start
+//            if (lineRow.getBusinessPrice() != null)
+            if ((lineRow.getBusinessPrice() != null) &&
+                (taxrate != -1)
+               )
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Mod End
             {
             /* 20091221_abe_E_本稼動_00535 END*/
               double businessPrice = lineRow.getBusinessPrice().doubleValue();
@@ -2709,15 +2777,23 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
               {
                 double usuallyDelivPrice  = Double.parseDouble(usuallyDelivPriceRep);
                 // 通常店納価格
-                /* 20090518_abe_T1_1023 START*/
-                if ( (usuallyDelivPrice <= businessPrice && unittype.equals("1") ) ||
-                     ((usuallyDelivPrice / caseincnum <= businessPrice ||
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Mod Start
+//                /* 20090518_abe_T1_1023 START*/
+//                if ( (usuallyDelivPrice <= businessPrice && unittype.equals("1") ) ||
+//                     ((usuallyDelivPrice / caseincnum <= businessPrice ||
+//                      caseincnum == 0) && unittype.equals("2") ) || 
+//                     ((usuallyDelivPrice / bowlincnum <= businessPrice ||
+//                      bowlincnum == 0) && unittype.equals("3"))
+//                   )
+//                //if ( usuallyDelivPrice <= businessPrice )
+//                /* 20090518_abe_T1_1023 END*/
+                if ( (usuallyDelivPrice <= businessPrice * taxratecul && unittype.equals("1") ) ||
+                     ((usuallyDelivPrice / caseincnum <= businessPrice * taxratecul ||
                       caseincnum == 0) && unittype.equals("2") ) || 
-                     ((usuallyDelivPrice / bowlincnum <= businessPrice ||
+                     ((usuallyDelivPrice / bowlincnum <= businessPrice * taxratecul ||
                       bowlincnum == 0) && unittype.equals("3"))
                    )
-                //if ( usuallyDelivPrice <= businessPrice )
-                /* 20090518_abe_T1_1023 END*/
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Mod End
                 {
                   OAException error
                     = XxcsoMessage.createErrorMessage(
@@ -2768,8 +2844,45 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
             }
 
             String unittype        = headerRow.getUnitType();
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add Start
+            //税率初期化
+            taxratecul = 0;
+            //店納価格税区分が"2"(税込価格)の場合、仮払税率のチェック
+            if(headerRow.getDelivPriceTaxType().equals("2"))
+            {
+              //仮払消費税が取得できている場合
+              if(taxrate != -1)
+              {
+                //引数の仮払税率を設定
+                taxratecul = taxrate;
+              }
+              else
+              {
+                OAException error
+                  = XxcsoMessage.createErrorMessage(
+                      XxcsoConstants.APP_XXCSO1_00613,
+                      XxcsoConstants.TOKEN_COLUMN,
+                      XxcsoQuoteConstants.TOKEN_VALUE_THIS_TIME_DELIV_PRICE,
+                      XxcsoConstants.TOKEN_INDEX,
+                      String.valueOf(index)
+                    );
+                errorList.add(error);
+              }
+            }
+            //店納価格税区分が"1"(税抜価格)の場合
+            else
+            {
+              //営業原価でチェックする為、税率に1を設定
+              taxratecul = 1;
+            }
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Add End
             /* 20091221_abe_E_本稼動_00535 START*/
-            if (lineRow.getBusinessPrice() != null)
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Mod Start
+//            if (lineRow.getBusinessPrice() != null)
+            if ((lineRow.getBusinessPrice() != null) &&
+                (taxrate != -1)
+               )
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Mod End
             {
             /* 20091221_abe_E_本稼動_00535 END*/
               double businessPrice = lineRow.getBusinessPrice().doubleValue();
@@ -2783,15 +2896,23 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
                 /* 20090723_abe_0000806 END*/
 
                 // 今回店納価格
-                /* 20090518_abe_T1_1023 START*/
-                if ( (thisTimeDelivPrice <= businessPrice && unittype.equals("1") ) ||
-                     ((thisTimeDelivPrice / caseincnum <= businessPrice ||
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Mod Start
+//                /* 20090518_abe_T1_1023 START*/
+//                if ( (thisTimeDelivPrice <= businessPrice && unittype.equals("1") ) ||
+//                    ((thisTimeDelivPrice / caseincnum <= businessPrice ||
+//                      caseincnum == 0) && unittype.equals("2") ) || 
+//                     ((thisTimeDelivPrice / bowlincnum <= businessPrice ||
+//                      bowlincnum == 0) && unittype.equals("3"))
+//                   )
+//                //if ( thisTimeDelivPrice <= businessPrice )
+//                /* 20090518_abe_T1_1023 END*/
+                if ( (thisTimeDelivPrice <= businessPrice * taxratecul && unittype.equals("1") ) ||
+                    ((thisTimeDelivPrice / caseincnum <= businessPrice * taxratecul ||
                       caseincnum == 0) && unittype.equals("2") ) || 
-                     ((thisTimeDelivPrice / bowlincnum <= businessPrice ||
+                     ((thisTimeDelivPrice / bowlincnum <= businessPrice * taxratecul ||
                       bowlincnum == 0) && unittype.equals("3"))
                    )
-                //if ( thisTimeDelivPrice <= businessPrice )
-                /* 20090518_abe_T1_1023 END*/
+// 2011-05-17 Ver1.13 [E_本稼動_02500] Mod End
                   {
                     OAException error
                       = XxcsoMessage.createErrorMessage(
@@ -3240,6 +3361,15 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
   public XxcsoAccountTypeVOImpl getXxcsoAccountTypeVO1()
   {
     return (XxcsoAccountTypeVOImpl)findViewObject("XxcsoAccountTypeVO1");
+  }
+
+  /**
+   * 
+   * Container's getter for XxcsoQtApTaxRateVO1
+   */
+  public XxcsoQtApTaxRateVOImpl getXxcsoQtApTaxRateVO1()
+  {
+    return (XxcsoQtApTaxRateVOImpl)findViewObject("XxcsoQtApTaxRateVO1");
   }
 
 

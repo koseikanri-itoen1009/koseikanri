@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding='Windows-31J'?>
+<!DOCTYPE ViewObject SYSTEM "jbo_03_01.dtd">
+
+<ViewObject
+   Name="XxcsoQtApTaxRateVO"
+   BindingStyle="Oracle"
+   CustomQuery="true"
+   RowClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQtApTaxRateVORowImpl"
+   ComponentClass="itoen.oracle.apps.xxcso.xxcso017002j.server.XxcsoQtApTaxRateVOImpl"
+   MsgBundleClass="oracle.jbo.common.JboResourceBundle"
+   UseGlueCode="false" >
+   <SQLQuery><![CDATA[
+SELECT qatrv.ap_tax_rate
+FROM   xxcso_qt_ap_tax_rate_v qatrv
+   ]]></SQLQuery>
+   <DesignTime>
+      <Attr Name="_isCodegen" Value="true" />
+      <Attr Name="_version" Value="9.0.3.14.00" />
+      <Attr Name="_CodeGenFlagNew" Value="36" />
+   </DesignTime>
+   <ViewAttribute
+      Name="ApTaxRate"
+      IsPersistent="false"
+      Type="oracle.jbo.domain.Number"
+      ColumnType="NUMBER"
+      AliasName="AP_TAX_RATE"
+      Expression="AP_TAX_RATE"
+      SQLType="NUMERIC" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+</ViewObject>
