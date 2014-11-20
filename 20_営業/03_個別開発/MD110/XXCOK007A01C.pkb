@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK007A01C(body)
  * Description      : 売上実績振替情報作成(EDI)
  * MD.050           : 売上実績振替情報作成(EDI) MD050_COK_007_A01
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * -------------------------------- ---------------------------------------------------------
@@ -41,11 +41,13 @@ AS
  *  2009/08/13    1.7   M.Hiruta         [障害0000997]EDIワークテーブルから納品単価と原価金額を取得する際の
  *                                                    取得箇所を修正
  *                                                    顧客名の取得元をパーティマスタへ修正
- *  2009/10/16    1.8   S.Moriyama       [障害E_T3_00632]伝票入力者対応により売上実績情報へ
- *                                                       売上振替元顧客コードを設定するように変更
- *  2009/10/19    1.9   K.Yamaguchi      [障害E_T3_00631] 消費税コード取得方法を変更
- *  2009/12/05    1.10  S.Moriyama       [障害E_本稼動_00XXX] 売上振替元顧客側の原価金額(発注)に対して
- *                                                            符号逆転を行うように修正
+ *  2009/10/16    1.8   S.Moriyama       [E_T3_00632]伝票入力者対応により売上実績情報へ
+ *                                                   売上振替元顧客コードを設定するように変更
+ *  2009/10/19    1.9   K.Yamaguchi      [E_T3_00631]消費税コード取得方法を変更
+ *  2009/12/05    1.10  S.Moriyama       [E_本稼動_00180]売上振替元顧客側の原価金額(発注)に対して
+ *                                                       符号逆転を行うように修正（データパッチ時に緊急対応）
+ *  2010/01/07    1.11  S.Moriyama       [E_本稼動_00180]価格表取得を振替元顧客で実施するように修正
+ *                                       [E_本稼動_00834]価格表より納品単価を取得時に0円の場合は警告とするように修正
  *
  *****************************************************************************************/
   -- =========================
@@ -94,6 +96,9 @@ AS
   cv_message_10090       CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10090';   --EDI売上実績振替情報ロックエラー(削除)
   cv_message_10414       CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10414';   --EDI売上実績振替情報ロックエラー(エラー更新)
   cv_message_10415       CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10415';   --EDI売上実績振替情報更新エラー(エラー更新)
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD START
+  cv_message_10473       CONSTANT VARCHAR2(500) := 'APP-XXCOK1-10473';   --価格表単価0円エラーメッセージ
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD END
   cv_message_90000       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90000';   --対象件数メッセージ
   cv_message_90001       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90001';   --成功件数メッセージ
   cv_message_90002       CONSTANT VARCHAR2(500) := 'APP-XXCCP1-90002';   --エラー件数メッセージ
@@ -1206,7 +1211,11 @@ AS
   , ov_account_number       OUT VARCHAR2    --顧客コード
   , ov_sales_stuff_code     OUT VARCHAR2    --担当営業コード
   , ov_business_low_type    OUT VARCHAR2    --顧客業態区分
-  , on_price_list_id        OUT NUMBER)     --価格表ID
+  , on_price_list_id        OUT NUMBER      --価格表ID
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama AND START
+  , ov_account_name         OUT VARCHAR2)   --顧客名
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama AND END
+
   IS
     -- =======================
     -- ローカル定数
@@ -1219,13 +1228,15 @@ AS
     lv_retcode       VARCHAR2(1)    DEFAULT NULL;   --リターン・コード
     lv_errmsg        VARCHAR2(5000) DEFAULT NULL;   --ユーザー・エラー・メッセージ
     lv_msg           VARCHAR2(5000) DEFAULT NULL;   --メッセージ取得変数
--- Start 2009/05/15 Ver_1.3 T1_1003 M.Hiruta
---    lv_account_name  VARCHAR2(30)   DEFAULT NULL;   --顧客名
--- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
---    lv_account_name  hz_cust_accounts.account_name%TYPE  DEFAULT NULL; --顧客名
-    lv_account_name  hz_parties.party_name%TYPE  DEFAULT NULL; --顧客名
--- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
--- End   2009/05/15 Ver_1.3 T1_1003 M.Hiruta
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama DEL START
+---- Start 2009/05/15 Ver_1.3 T1_1003 M.Hiruta
+----    lv_account_name  VARCHAR2(30)   DEFAULT NULL;   --顧客名
+---- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+----    lv_account_name  hz_cust_accounts.account_name%TYPE  DEFAULT NULL; --顧客名
+--    lv_account_name  hz_parties.party_name%TYPE  DEFAULT NULL; --顧客名
+---- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+---- End   2009/05/15 Ver_1.3 T1_1003 M.Hiruta
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama DEL END
     lb_retcode       BOOLEAN        DEFAULT NULL;   --メッセージ出力の戻り値
     -- =======================
     -- ローカル例外
@@ -1247,7 +1258,10 @@ AS
             , xca.business_low_type AS business_low_type   --業態(小分類)
             , hcsua.price_list_id   AS price_list_id       --価格表ID
       INTO    ov_account_number
-            , lv_account_name
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama UPD START
+--            , lv_account_name
+            , ov_account_name
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama UPD END
             , ov_sale_base_code
             , ov_business_low_type
             , on_price_list_id
@@ -1311,7 +1325,10 @@ AS
                 , iv_token_name1  => cv_token_customer_code
                 , iv_token_value1 => ov_account_number
                 , iv_token_name2  => cv_token_customer_name
-                , iv_token_value2 => lv_account_name
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama UPD START
+--                , iv_token_value2 => lv_account_name
+                , iv_token_value2 => ov_account_name
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama UPD END
                 , iv_token_name3  => cv_token_tanto_loc_code
                 , iv_token_value3 => ov_sale_base_code
                 , iv_token_name4  => cv_token_tanto_code
@@ -1324,41 +1341,43 @@ AS
                     );
       RAISE skip_expt;
     END IF;
-    -- =============================================================================
-    -- B-2.で取得した納品単価がNULL、または、0の場合、かつ
-    -- 上記で取得した価格表IDに値が設定されていない場合、例外処理
-    -- =============================================================================
--- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
---    IF ( (   ( in_shipment_unit_price IS NULL )
---          OR ( in_shipment_unit_price = cn_0  )
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama DEL START
+--    -- =============================================================================
+--    -- B-2.で取得した納品単価がNULL、または、0の場合、かつ
+--    -- 上記で取得した価格表IDに値が設定されていない場合、例外処理
+--    -- =============================================================================
+---- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+----    IF ( (   ( in_shipment_unit_price IS NULL )
+----          OR ( in_shipment_unit_price = cn_0  )
+----         )
+----         AND ( on_price_list_id IS NULL )
+----       ) THEN
+--    IF ( (   ( in_order_unit_price IS NULL )
+--          OR ( in_order_unit_price = cn_0  )
 --         )
 --         AND ( on_price_list_id IS NULL )
 --       ) THEN
-    IF ( (   ( in_order_unit_price IS NULL )
-          OR ( in_order_unit_price = cn_0  )
-         )
-         AND ( on_price_list_id IS NULL )
-       ) THEN
--- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
-      lv_msg := xxccp_common_pkg.get_msg(
-                  iv_application  => cv_xxcok_appl_name
-                , iv_name         => cv_message_10095
-                , iv_token_name1  => cv_token_customer_code
-                , iv_token_value1 => ov_account_number
-                , iv_token_name2  => cv_token_customer_name
-                , iv_token_value2 => lv_account_name
-                , iv_token_name3  => cv_token_tanto_loc_code
-                , iv_token_value3 => ov_sale_base_code
-                , iv_token_name4  => cv_token_tanto_code
-                , iv_token_value4 => ov_sales_stuff_code
-                );
-      lb_retcode := xxcok_common_pkg.put_message_f(
-                      in_which    => FND_FILE.OUTPUT   --出力区分
-                    , iv_message  => lv_msg            --メッセージ
-                    , in_new_line => 0                 --改行
-                    );
-      RAISE skip_expt;
-    END IF;
+---- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
+--      lv_msg := xxccp_common_pkg.get_msg(
+--                  iv_application  => cv_xxcok_appl_name
+--                , iv_name         => cv_message_10095
+--                , iv_token_name1  => cv_token_customer_code
+--                , iv_token_value1 => ov_account_number
+--                , iv_token_name2  => cv_token_customer_name
+--                , iv_token_value2 => lv_account_name
+--                , iv_token_name3  => cv_token_tanto_loc_code
+--                , iv_token_value3 => ov_sale_base_code
+--                , iv_token_name4  => cv_token_tanto_code
+--                , iv_token_value4 => ov_sales_stuff_code
+--                );
+--      lb_retcode := xxcok_common_pkg.put_message_f(
+--                      in_which    => FND_FILE.OUTPUT   --出力区分
+--                    , iv_message  => lv_msg            --メッセージ
+--                    , in_new_line => 0                 --改行
+--                    );
+--      RAISE skip_expt;
+--    END IF;
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama DEL END
   EXCEPTION
     -- *** 
     WHEN skip_expt THEN
@@ -1427,6 +1446,10 @@ AS
     lv_cost_item_unit_type          VARCHAR2(240)  DEFAULT NULL;   --営業原価(品目単位)
     lv_tax_type                     VARCHAR2(1)    DEFAULT NULL;   --消費税区分
     ln_price_list_id                NUMBER;                        --価格表ID
+-- 2010/01/07 Ver.1.11 [E_本稼動_00180] SCS S.Moriyama ADD START
+    lt_price_list_id_dummy          qp_list_headers_b.list_header_id%TYPE;      --価格表ID（振替先顧客格納用ダミー）
+    lt_account_name                 hz_parties.party_name%TYPE;    --顧客名
+-- 2010/01/07 Ver.1.11 [E_本稼動_00180] SCS S.Moriyama ADD END
     ln_item_id                      NUMBER;                        --品目ID
     ln_case_qty                     NUMBER(5);                     --ケース入数
     ln_qty                          NUMBER         DEFAULT 0;      --数量
@@ -1476,10 +1499,10 @@ AS
 -- Start 2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
 --    ot_from_cust_rec.shipment_cost_amt := in_shipment_cost_amt;
 --    ot_to_cust_rec.shipment_cost_amt   := in_shipment_cost_amt;
--- 2009/12/03 Ver.1.10 [E_本稼動_00XXX] SCS S.Moriyama UPD START
+-- 2009/12/03 Ver.1.10 [E_本稼動_00180] SCS S.Moriyama UPD START
 --    ot_from_cust_rec.order_cost_amt := in_order_cost_amt;
     ot_from_cust_rec.order_cost_amt := in_order_cost_amt * -1;
--- 2009/12/03 Ver.1.10 [E_本稼動_00XXX] SCS S.Moriyama UPD END
+-- 2009/12/03 Ver.1.10 [E_本稼動_00180] SCS S.Moriyama UPD END
     ot_to_cust_rec.order_cost_amt   := in_order_cost_amt;
 -- End   2009/08/13 Ver.1.7 0000997 M.Hiruta REPAIR
     -- *** レコード型に値をセット(商品コード) ***
@@ -1728,11 +1751,44 @@ AS
     , ov_sales_stuff_code     => lv_sales_stuff_code          --担当営業コード
     , ov_business_low_type    => lv_business_low_type         --顧客業態区分
     , on_price_list_id        => ln_price_list_id             --価格表ID
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD START
+    , ov_account_name         => lt_account_name              --顧客名
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD END
     );
     IF ( lv_retcode = cv_status_warn ) THEN
       RAISE chk_data_expt;
     ELSIF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD START
+    ELSE
+      -- =============================================================================
+      -- EDIに納品単価が未設定であり振替元顧客に価格表が設定されていない場合はエラーとする
+      -- =============================================================================
+      IF ( (   ( in_order_unit_price IS NULL )
+            OR ( in_order_unit_price = cn_0  )
+           )
+           AND ( ln_price_list_id IS NULL )
+         ) THEN
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_message_10095
+                  , iv_token_name1  => cv_token_customer_code
+                  , iv_token_value1 => lv_from_account_number
+                  , iv_token_name2  => cv_token_customer_name
+                  , iv_token_value2 => lt_account_name
+                  , iv_token_name3  => cv_token_tanto_loc_code
+                  , iv_token_value3 => lv_sale_base_code
+                  , iv_token_name4  => cv_token_tanto_code
+                  , iv_token_value4 => lv_sales_stuff_code
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        RAISE chk_data_expt;
+      END IF;
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD END
     END IF;
     -- *** レコード型に値をセット ***
     ot_from_cust_rec.base_code              := lv_sale_base_code;         --拠点コード
@@ -1762,7 +1818,11 @@ AS
     , ov_account_number       => lv_to_account_number         --顧客コード
     , ov_sales_stuff_code     => lv_sales_stuff_code          --担当営業コード
     , ov_business_low_type    => lv_business_low_type         --顧客業態区分
-    , on_price_list_id        => ln_price_list_id             --価格表ID
+-- 2010/01/07 Ver.1.11 [E_本稼動_00180] SCS S.Moriyama UPD START
+--    , on_price_list_id        => ln_price_list_id             --価格表ID
+    , on_price_list_id        => lt_price_list_id_dummy       --価格表ID（振替先顧客格納用ダミー）
+    , ov_account_name         => lt_account_name              --顧客名
+-- 2010/01/07 Ver.1.11 [E_本稼動_00180] SCS S.Moriyama UPD END
     );
     IF ( lv_retcode = cv_status_warn ) THEN
       RAISE chk_data_expt;
@@ -2107,8 +2167,8 @@ AS
                        , in_price_list_header_id => ln_price_list_id
                        , iv_uom_code             => lv_unit_type
                        );
-      -- *** 単価を取得を取得できなかった場合 ***
-      IF ( ln_unit_price < cn_0 ) THEN
+      -- *** 単価を取得できなかった場合 ***
+      IF ( NVL ( ln_unit_price , 0 ) < cn_0 ) THEN
         -- *** 価格表名の取得 ***
         SELECT qlht.name AS price_list_name  --価格表名
         INTO   lv_price_list_name
@@ -2134,6 +2194,33 @@ AS
                       , in_new_line => 0                 --改行
                       );
         RAISE chk_data_expt;
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD START
+      -- *** 価格表に該当品目が登録されていない場合 ***
+      ELSIF ( NVL ( ln_unit_price , 0 ) = cn_0 ) THEN
+        -- *** 価格表名の取得 ***
+        SELECT qlht.name AS price_list_name  --価格表名
+        INTO   lv_price_list_name
+        FROM   qp_list_headers_tl  qlht      --価格表ヘッダ
+        WHERE  qlht.list_header_id = ln_price_list_id
+        AND    qlht.language       = USERENV('LANG');
+--
+        lv_msg := xxccp_common_pkg.get_msg(
+                    iv_application  => cv_xxcok_appl_name
+                  , iv_name         => cv_message_10473
+                  , iv_token_name1  => cv_token_price_list_name
+                  , iv_token_value1 => lv_price_list_name
+                  , iv_token_name2  => cv_token_item_code
+                  , iv_token_value2 => lv_item_code
+                  , iv_token_name3  => cv_token_unit_price_code
+                  , iv_token_value3 => lv_unit_type
+                  );
+        lb_retcode := xxcok_common_pkg.put_message_f(
+                        in_which    => FND_FILE.OUTPUT   --出力区分
+                      , iv_message  => lv_msg            --メッセージ
+                      , in_new_line => 0                 --改行
+                      );
+        RAISE chk_data_expt;
+-- 2010/01/07 Ver.1.11 [E_本稼動_00834] SCS S.Moriyama ADD END
       END IF;
     END IF;
     -- *** レコード型に値をセット(納品単価) ***
