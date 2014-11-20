@@ -354,7 +354,10 @@ SELECT
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XCA2V02.start_date_active(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XCA2V02.end_date_active(+)
    --»‘¢•i–Úî•ñŽæ“¾
-   AND  XOHA.designated_item_id = XIM2V.item_id(+)
+-- 2009/03/30 H.Iida MOD START –{”ÔáŠQ#1344
+--   AND  XOHA.designated_item_id = XIM2V.item_id(+)
+   AND  XOHA.designated_item_code = XIM2V.item_no(+)
+-- 2009/03/30 H.Iida MOD END
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) >= XIM2V.start_date_active(+)
    AND  NVL( XOHA.arrival_date, XOHA.schedule_arrival_date ) <= XIM2V.end_date_active(+)
    --‰^‘—‹ÆŽÒ_ŽÀÑ–¼Žæ“¾
