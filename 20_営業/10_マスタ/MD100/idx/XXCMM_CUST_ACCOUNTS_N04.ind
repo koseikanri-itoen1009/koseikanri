@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n04
+ON xxcmm.xxcmm_cust_accounts
+(bm_pay_supplier_code2)
+TABLESPACE xxidx2
+/

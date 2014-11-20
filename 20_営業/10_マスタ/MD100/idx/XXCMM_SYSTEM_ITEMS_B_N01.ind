@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_system_items_b_n01
+ON xxcmm.xxcmm_system_items_b
+(item_status)
+TABLESPACE xxidx2
+/

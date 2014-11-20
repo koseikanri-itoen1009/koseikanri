@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n02
+ON xxcmm.xxcmm_cust_accounts
+(contractor_supplier_code)
+TABLESPACE xxidx2
+/

@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n05
+ON xxcmm.xxcmm_cust_accounts
+(chain_store_code, store_code)
+TABLESPACE xxidx2
+/

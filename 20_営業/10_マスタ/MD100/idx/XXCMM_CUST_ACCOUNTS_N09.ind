@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n09
+ON xxcmm.xxcmm_cust_accounts
+(business_low_type)
+TABLESPACE xxidx2
+/

@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n10
+ON xxcmm.xxcmm_cust_accounts
+(wholesale_ctrl_code)
+TABLESPACE xxidx2
+/

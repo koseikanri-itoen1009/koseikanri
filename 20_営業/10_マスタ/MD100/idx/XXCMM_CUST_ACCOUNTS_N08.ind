@@ -1,0 +1,5 @@
+CREATE INDEX xxcmm.xxcmm_cust_accounts_n08
+ON xxcmm.xxcmm_cust_accounts
+(selling_transfer_div, chain_store_code, store_code)
+TABLESPACE xxidx2
+/
