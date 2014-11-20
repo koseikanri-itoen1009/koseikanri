@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品情報インターフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品情報インターフェース T_MD070_BPO_43B
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------------  ----------------------------------------------------------
@@ -53,6 +53,7 @@ AS
  *  2009/01/22    1.11  ORACLE山本恭久   本番問合せ#1037対応
  *  2009/04/09    1.12  SCS丸下          本番障害#1346
  *  2009/06/30    1.13  Yuki Kazama      本番障害#1335対応
+ *  2009/09/29    1.14  H.Itou           本番障害#1465対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4056,7 +4057,9 @@ AS
     lt_actual_class        xxwsh_order_headers_all.actual_confirm_class%TYPE;
 --2008/08/07 Add ↑
 -- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
-    lt_bk_reserve_if_item_code      xxwsh_reserve_interface.item_code%TYPE;        -- 退避品目コード
+-- 2009/09/29 H.Itou Del Start 本番障害#1465 IF品目に関係なくデータを作成する必要があるのでコメントアウト
+--    lt_bk_reserve_if_item_code      xxwsh_reserve_interface.item_code%TYPE;        -- 退避品目コード
+-- 2009/09/29 H.Itou Del End
     lt_bk_order_type_id             xxwsh_order_headers_all.order_type_id%TYPE;    -- 受注タイプID
     lt_bk_confirm_item_code         xxwsh_order_lines_all.shipping_item_code%TYPE; -- 実績計上済データ投入品目コード
     ln_cnt_line_item_no             NUMBER;
@@ -4243,7 +4246,9 @@ AS
 --
 -- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
         -- 退避品目コード初期化
-        lt_bk_reserve_if_item_code := NULL;
+-- 2009/09/29 H.Itou Del Start 本番障害#1465 IF品目に関係なくデータを作成する必要があるのでコメントアウト
+--        lt_bk_reserve_if_item_code := NULL;
+-- 2009/09/29 H.Itou Del End
         lt_bk_confirm_item_code    := NULL;
 -- ver1.13 Y.Kazama 本番障害#1335対応 Add End
       --前回A-2伝票Noと同じ場合
@@ -4371,11 +4376,13 @@ AS
           -- ===========================================
           -- 合算数量の算出 (A-18)
           -- ===========================================
-          -- 「倉替IF・受注アドオンの合計数量を比較した品目コード」以上の品目コードの場合のみLOOPに入る
-          IF (  lt_bk_reserve_if_item_code IS NULL
-             OR lt_bk_reserve_if_item_code <= gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code
-             )
-          THEN
+-- 2009/09/29 H.Itou Del Start 本番障害#1465 IF品目に関係なくデータを作成する必要があるのでコメントアウト
+--          -- 「倉替IF・受注アドオンの合計数量を比較した品目コード」以上の品目コードの場合のみLOOPに入る
+--          IF (  lt_bk_reserve_if_item_code IS NULL
+--             OR lt_bk_reserve_if_item_code <= gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code
+--             )
+--          THEN
+-- 2009/09/29 H.Itou Del End
 --
             -- 実績計上済で、アドオンにあるが倉替IFにない場合は明細を挿入する
             IF ((lt_req_statu = cv_req_status_confirm) AND (lt_actual_class = gv_flag_on)) THEN
@@ -4461,14 +4468,14 @@ AS
                 END IF;
               END IF;
             END IF;
-            
-            -- 倉替IFの品目コードを退避する
-            IF lt_bk_reserve_if_item_code > gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code THEN
-              lt_bk_reserve_if_item_code := NULL;
-            ELSE
-              lt_bk_reserve_if_item_code := gt_reserve_interface_tbl(i).item_no;
-            END IF;
-
+-- 2009/09/29 H.Itou Del Start 本番障害#1465 IF品目に関係なくデータを作成する必要があるのでコメントアウト
+--            -- 倉替IFの品目コードを退避する
+--            IF lt_bk_reserve_if_item_code > gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code THEN
+--              lt_bk_reserve_if_item_code := NULL;
+--            ELSE
+--              lt_bk_reserve_if_item_code := gt_reserve_interface_tbl(i).item_no;
+--            END IF;
+-- 2009/09/29 H.Itou Del End
             -- 同品目の場合のみ、受注アドオンの数量にIFの数量を加算する
             IF gt_reserve_interface_tbl(i).item_no = gt_order_all_tbl(ln_idx_a6).ln_shipping_item_code THEN
 -- ver1.13 Y.Kazama 本番障害#1335対応 Add End
@@ -4734,7 +4741,9 @@ AS
 --
 -- ver1.13 Y.Kazama 本番障害#1335対応 Add Start
             END IF;
-          END IF;
+-- 2009/09/29 H.Itou Del Start 本番障害#1465 IF品目に関係なくデータを作成する必要があるのでコメントアウト
+--          END IF;
+-- 2009/09/29 H.Itou Del End
 -- ver1.13 Y.Kazama 本番障害#1335対応 Add End
         END LOOP gt_order_all_tbl_loop;
 --
