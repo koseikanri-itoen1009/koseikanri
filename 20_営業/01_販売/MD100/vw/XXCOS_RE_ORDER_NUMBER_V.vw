@@ -3,7 +3,7 @@
  *
  * View Name       : xxcos_re_order_number_v
  * Description     : 再送受注番号取得
- * Version         : 1.0
+ * Version         : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/05/22    1.0   T.Kitajima       新規作成
  *  2009/06/04    1.1   T.Miyata         T1_1314対応
+ *  2009/07/07    1.2   T.Miyata         0000478対応
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_re_order_number_v (
   order_number,                         -- 受注番号
@@ -78,6 +79,9 @@ AS
   AND   sites.org_id                            = hou.organization_id                       -- 生産営業単位
   AND   uses.org_id                             = hou.organization_id                       -- 生産営業単位
   AND   sites.party_site_id                     = hps.party_site_id                         -- パーティサイトID
+--****************************** 2009/07/07 1.2 T.Miyata ADD  START ******************************--
+  AND   sites.status                            = 'A'                                       -- 顧客所在地.ステータス
+--****************************** 2009/07/07 1.2 T.Miyata ADD  END   ******************************--
   AND   hps.location_id                         = hl.location_id                            -- 事業所ID
   AND   hca.account_number                      IS NOT NULL                                 -- アカウント番号
   AND   hl.province                             IS NOT NULL                                 -- 配送先コード
