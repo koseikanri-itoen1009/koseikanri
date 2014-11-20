@@ -50,6 +50,7 @@ AS
  *                                      「適用済フラグ」の初期値を「N」から「Y」に変更
  *                                       OPM品目マスタの「マスタ受信日時」にSYSDATEをセットする
  *                                       OPM品目マスタの「試験有無区分」をセットする
+ *  2009/04/10    1.7   H.Yoshikawa      障害T1_0215,T1_0219,T1_0220,T1_0437 対応
  *
  *****************************************************************************************/
 --
@@ -140,6 +141,9 @@ AS
   cv_msg_xxcmm_00418     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00418';                              -- データ削除エラー
   cv_msg_xxcmm_00419     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00419';                              -- 親品目必須エラー
   cv_msg_xxcmm_00420     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00420';                              -- 商品製品区分DFF未設定エラー
+-- Ver1.7  2009/04/10  Add  H.Yoshikawa  障害T1_0219 対応
+  cv_msg_xxcmm_00428     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00428';                              -- ＮＥＴ桁数エラー
+-- End
   --
 -- Ver.1.5 20090224 Add START
   cv_msg_xxcmm_00435     CONSTANT VARCHAR2(20)  := 'APP-XXCMM1-00435';                              -- 取得失敗エラー
@@ -170,6 +174,11 @@ AS
   cv_tkn_sp_supplier     CONSTANT VARCHAR2(20)  := 'SP_SUPPLIER_CODE';                              -- 専門店仕入先
   cv_tkn_opm_cost        CONSTANT VARCHAR2(20)  := 'OPM_COST';                                      -- 標準原価(合計値)
   cv_tkn_msg             CONSTANT VARCHAR2(20)  := 'MSG';                                           -- コンカレント終了メッセージ
+-- Ver1.7  2009/04/10  Add  H.Yoshikawa  障害T1_0219 対応
+  cv_tkn_nets_uom_code   CONSTANT VARCHAR2(20)  := 'INPUT_NETS_UOM_CODE';                           -- 内容量単位
+  cv_tkn_nets            CONSTANT VARCHAR2(20)  := 'INPUT_NETS';                                    -- 内容量
+  cv_tkn_inc_num         CONSTANT VARCHAR2(20)  := 'INPUT_INC_NUM';                                 -- 内訳入数
+-- End
 --
   -- アプリケーション短縮名
   cv_appl_name_xxcmm     CONSTANT VARCHAR2(5)   := 'XXCMM';                                         --
@@ -642,15 +651,26 @@ AS
     ELSE
       lv_sql := lv_sql || '   AND flvv.lookup_code   = :v2_lookup_code ';       -- LOOKUP_CODE
     END IF;
-    -- 容器群、経理容器群、ブランド群は(NOT LIKE '%*')を条件付加します。
+    --
+-- Ver1.7  2009/04/10  Mod  H.Yoshikawa  障害T1_0220 対応
+--    -- 容器群、経理容器群、ブランド群は(NOT LIKE '%*')を条件付加します。
+--    IF ( io_lookup_rec.lookup_type IN ( cv_lookup_vessel_group
+--                                       ,cv_lookup_acnt_vessel_group
+--                                       ,cv_lookup_brand_group )) THEN
+--      lv_sql := lv_sql || '   AND flvv.lookup_code   NOT LIKE ''%*'' ';         -- LOOKUP_CODE
+--    -- 経理群は(NOT LIKE '%**')を条件付加します。
+--    ELSIF ( io_lookup_rec.lookup_type = cv_lookup_acnt_group ) THEN
+--      lv_sql := lv_sql || '   AND flvv.lookup_code   NOT LIKE ''%**'' ';        -- LOOKUP_CODE
+--    END IF;
+    --
+    -- 容器群、経理容器群、ブランド群、経理群の場合、(NOT LIKE '%*')を条件付加します。
     IF ( io_lookup_rec.lookup_type IN ( cv_lookup_vessel_group
                                        ,cv_lookup_acnt_vessel_group
-                                       ,cv_lookup_brand_group )) THEN
+                                       ,cv_lookup_brand_group
+                                       ,cv_lookup_acnt_group )) THEN
       lv_sql := lv_sql || '   AND flvv.lookup_code   NOT LIKE ''%*'' ';         -- LOOKUP_CODE
-    -- 経理群は(NOT LIKE '%**')を条件付加します。
-    ELSIF ( io_lookup_rec.lookup_type = cv_lookup_acnt_group ) THEN
-      lv_sql := lv_sql || '   AND flvv.lookup_code   NOT LIKE ''%**'' ';        -- LOOKUP_CODE
     END IF;
+-- End
     --
     lv_sql := lv_sql || '   AND flvv.enabled_flag  = :v3_flag        ';         -- 使用可能フラグ
     lv_sql := lv_sql || '   AND NVL( flvv.start_date_active, :v4_process_date ) <= :v5_process_date ';   -- 適用開始日
@@ -909,6 +929,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver1.7  2009/04/10  Add  H.Yoshikawa  障害T1_0219 対応
+    cn_net_uom_code_kg        CONSTANT NUMBER(1) := 2;
+    cn_net_uom_code_l         CONSTANT NUMBER(1) := 4;
+-- End
 --
     -- *** ローカル変数 ***
     lv_step                   VARCHAR2(10);                                     -- ステップ
@@ -1102,14 +1126,20 @@ AS
       l_set_parent_item_rec.case_jan_code            := i_wk_item_rec.case_jan_code;                -- ケースJANコード
       l_set_parent_item_rec.sp_supplier_code         := i_wk_item_rec.sp_supplier_code;             -- 専門店仕入先コード
       l_set_parent_item_rec.case_number              := i_wk_item_rec.case_inc_num;                 -- ケース入数(DFF)
---20090212 Add START
       -- NETは値が入っていなければ内容量×内訳入数をセットします。
       IF ( i_wk_item_rec.net IS NULL ) THEN
         l_set_parent_item_rec.net := TRUNC(TO_NUMBER(i_wk_item_rec.nets) * TO_NUMBER(i_wk_item_rec.inc_num));  -- NET
+-- Ver1.7  2009/04/10  Add  H.Yoshikawa  障害T1_0219 対応
+        IF ( i_etc_rec.nets_uom_code IN ( cn_net_uom_code_kg, cn_net_uom_code_l ) ) THEN
+          -- KG, L 時は係数(1000)をかける【NETは g のため】
+          l_set_parent_item_rec.net := l_set_parent_item_rec.net * 1000;  -- NET
+        END IF;
+-- End
       ELSE
-        l_set_parent_item_rec.net := TO_NUMBER(i_wk_item_rec.net);                                  -- NET
+        l_set_parent_item_rec.net := TO_NUMBER( i_wk_item_rec.net );                                -- NET
       END IF;
 --20090212 Add END
+--
       l_set_parent_item_rec.weight_volume            := i_wk_item_rec.weight_volume;                -- 重量／体積(DFF)
       l_set_parent_item_rec.jan_code                 := i_wk_item_rec.jan_code;                     -- JANコード
       l_set_parent_item_rec.item_um                  := i_wk_item_rec.item_um;                      -- 基準単位
@@ -1406,7 +1436,10 @@ AS
        ,program_update_date
       ) VALUES (
         ln_item_id                                          -- 品目ID
-       ,gd_process_date                                     -- 適用開始日
+-- Ver1.7  2009/04/10  Mod  H.Yoshikawa  障害T1_0437 対応
+--       ,gd_process_date                                     -- 適用開始日
+       ,TRUNC( SYSDATE )                                    -- 適用開始日
+-- End
        ,TO_DATE(cv_max_date, cv_date_fmt_std)               -- 適用終了日
      --2009/03/16  適用済フラグの初期値を「Y」に変更したためコメントアウト
      --,cv_no                                               -- 適用済フラグ
@@ -1821,6 +1854,10 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- Ver1.7  2009/04/10  Add  H.Yoshikawa  障害T1_0219 対応
+    cv_uom_code_kg            CONSTANT VARCHAR2(3) := 'KG';
+    cv_uom_code_l             CONSTANT VARCHAR2(3) := 'L';
+-- End
 --
     -- *** ローカル変数 ***
     lv_step                   VARCHAR2(10);                           -- ステップ
@@ -1996,6 +2033,7 @@ AS
              ,ln_cnt
       FROM    xxcmm_wk_item_batch_regist xwibr
       WHERE   xwibr.item_code = i_wk_item_rec.item_code
+      AND     xwibr.request_id = cn_request_id
       ;
       -- 処理結果チェック
       IF ( ln_cnt_all <> ln_cnt ) THEN
@@ -2033,7 +2071,7 @@ AS
         AND     iimb.item_no = i_wk_item_rec.parent_item_code
         ;
         -- 処理結果チェック
-        IF ( ln_parent_item_status <> cn_itm_status_regist ) THEN
+        IF ( NVL( ln_parent_item_status, cn_itm_status_num_tmp ) <> cn_itm_status_regist ) THEN
           -- 親品目ステータスエラー
           lv_errmsg := xxccp_common_pkg.get_msg(
                          iv_application  => cv_appl_name_xxcmm        -- アプリケーション短縮名
@@ -2146,6 +2184,39 @@ AS
           END IF;
         END IF;
         --
+-- Ver1.7  2009/04/10  Add  H.Yoshikawa  障害T1_0219 対応
+        -- NET（最大8桁）
+        IF  ( UPPER( i_wk_item_rec.nets_uom_code ) IN ( cv_uom_code_kg, cv_uom_code_l ))
+        AND ( i_wk_item_rec.net IS NULL ) THEN
+          -- 内容量単位が'KG'、'L'の場合、*1000する必要があるため、
+          -- NET(6桁)をオーバーしないかチェック（5桁をオーバーしなければ最大8桁に収まる）
+          IF ( TRUNC( NVL( i_wk_item_rec.nets, 0 ) * NVL( i_wk_item_rec.inc_num, 0 ) ) >= 100000 ) THEN
+            -- 内容量、内訳入数 ともに設定されている場合、NET桁数エラー
+            lv_errmsg := xxccp_common_pkg.get_msg(
+                           iv_application  => cv_appl_name_xxcmm           -- アプリケーション短縮名
+                          ,iv_name         => cv_msg_xxcmm_00428           -- メッセージコード
+                          ,iv_token_name1  => cv_tkn_input_line_no         -- トークンコード1
+                          ,iv_token_value1 => i_wk_item_rec.line_no        -- トークン値1
+                          ,iv_token_name2  => cv_tkn_input_item_code       -- トークンコード2
+                          ,iv_token_value2 => i_wk_item_rec.item_code      -- トークン値2
+                          ,iv_token_name3  => cv_tkn_nets_uom_code         -- トークンコード3
+                          ,iv_token_value3 => i_wk_item_rec.nets_uom_code  -- トークン値3
+                          ,iv_token_name4  => cv_tkn_nets                  -- トークンコード4
+                          ,iv_token_value4 => i_wk_item_rec.nets           -- トークン値4
+                          ,iv_token_name5  => cv_tkn_inc_num               -- トークンコード5
+                          ,iv_token_value5 => i_wk_item_rec.inc_num        -- トークン値5
+                         );
+            -- メッセージ出力
+            xxcmm_004common_pkg.put_message(
+              iv_message_buff => lv_errmsg
+             ,ov_errbuf       => lv_errbuf
+             ,ov_retcode      => lv_retcode
+             ,ov_errmsg       => lv_errmsg
+            );
+            lv_check_flag := cv_status_error;
+          END IF;
+        END IF;
+-- End
         -- 本社商品区分
         IF ( i_wk_item_rec.hon_product_class IS NULL ) THEN
           IF ( lv_required_item IS NULL ) THEN
@@ -2359,8 +2430,11 @@ AS
       --==============================================================
       lv_step := 'A-4.9';
       -- 半角チェック
+-- Ver1.7  2009/04/10  Mod  H.Yoshikawa  障害T1_0215 対応
 --ito->※最終的にはxxccp_common_pkgになる予定
-      IF ( xxcmm_004common_pkg.chk_single_byte( i_wk_item_rec.item_name_alt ) <> TRUE ) THEN
+--      IF ( xxcmm_004common_pkg.chk_single_byte( i_wk_item_rec.item_name_alt ) <> TRUE ) THEN
+      IF ( xxccp_common_pkg.chk_single_byte( i_wk_item_rec.item_name_alt ) <> TRUE ) THEN
+-- End
         -- 半角チェックエラー
         lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
@@ -2623,8 +2697,11 @@ AS
         --==============================================================
         lv_step := 'A-4.17';
         -- 半角チェック
+-- Ver1.7  2009/04/10  Mod  H.Yoshikawa  障害T1_0215 対応
 --ito->※最終的にはxxccp_common_pkgになる予定
-        IF ( xxcmm_004common_pkg.chk_single_byte( i_wk_item_rec.jan_code ) <> TRUE ) THEN
+--        IF ( xxcmm_004common_pkg.chk_single_byte( i_wk_item_rec.jan_code ) <> TRUE ) THEN
+        IF ( xxccp_common_pkg.chk_single_byte( i_wk_item_rec.jan_code ) <> TRUE ) THEN
+-- End
           -- 半角チェックエラー
           lv_errmsg := xxccp_common_pkg.get_msg(
                          iv_application  => cv_appl_name_xxcmm                    -- アプリケーション短縮名
@@ -2654,8 +2731,11 @@ AS
         --==============================================================
         lv_step := 'A-4.18';
         -- 半角チェック
+-- Ver1.7  2009/04/10  Mod  H.Yoshikawa  障害T1_0215 対応
 --ito->※最終的にはxxccp_common_pkgになる予定
-        IF ( xxcmm_004common_pkg.chk_single_byte( i_wk_item_rec.case_jan_code ) <> TRUE ) THEN
+--        IF ( xxcmm_004common_pkg.chk_single_byte( i_wk_item_rec.case_jan_code ) <> TRUE ) THEN
+        IF ( xxccp_common_pkg.chk_single_byte( i_wk_item_rec.case_jan_code ) <> TRUE ) THEN
+-- End
           -- 半角チェックエラー
           lv_errmsg := xxccp_common_pkg.get_msg(
                          iv_application  => cv_appl_name_xxcmm                  -- アプリケーション短縮名
@@ -2685,8 +2765,11 @@ AS
         --==============================================================
         lv_step := 'A-4.19';
         -- 半角チェック
+-- Ver1.7  2009/04/10  Mod  H.Yoshikawa  障害T1_0215 対応
 --ito->※最終的にはxxccp_common_pkgになる予定
-        IF ( xxcmm_004common_pkg.chk_single_byte( i_wk_item_rec.itf_code ) <> TRUE ) THEN
+--        IF ( xxcmm_004common_pkg.chk_single_byte( i_wk_item_rec.itf_code ) <> TRUE ) THEN
+        IF ( xxccp_common_pkg.chk_single_byte( i_wk_item_rec.itf_code ) <> TRUE ) THEN
+-- End
           -- 半角チェックエラー
           lv_errmsg := xxccp_common_pkg.get_msg(
                          iv_application  => cv_appl_name_xxcmm                  -- アプリケーション短縮名
