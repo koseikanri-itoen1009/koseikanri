@@ -8,7 +8,7 @@ AS
  *                    CSVファイルを作成します。
  * MD.050           : MD050_自販機-EBSインタフェース：（OUT）作業依頼／発注情報(iPro,PO)
  *                    2008/12/19 16:30
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -43,6 +43,7 @@ AS
  *  2009-04-30    1.5   K.Satomura       ＳＴ障害対応(T1_0517対応)
  *  2009-05-01    1.6   Tomoko.Mori      T1_0897対応
  *  2009-05-19    1.7   K.Satomura       ＳＴ障害対応(T1_1048対応)
+ *  2009-05-21    1.8   M.Maruyama       ＳＴ障害対応(T1_1093対応)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -740,6 +741,9 @@ AS
     cv_hyphen          CONSTANT VARCHAR2(1)   := '-';
     cv_syozoku_mst     CONSTANT VARCHAR2(30)  := 'XXCSO1_SYOZOKU_MST';
     cv_vm_type_cd      CONSTANT VARCHAR2(30)  := '1';               -- 自動販売機タイプコード    
+    /* 2009.05.21 M.Maruyama T1_1093対応 START */
+    cv_adddrss_chr     CONSTANT VARCHAR2(2)   := '＊';              -- 新・現設置左記住所4NULL値置換用文字
+    /* 2009.05.21 M.Maruyama T1_1093対応 END */
     -- 抽出内容名
     cv_un_numbers_tl   CONSTANT VARCHAR2(100) := '国連番号マスタビュー(機種マスタビュー)の機種名';
     cv_install1_info   CONSTANT VARCHAR2(100) := 'インストールベースマスタの設置用物件情報';
@@ -1870,8 +1874,13 @@ AS
     io_get_data_rec.work_locatn_tel2       := lv_work_locatn_tel2;
     -- 事業所電話３
     io_get_data_rec.work_locatn_tel3       := lv_work_locatn_tel3;
+    /* 2009.05.21 M.Maruyama T1_1093対応 START */
+    -- -- 現設置先名
+    --io_get_data_rec.cur_organization_name  := lv_cur_organization_name;
     -- 現設置先名
-    io_get_data_rec.cur_organization_name  := lv_cur_organization_name;
+    io_get_data_rec.cur_organization_name
+               := SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(lv_cur_organization_name),1,40);
+    /* 2009.05.21 M.Maruyama T1_1093対応 END */
     -- 現設置先担当者氏名
     io_get_data_rec.cur_full_name          := lv_cur_full_name;
     -- 現設置先電話１
@@ -1888,10 +1897,17 @@ AS
     io_get_data_rec.cur_est_site_adress2   := lv_cur_est_site_adress2;
     -- 現設置先住所３
     io_get_data_rec.cur_est_site_adress3   := lv_cur_est_site_adress3;
+    /* 2009.05.21 M.Maruyama T1_1093対応 START */
+    -- -- 現設置先住所４
+    --io_get_data_rec.cur_est_site_adress4   := lv_cur_est_site_adress4;
     -- 現設置先住所４
-    io_get_data_rec.cur_est_site_adress4   := lv_cur_est_site_adress4;
+    io_get_data_rec.cur_est_site_adress4   := NVL(lv_cur_est_site_adress4,cv_adddrss_chr);
+    -- -- 新設置先名
+    --io_get_data_rec.new_organization_name  := lv_new_organization_name;
     -- 新設置先名
-    io_get_data_rec.new_organization_name  := lv_new_organization_name;
+    io_get_data_rec.new_organization_name  
+               := SUBSTRB(xxcso_util_common_pkg.conv_multi_byte(lv_new_organization_name),1,40);
+    /* 2009.05.21 M.Maruyama T1_1093対応 END */
     -- 新設置先担当者氏名
     io_get_data_rec.new_full_name          := lv_new_full_name;
     -- 新設置先電話１
@@ -1908,8 +1924,12 @@ AS
     io_get_data_rec.new_est_site_adress2   := lv_new_est_site_adress2;
     -- 新設置先住所３
     io_get_data_rec.new_est_site_adress3   := lv_new_est_site_adress3;
+    /* 2009.05.21 M.Maruyama T1_1093対応 START */
+    -- -- 新設置先住所４
+    --io_get_data_rec.new_est_site_adress4   := lv_new_est_site_adress4;
     -- 新設置先住所４
-    io_get_data_rec.new_est_site_adress4   := lv_new_est_site_adress4;
+    io_get_data_rec.new_est_site_adress4   := NVL(lv_new_est_site_adress4,cv_adddrss_chr);
+    /* 2009.05.21 M.Maruyama T1_1093対応 END */
     -- 顧客コード１（新設置先)
     io_get_data_rec.new_customer_code1     := lv_new_customer_code1;
     -- 顧客コード２（現設置先)
