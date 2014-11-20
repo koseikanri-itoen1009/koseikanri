@@ -7,7 +7,7 @@ AS
  * Description      : 売上実績データ連携
  * MD.050           : MD050_CFR_001_A02_売上実績データ連携
  * MD.070           : MD050_CFR_001_A02_売上実績データ連携
- * Version          : 1.11
+ * Version          : 1.12
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -29,6 +29,7 @@ AS
  *  2008/11/14    1.00 SCS 中村 博      初回作成
  *  2009/12/13    1.10 SCS 廣瀬 真佐人  障害対応[E_本稼動_00366]
  *  2011/04/19    1.11 SCS 西野 裕介    障害対応[E_本稼動_04976]
+ *  2011/05/26    1.12 SCS 石渡 賢和    ＰＴ対応[E_本稼動_07413]
  *
  *****************************************************************************************/
 --
@@ -172,7 +173,14 @@ AS
     -- 抽出
     CURSOR get_sales_data_cur
     IS
-      SELECT rcta.trx_number              trx_number,               -- 納品伝票No（AR取引番号）
+-- Mod 2011.05.26 Ver.1.12 Start
+--      SELECT rcta.trx_number              trx_number,               -- 納品伝票No（AR取引番号）
+      SELECT /*+
+                 LEADING(rcta) 
+                 USE_NL( rcta rctta rctla rctla_t rctlgda gcc hca_s hca_b avtab )
+             */
+             rcta.trx_number              trx_number,               -- 納品伝票No（AR取引番号）
+-- Mod 2011.05.26 Ver.1.12 End
              rcta.trx_date                trx_date,                 -- 納品日（売上日）（取引日）
              rcta.customer_trx_id         customer_trx_id,          -- 取引ID
              rctla.line_number            line_number,              -- 納品伝票行No（AR取引明細番号）
@@ -199,7 +207,11 @@ AS
       WHERE rcta.cust_trx_type_id         = rctta.cust_trx_type_id
         AND rctta.attribute2              = cv_flag_yes       -- 情報系連携フラグ（＝Y)
         AND NOT EXISTS ( 
-            SELECT ROWNUM
+-- Mod 2011.05.26 Ver.1.12 Start
+--            SELECT ROWNUM
+            SELECT /*+ USE_NL(xsdr) */
+                   1
+-- Mod 2011.05.26 Ver.1.12 End
             FROM xxcfr_sales_data_reletes   xsdr
             WHERE xsdr.customer_trx_id = rcta.customer_trx_id
             )
