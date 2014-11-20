@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.32
+ * Version          : 1.33
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -67,6 +67,7 @@ AS
  *  2008/12/18    1.30  N.Yoshida        本番障害773対応
  *  2008/12/19    1.31  A.Shiina         本番障害799対応
  *  2008/12/25    1.32  A.Shiina         本番障害674対応
+ *  2009/03/05    1.33  Y.Yamamoto       本番障害1274対応
  *
  *****************************************************************************************/
 --
@@ -773,6 +774,9 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- TRNI :経理受払区分移動積送なし
@@ -859,6 +863,9 @@ AS
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(他)
@@ -952,6 +959,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(仕入)
@@ -1021,6 +1031,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -1090,6 +1103,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(移動)
@@ -1183,6 +1199,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(その他払出)
@@ -1261,6 +1280,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
@@ -1368,6 +1390,9 @@ AS
                               AND    mcb.segment1    = xrpm.item_div_ahead))
              ))
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC1 :経理受払区分購買関連 (製品出荷,有償)
@@ -1461,6 +1486,9 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC2 :経理受払区分購買関連 (振替有償)
@@ -1564,6 +1592,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC3 :経理受払区分購買関連 (商品振替有償)
@@ -1674,6 +1705,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC4 :経理受払区分購買関連 (商品振替有償、払出)
@@ -1779,6 +1813,9 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC5 :経理受払区分購買関連 (振替出荷、出荷)
@@ -1875,6 +1912,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC6 :経理受払区分購買関連 (振替出荷、受入_原料、受入_半)
@@ -1976,6 +2016,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC7 :経理受払区分購買関連 (倉替,返品)
@@ -2066,6 +2109,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC8 :経理受払区分購買関連 (見本,廃却)
@@ -2153,6 +2199,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- PORC :経理受払区分購買関連（仕入）
@@ -2230,6 +2279,9 @@ AS
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
@@ -2322,6 +2374,9 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
@@ -2422,6 +2477,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO3 :経理受払区分受注関連 (商品振替有償)
@@ -2529,6 +2587,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO4 :経理受払区分受注関連 (商品振替有償、払出)
@@ -2634,6 +2695,9 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO5 :経理受払区分受注関連 (振替出荷、出荷)
@@ -2728,6 +2792,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO6 :経理受払区分受注関連 (振替出荷、受入_原料、受入_半)
@@ -2828,6 +2895,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO7 :経理受払区分受注関連 (倉替,返品)
@@ -2916,6 +2986,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO8 :経理受払区分受注関連 (見本,廃却)
@@ -3001,6 +3074,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
     -- ----------------------------------------------------
     -- 当月受払無しデータ
     -- ----------------------------------------------------
@@ -3158,6 +3234,9 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3245,6 +3324,9 @@ AS
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3339,6 +3421,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3409,6 +3494,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3479,6 +3567,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3573,6 +3664,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3652,6 +3746,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3760,6 +3857,9 @@ AS
                               AND    mcb.segment1    = xrpm.item_div_ahead))
              ))
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3854,6 +3954,9 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3958,6 +4061,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4069,6 +4175,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4175,6 +4284,9 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4272,6 +4384,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4374,6 +4489,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4465,6 +4583,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4553,6 +4674,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -4631,6 +4755,9 @@ AS
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -4724,6 +4851,9 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -4825,6 +4955,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -4933,6 +5066,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -5039,6 +5175,9 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -5134,6 +5273,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -5235,6 +5377,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -5324,6 +5469,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       UNION ALL
     -- ----------------------------------------------------
@@ -5410,6 +5558,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
     -- ----------------------------------------------------
     -- 当月受払無しデータ
@@ -5569,6 +5720,9 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -5656,6 +5810,9 @@ AS
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -5750,6 +5907,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -5820,6 +5980,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -5890,6 +6053,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -5984,6 +6150,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6063,6 +6232,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6171,6 +6343,9 @@ AS
                               AND    mcb.segment1    = xrpm.item_div_ahead))
              ))
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6265,6 +6440,9 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6369,6 +6547,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6480,6 +6661,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6586,6 +6770,9 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6683,6 +6870,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6785,6 +6975,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6876,6 +7069,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -6964,6 +7160,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7042,6 +7241,9 @@ AS
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7135,6 +7337,9 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7236,6 +7441,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7344,6 +7552,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7450,6 +7661,9 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7545,6 +7759,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7646,6 +7863,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7735,6 +7955,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -7821,6 +8044,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
     -- ----------------------------------------------------
     -- 当月受払無しデータ
@@ -7980,6 +8206,9 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8068,6 +8297,9 @@ AS
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8163,6 +8395,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8234,6 +8469,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8305,6 +8543,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8400,6 +8641,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8480,6 +8724,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8589,6 +8836,9 @@ AS
                               AND    mcb.segment1    = xrpm.item_div_ahead))
              ))
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8684,6 +8934,9 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8789,6 +9042,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -8901,6 +9157,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9008,6 +9267,9 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9106,6 +9368,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9209,6 +9474,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9301,6 +9569,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9390,6 +9661,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9469,6 +9743,9 @@ AS
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9563,6 +9840,9 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9665,6 +9945,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9774,6 +10057,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9881,6 +10167,9 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -9977,6 +10266,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -10079,6 +10371,9 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -10169,6 +10464,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
@@ -10256,6 +10554,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
     -- ----------------------------------------------------
@@ -10381,6 +10682,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_xfer
       AND    itp.reason_code         = gv_reason_code_xfer
       AND    itp.completed_ind       = 1
@@ -10415,6 +10719,10 @@ AS
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- TRNI :経理受払区分移動積送なし
@@ -10460,6 +10768,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_trni
       AND    itc.reason_code         = gv_reason_code_trni
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
@@ -10499,6 +10810,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(他)
@@ -10540,6 +10855,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji    --文書タイプ
       AND    itc.reason_code        IN ('X911'
                                        ,'X912'
@@ -10590,6 +10908,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(仕入)
@@ -10631,6 +10953,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -10657,6 +10982,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -10698,6 +11027,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_hama
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -10724,6 +11056,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(移動)
@@ -10775,6 +11111,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_move
       AND    xmrih.mov_hdr_id        = xmrl.mov_hdr_id
@@ -10815,6 +11154,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(その他払出)
@@ -10856,6 +11199,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code        IN (gv_reason_code_adji_itm
                                        ,gv_reason_code_adji_itm_u
@@ -10891,6 +11237,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
@@ -10935,6 +11285,9 @@ AS
             ,gme_batch_header                 gbh
             ,gmd_routings_b                   grb
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_prod
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -10996,6 +11349,10 @@ AS
                               AND    gic.category_id = mcb.category_id
                               AND    mcb.segment1    = xrpm.item_div_ahead))
              ))
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC1 :経理受払区分購買関連 (製品出荷,有償)
@@ -11042,6 +11399,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11087,6 +11447,10 @@ AS
       AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC2 :経理受払区分購買関連 (振替有償)
@@ -11141,6 +11505,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11188,6 +11555,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC3 :経理受払区分購買関連 (商品振替有償)
@@ -11244,6 +11615,9 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11296,6 +11670,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC4 :経理受払区分購買関連 (商品振替有償、払出)
@@ -11347,6 +11725,9 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11399,6 +11780,10 @@ AS
       AND    xrpm.prod_div_ahead     = mcb4.segment1
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC5 :経理受払区分購買関連 (振替出荷、出荷)
@@ -11447,6 +11832,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11493,6 +11881,10 @@ AS
       AND    xrpm.dealings_div       = '112'
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC6 :経理受払区分購買関連 (振替出荷、受入_原料、受入_半)
@@ -11547,6 +11939,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11592,6 +11987,10 @@ AS
       AND    xrpm.dealings_div       IN ('110','111')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC7 :経理受払区分購買関連 (倉替,返品)
@@ -11639,6 +12038,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11680,6 +12082,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC8 :経理受払区分購買関連 (見本,廃却)
@@ -11727,6 +12133,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11765,6 +12174,10 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- PORC :経理受払区分購買関連（仕入）
@@ -11808,6 +12221,9 @@ AS
             ,rcv_shipment_lines               rsl
             ,rcv_transactions                 rt
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -11840,6 +12256,10 @@ AS
       AND    xrpm.source_document_code = rsl.source_document_code
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
@@ -11887,6 +12307,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11930,6 +12353,10 @@ AS
       AND    ((xrpm.ship_prov_rcv_pay_category IS NULL)
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
@@ -11984,6 +12411,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -12028,6 +12458,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO3 :経理受払区分受注関連 (商品振替有償)
@@ -12084,6 +12518,9 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -12133,6 +12570,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO4 :経理受払区分受注関連 (商品振替有償、払出)
@@ -12184,6 +12625,9 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -12236,6 +12680,10 @@ AS
       AND    xrpm.prod_div_ahead     = mcb4.segment1
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO5 :経理受払区分受注関連 (振替出荷、出荷)
@@ -12284,6 +12732,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -12328,6 +12779,10 @@ AS
       AND    xrpm.dealings_div       = '112'
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO6 :経理受払区分受注関連 (振替出荷、受入_原料、受入_半)
@@ -12382,6 +12837,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -12426,6 +12884,10 @@ AS
       AND    xrpm.dealings_div       IN ('110','111')
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO7 :経理受払区分受注関連 (倉替,返品)
@@ -12473,6 +12935,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -12512,6 +12977,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO8 :経理受払区分受注関連 (見本,廃却)
@@ -12559,6 +13028,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -12595,6 +13067,10 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
     -- ----------------------------------------------------
     -- 当月受払無しデータ
     -- ----------------------------------------------------
@@ -12717,6 +13193,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_xfer
       AND    itp.reason_code         = gv_reason_code_xfer
       AND    itp.completed_ind       = 1
@@ -12752,6 +13231,10 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- TRNI :経理受払区分移動積送なし
@@ -12797,6 +13280,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_trni
       AND    itc.reason_code         = gv_reason_code_trni
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
@@ -12837,6 +13323,10 @@ AS
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(他)
@@ -12878,6 +13368,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji    --文書タイプ
       AND    itc.reason_code        IN ('X911'
                                        ,'X912'
@@ -12929,6 +13422,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(仕入)
@@ -12970,6 +13467,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -12997,6 +13497,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -13038,6 +13542,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_hama
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -13065,6 +13572,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(移動)
@@ -13116,6 +13627,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_move
       AND    xmrih.mov_hdr_id        = xmrl.mov_hdr_id
@@ -13157,6 +13671,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(その他払出)
@@ -13198,6 +13716,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code        IN (gv_reason_code_adji_itm
                                        ,gv_reason_code_adji_itm_u
@@ -13234,6 +13755,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
@@ -13278,6 +13803,9 @@ AS
             ,gme_batch_header                 gbh
             ,gmd_routings_b                   grb
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_prod
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -13340,6 +13868,10 @@ AS
                               AND    mcb.segment1    = xrpm.item_div_ahead))
              ))
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC1 :経理受払区分購買関連 (製品出荷,有償)
@@ -13386,6 +13918,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -13432,6 +13967,10 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC2 :経理受払区分購買関連 (振替有償)
@@ -13486,6 +14025,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -13534,6 +14076,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC3 :経理受払区分購買関連 (商品振替有償)
@@ -13590,6 +14136,9 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -13643,6 +14192,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC4 :経理受払区分購買関連 (商品振替有償、払出)
@@ -13694,6 +14247,9 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -13747,6 +14303,10 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC5 :経理受払区分購買関連 (振替出荷、出荷)
@@ -13795,6 +14355,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -13842,6 +14405,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC6 :経理受払区分購買関連 (振替出荷、受入_原料、受入_半)
@@ -13896,6 +14463,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -13942,6 +14512,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC7 :経理受払区分購買関連 (倉替,返品)
@@ -13989,6 +14563,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14031,6 +14608,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
       -- ----------------------------------------------------
       -- PORC8 :経理受払区分購買関連 (見本,廃却)
@@ -14078,6 +14659,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14117,6 +14701,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- PORC :経理受払区分購買関連（仕入）
@@ -14160,6 +14748,9 @@ AS
             ,rcv_shipment_lines               rsl
             ,rcv_transactions                 rt
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    itp.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -14193,6 +14784,10 @@ AS
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
@@ -14240,6 +14835,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14284,6 +14882,10 @@ AS
              OR (xrpm.ship_prov_rcv_pay_category = otta.attribute11))
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO2 :経理受払区分受注関連 (振替有償)
@@ -14338,6 +14940,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14383,6 +14988,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO3 :経理受払区分受注関連 (商品振替有償)
@@ -14439,6 +15048,9 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14489,6 +15101,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO4 :経理受払区分受注関連 (商品振替有償、払出)
@@ -14540,6 +15156,9 @@ AS
             ,gmi_item_categories              gic5
             ,mtl_categories_b                 mcb5
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14593,6 +15212,10 @@ AS
       AND    xrpm.item_div_ahead     = mcb5.segment1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO5 :経理受払区分受注関連 (振替出荷、出荷)
@@ -14641,6 +15264,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14686,6 +15312,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO6 :経理受払区分受注関連 (振替出荷、受入_原料、受入_半)
@@ -14740,6 +15370,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = xrpm.doc_type
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14785,6 +15418,10 @@ AS
       AND    xrpm.shipment_provision_div = otta.attribute1
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO7 :経理受払区分受注関連 (倉替,返品)
@@ -14832,6 +15469,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14872,6 +15512,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO8 :経理受払区分受注関連 (見本,廃却)
@@ -14919,6 +15563,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 Y.Yamamoto #1274 add start
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 Y.Yamamoto #1274 add end
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -14956,6 +15603,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_02       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 Y.Yamamoto #1274 add start
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 Y.Yamamoto #1274 add end
     -- ----------------------------------------------------
     -- 当月受払無しデータ
     -- ----------------------------------------------------

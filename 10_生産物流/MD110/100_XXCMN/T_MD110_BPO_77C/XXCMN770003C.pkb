@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -53,6 +53,8 @@ AS
  *  2008/12/11    1.15  N.Yoshida        本番障害580対応
  *  2008/12/12    1.16  N.Yoshida        本番障害669対応
  *  2009/01/13    1.17  N.Yoshida        本番障害997対応
+ *  2009/03/05    1.18  H.Marushita      本番障害1274対応
+ *
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -748,6 +750,7 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -826,6 +829,7 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -921,6 +925,7 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -984,6 +989,7 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -1078,6 +1084,7 @@ AS
 -- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -1148,6 +1155,7 @@ AS
 -- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -1248,6 +1256,7 @@ AS
                       AND    gic.category_id = mcb.category_id
                       AND    mcb.segment1    = xrpm.item_div_ahead))
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -1327,6 +1336,7 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -1408,6 +1418,7 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       ORDER BY whse_code ASC, crowd_code ASC,item_code ASC
       ;
@@ -1492,6 +1503,7 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- TRNI :経理受払区分移動積送なし
@@ -1569,6 +1581,7 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(他)
@@ -1663,6 +1676,7 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -1725,6 +1739,7 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(移動)
@@ -1818,6 +1833,7 @@ AS
 -- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(その他払出)
@@ -1887,6 +1903,7 @@ AS
 -- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
@@ -1986,6 +2003,7 @@ AS
                       AND    gic.category_id = mcb.category_id
                       AND    mcb.segment1    = xrpm.item_div_ahead))
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO8 :経理受払区分受注関連 (見本,廃却)
@@ -2064,6 +2082,7 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- PORC8 :経理受払区分購買関連 (見本,廃却)
@@ -2144,6 +2163,7 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       ORDER BY h_whse_code ASC, crowd_code ASC,item_code ASC
       ;
 --
@@ -2229,6 +2249,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- TRNI :経理受払区分移動積送なし
@@ -2308,6 +2329,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(他)
@@ -2404,6 +2426,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -2468,6 +2491,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(移動)
@@ -2563,6 +2587,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(その他払出)
@@ -2634,6 +2659,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
@@ -2735,6 +2761,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO8 :経理受払区分受注関連 (見本,廃却)
@@ -2815,6 +2842,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- PORC8 :経理受払区分購買関連 (見本,廃却)
@@ -2897,6 +2925,7 @@ AS
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       ORDER BY h_whse_code ASC, crowd_code ASC,item_code ASC
       ;
 --
@@ -2981,6 +3010,7 @@ AS
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- TRNI :経理受払区分移動積送なし
@@ -3059,6 +3089,7 @@ AS
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(他)
@@ -3154,6 +3185,7 @@ AS
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -3217,6 +3249,7 @@ AS
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(移動)
@@ -3311,6 +3344,7 @@ AS
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(その他払出)
@@ -3381,6 +3415,7 @@ AS
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
@@ -3481,6 +3516,7 @@ AS
                       AND    mcb.segment1    = xrpm.item_div_ahead))
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO8 :経理受払区分受注関連 (見本,廃却)
@@ -3560,6 +3596,7 @@ AS
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.warehouse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- PORC8 :経理受払区分購買関連 (見本,廃却)
@@ -3640,6 +3677,7 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    iwm.whse_code           = ir_param.warehouse_code
       ORDER BY h_whse_code ASC, crowd_code ASC,item_code ASC
       ;
@@ -3688,6 +3726,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itp.doc_type            = cv_xfer
       AND    itp.completed_ind       = cn_one
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
@@ -3722,6 +3761,8 @@ AS
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3761,6 +3802,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type            = cv_trni
       AND    itc.reason_code         = cv_reason_122
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
@@ -3798,6 +3840,8 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3842,6 +3886,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type          = cv_adji
       AND    itc.reason_code       IN (cv_reason_911
                                       ,cv_reason_912
@@ -3891,6 +3936,8 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -3926,6 +3973,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type            = cv_adji
       AND    itc.reason_code         = cv_reason_988
       AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -3952,6 +4000,8 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4001,6 +4051,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type            = cv_adji
       AND    itc.reason_code         = cv_reason_123
       AND    xmrih.mov_hdr_id        = xmrl.mov_hdr_id
@@ -4044,6 +4095,8 @@ AS
                                        END
 -- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4079,6 +4132,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type            = cv_adji
       AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
       AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -4112,6 +4166,8 @@ AS
       --                                 END
 -- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4150,6 +4206,7 @@ AS
             ,gme_batch_header           gbh
             ,gmd_routings_b             grb
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itp.doc_type            = cv_prod
       AND    itp.completed_ind       = cn_one
       AND    itp.reverse_id          IS NULL
@@ -4210,6 +4267,8 @@ AS
                       AND    gic.category_set_id = cn_item_class_id
                       AND    gic.category_id = mcb.category_id
                       AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
     -- ----------------------------------------------------
@@ -4251,6 +4310,7 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                iwm
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = cn_one
       AND    xoha.latest_external_flag = 'Y'
@@ -4287,6 +4347,8 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       UNION ALL
       -- ----------------------------------------------------
@@ -4328,6 +4390,7 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                iwm
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = cn_one
       AND    xoha.latest_external_flag = 'Y'
@@ -4366,6 +4429,8 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       AND    mcb3.segment1           = lt_crowd_code
       ORDER BY crowd_code ASC,item_code ASC
       ;
@@ -4414,6 +4479,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itp.doc_type            = cv_xfer
       AND    itp.completed_ind       = cn_one
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
@@ -4448,6 +4514,8 @@ AS
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- TRNI :経理受払区分移動積送なし
@@ -4486,6 +4554,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type            = cv_trni
       AND    itc.reason_code         = cv_reason_122
       AND    xmrih.mov_hdr_id        = xmril.mov_hdr_id
@@ -4523,6 +4592,8 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(他)
@@ -4566,6 +4637,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type          = cv_adji
       AND    itc.reason_code       IN (cv_reason_911
                                       ,cv_reason_912
@@ -4615,6 +4687,8 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -4649,6 +4723,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type            = cv_adji
       AND    itc.reason_code         = cv_reason_988
       AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -4675,6 +4750,8 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(移動)
@@ -4723,6 +4800,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type            = cv_adji
       AND    itc.reason_code         = cv_reason_123
       AND    xmrih.mov_hdr_id        = xmrl.mov_hdr_id
@@ -4766,6 +4844,8 @@ AS
                                        END
 -- 2008/12/11 v1.15 UPDATE END
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(その他払出)
@@ -4800,6 +4880,7 @@ AS
             ,gmi_item_categories        gic3
             ,mtl_categories_b           mcb3
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itc.doc_type            = cv_adji
       AND    itc.reason_code        IN (cv_reason_942,cv_reason_943,cv_reason_950,cv_reason_951)
       AND    itc.trans_date         >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
@@ -4833,6 +4914,8 @@ AS
       --                                 END
 -- 2008/11/19 v1.12 DELETE END
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- PROD :経理受払区分生産関連（Reverse_idなし）品種・品目振替なし
@@ -4870,6 +4953,7 @@ AS
             ,gme_batch_header           gbh
             ,gmd_routings_b             grb
             ,xxcmn_rcv_pay_mst          xrpm
+            ,ic_whse_mst                iwm
       WHERE  itp.doc_type            = cv_prod
       AND    itp.completed_ind       = cn_one
       AND    itp.reverse_id          IS NULL
@@ -4930,6 +5014,8 @@ AS
                       AND    gic.category_set_id = cn_item_class_id
                       AND    gic.category_id = mcb.category_id
                       AND    mcb.segment1    = xrpm.item_div_ahead))
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO8 :経理受払区分受注関連 (見本,廃却)
@@ -4970,6 +5056,7 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                iwm
       WHERE  itp.doc_type            = cv_omso
       AND    itp.completed_ind       = cn_one
       AND    xoha.latest_external_flag = 'Y'
@@ -5006,6 +5093,8 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       UNION ALL
       -- ----------------------------------------------------
       -- PORC8 :経理受払区分購買関連 (見本,廃却)
@@ -5046,6 +5135,7 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+            ,ic_whse_mst                iwm
       WHERE  itp.doc_type            = cv_porc
       AND    itp.completed_ind       = cn_one
       AND    xoha.latest_external_flag = 'Y'
@@ -5084,6 +5174,8 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_03       IS NOT NULL
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
       ORDER BY crowd_code ASC,item_code ASC
       ;
 -- 2008/10/22 v1.09 ADD END

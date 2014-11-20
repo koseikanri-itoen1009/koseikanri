@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）原料・資材・半製品
  * MD.050/070       : 月次〆切処理（経理）Issue1.0(T_MD050_BPO_770)
  *                    月次〆切処理（経理）Issue1.0(T_MD070_BPO_77A)
- * Version          : 1.30
+ * Version          : 1.31
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -68,6 +68,7 @@ AS
  *  2008/12/22    1.28  N.Yoshida        本番障害838対応
  *  2008/12/25    1.29  A.Shiina         本番障害674対応
  *  2009/01/07    1.30  N.Yoshida        本番障害954対応
+ *  2009/03/05    1.31  A.Shiina         本番障害1272対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -787,6 +788,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL --trni
       SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
              iwm.whse_code                        h_whse_code
@@ -883,6 +887,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
              iwm.whse_code                        h_whse_code
@@ -986,6 +993,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              iwm.whse_code                        h_whse_code
@@ -1065,6 +1075,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              iwm.whse_code                        h_whse_code
@@ -1144,6 +1157,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL --adji_mv
       SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -1244,6 +1260,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL --adji_snt
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -1332,6 +1351,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
              iwm.whse_code                        h_whse_code
@@ -1425,6 +1447,9 @@ AS
       AND    xrpm.routing_class      <> '70'
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
              iwm.whse_code                        h_whse_code
@@ -1541,6 +1566,9 @@ AS
                       AND    mcb.segment1    = xrpm.item_div_ahead))
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -1645,6 +1673,9 @@ AS
       AND    xrpm.item_div_ahead     IS NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -1754,6 +1785,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -1860,6 +1894,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -1956,6 +1993,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -2042,6 +2082,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -2144,6 +2187,9 @@ AS
       AND    xrpm.item_div_ahead     IS NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -2251,6 +2297,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -2356,6 +2405,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -2450,6 +2502,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
       AND    iwm.whse_code           = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       -- 当月受払無しデータ
       UNION ALL
       SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
@@ -2623,6 +2678,9 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
              iwm.whse_code                        h_whse_code
@@ -2718,6 +2776,9 @@ AS
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
              iwm.whse_code                        h_whse_code
@@ -2820,6 +2881,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              iwm.whse_code                        h_whse_code
@@ -2898,6 +2962,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              iwm.whse_code                        h_whse_code
@@ -2976,6 +3043,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -3075,6 +3145,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -3162,6 +3235,9 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itc.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
              iwm.whse_code                        h_whse_code
@@ -3254,6 +3330,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    xrpm.routing_class      <> '70'
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
              iwm.whse_code                        h_whse_code
@@ -3369,6 +3448,9 @@ AS
                       AND    gic.category_id = mcb.category_id
                       AND    mcb.segment1    = xrpm.item_div_ahead))
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -3472,6 +3554,9 @@ AS
       AND    xrpm.item_div_origin    IS NULL
       AND    xrpm.item_div_ahead     IS NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -3580,6 +3665,9 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -3685,6 +3773,9 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -3780,6 +3871,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -3865,6 +3959,9 @@ AS
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -3966,6 +4063,9 @@ AS
       AND    xrpm.item_div_origin    IS NULL
       AND    xrpm.item_div_ahead     IS NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -4072,6 +4172,9 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -4176,6 +4279,9 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -4269,6 +4375,9 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
       AND   iwm.whse_code            = itp.whse_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       -- 当月受払無しデータ
       UNION ALL
       SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
@@ -4443,6 +4552,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
              iwm.whse_code                        h_whse_code
@@ -4540,6 +4652,9 @@ AS
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
              iwm.whse_code                        h_whse_code
@@ -4644,6 +4759,9 @@ AS
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              iwm.whse_code                        h_whse_code
@@ -4724,6 +4842,9 @@ AS
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              iwm.whse_code                        h_whse_code
@@ -4804,6 +4925,9 @@ AS
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -4905,6 +5029,9 @@ AS
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -4994,6 +5121,9 @@ AS
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
              iwm.whse_code                        h_whse_code
@@ -5088,6 +5218,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL --prod_i
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
              iwm.whse_code                        h_whse_code
@@ -5205,6 +5338,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -5310,6 +5446,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -5420,6 +5559,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -5527,6 +5669,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -5624,6 +5769,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -5711,6 +5859,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -5814,6 +5965,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -5922,6 +6076,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -6028,6 +6185,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -6123,6 +6283,9 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       -- 当月受払無しデータ
       UNION ALL
       SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
@@ -6298,6 +6461,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
              iwm.whse_code                        h_whse_code
@@ -6394,6 +6560,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
              iwm.whse_code                        h_whse_code
@@ -6497,6 +6666,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              iwm.whse_code                        h_whse_code
@@ -6576,6 +6748,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              iwm.whse_code                        h_whse_code
@@ -6655,6 +6830,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -6755,6 +6933,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -6843,6 +7024,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
              iwm.whse_code                        h_whse_code
@@ -6936,6 +7120,9 @@ AS
       AND    xrpm.routing_class      <> '70'
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
              iwm.whse_code                        h_whse_code
@@ -7052,6 +7239,9 @@ AS
                       AND    mcb.segment1    = xrpm.item_div_ahead))
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -7156,6 +7346,9 @@ AS
       AND    xrpm.item_div_ahead     IS NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -7265,6 +7458,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -7371,6 +7567,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -7467,6 +7666,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -7553,6 +7755,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
              iwm.whse_code                        h_whse_code
@@ -7655,6 +7860,9 @@ AS
       AND    xrpm.item_div_ahead     IS NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -7762,6 +7970,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              iwm.whse_code                        h_whse_code
@@ -7867,6 +8078,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
              iwm.whse_code                        h_whse_code
@@ -7961,6 +8175,9 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.whse_code           = ir_param.locat_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       -- 当月受払無しデータ
       UNION ALL
       SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
@@ -8098,6 +8315,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_xfer
       AND    itp.reason_code         = gv_reason_code_xfer
       AND    itp.completed_ind       = 1
@@ -8133,6 +8353,10 @@ AS
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
              NULL                                 h_whse_code
@@ -8187,6 +8411,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_trni
       AND    itc.reason_code         = gv_reason_code_trni
       AND    xmrh.actual_arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -8227,6 +8454,10 @@ AS
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
              NULL                                 h_whse_code
@@ -8277,6 +8508,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji    --文書タイプ
       AND    itc.reason_code        IN ('X911'
                                        ,'X912'
@@ -8328,6 +8562,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              NULL                                 h_whse_code
@@ -8378,6 +8616,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -8405,6 +8646,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              NULL                                 h_whse_code
@@ -8455,6 +8700,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_hama
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -8482,6 +8730,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -8539,6 +8791,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_move
       AND    xmrh.actual_arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -8580,6 +8835,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -8630,6 +8889,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code        IN (gv_reason_code_adji_itm
                                        ,gv_reason_code_adji_itm_u
@@ -8666,6 +8928,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
              NULL                                 h_whse_code
@@ -8719,6 +8985,9 @@ AS
             ,gme_batch_header                 gbh
             ,gmd_routings_b                   grb
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_prod
       AND    itp.completed_ind       = 1
       AND    itp.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -8757,6 +9026,10 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    xrpm.routing_class      <> '70'
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
              NULL                                 h_whse_code
@@ -8810,6 +9083,9 @@ AS
             ,gme_batch_header                 gbh
             ,gmd_routings_b                   grb
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_prod
       AND    itp.completed_ind       = 1
       AND    itp.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -8871,6 +9147,10 @@ AS
                       AND    gic.category_id = mcb.category_id
                       AND    mcb.segment1    = xrpm.item_div_ahead))
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              NULL                                 h_whse_code
@@ -8926,6 +9206,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -8973,6 +9256,10 @@ AS
       AND    xrpm.item_div_origin    IS NULL
       AND    xrpm.item_div_ahead     IS NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              NULL                                 h_whse_code
@@ -9031,6 +9318,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -9080,6 +9370,10 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
              NULL                                 h_whse_code
@@ -9138,6 +9432,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -9184,6 +9481,10 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -9239,6 +9540,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -9278,6 +9582,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -9330,6 +9638,9 @@ AS
             ,rcv_shipment_lines               rsl
             ,rcv_transactions                 rt
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    itp.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -9362,6 +9673,10 @@ AS
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
              NULL                                 h_whse_code
@@ -9417,6 +9732,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -9462,6 +9780,10 @@ AS
       AND    xrpm.item_div_origin    IS NULL
       AND    xrpm.item_div_ahead     IS NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              NULL                                 h_whse_code
@@ -9520,6 +9842,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -9567,6 +9892,10 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              NULL                                 h_whse_code
@@ -9625,6 +9954,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -9670,6 +10002,10 @@ AS
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -9725,6 +10061,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -9762,6 +10101,10 @@ AS
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
       AND    mcb3.segment1           = lt_crowd_code
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       -- 当月受払無しデータ
       UNION ALL
       SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
@@ -9900,6 +10243,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_xfer
       AND    itp.reason_code         = gv_reason_code_xfer
       AND    itp.completed_ind       = 1
@@ -9934,6 +10280,10 @@ AS
       AND    xrpm.doc_type           = itp.doc_type
       AND    xrpm.reason_code        = itp.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) use_nl (xmrh xmril ijm iaj itc gic2 mcb2 gic1 mcb1 ilm iimb ximb) */
              NULL                                 h_whse_code
@@ -9988,6 +10338,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_trni
       AND    itc.reason_code         = gv_reason_code_trni
       AND    xmrh.actual_arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -10027,6 +10380,10 @@ AS
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.rcv_pay_div        = itc.line_type
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2)*/
              NULL                                 h_whse_code
@@ -10077,6 +10434,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji    --文書タイプ
       AND    itc.reason_code        IN ('X911'
                                        ,'X912'
@@ -10127,6 +10487,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              NULL                                 h_whse_code
@@ -10177,6 +10541,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -10203,6 +10570,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2 xrpm) use_nl (itc gic1 mcb1 gic2 mcb2 xrpm) */
              NULL                                 h_whse_code
@@ -10253,6 +10624,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_hama
       AND    itc.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -10279,6 +10653,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) use_nl (xmrh xmrl ijm iaj itc gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -10336,6 +10714,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code         = gv_reason_code_adji_move
       AND    xmrh.actual_arrival_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -10376,6 +10757,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itc gic1 mcb1 gic2 mcb2) use_nl (itc gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -10426,6 +10811,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itc.doc_type            = gv_doc_type_adji
       AND    itc.reason_code        IN (gv_reason_code_adji_itm
                                        ,gv_reason_code_adji_itm_u
@@ -10461,6 +10849,10 @@ AS
       AND    xrpm.doc_type           = itc.doc_type
       AND    xrpm.reason_code        = itc.reason_code
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itc.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2)*/
              NULL                                 h_whse_code
@@ -10514,6 +10906,9 @@ AS
             ,gme_batch_header                 gbh
             ,gmd_routings_b                   grb
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_prod
       AND    itp.completed_ind       = 1
       AND    itp.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -10551,6 +10946,10 @@ AS
       AND    itp.line_type           = xrpm.line_type
       AND    xrpm.break_col_01       IS NOT NULL
       AND    xrpm.routing_class      <> '70'
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2 gmd gbh grb) use_nl (itp gic1 mcb1 gic2 mcb2 gmd gbh grb)*/
              NULL                                 h_whse_code
@@ -10604,6 +11003,9 @@ AS
             ,gme_batch_header                 gbh
             ,gmd_routings_b                   grb
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_prod
       AND    itp.completed_ind       = 1
       AND    itp.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -10664,6 +11066,10 @@ AS
                       AND    gic.category_set_id = cn_item_class_id
                       AND    gic.category_id = mcb.category_id
                       AND    mcb.segment1    = xrpm.item_div_ahead))
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              NULL                                 h_whse_code
@@ -10719,6 +11125,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -10765,6 +11174,10 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    xrpm.item_div_origin    IS NULL
       AND    xrpm.item_div_ahead     IS NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta) */
              NULL                                 h_whse_code
@@ -10823,6 +11236,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -10871,6 +11287,10 @@ AS
       AND    xrpm.item_div_ahead     = mcb4.segment1
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola rsl itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola rsl itp gic1 mcb1 gic2 mcb2 rsl ooha otta xrpm) */
              NULL                                 h_whse_code
@@ -10929,6 +11349,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -10974,6 +11397,10 @@ AS
       AND    xrpm.item_div_ahead     = mcb4.segment1
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola rsl itp gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -11029,6 +11456,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11067,6 +11497,10 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (itp gic1 mcb1 gic2 mcb2) use_nl (itp gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -11119,6 +11553,9 @@ AS
             ,rcv_shipment_lines               rsl
             ,rcv_transactions                 rt
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_porc
       AND    itp.completed_ind       = 1
       AND    itp.trans_date > FND_DATE.STRING_TO_DATE(gd_prv1_dt_chr,gc_char_dt_format)
@@ -11150,6 +11587,10 @@ AS
       AND    xrpm.source_document_code = rsl.source_document_code
       AND    xrpm.transaction_type   = rt.transaction_type
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta) */
              NULL                                 h_whse_code
@@ -11205,6 +11646,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11249,6 +11693,10 @@ AS
       AND    xrpm.break_col_01       IS NOT NULL
       AND    xrpm.item_div_origin    IS NULL
       AND    xrpm.item_div_ahead     IS NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              NULL                                 h_whse_code
@@ -11307,6 +11755,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11353,6 +11804,10 @@ AS
       AND    xrpm.item_div_ahead     = mcb4.segment1
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) use_nl (xoha xola wdd itp gic1 mcb1 gic2 mcb2 ooha otta xrpm) */
              NULL                                 h_whse_code
@@ -11411,6 +11866,9 @@ AS
             ,gmi_item_categories              gic4
             ,mtl_categories_b                 mcb4
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11455,6 +11913,10 @@ AS
       AND    xrpm.item_div_ahead     = mcb4.segment1
       AND    mcb2.segment1           <> '5'
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       UNION ALL
       SELECT /*+ leading (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) use_nl (xoha ooha otta xola wdd itp gic1 mcb1 gic2 mcb2) */
              NULL                                 h_whse_code
@@ -11510,6 +11972,9 @@ AS
             ,gmi_item_categories              gic3
             ,mtl_categories_b                 mcb3
             ,xxcmn_rcv_pay_mst                xrpm
+-- 2009/03/05 v1.31 ADD START
+            ,ic_whse_mst                      iwm
+-- 2009/03/05 v1.31 ADD END
       WHERE  itp.doc_type            = gv_doc_type_omso
       AND    itp.completed_ind       = 1
       AND    xoha.latest_external_flag = 'Y'
@@ -11546,6 +12011,10 @@ AS
       AND    xrpm.stock_adjustment_div = otta.attribute4
       AND    xrpm.ship_prov_rcv_pay_category = otta.attribute11
       AND    xrpm.break_col_01       IS NOT NULL
+-- 2009/03/05 v1.31 ADD START
+      AND    iwm.whse_code           = itp.whse_code
+      AND    iwm.attribute1          = '0'
+-- 2009/03/05 v1.31 ADD END
       -- 当月受払無しデータ
       UNION ALL
       SELECT /*+ leading (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) use_nl (xsims gic1 mcb1 gic2 mcb2 gic3 mcb3 iimb ximb xlc) */
