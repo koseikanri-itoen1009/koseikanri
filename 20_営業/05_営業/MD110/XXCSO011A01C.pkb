@@ -8,7 +8,7 @@ AS
  *                    その結果を発注依頼に返します。
  * MD.050           : MD050_CSO_011_A01_作業依頼（発注依頼）時のインストールベースチェック機能
  *
- * Version          : 1.23
+ * Version          : 1.24
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -78,6 +78,7 @@ AS
  *  2009-12-09    1.22  K.Satomura       【E_本稼動_00341】承認時のチェックを申請時のチェックと同様にする
  *  2009-12-16    1.23  D.Abe            【E_本稼動_00354】廃棄決済でリース物件存在チェック対応
  *                                       【E_本稼動_00498】リース物件ステータスの「再リース待ち」対応
+ *  2009-12-24    1.24  D.Abe            【E_本稼動_00563】暫定対応（機種コード、メーカーコードの日付条件を削除）
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -1030,8 +1031,11 @@ AS
            , ( SELECT punv.un_number
                FROM   po_un_numbers_vl  punv
                WHERE  punv.un_number_id = xrlv.un_number_id
-               AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
-                       > TRUNC( id_process_date ) )  un_number    -- 機種コード
+/* 20091224_abe_E_本稼動_00563 START*/
+--               AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
+--                       > TRUNC( id_process_date ) )  un_number    -- 機種コード
+             )  un_number    -- 機種コード
+/* 20091224_abe_E_本稼動_00563 END*/
            , xrlv.install_code              install_code              -- 設置用物件コード
            , xrlv.withdraw_install_code     withdraw_install_code     -- 引揚用物件コード
            , xrlv.install_at_customer_code  install_at_customer_code  -- 設置先_顧客コード
@@ -1063,8 +1067,11 @@ AS
            , ( SELECT punv.attribute2
                FROM   po_un_numbers_vl  punv
                WHERE  punv.un_number_id = xrlv.un_number_id
-               AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
-                       > TRUNC( id_process_date ) )  maker_code       -- メーカーコード
+/* 20091224_abe_E_本稼動_00563 START*/
+--               AND    TRUNC( NVL( punv.inactive_date, id_process_date + 1 ) ) 
+--                       > TRUNC( id_process_date ) )  maker_code       -- メーカーコード
+             )  maker_code       -- メーカーコード
+/* 20091224_abe_E_本稼動_00563 END*/
 /* 20090708_abe_0000464 END*/
       INTO   o_requisition_rec.requisition_header_id     -- 発注依頼ヘッダID
            , o_requisition_rec.requisition_line_id       -- 発注依頼明細ID
