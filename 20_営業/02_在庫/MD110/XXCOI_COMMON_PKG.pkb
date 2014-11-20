@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(body)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -16,6 +16,7 @@ AS
  *  GET_ORGANIZATION_ID        在庫組織ID取得
  *  GET_BELONGING_BASE         所属拠点コード取得1
  *  GET_BASE_CODE              所属拠点コード取得2
+ *  GET_BELONGING_BASE2        所属拠点コード取得3
  *  GET_MEANING                LOOKUP情報取得
  *  GET_CMPNT_COST             標準原価取得
  *  GET_DISCRETE_COST          営業原価取得
@@ -57,6 +58,7 @@ AS
  *  2009/09/30    1.8   N.Abe            [E_T3_00616]アサインメントの有効日を条件に追加
  *  2010/03/23    1.9   Y.Goto           [E_本稼動_01943]AFF部門適用開始日取得を追加
  *  2010/03/29    1.10  Y.Goto           [E_本稼動_01943]AFF部門チェックを追加
+ *  2011/11/01    1.11  T.Yoshimoto      [E_本稼動_07570]所属拠点コード取得3を追加
  *
  *****************************************************************************************/
 --
@@ -3418,5 +3420,90 @@ AS
   END chk_aff_active;
 --
 -- == 2010/03/29 V1.10 Added END   ===============================================================
+-- 2011/11/01 T.Yoshimoto v1.11 Add Start E_本稼動_07570
+/************************************************************************
+ * Procedure Name  : GET_BELONGING_BASE2
+ * Description     : 営業員に紐付く所属拠点コードを取得する。
+ ************************************************************************/
+  PROCEDURE get_belonging_base2(
+    in_employee_code  IN  VARCHAR2        -- 営業員コード
+   ,id_target_date    IN  DATE            -- 対象日
+   ,ov_base_code      OUT VARCHAR2        -- 拠点コード
+   ,ov_errbuf         OUT VARCHAR2        -- エラーメッセージ
+   ,ov_retcode        OUT VARCHAR2        -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg         OUT VARCHAR2        -- ユーザー・エラーメッセージ
+  )
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name CONSTANT VARCHAR2(99) := 'get_belonging_base2';
+    -- *** ローカル定数 ***
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    cv_date_format CONSTANT VARCHAR2(8) := 'YYYYMMDD';
+    cv_employee    CONSTANT VARCHAR2(8) := 'EMPLOYEE';              -- カテゴリ：従業員
+    cv_emp         CONSTANT VARCHAR2(3) := 'EMP';
+    cv_y           CONSTANT VARCHAR2(1) := 'Y';
+--
+--
+  BEGIN
+--
+  --##################  固定ステータス初期化部 START   ###################
+  --
+    ov_retcode := cv_status_normal;
+  --
+  --###########################  固定部 END   ############################
+--
+    -- 拠点コード初期化
+    ov_base_code := NULL;
+--
+    -- 営業員コードがNULLまたは、対象日がNULLの場合
+    IF ( ( in_employee_code IS NULL ) OR ( id_target_date IS NULL ) ) THEN
+      ov_retcode := cv_status_error;    -- 異常:2
+--
+    ELSE
+--
+      SELECT CASE
+               WHEN aaf.ass_attribute2 IS NULL              -- 発令日
+                 THEN aaf.ass_attribute5
+               WHEN TO_DATE(aaf.ass_attribute2,cv_date_format) > id_target_date
+                 THEN aaf.ass_attribute6                    -- 拠点コード（旧）
+               ELSE aaf.ass_attribute5                      -- 拠点コード（新）
+             END  AS base_code
+      INTO   ov_base_code                                   -- 自拠点コード
+      FROM   per_all_people_f         apf                   -- 従業員マスタ
+            ,per_all_assignments_f    aaf                   -- 従業員割当マスタ(アサイメント)
+            ,per_person_types         ppt                   -- 従業員区分マスタ
+            ,jtf_rs_salesreps         jrs
+            ,jtf_rs_resource_extns    jrre
+      WHERE  TRUNC(id_target_date) BETWEEN TRUNC(apf.effective_start_date)
+          AND  TRUNC(NVL(apf.effective_end_date,id_target_date))
+        AND  TRUNC(id_target_date) BETWEEN TRUNC(aaf.effective_start_date)
+          AND  TRUNC(NVL(aaf.effective_end_date,id_target_date))
+        AND  ppt.business_group_id  = cn_business_group_id
+        AND  ppt.system_person_type = cv_emp
+        AND  ppt.active_flag        = cv_y
+        AND  apf.person_type_id     = ppt.person_type_id
+        AND  aaf.person_id          = apf.person_id
+        AND  apf.person_id          = jrre.source_id
+        AND  jrre.category          = cv_employee
+        AND  jrre.resource_id       = jrs.resource_id
+        AND  jrs.salesrep_number    = in_employee_code
+      ;
+      --
+      IF (ov_base_code IS NULL) THEN
+        ov_retcode := cv_status_error;    -- 異常:2
+      END IF;
+--
+    END IF;
+--
+  EXCEPTION
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
+      ov_retcode := cv_status_error;
+  END get_belonging_base2;
+-- 2011/11/01 T.Yoshimoto v1.11 Add End
 END XXCOI_COMMON_PKG;
 /

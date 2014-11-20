@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI003A12C(body)
  * Description      : HHT入出庫データ抽出
  * MD.050           : HHT入出庫データ抽出 MD050_COI_003_A12
- * Version          : 1.9
+ * Version          : 1.10
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2010/04/19    1.7   H.Sasaki         [E_本稼動_02365]見本の拠点有効チェックを変更
  *  2010/04/22    1.8   N.Abe            [E_本稼動_02415]見本の拠点有効チェック修正(上様顧客)
  *  2011/04/14    1.9   S.Ochiai         [E_本稼動_06588]レコード種別'21'(新規ベンダ基準在庫)追加対応
+ *  2011/11/01    1.10  T.Yoshimoto      [E_本稼動_07570]拠点コード妥当性チェック追加対応
  *
  *****************************************************************************************/
 --
@@ -143,6 +144,10 @@ AS
 -- == 2010/04/19 V1.7 Added START ===============================================================
   cv_msg_xxcoi_10425           CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10425';     -- 顧客売上拠点取得エラーメッセージ
 -- == 2010/04/19 V1.7 Added END   ===============================================================
+-- 2011/11/01 v1.10 T.Yoshimoto Add Start E_本稼動_07570
+  cv_msg_xxcoi_10092           CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10092';     -- 所属拠点取得エラーメッセージ
+  cv_msg_xxcoi_10211           CONSTANT VARCHAR2(16) := 'APP-XXCOI1-10211';     -- 所属拠点不一致エラーメッセージ
+-- 2011/11/01 v1.10 T.Yoshimoto Add End
 --
   -- トークン
   cv_tkn_pro                   CONSTANT VARCHAR2(20)  := 'PRO_TOK';              -- プロファイル名
@@ -162,6 +167,9 @@ AS
 -- == 2010/03/23 V1.6 Added START ===============================================================
   cv_tkn_slip_num              CONSTANT VARCHAR2(20)  := 'SLIP_NUM';             -- TKN：伝票番号
 -- == 2010/03/23 V1.6 Added END   ===============================================================
+-- 2011/11/01 v1.10 T.Yoshimoto Add Start E_本稼動_07570
+  cv_tkn_dept_code             CONSTANT VARCHAR2(20)  := 'DEPT_CODE';            -- TKN：拠点コード
+-- 2011/11/01 v1.10 T.Yoshimoto Add End
 -- == 2010/04/19 V1.7 Added START ===============================================================
   cv_subinv_conv_f             CONSTANT VARCHAR2(1)   := 'F';                    -- 保管場所変換区分（顧客）
   cv_cust_class_code_10        CONSTANT VARCHAR2(2)   := '10';                   -- 顧客区分（顧客）
@@ -695,12 +703,15 @@ AS
     lt_disable_date         mtl_units_of_measure_tl.disable_date%TYPE;              -- 単位失効日
     lb_org_acct_period_flg  BOOLEAN;                                                -- 当月在庫会計期間オープンフラグ
     lv_key_info             VARCHAR2(5000);                                         -- HHT入出庫データ用KEY情報
-    --
+-- 2011/11/01 v1.10 T.Yoshimoto Add Start E_本稼動_07570
+    lv_base_code            VARCHAR2(10);                                           -- 拠点コード
+-- 2011/11/01 v1.10 T.Yoshimoto Add End
+--
     -- *** ローカル・例外 ***
     not_null_expt           EXCEPTION;                                              -- 必須項目例外
     invalid_value_expt      EXCEPTION;                                              -- 不正値例外
-    --
-    --
+--
+--
   BEGIN
 --
 --##################  固定ステータス初期化部 START   ###################
@@ -1070,6 +1081,46 @@ AS
       RAISE invalid_value_expt;
     END IF;
 --
+-- 2011/11/01 v1.10 T.Yoshimoto Add Start E_本稼動_07570
+    IF ( g_hht_inv_if_tab( in_work_count ).employee_num IS NOT NULL ) THEN
+      -- -------------------------------
+      -- 11.拠点コード妥当性チェック
+      -- -------------------------------
+      xxcoi_common_pkg.get_belonging_base2(
+          in_employee_code  => g_hht_inv_if_tab( in_work_count ).employee_num    -- 営業員コード
+        , id_target_date    => g_hht_inv_if_tab( in_work_count ).invoice_date    -- 伝票日付
+        , ov_base_code      => lv_base_code                                      -- 所属拠点コード
+        , ov_errbuf         => lv_errbuf
+        , ov_retcode        => lv_retcode
+        , ov_errmsg         => lv_errmsg
+      );
+      -- 所属拠点コードの取得に失敗した場合
+      IF ( lv_retcode != cv_status_normal ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application_short_name
+                       , iv_name         => cv_msg_xxcoi_10092
+                     );
+--
+        lv_errbuf := lv_errmsg;
+        RAISE invalid_value_expt;
+--
+      END IF;
+--
+      -- 拠点コードと営業員の所属拠点コードが不一致の場合
+      IF ( g_hht_inv_if_tab( in_work_count ).base_code != lv_base_code ) THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application_short_name
+                       , iv_name         => cv_msg_xxcoi_10211
+                       , iv_token_name1  => cv_tkn_dept_code
+                       , iv_token_value1 => g_hht_inv_if_tab( in_work_count ).base_code
+                     );
+--
+        lv_errbuf := lv_errmsg;
+        RAISE invalid_value_expt;
+--
+      END IF;
+    END IF;
+-- 2011/11/01 v1.10 T.Yoshimoto Add End
     --==============================================================
     --メッセージ出力をする必要がある場合は処理を記述
     --==============================================================

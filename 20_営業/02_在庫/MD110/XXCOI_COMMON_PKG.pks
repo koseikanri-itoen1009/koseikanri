@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ(在庫)
  * MD.070           : 共通関数    MD070_IPO_COI
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -16,6 +16,7 @@ AS
  *  GET_ORGANIZATION_ID        在庫組織ID取得
  *  GET_BELONGING_BASE         所属拠点コード取得1
  *  GET_BASE_CODE              所属拠点コード取得2
+ *  GET_BELONGING_BASE2        所属拠点コード取得3
  *  GET_MEANING                LOOKUP情報取得
  *  GET_CMPNT_COST             標準原価取得
  *  GET_DISCRETE_COST          営業原価取得
@@ -49,6 +50,7 @@ AS
  *  2009/03/24    1.1   S.Kayahara       最終行に/追加
  *  2010/03/23    1.2   Y.Goto           [E_本稼動_01943]AFF部門適用開始日取得を追加
  *  2010/03/29    1.3   Y.Goto           [E_本稼動_01943]AFF部門チェックを追加
+ *  2011/11/01    1.4   T.Yoshimoto      [E_本稼動_07570]所属拠点コード取得3を追加
  *
  *****************************************************************************************/
 --
@@ -454,5 +456,19 @@ AS
   ) RETURN VARCHAR2;                        -- チェック結果
 --
 -- == 2010/03/29 V1.3 Added END   ===============================================================
+-- 2011/11/01 v1.4 T.Yoshimoto Add Start E_本稼動_07570
+/************************************************************************
+ * Procedure Name  : GET_BELONGING_BASE2
+ * Description     : 営業員に紐付く所属拠点コードを取得する。
+ ************************************************************************/
+  PROCEDURE get_belonging_base2(
+    in_employee_code  IN  VARCHAR2        -- 営業員コード
+   ,id_target_date    IN  DATE            -- 対象日
+   ,ov_base_code      OUT VARCHAR2        -- 拠点コード
+   ,ov_errbuf         OUT VARCHAR2        -- エラーメッセージ
+   ,ov_retcode        OUT VARCHAR2        -- リターン・コード(0:正常、2:エラー)
+   ,ov_errmsg         OUT VARCHAR2        -- ユーザー・エラーメッセージ
+  );
+-- 2011/11/01 v1.4 T.Yoshimoto Add End
 END XXCOI_COMMON_PKG;
 /
