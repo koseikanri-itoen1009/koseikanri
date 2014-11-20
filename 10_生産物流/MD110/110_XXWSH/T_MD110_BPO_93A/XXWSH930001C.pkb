@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流(引当、配車)
  * MD.050           : 出荷・移動インタフェース         T_MD050_BPO_930
  * MD.070           : 外部倉庫入出庫実績インタフェース T_MD070_BPO_93A
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ------------------------------------ -------------------------------------------------
@@ -101,7 +101,8 @@ AS
  *  2008/09/29    1.17 Oracle 福田 直樹  出荷の実績計上・訂正時に複写元からの引継項目が不足している
  *  2008/10/01    1.18 Oracle 福田 直樹  TE080_930指摘#40(出荷の実績訂正時に指示(レコードタイプ:10)の移動ロット詳細が複写されない)
  *  2008/10/06    1.19 Oracle 北寒寺正夫 統合テスト障害#305対応(未来日チェックで使用するフラグをチェック処理実行前に毎回初期化するように修正)
- *  2008/10/07    1.19 Oracle 福田 直樹  チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+ *  2008/10/07    1.19 Oracle 福田 直樹  統合テスト障害#308対応(チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する)
+ *  2008/10/08    1.20 Oracle 福田 直樹  統合テスト障害#310対応(入力パラ"対象倉庫"抽出条件が移動入庫/230の場合に入庫倉庫ではなく出庫倉庫になっている)
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -4148,20 +4149,29 @@ AS
       wk_sql := wk_sql || '     WHERE ';
       wk_sql := wk_sql || '           xshi.header_id = xsli.header_id        ';
       wk_sql := wk_sql || '     AND   xshi.data_type =  '''       || iv_process_object_info || '''';  -- IF_H.データタイプ＝パラメータ.処理対象情報
+--
+      -- IF_H.報告部署＝パラメータ.報告部署
       IF TRIM(iv_report_post) IS NOT NULL THEN
-        wk_sql := wk_sql || '     AND   xshi.report_post_code = ''' || iv_report_post || '''';          -- IF_H.報告部署＝パラメータ.報告部署
+        wk_sql := wk_sql || '     AND   xshi.report_post_code = ''' || iv_report_post || '''';
       END IF;
-         --200:有償出荷報告,210:拠点出荷確定報告,215:庭先出荷確定報告,220:移動出庫確定報告  の場合、
-         --IF_H.出荷元=パラメータ.対象倉庫
+--
+      --200:有償出荷報告,210:拠点出荷確定報告,215:庭先出荷確定報告,220:移動出庫確定報告,230:移動入庫確定報告
       wk_sql := wk_sql || '     AND  ((xshi.eos_data_type = ''' || gv_eos_data_cd_200 || ''')';
       wk_sql := wk_sql || '      OR  (xshi.eos_data_type = ''' || gv_eos_data_cd_210 || ''')';
       wk_sql := wk_sql || '      OR  (xshi.eos_data_type = ''' || gv_eos_data_cd_215 || ''')';
       wk_sql := wk_sql || '      OR  (xshi.eos_data_type = ''' || gv_eos_data_cd_220 || ''')';
       wk_sql := wk_sql || '      OR  (xshi.eos_data_type = ''' || gv_eos_data_cd_230 || '''))';
-         --IF_H.出荷元=パラメータ.対象倉庫
+--
+      --パラメータ.対象倉庫
       IF TRIM(iv_object_warehouse) IS NOT NULL THEN
-        wk_sql := wk_sql || '   AND  (xshi.location_code = ''' || iv_object_warehouse || ''')';
+        --wk_sql := wk_sql || '   AND  (xshi.location_code = ''' || iv_object_warehouse || ''')'; --2008/10/08 統合テスト障害#310 Del
+        -- 2008/10/08 統合テスト障害#310 Add Start ----------------------------------
+        -- 230:移動入庫の場合はIF_H.入庫倉庫、それ以外はIF_H.出荷元を抽出条件とする
+        wk_sql := wk_sql || ' AND (DECODE(xshi.eos_data_type, ''' || gv_eos_data_cd_230 || ''', xshi.ship_to_location, ';
+        wk_sql := wk_sql || ' xshi.location_code) = ''' || iv_object_warehouse || ''') ';
+        -- 2008/10/08 統合テスト障害#310 Add End ------------------------------------
       END IF;
+--
       wk_sql := wk_sql || '  ORDER BY ';
       wk_sql := wk_sql || '           delivery_no ';        -- IF H.配送No
       wk_sql := wk_sql || '          ,order_source_ref ';   -- IF_H.受注ソース参照
@@ -5005,10 +5015,10 @@ AS
 --
 --
 --
--- Ver1.19 M.Hokkanji START
+-- Ver1.19 M.Hokkanji START 2008/10/06 統合テスト障害#305対応
 -- 未来日チェックを行う前にフラグを初期化するよう修正
       lv_dterr_flg := gv_date_chk_0;
--- Ver1.19 M.Hokkanji END
+-- Ver1.19 M.Hokkanji END 2008/10/06 統合テスト障害#305対応
       --出荷日／着荷日の未来日付チェック
       IF ((ln_err_flg = 0) AND (lv_error_flg = '0')) THEN
 --
@@ -14769,8 +14779,8 @@ debug_log(FND_FILE.LOG,'　　　出荷依頼実績数量の設定 プロシージャ：mov_results_q
 --
     IF ((lb_break_flg = TRUE) AND (lv_retcode = gv_status_normal)) THEN
 --
-      IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND  --エラーflag：0(正常) -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
-          (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off)) --保留flag  ：0(正常) -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+      IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND  --エラーflag：0(正常) -- 2008/10/07 統合テスト障害#308 Add
+          (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off)) --保留flag  ：0(正常) -- 2008/10/07 統合テスト障害#308 Add
       THEN
 --
         -- 2008/08/18 TE080_930指摘#32対応 Add Start -------------------------------
@@ -14791,8 +14801,7 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目実績0更新:mov_zero_updt'
         END IF;
         -- 2008/08/18 TE080_930指摘#32対応 Add End ---------------------------------
 --
-      END IF;  -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
-
+      END IF;  -- 2008/10/07 統合テスト障害#308 Add
 --
       IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND         --エラーflag：0(正常)
           (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --保留flag  ：0(正常)
@@ -15503,8 +15512,8 @@ debug_log(FND_FILE.LOG,'　　　受注実績数量の設定 プロシージャ：ord_results_quant
 --
     IF ((lb_break_flg = TRUE) AND (lv_retcode = gv_status_normal)) THEN
 --
-      IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND  --エラーflag：0(正常) -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
-          (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off)) --保留flag  ：0(正常) -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+      IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND  --エラーflag：0(正常) -- 2008/10/07 統合テスト障害#308 Add
+          (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off)) --保留flag  ：0(正常) -- 2008/10/07 統合テスト障害#308 Add
       THEN
 --
         -- 2008/08/18 TE080_930指摘#32対応 Add Start -------------------------------
@@ -15525,7 +15534,7 @@ debug_log(FND_FILE.LOG,'　　　指示にあって実績にない品目を実績0更新:order_zero_u
         END IF;
         -- 2008/08/18 TE080_930指摘#32対応 Add End ---------------------------------
 --
-      END IF;  -- 2008/10/07 Add チェックエラーで処理対象外なのに移動ロット詳細のレコードが倍増する
+      END IF;  -- 2008/10/07 統合テスト障害#308 Add
 --
       IF ((gr_interface_info_rec(in_idx).err_flg = gv_flg_off) AND         --エラーflag：0(正常)
           (gr_interface_info_rec(in_idx).reserve_flg = gv_flg_off))        --保留flag  ：0(正常)
