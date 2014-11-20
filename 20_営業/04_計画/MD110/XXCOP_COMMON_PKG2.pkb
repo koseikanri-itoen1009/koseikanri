@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP_COMMON_PKG(spec)
  * Description      : 共通関数パッケージ2(計画)
  * MD.050           : 共通関数    MD070_IPO_COP
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ------------------------- ------------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2009/04/08    1.1  SCS.Kikuchi      T1_0272,T1_0279,T1_0282,T1_0284対応
  *  2009/05/08    1.2  SCS.Kikuchi      T1_0918,T1_0919対応
  *  2009/07/23    1.3  SCS.Fukada       0000670対応(共通課題：I_E_479)
+ *  2009/11/24    1.4  SCS.Itou         本番障害#7 計画が稼動するまで割当セットAPI起動を起動しない。
  *
  *****************************************************************************************/
 --
@@ -778,7 +779,7 @@ AS
         OR TOO_MANY_ROWS THEN
           lv_calendar_code := NULL;
     END;
-    
+
     -- 組織からカレンダーコードが取得出来ない場合、
     -- プロファイルのドリンク基準カレンダを設定する。
     IF  lv_calendar_code IS NULL THEN
@@ -1270,7 +1271,7 @@ AS
     cv_prg_name               CONSTANT VARCHAR2(100) := 'upd_assignment';   -- プロシージャ名
     -- メッセージ名
     cv_message_00003          CONSTANT VARCHAR2(16)  := 'APP-XXCOP1-00003';
-    
+
     -- ===============================
     -- ユーザー宣言部
     -- ===============================
@@ -1442,7 +1443,7 @@ AS
             -- 抽出条件：特別横持取得パターン１
       AND   (   (   prm_prod_start_date >= msa.attribute1
                 AND prm_arrival_date    <= msa.attribute3
-                AND (  (   iv_process_type            = cv_process_type_plus 
+                AND (  (   iv_process_type            = cv_process_type_plus
                        AND TO_NUMBER(msa.attribute4) >= TO_NUMBER(msa.attribute5)
                        )
                     OR iv_process_type                = cv_process_type_minus
@@ -1452,7 +1453,7 @@ AS
             OR  (   msa.attribute1                IS NULL
                 AND prm_arrival_date     BETWEEN msa.attribute2
                                          AND     msa.attribute3
-                AND (  (   iv_process_type            = cv_process_type_plus 
+                AND (  (   iv_process_type            = cv_process_type_plus
                        AND TO_NUMBER(msa.attribute4) >= TO_NUMBER(msa.attribute5)
                        )
                     OR iv_process_type                = cv_process_type_minus
@@ -1461,7 +1462,7 @@ AS
             -- 抽出条件：特別横持取得パターン３
             OR  (   prm_prod_start_date >= msa.attribute1
                 AND msa.attribute3                IS NULL
-                AND (  (   iv_process_type            = cv_process_type_plus 
+                AND (  (   iv_process_type            = cv_process_type_plus
                        AND TO_NUMBER(msa.attribute4) >= TO_NUMBER(msa.attribute5)
                        )
                     OR iv_process_type                = cv_process_type_minus
@@ -1483,7 +1484,7 @@ AS
             OR  (   msa.attribute1                IS NULL
                 AND prm_arrival_date    >= msa.attribute2
                 AND msa.attribute3                IS NULL
-                AND (  (   iv_process_type            = cv_process_type_plus 
+                AND (  (   iv_process_type            = cv_process_type_plus
                        AND TO_NUMBER(msa.attribute4) >= TO_NUMBER(msa.attribute5)
                        )
                     OR iv_process_type                = cv_process_type_minus
@@ -1514,6 +1515,8 @@ AS
     --==============================================================
     ov_retcode := cv_status_normal;
 --
+-- 2009/11/24 H.Itou Del Start 本番障害#7 計画が稼動するまで割当セットAPI起動を起動しない。
+/*
     --==============================================================
     -- 関連移動情報の取得
     --==============================================================
@@ -1542,7 +1545,7 @@ AS
           ,l_move_info_rec.quantity
           ,l_move_info_rec.prod_start_date
           );
-        FETCH l_assignments_info_cur INTO 
+        FETCH l_assignments_info_cur INTO
           l_in_mas_rec.assignment_set_id          -- 割当セットヘッダ.割当セットヘッダID
          ,l_in_mas_rec.assignment_set_name        -- 割当セットヘッダ.割当セット名
          ,l_in_mas_rec.creation_date              -- 割当セットヘッダ.作成日
@@ -1662,7 +1665,7 @@ AS
             --
           END IF;
           --
-  
+
     --==============================================================
     -- 割当セットAPI起動
     --==============================================================
@@ -1792,6 +1795,8 @@ AS
     END IF;
     -- カーソルクローズ
     CLOSE l_move_info_cur;
+*/
+-- 2009/11/24 H.Itou Del End
 --
   EXCEPTION
     WHEN internal_process_expt THEN
