@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY XXCCP006A02C
+CREATE OR REPLACE PACKAGE BODY APPS.XXCCP006A02C
 AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCCP006A02C(body)
  * Description      : 動的パラメータコンカレント対応
  * MD.050           : 動的パラメータコンカレント対応 MD050_CCP_006_A02
- * Version          : 1.1
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -39,6 +39,10 @@ AS
  *                                          ・$FLEX$の対応
  *                                          ・取得したWHERE句の先頭が"WHERE "で始まる場合、
  *                                            "WHERE "を削除
+ *  2009/04/30     1.2 Masayuki.Sano        障害番号T1_0879,T1_0880,T1_0881対応
+ *                                          ・$FLEX$構文置換処理修正
+ *                                          ・値取得用SQL作成処理の修正
+ *                                          ・プロファイル名取得処理修正
  *
  *****************************************************************************************/
 --
@@ -224,6 +228,7 @@ AS
     ,set_id                fnd_descr_flex_col_usage_vl.flex_value_set_id%TYPE     -- 値セットID
     ,seq_num               fnd_descr_flex_col_usage_vl.column_seq_num%TYPE        -- 順序
     ,flex_value_set_name   fnd_flex_value_sets.flex_value_set_name%TYPE           -- 値セット名
+    ,end_user_column_name  fnd_descr_flex_col_usage_vl.end_user_column_name%TYPE  -- パラメータ名
   ) ;
   TYPE g_param_info_ttype IS TABLE OF g_param_info_rtype INDEX BY BINARY_INTEGER ;
 -- 2009/03/10 ADD END
@@ -351,9 +356,18 @@ AS
 --
 --###########################  固定部 END   ####################################
 --
+-- 2009/04/30 ADD BY Masayuki.Sano Ver.1.2 Start
+   -- *** ローカル定数 ***
+    cv_underscore               CONSTANT VARCHAR2(1) := '_';          -- アンダースコア
+--
+-- 2009/04/30 ADD BY Masayuki.Sano Ver.1.2 End
     -- *** ローカル変数 ***
     ln_position   NUMBER DEFAULT 0;
     lv_value_wk   VARCHAR2(2000) DEFAULT NULL;
+-- 2009/04/30 ADD BY Masayuki.Sano Ver.1.2 Start
+    ln_idx        NUMBER DEFAULT 0;
+    lv_next_char  VARCHAR2(1);
+-- 2009/04/30 ADD BY Masayuki.Sano Ver.1.2 End
 --
   BEGIN
 --
@@ -366,7 +380,26 @@ AS
     ln_position := INSTR(iv_value, cv_profile);
 --
     lv_value_wk := SUBSTR(REPLACE(iv_value, CHR(10), ' '), ln_position + LENGTH(cv_profile));
-    ov_value := RTRIM(SUBSTR(lv_value_wk, 1, INSTR(lv_value_wk, ' ') - 1), ')');
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+--    ov_value := RTRIM(SUBSTR(lv_value_wk, 1, INSTR(lv_value_wk, ' ') - 1), ')');
+    -- ■ ":$PROFILE$."以降の文字列で半角英数,'_'以外の文字が存在する位置を検索する。
+    ln_idx       := 1;
+    <<pro_search_roop>>
+    WHILE ( ln_idx <= LENGTH(lv_value_wk) ) LOOP
+      -- 1文字取得
+      lv_next_char := SUBSTRB(lv_value_wk, ln_idx, 1);
+      -- 取得した文字が数値または"_"かチェック
+      -- ・数値または"_"の場合 ⇒ 後続の処理を実行
+      -- ・上記以外の場合      ⇒ 処理終了
+      IF ( xxccp_common_pkg.chk_alphabet_number_only(lv_next_char) OR lv_next_char = cv_underscore ) THEN
+        ln_idx := ln_idx + 1;
+      ELSE
+        EXIT;
+      END IF;
+    END LOOP pro_search_roop;
+    -- ■ プロファイル名を抽出する。
+    ov_value := SUBSTR(lv_value_wk, 1, ln_idx - 1);
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
 --
   EXCEPTION
 --
@@ -1193,9 +1226,17 @@ AS
     ------------------------------
     -- SELECT句編集
     IF ( lt_id_column_name IS NULL ) THEN
-      lv_edit_select := lt_value_column_name;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+--      lv_edit_select := lt_value_column_name;
+      lv_edit_select := lt_value_column_name || ' AS id, '
+                     || lt_value_column_name || ' AS value';
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
     ELSE
-      lv_edit_select := lt_id_column_name;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+--      lv_edit_select := lt_id_column_name;
+      lv_edit_select := lt_id_column_name    || ' AS id, '
+                     || lt_value_column_name || ' AS value';
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
     END IF;
 --
     -- 参照テーブル名編集
@@ -1242,6 +1283,12 @@ AS
           lv_edit_where_tmp := SUBSTR(LTRIM(lv_edit_where_tmp), 6);
         END IF;
 -- 2009/03/10 ADD END
+-- 2009/04/30 ADD BY Masayuki.Sano Ver.1.2 Start
+        lv_edit_where_tmp   := TRIM(lv_edit_where_tmp);
+        IF (lv_edit_where_tmp IS NOT NULL) THEN
+          lv_edit_where_tmp := 'WHERE ' || lv_edit_where_tmp;
+        END IF;
+-- 2009/04/30 ADD BY Masayuki.Sano Ver.1.2 Start
 --
         IF ( INSTR(lv_edit_where_tmp, cv_profile) > 0 ) THEN
           -- プロファイル名称取得
@@ -1260,10 +1307,16 @@ AS
           lv_profile_value_w := FND_PROFILE.VALUE(lt_profile_name_w);
 --
           -- 置換処理
-          lv_edit_where := ' AND ' || REPLACE(lv_edit_where_tmp, cv_profile || lt_profile_name_w, lv_profile_value_w);
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+--          lv_edit_where := ' AND ' || REPLACE(lv_edit_where_tmp, cv_profile || lt_profile_name_w, lv_profile_value_w);
+          lv_edit_where := REPLACE(lv_edit_where_tmp, cv_profile || lt_profile_name_w, lv_profile_value_w);
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
 --
         ELSE
-          lv_edit_where := ' AND ' || lv_edit_where_tmp;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+--          lv_edit_where := ' AND ' || lv_edit_where_tmp;
+          lv_edit_where := lv_edit_where_tmp;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
         END IF;
 --
       END IF;
@@ -1317,23 +1370,25 @@ AS
           END IF;
         END IF;
 --
-        -- VALUE_COLUMN_NAMEに":$FLEX$.<値セット名>"が存在する場合、編集後の値に置換
-        IF ( INSTR(lt_value_column_name, cv_flex || i_param_info_tab(i).flex_value_set_name) > 0 ) THEN
-          -- 置換処理
-          replace_data(
-             iv_before_data   => lt_value_column_name
-            ,iv_search_val    => cv_flex || i_param_info_tab(i).flex_value_set_name
-            ,iv_replace_val   => cv_single_quote || i_edit_param_info_tab(i) || cv_single_quote
-            ,ov_after_data    => lt_value_column_name
-            ,ov_errbuf        => lv_errbuf
-            ,ov_retcode       => lv_retcode
-            ,ov_errmsg        => lv_errmsg
-          );
-          -- エラー処理
-          IF ( lv_retcode = cv_status_error ) THEN
-            RAISE edit_param_asterisk_expt;
-          END IF;
-        END IF;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+--        -- VALUE_COLUMN_NAMEに":$FLEX$.<値セット名>"が存在する場合、編集後の値に置換
+--        IF ( INSTR(lt_value_column_name, cv_flex || i_param_info_tab(i).flex_value_set_name) > 0 ) THEN
+--          -- 置換処理
+--          replace_data(
+--             iv_before_data   => lt_value_column_name
+--            ,iv_search_val    => cv_flex || i_param_info_tab(i).flex_value_set_name
+--            ,iv_replace_val   => cv_single_quote || i_edit_param_info_tab(i) || cv_single_quote
+--            ,ov_after_data    => lt_value_column_name
+--            ,ov_errbuf        => lv_errbuf
+--            ,ov_retcode       => lv_retcode
+--            ,ov_errmsg        => lv_errmsg
+--          );
+--          -- エラー処理
+--          IF ( lv_retcode = cv_status_error ) THEN
+--            RAISE edit_param_asterisk_expt;
+--          END IF;
+--        END IF;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
 --
         -- WHERE句以降に":$FLEX$.<値セット名>"が存在する場合、編集後の値に置換
         IF ( INSTR(lv_edit_where, cv_flex || i_param_info_tab(i).flex_value_set_name) > 0 ) THEN
@@ -1352,15 +1407,75 @@ AS
             RAISE edit_param_asterisk_expt;
           END IF;
         END IF;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+        -- SELECT句に":$FLEX$.<パラメータ名>"が存在する場合、編集後の値に置換
+        IF ( INSTR(lv_edit_select, cv_flex || i_param_info_tab(i).end_user_column_name) > 0 ) THEN
+           -- 置換処理
+         replace_data(
+             iv_before_data   => lv_edit_select
+            ,iv_search_val    => cv_flex || i_param_info_tab(i).end_user_column_name
+            ,iv_replace_val   => cv_single_quote || i_edit_param_info_tab(i) || cv_single_quote
+            ,ov_after_data    => lv_edit_select
+            ,ov_errbuf        => lv_errbuf
+            ,ov_retcode       => lv_retcode
+            ,ov_errmsg        => lv_errmsg
+          );
+          -- エラー処理
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE edit_param_asterisk_expt;
+          END IF;
+        END IF;
+--
+        -- FROM句に":$FLEX$.<パラメータ名>"が存在する場合、編集後の値に置換
+        IF ( INSTR(lv_edit_table, cv_flex || i_param_info_tab(i).end_user_column_name) > 0 ) THEN
+          -- 置換処理
+          replace_data(
+             iv_before_data   => lv_edit_table
+            ,iv_search_val    => cv_flex || i_param_info_tab(i).end_user_column_name
+            ,iv_replace_val   => cv_single_quote || i_edit_param_info_tab(i) || cv_single_quote
+            ,ov_after_data    => lv_edit_table
+            ,ov_errbuf        => lv_errbuf
+            ,ov_retcode       => lv_retcode
+            ,ov_errmsg        => lv_errmsg
+          );
+          -- エラー処理
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE edit_param_asterisk_expt;
+          END IF;
+        END IF;
+--
+        -- WHERE句以降に":$FLEX$.<パラメータ名>"が存在する場合、編集後の値に置換
+        IF ( INSTR(lv_edit_where, cv_flex || i_param_info_tab(i).end_user_column_name) > 0 ) THEN
+          -- 置換処理
+          replace_data(
+             iv_before_data   => lv_edit_where
+            ,iv_search_val    => cv_flex || i_param_info_tab(i).end_user_column_name
+            ,iv_replace_val   => cv_single_quote || i_edit_param_info_tab(i) || cv_single_quote
+            ,ov_after_data    => lv_edit_where
+            ,ov_errbuf        => lv_errbuf
+            ,ov_retcode       => lv_retcode
+            ,ov_errmsg        => lv_errmsg
+          );
+          -- エラー処理
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE edit_param_asterisk_expt;
+          END IF;
+        END IF;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
       END LOOP flex_change_loop ;
     END IF;
 -- 2009/03/10 ADD END
 --
-    -- SQL作成
-    lv_sql :=    ' SELECT '|| lv_edit_select
-              || ' FROM '  || lv_edit_table
-              || ' WHERE ' || lt_value_column_name || ' = ''' || REPLACE(iv_args, cv_asterisk) || ''''
-                           || lv_edit_where;
+--    -- SQL作成
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+--    lv_sql :=    ' SELECT '|| lv_edit_select
+--              || ' FROM '  || lv_edit_table
+--              || ' WHERE ' || lt_value_column_name || ' = ''' || REPLACE(iv_args, cv_asterisk) || ''''
+--                           || lv_edit_where;
+    lv_sql :=    ' SELECT id'
+              || ' FROM ( SELECT ' || lv_edit_select || ' FROM ' || lv_edit_table || ' ' || lv_edit_where  || ' )'
+              || ' WHERE  value = ''' || REPLACE(iv_args, cv_asterisk) || '''';
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
 --
     ------------------------------
     -- SQL文実行
@@ -1867,6 +1982,25 @@ AS
             RAISE edit_param_sql_expt;
           END IF;
         END IF;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+        -- SELECT句に":$FLEX$.<パラメータ名>"が存在する場合、編集後の値に置換
+        IF ( INSTR(lv_sql, cv_flex || i_param_info_tab(i).end_user_column_name) > 0 ) THEN
+           -- 置換処理
+         replace_data(
+             iv_before_data   => lv_sql
+            ,iv_search_val    => cv_flex || i_param_info_tab(i).end_user_column_name
+            ,iv_replace_val   => cv_single_quote || i_edit_param_info_tab(i) || cv_single_quote
+            ,ov_after_data    => lv_sql
+            ,ov_errbuf        => lv_errbuf
+            ,ov_retcode       => lv_retcode
+            ,ov_errmsg        => lv_errmsg
+          );
+          -- エラー処理
+          IF ( lv_retcode = cv_status_error ) THEN
+            RAISE edit_param_sql_expt;
+          END IF;
+        END IF;
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
       END LOOP change_flex_loop ;
     END IF;
 -- 2009/03/10 ADD END
@@ -2026,6 +2160,9 @@ AS
 -- 2009/03/10 ADD START
           ,ffvs.flex_value_set_name         AS flex_value_set_name                   -- 値セット名
 -- 2009/03/10 ADD END
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 Start
+          ,fdfcuv.end_user_column_name      AS end_user_column_name                  -- パラメータ名
+-- 2009/04/30 UPDATE BY Masayuki.Sano Ver.1.2 End
 --
     BULK COLLECT INTO l_param_info_tab
 --
