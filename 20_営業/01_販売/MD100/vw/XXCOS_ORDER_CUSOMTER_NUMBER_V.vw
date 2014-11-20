@@ -10,6 +10,7 @@
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- ---------------------------------
  *  2009/1/26     1.0   T.Tyou           新規作成
+ *  2009/5/18     1.1   S.Tomita         [T1_0976]クイック受注オーガナイザセキュリティ対応
  *
  ************************************************************************/
 CREATE OR REPLACE VIEW xxcos_order_cusomter_number_v (
@@ -59,12 +60,17 @@ SELECT acct.account_number account_number,
     xca.delivery_base_code
   END base_code
   ,party.duns_number_c duns_number_c
-FROM hz_parties party,
-  hz_cust_accounts acct
-  ,xxcmm_cust_accounts xca
+FROM hz_parties          party
+    ,hz_cust_accounts    acct
+    ,xxcmm_cust_accounts xca
+    ,fnd_lookup_values   flv_tran
 WHERE acct.party_id = party.party_id
  AND acct.status = 'A'
  AND acct.cust_account_id = xca.customer_id
+ AND acct.customer_class_code = flv_tran.meaning
+ AND flv_tran.lookup_type = 'XXCOS1_CUS_CLASS_MST_005_A01'
+ AND flv_tran.language = USERENV('LANG')
+ AND flv_tran.enabled_flag = 'Y'
  AND (
  xca.sale_base_code IN  (
     SELECT
