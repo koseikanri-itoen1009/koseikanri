@@ -7,7 +7,7 @@ AS
  * Description      : 生産物流（出荷）
  * MD.050           : 出荷依頼 T_MD050_BPO_401
  * MD.070           : 出荷調整表 T_MD070_BPO_40I
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -50,6 +50,7 @@ AS
  *  2008/11/14    1.8   Tsuyoki Yoshimoto     内部変更#168対応
  *  2008/12/09    1.9   Akiyoshi Shiina       本番#607対応
  *  2008/12/22    1.10  Takao Ohashi          本番#640対応
+ *  2008/12/24    1.11  Masayoshi Uehara      本番#640対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -663,6 +664,9 @@ AS
   PROCEDURE prc_create_xml_data
     (
       iv_syori_kbn      IN  VARCHAR2                 -- 処理区分
+-- 2008/12/24 add start ver1.11 M_Uehara
+     ,id_arrival_date   IN  DATE                     -- 着日
+-- 2008/12/24 add end ver1.11 M_Uehara
      ,it_chosei_data    IN  type_chosei_data_tbl     -- 出荷調整表情報
      ,ov_errbuf         OUT NOCOPY VARCHAR2          -- エラー・メッセージ           --# 固定 #
      ,ov_retcode        OUT NOCOPY VARCHAR2          -- リターン・コード             --# 固定 #
@@ -890,9 +894,13 @@ AS
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'arrival_date';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
-        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( it_chosei_data(l_cnt).arrival_date
+-- 2008/12/24 mod start ver1.11 M_Uehara
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( id_arrival_date
                                                            ,gv_date_format2);
 --
+--        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR( it_chosei_data(l_cnt).arrival_date
+--                                                           ,gv_date_format2);
+-- 2008/12/24 mod end ver1.12 M_Uehara
         -- 【データ】出庫元コード
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'syukkomoto_cd';
@@ -1419,6 +1427,21 @@ AS
         lb_bre_flag                       := FALSE;
       END IF;
 -- add end ver1.10
+-- 2008/12/24 add start ver1.11 M_Uehara
+      IF (ln_move_cnt > 1) THEN
+        IF (gt_i_item_code(ln_move_cnt - 1) <> gt_i_item_code(ln_move_cnt)
+          AND id_arrival_date > gt_i_arrival_date(ln_move_cnt - 1)) THEN
+          gt_i_output_flag(ln_move_cnt - 1) := '1';
+        END IF;
+      END IF;
+      IF (ln_move_cnt = ln_cnt
+        AND id_arrival_date > gt_i_arrival_date(ln_move_cnt)) THEN
+        gt_i_output_flag(ln_move_cnt) := '1';
+      ELSIF (ln_move_cnt = ln_cnt
+        AND id_arrival_date < gt_i_arrival_date(ln_move_cnt)) THEN
+        gt_i_output_flag(ln_move_cnt) := '3';
+      END IF;
+-- 2008/12/24 add end ver1.11 M_Uehara
       gt_i_plan_quantity(ln_move_cnt)                                        -- 計画数（着日）
         := lt_drink_total_mon_data(ln_move_cnt).plan_quantity;
       gt_i_confirm_quantity(ln_move_cnt)                                     -- 予実数（着日）
@@ -2567,6 +2590,9 @@ AS
       -- ====================================================
       prc_create_xml_data(
           iv_syori_kbn         =>     iv_syori_kbn       -- 処理区分
+-- 2008/12/24 add start ver1.11 M_Uehara
+         ,id_arrival_date      =>     id_arrival_date    -- 着日
+-- 2008/12/24 add end ver1.11 M_Uehara
          ,it_chosei_data       =>     lt_chosei_data     -- 出荷調整表データ
          ,ov_errbuf            =>     lv_errbuf          -- エラー・メッセージ
          ,ov_retcode           =>     lv_retcode         -- リターン・コード
@@ -3016,6 +3042,21 @@ AS
         lb_bre_flag                       := FALSE;
       END IF;
 -- add end ver1.10
+-- 2008/12/24 add start ver1.11 M_Uehara
+      IF (ln_move_cnt > 1) THEN
+        IF (gt_i_item_code(ln_move_cnt - 1) <> gt_i_item_code(ln_move_cnt)
+          AND id_arrival_date > gt_i_arrival_date(ln_move_cnt - 1)) THEN
+          gt_i_output_flag(ln_move_cnt - 1) := '1';
+        END IF;
+      END IF;
+      IF (ln_move_cnt = ln_cnt
+        AND id_arrival_date > gt_i_arrival_date(ln_move_cnt)) THEN
+        gt_i_output_flag(ln_move_cnt) := '1';
+      ELSIF (ln_move_cnt = ln_cnt
+        AND id_arrival_date < gt_i_arrival_date(ln_move_cnt)) THEN
+        gt_i_output_flag(ln_move_cnt) := '3';
+      END IF;
+-- 2008/12/24 add end ver1.11 M_Uehara
       gt_i_plan_quantity(ln_move_cnt)                                             -- 計画数（着日）
         := lt_leaf_subtotal_monthly_data(ln_move_cnt).plan_quantity;
       gt_i_confirm_quantity(ln_move_cnt)                                          -- 予実数（着日）
@@ -3845,6 +3886,9 @@ AS
       -- ====================================================
       prc_create_xml_data(
           iv_syori_kbn         =>     iv_syori_kbn       -- 処理区分
+-- 2008/12/24 add start ver1.11 M_Uehara
+         ,id_arrival_date      =>     id_arrival_date    -- 着日
+-- 2008/12/24 add end ver1.11 M_Uehara
          ,it_chosei_data       =>     lt_chosei_data     -- 出荷調整表データ
          ,ov_errbuf            =>     lv_errbuf          -- エラー・メッセージ
          ,ov_retcode           =>     lv_retcode         -- リターン・コード
