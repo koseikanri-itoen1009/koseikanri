@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX xxcsm.xxcsm_news_item_hdrs_all_u01 ON xxcsm_news_item_headers_all (subject_year, year_month, indication_order, news_division_code) TABLESPACE xxidx2 PCTFREE 10 INITRANS 2 MAXTRANS 255 STORAGE ( INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645 PCTINCREASE 0)
+/
