@@ -6,8 +6,10 @@
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
 * ---------- ---- ------------ ----------------------------------------------
-* 2008-12-02 1.0  SCS及川領  新規作成
-* 2009-02-24 1.1  SCS及川領  [CT1-010]通常店納価格導出ボタンﾀｲﾑｱｳﾄ修正
+* 2008-12-02 1.0  SCS及川領    新規作成
+* 2009-02-24 1.1  SCS及川領    [CT1-010]通常店納価格導出ボタンﾀｲﾑｱｳﾄ修正
+* 2009-03-24 1.2  SCS阿部大輔  【課題77対応】チェックの期間をプロファイル値に修正
+* 2009-03-24 1.2  SCS阿部大輔  【T1_0138】ボタン制御を修正
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso017001j.server;
@@ -249,7 +251,10 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       headerRow2.getQuoteSubmitName()   
     );
     headerRow.setStatus(              
-      XxcsoQuoteConstants.QUOTE_INPUT   
+      /* 20090324_abe_T1_0138 START*/
+      //XxcsoQuoteConstants.QUOTE_INPUT   
+      XxcsoQuoteConstants.QUOTE_INIT   
+      /* 20090324_abe_T1_0138 END*/
     );
     headerRow.setDelivPriceTaxType(   
       headerRow2.getDelivPriceTaxType() 
@@ -334,6 +339,12 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     
     // ボタンレンダリング処理
     initRender();
+
+    /* 20090324_abe_T1_0138 START*/
+    headerRow.setStatus(              
+      XxcsoQuoteConstants.QUOTE_INPUT   
+    );
+    /* 20090324_abe_T1_0138 END*/
 
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -450,7 +461,10 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       headerRow2.getQuoteSubmitName()   
     );
     headerRow.setStatus(              
-      XxcsoQuoteConstants.QUOTE_INPUT   
+      /* 20090324_abe_T1_0138 START*/
+      //XxcsoQuoteConstants.QUOTE_INPUT   
+      XxcsoQuoteConstants.QUOTE_INIT   
+      /* 20090324_abe_T1_0138 END*/
     );
     headerRow.setDelivPriceTaxType(   
       headerRow2.getDelivPriceTaxType() 
@@ -536,6 +550,12 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     
     // ボタンレンダリング処理
     initRender();
+
+    /* 20090324_abe_T1_0138 START*/
+    headerRow.setStatus(              
+      XxcsoQuoteConstants.QUOTE_INPUT   
+    );
+    /* 20090324_abe_T1_0138 END*/
 
     XxcsoUtils.debug(txn, "[END]");
   }
@@ -1985,6 +2005,18 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     XxcsoQuoteLinesSalesFullVORowImpl lineRow
       = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.first();
 
+    /* 20090324_abe_課題77 START*/
+    //プロファイルの取得
+    int period_Day = 0;
+    try{
+      period_Day =  Integer.parseInt(txn.getProfile(XxcsoQuoteConstants.PERIOD_DAY));
+    }
+    catch ( NumberFormatException e )
+    {
+      period_Day = 0;
+    }
+    /* 20090324_abe_課題77 END*/
+
     int index = 0;
     while ( lineRow != null )
     {
@@ -1999,6 +2031,9 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         errorList
        ,lineRow
        ,index
+       /* 20090324_abe_課題77 START*/
+       ,period_Day
+       /* 20090324_abe_課題77 END*/
       );
 
       lineRow = (XxcsoQuoteLinesSalesFullVORowImpl)lineVo.next();
@@ -2308,12 +2343,16 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
    * @param errorList     エラーリスト
    * @param lineRow       見積明細行インスタンス
    * @param index         対象行
+   * @param period_Daye   プロファイル値←20090324_abe_課題77 ADD
    *****************************************************************************
    */
   private List validateFixedLine(
     List                              errorList
    ,XxcsoQuoteLinesSalesFullVORowImpl lineRow
    ,int                               index
+   /* 20090324_abe_課題77 START*/
+   ,int                               period_Daye
+   /* 20090324_abe_課題77 END*/
   )
   {
     OADBTransaction txn = getOADBTransaction();
@@ -2365,9 +2404,14 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     {
       Date currentDate = new Date(initRow.getCurrentDate());
       Date currentDate2 = new Date(lineRow.getQuoteStartDate());
-      Date limitDate = (Date)currentDate.addJulianDays(-30, 0);
 
-      // システム日付より30日前まで入力可能
+      /* 20090324_abe_課題77 START*/
+      //Date limitDate = (Date)currentDate.addJulianDays(-30, 0);
+      Date limitDate = (Date)currentDate.addJulianDays(-period_Daye, 0);
+
+      // システム日付より30日前まで入力可能【削除】
+      // システム日付よりプロファイル値日前まで入力可能
+      /* 20090324_abe_課題77 END*/
       if ( lineRow.getQuoteStartDate().compareTo(limitDate) < 0 )
       {
         XxcsoUtils.debug(txn, limitDate);
@@ -2375,6 +2419,10 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
         OAException error
           = XxcsoMessage.createErrorMessage(
               XxcsoConstants.APP_XXCSO1_00463
+             /* 20090324_abe_課題77 START*/
+             ,XxcsoConstants.TOKEN_PERIOD
+             ,String.valueOf(period_Daye)
+             /* 20090324_abe_課題77 END*/
              ,XxcsoConstants.TOKEN_INDEX
              ,String.valueOf(index)
             );
@@ -2489,8 +2537,8 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
       {
         XxcsoUtils.debug(txn, "NumberFormatException");
       }
-    }
 
+    }
     // 備考
     errorList
       = util.checkIllegalString(
@@ -2601,6 +2649,12 @@ public class XxcsoQuoteSalesRegistAMImpl extends OAApplicationModuleImpl
     }
     else
     {
+      /* 20090324_abe_T1_0138 START*/
+      if ( XxcsoQuoteConstants.QUOTE_INIT.equals(status) )
+      {
+        initRow.setApplicableButtonRender(Boolean.TRUE);      
+      }
+      /* 20090324_abe_T1_0138 END*/
       if ( XxcsoQuoteConstants.QUOTE_INPUT.equals(status) )
       {
         initRow.setCopyCreateButtonRender(Boolean.TRUE);
