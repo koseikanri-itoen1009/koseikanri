@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionRegistAMImpl
 * 概要説明   : SP専決登録画面アプリケーション・モジュールクラス
-* バージョン : 1.12
+* バージョン : 1.13
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -19,6 +19,7 @@
 * 2010-01-15 1.10 SCS阿部大輔   [E_本稼動_00950]画面値、ＤＢ値チェック対応
 * 2010-03-01 1.11 SCS阿部大輔   [E_本稼動_01678]現金支払対応
 * 2010-11-11 1.12 SCS桐生和幸   [E_本稼動_01954]変動電気代のみの顧客対応
+* 2013-04-19 1.13 SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.server;
@@ -4004,7 +4005,24 @@ public class XxcsoSpDecisionRegistAMImpl extends OAApplicationModuleImpl
       }
     }
 // 2010-03-01 [E_本稼動_01678] Add End
-
+// 2013-04-19 [E_本稼動_09603] Add Start
+    // 発注依頼ボタンの場合
+    if ( OperationMode == XxcsoSpDecisionConstants.OPERATION_REQUEST )
+    {
+      String contractexists = headerRow.getContractExists();
+      // 契約の存在チェック
+      errorList.addAll(
+        XxcsoSpDecisionValidateUtils.validateContractExists(
+          txn
+         ,contractexists
+        )
+      );
+      if ( errorList.size() > 0 )
+      {
+        OAException.raiseBundledOAException(errorList);
+      }
+    }
+// 2013-04-19 [E_本稼動_09603] Add End
     XxcsoUtils.debug(txn, "[END]");
   }
 

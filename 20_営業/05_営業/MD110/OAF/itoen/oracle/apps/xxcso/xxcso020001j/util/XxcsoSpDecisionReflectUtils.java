@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionReflectUtils
 * 概要説明   : SP専決反映ユーティリティクラス
-* バージョン : 1.5
+* バージョン : 1.6
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -11,7 +11,8 @@
 * 2009-05-19 1.2  SCS柳平直人   [ST障害T1_1058]reflectAll時契約先反映処理追加
 * 2009-05-28 1.3  SCS柳平直人   [ST障害T1_1216]設置先反映処理不具合対応
 * 2009-10-14 1.4  SCS阿部大輔   [共通課題IE554,IE573]住所対応
-* 2010-05-26 1.16 SCS阿部大輔   [E_本稼動_02799]文字数対応
+* 2010-05-26 1.5  SCS阿部大輔   [E_本稼動_02799]文字数対応
+* 2013-04-19 1.6  SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -950,7 +951,19 @@ public class XxcsoSpDecisionReflectUtils
     }
 
     String customerStatus = installRow.getCustomerStatus();
-    if ( customerStatus == null || "".equals(customerStatus) )
+// 2013-04-19 [E_本稼動_09603] Mod Start
+//    if ( customerStatus == null || "".equals(customerStatus) )
+    String updateCustEnable = installRow.getUpdateCustEnable();
+
+    if ( "N".equals(updateCustEnable) )
+    {
+      if ( isDiffer(installRow.getNewCustomerFlag(), "N") )
+      {
+        installRow.setNewCustomerFlag("N");
+      }
+    }
+    else if ( customerStatus == null || "".equals(customerStatus) )
+// 2013-04-19 [E_本稼動_09603] Mod End
     {
       if ( isDiffer(installRow.getNewCustomerFlag(), "Y") )
       {

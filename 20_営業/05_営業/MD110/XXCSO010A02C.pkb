@@ -11,7 +11,7 @@ AS
  *                    ます。
  * MD.050           : MD050_CSO_010_A02_マスタ連携機能
  *
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -82,6 +82,7 @@ AS
  *  2010-02-05    1.15  Daisuke.Abe      E_本稼動_01537対応
  *  2010-03-04    1.16  Kazuyo.Hosoi     E_本稼動_01678対応
  *  2011-12-26    1.17  T.Ishiwata       E_本稼動_08363対応
+ *  2013-04-11    1.18  K.Nakamura       E_本稼動_09603対応
  *
  *****************************************************************************************/
   --
@@ -182,6 +183,9 @@ AS
   ct_delivery_div_bm1       CONSTANT xxcso_destinations.delivery_div%TYPE                    := '1';     -- 送付先ＢＭ１
   ct_delivery_div_bm2       CONSTANT xxcso_destinations.delivery_div%TYPE                    := '2';     -- 送付先ＢＭ２
   ct_delivery_div_bm3       CONSTANT xxcso_destinations.delivery_div%TYPE                    := '3';     -- 送付先ＢＭ３
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+  cv_duns_number_approved   CONSTANT hz_parties.duns_number_c%TYPE                           := '25';    -- 顧客ステータス：25(SP承認済)
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
   --
   -- メッセージコード
   cv_tkn_number_01 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00011'; -- 業務処理日付取得エラー
@@ -194,7 +198,9 @@ AS
   cv_tkn_number_08 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00456'; -- コンカレント起動エラー
   cv_tkn_number_09 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00457'; -- コンカレント終了確認エラー
   cv_tkn_number_10 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00458'; -- コンカレント異常終了エラー
-  cv_tkn_number_11 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00459'; -- コンカレント警告終了エラー
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+  -- cv_tkn_number_11 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00459'; -- コンカレント警告終了エラー
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
   cv_tkn_number_12 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00389'; -- 顧客マスタ更新時エラー
   cv_tkn_number_13 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00343'; -- 取引タイプID抽出エラーメッセージ
   cv_tkn_number_14 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00504'; -- 物件マスタ更新時エラー
@@ -2899,6 +2905,9 @@ AS
     lt_vendor_number3        po_vendors.segment1%TYPE;
     lt_organization_rec      hz_party_v2pub.organization_rec_type;
     lt_profile_id            hz_organization_profiles.organization_profile_id%TYPE;
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+    lt_duns_number_c         hz_parties.duns_number_c%TYPE;
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
     --
     -- 顧客マスタ用ＡＰＩ変数
     --
@@ -3235,7 +3244,13 @@ AS
     -- ====================================
     BEGIN
       SELECT hpa.object_version_number -- オブジェクトバージョン番号
+            /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+            ,hpa.duns_number_c duns_number_c -- 顧客ステータス
+            /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
       INTO   ln_object_version_number
+            /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+            ,lt_duns_number_c
+            /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
       FROM   hz_parties hpa -- パーティマスタ
       WHERE  hpa.party_id = lt_party_id
       ;
@@ -3262,6 +3277,12 @@ AS
     -- ====================================
     lt_organization_rec.organization_name  := SUBSTRB(it_mst_regist_info_rec.install_party_name, 1, 360); -- 顧客名
     lt_organization_rec.party_rec.party_id := lt_party_id;                                                -- パーティＩＤ
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+    -- 顧客ステータスが25(SP承認済)より前の場合
+    IF ( lt_duns_number_c < cv_duns_number_approved ) THEN
+      lt_organization_rec.duns_number_c    := cv_duns_number_approved; -- 顧客ステータス：25(SP承認済)に変更
+    END IF;
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
     --
     hz_party_v2pub.update_organization(
        p_init_msg_list               => fnd_api.g_true

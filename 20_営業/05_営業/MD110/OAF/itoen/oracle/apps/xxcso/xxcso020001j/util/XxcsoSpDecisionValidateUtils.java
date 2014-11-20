@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionValidateUtils
 * 概要説明   : SP専決登録画面用検証ユーティリティクラス
-* バージョン : 1.16
+* バージョン : 1.17
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -24,6 +24,7 @@
 * 2010-01-20 1.14 SCS阿部大輔  [E_本稼動_01176]顧客コード必須対応
 * 2010-03-01 1.15 SCS阿部大輔  [E_本稼動_01678]現金支払対応
 * 2011-04-04 1.16 SCS吉元強樹  [E_本稼動_02498]SP専決回送先承認者必須チェック対応
+* 2013-04-19 1.17 SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -6054,4 +6055,36 @@ public class XxcsoSpDecisionValidateUtils
     return returnValue;
  }
 // 2010-01-12 [E_本稼動_00823] Add End
+// 2013-04-19 [E_本稼動_09603] Add Start
+  /*****************************************************************************
+   * 契約の存在検証
+   * @param txn            OADBTransactionインスタンス
+   * @param contractexists 契約存在フラグ
+   *****************************************************************************
+   */
+  public static List validateContractExists(
+    OADBTransaction     txn
+   ,String              contractexists
+  )
+  {
+    XxcsoUtils.debug(txn, "[START]");
+
+    List errorList = new ArrayList();
+
+    if ( "N".equals(contractexists) )
+    {
+      OAException error
+            = XxcsoMessage.createErrorMessage(
+                XxcsoConstants.APP_XXCSO1_00648
+               ,XxcsoConstants.TOKEN_ACTION
+               ,XxcsoSpDecisionConstants.TOKEN_VALUE_REQUEST_CONC
+              );
+      errorList.add(error);
+    }
+
+    XxcsoUtils.debug(txn, "[END]");
+
+    return errorList;
+  }
+// 2013-04-19 [E_本稼動_09603] Add End
 }

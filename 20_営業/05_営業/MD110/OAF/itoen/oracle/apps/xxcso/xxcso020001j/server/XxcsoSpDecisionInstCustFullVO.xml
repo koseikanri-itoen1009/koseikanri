@@ -158,6 +158,19 @@ SELECT XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_ID,
                                   ,xcasv.sale_base_code
                                  )
        ) publish_base_name_view
+-- 2013-04-19 [E_–{‰Ò“®_09603] Add Start
+      ,NVL((
+         SELECT 'N'
+         FROM   xxcso_sp_decision_headers xsdh
+               ,xxcso_sp_decision_custs   xsdc
+         WHERE  1=1
+         AND    xsdc.customer_id                = xcasv.cust_account_id
+         AND    xsdc.sp_decision_customer_class = '1'  --Ý’uæ
+         AND    xsdh.sp_decision_header_id      = xsdc.sp_decision_header_id
+         AND    xsdh.status                     = '3'  --—LŒø
+         AND    rownum                          = 1    --‰ß‹Ž‚É“¯ˆêŒÚ‹q‚Å•¡”‘¶Ý‚·‚éˆ×
+       ), 'Y' ) update_cust_enable  --‰ß‹Ž‚É“¯ˆêŒÚ‹q‚Å³”FÏ‚ÌŒ_–ñ‚ª‚ ‚é‚©
+-- 2013-04-19 [E_–{‰Ò“®_09603] Add End
 FROM XXCSO_SP_DECISION_CUSTS_V XxcsoSpDecisionCustsVEO
     ,xxcso_cust_acct_sites_v   xcasv
 WHERE XxcsoSpDecisionCustsVEO.SP_DECISION_CUSTOMER_CLASS = '1'
@@ -495,6 +508,19 @@ AND   xcasv.cust_account_id(+)                           = XxcsoSpDecisionCustsV
       SQLType="VARCHAR" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="240" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="UpdateCustEnable"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="UPDATE_CUST_ENABLE"
+      Expression="UPDATE_CUST_ENABLE"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
       </DesignTime>
    </ViewAttribute>
 </ViewObject>

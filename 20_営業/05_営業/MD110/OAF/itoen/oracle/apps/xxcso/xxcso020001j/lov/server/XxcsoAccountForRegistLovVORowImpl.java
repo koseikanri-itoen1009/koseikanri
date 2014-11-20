@@ -46,6 +46,7 @@ public class XxcsoAccountForRegistLovVORowImpl extends OAViewRowImpl
   protected static final int SALEBASECODE = 19;
   protected static final int SALEBASENAME = 20;
   protected static final int CUSTOMERSTATUS = 21;
+  protected static final int UPDATECUSTENABLE = 22;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -481,6 +482,8 @@ public class XxcsoAccountForRegistLovVORowImpl extends OAViewRowImpl
         return getSaleBaseName();
       case CUSTOMERSTATUS:
         return getCustomerStatus();
+      case UPDATECUSTENABLE:
+        return getUpdateCustEnable();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -557,6 +560,9 @@ public class XxcsoAccountForRegistLovVORowImpl extends OAViewRowImpl
       case CUSTOMERSTATUS:
         setCustomerStatus((String)value);
         return;
+      case UPDATECUSTENABLE:
+        setUpdateCustEnable((String)value);
+        return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
         return;
@@ -579,5 +585,23 @@ public class XxcsoAccountForRegistLovVORowImpl extends OAViewRowImpl
   public void setCustomerStatus(String value)
   {
     setAttributeInternal(CUSTOMERSTATUS, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute UpdateCustEnable
+   */
+  public String getUpdateCustEnable()
+  {
+    return (String)getAttributeInternal(UPDATECUSTENABLE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute UpdateCustEnable
+   */
+  public void setUpdateCustEnable(String value)
+  {
+    setAttributeInternal(UPDATECUSTENABLE, value);
   }
 }

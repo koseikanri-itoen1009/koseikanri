@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionCalculateUtils
 * 概要説明   : SP専決初期化用ユーティリティクラス
-* バージョン : 1.2
+* バージョン : 1.3
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -9,6 +9,7 @@
 * 2008-12-27 1.0  SCS小川浩    新規作成
 * 2009-05-25 1.1  SCS柳平直人  [ST障害T1_1136]LOVPK項目設定対応
 * 2009-08-04 1.2  SCS小川浩     [SCS障害0000908]コピー時の回送先再設定対応
+* 2013-04-19 1.3  SCSK桐生和幸 [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -488,7 +489,9 @@ public class XxcsoSpDecisionInitUtils
     installRow.setCustomerStatus(       installRow2.getCustomerStatus()       );
     installRow.setPublishBaseCodeView(  installRow2.getPublishBaseCodeView()  );
     installRow.setPublishBaseNameView(  installRow2.getPublishBaseNameView()  );
-    
+// 2013-04-19 [E_本稼動_09603] Add Start
+    installRow.setUpdateCustEnable(     installRow2.getUpdateCustEnable()     );
+// 2013-04-19 [E_本稼動_09603] Add End
     // 契約先行を作成
     cntrctVo.first();
     XxcsoSpDecisionCntrctCustFullVORowImpl cntrctRow

@@ -9,7 +9,7 @@ AS
  *                    画面にて変更された既存顧客情報を顧客マスタに反映します。
  * MD.050           : MD050_CSO_020_A03_各種マスタ反映処理機能
  *
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -46,6 +46,8 @@ AS
  *  2009-06-30    1.4   Kazuo.Satomura   統合テスト障害対応(0000209)
  *  2009-07-09    1.5   Kazuo.Satomura   統合テスト障害対応(0000341)
  *  2010-01-08    1.6   Kazuyo.Hosoi     E_本稼動_01017対応
+ *  2013-04-11    1.7   K.Nakamura       E_本稼動_09603対応
+ *
  *****************************************************************************************/
   --
   --#######################  固定グローバル定数宣言部 START   #######################
@@ -113,12 +115,16 @@ AS
   cv_flag_yes              CONSTANT VARCHAR2(1)   := 'Y';
   cv_flag_no               CONSTANT VARCHAR2(1)   := 'N';
   cn_number_one            CONSTANT NUMBER        := 1;
-  cv_customer_status       CONSTANT VARCHAR2(2)   := '25';            -- 顧客ステータス
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+  -- cv_customer_status       CONSTANT VARCHAR2(2)   := '25';            -- 顧客ステータス
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
   cv_customer_class_code   CONSTANT VARCHAR2(2)   := '10';            -- 顧客区分
   --
   -- メッセージコード
   cv_tkn_number_01 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00382'; -- 入力パラメータチェックエラー
-  cv_tkn_number_02 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00014'; -- プロファイル取得エラー
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+  -- cv_tkn_number_02 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00014'; -- プロファイル取得エラー
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
   cv_tkn_number_03 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00323'; -- データ存在エラー
   cv_tkn_number_04 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00324'; -- データ抽出時例外エラー
   cv_tkn_number_05 CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00387'; -- ＳＰ専決顧客情報不整合エラー
@@ -130,7 +136,9 @@ AS
   --
   -- トークンコード
   cv_tkn_errmsg   CONSTANT VARCHAR2(20) := 'ERRMSG';
-  cv_tkn_prof_nm  CONSTANT VARCHAR2(20) := 'PROF_NAME';
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+  -- cv_tkn_prof_nm  CONSTANT VARCHAR2(20) := 'PROF_NAME';
+  /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
   cv_tkn_item     CONSTANT VARCHAR2(20) := 'ITEM';
   cv_tkn_table    CONSTANT VARCHAR2(20) := 'TABLE';
   cv_tkn_key      CONSTANT VARCHAR2(20) := 'KEY';
@@ -203,19 +211,25 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     cv_nm_sp_decision_header_id CONSTANT VARCHAR2(30)                          := 'ＳＰ専決ヘッダＩＤ';        -- ＳＰ専決ヘッダＩＤ和名
-    ct_lookup_type_cust_status  CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'XXCMM_CUST_KOKYAKU_STATUS'; -- 顧客ステータス
-    ct_lookup_type_cust_type    CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'CUSTOMER CLASS';            -- 顧客区分
-    cv_msg_const1               CONSTANT VARCHAR2(100)                         := 'タイプ：';
-    cv_msg_const2               CONSTANT VARCHAR2(100)                         := '、コード：';
-    cv_nm_table                 CONSTANT VARCHAR2(100)                         := 'クイックコードビュー';
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+    -- ct_lookup_type_cust_status  CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'XXCMM_CUST_KOKYAKU_STATUS'; -- 顧客ステータス
+    -- ct_lookup_type_cust_type    CONSTANT fnd_lookup_values_vl.lookup_type%TYPE := 'CUSTOMER CLASS';            -- 顧客区分
+    -- cv_msg_const1               CONSTANT VARCHAR2(100)                         := 'タイプ：';
+    -- cv_msg_const2               CONSTANT VARCHAR2(100)                         := '、コード：';
+    -- cv_nm_table                 CONSTANT VARCHAR2(100)                         := 'クイックコードビュー';
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
     --
     -- プロファイルオプション名
-    cv_profile_option_name1 CONSTANT VARCHAR2(40) := 'XXCSO1_CUST_STATUS_SP_DECISION';
-    cv_profile_option_name2 CONSTANT VARCHAR2(40) := 'XXCSO1_CUST_TYPE_CUSTOMER';
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+    -- cv_profile_option_name1 CONSTANT VARCHAR2(40) := 'XXCSO1_CUST_STATUS_SP_DECISION';
+    -- cv_profile_option_name2 CONSTANT VARCHAR2(40) := 'XXCSO1_CUST_TYPE_CUSTOMER';
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
     --
     -- *** ローカル変数 ***
-    lt_cust_status_profile fnd_profile_option_values.profile_option_value%TYPE; -- プロファイルオプション値（顧客ステータス）
-    lt_cust_type_profile   fnd_profile_option_values.profile_option_value%TYPE; -- プロファイルオプション値（顧客区分）
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+    -- lt_cust_status_profile fnd_profile_option_values.profile_option_value%TYPE; -- プロファイルオプション値（顧客ステータス）
+    -- lt_cust_type_profile   fnd_profile_option_values.profile_option_value%TYPE; -- プロファイルオプション値（顧客区分）
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
     --
   BEGIN
     --
@@ -576,7 +590,9 @@ AS
       -- ==================
       lt_organization_rec.organization_name          := SUBSTRB(it_mst_regist_info_rec.party_name, 1, 360);               -- 顧客名
       lt_organization_rec.organization_name_phonetic := SUBSTRB(it_mst_regist_info_rec.party_name_alt, 1, 320);           -- 顧客名カナ
-      lt_organization_rec.duns_number_c              := SUBSTRB(cv_customer_status, 1, 30);                               -- 顧客ステータス
+      /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+      -- lt_organization_rec.duns_number_c              := SUBSTRB(cv_customer_status, 1, 30);                               -- 顧客ステータス
+      /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
       lt_organization_rec.created_by_module          := SUBSTRB(cv_pkg_name, 1, 150);
       lt_organization_rec.party_rec.attribute2       := SUBSTRB(TO_CHAR(it_mst_regist_info_rec.employee_number), 1, 150); -- 社員数
       --
@@ -665,7 +681,9 @@ AS
       --
       lt_organization_rec.organization_name          := SUBSTRB(it_mst_regist_info_rec.party_name, 1, 360);               -- 顧客名
       lt_organization_rec.organization_name_phonetic := SUBSTRB(it_mst_regist_info_rec.party_name_alt, 1, 320);           -- 顧客名カナ
-      lt_organization_rec.duns_number_c              := SUBSTRB(cv_customer_status, 1, 30);                               -- 顧客ステータス
+      /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+      -- lt_organization_rec.duns_number_c              := SUBSTRB(cv_customer_status, 1, 30);                               -- 顧客ステータス
+      /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
       lt_organization_rec.party_rec.attribute2       := SUBSTRB(TO_CHAR(it_mst_regist_info_rec.employee_number), 1, 150); -- 社員数
       lt_organization_rec.party_rec.party_id         := lt_party_id;                                                      -- パーティＩＤ
       --
@@ -1091,7 +1109,9 @@ AS
     -- ===============================
     -- *** ローカル定数 ***
     -- トークン用定数
-    cv_tkn_value_sequence       CONSTANT VARCHAR2(30) := '顧客番号シーケンス';
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 START */
+    -- cv_tkn_value_sequence       CONSTANT VARCHAR2(30) := '顧客番号シーケンス';
+    /* 2013.04.11 K.Nakamura E_本稼動_09603 END */
     cv_tkn_value_account_create CONSTANT VARCHAR2(30) := '顧客マスタ登録';
     cv_tkn_value_account_update CONSTANT VARCHAR2(30) := '顧客マスタ更新';
     cv_tkn_item_name            CONSTANT VARCHAR2(30) := '設置先ＩＤ：';

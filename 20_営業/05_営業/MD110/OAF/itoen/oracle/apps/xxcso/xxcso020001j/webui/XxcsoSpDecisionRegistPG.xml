@@ -120,6 +120,7 @@ HISTORY
                                                 <lovMap id="PublishBaseCodeMap1" lovItem="SaleBaseCode" resultTo="PublishBaseCode" useForValidation="no"/>
                                                 <lovMap id="PublishBaseNameMap1" lovItem="SaleBaseName" resultTo="PublishBaseNameValue" useForValidation="no"/>
                                                 <lovMap id="ApplicationTypeMap1" lovItem="ApplicationType" criteriaFrom="ApplicationType"/>
+                                                <lovMap id="UpdateCustEnableMap1" lovItem="UpdateCustEnable" resultTo="UpdateCustEnable"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageLovInput id="InstallAcctNumber2" externalListOfValues="/itoen/oracle/apps/xxcso/xxcso020001j/lov/webui/XxcsoAccountForRegistLovRN" columns="10" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallAccountNumber" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="InstallAccountNumber" rendered="${oa.XxcsoSpDecisionInitVO1.InstallAcctNumber2Render}" maximumLength="9" required="uiOnly">
@@ -145,6 +146,7 @@ HISTORY
                                                 <lovMap id="PublishBaseCodeMap2" lovItem="SaleBaseCode" resultTo="PublishBaseCodeValue" useForValidation="no"/>
                                                 <lovMap id="PublishBaseNameMap2" lovItem="SaleBaseName" resultTo="PublishBaseNameValue" useForValidation="no"/>
                                                 <lovMap id="ApplicationTypeMap2" lovItem="ApplicationType" criteriaFrom="ApplicationType"/>
+                                                <lovMap id="UpdateCustEnableMap2" lovItem="UpdateCustEnable" resultTo="UpdateCustEnable"/>
                                              </lovMappings>
                                           </oa:messageLovInput>
                                           <oa:messageStyledText id="InstallPartyNameView" columns="45" use="/itoen/oracle/apps/xxcso/xxcso020001j/attributesets/XxcsoSpDecisionRegistAttrSets/InstallPartyName" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="PartyName" styleClass="OraDataText" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPartyNameViewRender}" required="uiOnly" maximumLength="360"/>
@@ -234,6 +236,7 @@ HISTORY
                                        </ui:contents>
                                     </oa:messageComponentLayout>
                                     <oa:formValue id="CustomerStatus" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="CustomerStatus"/>
+                                    <oa:formValue id="UpdateCustEnable" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="UpdateCustEnable"/>
                                     <oa:formValue id="CustAccountId" dataType="NUMBER" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="CustomerId"/>
                                     <oa:formValue id="InstallPartyNameValue" dataType="VARCHAR2" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="PartyName" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPartyNameViewRender}"/>
                                     <oa:formValue id="InstallPartyNameAltValue" dataType="VARCHAR2" viewName="XxcsoSpDecisionInstCustFullVO1" viewAttr="PartyNameAlt" rendered="${oa.XxcsoSpDecisionInitVO1.InstallPartyNameAltViewRender}"/>

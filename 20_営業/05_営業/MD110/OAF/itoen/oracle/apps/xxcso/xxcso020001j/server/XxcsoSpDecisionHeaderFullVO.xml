@@ -84,6 +84,15 @@ SELECT XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID,
         FROM     po_un_numbers_vl punv
         WHERE    punv.un_number(+) = XxcsoSpDecisionHeadersVEO.UN_NUMBER
        ) un_number_id
+-- 2013-04-19 [E_本稼動_09603] Add Start
+      ,NVL((
+         SELECT  'Y'
+         FROM    xxcso_contract_managements xcm
+         WHERE   xcm.sp_decision_header_id = XxcsoSpDecisionHeadersVEO.sp_decision_header_id
+         AND     xcm.status                = '1' --確定済
+         AND     rownum                    = 1   --同一SPで複数の契約が作成可能の為
+       ),'N') contract_exists
+-- 2013-04-19 [E_本稼動_09603] Add End
 FROM XXCSO_SP_DECISION_HEADERS_V XxcsoSpDecisionHeadersVEO
 WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
    ]]></SQLQuery>
@@ -607,6 +616,19 @@ WHERE XxcsoSpDecisionHeadersVEO.SP_DECISION_HEADER_ID = :1
       SQLType="NUMERIC" >
       <DesignTime>
          <Attr Name="_DisplaySize" Value="22" />
+      </DesignTime>
+   </ViewAttribute>
+   <ViewAttribute
+      Name="ContractExists"
+      IsPersistent="false"
+      Precision="1"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CONTRACT_EXISTS"
+      Expression="CONTRACT_EXISTS"
+      SQLType="VARCHAR" >
+      <DesignTime>
+         <Attr Name="_DisplaySize" Value="1" />
       </DesignTime>
    </ViewAttribute>
    <ViewLinkAccessor

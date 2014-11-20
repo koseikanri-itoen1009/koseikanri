@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxcsoSpDecisionPropertyUtils
 * 概要説明   : SP専決表示属性プロパティ設定ユーティリティクラス
-* バージョン : 1.6
+* バージョン : 1.7
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -13,6 +13,7 @@
 * 2009-08-04 1.4  SCS小川浩     [SCS障害0000820]転勤時の適用・提出ボタン対応
 * 2009-10-14 1.5  SCS阿部大輔   [共通課題IE554,IE573]住所対応
 * 2011-04-25 1.6  SCS桐生和幸   [E_本稼動_07224]SP専決参照権限変更対応
+* 2013-04-19 1.7  SCSK桐生和幸  [E_本稼動_09603]契約書未確定による顧客区分遷移の変更対応
 *============================================================================
 */
 package itoen.oracle.apps.xxcso.xxcso020001j.util;
@@ -226,7 +227,15 @@ public class XxcsoSpDecisionPropertyUtils
     String bm1VendorNumber     = bm1Row.getVendorNumber();
     String bm2VendorNumber     = bm2Row.getVendorNumber();
     String bm3VendorNumber     = bm3Row.getVendorNumber();
-    
+// 2013-04-19 [E_本稼動_09603] Add Start
+    String updatecustenable    = installRow.getUpdateCustEnable();
+    // 新規作成の場合は設置先顧客更新可能フラグに"Y"を設定
+    if ( updatecustenable == null )
+    {
+      updatecustenable = "Y";
+    }
+// 2013-04-19 [E_本稼動_09603] Add End
+
     /////////////////////////////////////
     // 基本情報リージョン
     /////////////////////////////////////
@@ -275,12 +284,25 @@ public class XxcsoSpDecisionPropertyUtils
       initRow.setInstallDateRequiredViewRender(    Boolean.FALSE );
       initRow.setLeaseCompanyViewRender(           Boolean.FALSE );
 
-      if ( custStatus == null                                              ||
+// 2013-04-19 [E_本稼動_09603] Mod Start
+//      if ( custStatus == null                                              ||
+//           XxcsoSpDecisionConstants.CUST_STATUS_MC_CAND.equals(custStatus) ||
+//           XxcsoSpDecisionConstants.CUST_STATUS_MC.equals(custStatus)
+//         )
+      if ( 
+          (custStatus == null                                              ||
            XxcsoSpDecisionConstants.CUST_STATUS_MC_CAND.equals(custStatus) ||
            XxcsoSpDecisionConstants.CUST_STATUS_MC.equals(custStatus)
+          )
+          &&
+          (
+               status != XxcsoSpDecisionConstants.STATUS_ENABLE &&
+               "Y".equals(updatecustenable)
+          )
          )
+// 2013-04-19 [E_本稼動_09603] Mod End
       {
-        // 顧客ステータスがNULL（新規）、MC候補、MCの場合、
+        // 顧客ステータスがNULL（新規）、MC候補、MCの場合、かつ、同一顧客で過去に承認済のSP専決がない場合
         // 入力可能
         initRow.setInstallAcctNumber2Render(       Boolean.FALSE );
         initRow.setInstallPartyNameViewRender(     Boolean.FALSE );

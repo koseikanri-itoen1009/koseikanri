@@ -89,16 +89,17 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   protected static final int PAYMENTCYCLEVIEW = 61;
   protected static final int INSTALLSUPPORTAMT2VIEW = 62;
   protected static final int UNNUMBERID = 63;
-  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 64;
-  protected static final int XXCSOSPDECISIONATTACHFULLVO = 65;
-  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 66;
-  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 67;
-  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 68;
-  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 69;
-  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 70;
-  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 71;
-  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 72;
-  protected static final int XXCSOSPDECISIONSENDFULLVO = 73;
+  protected static final int CONTRACTEXISTS = 64;
+  protected static final int XXCSOSPDECISIONALLCCLINEFULLVO = 65;
+  protected static final int XXCSOSPDECISIONATTACHFULLVO = 66;
+  protected static final int XXCSOSPDECISIONBM1CUSTFULLVO = 67;
+  protected static final int XXCSOSPDECISIONBM2CUSTFULLVO = 68;
+  protected static final int XXCSOSPDECISIONBM3CUSTFULLVO = 69;
+  protected static final int XXCSOSPDECISIONCNTRCTCUSTFULLVO = 70;
+  protected static final int XXCSOSPDECISIONINSTCUSTFULLVO = 71;
+  protected static final int XXCSOSPDECISIONSCLINEFULLVO = 72;
+  protected static final int XXCSOSPDECISIONSELCCLINEFULLVO = 73;
+  protected static final int XXCSOSPDECISIONSENDFULLVO = 74;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -1243,6 +1244,8 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return getInstallSupportAmt2View();
       case UNNUMBERID:
         return getUnNumberId();
+      case CONTRACTEXISTS:
+        return getContractExists();
       case XXCSOSPDECISIONALLCCLINEFULLVO:
         return getXxcsoSpDecisionAllCcLineFullVO();
       case XXCSOSPDECISIONATTACHFULLVO:
@@ -1464,6 +1467,9 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
         return;
       case UNNUMBERID:
         setUnNumberId((Number)value);
+        return;
+      case CONTRACTEXISTS:
+        setContractExists((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -1727,6 +1733,24 @@ public class XxcsoSpDecisionHeaderFullVORowImpl extends OAViewRowImpl
   public void setUnNumberId(Number value)
   {
     setAttributeInternal(UNNUMBERID, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute ContractExists
+   */
+  public String getContractExists()
+  {
+    return (String)getAttributeInternal(CONTRACTEXISTS);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute ContractExists
+   */
+  public void setContractExists(String value)
+  {
+    setAttributeInternal(CONTRACTEXISTS, value);
   }
 
 

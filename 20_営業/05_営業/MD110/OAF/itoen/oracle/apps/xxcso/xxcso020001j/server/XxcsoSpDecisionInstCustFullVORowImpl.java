@@ -66,6 +66,7 @@ public class XxcsoSpDecisionInstCustFullVORowImpl extends OAViewRowImpl
   protected static final int CUSTOMERSTATUS = 38;
   protected static final int PUBLISHBASECODEVIEW = 39;
   protected static final int PUBLISHBASENAMEVIEW = 40;
+  protected static final int UPDATECUSTENABLE = 41;
   /**
    * 
    * This is the default constructor (do not remove)
@@ -782,6 +783,8 @@ public class XxcsoSpDecisionInstCustFullVORowImpl extends OAViewRowImpl
         return getPublishBaseCodeView();
       case PUBLISHBASENAMEVIEW:
         return getPublishBaseNameView();
+      case UPDATECUSTENABLE:
+        return getUpdateCustEnable();
       default:
         return super.getAttrInvokeAccessor(index, attrDef);
       }
@@ -914,6 +917,9 @@ public class XxcsoSpDecisionInstCustFullVORowImpl extends OAViewRowImpl
         return;
       case PUBLISHBASENAMEVIEW:
         setPublishBaseNameView((String)value);
+        return;
+      case UPDATECUSTENABLE:
+        setUpdateCustEnable((String)value);
         return;
       default:
         super.setAttrInvokeAccessor(index, value, attrDef);
@@ -1049,5 +1055,23 @@ public class XxcsoSpDecisionInstCustFullVORowImpl extends OAViewRowImpl
   public void setPublishBaseNameView(String value)
   {
     setAttributeInternal(PUBLISHBASENAMEVIEW, value);
+  }
+
+  /**
+   * 
+   * Gets the attribute value for the calculated attribute UpdateCustEnable
+   */
+  public String getUpdateCustEnable()
+  {
+    return (String)getAttributeInternal(UPDATECUSTENABLE);
+  }
+
+  /**
+   * 
+   * Sets <code>value</code> as the attribute value for the calculated attribute UpdateCustEnable
+   */
+  public void setUpdateCustEnable(String value)
+  {
+    setAttributeInternal(UPDATECUSTENABLE, value);
   }
 }

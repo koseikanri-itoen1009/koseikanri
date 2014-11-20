@@ -38,6 +38,7 @@ HISTORY
             <oa:formValue id="SaleBaseCode" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="SaleBaseCode"/>
             <oa:formValue id="SaleBaseName" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="SaleBaseName"/>
             <oa:formValue id="CustomerStatus" dataType="VARCHAR2" viewName="XxcsoAccountForRegistLovVO1" viewAttr="CustomerStatus"/>
+            <oa:formValue id="UpdateCustEnable" viewName="XxcsoAccountForRegistLovVO1" viewAttr="UpdateCustEnable"/>
          </ui:contents>
       </oa:table>
    </ui:contents>
