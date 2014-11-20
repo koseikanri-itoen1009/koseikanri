@@ -6,7 +6,7 @@ AS
  * Package Name           : xxwsh_common_get_qty_pkg(BODY)
  * Description            : 共通関数引当数(BODY)
  * MD.070(CMD.050)        : なし
- * Version                : 1.1
+ * Version                : 1.2
  *
  * Program List
  *  ----------------------   ---- ----- --------------------------------------------------
@@ -21,6 +21,7 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2008/12/25   1.0   Oracle 北寒寺正夫 新規作成
  *  2009/01/21   1.1   SCS二瓶           本番障害#1020
+ *  2009/11/25   1.2   SCS北寒寺         営業障害管理表No11
  *****************************************************************************************/
 --
   cv_doc_type_10 CONSTANT VARCHAR2(2) := '10';
@@ -121,7 +122,11 @@ AS
         AND     pha.attribute5         = it_loc_code
         ) + 
         ( -- S3)供給数  生産入庫予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
                ,ic_tran_pnd           itp  -- OPM保留在庫トランザクション
@@ -303,7 +308,11 @@ AS
         ) + 
         ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
           -- I2)実績未取在庫数  移動入庫（入庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -323,7 +332,11 @@ AS
         ) - 
         ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
           -- I4)実績未取在庫数  移動出庫（出庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -342,7 +355,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- I5)実績未取在庫数  出荷
-        SELECT  NVL(
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(
+--        SELECT  NVL(
+-- Ver1.2 2009/11/25 END
                   SUM(
                     CASE otta.order_category_code
                     WHEN 'ORDER' THEN
@@ -375,7 +392,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- I6)実績未取在庫数  支給
-        SELECT  NVL(
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(
+--        SELECT  NVL(
+-- Ver1.2 2009/11/25 END
                   SUM(
                     CASE otta.order_category_code
                     WHEN 'ORDER' THEN
@@ -405,7 +426,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) + 
         ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+               NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+--        SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -425,7 +450,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_30
         ) + 
         ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
-        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+               NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+--        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -456,7 +485,11 @@ AS
         ) + 
         ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
           -- I2)実績未取在庫数  移動入庫（入庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -476,7 +509,11 @@ AS
         ) - 
         ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
           -- I4)実績未取在庫数  移動出庫（出庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -495,7 +532,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- I5)実績未取在庫数  出荷
-        SELECT  NVL(
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(
+--        SELECT  NVL(
+-- Ver1.2 2009/11/25 END
                   SUM(
                     CASE otta.order_category_code
                     WHEN 'ORDER' THEN
@@ -528,7 +569,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- I6)実績未取在庫数  支給
-        SELECT  NVL(
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(
+--        SELECT  NVL(
+-- Ver1.2 2009/11/25 END
                   SUM(
                     CASE otta.order_category_code
                     WHEN 'ORDER' THEN
@@ -558,7 +603,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) + 
         ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+        --SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -578,7 +627,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_30
         ) + 
         ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
-        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+--        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -603,7 +656,11 @@ AS
     CURSOR get_demsup_all_cur (id_target_date IN DATE) IS
       SELECT
         ( -- S1)供給数  移動入庫予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -670,7 +727,11 @@ AS
         -- yoshida 2008/12/18 v1.17 add end
         ) + 
         ( -- S4)供給数  実績計上済の移動出庫実績
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -689,7 +750,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- D1)需要数  実績未計上の出荷依頼
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -712,7 +777,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D2)需要数  実績未計上の支給指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -735,7 +804,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D3)需要数  実績未計上の移動指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -754,7 +827,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_10
         ) - 
         ( -- D4)需要数  実績計上済の移動入庫実績
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -824,7 +901,11 @@ AS
         AND     mil.attribute5         = it_head_loc
         ) + 
         ( -- S1)供給数  移動入庫予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -894,7 +975,11 @@ AS
         -- yoshida 2008/12/18 v1.17 add end
         ) + 
         ( -- S4)供給数  実績計上済の移動出庫実績
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -914,7 +999,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- D1)需要数  実績未計上の出荷依頼
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -938,7 +1027,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D2)需要数  実績未計上の支給指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -962,7 +1055,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D3)需要数  実績未計上の移動指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -982,7 +1079,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_10
         ) - 
         ( -- D4)需要数  実績計上済の移動入庫実績
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1075,7 +1176,12 @@ AS
         ) + 
         ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
           -- I2)実績未取在庫数  移動入庫（入庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT /*+ LEADING(mld mril mrih xfil) */
+                NVL(SUM(mld.actual_quantity), 0)
+        --SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
+
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1100,7 +1206,11 @@ AS
         ) - 
         ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
           -- I4)実績未取在庫数  移動出庫（出庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld mril mrih xfil) */
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1124,7 +1234,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- I5)実績未取在庫数  出荷
-        SELECT  NVL(
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld ola oha xfil otta)*/
+                NVL(
+--        SELECT  NVL(
+-- Ver1.2 2009/11/25 END
                   SUM(
                     CASE otta.order_category_code
                     WHEN 'ORDER' THEN
@@ -1162,7 +1276,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- I6)実績未取在庫数  支給
-        SELECT  NVL(
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld ola oha otta xfil)*/
+                NVL(
+--        SELECT  NVL(
+-- Ver1.2 2009/11/25 END
                   SUM(
                     CASE otta.order_category_code
                     WHEN 'ORDER' THEN
@@ -1197,7 +1315,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) + 
         ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld mril mrih xfil)*/
+                NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+--        SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1222,7 +1344,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_30
         ) + 
         ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
-        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld mril mrih xfil)*/
+                NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+--        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+-- Ver1.2 2009/11/25 START
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1252,7 +1378,11 @@ AS
     CURSOR get_demsup_dummy_cur (id_target_date IN DATE) IS
       SELECT
         ( -- S1)供給数  移動入庫予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld mril mrih xfil)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1335,7 +1465,11 @@ AS
         -- yoshida 2008/12/18 v1.17 add end
         ) + 
         ( -- S4)供給数  実績計上済の移動出庫実績
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld mril mrih xfil)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1360,7 +1494,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- D1)需要数  実績未計上の出荷依頼
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld ola oha xfil otta)*/
+                NVL(SUM(mld.actual_quantity), 0)
+        --SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -1389,7 +1527,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D2)需要数  実績未計上の支給指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld ola oha xfil otta)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -1418,7 +1560,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D3)需要数  実績未計上の移動指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld mril mrih xfil)*/
+               NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1443,7 +1589,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_10
         ) - 
         ( -- D4)需要数  実績計上済の移動入庫実績
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  LEADING(mld mril mrih xfil)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1534,7 +1684,11 @@ AS
     CURSOR get_stock_parent_cur IS
       SELECT
         ( -- I0)EBS手持在庫取得
-        SELECT NVL(SUM(ili.loct_onhand),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+  USE_NL(ili mil)*/
+               NVL(SUM(ili.loct_onhand),0)
+--        SELECT NVL(SUM(ili.loct_onhand),0)
+-- Ver1.2 2009/11/25 END
         FROM   ic_loct_inv ili
               ,mtl_item_locations mil
         WHERE  ili.item_id                 = it_item_id
@@ -1544,7 +1698,11 @@ AS
         ) + 
         ( -- I1)実績未取在庫数  移動入庫（入出庫報告有）
           -- I2)実績未取在庫数  移動入庫（入庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld mril mrih mil)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1563,7 +1721,11 @@ AS
         ) - 
         ( -- I3)実績未取在庫数  移動出庫（入出庫報告有）
           -- I4)実績未取在庫数  移動出庫（出庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld mril mrih mil)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1581,7 +1743,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- I5)実績未取在庫数  出荷
-        SELECT  NVL(
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld ola oha mil otta)*/
+                NVL(
+--        SELECT  NVL(
+-- Ver1.2 2009/11/25 END
                   SUM(
                     CASE otta.order_category_code
                     WHEN 'ORDER' THEN
@@ -1613,7 +1779,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- I6)実績未取在庫数  支給
-        SELECT  NVL(
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld ola oha mil otta)*/
+                NVL(
+--        SELECT  NVL(
+-- Ver1.2 2009/11/25 END
                   SUM(
                     CASE otta.order_category_code
                     WHEN 'ORDER' THEN
@@ -1642,7 +1812,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) + 
         ( -- I7)実績未取在庫数  移動入庫訂正（入出庫報告有）
-        SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld ola oha mil otta)*/
+                NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+--        SELECT  NVL(SUM(mld.actual_quantity),0) - NVL(SUM(mld.before_actual_quantity),0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1661,7 +1835,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_30
         ) + 
         ( -- I8)実績未取在庫数  移動出庫訂正（入出庫報告有）
-        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld mril mrih mil)*/
+               NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+--        SELECT  NVL(SUM(mld.before_actual_quantity),0) - NVL(SUM(mld.actual_quantity),0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1685,7 +1863,11 @@ AS
     CURSOR get_demsup_parent_cur (id_target_date IN DATE) IS
       SELECT
         ( -- S1)供給数  移動入庫予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mid mril mrih mil) USE_NL(mld mril mrih mil) */
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1724,7 +1906,11 @@ AS
         AND     mil.segment1           = it_head_loc
         ) + 
         ( -- S3)供給数  生産入庫予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld) USE_NL(mld itp gmd gmh grb mil)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
                ,ic_tran_pnd           itp  -- OPM保留在庫トランザクション
@@ -1752,7 +1938,11 @@ AS
         -- yoshida 2008/12/18 v1.17 add end
         ) + 
         ( -- S4)供給数  実績計上済の移動出庫実績
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld mril mrih mil) */
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1771,7 +1961,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_20
         ) - 
         ( -- D1)需要数  実績未計上の出荷依頼
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld ola oha otta mil) */
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -1794,7 +1988,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D2)需要数  実績未計上の支給指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld ola oha otta mil) */
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxwsh_order_headers_all    oha   -- 受注ヘッダ（アドオン）
                ,xxwsh_order_lines_all      ola   -- 受注明細（アドオン）
                ,xxinv_mov_lot_details      mld   -- 移動ロット詳細（アドオン）
@@ -1817,7 +2015,11 @@ AS
         AND     otta.transaction_type_id  = oha.order_type_id
         ) - 
         ( -- D3)需要数  実績未計上の移動指示
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld mril mrih mil) */
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1836,7 +2038,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_10
         ) - 
         ( -- D4)需要数  実績計上済の移動入庫実績
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld mril mrih mil) */
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    xxinv_mov_req_instr_headers mrih    -- 移動依頼/指示ヘッダ（アドオン）
                ,xxinv_mov_req_instr_lines   mril    -- 移動依頼/指示明細（アドオン）
                ,xxinv_mov_lot_details       mld     -- 移動ロット詳細（アドオン）
@@ -1855,7 +2061,11 @@ AS
         AND     mld.record_type_code    = cv_rec_type_30
         ) - 
         ( -- D5)需要数  実績未計上の生産投入予定
-        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 START
+        SELECT  /*+ LEADING(mld gmb gbh grb mil itp) USE_NL(mld gmb gbh grb mil itp)*/
+                NVL(SUM(mld.actual_quantity), 0)
+--        SELECT  NVL(SUM(mld.actual_quantity), 0)
+-- Ver1.2 2009/11/25 END
         FROM    gme_batch_header      gbh  -- 生産バッチ
                ,gme_material_details  gmd  -- 生産原料詳細
                ,xxinv_mov_lot_details mld  -- 移動ロット詳細（アドオン）
