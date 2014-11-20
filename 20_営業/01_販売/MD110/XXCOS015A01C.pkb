@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.19
+ * Version          : 2.20
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -81,6 +81,7 @@ AS
  *  2010/03/17    2.18  S.Miyakoshi      [E_本稼動_01907]顧客使用目的、顧客所在地からの抽出時に有効条件追加
  *                                       [E_本稼動_01916]MC顧客連携漏れの対応
  *  2011/01/12    2.19  K.Kiriu          [E_本稼動_02458]PT対応
+ *  2011/03/30    2.20  Y.Nishino        [E_本稼動_04976]情報系への連携項目追加
  *
  *****************************************************************************************/
 --
@@ -314,6 +315,10 @@ AS
   cv_tkn_lookup_code          CONSTANT VARCHAR2(20) := 'LOOKUP_CODE';                     -- 参照コード
   cv_txn_vd_digestion_type    CONSTANT VARCHAR2(50) := 'XXCOS_015_A01_1%';                 -- 取引タイプ(消化VD)
 -- 2010/02/02 Ver.2.15 Add Start
+-- 2011/03/30 Ver.2.20 Add Start
+  cv_inc_unit_tax_class       CONSTANT VARCHAR2(1)  := '3';                               -- 消費税区分：内税(単価込み)
+  cn_zero                     CONSTANT NUMBER       := 0;                                 -- 基準単価、売上金額(内税(単価込み))
+-- 2011/03/30 Ver.2.20 Add End
 --
   -- ===============================
   -- ユーザー定義グローバル変数
@@ -415,6 +420,21 @@ AS
 -- 2010/02/02 Ver.2.15 Add Start
            ,xseh.sales_exp_header_id            sales_exp_header_id            -- 販売実績ヘッダID
 -- 2010/02/02 Ver.2.15 Add End
+-- 2011/03/30 Ver.2.20 Add Start
+           ,xseh.order_invoice_number           xseh_order_invoice_number         -- 注文伝票番号
+           ,xseh.invoice_class                  xseh_invoice_class                -- 伝票区分
+           ,xseh.invoice_classification_code    invoice_classification_code       -- 伝票分類コード
+           ,xseh.change_out_time_100            xseh_change_out_time_100          -- つり銭切れ時間100円
+           ,xseh.change_out_time_10             xseh_change_out_time_10           -- つり銭切れ時間10円
+           ,DECODE(xseh.consumption_tax_class
+                   ,cv_inc_unit_tax_class,xsel.standard_unit_price
+                   ,cn_zero)                    standard_unit_price               -- 基準単価
+           ,DECODE(xseh.consumption_tax_class
+                   ,cv_inc_unit_tax_class,xsel.sale_amount
+                   ,cn_zero)                    xsel_sale_amount                  -- 売上金額
+           ,xsel.sold_out_class                 xsel_sold_out_class               -- 売切区分
+           ,xsel.sold_out_time                  xsel_sold_out_time                -- 売切時間
+-- 2011/03/30 Ver.2.20 Add End
     FROM    xxcos_sales_exp_headers             xseh                           -- 販売実績ヘッダ
            ,xxcos_sales_exp_lines               xsel                           -- 販売実績明細
            ,xxcos_cust_hierarchy_v              xchv                           -- 顧客階層ビュー
@@ -491,6 +511,21 @@ AS
 -- 2010/02/02 Ver.2.15 Add Start
            ,xseh.sales_exp_header_id            sales_exp_header_id            -- 販売実績ヘッダID
 -- 2010/02/02 Ver.2.15 Add End
+-- 2011/03/30 Ver.2.20 Add Start
+           ,xseh.order_invoice_number           xseh_order_invoice_number         -- 注文伝票番号
+           ,xseh.invoice_class                  xseh_invoice_class                -- 伝票区分
+           ,xseh.invoice_classification_code    invoice_classification_code       -- 伝票分類コード
+           ,xseh.change_out_time_100            xseh_change_out_time_100          -- つり銭切れ時間100円
+           ,xseh.change_out_time_10             xseh_change_out_time_10           -- つり銭切れ時間10円
+           ,DECODE(xseh.consumption_tax_class
+                   ,cv_inc_unit_tax_class,xsel.standard_unit_price
+                   ,cn_zero)                    standard_unit_price               -- 基準単価
+           ,DECODE(xseh.consumption_tax_class
+                   ,cv_inc_unit_tax_class,xsel.sale_amount
+                   ,cn_zero)                    xsel_sale_amount                  -- 売上金額
+           ,xsel.sold_out_class                 xsel_sold_out_class               -- 売切区分
+           ,xsel.sold_out_time                  xsel_sold_out_time                -- 売切時間
+-- 2011/03/30 Ver.2.20 Add End
     FROM    xxcos_sales_exp_headers             xseh                           -- 販売実績ヘッダ
            ,xxcos_sales_exp_lines               xsel                           -- 販売実績明細
            ,hz_cust_accounts                    hca                            -- 顧客アカウントマスタ
@@ -1928,6 +1963,17 @@ AS
       -- 税コード
       || cv_d_cot || it_sales_actual.xchv_bill_account_number || cv_d_cot            || cv_delimiter 
       -- 請求先顧客コード
+-- 2011/03/30 Ver.2.20 Add Start
+      || cv_d_cot || it_sales_actual.xseh_order_invoice_number || cv_d_cot           || cv_delimiter  -- 注文伝票番号
+      || cv_d_cot || it_sales_actual.xseh_invoice_class || cv_d_cot                  || cv_delimiter  -- 伝票区分
+      || cv_d_cot || it_sales_actual.invoice_classification_code || cv_d_cot         || cv_delimiter  -- 伝票分類コード
+      || cv_d_cot || it_sales_actual.xseh_change_out_time_100 || cv_d_cot            || cv_delimiter  -- つり銭切れ時間100円
+      || cv_d_cot || it_sales_actual.xseh_change_out_time_10 || cv_d_cot             || cv_delimiter  -- つり銭切れ時間10円
+      || it_sales_actual.standard_unit_price                                         || cv_delimiter  -- 基準単価
+      || it_sales_actual.xsel_sale_amount                                            || cv_delimiter  -- 売上金額
+      || cv_d_cot || it_sales_actual.xsel_sold_out_class || cv_d_cot                 || cv_delimiter  -- 売切区分
+      || cv_d_cot || it_sales_actual.xsel_sold_out_time || cv_d_cot                  || cv_delimiter  -- 売切時間
+-- 2011/03/30 Ver.2.20 Add End
       || TO_CHAR(gd_system_date,cv_datetime_format);
       -- 連携日時
 --
@@ -2002,6 +2048,17 @@ AS
         || cv_d_cot || it_sales_actual.xchv_cash_account_number || cv_d_cot           || cv_delimiter 
 --****************************** 2009/04/23 2.3 5 T.Kitajima MOD  END  ******************************--
         -- 入金先顧客コード
+-- 2011/03/30 Ver.2.20 Add Start
+        || cv_d_cot || it_sales_actual.xseh_order_invoice_number || cv_d_cot          || cv_delimiter  -- 注文伝票番号
+        || cv_d_cot || it_sales_actual.xseh_invoice_class || cv_d_cot                 || cv_delimiter  -- 伝票区分
+        || cv_d_cot || it_sales_actual.invoice_classification_code || cv_d_cot        || cv_delimiter  -- 伝票分類コード
+        || cv_d_cot || it_sales_actual.xseh_change_out_time_100 || cv_d_cot           || cv_delimiter  -- つり銭切れ時間100円
+        || cv_d_cot || it_sales_actual.xseh_change_out_time_10 || cv_d_cot            || cv_delimiter  -- つり銭切れ時間10円
+        || it_sales_actual.standard_unit_price                                        || cv_delimiter  -- 基準単価
+        || it_sales_actual.xsel_sale_amount                                           || cv_delimiter  -- 売上金額
+        || cv_d_cot || it_sales_actual.xsel_sold_out_class || cv_d_cot                || cv_delimiter  -- 売切区分
+        || cv_d_cot || it_sales_actual.xsel_sold_out_time || cv_d_cot                 || cv_delimiter  -- 売切時間
+-- 2011/03/30 Ver.2.20 Add End
         || TO_CHAR(gd_system_date,cv_datetime_format);
         -- 連携日時
 --
@@ -2374,6 +2431,17 @@ AS
         || cn_non_std_unit_price                                                 || cv_delimiter    -- 納品単価
         || cv_d_cot || gt_ar_deal_tbl(ln_idx).avtab_tax_code || cv_d_cot         || cv_delimiter    -- 税コード
         || cv_d_cot || it_sales_rec.xchv_bill_account_number || cv_d_cot         || cv_delimiter    -- 請求先顧客コード
+-- 2011/03/30 Ver.2.20 Add Start
+        || cv_d_cot || cv_d_cot                                                  || cv_delimiter    -- 注文伝票番号
+        || cv_d_cot || cv_d_cot                                                  || cv_delimiter    -- 伝票区分
+        || cv_d_cot || cv_d_cot                                                  || cv_delimiter    -- 伝票分類コード
+        || cv_d_cot || cv_d_cot                                                  || cv_delimiter    -- つり銭切れ時間100円
+        || cv_d_cot || cv_d_cot                                                  || cv_delimiter    -- つり銭切れ時間10円
+        || cv_zero                                                               || cv_delimiter    -- 基準単価
+        || cv_zero                                                               || cv_delimiter    -- 売上金額
+        || cv_d_cot || cv_d_cot                                                  || cv_delimiter    -- 売切区分
+        || cv_d_cot || cv_d_cot                                                  || cv_delimiter    -- 売切時間
+-- 2011/03/30 Ver.2.20 Add End
         || TO_CHAR(gd_system_date,cv_datetime_format);                                              -- 連携日時
   --
       -- CSVファイル出力
