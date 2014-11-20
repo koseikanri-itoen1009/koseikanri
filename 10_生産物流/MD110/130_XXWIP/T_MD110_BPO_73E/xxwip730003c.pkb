@@ -7,7 +7,7 @@ AS
  * Description      : 運賃アドオンインタフェース取込処理
  * MD.050           : 運賃計算（トランザクション）       T_MD050_BPO_732
  * MD.070           : 運賃アドオンインタフェース取込処理 T_MD070_BPO_73E
- * Version          : 1.1
+ * Version          : 1.3
  * Program List
  * ---------------------- ----------------------------------------------------------
  *  Name                   Description
@@ -32,6 +32,7 @@ AS
  *  2008/04/07    1.0  Oracle 和田 大輝  初回作成
  *  2008/05/13    1.1  Oracle 椎名 昭圭  内部変更要求#85対応
  *  2008/05/26    1.2  Oracle 野村 正幸  結合障害 
+ *  2008/07/10    1.3  Oracle 野村 正幸  ST障害 #432 対応
  *
  *****************************************************************************************/
 --
@@ -1832,7 +1833,10 @@ AS
       AND    xd.p_b_classe             = u_deliv_head_p_b_cls_tab(ln_index);
 --
     -- 更新件数の格納
-    gn_normal_cnt := u_deliv_head_com_code_id_tab.LAST;
+-- ##### 20080710 Ver.1.3 ST障害432対応 START #####
+--    gn_normal_cnt := u_deliv_head_com_code_id_tab.LAST;
+    gn_normal_cnt := u_deliv_head_com_code_id_tab.COUNT;
+-- ##### 20080710 Ver.1.3 ST障害432対応 END   #####
 --
   EXCEPTION
 --
