@@ -7,7 +7,7 @@ AS
  * Description      : 在庫（帳票）
  * MD.050/070       : 在庫（帳票）Issue1.0  (T_MD050_BPO_550)
  *                    受払残高リスト        (T_MD070_BPO_55A)
- * Version          : 1.14
+ * Version          : 1.15
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2008/06/20    1.12  Kazuo Kumamoto     システムテスト障害対応(パラメータ条件指定の不具合)
  *  2008/07/02    1.13  Satoshi Yunba      禁則文字対応
  *  2008/07/08    1.14  Yasuhisa Yamamoto  結合テスト障害対応(ADJI文書IDのNULL対応、入出庫数量0の出力対応)
+ *  2008/08/28    1.15  Oracle 山根 一浩   PT 2_1_12 #33,T_S_503対応
  *
  *****************************************************************************************/
 --
@@ -1348,6 +1349,8 @@ AS
 -- 08/05/07 Y.Yamamoto ADD v1.1 End
                   ) xrpmv
            )                                         xrpm       -- 在庫トラン情報
+-- 2008/08/28 Mod ↓
+/*
 -- 08/05/20 mod v1.5 start
 --          ,( SELECT DISTINCT    ccd.item_id
 --             FROM   cm_cmpt_dtl ccd
@@ -1373,6 +1376,23 @@ AS
                    ,gc_cost_manage_code_hyozyun,gc_cost_manage_code_hyozyun
                                                ,gc_cost_manage_code_jissei) = ccd_item.cost_manage_code
 -- 08/05/20 add v1.5 end
+*/
+    WHERE  EXISTS (
+           SELECT ccd.item_id
+           FROM   cm_cmpt_dtl ccd
+                 ,xxcmn_item_mst2_v ximv2
+           WHERE  NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = gc_cost_manage_code_hyozyun
+           AND    ccd.item_id = ximv2.item_id
+           AND    ximv.item_id = ccd.item_id
+           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+           --標準以外
+           UNION ALL
+           SELECT ximv2.item_id
+           FROM   xxcmn_item_mst2_v ximv2
+           WHERE  NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) != gc_cost_manage_code_hyozyun
+           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+    )
+-- 2008/08/28 Mod ↑
     AND    xicv.item_id                 = ximv.item_id
     AND    ilm.item_id                  = ximv.item_id
     AND    gd_date_ym_first       BETWEEN ximv.start_date_active
@@ -1978,6 +1998,8 @@ AS
 -- 08/05/07 Y.Yamamoto ADD v1.1 End
                   ) xrpmv
            )                                         xrpm       -- 在庫トラン情報
+-- 2008/08/28 Mod ↓
+/*
 -- 08/05/20 mod v1.5 start
 --          ,( SELECT DISTINCT    ccd.item_id
 --             FROM   cm_cmpt_dtl ccd
@@ -2003,6 +2025,23 @@ AS
                    ,gc_cost_manage_code_hyozyun,gc_cost_manage_code_hyozyun
                                                ,gc_cost_manage_code_jissei) = ccd_item.cost_manage_code
 -- 08/05/20 add v1.5 end
+*/
+    WHERE  EXISTS (
+           SELECT ccd.item_id
+           FROM   cm_cmpt_dtl ccd
+                 ,xxcmn_item_mst2_v ximv2
+           WHERE  NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = gc_cost_manage_code_hyozyun
+           AND    ccd.item_id = ximv2.item_id
+           AND    ximv.item_id = ccd.item_id
+           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+           --標準以外
+           UNION ALL
+           SELECT ximv2.item_id
+           FROM   xxcmn_item_mst2_v ximv2
+           WHERE  NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) != gc_cost_manage_code_hyozyun
+           AND    NVL(ximv2.cost_manage_code,gc_cost_manage_code_jissei) = NVL(ximv.cost_manage_code,gc_cost_manage_code_jissei)
+    )
+-- 2008/08/28 Mod ↑
     AND    xicv.item_id                 = ximv.item_id
     AND    ilm.item_id                  = ximv.item_id
     AND    gd_date_ym_first       BETWEEN ximv.start_date_active

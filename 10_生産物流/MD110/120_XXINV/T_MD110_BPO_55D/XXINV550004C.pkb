@@ -25,6 +25,7 @@ AS
  *  2008/05/07    1.1   S.Nakamura       内部変更要求#47,#62
  *  2008/05/20    1.2   K.Kumamoto       結合テスト障害(User-Defined Exception)対応
  *  2008/06/23    1.3   K.Kumamoto       システムテスト障害#260(受払残高リストが終了しない)対応
+ *  2008/08/28    1.4   Oracle 山根 一浩 PT 2_1_12 #33,T_S_503対応
  *
  *****************************************************************************************/
 --  
@@ -678,7 +679,9 @@ AS
               --AND  (xoha.arrival_date            > ld_invent_end_ymd              -- ①の入庫実績日の年月＞起動パラメータの対象年月
               --      OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
               --     )
-              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+-- 2008/08/28 Mod
+--              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+              AND   xoha.shipped_date BETWEEN TRUNC(ld_invent_begin_ymd)
                                              AND     TRUNC(ld_invent_end_ymd)     -- ①の出庫実績日の年月=起動パラメータの対象年月
               AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_invent_end_ymd)           -- ①の入庫実績日の年月＞起動パラメータの対象年月
                     OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
@@ -713,7 +716,9 @@ AS
               --AND  (xoha.arrival_date            > ld_invent_end_ymd              -- ①の入庫実績日の年月＞起動パラメータの対象年月
               --      OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
               --     )
-              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+-- 2008/08/28 Mod
+--              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_invent_begin_ymd)
+              AND   xoha.shipped_date BETWEEN TRUNC(ld_invent_begin_ymd)
                                                  AND TRUNC(ld_invent_end_ymd)        -- ①の出庫実績日の年月=起動パラメータの対象年月
               AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_invent_end_ymd)           -- ①の入庫実績日の年月＞起動パラメータの対象年月
                     OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
@@ -900,6 +905,8 @@ AS
               --AND  (xoha.arrival_date            > ld_pre_invent_end_ymd          -- ①の着荷日の年月＞起動パラメータの対象年月の前月
               --      OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
               --     )
+-- 2008/08/28 Mod
+--              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
               AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
                                                  AND TRUNC(ld_pre_invent_end_ymd)   -- ①の出荷日の年月=起動パラメータの対象年月の前月
               AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_pre_invent_end_ymd)         -- ①の着荷日の年月＞起動パラメータの対象年月の前月
@@ -935,7 +942,9 @@ AS
               --AND  (xoha.arrival_date            > ld_pre_invent_end_ymd          -- ①の着荷日の年月＞起動パラメータの対象年月の前月
               --      OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
               --     )
-              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+-- 2008/08/28 Mod
+--              AND   TRUNC(xoha.shipped_date) BETWEEN TRUNC(ld_pre_invent_begin_ymd)
+              AND   xoha.shipped_date BETWEEN TRUNC(ld_pre_invent_begin_ymd)
                                                  AND TRUNC(ld_pre_invent_end_ymd)    -- ①の出荷日の年月=起動パラメータの対象年月の前月
               AND  (TRUNC(xoha.arrival_date) > TRUNC(ld_pre_invent_end_ymd)       -- ①の着荷日の年月＞起動パラメータの対象年月の前月
                     OR xoha.arrival_date IS NULL                                  -- ①の着荷日=指定なし
