@@ -7,7 +7,7 @@ AS
  * Description      : 品目マスタインタフェース
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 品目インタフェース T_MD070_BPO_80B
- * Version          : 1.19
+ * Version          : 1.20
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -86,6 +86,7 @@ AS
  *  2008/11/24    1.17  Oracle 大橋孝郎  本番環境問合せ_障害管理表#221対応
  *  2008/12/22    1.18  Oracle 椎名 昭圭 本番#830対応
  *  2009/01/09    1.19  Oracle 佐久間尚豊 本番#950対応
+ *  2009/01/28    1.20  Oracle 椎名 昭圭 本番#1090対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -191,6 +192,10 @@ AS
 --2008/09/16
   gn_kbn_def           CONSTANT NUMBER        := 0;                      -- デフォルト値
   gn_kbn_oth           CONSTANT NUMBER        := 1;                      -- 入力値
+-- 2009/01/28 v1.20 ADD START
+  gv_on                CONSTANT VARCHAR2(1)   := '1';                    -- 有
+  gv_off               CONSTANT VARCHAR2(1)   := '0';                    -- 無
+-- 2009/01/28 v1.20 ADD END
 --2008/10/10 MOD↓
   -- クイックコードタイプ
   gv_expense_item_type        CONSTANT VARCHAR2(100) := 'XXPO_EXPENSE_ITEM_TYPE';  -- 費目区分
@@ -4458,6 +4463,9 @@ AS
     -- *** ローカル変数 ***
     lv_attribute10             ic_item_mst_b.attribute10%TYPE;
     lv_attribute16             ic_item_mst_b.attribute16%TYPE;
+-- 2009/01/28 v1.20 ADD START
+    lv_attribute23             ic_item_mst_b.attribute23%TYPE; -- 試験有無区分
+-- 2009/01/28 v1.20 ADD END
     lv_attribute25             ic_item_mst_b.attribute25%TYPE;
 -- 2009/01/09 H.Sakuma Add Start 本番#950
     lv_attribute30             ic_item_mst_b.attribute30%TYPE;
@@ -4503,6 +4511,17 @@ AS
     lv_attribute30     :=  TO_CHAR(SYSDATE, 'YYYY/MM/DD');
 -- 2009/01/09 H.Sakuma Add End   本番#950
 --
+-- 2009/01/28 v1.20 ADD START
+      IF (
+           (ir_masters_rec.arti_div_code = gv_div_code_drink)
+             AND (SUBSTRB(ir_masters_rec.item_code, 1, 1) <> '5')
+         )THEN
+        lv_attribute23 := gv_on;
+      ELSE
+        lv_attribute23 := gv_off;
+      END IF;
+--
+-- 2009/01/28 v1.20 ADD END
       UPDATE ic_item_mst_b
       SET    item_desc1             = ir_masters_rec.item_name
             ,attribute1             = ir_masters_rec.old_crowd_code
@@ -4520,6 +4539,9 @@ AS
             ,attribute13            = ir_masters_rec.sale_start_days
             ,attribute16            = lv_attribute16
             ,attribute21            = ir_masters_rec.jan_code
+-- 2009/01/28 v1.20 ADD START
+            ,attribute23            = lv_attribute23
+-- 2009/01/28 v1.20 ADD END
             ,attribute25            = lv_attribute25
             ,attribute26            = ir_masters_rec.sale_obj_code
 -- 2009/01/09 H.Sakuma Add Start 本番#950
@@ -5957,6 +5979,19 @@ AS
 --
     lr_item_rec.attribute18 := cv_flg_on;       -- 出荷区分 2008/08/27 Add
 --
+-- 2009/01/28 v1.20 ADD START
+    -- 商品区分＝ドリンク、かつ
+    -- 製品の場合
+    IF (
+         (ir_masters_rec.arti_div_code = gv_div_code_drink)
+           AND (SUBSTRB(ir_masters_rec.item_code, 1, 1) <> '5')
+       )THEN
+      lr_item_rec.attribute23 := gv_on;
+    ELSE
+      lr_item_rec.attribute23 := gv_off;
+    END IF;
+--
+-- 2009/01/28 v1.20 ADD END
     -- OPM品目マスタ(登録)
     GMI_ITEM_PUB.CREATE_ITEM(
         P_API_VERSION      => gv_api_ver
