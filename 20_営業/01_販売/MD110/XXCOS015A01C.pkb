@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS015A01C(body)
  * Description      : 情報系システム向け販売実績データの作成を行う
  * MD.050           : 情報系システム向け販売実績データの作成 MD050_COS_015_A01
- * Version          : 2.3
+ * Version          : 2.4
  *
  * Program List
  * --------------------------- ----------------------------------------------------------
@@ -62,7 +62,7 @@ AS
  *                                                4.納品単価変換
  *                                                5.請求先顧客コードを["]で括る(カード)。
  *                                                6.コンカレント出力の件数
- *
+ *  2009/05/21    2.4   S.Kayahara       [T1_1060]売上実績CSV作成(A-4)に参照タイプ（納品伝票区分特定マスタ）取得処理追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -1366,6 +1366,12 @@ AS
     ln_tax_card             NUMBER;                     -- カード：売上数量
     ln_card_rec_flag        NUMBER DEFAULT 0;           -- カードレコード出力フラグ(デフォルトはオフ)
     lv_buffer               VARCHAR2(2000);             -- 出力データ
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  START  ******************************--
+    lt_dlv_invoice_class    fnd_lookup_values.attribute1%TYPE;   -- 納品伝票区分
+    lv_type_name            VARCHAR2(50);
+    -- *** ローカル例外 ***
+    non_lookup_value_expt   EXCEPTION;
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  END  ******************************--
 --
   BEGIN
 --
@@ -1465,7 +1471,52 @@ AS
       -- 非在庫品目の場合
       ln_sales_quantity_cash := cn_non_sales_quantity;        -- 売上数量
     END IF;
-----
+--
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  START  ******************************--
+    --=========================================
+    -- 参照タイプ（納品伝票区分特定マスタ）取得
+    --=========================================
+    BEGIN
+      SELECT flv.attribute1     flv_attribute1
+      INTO   lt_dlv_invoice_class
+      FROM   fnd_lookup_values  flv
+      WHERE  flv.meaning       = it_sales_actual.xseh_dlv_invoice_class
+      AND    flv.lookup_type   = cv_ref_t_dlv_slp_cls_mst
+      AND    flv.language      = USERENV('LANG')
+      AND    flv.enabled_flag  = cv_enabled_flag
+      AND    gd_business_date BETWEEN NVL(flv.start_date_active,gd_business_date)
+                              AND     NVL(flv.end_date_active,  gd_business_date);
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        lv_type_name := xxccp_common_pkg.get_msg(
+           iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+          ,iv_name        => cv_msg_ar_txn_name              -- メッセージID
+        );
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcos_short_name
+                       ,iv_name         => cv_msg_dlv_slp_cls
+                       ,iv_token_name1  => cv_tkn_lookup_type
+                       ,iv_token_value1 => lv_type_name
+                       ,iv_token_name2  => cv_tkn_meaning
+                       ,iv_token_value2 => it_sales_actual.xseh_dlv_invoice_class);
+        RAISE non_lookup_value_expt;
+    END;
+--
+    IF ( lt_dlv_invoice_class IS NULL ) THEN
+      lv_type_name := xxccp_common_pkg.get_msg(
+         iv_application => cv_xxcos_short_name             -- アプリケーション短縮名
+        ,iv_name        => cv_msg_ar_txn_name              -- メッセージID
+      );
+      lv_errmsg := xxccp_common_pkg.get_msg(
+                      iv_application  => cv_xxcos_short_name
+                     ,iv_name         => cv_msg_dlv_slp_cls
+                     ,iv_token_name1  => cv_tkn_lookup_type
+                     ,iv_token_value1 => lv_type_name
+                     ,iv_token_name2  => cv_tkn_meaning
+                     ,iv_token_value2 => it_sales_actual.xseh_dlv_invoice_class);
+      RAISE non_lookup_value_expt;
+    END IF;
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  END  ******************************--
     -- ===============================
     -- CSVファイル出力
     -- ===============================
@@ -1501,7 +1552,10 @@ AS
       -- 売上数量
       || ln_tax_cash                                                                 || cv_delimiter 
       -- 消費税額
-      || cv_d_cot || it_sales_actual.xseh_dlv_invoice_class || cv_d_cot              || cv_delimiter 
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  START  ******************************--
+--      || cv_d_cot || it_sales_actual.xseh_dlv_invoice_class || cv_d_cot              || cv_delimiter 
+      || cv_d_cot || lt_dlv_invoice_class || cv_d_cot                                || cv_delimiter              
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  END  ******************************--      
       -- 売上返品区分
       || cv_d_cot || it_sales_actual.xsel_sales_class || cv_d_cot                    || cv_delimiter 
       -- 売上区分
@@ -1562,7 +1616,10 @@ AS
         -- 売上数量
         || ln_tax_card                                                                || cv_delimiter 
         -- 消費税額
-        || cv_d_cot || it_sales_actual.xseh_dlv_invoice_class || cv_d_cot             || cv_delimiter 
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  START  ******************************--
+--      || cv_d_cot || it_sales_actual.xseh_dlv_invoice_class || cv_d_cot              || cv_delimiter 
+      || cv_d_cot || lt_dlv_invoice_class || cv_d_cot                                || cv_delimiter              
+--****************************** 2009/05/21 2.4 S.Kayahara MOD  END  ******************************--      
         -- 売上返品区分
         || cv_d_cot || it_sales_actual.xsel_sales_class || cv_d_cot                   || cv_delimiter 
         -- 売上区分

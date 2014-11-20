@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS002A02R(body)
  * Description      : 営業報告日報
  * MD.050           : 営業報告日報 MD050_COS_002_A02
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/02/20    1.1   T.Nakabayashi    get_msgのパッケージ名修正
  *  2009/02/26    1.2   T.Nakabayashi    MD050課題No153対応 従業員、アサインメント適用日判断追加
  *  2009/02/27    1.3   T.Nakabayashi    帳票ワークテーブル削除処理 コメントアウト解除
+ *  2009/05/01    1.4   K.Kiriu          [T1_0481]訪問データ抽出条件統一対応
  *
  *****************************************************************************************/
 --
@@ -194,9 +195,11 @@ AS
   --  顧客区分
   ct_cust_class_base            CONSTANT  hz_cust_accounts.customer_class_code%TYPE       :=  '1';                  --  拠点
   ct_cust_class_customer        CONSTANT  hz_cust_accounts.customer_class_code%TYPE       :=  '10';                 --  顧客
+/* 2009/05/01 Ver1.4 Del Start */
   --  タスク
-  ct_task_obj_type_party        CONSTANT  jtf_tasks_b.source_object_type_code%TYPE        :=  'PARTY';              --  パーティ
-  ct_task_own_type_employee     CONSTANT  jtf_tasks_b.owner_type_code%TYPE                :=  'RS_EMPLOYEE';        --  営業員
+--  ct_task_obj_type_party        CONSTANT  jtf_tasks_b.source_object_type_code%TYPE        :=  'PARTY';              --  パーティ
+--  ct_task_own_type_employee     CONSTANT  jtf_tasks_b.owner_type_code%TYPE                :=  'RS_EMPLOYEE';        --  営業員
+/* 2009/05/01 Ver1.4 Del End   */
   --  有効訪問区分(タスク)
   cv_task_dff11_visit           CONSTANT  VARCHAR2(1)                                     :=  '0';                  --  訪問
   cv_task_dff11_valid           CONSTANT  VARCHAR2(1)                                     :=  '1';                  --  有効
@@ -418,13 +421,18 @@ AS
                   ELSE  0
                 END
                 )                                     AS  delay_valid_count
-    FROM    jtf_tasks_b                   task,
+/* 2009/05/01 Ver1.4 Mod Start */
+--    FROM    jtf_tasks_b                   task,
+    FROM    xxcso_visit_actual_v          task,
+/* 2009/05/01 Ver1.4 Mod End   */
             xxcos_rs_info_v               rsid
     WHERE   task.actual_end_date          >=      icp_delivery_date
     AND     task.actual_end_date          <       icp_delivery_date + 1
-    AND     task.source_object_type_code  =       ct_task_obj_type_party
-    AND     task.owner_type_code          =       ct_task_own_type_employee
-    AND     task.deleted_flag             =       cv_no
+/* 2009/05/01 Ver1.4 Mod Start */
+--    AND     task.source_object_type_code  =       ct_task_obj_type_party
+--    AND     task.owner_type_code          =       ct_task_own_type_employee
+--    AND     task.deleted_flag             =       cv_no
+/* 2009/05/01 Ver1.4 Mod End   */
     AND     rsid.base_code                =       icp_delivery_base_code
     AND     rsid.employee_number          =       NVL(icp_dlv_by_code, rsid.employee_number)
     AND     rsid.resource_id              =       task.owner_id
@@ -1043,7 +1051,10 @@ AS
               cn_program_application_id                 AS  program_application_id,
               cn_program_id                             AS  program_id,
               cd_program_update_date                    AS  program_update_date
-      FROM    jtf_tasks_b                   task,
+/* 2009/05/01 Ver1.4 Mod Start */
+--      FROM    jtf_tasks_b                   task,
+      FROM    xxcso_visit_actual_v          task,
+/* 2009/05/01 Ver1.4 Mod End   */
               hz_cust_accounts              base,
               hz_parties                    hzpb,
               hz_cust_accounts              hzca,
@@ -1051,13 +1062,19 @@ AS
               xxcos_rs_info_v               rsid
       WHERE   task.actual_end_date          >=      ld_delivery_date
       AND     task.actual_end_date          <       ld_delivery_date + 1
-      AND     task.source_object_type_code  =       ct_task_obj_type_party
-      AND     task.owner_type_code          =       ct_task_own_type_employee
-      AND     task.deleted_flag             =       cv_no
+/* 2009/05/01 Ver1.4 Del Start */
+--      AND     task.source_object_type_code  =       ct_task_obj_type_party
+--      AND     task.owner_type_code          =       ct_task_own_type_employee
+--      AND     task.deleted_flag             =       cv_no
+/* 2009/05/01 Ver1.4 Del End   */
       AND     task.attribute11              =       cv_task_dff11_visit
       AND     task.attribute12              =       cv_task_dff12_only_visit
-      AND     hzca.party_id                 =       task.source_object_id
-      AND     hzpc.party_id                 =       task.source_object_id
+/* 2009/05/01 Ver1.4 Mod Start */
+--      AND     hzca.party_id                 =       task.source_object_id
+--      AND     hzpc.party_id                 =       task.source_object_id
+      AND     hzca.party_id                 =       task.party_id
+      AND     hzpc.party_id                 =       task.party_id
+/* 2009/05/01 Ver1.4 Mod Start */
       AND     base.account_number           =       iv_delivery_base_code
       AND     base.customer_class_code      =       ct_cust_class_base
       AND     hzpb.party_id                 =       base.party_id
