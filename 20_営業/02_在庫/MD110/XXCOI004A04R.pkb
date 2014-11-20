@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI004A04R(body)
  * Description      : VD機内在庫表
  * MD.050           : MD050_COI_004_A04
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ------------------------ --------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/08/13    1.5   N.Abe            [0000891]顧客抽出SQLの変更
  *                                       [0001033]在庫組織コードをプロファイルから取得するよう変更
  *  2009/09/08    1.6   N.Abe            [0001266]OPM品目アドオンの取得方法修正
+ *  2009/10/21    1.7   N.Abe            [E_最終移行リハ_00502]物件マスタの機器区分を参照する修正
  *
  *****************************************************************************************/
 --
@@ -2135,7 +2136,7 @@ AS
       FETCH get_customer_info_cur INTO get_customer_info_rec;
       EXIT WHEN get_customer_info_cur%NOTFOUND;
 -- == 2009/08/13 V1.5 Added START ===============================================================
-      --機種コード、セレ数の取得  ※物件マスタが複数ある場合はどれを取得するかは問わない
+      --機種コード、セレ数の取得  ※自販機のみ取得する(機器区分 = '1')
       BEGIN
         SELECT  punv.un_number              --  機種コード
                ,TO_NUMBER(punv.attribute8)  --  セレ数
@@ -2145,6 +2146,9 @@ AS
                ,po_un_numbers_vl    punv    --  機種マスタ
         WHERE  cii.owner_party_account_id  = get_customer_info_rec.customer_id
         AND    cii.instance_status_id     <> 1
+-- == 2009/10/21 V1.7 Added START ==================================================================
+        AND    cii.instance_type_code     = '1'
+-- == 2009/10/21 V1.7 Added END   ==================================================================
         AND    cii.attribute1              = punv.un_number
         AND    punv.attribute8            IS NOT NULL
         AND    punv.attribute8            <> 0
