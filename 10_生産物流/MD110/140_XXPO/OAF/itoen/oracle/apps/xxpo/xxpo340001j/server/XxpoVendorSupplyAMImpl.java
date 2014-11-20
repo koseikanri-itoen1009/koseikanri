@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoVendorSupplyAMImpl
 * 概要説明   : 外注出来高報告アプリケーションモジュール
-* バージョン : 1.4
+* バージョン : 1.5
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -15,6 +15,7 @@
 * 2008-07-22 1.2  伊藤ひとみ   内部課題#32対応 換算ありの場合、ケース入数がNULLまたは0はエラー
 * 2008-10-23 1.3  伊藤ひとみ   T_TE080_BPO_340 指摘5
 * 2009-02-06 1.4  伊藤ひとみ   本番障害#1147対応
+* 2009-02-18 1.5  伊藤ひとみ   本番障害#1096,1178対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo340001j.server;
@@ -41,7 +42,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 外注出来高報告のアプリケーションモジュールクラスです。
  * @author  ORACLE 伊藤 ひとみ
- * @version 1.4
+ * @version 1.5
  ***************************************************************************
  */
 public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -413,13 +414,34 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     Number itemId         = (Number)vendorSupplyMakeRow.getAttribute("ItemId");         // 品目ID
     Number factoryId      = (Number)vendorSupplyMakeRow.getAttribute("FactoryId");      // 工場ID
     Date manufacturedDate = (Date)vendorSupplyMakeRow.getAttribute("ManufacturedDate"); // 生産日
+// 2009-02-18 H.Itou Add Start 本番障害#1178
+    Date productedDate    = (Date)vendorSupplyMakeRow.getAttribute("ProductedDate");    // 製造日
+    String unitPriceCalcCode = (String)vendorSupplyMakeRow.getAttribute("UnitPriceCalcCode");// 仕入単価導出日タイプ
+    Date standardDate; // 基準日
 
+    // 仕入単価導入日タイプが1:製造日の場合
+    if ("1".equals(unitPriceCalcCode))
+    {
+      // 基準日は製造日
+      standardDate = productedDate;
+
+    // 仕入単価導入日タイプが2:生産日の場合
+    } else
+    {
+      // 基準日は生産日
+      standardDate = manufacturedDate;
+    }
+// 2009-02-18 H.Itou Add End
+        
     // 固有記号取得
     String koyuCode = XxpoUtility.getKoyuCode(
                         getOADBTransaction(), // トランザクション
                         itemId,            // 品目ID
                         factoryId,         // 工場ID
-                        manufacturedDate   // 生産日
+// 2009-02-18 H.Itou Add Start 本番障害#1178
+//                        manufacturedDate   // 生産日
+                        standardDate       // 基準日
+// 2009-02-18 H.Itou Add End
                       );
     
     vendorSupplyMakeRow.setAttribute("KoyuCode", koyuCode);
@@ -1074,6 +1096,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     // ロットマスタ登録処理(insertLotMst)で取得したデータ
     params.put("LotNumber",         vendorSupplyMakeRow.getAttribute("LotNumber"));         // ロット番号
     params.put("LotId",             vendorSupplyMakeRow.getAttribute("LotId"));             // ロットID    
+// 2009-02-18 H.Itou Add Start 本番障害#1096
+    params.put("CreateLotDiv",      vendorSupplyMakeRow.getAttribute("CreateLotDiv"));      // 作成区分
+// 2009-02-18 H.Itou Add End
     // 納入先情報取得(getLocationData)で取得したデータ
     params.put("LocationId",        vendorSupplyMakeRow.getAttribute("LocationId"));        // 納入先ID
     params.put("LocationCode",      vendorSupplyMakeRow.getAttribute("LocationCode"));      // 納入先コード
@@ -1520,7 +1545,12 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
    ***************************************************************************
    */
   public void productedDateChanged()
-  {        
+  {
+// 2009-02-18 H.Itou Add Start 本番障害#1178
+    // 固有記号取得
+    getKoyuCode(); 
+// 2009-02-18 H.Itou Add End
+
     // 賞味期限取得
     getUseByDate();
   }
@@ -1771,6 +1801,9 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
     Number conversionFactor  = (Number)params.get("ConversionFactor");  // 換算入数
     Number quantity          = (Number)params.get("Quantity");          // 数量
     String productResultType = (String)params.get("ProductResultType"); // 処理タイプ
+// 2009-02-18 H.Itou Add Start 本番障害#1096
+    String createLotDiv      = (String)params.get("CreateLotDiv");      // 作成区分
+// 2009-02-18 H.Itou Add End
     
     // ********************************** //
     // * 外注出来高実績(アドオン)更新   * //
@@ -1803,23 +1836,45 @@ public class XxpoVendorSupplyAMImpl extends XxcmnOAApplicationModuleImpl
           return XxcmnConstants.RETURN_NOT_EXE;
         }              
       }
-      
-      // **************************** //
-      // * 品質検査依頼情報作成     * //
-      // **************************** //
-      // 試験有無区分 1:有の場合のみ実行
-      if (XxpoConstants.QT_TYPE_ON.equals(testCode))
+// 2009-02-18 H.Itou Del Start 本番障害#1096 更新でも品質検査を新規で作成する場合があるので、移動。      
+//      // **************************** //
+//      // * 品質検査依頼情報作成     * //
+//      // **************************** //
+//      // 試験有無区分 1:有の場合のみ実行
+//      if (XxpoConstants.QT_TYPE_ON.equals(testCode))
+//      {
+//        // 検査依頼No取得
+//        getQtInspectReqNo();
+//      
+//        // 品質検査依頼情報登録が正常終了でない場合
+//        if (XxcmnConstants.RETURN_NOT_EXE.equals(doQtInspection()))
+//        {
+//          return XxcmnConstants.RETURN_NOT_EXE;
+//        }
+//      }
+// 2009-02-18 H.Itou Del End
+    }
+// 2009-02-18 H.Itou Add Start 本番障害#1096
+    // **************************** //
+    // * 品質検査依頼情報作成     * //
+    // **************************** //
+    // ・試験有無区分 1:有
+    // ・処理タイプ1:相手先在庫管理かつ、作成区分2:相手先在庫計上
+    //   または、
+    //   処理タイプ2:即時仕入かつ、作成区分3:出来高報告即時仕入
+    if (XxpoConstants.QT_TYPE_ON.equals(testCode)
+      && (((XxpoConstants.PRODUCT_RESULT_TYPE_I.equals(productResultType))
+        && "2".equals(createLotDiv))
+      || ((XxpoConstants.PRODUCT_RESULT_TYPE_P.equals(productResultType))
+        && "3".equals(createLotDiv))))
+    {
+      // 品質検査依頼情報登録が正常終了でない場合
+      if (XxcmnConstants.RETURN_NOT_EXE.equals(doQtInspection()))
       {
-        // 検査依頼No取得
-        getQtInspectReqNo();
-      
-        // 品質検査依頼情報登録が正常終了でない場合
-        if (XxcmnConstants.RETURN_NOT_EXE.equals(doQtInspection()))
-        {
-          return XxcmnConstants.RETURN_NOT_EXE;
-        }
+        return XxcmnConstants.RETURN_NOT_EXE;
       }
     }
+// 2009-02-18 H.Itou Add End
     return XxcmnConstants.RETURN_SUCCESS;
   }
   

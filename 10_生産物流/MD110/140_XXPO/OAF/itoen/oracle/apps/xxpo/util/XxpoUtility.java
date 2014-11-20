@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoUtility
 * 概要説明   : 仕入共通関数
-* バージョン : 1.23
+* バージョン : 1.24
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -31,6 +31,7 @@
 * 2009-01-16 1.21 吉元強樹     本番障害#1006対応
 * 2009-01-20 1.22 吉元強樹     本番障害#739,985対応
 * 2009-02-06 1.23 伊藤ひとみ   本番障害#1147対応
+* 2009-02-18 1.24 伊藤ひとみ   本番障害#1096対応
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.util;
@@ -52,7 +53,7 @@ import oracle.jbo.domain.Number;
 /***************************************************************************
  * 仕入共通関数クラスです。
  * @author  ORACLE 伊藤ひとみ
- * @version 1.23
+ * @version 1.24
  ***************************************************************************
  */
 public class XxpoUtility 
@@ -2699,7 +2700,10 @@ public class XxpoUtility
     Number conversionFactor  = (Number)params.get("ConversionFactor"); // 換算入数        
     Date   prodDelyDate   = (Date)params.get("ManufacturedDate");      // 生産日
     String vendorLine     = (String)params.get("VendorCode");          // 取引先コード
-    Number qtInspectReqNo = (Number)params.get("QtInspectReqNo");      // 検査依頼No
+// 2009-02-18 H.Itou Mod Start 本番障害#1096
+//    Number qtInspectReqNo = (Number)params.get("QtInspectReqNo");      // 検査依頼No
+    String qtInspectReqNo = (String)params.get("QtInspectReqNo");      // 検査依頼No
+// 2009-02-18 H.Itou Mod End
     
     // OUTパラメータ
     String exeType = XxcmnConstants.RETURN_NOT_EXE;
@@ -2718,7 +2722,10 @@ public class XxpoUtility
     sb.append("   ,it_qty               => TO_NUMBER(:7) * :8 "  ); // IN    数量 7.外注出来高数量 × 8.換算入数        処理区分3以外かつ区分:2のみ必須
     sb.append("   ,it_prod_dely_date    => :9 "                  ); // IN  9.納入日       処理区分3以外かつ区分:2のみ必須
     sb.append("   ,it_vendor_line       => :10 "                 ); // IN 10.仕入先コード 処理区分3以外かつ区分:2のみ必須
-    sb.append("   ,it_qt_inspect_req_no => :11 "                 ); // IN 11.検査依頼No   処理区分:2、3のみ必須            
+// 2009-02-18 H.Itou Mod Start 本番障害#1096
+//    sb.append("   ,it_qt_inspect_req_no => :11 "                 ); // IN 11.検査依頼No   処理区分:2、3のみ必須            
+    sb.append("   ,it_qt_inspect_req_no => TO_NUMBER(:11) "      ); // IN 11.検査依頼No   処理区分:2、3のみ必須            
+// 2009-02-18 H.Itou Mod End
     sb.append("   ,ot_qt_inspect_req_no => :12 "                 ); // OUT 12.検査依頼No
     sb.append("   ,ov_errbuf            => :13 "                 ); // エラー・メッセージ           --# 固定 #
     sb.append("   ,ov_retcode           => :14 "                 ); // リターン・コード             --# 固定 #
@@ -2733,7 +2740,9 @@ public class XxpoUtility
     {
       // パラメータ設定(INパラメータ)
       cstmt.setString(1, division);                            // 区分
-      cstmt.setString(2, disposalDiv);                         // 処理区分
+// 2009-02-18 H.Itou Del Start 本番障害#1096
+//      cstmt.setString(2, disposalDiv);                         // 処理区分
+// 2009-02-18 H.Itou Del End
       cstmt.setInt(3, XxcmnUtility.intValue(lotId));           // ロットID
       cstmt.setInt(4, XxcmnUtility.intValue(itemId));          // 品目ID
       // 区分が2:発注の場合
@@ -2741,8 +2750,23 @@ public class XxpoUtility
       {
         cstmt.setNull(5, Types.VARCHAR);                          // 対象先    
         cstmt.setNull(6, Types.INTEGER);                          // 生産バッチID
-        cstmt.setString(7, qty);                                  // 外注出来高数量
-        cstmt.setInt(8, XxcmnUtility.intValue(conversionFactor)); // 換算入数
+// 2009-02-18 H.Itou Add Start 本番障害#1096
+        // 検査依頼Noに値がある場合･･･品質検査更新 外注出来高即時仕入は数量を更新できないので、常に差分0を渡す。
+        if (!XxcmnUtility.isBlankOrNull(qtInspectReqNo))
+        {
+          cstmt.setString(7, "0");  // 外注出来高数量
+          cstmt.setInt(8, 0);       // 換算入数
+
+        // 検査依頼Noに値がない場合･･･品質検査追加
+        } else
+        { 
+// 2009-02-18 H.Itou Add End
+          cstmt.setString(7, qty);                                  // 外注出来高数量
+          cstmt.setInt(8, XxcmnUtility.intValue(conversionFactor)); // 換算入数
+// 2009-02-18 H.Itou Add Start 本番障害#1096
+        }
+// 2009-02-18 H.Itou Add End
+
         cstmt.setDate(9, XxcmnUtility.dateValue(prodDelyDate));   // 納入日
         cstmt.setString(10, vendorLine);      // 仕入先コード
       // 区分が4:外注出来高の場合
@@ -2755,15 +2779,31 @@ public class XxpoUtility
         cstmt.setNull(9, Types.DATE);     // 納入日
         cstmt.setNull(10, Types.INTEGER); // 仕入先コード
       }
-      // 追加以外の場合
-      if (XxpoConstants.PROCESS_FLAG_I.equals(disposalDiv) == false)
+// 2009-02-18 H.Itou Mod Start 本番障害#1096
+//      // 追加以外の場合
+//      if (XxpoConstants.PROCESS_FLAG_I.equals(disposalDiv) == false)
+      // 検査依頼Noに値がある場合･･･品質検査更新
+      if (!XxcmnUtility.isBlankOrNull(qtInspectReqNo))
+// 2009-02-18 H.Itou Mod End
       {
-        cstmt.setInt(11, XxcmnUtility.intValue(qtInspectReqNo)); // 検査依頼No
+// 2009-02-18 H.Itou Add Start 本番障害#1096
+        cstmt.setString(2, "2");                         // 処理区分:更新
+// 2009-02-18 H.Itou Add End
+// 2009-02-18 H.Itou Mod Start 本番障害#1096
+//        cstmt.setInt(11, XxcmnUtility.intValue(qtInspectReqNo)); // 検査依頼No
+        cstmt.setString(11, qtInspectReqNo); // 検査依頼No
+// 2009-02-18 H.Itou Mod End
 
-      // 追加の場合
+      // 検査依頼Noに値がない場合･･･品質検査追加
       } else
       {
-        cstmt.setNull(11, Types.INTEGER); // NULL
+// 2009-02-18 H.Itou Add Start 本番障害#1096
+        cstmt.setString(2, "1");                         // 処理区分:追加
+// 2009-02-18 H.Itou Add End
+// 2009-02-18 H.Itou Mod Start 本番障害#1096
+//        cstmt.setNull(11, Types.INTEGER); // NULL
+        cstmt.setNull(11, Types.VARCHAR); // NULL
+// 2009-02-18 H.Itou Mod End
       }
       
       // パラメータ設定(OUTパラメータ)
@@ -2818,7 +2858,10 @@ public class XxpoUtility
           MessageToken[] tokens = new MessageToken[3];
           tokens[0] = new MessageToken(XxpoConstants.TOKEN_INFO_NAME, XxpoConstants.TAB_XXWIP_QT_INSPECTION);
           tokens[1] = new MessageToken(XxpoConstants.TOKEN_PARAMETER, XxpoConstants.COL_QT_INSPECT_REQ_NO);
-          tokens[2] = new MessageToken(XxpoConstants.TOKEN_VALUE,  XxcmnUtility.stringValue(qtInspectReqNo));
+// 2009-02-18 H.Itou Mod Start 本番障害#1096
+//          tokens[2] = new MessageToken(XxpoConstants.TOKEN_VALUE,  XxcmnUtility.stringValue(qtInspectReqNo));
+          tokens[2] = new MessageToken(XxpoConstants.TOKEN_VALUE,  qtInspectReqNo);
+// 2009-02-18 H.Itou Mod End
 
           // エラーメッセージ出力
           throw new OAException(XxcmnConstants.APPL_XXPO, 

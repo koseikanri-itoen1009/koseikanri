@@ -47,6 +47,12 @@ SELECT xvst.txns_id                 txns_id             -- 実績ID
       ,TO_CHAR(xvst.last_update_date,'YYYY/MM/DD HH24:MI:SS')
                                     last_update_date    -- 最終更新日
       ,xicv.item_class_code         item_class_code     -- 品目区分
+-- 2009-02-18 H.Itou Add Start 本番障害#1096
+      ,ilm.attribute24              create_lot_div      -- 作成区分
+-- 2009-02-18 H.Itou Add End
+-- 2009-02-18 H.Itou Add Start 本番障害#1096
+      ,ilm.attribute22              qt_inspect_req_no   -- 検査依頼No
+-- 2009-02-18 H.Itou Add End
 FROM   xxpo_vendor_supply_txns      xvst                -- 外注出来高実績
       ,xxcmn_item_mst2_v            ximv                -- OPM品目情報2V
       ,xxcmn_vendors2_v             xvv                 -- 仕入先情報2V
@@ -496,6 +502,26 @@ AND    xvv.end_date_active    >= TRUNC(xvst.manufactured_date)
       SQLType="VARCHAR" >
    </ViewAttribute>
    <ViewAttribute
+      Name="CreateLotDiv"
+      IsPersistent="false"
+      Precision="240"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="CREATE_LOT_DIV"
+      Expression="CREATE_LOT_DIV"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
+      Name="QtInspectReqNo"
+      IsPersistent="false"
+      Precision="255"
+      Type="java.lang.String"
+      ColumnType="VARCHAR2"
+      AliasName="QT_INSPECT_REQ_NO"
+      Expression="QT_INSPECT_REQ_NO"
+      SQLType="VARCHAR" >
+   </ViewAttribute>
+   <ViewAttribute
       Name="StockQty"
       IsQueriable="false"
       IsPersistent="false"
@@ -643,15 +669,6 @@ AND    xvv.end_date_active    >= TRUNC(xvst.manufactured_date)
       ColumnType="VARCHAR2"
       AliasName="VIEW_ATTR"
       SQLType="VARCHAR" >
-   </ViewAttribute>
-   <ViewAttribute
-      Name="QtInspectReqNo"
-      IsQueriable="false"
-      IsPersistent="false"
-      Type="oracle.jbo.domain.Number"
-      ColumnType="Number"
-      AliasName="VIEW_ATTR"
-      SQLType="NUMERIC" >
    </ViewAttribute>
    <ViewAttribute
       Name="ShipToLocationId"
