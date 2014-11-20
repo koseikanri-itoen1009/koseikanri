@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅱ）
  * MD.050/070       : 月次〆切処理帳票Issue1.0(T_MD050_BPO_770)
  *                  : 月次〆切処理帳票Issue1.0(T_MD070_BPO_77C)
- * Version          : 1.15
+ * Version          : 1.16
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -51,6 +51,7 @@ AS
  *  2008/12/08    1.13  H.Marushita      本番数値検証受注ヘッダ最新フラグおよび標準原価計算修正
  *  2008/12/08    1.14  A.Shiina         本番#562対応
  *  2008/12/11    1.15  N.Yoshida        本番障害580対応
+ *  2008/12/12    1.16  N.Yoshida        本番障害669対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -992,7 +993,10 @@ AS
             ,iwm.whse_name              whse_name
 -- 2008/12/11 v1.15 UPDATE START
 --            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
-            ,NVL(itc.trans_qty,0)       trans_qty
+-- 2008/12/12 v1.16 UPDATE START
+--            ,NVL(itc.trans_qty,0)       trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)  trans_qty
+-- 2008/12/12 v1.16 UPDATE END
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
@@ -1729,7 +1733,10 @@ AS
             ,iwm.whse_name              h_whse_name
 -- 2008/12/11 v1.15 UPDATE START
 --            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
-            ,NVL(itc.trans_qty,0)       trans_qty
+-- 2008/12/12 v1.16 UPDATE START
+--            ,NVL(itc.trans_qty,0)       trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)  trans_qty
+-- 2008/12/12 v1.16 UPDATE END
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
@@ -2469,7 +2476,10 @@ AS
             ,iwm.whse_name              h_whse_name
 -- 2008/12/11 v1.15 UPDATE START
 --            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
-            ,NVL(itc.trans_qty,0)       trans_qty
+-- 2008/12/12 v1.16 UPDATE START
+--            ,NVL(itc.trans_qty,0)       trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)  trans_qty
+-- 2008/12/12 v1.16 UPDATE END
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
@@ -3215,7 +3225,10 @@ AS
             ,iwm.whse_name              h_whse_name
 -- 2008/12/11 v1.15 UPDATE START
 --            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
-            ,NVL(itc.trans_qty,0)       trans_qty
+-- 2008/12/12 v1.16 UPDATE START
+--            ,NVL(itc.trans_qty,0)       trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)  trans_qty
+-- 2008/12/12 v1.16 UPDATE END
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
@@ -3948,7 +3961,10 @@ AS
             ,NULL                       whse_name
 -- 2008/12/11 v1.15 UPDATE START
 --            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
-            ,NVL(itc.trans_qty,0)       trans_qty
+-- 2008/12/12 v1.16 UPDATE START
+--            ,NVL(itc.trans_qty,0)       trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)  trans_qty
+-- 2008/12/12 v1.16 UPDATE END
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START
@@ -4667,7 +4683,10 @@ AS
             ,NULL                       whse_name
 -- 2008/12/11 v1.15 UPDATE START
 --            ,ABS(itc.trans_qty) * TO_NUMBER(cv_min) trans_qty
-            ,NVL(itc.trans_qty,0)       trans_qty
+-- 2008/12/12 v1.16 UPDATE START
+--            ,NVL(itc.trans_qty,0)       trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div)  trans_qty
+-- 2008/12/12 v1.16 UPDATE END
             ,itc.trans_date             trans_date
             ,xrpm.dealings_div_name     div_name
 -- 2008/12/08 v1.14 UPDATE START

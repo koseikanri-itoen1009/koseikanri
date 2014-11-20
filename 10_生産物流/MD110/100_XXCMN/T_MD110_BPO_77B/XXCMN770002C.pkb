@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.25
+ * Version          : 1.27
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -60,6 +60,8 @@ AS
  *  2008/12/09    1.23  H.Marushita      本番障害565対応
  *  2008/12/10    1.24  A.Shiina         本番障害617,636対応
  *  2008/12/11    1.25  N.Yoshida        本番障害580対応
+ *  2008/12/12    1.26  N.Yoshida        本番障害669対応
+ *  2008/12/12    1.27  A.Shiina         本番障害685対応
  *
  *****************************************************************************************/
 --
@@ -1094,7 +1096,10 @@ AS
             ,itc.lot_id                       lot_id
 -- 2008/12/11 v1.25 N.Yoshida mod start
 --            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
-            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod start
+--            ,NVL(itc.trans_qty,0)             trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod end
 -- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
@@ -3481,7 +3486,10 @@ AS
             ,itc.lot_id                       lot_id
 -- 2008/12/11 v1.25 N.Yoshida mod start
 --            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
-            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod start
+--            ,NVL(itc.trans_qty,0)             trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod end
 -- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
@@ -5889,7 +5897,10 @@ AS
             ,itc.lot_id                       lot_id
 -- 2008/12/11 v1.25 N.Yoshida mod start
 --            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
-            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod start
+--            ,NVL(itc.trans_qty,0)             trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod end
 -- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
@@ -8302,7 +8313,10 @@ AS
             ,itc.lot_id                       lot_id
 -- 2008/12/11 v1.25 N.Yoshida mod start
 --            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
-            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod start
+--            ,NVL(itc.trans_qty,0)             trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod end
 -- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
@@ -10716,7 +10730,10 @@ AS
             ,itc.lot_id                       lot_id
 -- 2008/12/11 v1.25 N.Yoshida mod start
 --            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
-            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod start
+--            ,NVL(itc.trans_qty,0)             trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod end
 -- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
@@ -13054,7 +13071,10 @@ AS
             ,itc.lot_id                       lot_id
 -- 2008/12/11 v1.25 N.Yoshida mod start
 --            ,ABS(itc.trans_qty) * TO_NUMBER(gc_rcv_pay_div_adj) trans_qty
-            ,NVL(itc.trans_qty,0)             trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod start
+--            ,NVL(itc.trans_qty,0)             trans_qty
+            ,NVL(itc.trans_qty,0) * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- 2008/12/12 v1.26 N.Yoshida mod end
 -- 2008/12/11 v1.25 N.Yoshida mod end
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
@@ -17179,6 +17199,18 @@ AS
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+-- 2008/12/12 v1.27 ADD START
+          -- 変数の初期化
+          ln_first_inv_qty   := 0;
+          ln_first_inv_amt   := 0;
+          ln_end_inv_qty     := 0;
+          ln_end_inv_amt     := 0;
+          ln_first_cargo_qty := 0;
+          ln_first_cargo_amt := 0;
+          ln_end_cargo_qty   := 0;
+          ln_end_cargo_amt   := 0;
+--
+-- 2008/12/12 v1.27 ADD END
           ------------------------------
           -- 品目コードＧ終了タグ
           ------------------------------
@@ -17396,6 +17428,18 @@ AS
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+-- 2008/12/12 v1.27 ADD START
+          -- 変数の初期化
+          ln_first_inv_qty   := 0;
+          ln_first_inv_amt   := 0;
+          ln_end_inv_qty     := 0;
+          ln_end_inv_amt     := 0;
+          ln_first_cargo_qty := 0;
+          ln_first_cargo_amt := 0;
+          ln_end_cargo_qty   := 0;
+          ln_end_cargo_amt   := 0;
+--
+-- 2008/12/12 v1.27 ADD END
           ------------------------------
           -- 品目コードＧ終了タグ
           ------------------------------
@@ -17600,6 +17644,18 @@ AS
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+-- 2008/12/12 v1.27 ADD START
+          -- 変数の初期化
+          ln_first_inv_qty   := 0;
+          ln_first_inv_amt   := 0;
+          ln_end_inv_qty     := 0;
+          ln_end_inv_amt     := 0;
+          ln_first_cargo_qty := 0;
+          ln_first_cargo_amt := 0;
+          ln_end_cargo_qty   := 0;
+          ln_end_cargo_amt   := 0;
+--
+-- 2008/12/12 v1.27 ADD END
           ------------------------------
           -- 品目コードＧ終了タグ
           ------------------------------
@@ -17796,6 +17852,18 @@ AS
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+-- 2008/12/12 v1.27 ADD START
+          -- 変数の初期化
+          ln_first_inv_qty   := 0;
+          ln_first_inv_amt   := 0;
+          ln_end_inv_qty     := 0;
+          ln_end_inv_amt     := 0;
+          ln_first_cargo_qty := 0;
+          ln_first_cargo_amt := 0;
+          ln_end_cargo_qty   := 0;
+          ln_end_cargo_amt   := 0;
+--
+-- 2008/12/12 v1.27 ADD END
           ------------------------------
           -- 品目コードＧ終了タグ
           ------------------------------
@@ -17984,6 +18052,18 @@ AS
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+-- 2008/12/12 v1.27 ADD START
+          -- 変数の初期化
+          ln_first_inv_qty   := 0;
+          ln_first_inv_amt   := 0;
+          ln_end_inv_qty     := 0;
+          ln_end_inv_amt     := 0;
+          ln_first_cargo_qty := 0;
+          ln_first_cargo_amt := 0;
+          ln_end_cargo_qty   := 0;
+          ln_end_cargo_amt   := 0;
+--
+-- 2008/12/12 v1.27 ADD END
           ------------------------------
           -- 品目コードＧ終了タグ
           ------------------------------
@@ -18180,6 +18260,18 @@ AS
           END IF;
 --
 -- 2008/11/25 v1.18 ADD END
+-- 2008/12/12 v1.27 ADD START
+          -- 変数の初期化
+          ln_first_inv_qty   := 0;
+          ln_first_inv_amt   := 0;
+          ln_end_inv_qty     := 0;
+          ln_end_inv_amt     := 0;
+          ln_first_cargo_qty := 0;
+          ln_first_cargo_amt := 0;
+          ln_end_cargo_qty   := 0;
+          ln_end_cargo_amt   := 0;
+--
+-- 2008/12/12 v1.27 ADD END
           ------------------------------
           -- 品目コードＧ終了タグ
           ------------------------------
@@ -18223,9 +18315,15 @@ AS
 -- 2008/11/17 v1.16 DELETE START
 --        ln_first_inv_qty := ln_first_inv_qty + ln_inv_qty;
 -- 2008/11/17 v1.16 DELETE END
+-- 2008/12/12 v1.27 ADD START
+        ln_first_inv_qty := ln_first_inv_qty + ln_first_cargo_qty;
+-- 2008/12/12 v1.27 ADD END
 -- 2008/12/09 v1.23 UPDATE START
 --        prc_set_xml('Z', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty) );
-        prc_set_xml('Z', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty + ln_first_cargo_qty) );
+-- 2008/12/12 v1.27 UPDATE START
+--        prc_set_xml('Z', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty + ln_first_cargo_qty) );
+        prc_set_xml('Z', 'first_inv_qty' , TO_CHAR(ln_first_inv_qty));
+-- 2008/12/12 v1.27 UPDATE END
 -- 2008/12/09 v1.23 UPDATE END
         -- 金額
 -- 2008/12/10 v1.24 UPDATE START
@@ -18643,6 +18741,18 @@ AS
 --
 -- 2008/11/25 v1.18 ADD END
     END IF;
+-- 2008/12/12 v1.27 ADD START
+    -- 変数の初期化
+    ln_first_inv_qty   := 0;
+    ln_first_inv_amt   := 0;
+    ln_end_inv_qty     := 0;
+    ln_end_inv_amt     := 0;
+    ln_first_cargo_qty := 0;
+    ln_first_cargo_amt := 0;
+    ln_end_cargo_qty   := 0;
+    ln_end_cargo_amt   := 0;
+--
+-- 2008/12/12 v1.27 ADD END
     ------------------------------
     -- 品目コードＧ終了タグ
     ------------------------------
