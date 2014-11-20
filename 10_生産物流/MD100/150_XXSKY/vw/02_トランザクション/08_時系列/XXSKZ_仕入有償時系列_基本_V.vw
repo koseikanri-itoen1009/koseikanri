@@ -3,13 +3,15 @@
  * View  Name      : XXSKZ_仕入有償時系列_基本_V
  * Description     : XXSKZ_仕入有償時系列_基本_V
  * MD.070          : 
- * Version         : 1.0
+ * Version         : 1.2
  * 
  * Change Record
- * ------------- ----- ------------  -------------------------------------
- *  Date          Ver.  Editor       Description
- * ------------- ----- ------------  -------------------------------------
- *  2012/11/26    1.0   SCSK M.Nagai 初回作成
+ * ------------- ----- ---------------- -------------------------------------
+ *  Date          Ver.  Editor          Description
+ * ------------- ----- ---------------- -------------------------------------
+ *  2012/11/26    1.0   SCSK M.Nagai    初回作成
+ *  2013/06/18    1.1   SCSK D.Sugahara E_本稼働_10839消費税対応
+ *  2013/11/05    1.2   SCSK D.Sugahara E_本稼動_11245対応
  ************************************************************************/
 CREATE OR REPLACE VIEW APPS.XXSKZ_仕入有償時系列_基本_V
 (
@@ -398,10 +400,29 @@ SELECT  SMRP.year                         year                   --年度
                              ,0                                 inv_price       --有償在庫金額
                              ,0                                 pay_price       --有償金額
                              ,0                                 pay_cn_tax      --有償消費税
-                        FROM  xxcmn_ic_tran_cmp_arc             ITC             --OPM完了在庫トランザクション（標準）バックアップ
+-- 2013/11/05 v1.2 Mod Start 
+-- 仕入返品はバックアップされないため元テーブルを参照する
+--                        FROM  xxcmn_ic_tran_cmp_arc             ITC             --OPM完了在庫トランザクション（標準）バックアップ
+                        FROM  ic_tran_cmp                       ITC             --OPM完了在庫トランザクション（標準）
+-- 2013/11/05 v1.2 Mod End 
                              ,ic_adjs_jnl                       IAJ             --在庫調整ジャーナル
                              ,ic_jrnl_mst                       IJM             --ジャーナルマスタ
-                             ,xxpo_rcv_and_rtn_txns             XRRT            --受入返品実績
+-- 2013/06/18 D.Sugahara Mod Start E_本稼動_10839
+--  発注あり返品の場合は返品元発注の納入日を消費税率適用基準日とする。
+--                             ,xxpo_rcv_and_rtn_txns             XRRT            --受入返品実績
+                             ,(SELECT XRRT2.txns_id                    AS txns_id         --取引ID
+                                     ,XRRT2.department_code            AS department_code --部署コード
+                                     ,XRRT2.vendor_id                  AS vendor_id       --取引先ID
+                                     ,XRRT2.item_code                  AS item_code       --品目
+                                     ,XRRT2.unit_price                 AS unit_price      --単価
+                                     ,CASE WHEN XRRT2.txns_type = '3' THEN   TRUNC(XRRT2.txns_date) 
+                                           ELSE FND_DATE.STRING_TO_DATE(PHA2.attribute4, 'YYYY/MM/DD') 
+                                      END                             AS txns_date 
+                               FROM   xxpo_rcv_and_rtn_txns  XRRT2 
+                                     ,po_headers_all         PHA2 
+                               WHERE  XRRT2.source_document_number = PHA2.segment1(+) 
+                               )                       XRRT     -- 返品元発注データ情報
+-- 2013/06/18 D.Sugahara Mod End E_本稼動_10839
                              ,ic_lots_mst                       ILTM            --ロット情報取得用
                              ,fnd_lookup_values                 FLV01           --消費税率取得用
                        WHERE
@@ -424,8 +445,13 @@ SELECT  SMRP.year                         year                   --年度
                          --消費税率取得
                          AND  FLV01.language(+) = 'JA'
                          AND  FLV01.lookup_type(+) = 'XXCMN_CONSUMPTION_TAX_RATE'
-                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITC.trans_date
-                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITC.trans_date
+-- 2013/06/18 D.Sugahara Mod Start E_本稼動_10839
+--  発注あり返品の場合は返品元発注の納入日を消費税率適用基準日とする。
+--                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= ITC.trans_date
+--                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= ITC.trans_date
+                         AND  NVL( FLV01.start_date_active(+), TO_DATE( '19000101', 'YYYYMMDD' ) ) <= XRRT.txns_date
+                         AND  NVL( FLV01.end_date_active(+)  , TO_DATE( '99991231', 'YYYYMMDD' ) ) >= XRRT.txns_date
+-- 2013/06/18 D.Sugahara Mod End E_本稼動_10839
                       -- [ 発注無し返品データ END ] --
                     UNION ALL
                       ----------------------------------------------
