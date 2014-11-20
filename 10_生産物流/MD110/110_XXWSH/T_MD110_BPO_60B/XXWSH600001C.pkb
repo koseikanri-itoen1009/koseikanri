@@ -7,7 +7,7 @@ AS
  * Description      : 自動配車配送計画作成処理
  * MD.050           : 配車配送計画 T_MD050_BPO_600
  * MD.070           : 自動配車配送計画作成処理 T_MD070_BPO_60B
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ----------------------------- ---------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/03/11    1.0   Y.Kanami         新規作成
+ *  2008/06/26    1.1  Oracle D.Sugahara ST障害 #297対応 *
  *
  *****************************************************************************************/
 --
@@ -1465,7 +1466,7 @@ debug_log(FND_FILE.LOG,' パレット最大枚数:'|| ln_palette_max_qty_m);
                        ,gv_tkn_codekbn1                 -- トークン'CODEKBN1'
                        ,gv_cdkbn_storage                -- コード区分1
                        ,gv_tkn_codekbn2                 -- トークン'CODEKBN2'
-                       ,gv_cdkbn_ship_to                -- コード区分2
+                       ,gv_cdkbn_storage                -- コード区分2
                       ) ,1 ,5000);
 --
           RAISE global_api_expt;
@@ -7012,6 +7013,9 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
            ,  mixed.deliver_to_id               deliver_to_id         -- 配送先ID
 -- 20080603 K.Yamane 不具合No12<-
            ,  mixed.fixed_shipping_method_code  fix_ship_method_cls   -- 修正配送区分
+--2008.06.26 D.Sugahara ST#297対応->                               
+           ,  mixed.std_ship_method             std_ship_method       -- 通常配送区分           
+--2008.06.26 D.Sugahara ST#297対応<-                               
            ,  mixed.schedule_ship_date          ship_date             -- 出庫日
            ,  mixed.schedule_arrival_date       arrival_date          -- 着荷日
            ,  mixed.transaction_type_name       tran_type_name        -- 出庫形態
@@ -7036,6 +7040,9 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
                     , xcst.deliver_to_id              -- 配送先ID
 -- 20080603 K.Yamane 不具合No12<-
                     , xmct.fixed_shipping_method_code -- 修正配送区分
+--2008.06.26 D.Sugahara ST#297対応->                    
+                    ,nvl(xcmv.ship_method_code,xmct.fixed_shipping_method_code) std_ship_method
+--2008.06.26 D.Sugahara ST#297対応<-                    
                     , xict.schedule_ship_date         -- 出庫日
                     , xict.schedule_arrival_date      -- 着荷日
                     , xict.transaction_type_name      -- 出庫形態
@@ -7048,10 +7055,14 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
 --2008.05.26 D.Sugahara 不具合No9対応->
                   , xxwsh_mixed_carriers_tmp     xmct       -- 自動配車混載中間テーブル
                   , xxwsh_carriers_sort_tmp      xcst       -- 自動配車ソート用中間テーブル
+--2008.06.26 D.Sugahara ST#297対応->
+                  ,xxwsh_ship_method_v           xcmv       -- 配送区分ビュー（通常配送区分用）
+--2008.06.26 D.Sugahara ST#297対応<-
 --              WHERE xmct.default_line_number = xict.intensive_source_no   -- 基準明細
 --                AND xmct.intensive_no = xict.intensive_no   -- 集約No
               WHERE xmct.intensive_no = xict.intensive_no   -- 集約No 
                 AND xcst.request_no   = xmct.default_line_number --基準明細条件
+                AND xcmv.mixed_ship_method_code(+) = xmct.fixed_shipping_method_code 
 --2008.05.26 D.Sugahara 不具合No9対応<-
             ) mixed
          GROUP BY
@@ -7065,6 +7076,9 @@ debug_log(FND_FILE.LOG,'配送No設定(振り直し)');
             , mixed.deliver_to_id               -- 配送先ID
             , mixed.freight_carrier_code        -- 運送業者
             , mixed.fixed_shipping_method_code  -- 修正配送区分
+--2008.06.26 D.Sugahara ST#297対応->                                
+            , mixed.std_ship_method             -- 通常配送区分
+--2008.06.26 D.Sugahara ST#297対応<-            
             , mixed.schedule_ship_date          -- 出庫日
             , mixed.schedule_arrival_date       -- 着荷日
             , mixed.transaction_type_name       -- 出庫形態
@@ -7243,6 +7257,7 @@ debug_log(FND_FILE.LOG,'・コード区分２:'|| lv_cdkbn_2);
 debug_log(FND_FILE.LOG,'・入出庫場所コード２:'|| cur_rec.deliver_to);
 debug_log(FND_FILE.LOG,'・基準日:'||to_char(cur_rec.ship_date,'YYYY/MM/DD'));
 debug_log(FND_FILE.LOG,'・修正配送区分:'||cur_rec.fix_ship_method_cls);
+debug_log(FND_FILE.LOG,'・通常配送区分:'||cur_rec.std_ship_method);
 --
       -- 基本重量、基本容積を取得
       ln_retnum :=  xxwsh_common_pkg.get_max_pallet_qty(    -- 共通関数：最大パレット枚数算出関数
@@ -7257,7 +7272,10 @@ debug_log(FND_FILE.LOG,'・修正配送区分:'||cur_rec.fix_ship_method_cls);
                       , id_standard_date
                                 => cur_rec.ship_date            -- 基準日
                       , iv_ship_methods
-                                => cur_rec.fix_ship_method_cls  -- 修正配送区分
+--2008.06.26 D.Sugahara ST#297対応->                                          
+--                                => cur_rec.fix_ship_method_cls  -- 修正配送区分
+                                => cur_rec.std_ship_method      -- 通常配送区分                                
+--2008.06.26 D.Sugahara ST#297対応<-                                
                       , on_drink_deadweight
                                 => ln_drink_deadweight          -- ドリンク積載重量
                       , on_leaf_deadweight
@@ -7325,7 +7343,10 @@ debug_log(FND_FILE.LOG,'3-1-2混載合計重量設定');
           , iv_entering_despatching_code1  => cur_rec.deliver_from        --  4.入出庫場所コード１
           , iv_code_class2                 => lv_cdkbn_2                  --  5.コード区分２
           , iv_entering_despatching_code2  => cur_rec.deliver_to          --  6.入出庫場所コード２
-          , iv_ship_method                 => cur_rec.fix_ship_method_cls --  7.出荷方法
+--2008.06.26 D.Sugahara ST#297対応->                                          
+--          , iv_ship_method                 => cur_rec.fix_ship_method_cls --  7.出荷方法
+          , iv_ship_method                 => cur_rec.std_ship_method      -- 通常配送区分                                
+--2008.06.26 D.Sugahara ST#297対応<-                                
           , iv_prod_class                  => gv_prod_class               --  8.商品区分
           , iv_auto_process_type           => NULL                        --  9.自動配車対象区分
           , id_standard_date               => cur_rec.ship_date           -- 10.基準日(適用日基準日)
@@ -7411,7 +7432,10 @@ debug_log(FND_FILE.LOG,'3-2-2混載合計容積');
           , iv_entering_despatching_code1  => cur_rec.deliver_from        --  4.入出庫場所コード１
           , iv_code_class2                 => lv_cdkbn_2                  --  5.コード区分２
           , iv_entering_despatching_code2  => cur_rec.deliver_to          --  6.入出庫場所コード２
-          , iv_ship_method                 => cur_rec.fix_ship_method_cls --  7.出荷方法
+--2008.06.26 D.Sugahara ST#297対応->                                          
+--          , iv_ship_method                 => cur_rec.fix_ship_method_cls --  7.出荷方法
+          , iv_ship_method                 => cur_rec.std_ship_method      -- 通常配送区分                                
+--2008.06.26 D.Sugahara ST#297対応<-                                
           , iv_prod_class                  => gv_prod_class               --  8.商品区分
           , iv_auto_process_type           => NULL                        --  9.自動配車対象区分
           , id_standard_date               => cur_rec.ship_date           -- 10.基準日(適用日基準日)
