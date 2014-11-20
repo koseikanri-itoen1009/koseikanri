@@ -7,7 +7,7 @@ AS
  * Description      : 販売実績ヘッダデータ、販売実績明細データを取得して、販売実績データファイルを
  *                    作成する。
  * MD.050           : 販売実績データ作成（MD050_COS_011_A06）
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,7 @@ AS
  *  2009/01/09    1.0   K.Watanabe      新規作成
  *  2009/03/10    1.1   K.Kiriu         [COS_157]請求開始日NULL考慮の修正、届け先住所不正修正
  *  2009/04/15    1.2   K.Kiriu         [T1_0495]JP1起動の為パラメータの追加
+ *  2009/04/28    1.3   K.Kiriu         [T1_0756]レコード長変更対応
  *
  *****************************************************************************************/
 --
@@ -563,6 +564,9 @@ AS
   cv_t_line_qty               CONSTANT VARCHAR2(50)  := 'TOTAL_LINE_QTY';                --トータル行数
   cv_t_invc_qty               CONSTANT VARCHAR2(50)  := 'TOTAL_INVOICE_QTY';             --トータル伝票枚数
   cv_chain_pec_area_footer    CONSTANT VARCHAR2(50)  := 'CHAIN_PECULIAR_AREA_FOOTER';    --チェーン店固有エリア(フッタ)
+/* 2009/04/28 Ver1.3 Add Start */
+  cv_attribute                CONSTANT VARCHAR2(50)  := 'ATTRIBUTE';                     -- 予備エリア
+/* 2009/04/28 Ver1.3 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1664,7 +1668,10 @@ AS
     lv_file_name      fnd_lookup_values.meaning%TYPE;     --ファイル名
     lv_parallel_num   fnd_lookup_values.attribute1%TYPE;  --並列処理番号
     lv_message        VARCHAR2(5000);                     --ファイル名メッセージ用
-    lv_header_output  VARCHAR2(1000) DEFAULT NULL;        --IFヘッダー出力用
+/* 2009/04/28 Ver1.3 Mod Start */
+--    lv_header_output  VARCHAR2(1000) DEFAULT NULL;        --IFヘッダー出力用
+    lv_header_output  VARCHAR2(5000) DEFAULT NULL;        --IFヘッダー出力用
+/* 2009/04/28 Ver1.3 Mod End   */
     lv_tkn_name1      VARCHAR2(50);                       --トークン取得用１
     lv_tkn_name2      VARCHAR2(50);                       --トークン取得用２
 --
@@ -2737,6 +2744,9 @@ AS
       l_data_tab(cv_t_line_qty)               := TO_CHAR(NULL);
       l_data_tab(cv_t_invc_qty)               := TO_CHAR(NULL);
       l_data_tab(cv_chain_pec_area_footer)    := TO_CHAR(NULL);
+/* 2009/04/28 Ver1.3 Add Start */
+      l_data_tab(cv_attribute)                := TO_CHAR(NULL);
+/* 2009/04/28 Ver1.3 Add End   */
       --==============================================================
       --データ成型(A-6)
       --==============================================================
@@ -2821,7 +2831,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_footer_output  VARCHAR2(1000);  --フッタ出力用
+/* 2009/04/28 Ver1.3 Mod Start */
+--    lv_footer_output  VARCHAR2(1000);  --フッタ出力用
+    lv_footer_output  VARCHAR2(5000);  --フッタ出力用
+/* 2009/04/28 Ver1.3 Mod End   */
     lv_dummy1         VARCHAR2(1);     --IF元業務系列コード(フッタでは使用しない)
     lv_dummy2         VARCHAR2(1);     --拠点コード(フッタでは使用しない)
     lv_dummy3         VARCHAR2(1);     --拠点名称(フッタでは使用しない)

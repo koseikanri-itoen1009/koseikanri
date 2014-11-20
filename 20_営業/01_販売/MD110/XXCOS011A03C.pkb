@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A03C (body)
  * Description      : 納品予定データの作成を行う
  * MD.050           : 納品予定データ作成 (MD050_COS_011_A03)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -38,6 +38,7 @@ AS
  *  2009/02/25    1.4   H.Fujimoto       結合不具合No.141
  *  2009/02/27    1.5   H.Fujimoto       結合不具合No.146,149
  *  2009/03/04    1.6   H.Fujimoto       結合不具合No.154
+ *  2009/04/28    1.7   K.Kiriu          [T1_0756]レコード長変更対応
  *
  *****************************************************************************************/
 --
@@ -597,6 +598,9 @@ AS
   cv_t_line_qty               CONSTANT VARCHAR2(50)  := 'TOTAL_LINE_QTY';                -- トータル行数
   cv_t_invc_qty               CONSTANT VARCHAR2(50)  := 'TOTAL_INVOICE_QTY';             -- トータル伝票枚数
   cv_chain_pec_area_footer    CONSTANT VARCHAR2(50)  := 'CHAIN_PECULIAR_AREA_FOOTER';    -- チェーン店固有エリア(フッタ)
+/* 2009/04/28 Ver1.7 Add Start */
+  cv_attribute                CONSTANT VARCHAR2(50)  := 'ATTRIBUTE';                     -- 予備エリア
+/* 2009/04/28 Ver1.7 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -2455,7 +2459,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_header_output  VARCHAR2(1000);  -- ヘッダー出力用
+/* 2009/04/28 Ver1.7 Mod Start */
+--    lv_header_output  VARCHAR2(1000);  -- ヘッダー出力用
+    lv_header_output  VARCHAR2(5000);  -- ヘッダー出力用
+/* 2009/04/28 Ver1.7 Mod End   */
     ln_dummy          NUMBER;          -- ヘッダ出力のレコード件数用(使用されない)
 --
     -- *** ローカル・カーソル ***
@@ -3723,6 +3730,9 @@ AS
       gt_data_tab(ln_data_cnt)(cv_t_line_qty)                 := gt_edi_order_tab(ln_loop_cnt).total_line_qty;              -- ﾄｰﾀﾙ行数
       gt_data_tab(ln_data_cnt)(cv_t_invc_qty)                 := gt_edi_order_tab(ln_loop_cnt).total_invoice_qty;           -- ﾄｰﾀﾙ伝票枚数
       gt_data_tab(ln_data_cnt)(cv_chain_pec_area_footer)      := gt_edi_order_tab(ln_loop_cnt).chain_peculiar_area_footer;  -- ﾁｪｰﾝ店固有ｴﾘｱ(ﾌｯﾀ)
+/* 2009/04/28 Ver1.7 Add Start */
+      gt_data_tab(ln_data_cnt)(cv_attribute)                  := NULL;  -- 予備エリア
+/* 2009/04/28 Ver1.7 Add End   */
 --
       --==============================================================
       -- 伝票別合計算出
@@ -4009,7 +4019,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_footer_output  VARCHAR2(1000);  -- フッタ出力用
+/* 2009/04/28 Ver1.7 Mod Start */
+--    lv_footer_output  VARCHAR2(1000);  -- フッタ出力用
+    lv_footer_output  VARCHAR2(5000);  -- フッタ出力用
+/* 2009/04/28 Ver1.7 Mod End   */
     lv_dummy1         VARCHAR2(1);     -- IF元業務系列コード(フッタでは使用しない)
     lv_dummy2         VARCHAR2(1);     -- 拠点コード(フッタでは使用しない)
     lv_dummy3         VARCHAR2(1);     -- 拠点名称(フッタでは使用しない)

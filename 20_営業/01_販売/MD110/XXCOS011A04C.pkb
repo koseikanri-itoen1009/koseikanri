@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS011A04C (body)
  * Description      : 入庫予定データの作成を行う
  * MD.050           : 入庫予定データ作成 (MD050_COS_011_A04)
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2008/02/27    1.1  K.Kiriu          [COS_147]税率の取得条件追加
  *  2009/03/10    1.2  T.Kitajima       [T1_0030]顧客品目の無効エラー対応
  *  2009/04/06    1.3  T.Kitajima       [T1_0043]顧客品目の絞り込み条件に単位を追加
+ *  2009/04/28    1.4  K.Kiriu          [T1_0756]レコード長変更対応
  *
  *****************************************************************************************/
 --
@@ -534,6 +535,9 @@ AS
   cv_t_line_qty               CONSTANT VARCHAR2(50)  := 'TOTAL_LINE_QTY';                --トータル行数
   cv_t_invc_qty               CONSTANT VARCHAR2(50)  := 'TOTAL_INVOICE_QTY';             --トータル伝票枚数
   cv_chain_pec_area_footer    CONSTANT VARCHAR2(50)  := 'CHAIN_PECULIAR_AREA_FOOTER';    --チェーン店固有エリア(フッタ)
+/* 2009/04/28 Ver1.4 Add Start */
+  cv_attribute                CONSTANT VARCHAR2(50)  := 'ATTRIBUTE';                     --予備エリア
+/* 2009/04/28 Ver1.4 Add End   */
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -1221,7 +1225,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_header_output  VARCHAR2(1000);  --ヘッダー出力用
+/* 2009/04/28 Ver1.4 Mod Start */
+--    lv_header_output  VARCHAR2(1000);  --ヘッダー出力用
+    lv_header_output  VARCHAR2(5000);  --ヘッダー出力用
+/* 2009/04/28 Ver1.4 Mod End   */
     ln_dummy          NUMBER;          --ヘッダ出力のレコード件数用(使用されない)
 --
     -- *** ローカル・カーソル ***
@@ -2396,6 +2403,9 @@ AS
       l_data_tab(cv_t_line_qty)               := TO_CHAR(NULL);
       l_data_tab(cv_t_invc_qty)               := TO_CHAR(NULL);
       l_data_tab(cv_chain_pec_area_footer)    := TO_CHAR(NULL);
+/* 2009/04/28 Ver1.4 Add Start */
+      l_data_tab(cv_attribute)                := TO_CHAR(NULL);
+/* 2009/04/28 Ver1.4 Add End   */
       --==============================================================
       --データ成型(A-5)
       --==============================================================
@@ -2483,7 +2493,10 @@ AS
     -- *** ローカル定数 ***
 --
     -- *** ローカル変数 ***
-    lv_footer_output  VARCHAR2(1000);  --フッタ出力用
+/* 2009/04/28 Ver1.4 Start */
+--    lv_footer_output  VARCHAR2(1000);  --フッタ出力用
+    lv_footer_output  VARCHAR2(5000);  --フッタ出力用
+/* 2009/04/28 Ver1.4 End   */
     lv_dummy1         VARCHAR2(1);     --IF元業務系列コード(フッタでは使用しない)
     lv_dummy2         VARCHAR2(1);     --拠点コード(フッタでは使用しない)
     lv_dummy3         VARCHAR2(1);     --拠点名称(フッタでは使用しない)
