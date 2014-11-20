@@ -7,7 +7,7 @@ AS
  * Description      : 確定ブロック処理
  * MD.050           : 出荷依頼 T_MD050_BPO_601
  * MD.070           : 確定ブロック処理  T_MD070_BPO_60D
- * Version          : 1.0
+ * Version          : 1.2
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/04/18    1.0  Oracle 上原正好   初回作成
  *  2008/06/16    1.1  Oracle 野村正幸   結合障害 #9対応
+ *  2008/06/19    1.2  Oracle 上原正好   ST障害 #178対応
  *
  *****************************************************************************************/
 --
@@ -120,7 +121,8 @@ AS
   gc_mov_type_y               CONSTANT VARCHAR2(1)  := '1' ;    -- 積送あり
   gc_mov_type_n               CONSTANT VARCHAR2(1)  := '2' ;    -- 積送なし
   -- 出庫形態
-  gv_transaction_type_id_ship CONSTANT VARCHAR2(100)  := '1033' ;    -- 出荷依頼
+--  gv_transaction_type_id_ship CONSTANT VARCHAR2(100)  := '1033' ;    -- 出荷依頼
+  gv_transaction_type_name_ship CONSTANT VARCHAR2(100)  := '出荷依頼' ;    -- 出荷依頼
   -- 処理種別（確定ブロック）
   gv_proc_fix_block_ship      CONSTANT VARCHAR2(1) := '1';    -- 出荷依頼
   gv_proc_fix_block_prov      CONSTANT VARCHAR2(1) := '2';    -- 支給指示
@@ -322,6 +324,7 @@ AS
   gt_prog_appl_id     xxcmn_txn_lot_cost.program_application_id%TYPE; -- アプリケーションID
   gt_conc_program_id  xxcmn_txn_lot_cost.program_id%TYPE;             -- プログラムID
 --
+  gv_transaction_type_id_ship VARCHAR2(4) ;   -- 出庫形態
   gv_item_div_security       VARCHAR2(100);
   -- 出荷依頼締め管理情報抽出用
   gt_order_type_id           XXWSH_TIGHTENING_CONTROL.ORDER_TYPE_ID%TYPE;
@@ -388,6 +391,24 @@ AS
     -- ***        実処理の記述             ***
     -- ***       共通関数の呼び出し        ***
     -- ***************************************
+--
+    -- ************************************
+    -- ***  出庫形態(出荷依頼)取得      ***
+    -- ************************************
+    SELECT transaction_type_id 
+      INTO gv_transaction_type_id_ship 
+      FROM XXWSH_OE_TRANSACTION_TYPES2_V
+      WHERE transaction_type_name = gv_transaction_type_name_ship;
+    IF gv_transaction_type_id_ship IS NULL THEN
+          lv_errmsg := SUBSTRB( xxcmn_common_pkg.get_msg(gv_cons_msg_kbn_wsh -- 'XXWSH'
+                                                ,gv_profile_err   -- プロファイル取得エラー
+                                                ,gv_cnst_tkn_prof    -- トークン'PROF_NAME'
+                                                ,gv_tkn_transaction_type_id)   -- '出庫形態'
+                                                ,1
+                                                ,5000);
+          -- エラーリターン＆処理中止
+          RAISE global_api_expt;
+        END IF;
 --
     -- ************************************
     -- ***  入力パラメータ必須チェック  ***
@@ -1778,8 +1799,10 @@ AS
       SELECT
              xola.order_header_id       AS order_header_id      -- 受注ヘッダID
            , xola.order_line_id         AS order_line_id        -- 受注明細ID
-           , xola.quantity              AS quantity             -- 数量
-           , xola.reserved_quantity     AS reserved_quantity    -- 引当数
+--           , xola.quantity              AS quantity             -- 数量
+--           , xola.reserved_quantity     AS reserved_quantity    -- 引当数
+           , NVL(xola.quantity,0)       AS quantity             -- 数量
+           , NVL(xola.reserved_quantity,0) AS reserved_quantity    -- 引当数
            , ximv.lot_ctl               AS lot_ctl    -- ロット管理区分
            , xicv.item_class_code       AS item_class_code      -- 品目区分
       FROM xxwsh_order_lines_all      xola      -- 受注明細アドオン
@@ -1809,8 +1832,10 @@ AS
       SELECT
              xmril.mov_hdr_id                          AS order_header_id      -- 移動ヘッダID
            , xmril.mov_line_id                         AS order_line_id        -- 移動明細ID
-           , xmril.instruct_qty                        AS quantity             -- 指示数量
-           , xmril.reserved_quantity                   AS reserved_quantity    -- 引当数
+--           , xmril.instruct_qty                        AS quantity             -- 指示数量
+--           , xmril.reserved_quantity                   AS reserved_quantity    -- 引当数
+           , NVL(xmril.instruct_qty,0)                 AS quantity             -- 指示数量
+           , NVL(xmril.reserved_quantity,0)            AS reserved_quantity    -- 引当数
            , ximv.lot_ctl                              AS lot_ctl              -- ロット管理区分
            , gr_chk_header_data_tab(ln_cnt).item_class AS item_class_code      -- 品目区分
       FROM xxinv_mov_req_instr_lines    xmril     -- 移動依頼/指示明細アドオン

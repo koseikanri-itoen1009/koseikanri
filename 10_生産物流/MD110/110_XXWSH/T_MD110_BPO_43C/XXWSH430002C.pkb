@@ -7,7 +7,7 @@ AS
  * Description      : 倉替返品確定情報インタフェース
  * MD.050           : 倉替返品 T_MD050_BPO_430
  * MD.070           : 倉替返品確定情報インタフェース  T_MD070_BPO_43C
- * Version          : 1.1
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -27,6 +27,7 @@ AS
  *  2008/02/07    1.0  Oracle 井澤直也   初回作成
  *  2008/03/14    1.1  Oracle 井澤直也   内部変更要求#16対応
  *  2008/05/23    1.2  Oracle 石渡賢和   抽出条件に計上済み区分を追加
+ *  2008/06/20    1.3  Oracle 石渡賢和   ST不具合修正
  *
  *****************************************************************************************/
 --
@@ -299,7 +300,7 @@ AS
       AND ximv1.parent_item_id       = ximv2.item_id                    -- 品目コード(親子)
       AND ximv2.start_date_active   <= xoha.arrival_date                -- 適用開始日(親)
       AND ximv2.end_date_active     >= xoha.arrival_date                -- 適用終了日(親)
-      AND xola.rm_if_flg           IS NULL                              -- 倉替返品インタフェース済フラグ
+      AND NVL(xola.rm_if_flg,'N' )   = 'N'                              -- 倉替返品インタフェース済フラグ
     ORDER BY
        xoha.ordered_date          -- 受注日
       ,xoha.deliver_from          -- 出荷元保管場所
@@ -336,8 +337,8 @@ AS
       gt_arrival_date_tbl(i)         := lr_rm_if_rec.arrival_date;         -- 着荷日
       gt_deliver_from_tbl(i)         := lr_rm_if_rec.deliver_from;         -- 出荷元保管場所
       gt_head_sales_branch_tbl(i)    := lr_rm_if_rec.head_sales_branch;    -- 管轄拠点
-      gt_deliver_to_tbl(i)           := NULL;                              -- 配送先
-      gt_customer_code_tbl(i)        := NULL;                              -- 顧客
+      gt_deliver_to_tbl(i)           := '0';                               -- 配送先
+      gt_customer_code_tbl(i)        := '0';                               -- 顧客
       gt_shipping_item_code_tbl(i)   := lr_rm_if_rec.shipping_item_code;   -- 出荷品目
       gt_item_no_tbl(i)              := lr_rm_if_rec.item_no;              -- 親品目コード
       gt_crowd_code_tbl(i)           := lr_rm_if_rec.crowd_code;           -- 群コード
@@ -455,7 +456,7 @@ AS
     ln_number             NUMBER;           -- 本数
     ln_retcode            NUMBER;           -- 返り値
     lf_file_hand    UTL_FILE.FILE_TYPE;     -- ファイル・ハンドルの宣言
-    lv_fmat               VARCHAR2(15);     -- 書式用
+    lv_fmat               VARCHAR2(50);     -- 書式用
     lv_clm_name           VARCHAR2(8);      -- 項目格納用
 --
     -- *** ローカル・カーソル ***
@@ -497,7 +498,7 @@ AS
       END IF;
 --
 --
-      lv_fmat    := '999999999D99'; --正数用書式
+      lv_fmat    := 'FM999999990D00'; --正数用書式
       -- 出荷実績数量が0の場合
       IF(gt_shipped_quantity_tbl(i) = 0) THEN
         ln_cases  := 0;  -- ケース数
@@ -519,7 +520,7 @@ AS
         END IF;
         ln_cases  := ln_cases * -1;
         ln_number := ln_number * -1;
-        lv_fmat   := '99999990D99'; --負数用書式
+        lv_fmat   := 'FM99999990D00'; --負数用書式
       END IF;
 --
       -- 桁数チェック
@@ -550,16 +551,16 @@ AS
                                           || gt_head_sales_branch_tbl(i)                ||cv_comma
                                           || gt_attribute1_tbl(i)                       ||cv_comma
                                           || cv_voucher2                                ||cv_comma
+                                          || TO_CHAR(gt_arrival_date_tbl(i),'YYYYMMDD') ||cv_comma
                                           || gt_deliver_to_tbl(i)                       ||cv_comma
                                           || gt_customer_code_tbl(i)                    ||cv_comma
-                                          || TO_CHAR(gt_arrival_date_tbl(i),'YYYYMMDD') ||cv_comma
                                           || lv_after_request_no                        ||cv_comma
                                           || gt_shipping_item_code_tbl(i)               ||cv_comma
                                           || gt_item_no_tbl(i)                          ||cv_comma
                                           || gt_crowd_code_tbl(i)                       ||cv_comma
-                                          || TO_CHAR(ln_cases,'999999')                 ||cv_comma
-                                          || TO_CHAR(gt_num_of_cases_tbl(i) ,'9999')    ||cv_comma
-                                          || TO_CHAR(ln_number,lv_fmat);
+                                          || TO_CHAR(ln_cases,'FM999999')               ||cv_comma
+                                          || TO_CHAR(gt_num_of_cases_tbl(i) ,'FM9999')  ||cv_comma
+                                          || TO_CHAR(ln_number,lv_fmat)                 ||cv_comma;
 --
       -- CSVファイルへ出力する場合
       UTL_FILE.PUT_LINE(lf_file_hand,lv_csv_file);

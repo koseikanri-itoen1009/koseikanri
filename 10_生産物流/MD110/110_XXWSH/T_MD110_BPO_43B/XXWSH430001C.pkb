@@ -42,6 +42,7 @@ AS
  *                                       受注明細アドオンの出荷品目ID／依頼品目IDに
  *                                       inventory_item_idをセットするよう変更
  *  2008/05/20    1.2   ORACLE椎名昭圭   内部変更要求#106対応
+ *  2008/06/19    1.3   ORACLE石渡賢和   フラグのデフォルト値をセット
  *
  *****************************************************************************************/
 --
@@ -185,85 +186,85 @@ AS
 --
   -- 受注ヘッダアドオン・受注明細アドオン格納用(A-6)
   TYPE order_all_rec IS RECORD(
-     hd_order_header_id       xxwsh_order_headers_all.order_header_id%TYPE, -- 受注ヘッダアドオンID
-     hd_order_type_id         xxwsh_order_headers_all.order_type_id%TYPE, -- 受注タイプID
-     hd_organization_id       xxwsh_order_headers_all.organization_id%TYPE, -- 組織ID
-     hd_latest_external_flag  xxwsh_order_headers_all.latest_external_flag%TYPE, -- 最新フラグ
-     hd_ordered_date          xxwsh_order_headers_all.ordered_date%TYPE, -- 受注日
-     hd_customer_id           xxwsh_order_headers_all.customer_id%TYPE, -- 顧客ID
-     hd_customer_code         xxwsh_order_headers_all.customer_code%TYPE, -- 顧客
-     hd_deliver_to_id         xxwsh_order_headers_all.deliver_to_id%TYPE, -- 出荷先ID
-     hd_deliver_to            xxwsh_order_headers_all.deliver_to%TYPE, -- 出荷先
+     hd_order_header_id       xxwsh_order_headers_all.order_header_id%TYPE,       -- 受注ヘッダアドオンID
+     hd_order_type_id         xxwsh_order_headers_all.order_type_id%TYPE,         -- 受注タイプID
+     hd_organization_id       xxwsh_order_headers_all.organization_id%TYPE,       -- 組織ID
+     hd_latest_external_flag  xxwsh_order_headers_all.latest_external_flag%TYPE,  -- 最新フラグ
+     hd_ordered_date          xxwsh_order_headers_all.ordered_date%TYPE,          -- 受注日
+     hd_customer_id           xxwsh_order_headers_all.customer_id%TYPE,           -- 顧客ID
+     hd_customer_code         xxwsh_order_headers_all.customer_code%TYPE,         -- 顧客
+     hd_deliver_to_id         xxwsh_order_headers_all.deliver_to_id%TYPE,         -- 出荷先ID
+     hd_deliver_to            xxwsh_order_headers_all.deliver_to%TYPE,            -- 出荷先
      hd_shipping_instructions xxwsh_order_headers_all.shipping_instructions%TYPE, -- 出荷指示
-     hd_request_no            xxwsh_order_headers_all.request_no%TYPE, -- 依頼No
-     hd_req_status            xxwsh_order_headers_all.req_status%TYPE, -- ステータス
-     hd_schedule_ship_date    xxwsh_order_headers_all.schedule_ship_date%TYPE, -- 出荷予定日
-     hd_schedule_arrival_date xxwsh_order_headers_all.schedule_arrival_date%TYPE,-- 着荷予定日
-     hd_deliver_from_id       xxwsh_order_headers_all.deliver_from_id%TYPE,-- 出荷元ID
-     hd_deliver_from          xxwsh_order_headers_all.deliver_from%TYPE, -- 出荷元保管場所
-     hd_head_sales_branch     xxwsh_order_headers_all.head_sales_branch%TYPE, -- 管轄拠点
-     hd_prod_class            xxwsh_order_headers_all.prod_class%TYPE, -- 商品区分
-     hd_sum_quantity          xxwsh_order_headers_all.sum_quantity%TYPE, -- 合計数量
-     hd_result_deliver_to_id  xxwsh_order_headers_all.result_deliver_to_id%TYPE, -- 出荷先_実績ID
-     hd_result_deliver_to     xxwsh_order_headers_all.result_deliver_to%TYPE, -- 出荷先_実績
-     hd_shipped_date          xxwsh_order_headers_all.shipped_date%TYPE, -- 出荷日
-     hd_arrival_date          xxwsh_order_headers_all.arrival_date%TYPE, -- 着荷日
+     hd_request_no            xxwsh_order_headers_all.request_no%TYPE,            -- 依頼No
+     hd_req_status            xxwsh_order_headers_all.req_status%TYPE,            -- ステータス
+     hd_schedule_ship_date    xxwsh_order_headers_all.schedule_ship_date%TYPE,    -- 出荷予定日
+     hd_schedule_arrival_date xxwsh_order_headers_all.schedule_arrival_date%TYPE, -- 着荷予定日
+     hd_deliver_from_id       xxwsh_order_headers_all.deliver_from_id%TYPE,       -- 出荷元ID
+     hd_deliver_from          xxwsh_order_headers_all.deliver_from%TYPE,          -- 出荷元保管場所
+     hd_head_sales_branch     xxwsh_order_headers_all.head_sales_branch%TYPE,     -- 管轄拠点
+     hd_prod_class            xxwsh_order_headers_all.prod_class%TYPE,            -- 商品区分
+     hd_sum_quantity          xxwsh_order_headers_all.sum_quantity%TYPE,          -- 合計数量
+     hd_result_deliver_to_id  xxwsh_order_headers_all.result_deliver_to_id%TYPE,  -- 出荷先_実績ID
+     hd_result_deliver_to     xxwsh_order_headers_all.result_deliver_to%TYPE,     -- 出荷先_実績
+     hd_shipped_date          xxwsh_order_headers_all.shipped_date%TYPE,          -- 出荷日
+     hd_arrival_date          xxwsh_order_headers_all.arrival_date%TYPE,          -- 着荷日
      hd_perform_management_dept xxwsh_order_headers_all.performance_management_dept%TYPE, -- 成績管理部署
-     hd_registered_sequence    xxwsh_order_headers_all.registered_sequence%TYPE, -- 登録順序
-     hd_created_by             xxwsh_order_headers_all.created_by%TYPE, -- 作成者
-     hd_creation_date          xxwsh_order_headers_all.creation_date%TYPE, -- 作成日
-     hd_last_updated_by        xxwsh_order_headers_all.last_updated_by%TYPE, -- 最終更新者
-     hd_last_update_date       xxwsh_order_headers_all.last_update_date%TYPE, -- 最終更新日
-     hd_last_update_login      xxwsh_order_headers_all.last_update_login%TYPE, -- 最終更新ログイン
-     hd_request_id             xxwsh_order_headers_all.request_id%TYPE, -- 要求ID
+     hd_registered_sequence    xxwsh_order_headers_all.registered_sequence%TYPE,  -- 登録順序
+     hd_created_by             xxwsh_order_headers_all.created_by%TYPE,           -- 作成者
+     hd_creation_date          xxwsh_order_headers_all.creation_date%TYPE,        -- 作成日
+     hd_last_updated_by        xxwsh_order_headers_all.last_updated_by%TYPE,      -- 最終更新者
+     hd_last_update_date       xxwsh_order_headers_all.last_update_date%TYPE,     -- 最終更新日
+     hd_last_update_login      xxwsh_order_headers_all.last_update_login%TYPE,    -- 最終更新ログイン
+     hd_request_id             xxwsh_order_headers_all.request_id%TYPE,           -- 要求ID
      hd_program_application_id xxwsh_order_headers_all.program_application_id%TYPE,-- アプリケーションID
-     hd_program_id             xxwsh_order_headers_all.program_id%TYPE, -- コンカレント・プログラムID
-     hd_program_update_date    xxwsh_order_headers_all.program_update_date%TYPE, -- プログラム更新日
+     hd_program_id             xxwsh_order_headers_all.program_id%TYPE,           -- コンカレント・プログラムID
+     hd_program_update_date    xxwsh_order_headers_all.program_update_date%TYPE,  -- プログラム更新日
 --
-     ln_order_line_id          xxwsh_order_lines_all.order_line_id%TYPE, -- 受注明細アドオンID
-     ln_order_header_id        xxwsh_order_lines_all.order_header_id%TYPE, -- 受注ヘッダアドオンID
-     ln_order_line_number      xxwsh_order_lines_all.order_line_number%TYPE, -- 明細番号
-     ln_request_no             xxwsh_order_lines_all.request_no%TYPE, -- 依頼No
+     ln_order_line_id          xxwsh_order_lines_all.order_line_id%TYPE,          -- 受注明細アドオンID
+     ln_order_header_id        xxwsh_order_lines_all.order_header_id%TYPE,        -- 受注ヘッダアドオンID
+     ln_order_line_number      xxwsh_order_lines_all.order_line_number%TYPE,      -- 明細番号
+     ln_request_no             xxwsh_order_lines_all.request_no%TYPE,             -- 依頼No
      ln_shipping_inventory_item_id xxwsh_order_lines_all.shipping_inventory_item_id%TYPE, -- 出荷品目ID
-     ln_shipping_item_code     xxwsh_order_lines_all.shipping_item_code%TYPE, -- 出荷品目
-     ln_quantity               xxwsh_order_lines_all.quantity%TYPE, -- 数量
-     ln_add_quantity           xxwsh_order_lines_all.quantity%TYPE, -- 加算用数量
-     ln_uom_code               xxwsh_order_lines_all.uom_code%TYPE, -- 単位
-     ln_shipped_quantity       xxwsh_order_lines_all.shipped_quantity%TYPE, -- 出荷実績数量
+     ln_shipping_item_code     xxwsh_order_lines_all.shipping_item_code%TYPE,     -- 出荷品目
+     ln_quantity               xxwsh_order_lines_all.quantity%TYPE,               -- 数量
+     ln_add_quantity           xxwsh_order_lines_all.quantity%TYPE,               -- 加算用数量
+     ln_uom_code               xxwsh_order_lines_all.uom_code%TYPE,               -- 単位
+     ln_shipped_quantity       xxwsh_order_lines_all.shipped_quantity%TYPE,       -- 出荷実績数量
      ln_based_request_quantity xxwsh_order_lines_all.based_request_quantity%TYPE, -- 拠点依頼数量
-     ln_request_item_id        xxwsh_order_lines_all.request_item_id%TYPE, -- 依頼品目ID
-     ln_request_item_code      xxwsh_order_lines_all.request_item_code%TYPE, -- 依頼品目
-     ln_rm_if_flg              xxwsh_order_lines_all.rm_if_flg%TYPE, -- 倉替返品インタフェース済フラグ
-     ln_created_by             xxwsh_order_lines_all.created_by%TYPE, -- 作成者
-     ln_creation_date          xxwsh_order_lines_all.creation_date%TYPE, -- 作成日
-     ln_last_updated_by        xxwsh_order_lines_all.last_updated_by%TYPE, -- 最終更新者
-     ln_last_update_date       xxwsh_order_lines_all.last_update_date%TYPE, -- 最終更新日
-     ln_last_update_login      xxwsh_order_lines_all.last_update_login%TYPE, -- 最終更新ログイン
-     ln_request_id             xxwsh_order_lines_all.request_id%TYPE, -- 要求ID
+     ln_request_item_id        xxwsh_order_lines_all.request_item_id%TYPE,        -- 依頼品目ID
+     ln_request_item_code      xxwsh_order_lines_all.request_item_code%TYPE,      -- 依頼品目
+     ln_rm_if_flg              xxwsh_order_lines_all.rm_if_flg%TYPE,              -- 倉替返品インタフェース済フラグ
+     ln_created_by             xxwsh_order_lines_all.created_by%TYPE,             -- 作成者
+     ln_creation_date          xxwsh_order_lines_all.creation_date%TYPE,          -- 作成日
+     ln_last_updated_by        xxwsh_order_lines_all.last_updated_by%TYPE,        -- 最終更新者
+     ln_last_update_date       xxwsh_order_lines_all.last_update_date%TYPE,       -- 最終更新日
+     ln_last_update_login      xxwsh_order_lines_all.last_update_login%TYPE,      -- 最終更新ログイン
+     ln_request_id             xxwsh_order_lines_all.request_id%TYPE,             -- 要求ID
      ln_program_application_id xxwsh_order_lines_all.program_application_id%TYPE, -- アプリケーションID
-     ln_program_id             xxwsh_order_lines_all.program_id%TYPE, -- コンカレント・プログラムID
-     ln_program_update_date    xxwsh_order_lines_all.program_update_date%TYPE, -- プログラム更新日
+     ln_program_id             xxwsh_order_lines_all.program_id%TYPE,             -- コンカレント・プログラムID
+     ln_program_update_date    xxwsh_order_lines_all.program_update_date%TYPE,    -- プログラム更新日
 --
-     lo_mov_lot_dtl_id           xxinv_mov_lot_details.mov_lot_dtl_id%TYPE, -- ロット詳細ID
-     lo_mov_line_id              xxinv_mov_lot_details.mov_line_id%TYPE, -- 明細ID
-     lo_document_type_code       xxinv_mov_lot_details.document_type_code%TYPE, -- 文書タイプ
-     lo_record_type_code         xxinv_mov_lot_details.record_type_code%TYPE, -- レコードタイプ
-     lo_item_id                  xxinv_mov_lot_details.item_id%TYPE, -- OPM品目ID
-     lo_item_code                xxinv_mov_lot_details.item_code%TYPE, -- 品目
-     lo_lot_id                   xxinv_mov_lot_details.lot_id%TYPE, -- ロットID
-     lo_lot_no                   xxinv_mov_lot_details.lot_no%TYPE, -- ロットNo
-     lo_actual_date              xxinv_mov_lot_details.actual_date%TYPE, -- 実績日
-     lo_actual_quantity          xxinv_mov_lot_details.actual_quantity%TYPE, -- 実績数量
+     lo_mov_lot_dtl_id           xxinv_mov_lot_details.mov_lot_dtl_id%TYPE,       -- ロット詳細ID
+     lo_mov_line_id              xxinv_mov_lot_details.mov_line_id%TYPE,          -- 明細ID
+     lo_document_type_code       xxinv_mov_lot_details.document_type_code%TYPE,   -- 文書タイプ
+     lo_record_type_code         xxinv_mov_lot_details.record_type_code%TYPE,     -- レコードタイプ
+     lo_item_id                  xxinv_mov_lot_details.item_id%TYPE,              -- OPM品目ID
+     lo_item_code                xxinv_mov_lot_details.item_code%TYPE,            -- 品目
+     lo_lot_id                   xxinv_mov_lot_details.lot_id%TYPE,               -- ロットID
+     lo_lot_no                   xxinv_mov_lot_details.lot_no%TYPE,               -- ロットNo
+     lo_actual_date              xxinv_mov_lot_details.actual_date%TYPE,          -- 実績日
+     lo_actual_quantity          xxinv_mov_lot_details.actual_quantity%TYPE,      -- 実績数量
      lo_automanual_reserve_class xxinv_mov_lot_details.automanual_reserve_class%TYPE, -- 自動手動引当区分
-     lo_created_by               xxinv_mov_lot_details.created_by%TYPE, -- 作成者
-     lo_creation_date            xxinv_mov_lot_details.creation_date%TYPE, -- 作成日
-     lo_last_updated_by          xxinv_mov_lot_details.last_updated_by%TYPE, -- 最終更新者
-     lo_last_update_date         xxinv_mov_lot_details.last_update_date%TYPE, -- 最終更新日
-     lo_last_update_login        xxinv_mov_lot_details.last_update_login%TYPE, -- 最終更新ログイン
-     lo_request_id               xxinv_mov_lot_details.request_id%TYPE, -- 要求ID
+     lo_created_by               xxinv_mov_lot_details.created_by%TYPE,           -- 作成者
+     lo_creation_date            xxinv_mov_lot_details.creation_date%TYPE,        -- 作成日
+     lo_last_updated_by          xxinv_mov_lot_details.last_updated_by%TYPE,      -- 最終更新者
+     lo_last_update_date         xxinv_mov_lot_details.last_update_date%TYPE,     -- 最終更新日
+     lo_last_update_login        xxinv_mov_lot_details.last_update_login%TYPE,    -- 最終更新ログイン
+     lo_request_id               xxinv_mov_lot_details.request_id%TYPE,           -- 要求ID
      lo_program_application_id   xxinv_mov_lot_details.program_application_id%TYPE, -- アプリケーションID
-     lo_program_id               xxinv_mov_lot_details.program_id%TYPE, -- コンカレント・プログラムID
-     lo_program_update_date      xxinv_mov_lot_details.program_update_date%TYPE -- プログラム更新日
+     lo_program_id               xxinv_mov_lot_details.program_id%TYPE,           -- コンカレント・プログラムID
+     lo_program_update_date      xxinv_mov_lot_details.program_update_date%TYPE   -- プログラム更新日
   );
 --
   TYPE order_all_tbl IS TABLE OF order_all_rec INDEX BY PLS_INTEGER;
@@ -3210,6 +3211,7 @@ AS
         ,based_request_quantity                         -- 拠点依頼数量
         ,request_item_id                                -- 依頼品目ID
         ,request_item_code                              -- 依頼品目
+        ,delete_flag                                    -- 削除フラグ
         ,rm_if_flg                                      -- 倉替返品インタフェース済フラグ
         ,created_by                                     -- 作成者
         ,creation_date                                  -- 作成日
@@ -3234,7 +3236,9 @@ AS
         ,gt_xol_based_request_quantity(i)               -- 拠点依頼数量
         ,gt_xol_request_item_id(i)                      -- 依頼品目ID
         ,gt_xol_request_item_code(i)                    -- 依頼品目
-        ,gt_xol_rm_if_flg(i)                            -- 倉替返品インタフェース済フラグ
+        ,gv_flag_off                                    -- 削除フラグ
+        ,gv_flag_off                                    -- 倉替返品インタフェース済フラグ
+        --,gt_xol_rm_if_flg(i)                            -- 倉替返品インタフェース済フラグ
         ,gt_xol_created_by(i)                           -- 作成者
         ,gt_xol_creation_date(i)                        -- 作成日
         ,gt_xol_last_updated_by(i)                      -- 最終更新者
