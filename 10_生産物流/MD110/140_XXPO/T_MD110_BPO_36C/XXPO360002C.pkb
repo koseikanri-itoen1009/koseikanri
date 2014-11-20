@@ -7,7 +7,7 @@ AS
  * Description      : 出庫予定表
  * MD.050/MD.070    : 有償支給帳票Issue1.0 (T_MD050_BPO_360)
  *                    有償支給帳票Issue1.0 (T_MD070_BPO_36C)
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * -------------------------- ------------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/06/25    1.7   I.Higa             特定文字列を出力しようとすると、エラーとなり帳票が出力
  *                                         されない現象への対応
  *  2008/07/04    1.8   Y.Ishikawa         xxcmn_item_categories4_vを使用しないようにする
+ *  2009/03/30    1.9   A.Shiina           本番#1346対応
  *
  ****************************************************************************************/
 --
@@ -545,6 +546,9 @@ AS
              || ' AND poh.attribute1            < ''' || cv_poh_cancel || ''''
              || ' AND pln.cancel_flag          <> ''' || cv_pln_cancel_flag || ''''
              || ' AND poh.attribute4           >= ''' || ir_param.dlv_f || ''''
+-- 2009/03/30 v1.9 ADD START
+             || ' AND poh.org_id                = FND_PROFILE.VALUE(''ORG_ID'') '
+-- 2009/03/30 v1.9 ADD END
              ;
 --
     -- 入庫倉庫が入力されている場合

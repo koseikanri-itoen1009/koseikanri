@@ -7,7 +7,7 @@ AS
  * Description      : 仕入・有償支給（仕入先返品）
  * MD.050/070       : 仕入・有償支給（仕入先返品）Issue2.0  (T_MD050_BPO_330)
  *                    返品指示書                            (T_MD070_BPO_33B)
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2008/05/02    1.4   Yasuhisa Yamamoto TE080不具合対応(330_11)
  *  2008/06/30    1.5   Yohei  Takayama   ST不具合#92対応
  *  2008/07/07    1.6   Satoshi Yunba     禁則文字対応
+ *  2009/03/30    1.7   Akiyoshi Shiina 本番#1346対応
  *
  *****************************************************************************************/
 --
@@ -743,6 +744,10 @@ AS
     lv_sql_body := lv_sql_body || ' AND papf.person_id    = fu.employee_id';
     lv_sql_body := lv_sql_body || ' AND xrcart.txns_date >= papf.effective_start_date';
     lv_sql_body := lv_sql_body || ' AND xrcart.txns_date <= papf.effective_end_date';
+-- 2009/03/30 v1.22 ADD START
+    -- 従業員区分1,2のみ抽出
+    lv_sql_body := lv_sql_body || ' AND papf.attribute3 IN (''1'', ''2'')' ;
+-- 2009/03/30 v1.22 ADD END
     -- 受入返品実績アドオン絞込
     lv_sql_body := lv_sql_body || ' AND xrcart.txns_type IN ('|| cv_sc || gc_txns_type_rtn_order  || cv_sc ||
                                                            ','|| cv_sc || gc_txns_type_rtn_noorder|| cv_sc || ')';
