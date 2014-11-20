@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCOI009A02R(body)
  * Description      : 倉替出庫明細リスト
  * MD.050           : 倉替出庫明細リスト MD050_COI_009_A02
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -41,6 +41,7 @@ AS
  *  2009/05/22    1.6   H.Sasaki         [障害T1_1162] 運送費算出処理の実行条件を追加（倉替のみ）
  *  2009/05/29    1.7   H.Sasaki         [T1_1113]伝票番号の桁数を修正
  *  2009/06/03    1.8   H.Sasaki         [T1_1202]保管場所マスタの結合条件に在庫組織IDを追加
+ *  2009/07/09    1.9   H.Sasaki         [0000338]SVF起動関数のパラメータ修正
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -336,27 +337,36 @@ AS
     ld_date := TO_CHAR( cd_creation_date, 'YYYYMMDD' );
 --
     -- 出力ファイル名
-    lv_file_name := cv_pkg_name || ld_date || TO_CHAR(cn_request_id);
+-- == 2009/07/09 V1.9 Modified START ===============================================================
+--    lv_file_name := cv_pkg_name || ld_date || TO_CHAR(cn_request_id);
+    lv_file_name := cv_pkg_name || ld_date || TO_CHAR(cn_request_id) || '.pdf';
+-- == 2009/07/09 V1.9 Modified START ===============================================================
 --
     --SVF起動処理
       xxccp_svfcommon_pkg.submit_svf_request(
-      ov_retcode      => lv_retcode             -- リターンコード
-     ,ov_errbuf       => lv_errbuf              -- エラーメッセージ
-     ,ov_errmsg       => lv_errmsg              -- ユーザー・エラーメッセージ
-     ,iv_conc_name    => cv_pkg_name            -- コンカレント名
-     ,iv_file_name    => cv_frm_file            -- 出力ファイル名
-     ,iv_file_id      => cv_pkg_name            -- 帳票ID
-     ,iv_output_mode  => cv_output_mode         -- 出力区分
-     ,iv_frm_file     => cv_frm_file            -- フォーム様式ファイル名
-     ,iv_vrq_file     => cv_vrq_file            -- クエリー様式ファイル名
-     ,iv_org_id       => fnd_global.org_id      -- ORG_ID
-     ,iv_user_name    => cn_created_by          -- ログイン・ユーザ名
-     ,iv_resp_name    => fnd_global.resp_name   -- ログイン・ユーザの職責名
-     ,iv_doc_name     => NULL                   -- 文書名
-     ,iv_printer_name => NULL                   -- プリンタ名
-     ,iv_request_id   => cn_request_id          -- 要求ID
-     ,iv_nodata_msg   => NULL                   -- データなしメッセージ
-    );
+        ov_retcode      => lv_retcode             -- リターンコード
+       ,ov_errbuf       => lv_errbuf              -- エラーメッセージ
+       ,ov_errmsg       => lv_errmsg              -- ユーザー・エラーメッセージ
+       ,iv_conc_name    => cv_pkg_name            -- コンカレント名
+-- == 2009/07/09 V1.9 Modified START ===============================================================
+--       ,iv_file_name    => cv_frm_file            -- 出力ファイル名
+       ,iv_file_name    => lv_file_name           -- 出力ファイル名
+-- == 2009/07/09 V1.9 Modified END   ===============================================================
+       ,iv_file_id      => cv_pkg_name            -- 帳票ID
+       ,iv_output_mode  => cv_output_mode         -- 出力区分
+       ,iv_frm_file     => cv_frm_file            -- フォーム様式ファイル名
+       ,iv_vrq_file     => cv_vrq_file            -- クエリー様式ファイル名
+       ,iv_org_id       => fnd_global.org_id      -- ORG_ID
+-- == 2009/07/09 V1.9 Modified START ===============================================================
+--       ,iv_user_name    => cn_created_by          -- ログイン・ユーザ名
+       ,iv_user_name    => fnd_global.user_name   -- ログイン・ユーザ名
+-- == 2009/07/09 V1.9 Modified END   ===============================================================
+       ,iv_resp_name    => fnd_global.resp_name   -- ログイン・ユーザの職責名
+       ,iv_doc_name     => NULL                   -- 文書名
+       ,iv_printer_name => NULL                   -- プリンタ名
+       ,iv_request_id   => cn_request_id          -- 要求ID
+       ,iv_nodata_msg   => NULL                   -- データなしメッセージ
+      );
 --
     --==============================================================
     --エラーメッセージ出力
