@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK021A06R(body)
  * Description      : 帳合問屋に関する請求書と見積書を突き合わせ、品目別に請求書と見積書の内容を表示
  * MD.050           : 問屋販売条件支払チェック表 MD050_COK_021_A06
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,7 @@ AS
  *  2009/04/17    1.4   M.Hiruta         [障害T1_0414] 請求金額が0である場合、補填・問屋マージン・拡売費の3項に
  *                                                     値が出力されないよう変更
  *                                                     補填の値がマイナスであっても、合計の辻褄が合うよう変更
+ *  2009/09/01    1.5   S.Moriyama       [障害0001230] OPM品目マスタ取得条件追加
  *
  *****************************************************************************************/
   -- ===============================================
@@ -208,6 +209,10 @@ AS
             WHERE  msib.organization_id  = gn_org_id_sales
             AND    msib.segment1         = iimb.item_no
             AND    iimb.item_id          = ximb.item_id
+-- 2009/09/01 Ver.1.5 [障害0001230] SCS S.Moriyama ADD START
+            AND    gd_process_date BETWEEN ximb.start_date_active
+                                       AND NVL ( ximb.end_date_active , gd_process_date )
+-- 2009/09/01 Ver.1.5 [障害0001230] SCS S.Moriyama ADD END
           ) item
          ,( SELECT abau.vendor_id        AS vendor_id                       -- 内部仕入先ID
                  , abau.vendor_site_id   AS vendor_site_id                  -- 内部仕入先サイトID
