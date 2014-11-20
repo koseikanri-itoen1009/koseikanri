@@ -3,7 +3,7 @@ AS
 /*****************************************************************************************
  * Copyright(c)Sumisho Computer Systems Corporation, 2008. All rights reserved.
  *
- * Package Name           : xxcmm_003common_pkg(spec)
+ * Package Name           : xxcmm_003common_pkg(body)
  * Description            :
  * MD.110                 : MD110_CMM_顧客_共通関数
  * Version                : 1.0
@@ -13,7 +13,9 @@ AS
  *   Name                     Type  Ret   Description
  *  --------------------      ---- ----- --------------------------------------------------
  *  cust_status_update_check  F           顧客ステータス更新可否チェック
- *  update_hz_party           P           パーティマスタ更新関数
+ *  update_hz_party           P           パーティマスタ更新用関数
+ *  cust_name_kana_check      F           顧客名称・顧客名称カナチェック
+ *  cust_site_check           F           顧客所在地全角半角チェック
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -21,6 +23,8 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2009-01-30    1.0  Yuuki.Nakamura   新規作成
  *  2009-02-26    1.1  Yutaka.Kuboshima パーティマスタ更新関数追加
+ *  2009-03-26    1.2  Yutaka.Kuboshima 顧客名称・顧客名称カナチェック
+ *                                      顧客所在地全角半角チェック追加
  *****************************************************************************************/
  --
   --顧客ステータス更新可否チェック
@@ -34,5 +38,11 @@ AS
                             ov_errbuf      OUT VARCHAR2,  -- エラー・メッセージ           --# 固定 #
                             ov_retcode     OUT VARCHAR2,  -- リターン・コード             --# 固定 #
                             ov_errmsg      OUT VARCHAR2); -- ユーザー・エラー・メッセージ --# 固定 #
+  --顧客名称・顧客名称カナチェック
+  FUNCTION cust_name_kana_check(iv_cust_name_mir           IN VARCHAR2   -- 顧客名称
+                               ,iv_cust_name_phonetic_mir  IN VARCHAR2)  -- 顧客名称カナ
+    RETURN VARCHAR2;
+  --顧客所在地全角半角チェック
+  FUNCTION cust_site_check(iv_cust_site  IN VARCHAR2)   -- 顧客所在地文字列
+    RETURN VARCHAR2;
 END xxcmm_003common_pkg;
-/

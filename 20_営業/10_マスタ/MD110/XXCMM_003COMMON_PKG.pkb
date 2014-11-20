@@ -14,6 +14,8 @@ AS
  *  --------------------      ---- ----- --------------------------------------------------
  *  cust_status_update_check  F           顧客ステータス更新可否チェック
  *  update_hz_party           P           パーティマスタ更新用関数
+ *  cust_name_kana_check      F           顧客名称・顧客名称カナチェック
+ *  cust_site_check           F           顧客所在地全角半角チェック
  *
  * Change Record
  * ------------ ----- ---------------- -----------------------------------------------
@@ -21,6 +23,8 @@ AS
  * ------------ ----- ---------------- -----------------------------------------------
  *  2009-01-30    1.0  Yuuki.Nakamura   新規作成
  *  2009-02-26    1.1  Yutaka.Kuboshima パーティマスタ更新関数追加
+ *  2009-03-26    1.2  Yutaka.Kuboshima 顧客名称・顧客名称カナチェック
+ *                                      顧客所在地全角半角チェック追加
  *****************************************************************************************/
   -- ===============================
   -- グローバル変数
@@ -228,5 +232,75 @@ AS
       RAISE_APPLICATION_ERROR
         (-20000,SUBSTRB(cv_pkg_name || cv_cnst_period || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000), TRUE);
   END update_hz_party;
+  /**********************************************************************************
+   * Function  Name   : cust_name_kana_check
+   * Description      : 顧客名称・顧客名称カナチェック
+   ***********************************************************************************/
+  --顧客名称・顧客名称カナチェック。リターンコードnormalのとき正常。リターンコードerrorのときエラー。
+  FUNCTION cust_name_kana_check(iv_cust_name_mir           IN VARCHAR2   -- 顧客名称
+                               ,iv_cust_name_phonetic_mir  IN VARCHAR2)  -- 顧客名称カナ
+    RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+  --
+  BEGIN
+    IF     NVL(xxccp_common_pkg.chk_double_byte(iv_cust_name_mir),TRUE)
+      AND  NVL(xxccp_common_pkg.chk_single_byte(iv_cust_name_phonetic_mir),TRUE) THEN
+      RETURN cv_success;
+    END IF;
+    RETURN cv_error;
+  END cust_name_kana_check;
+--
+  /**********************************************************************************
+   * Function  Name   : cust_site_check
+   * Description      : 顧客所在地全角半角チェック
+   ***********************************************************************************/
+  --顧客所在地全角半角チェック。リターンコードnormalのとき正常。リターンコードerrorのときエラー。
+  FUNCTION cust_site_check(iv_cust_site IN VARCHAR2)  -- 顧客所在地文字列
+    RETURN VARCHAR2
+  IS
+    -- ===============================
+    -- ローカル定数
+    -- ===============================
+    cv_dot        CONSTANT VARCHAR2(1) := '.';
+    cv_escape_dot CONSTANT VARCHAR2(2) := '\.';
+  --
+    -- ===============================
+    -- ローカル変数
+    -- ===============================
+    lv_cust_site VARCHAR2(3000) := NULL;
+  --
+  BEGIN
+    --エスケープシーケンスの\.を文字列から除去
+    lv_cust_site := REPLACE(iv_cust_site, cv_escape_dot);
+    IF   (xxccp_common_pkg.chk_number(xxccp_common_pkg.char_delim_partition(  lv_cust_site
+                                                                              ,cv_dot
+                                                                              ,1))
+      AND LENGTHB(xxccp_common_pkg.char_delim_partition( lv_cust_site
+                                                        ,cv_dot
+                                                        ,1)) = 7)
+      AND xxccp_common_pkg.chk_tel_format(xxccp_common_pkg.char_delim_partition(  lv_cust_site
+                                                                                 ,cv_dot
+                                                                                 ,7))
+      AND xxccp_common_pkg.chk_double_byte(xxccp_common_pkg.char_delim_partition(  lv_cust_site
+                                                                                  ,cv_dot
+                                                                                  ,2))
+      AND xxccp_common_pkg.chk_double_byte(xxccp_common_pkg.char_delim_partition(  lv_cust_site
+                                                                                  ,cv_dot
+                                                                                  ,3))
+      AND xxccp_common_pkg.chk_double_byte(xxccp_common_pkg.char_delim_partition(  lv_cust_site
+                                                                                  ,cv_dot
+                                                                                  ,4))
+      AND nvl(xxccp_common_pkg.chk_double_byte(xxccp_common_pkg.char_delim_partition(  lv_cust_site
+                                                                                      ,cv_dot
+                                                                                      ,5)),TRUE) THEN
+      RETURN cv_success;
+    END IF;
+    RETURN cv_error;
+  END cust_site_check;
 END xxcmm_003common_pkg;
-/

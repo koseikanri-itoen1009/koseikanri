@@ -23,6 +23,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2009/01/20    1.0   中村 祐基        新規作成
+ *  2009/03/24    1.1   Yutaka.Kuboshima 全角半角チェック処理を追加
  *
  *****************************************************************************************/
 --
@@ -126,6 +127,11 @@ AS
   cv_update_party_err_msg     CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00324';                --パーティマスタ更新エラー時メッセージ
   cv_update_csu_err_msg       CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00325';                --顧客使用目的エラー時メッセージ
   cv_update_location_err_msg  CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00326';                --顧客事業所エラー時メッセージ
+-- 2009/03/25 Ver1.1 add start by Yutaka.Kuboshima
+  cv_double_byte_err_msg      CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00344';                --全角文字チェックエラー時メッセージ
+  cv_single_byte_err_msg      CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00345';                --半角文字チェックエラー時メッセージ
+  cv_postal_code_err_msg      CONSTANT VARCHAR2(16)  := 'APP-XXCMM1-00346';                --郵便番号チェックエラー時メッセージ
+-- 2009/03/25 Ver1.1 add end by Yutaka.Kuboshima
 --
   cv_param                    CONSTANT VARCHAR2(5)   := 'PARAM';                           --パラメータトークン
   cv_value                    CONSTANT VARCHAR2(5)   := 'VALUE';                           --パラメータ値トークン
@@ -805,6 +811,27 @@ AS
                which  => FND_FILE.LOG
               ,buff   => lv_item_errmsg);
           END IF;
+-- 2009/03/25 Ver1.1 add start by Yutaka.Kuboshima
+          --全角文字チェック
+          IF (xxccp_common_pkg.chk_double_byte(lv_customer_name) = FALSE) THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --全角文字チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_double_byte_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_cust_name
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_customer_name
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+-- 2009/03/25 Ver1.1 add end by Yutaka.Kuboshima
         END IF;
 --
         --顧客名称カナ取得
@@ -843,15 +870,35 @@ AS
              which  => FND_FILE.LOG
             ,buff   => lv_item_errmsg);
         END IF;
-        --顧客名称カナの全角カタカナチェック
-        IF    (lv_cust_name_kana <> cv_null_bar)
-          AND (xxccp_common_pkg.chk_double_byte_kana( lv_cust_name_kana ) = FALSE) THEN
+-- 2009/03/25 Ver1.1 modify start by Yutaka.Kuboshima
+--        --顧客名称カナの全角カタカナチェック
+--        IF    (lv_cust_name_kana <> cv_null_bar)
+--          AND (xxccp_common_pkg.chk_double_byte_kana( lv_cust_name_kana ) = FALSE) THEN
+--          lv_check_status := cv_status_error;
+--          lv_retcode      := cv_status_error;
+--          --全角カタカナチェックエラーメッセージ取得
+--          gv_out_msg := xxccp_common_pkg.get_msg(
+--                           iv_application  => gv_xxcmm_msg_kbn
+--                          ,iv_name         => cv_double_byte_kana_msg
+--                          ,iv_token_name1  => cv_cust_code
+--                          ,iv_token_value1 => lv_customer_code
+--                          ,iv_token_name2  => cv_col_name
+--                          ,iv_token_value2 => cv_cust_name_kana
+--                          ,iv_token_name3  => cv_input_val
+--                          ,iv_token_value3 => lv_cust_name_kana
+--                         );
+--          FND_FILE.PUT_LINE(
+--             which  => FND_FILE.LOG
+--            ,buff   => gv_out_msg);
+--        END IF;
+        --顧客名称カナの半角文字チェック
+        IF (NVL(xxccp_common_pkg.chk_single_byte(lv_cust_name_kana), TRUE) = FALSE) THEN
           lv_check_status := cv_status_error;
           lv_retcode      := cv_status_error;
-          --全角カタカナチェックエラーメッセージ取得
+          --半角文字チェックエラーメッセージ取得
           gv_out_msg := xxccp_common_pkg.get_msg(
                            iv_application  => gv_xxcmm_msg_kbn
-                          ,iv_name         => cv_double_byte_kana_msg
+                          ,iv_name         => cv_single_byte_err_msg
                           ,iv_token_name1  => cv_cust_code
                           ,iv_token_value1 => lv_customer_code
                           ,iv_token_name2  => cv_col_name
@@ -863,6 +910,7 @@ AS
              which  => FND_FILE.LOG
             ,buff   => gv_out_msg);
         END IF;
+-- 2009/03/25 Ver1.1 modify end by Yutaka.Kuboshima
 --
         --略称取得
         lv_cust_name_ryaku := xxccp_common_pkg.char_delim_partition(  lv_temp
@@ -2168,6 +2216,29 @@ AS
               ,buff   => lv_item_errmsg
             );
           END IF;
+-- 2009/03/25 Ver1.1 add start by Yutaka.Kuboshima
+          --郵便番号半角数字7桁チェック
+          IF (xxccp_common_pkg.chk_number(lv_postal_code) = FALSE)
+            OR (LENGTHB(lv_postal_code) <> 7)
+          THEN
+            lv_check_status   := cv_status_error;
+            lv_retcode        := cv_status_error;
+            --郵便番号チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_postal_code_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_postal_code
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_postal_code
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+-- 2009/03/25 Ver1.1 add end by Yutaka.Kuboshima
         END IF;
 --
         --都道府県取得
@@ -2227,6 +2298,27 @@ AS
               ,buff   => lv_item_errmsg
             );
           END IF;
+-- 2009/03/25 Ver1.1 add start by Yutaka.Kuboshima
+          -- 全角文字チェック
+          IF (xxccp_common_pkg.chk_double_byte(lv_state) = FALSE) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --全角文字チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_double_byte_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_state
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_state
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+-- 2009/03/25 Ver1.1 add end by Yutaka.Kuboshima
         END IF;
 --
         --市・区取得
@@ -2286,6 +2378,27 @@ AS
               ,buff   => lv_item_errmsg
             );
           END IF;
+-- 2009/03/25 Ver1.1 add start by Yutaka.Kuboshima
+          -- 全角文字チェック
+          IF (xxccp_common_pkg.chk_double_byte(lv_city) = FALSE) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --全角文字チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_double_byte_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_city
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_city
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+-- 2009/03/25 Ver1.1 add end by Yutaka.Kuboshima
         END IF;
 --
         --住所1取得
@@ -2345,6 +2458,27 @@ AS
               ,buff   => lv_item_errmsg
             );
           END IF;
+-- 2009/03/25 Ver1.1 add start by Yutaka.Kuboshima
+          -- 全角文字チェック
+          IF (xxccp_common_pkg.chk_double_byte(lv_address1) = FALSE) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --全角文字チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_double_byte_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_address1
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_address1
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+-- 2009/03/25 Ver1.1 add end by Yutaka.Kuboshima
         END IF;
 --
         --住所2取得
@@ -2387,6 +2521,27 @@ AS
               ,buff   => lv_item_errmsg
             );
           END IF;
+-- 2009/03/25 Ver1.1 add start by Yutaka.Kuboshima
+          -- 全角文字チェック
+          IF (xxccp_common_pkg.chk_double_byte(lv_address2) = FALSE) THEN
+            lv_check_status := cv_status_error;
+            lv_retcode      := cv_status_error;
+            --全角文字チェックエラーメッセージ取得
+            gv_out_msg := xxccp_common_pkg.get_msg(
+                             iv_application  => gv_xxcmm_msg_kbn
+                            ,iv_name         => cv_double_byte_err_msg
+                            ,iv_token_name1  => cv_cust_code
+                            ,iv_token_value1 => lv_customer_code
+                            ,iv_token_name2  => cv_col_name
+                            ,iv_token_value2 => cv_address2
+                            ,iv_token_name3  => cv_input_val
+                            ,iv_token_value3 => lv_address2
+                           );
+            FND_FILE.PUT_LINE(
+               which  => FND_FILE.LOG
+              ,buff   => gv_out_msg);
+          END IF;
+-- 2009/03/25 Ver1.1 add end by Yutaka.Kuboshima
         END IF;
 --
         --地区コード取得
