@@ -391,7 +391,7 @@
             </oa:flowLayout>
          </ui:contents>
          <ui:corporateBranding>
-            <oa:image id="corporateBrandingImage"/>
+            <oa:image id="corporateBrandingImage" source="/OA_MEDIA/FNDSSCORP.gif"/>
          </ui:corporateBranding>
       </oa:pageLayout>
    </content>

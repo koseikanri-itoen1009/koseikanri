@@ -7,7 +7,7 @@ AS
  * Description      : 直送仕入・出荷実績作成処理
  * MD.050           : 仕入先出荷実績         T_MD050_BPO_320
  * MD.070           : 直送仕入・出荷実績作成 T_MD070_BPO_32B
- * Version          : 1.6
+ * Version          : 1.7
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -55,6 +55,7 @@ AS
  *                                       結合テスト不具合ログ#300_3対応
  *  2008/05/24    1.5   Oracle 高山 洋平 結合テスト不具合ログ##320_3,320_4対応
  *  2008/05/26    1.6   Oracle 山根 一浩 変更要求No120対応
+ *  2008/06/11    1.7   Oracle 山根 一浩 不具合ログ#440_63対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -160,6 +161,7 @@ AS
   gv_document_type       CONSTANT VARCHAR2(2)  := '30';    -- 支給指示
   gv_record_type         CONSTANT VARCHAR2(2)  := '20';    -- 出庫実績
   gv_indicate            CONSTANT VARCHAR2(2)  := '10';    -- 指示
+  gv_qty_fixed_type      CONSTANT VARCHAR2(2)  := '30';    -- 数量確定済
 --
   -- ===============================
   -- ユーザー定義グローバル型
@@ -4184,6 +4186,44 @@ AS
       END IF;
 --
     END LOOP set_data_loop;
+--
+    BEGIN
+--
+      -- 発注明細更新
+      UPDATE po_lines_all
+      SET    attribute13            = gv_flg_on                     -- 数量確定フラグ:'Y'
+            ,last_update_date       = gd_last_update_date
+            ,last_updated_by        = gn_last_update_by
+            ,last_update_login      = gn_last_update_login
+            ,request_id             = gn_request_id
+            ,program_application_id = gn_program_application_id
+            ,program_id             = gn_program_id
+            ,program_update_date    = gd_program_update_date
+      WHERE  po_header_id IN (
+        SELECT po_header_id
+        FROM   po_headers_all
+        WHERE  segment1 = gv_header_number
+      );
+--
+      -- 発注ヘッダ更新
+      UPDATE po_headers_all
+      SET    attribute1             = gv_qty_fixed_type             -- ステータス:数量確定済('30')
+            ,last_update_date       = gd_last_update_date
+            ,last_updated_by        = gn_last_update_by
+            ,last_update_login      = gn_last_update_login
+            ,request_id             = gn_request_id
+            ,program_application_id = gn_program_application_id
+            ,program_id             = gn_program_id
+            ,program_update_date    = gd_program_update_date
+      WHERE  segment1 = gv_header_number;
+--
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        NULL;
+--
+      WHEN OTHERS THEN
+        RAISE global_api_others_expt;
+    END;
 --
     --==============================================================
     --メッセージ出力(エラー以外)をする必要がある場合は処理を記述
