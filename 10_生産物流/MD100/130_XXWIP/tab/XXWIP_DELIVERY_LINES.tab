@@ -19,7 +19,7 @@ CREATE TABLE xxwip.xxwip_delivery_lines
   weight_capacity_class       VARCHAR2(1),
   distance                    NUMBER(4),
   actual_distance             NUMBER(4),
-  qty                         NUMBER(4),
+  qty                         NUMBER(9),
   delivery_weight             NUMBER(6),
   order_type                  VARCHAR2(1)     NOT NULL,
   mixed_code                  VARCHAR2(2)     NOT NULL,
