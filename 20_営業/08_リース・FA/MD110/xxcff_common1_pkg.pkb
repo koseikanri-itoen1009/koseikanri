@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCFF_COMMON1_PKG(body)
  * Description      : リース・FA領域共通関数１
  * MD.050           : なし
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------------- ---- ----- ----------------------------------------------
@@ -25,7 +25,9 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2008/11/17    1.0   SCS山岸謙一      新規作成
- *
+ *  2009/06/16    1.1   SCS中村祐基      [障害T1_1428]
+ *                                       ①リース種別だけでなく、リース種別と資産種類によって
+ *                                         資産勘定を取得するように変更。
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -477,6 +479,11 @@ AS
     cv_tkn_val1      CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50071'; -- フレックスフィールド体系情報
     cv_tkn_val2      CONSTANT VARCHAR2(100) := 'APP-XXCFF1-50041'; -- リース種別
     cv_itm_equal     CONSTANT VARCHAR2(100) := '=';                --
+--T1_1428 ADD START 2009/06/16 Ver1.1 by Yuuki Nakamura
+    cv_comma         CONSTANT VARCHAR2(1)   := ',';                       -- カンマ
+    cv_tkn_val3      CONSTANT VARCHAR2(16)  := 'APP-XXCFF1-50072';        -- 資産種類
+    cv_type_lease    CONSTANT VARCHAR2(23)  := 'XXCFF1_LEASE_ASSET_ACCT'; -- 参照タイプ：リース資産勘定
+--T1_1428 ADD END 2009/06/16 Ver1.1 by Yuuki Nakamura
 --
     -- *** ローカル変数 ***
     lv_application_short_name    VARCHAR2(100);
@@ -487,6 +494,9 @@ AS
     lb_ret                       BOOLEAN;
     lv_les_asset_acct            xxcff_lease_class_v.les_asset_acct%TYPE;
     lv_deprn_acct                xxcff_lease_class_v.deprn_acct%TYPE;
+--T1_1428 ADD START 2009/06/16 Ver1.1 by Yuuki Nakamura
+    lv_errtmp                    VARCHAR2(5000);  -- エラー・メッセージテンポラリ
+--T1_1428 ADD END 2009/06/16 Ver1.1 by Yuuki Nakamura
 --
     -- *** ローカル・カーソル ***
 --
@@ -526,6 +536,9 @@ AS
         RAISE global_api_expt;
     END;
 
+--T1_1428 MOD START 2009/06/16 Ver1.1 by Yuuki Nakamura
+--リース種別だけでなく、リース種別と資産種類によって資産勘定を取得するように変更する
+/*
     IF ((iv_segment3 IS NULL)
         OR (iv_segment4 IS NULL)) THEN
       BEGIN
@@ -548,6 +561,50 @@ AS
           RAISE global_api_expt;
       END;
     END IF;
+*/
+    --償却科目取得ロジック（障害対応T1_1428）
+    IF (iv_segment4 IS NULL) THEN
+      BEGIN
+        SELECT
+               deprn_acct deprn_acct  --償却科目
+        INTO
+               lv_deprn_acct
+        FROM
+               xxcff_lease_class_v xlcv
+        WHERE
+               xlcv.lease_class_code = iv_segment7;
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_appl_short_name, cv_tkn_val2);
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_appl_short_name, cv_param_err
+                                               ,cv_tkn_name1,       cv_tkn_val2
+                                               ,cv_tkn_name2,       lv_errmsg||cv_itm_equal||iv_segment7);
+          RAISE global_api_expt;
+      END;
+    END IF;
+    --資産勘定取得ロジック（障害対応T1_1428）
+    IF (iv_segment3 IS NULL) THEN
+      BEGIN
+        SELECT
+               flvv.attribute3 les_asset_acct  --資産勘定
+        INTO
+               lv_les_asset_acct
+        FROM
+               fnd_lookup_values_vl flvv
+        WHERE  flvv.lookup_type  = cv_type_lease
+        AND    flvv.attribute1   = iv_segment1   --条件１：資産種類
+        AND    flvv.attribute2   = iv_segment7;  --条件２：リース種別
+      EXCEPTION
+        WHEN OTHERS THEN
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_appl_short_name, cv_tkn_val2);
+          lv_errtmp := xxccp_common_pkg.get_msg(cv_appl_short_name, cv_tkn_val3);
+          lv_errmsg := xxccp_common_pkg.get_msg(cv_appl_short_name, cv_param_err
+                                               ,cv_tkn_name1,       lv_errtmp||cv_comma||lv_errmsg
+                                               ,cv_tkn_name2,       lv_errtmp||cv_itm_equal||iv_segment1||cv_comma||lv_errmsg||cv_itm_equal||iv_segment7);
+          RAISE global_api_expt;
+      END;
+    END IF;
+--T1_1428 MOD END 2009/06/16 Ver1.1 by Yuuki Nakamura
     -- カテゴリ情報格納
     l_segments_tab(1) := iv_segment1;
     l_segments_tab(2) := NVL(iv_segment2, fnd_profile.value('XXCFF1_DCLR_DPRN_NO_TGT'));
