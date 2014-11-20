@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM002A06C(body)
  * Description      : 社員マスタIF出力(HHT)
  * MD.050           : 社員マスタIF出力(HHT) MD050_CMM_002_A06
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2009/06/17    1.3   H.Yoshikawa      障害T1_1481の対応(営業員番号の設定誤り修正)
  *  2009/08/04    1.4   Yutaka.Kuboshima 障害0000890の対応
  *  2010/05/17    1.5   Yutaka.Kuboshima 障害E_本稼動_02749の対応(管理元拠点の取得位置の変更)
+ *  2012/09/13    1.6   Miwa.Takasaki    E_本稼動_02684の対応
  *
  *****************************************************************************************/
 --
@@ -155,11 +156,15 @@ AS
 -- Ver1.2  2009/06/08  Add  抽出条件変更に伴う追加
   gd_active_start_date      DATE;
   gd_active_end_date        DATE;
-  gd_inactive_start_date    DATE;
-  gd_inactive_end_date      DATE;
+-- 2012/09/13 Ver1.6 del start by Miwa.Takasaki
+--  gd_inactive_start_date    DATE;
+--  gd_inactive_end_date      DATE;
+-- 2012/09/13 Ver1.6 del end by Miwa.Takasaki
   --
-  cv_flag_active            VARCHAR(1) := '1';    -- 有効データ
-  cv_flag_inactive          VARCHAR(1) := '2';    -- 無効データ
+-- 2012/09/11 Ver1.6 del start by Miwa.Takasaki
+--  cv_flag_active            VARCHAR(1) := '1';    -- 有効データ
+--  cv_flag_inactive          VARCHAR(1) := '2';    -- 無効データ
+-- 2012/09/11 Ver1.6 del end by Miwa.Takasaki
 -- End 1.2
 --
   -- ===============================
@@ -360,24 +365,26 @@ AS
     -- 取得開始日の取得
     IF  ( gv_update_sdate IS NULL )
     AND ( gv_update_edate IS NULL ) THEN
-      -- 有効期間(開始)と有効期間(終了)に業務日付+1をセット
+      -- 有効期間_自と有効期間_至に業務日付+1をセット
       gd_active_start_date   := gd_process_date + 1;
       gd_active_end_date     := gd_process_date + 1;
       -- 最終更新日(開始)と最終更新日(終了)に業務日付～業務日付+1をセット
       gd_select_start_date   := gd_process_date;
       gd_select_end_date     := gd_process_date;
     ELSE
-      -- 有効期間(開始)に指定日をセット
+      -- 有効期間_自に指定日をセット
       gd_active_start_date   := TO_DATE( gv_update_sdate, 'RRRR/MM/DD' );
-      -- 有効期間(終了)に業務日付をセット
+      -- 有効期間_至に業務日付をセット
       gd_active_end_date     := TO_DATE( gv_update_edate, 'RRRR/MM/DD' );
       -- 最終更新日(開始)と最終更新日(終了)に有効期間と同じ値をセット
       gd_select_start_date   := gd_active_start_date;
       gd_select_end_date     := gd_active_end_date;
     END IF;
     --
-    gd_inactive_start_date := gd_active_start_date - 1;
-    gd_inactive_end_date   := gd_active_end_date - 1;
+-- 2012/09/13 Ver1.6 del start by Miwa.Takasaki
+--    gd_inactive_start_date := gd_active_start_date - 1;
+--    gd_inactive_end_date   := gd_active_end_date - 1;
+-- 2012/09/13 Ver1.6 del end by Miwa.Takasaki
     --
 -- End 1.2
     --
@@ -645,8 +652,11 @@ AS
     CURSOR get_rs_data_cur
     IS
       -- リソースグループ役割有効データ抽出
-      SELECT    cv_flag_active      AS  data_div       -- データ区分(有効)
-               ,jrrm.denorm_mgr_id                     -- リソースグループ役割ID
+-- 2012/09/11 Ver1.6 mod start by Miwa.Takasaki
+--      SELECT    cv_flag_active      AS  data_div       -- データ区分(有効)
+--               ,jrrm.denorm_mgr_id                     -- リソースグループ役割ID
+      SELECT    jrrm.denorm_mgr_id                     -- リソースグループ役割ID
+-- 2012/09/11 Ver1.6 mod end by Miwa.Takasaki
 -- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
 --               ,jrse.resource_number                   -- 営業員番号
                ,papf.employee_number                     -- 営業員番号
@@ -656,8 +666,8 @@ AS
                ,jrrm.person_id                         -- 従業員ID
                ,papf.per_information18 || papf.per_information19
                                     AS  emp_name       -- 漢字姓 + 漢字名
-               ,jrrm.start_date_active                 -- 有効開始日_自
-               ,jrrm.end_date_active                   -- 有効開始日_至
+               ,jrrm.start_date_active                 -- 有効期間_自
+               ,jrrm.end_date_active                   -- 有効期間_至
                ,jrrm.last_update_date                  -- 最終更新日
                ,jrgv.group_name                        -- グループ名称
                ,jrgv.attribute1     AS  base_code      -- 拠点コード
@@ -673,8 +683,10 @@ AS
             AND TRUNC( jrrm.last_update_date ) <= gd_select_end_date ) )   -- 最終更新日  <= パラメータ_TO  (JP1:業務日付)
       -- パラメータTO で有効なもの
       AND       jrrm.start_date_active         <= gd_active_end_date       -- 有効期間_自 <= パラメータ_TO  (JP1:業務日付+1)
-      AND       NVL( jrrm.end_date_active, gd_active_end_date )
-                                               >= gd_active_end_date       -- 有効期間_至 >= パラメータ_TO  (JP1:業務日付+1)
+-- 2012/09/11 Ver1.6 del start by Miwa.Takasaki
+--      AND       NVL( jrrm.end_date_active, gd_active_end_date )
+--                                               >= gd_active_end_date       -- 有効期間_至 >= パラメータ_TO  (JP1:業務日付+1)
+-- 2012/09/11 Ver1.6 del end by Miwa.Takasaki
       AND       jrrm.reports_to_flag            = 'N'
       AND       papf.person_id                  = jrrm.person_id           -- 従業員ID
       AND       papf.effective_end_date        >= gd_active_end_date
@@ -685,54 +697,58 @@ AS
       AND       jrs.org_id(+)                   = FND_GLOBAL.ORG_ID
       AND       jrgv.group_id                   = jrrm.group_id
       AND       xabv.base_code                  = jrgv.attribute1
-      --
-      UNION ALL
-      --
-      -- リソースグループ役割無効データ抽出
-      SELECT    cv_flag_inactive    AS  data_div       -- データ区分(無効)
-               ,jrrm.denorm_mgr_id                     -- リソースグループ役割ID
--- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
---               ,jrse.resource_number                   -- 営業員番号
-               ,papf.employee_number                   -- 営業員番号
--- End1.3
-               ,jrrm.resource_id                       -- リソースID
-               ,jrrm.group_id                          -- グループID
-               ,jrrm.person_id                         -- 従業員ID
-               ,papf.per_information18 || papf.per_information19
-                                    AS  emp_name       -- 漢字姓 + 漢字名
-               ,jrrm.start_date_active                 -- 有効開始日_自
-               ,jrrm.end_date_active                   -- 有効開始日_至
-               ,jrrm.last_update_date                  -- 最終更新日
-               ,jrgv.group_name                        -- グループ名称
-               ,jrgv.attribute1     AS  base_code      -- 拠点コード
-      FROM      jtf_rs_rep_managers     jrrm           -- リソースグループ役割
-               ,per_all_people_f        papf           -- 従業員
-               ,jtf_rs_resource_extns   jrse           -- リソース
-               ,jtf_rs_salesreps        jrs
-               ,jtf_rs_groups_vl        jrgv           -- グループ
-               ,xxcso_aff_base_v2       xabv
-      WHERE     -- 有効期間_至が指定範囲内
-            ( ( jrrm.end_date_active           >= gd_inactive_start_date ) -- 有効期間_自 >= パラメータ_FROM(JP1:業務日付)
-                -- 最終更新日が指定範囲内で現在有効でない
-           OR ( TRUNC( jrrm.last_update_date ) >= gd_select_start_date     -- 最終更新日  >= パラメータ_FROM(JP1:業務日付)
-            AND TRUNC( jrrm.last_update_date ) <= gd_select_end_date ) )   -- 最終更新日  <= パラメータ_TO  (JP1:業務日付)
-      AND       jrrm.end_date_active           <= gd_inactive_end_date     -- 有効期間_至 <= パラメータ_TO  (JP1:業務日付)
-      AND       jrrm.reports_to_flag            = 'N'
-      AND       papf.person_id                  = jrrm.person_id           -- 従業員ID
-      AND       papf.effective_end_date        >= gd_active_end_date
-      AND       papf.current_emp_or_apl_flag    = 'Y'                      -- 履歴フラグ
-      AND       jrse.resource_id                = jrrm.resource_id
-      AND       jrse.category                   = cv_category
-      AND       jrs.resource_id(+)              = jrse.resource_id
-      AND       jrs.org_id(+)                   = FND_GLOBAL.ORG_ID
-      AND       jrgv.group_id                   = jrrm.group_id
-      AND       xabv.base_code                  = jrgv.attribute1
-      --
+-- 2012/09/11 Ver1.6 del start by Miwa.Takasaki
+--      --
+--      UNION ALL
+--      --
+--      -- リソースグループ役割無効データ抽出
+--      SELECT    cv_flag_inactive    AS  data_div       -- データ区分(無効)
+--               ,jrrm.denorm_mgr_id                     -- リソースグループ役割ID
+---- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
+----               ,jrse.resource_number                   -- 営業員番号
+--               ,papf.employee_number                   -- 営業員番号
+---- End1.3
+--               ,jrrm.resource_id                       -- リソースID
+--               ,jrrm.group_id                          -- グループID
+--               ,jrrm.person_id                         -- 従業員ID
+--               ,papf.per_information18 || papf.per_information19
+--                                    AS  emp_name       -- 漢字姓 + 漢字名
+--               ,jrrm.start_date_active                 -- 有効期間_自
+--               ,jrrm.end_date_active                   -- 有効期間_至
+--               ,jrrm.last_update_date                  -- 最終更新日
+--               ,jrgv.group_name                        -- グループ名称
+--               ,jrgv.attribute1     AS  base_code      -- 拠点コード
+--      FROM      jtf_rs_rep_managers     jrrm           -- リソースグループ役割
+--               ,per_all_people_f        papf           -- 従業員
+--               ,jtf_rs_resource_extns   jrse           -- リソース
+--               ,jtf_rs_salesreps        jrs
+--               ,jtf_rs_groups_vl        jrgv           -- グループ
+--               ,xxcso_aff_base_v2       xabv
+--      WHERE     -- 有効期間_至が指定範囲内
+--            ( ( jrrm.end_date_active           >= gd_inactive_start_date ) -- 有効期間_自 >= パラメータ_FROM(JP1:業務日付)
+--                -- 最終更新日が指定範囲内で現在有効でない
+--           OR ( TRUNC( jrrm.last_update_date ) >= gd_select_start_date     -- 最終更新日  >= パラメータ_FROM(JP1:業務日付)
+--            AND TRUNC( jrrm.last_update_date ) <= gd_select_end_date ) )   -- 最終更新日  <= パラメータ_TO  (JP1:業務日付)
+--      AND       jrrm.end_date_active           <= gd_inactive_end_date     -- 有効期間_至 <= パラメータ_TO  (JP1:業務日付)
+--      AND       jrrm.reports_to_flag            = 'N'
+--      AND       papf.person_id                  = jrrm.person_id           -- 従業員ID
+--      AND       papf.effective_end_date        >= gd_active_end_date
+--      AND       papf.current_emp_or_apl_flag    = 'Y'                      -- 履歴フラグ
+--      AND       jrse.resource_id                = jrrm.resource_id
+--      AND       jrse.category                   = cv_category
+--      AND       jrs.resource_id(+)              = jrse.resource_id
+--      AND       jrs.org_id(+)                   = FND_GLOBAL.ORG_ID
+--      AND       jrgv.group_id                   = jrrm.group_id
+--      AND       xabv.base_code                  = jrgv.attribute1
+--      --
+-- 2012/09/11 Ver1.6 del end by Miwa.Takasaki
 -- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
 --      ORDER BY  resource_number
       ORDER BY  employee_number
 -- End1.3
-               ,data_div
+-- 2012/09/11 Ver1.6 del start by Miwa.Takasaki
+--               ,data_div
+-- 2012/09/11 Ver1.6 del end by Miwa.Takasaki
                ,start_date_active  DESC
                ,last_update_date   DESC;
     --
@@ -749,8 +765,10 @@ AS
       WHERE     jrrm.resource_id                = p_resource_id            -- 該当リソース
       AND       jrrm.reports_to_flag            = 'N'
       AND       jrrm.start_date_active         <= gd_active_end_date       -- 有効期間_自 <= パラメータ_TO(JP1:業務日付+1)
-      AND       NVL( jrrm.end_date_active, gd_active_end_date )
-                                               >= gd_active_end_date       -- 有効期間_至 >= パラメータ_TO(JP1:業務日付+1)
+-- 2012/09/11 Ver1.6 del start by Miwa.Takasaki
+--      AND       NVL( jrrm.end_date_active, gd_active_end_date )
+--                                               >= gd_active_end_date       -- 有効期間_至 >= パラメータ_TO(JP1:業務日付+1)
+-- 2012/09/11 Ver1.6 del end by Miwa.Takasaki
       AND       jrgv.group_id                   = jrrm.group_id
       AND       xabv.base_code                  = jrgv.attribute1
       ORDER BY  jrrm.start_date_active  DESC
@@ -850,8 +868,11 @@ AS
         ELSE
           -- 有効データ抽出時：有効データ抽出と拠点抽出で同じリソースグループ役割の場合連携対象とする
           -- 無効データ抽出時：拠点抽出で抽出したリソースグループを連携対象とする
-          IF  ( l_get_rs_data_rec.denorm_mgr_id = l_act_rs_data_rec.denorm_mgr_id )
-          OR  ( l_get_rs_data_rec.data_div = cv_flag_inactive ) THEN
+-- 2012/09/11 Ver1.6 mod start by Miwa.Takasaki
+--          IF  ( l_get_rs_data_rec.denorm_mgr_id = l_act_rs_data_rec.denorm_mgr_id )
+--          OR  ( l_get_rs_data_rec.data_div = cv_flag_inactive ) THEN
+          IF  ( l_get_rs_data_rec.denorm_mgr_id = l_act_rs_data_rec.denorm_mgr_id ) THEN
+-- 2012/09/11 Ver1.6 mod end by Miwa.Takasaki
             -- 出力データ格納(有効分)
             ln_stack_cnt := ln_stack_cnt + 1;
 -- Ver1.3  2009/06/17  Mod 営業員番号の抽出誤りを修正
@@ -860,7 +881,10 @@ AS
 -- End1.3
             g_rs_data_tab(ln_stack_cnt).resource_name       := SUBSTRB( l_get_rs_data_rec.emp_name, 1, 20 );
             g_rs_data_tab(ln_stack_cnt).resource_department := SUBSTRB( l_act_rs_data_rec.base_code, 1, 4 );
-            g_rs_data_tab(ln_stack_cnt).inactive_date       := NULL;
+-- 2012/09/11 Ver1.6 mod start by Miwa.Takasaki
+--            g_rs_data_tab(ln_stack_cnt).inactive_date       := NULL;
+            g_rs_data_tab(ln_stack_cnt).inactive_date       := TO_CHAR( l_get_rs_data_rec.end_date_active, 'YYYYMMDD' );
+-- 2012/09/11 Ver1.6 mod end by Miwa.Takasaki
             g_rs_data_tab(ln_stack_cnt).last_update_date    := TO_CHAR( l_act_rs_data_rec.last_update_date, 'YYYY/MM/DD HH24:MI:SS' );
 -- 2010/05/17 Ver1.5 add start by Yutaka.Kuboshima
 -- 管理元拠点の取得位置を変更
@@ -1266,8 +1290,8 @@ AS
   PROCEDURE main(
     errbuf        OUT VARCHAR2,      --   エラー・メッセージ  --# 固定 #
     retcode       OUT VARCHAR2,      --   リターン・コード    --# 固定 #
-    iv_date_from  IN  VARCHAR2,      --   2.有効開始日(開始)
-    iv_date_to    IN  VARCHAR2       --   3.有効開始日(終了)
+    iv_date_from  IN  VARCHAR2,      --   2.有効期間_自
+    iv_date_to    IN  VARCHAR2       --   3.有効期間_至
   )
 --
 --
