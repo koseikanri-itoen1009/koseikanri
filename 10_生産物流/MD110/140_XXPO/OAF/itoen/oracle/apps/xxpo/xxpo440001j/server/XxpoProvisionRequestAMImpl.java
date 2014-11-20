@@ -1,7 +1,7 @@
 /*============================================================================
 * ファイル名 : XxpoProvisionRequestAMImpl
 * 概要説明   : 支給依頼要約アプリケーションモジュール
-* バージョン : 1.13
+* バージョン : 1.14
 *============================================================================
 * 修正履歴
 * 日付       Ver. 担当者       修正内容
@@ -23,6 +23,7 @@
 * 2009-01-05 1.11 二瓶大輔     本番障害#861対応
 * 2009-01-20 1.12 吉元強樹     本番障害#739,985対応(第1段階:金確ボタン)
 * 2009-01-22 1.13 吉元強樹     本番障害#739,985対応(第2段階:ヘッダ・明細)
+* 2009-02-03 1.14 二瓶大輔     本番障害#739,985対応(修正漏れ対応)
 *============================================================================
 */
 package itoen.oracle.apps.xxpo.xxpo440001j.server;
@@ -56,7 +57,7 @@ import oracle.jbo.RowSetIterator;
 /***************************************************************************
  * 支給依頼要約画面のアプリケーションモジュールクラスです。
  * @author  ORACLE 二瓶 大輔
- * @version 1.11
+ * @version 1.14
  ***************************************************************************
  */
 public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl 
@@ -5113,8 +5114,12 @@ public class XxpoProvisionRequestAMImpl extends XxcmnOAApplicationModuleImpl
         // 入庫実績日へ出庫実績日を設定
         return shippedDate;
 
-      // 入庫予定日 > 出庫実績日
-      }else if (XxcmnUtility.chkCompareDate(1, scheduleArrivalDate, shippedDate))
+// 2009-02-03 v1.14 D.Nihei Add Start
+//      // 入庫予定日 > 出庫実績日
+//      }else if (XxcmnUtility.chkCompareDate(1, scheduleArrivalDate, shippedDate))
+      // 入庫予定日 ≧ 出庫実績日
+      }else if (XxcmnUtility.chkCompareDate(2, scheduleArrivalDate, shippedDate))
+// 2009-02-03 v1.14 D.Nihei Add End
       {
         // 入庫実績日へ入庫予定日を設定
         return scheduleArrivalDate;
