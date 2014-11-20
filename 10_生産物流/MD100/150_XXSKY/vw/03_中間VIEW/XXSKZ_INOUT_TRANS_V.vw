@@ -3,7 +3,7 @@
  * View  Name      : XXSKZ_INOUT_TRANS_V
  * Description     : XXSKZ_INOUT_TRANS_V
  * MD.070          : 
- * Version         : 1.1
+ * Version         : 1.2
  * 
  * Change Record
  * ------------- ----- ---------------- -------------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- -------------------------------------
  *  2012/11/27    1.0   SCSK M.Nagai    初回作成
  *  2013/03/19    1.1   SCSK D.Sugahara E_本稼働_10479 課題20対応
+ *  2013/11/06    1.2   SCSK D.Sugahara E_本稼動_11245対応
  ************************************************************************/
 --*******************************************************************
 -- 入出庫情報 中間VIEW
@@ -2203,7 +2204,11 @@ UNION ALL
                     ,SUM( itc_in_ad_e_x97.trans_qty )   quantity                  -- 入出庫数（集計値）
                FROM
                      xxcmn_rcv_pay_mst                  xrpm_in_ad_e_x97          -- 受払区分アドオンマスタ
-                    ,xxcmn_ic_tran_cmp_arc              itc_in_ad_e_x97           -- OPM完了在庫トランザクション（標準）バックアップ
+-- 2013/11/06 v1.2 Mod Start 
+-- 相手先在庫（外注出来高実績）はバックアップされないため元テーブルを参照する
+--                    ,xxcmn_ic_tran_cmp_arc              itc_in_ad_e_x97           -- OPM完了在庫トランザクション（標準）バックアップ
+                    ,ic_tran_cmp                        itc_in_ad_e_x97           -- OPM完了在庫トランザクション（標準）
+-- 2013/11/06 v1.2 Mod End
                     ,ic_jrnl_mst                        ijm_in_ad_e_x97           -- OPMジャーナルマスタ
                     ,ic_adjs_jnl                        iaj_in_ad_e_x97           -- OPM在庫調整ジャーナル
                     ,xxpo_vendor_supply_txns            xvst_in_ad_e_x97          -- 外注出来高実績
@@ -2307,7 +2312,11 @@ UNION ALL
                      xxcmn_rcv_pay_mst                  xrpm_in_ad_e_x9           -- 受払区分アドオンマスタ
                     ,ic_adjs_jnl                        iaj_in_ad_e_x9            -- OPM在庫調整ジャーナル
                     ,ic_jrnl_mst                        ijm_in_ad_e_x9            -- OPMジャーナルマスタ
-                    ,xxcmn_ic_tran_cmp_arc              itc_in_ad_e_x9            -- OPM完了在庫トランザクション（標準）バックアップ
+-- 2013/11/06 v1.2 Mod Start 
+-- 浜岡受入（生葉実績）はバックアップされないため元テーブルを参照する
+--                    ,xxcmn_ic_tran_cmp_arc              itc_in_ad_e_x9            -- OPM完了在庫トランザクション（標準）バックアップ
+                    ,ic_tran_cmp                        itc_in_ad_e_x9            -- OPM完了在庫トランザクション（標準）
+-- 2013/11/06 v1.2 Mod End
                     ,xxpo_namaha_prod_txns              xnpt_in_ad_e_x9           -- 生葉実績（アドオン）
               WHERE
                 -- 受払区分アドオンマスタの条件
@@ -2416,7 +2425,11 @@ UNION ALL
                      xxcmn_rcv_pay_mst                    xrpm_in_ad_e_x2         -- 受払区分アドオンマスタ
                     ,ic_adjs_jnl                          iaj_in_ad_e_x2          -- OPM在庫調整ジャーナル
                     ,ic_jrnl_mst                          ijm_in_ad_e_x2          -- OPMジャーナルマスタ
-                    ,xxcmn_ic_tran_cmp_arc                itc_in_ad_e_x2          -- OPM完了在庫トランザクション（標準）バックアップ
+-- 2013/11/06 v1.2 Mod Start 
+-- 仕入返品はバックアップされないため元テーブルを参照する
+--                    ,xxcmn_ic_tran_cmp_arc                itc_in_ad_e_x2          -- OPM完了在庫トランザクション（標準）バックアップ
+                    ,ic_tran_cmp                          itc_in_ad_e_x2          -- OPM完了在庫トランザクション（標準）
+-- 2013/11/06 v1.2 Mod End
                     ,xxpo_rcv_and_rtn_txns                xrart_in_ad_e_x2        -- 受入返品実績（アドオン）
               WHERE
                 --受払区分アドオンマスタの条件
