@@ -15,7 +15,9 @@ SELECT      xsibh.item_hst_id,              --品目変更履歴ID
             xsibh.policy_group,             --群コード（政策群コード）
             xsibh.fixed_price,              --定価
             xsibh.discrete_cost,            --営業原価
-            cmp.standard_cost,              --標準原価
+-- 2009/06/29 delete start by Yutaka.Kuboshima
+--            cmp.standard_cost,              --標準原価
+-- 2009/06/29 delete end by Yutaka.Kuboshima
             xsibh.first_apply_flag,         --初回適用フラグ
             xsibh.created_by,               --作成者
             xsibh.creation_date,            --作成日
@@ -28,36 +30,42 @@ SELECT      xsibh.item_hst_id,              --品目変更履歴ID
             xsibh.program_update_date       --プログラムによる更新日
 FROM        xxcmm_system_items_b_hst xsibh,
             xxcmm_opmmtl_items_v     xoiv,
-            cm_cldr_dtl              ccc,   -- OPM原価カレンダ
+-- 2009/06/29 delete start by Yutaka.Kuboshima
+--            cm_cldr_dtl              ccc,   -- OPM原価カレンダ
+-- 2009/06/29 delete end by Yutaka.Kuboshima
           ( SELECT    flv.lookup_code,
                       flv.meaning  item_status_mean
             FROM      fnd_lookup_values_vl flv
             WHERE     flv.lookup_type          = 'XXCMM_ITM_STATUS'
             ORDER BY  flv.lookup_code
-          ) itm,
-          ( SELECT    SUM(ccd.cmpnt_cost)  AS standard_cost,
-                      ccd.item_id          AS item_id,
-                      ccd.calendar_code    AS calendar_code,
-                      ccd.period_code      AS period_code
-            FROM      cm_cmpt_dtl ccd,     -- OPM原価
-                      cm_cldr_dtl ccc      -- OPM原価カレンダ 2009/01/21追加
-            WHERE     ccd.calendar_code  = ccc.calendar_code
-            AND       ccd.period_code    = ccc.period_code
---2009/01/21 追加
-            AND       ccc.start_date    <= xxccp_common_pkg2.get_working_day(SYSDATE, 0, NULL)
-            AND       ccc.end_date      >= xxccp_common_pkg2.get_working_day(SYSDATE, 0, NULL)
---2009/01/21 追加
-            GROUP BY  ccd.item_id,
-                      ccd.calendar_code,
-                      ccd.period_code
-          ) cmp    -- OPM原価
+          ) itm
+-- 2009/06/29 delete start by Yutaka.Kuboshima
+--          ( SELECT    SUM(ccd.cmpnt_cost)  AS standard_cost,
+--                      ccd.item_id          AS item_id,
+--                      ccd.calendar_code    AS calendar_code,
+--                      ccd.period_code      AS period_code
+--            FROM      cm_cmpt_dtl ccd,     -- OPM原価
+--                      cm_cldr_dtl ccc      -- OPM原価カレンダ 2009/01/21追加
+--            WHERE     ccd.calendar_code  = ccc.calendar_code
+--            AND       ccd.period_code    = ccc.period_code
+----2009/01/21 追加
+--            AND       ccc.start_date    <= xxccp_common_pkg2.get_working_day(SYSDATE, 0, NULL)
+--            AND       ccc.end_date      >= xxccp_common_pkg2.get_working_day(SYSDATE, 0, NULL)
+----2009/01/21 追加
+--            GROUP BY  ccd.item_id,
+--                      ccd.calendar_code,
+--                      ccd.period_code
+--          ) cmp    -- OPM原価
+-- 2009/06/29 delete end by Yutaka.Kuboshima
 WHERE       xsibh.item_code          = xoiv.item_code
 AND         xsibh.item_status        = itm.lookup_code(+)
 AND         xoiv.start_date_active   <= TRUNC( SYSDATE )
 AND         xoiv.end_date_active     >= TRUNC( SYSDATE )
-AND         xoiv.item_id             =  cmp.item_id(+)
-AND         cmp.calendar_code        =  ccc.calendar_code(+)
-AND         cmp.period_code          =  ccc.period_code(+)
+-- 2009/06/29 delete start by Yutaka.Kuboshima
+--AND         xoiv.item_id             =  cmp.item_id(+)
+--AND         cmp.calendar_code        =  ccc.calendar_code(+)
+--AND         cmp.period_code          =  ccc.period_code(+)
+-- 2009/06/29 delete end by Yutaka.Kuboshima
 ORDER BY    xsibh.item_code,
             xsibh.apply_date DESC,
             xsibh.last_update_date DESC
@@ -90,7 +98,9 @@ COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.FIXED_PRICE IS '定価'
 /
 COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.DISCRETE_COST IS '営業原価'
 /
-COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.STANDARD_COST IS '標準原価'
+-- 2009/06/29 delete start by Yutaka.Kuboshima
+--COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.STANDARD_COST IS '標準原価'
+-- 2009/06/29 delete end by Yutaka.Kuboshima
 /
 COMMENT ON COLUMN APPS.XXCMM_CHANGE_RSV_V.FIRST_APPLY_FLAG IS '初回適用フラグ'
 /
