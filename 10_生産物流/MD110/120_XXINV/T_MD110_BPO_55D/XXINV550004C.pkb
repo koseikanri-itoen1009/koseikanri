@@ -8,7 +8,7 @@ AS
  * Description      : 棚卸スナップショット作成
  * MD.050           : 在庫(帳票)               T_MD050_BPO_550
  * MD.070           : 棚卸スナップショット作成 T_MD070_BPO_55D
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/09/10    1.11  M.Nomura         本番障害#1607対応
  *  2010/05/13    1.12  M.Hokkanji       本稼動障害#2250対応
  *  2012/04/19    1.13  SCSK D.Sugahara  E_本稼動_09050対応
+ *  2012/11/29    1.14  SCSK K.Kiriu     E_本稼動_10251対応
  *
  *****************************************************************************************/
 --  
@@ -716,7 +717,10 @@ AS
     ELSIF (ln_whse_code_nullflg = 0) AND
           (ln_block_nullflg     = 0) THEN   -- 倉庫コード、ブロック両方指定した場合
       lv_loc_where := lv_where_whsecode
-        || '       OR '
+-- 2012/11/29 v1.14 K.Kiriu Update Start
+--        || '       OR '
+        || '       AND '
+-- 2012/11/29 v1.14 K.Kiriu Update End
         || lv_where_block;
     ELSE                                    -- 指定しない場合
       lv_loc_where := NULL;
@@ -736,12 +740,35 @@ AS
     END IF;
 -- 2008/09/16 v1.5 Y.Yamamoto ADD End
 --
+-- 2012/11/29 v1.14 K.Kiriu ADD Start
+    --倉庫コード・倉庫管理部署に指定なし、ブロックのみ指定あり
+    IF  ( ln_whse_code_nullflg = 1 ) AND
+        ( ln_whse_department_nullflg = 1) AND
+        ( ln_block_nullflg = 0 ) THEN
+      lv_D2sql :=   'SELECT '
+                  ||'        /*+ '
+                  ||'          LEADING(xilv.mil) '
+                  ||'          FULL(xilv.mil) '
+                  ||'          INDEX(ili ic_loct_inv_i1) '
+                  ||'          USE_NL(xilv.mil xilv.haou xilv.iwm) '
+                  ||'        */ '
+     ;
+    --倉庫コード・倉庫管理部署に指定あり、もしくは、ブロック指定なし
+    ELSE
+      lv_D2sql := 'SELECT ';
+    END IF;
+--
+-- 2012/11/29 v1.14 K.Kiriu ADD End
     BEGIN
 --
 -- 2008/09/16 v1.5 Y.Yamamoto Update Start
       --SQL作成開始
       lv_D2sql := 
-           'SELECT xilv.whse_code              whse_code '   -- OPM手持数量  倉庫コード (※D-6と違う)
+-- 2012/11/29 v1.14 K.Kiriu Update Start
+--           'SELECT xilv.whse_code              whse_code '   -- OPM手持数量  倉庫コード (※D-6と違う)
+                   lv_D2sql
+        || '       xilv.whse_code              whse_code '   -- OPM手持数量  倉庫コード (※D-6と違う)
+-- 2012/11/29 v1.14 K.Kiriu Update End
         || '      ,iimb.item_id                item_id '     -- OPM品目マスタ  品目ID
         || '      ,iimb.item_no                item_no '     -- OPM品目マスタ  品目コード
         || '      ,ilm.lot_id                  lot_id '      -- OPMロットマスタ  ロットID
