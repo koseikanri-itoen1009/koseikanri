@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOK014A04R(body)
  * Description      : 「支払先」「売上計上拠点」「顧客」単位に販手残高情報を出力
  * MD.050           : 自販機販手残高一覧 MD050_COK_014_A04
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -17,6 +17,7 @@ AS
  *  upd_resv_payment_rec   支払ステータス「消込済」更新処理(A-11)
  *  upd_resv_payment       支払ステータス「自動繰越」更新処理(A-10)
  *  ins_worktable_data     ワークテーブルデータ登録(A-7)
+ *  upd_worktable_data     ワークテーブルデータ更新処理(A-12)
  *  break_judge            ブレイク判定処理(A-6)
  *  get_bm_contract_err    販手エラー情報抽出処理(A-5)
  *  get_vendor_data        仕入先・銀行情報抽出処理(A-4)
@@ -55,6 +56,9 @@ AS
  *                                                              残高取消後も「前月まで未払」金額を出力
  *  2013/01/29    1.16  SCSK K.Taniguchi [障害E_本稼動_10381] 支払ステータス「自動繰越」出力条件変更
  *  2013/04/04    1.17  SCSK K.Nakamura  [障害E_本稼動_10595,10609] 支払ステータス「保留」「消込済」出力条件変更
+ *  2013/05/21    1.18  SCSK S.Niki      [障害E_本稼動_10595再]「消込済」出力条件変更
+ *                                       [障害E_本稼動_10411]   パラメータ「支払先コード」「支払ステータス」追加
+ *                                                              変動電気代未入力マーク出力、ソート順変更
  *
  *****************************************************************************************/
   -- ===============================================
@@ -96,6 +100,10 @@ AS
   cv_msg_code_00073          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00073';          -- パラメータ(問合せ担当拠点)
   cv_msg_code_00074          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00074';          -- パラメータ(売上計上拠点)
   cv_msg_code_00075          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00075';          -- パラメータ(表示対象)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  cv_msg_code_00094          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00094';          -- パラメータ(支払先コード)
+  cv_msg_code_00095          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00095';          -- パラメータ(支払ステータス)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
   cv_msg_code_00040          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00040';          -- SVF起動APIエラー
   cv_msg_code_90000          CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90000';          -- 対象件数
   cv_msg_code_90001          CONSTANT VARCHAR2(16)  := 'APP-XXCCP1-90001';          -- 成功件数
@@ -109,6 +117,11 @@ AS
   cv_msg_code_10393          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10393';          -- 削除エラー
   cv_msg_code_10394          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10394';          -- ロックエラー
   cv_msg_code_00028          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-00028';          -- 業務処理日付取得エラー
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  cv_msg_code_10535          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10535';          -- 帳票ワークテーブル更新エラー
+  cv_msg_code_10536          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10536';          -- 帳票ワークテーブル削除エラー
+  cv_msg_code_10537          CONSTANT VARCHAR2(16)  := 'APP-XXCOK1-10537';          -- 帳票ワークテーブル登録エラー
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
   -- トークン
   cv_token_user_id           CONSTANT VARCHAR2(7)   := 'USER_ID';
   cv_token_sales_loc         CONSTANT VARCHAR2(9)   := 'SALES_LOC';
@@ -124,6 +137,11 @@ AS
   cv_token_ref_base_cd       CONSTANT VARCHAR2(13)  := 'REF_BASE_CODE';
   cv_token_selling_base_cd   CONSTANT VARCHAR2(17)  := 'SELLING_BASE_CODE';
   cv_token_target_disp       CONSTANT VARCHAR2(11)  := 'TARGET_DISP';
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  cv_token_payment_cd        CONSTANT VARCHAR2(12)  := 'PAYMENT_CODE';
+  cv_token_resv_payment      CONSTANT VARCHAR2(12)  := 'RESV_PAYMENT';
+  cv_token_errmsg            CONSTANT VARCHAR2(6)   := 'ERRMSG';
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
 --  cv_token_org_code          CONSTANT VARCHAR2(8)   := 'ORG_CODE';
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
@@ -151,6 +169,10 @@ AS
 --  cv_prof_org_code_sales     CONSTANT VARCHAR2(25)  := 'XXCOK1_ORG_CODE_SALES';              --在庫組織コード_営業組織
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi END
   cv_prof_org_id             CONSTANT VARCHAR2(6)   := 'ORG_ID';                             --営業単位ID
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  cv_prof_unpaid_elec_mark   CONSTANT VARCHAR2(38)  := 'XXCOK1_BL_LIST_PROMPT_UNPAID_ELEC_MARK';
+                                                                                             --残高一覧_変動電気代未払ﾏｰｸ見出し
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
   -- フォーマット
   cv_format_yyyymmdd         CONSTANT VARCHAR2(8)   := 'YYYYMMDD';
   cv_format_yyyymmdd2        CONSTANT VARCHAR2(10)  := 'YYYY/MM/DD';
@@ -176,6 +198,9 @@ AS
 -- 2010/01/27 Ver.1.11 [障害E_本稼動_01176] SCS K.Kiriu END
   -- 値セット
   cv_set_name                CONSTANT VARCHAR2(18)  := 'XXCOK1_TARGET_DISP';
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  cv_set_name_rp             CONSTANT VARCHAR2(19)  := 'XXCOK1_RESV_PAYMENT';
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
   -- SVF起動パラメータ
   cv_file_id                 CONSTANT VARCHAR2(12)  := 'XXCOK014A04R';       -- 帳票ID
   cv_output_mode             CONSTANT VARCHAR2(1)   := '1';                  -- 出力区分(PDF出力)
@@ -199,6 +224,13 @@ AS
   cv_bm_payment_type1        CONSTANT VARCHAR2(1)  := '1'; -- BM支払区分(1：本振（案内書あり）)
   cv_bm_payment_type2        CONSTANT VARCHAR2(1)  := '2'; -- BM支払区分(2：本振（案内書なし）)
 -- 2013/01/29 Ver.1.16 [障害E_本稼動_10381] SCSK K.Taniguchi ADD END
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  ct_status_comp             CONSTANT xxcso_contract_managements.status%TYPE           := '1';  -- 確定済
+  ct_cooperate_comp          CONSTANT xxcso_contract_managements.cooperate_flag%TYPE   := '1';  -- 連携済み
+  ct_electricity_type0       CONSTANT xxcso_sp_decision_headers.electricity_type%TYPE  := '0';  -- 電気代なし
+  ct_electricity_type2       CONSTANT xxcso_sp_decision_headers.electricity_type%TYPE  := '2';  -- 変動電気代
+  cv_ja                      CONSTANT VARCHAR2(2)  := 'JA'; -- 日本語
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
   -- ===============================================
   -- グローバル変数
   -- ===============================================
@@ -228,6 +260,12 @@ AS
   gv_ref_base_code           VARCHAR2(4)   DEFAULT NULL; -- 問合せ担当拠点
   gv_selling_base_code       VARCHAR2(4)   DEFAULT NULL; -- 売上計上拠点
   gv_target_disp             VARCHAR2(12)  DEFAULT NULL; -- 表示対象
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  gv_unpaid_elec_mark        VARCHAR2(2)   DEFAULT NULL;                           -- 変動電気代未払マーク見出し
+  gt_payment_code            xxcok_rep_bm_balance.payment_code%TYPE  DEFAULT NULL; -- 支払先コード
+  gt_resv_payment            xxcok_rep_bm_balance.resv_payment%TYPE  DEFAULT NULL; -- 支払ステータス
+  gv_resv_payment_nm         VARCHAR2(10)  DEFAULT NULL;                           -- 支払ステータス名
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
 -- 2009/05/19 Ver.1.6 [障害T1_1070] SCS T.Taniguchi START
 --  gv_org_code                VARCHAR2(50)  DEFAULT NULL; -- 在庫組織コード_営業組織
 --  gn_organization_id         NUMBER        DEFAULT NULL; -- 在庫組織ID
@@ -509,6 +547,9 @@ AS
 -- 2011/03/15 Ver.1.13 [障害E_本稼動_05408,05409] SCS S.Niki UPD END
           AND    xbb.expect_payment_date                      <= gd_payment_date
           AND    xbb.supplier_code                             = pv.segment1
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+          AND    pv.segment1                                   = NVL( gt_payment_code ,pv.segment1 )
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
           AND    pv.vendor_id                                  = pvsa.vendor_id
           AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
           AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
@@ -594,6 +635,9 @@ AS
                                   )
           AND    xbb.expect_payment_date                      <= gd_payment_date
           AND    xbb.supplier_code                             = pv.segment1
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+          AND    pv.segment1                                   = NVL( gt_payment_code ,pv.segment1 )
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
           AND    pv.vendor_id                                  = pvsa.vendor_id
           AND    pvsa.attribute5                               = NVL( gv_ref_base_code ,pvsa.attribute5 )
           AND    NVL( pvsa.inactive_date, gd_process_date + 1) > gd_process_date
@@ -839,7 +883,16 @@ AS
     SET    xrbb.resv_payment    = gv_pay_rec_name -- 支払ステータス("消込済")
     WHERE  xrbb.request_id      = cn_request_id   -- 要求ID(今回実行分)
     AND    xrbb.resv_payment    IS NULL           -- 支払保留
-    AND    xrbb.unpaid_balance  = 0               -- 未払残高
+-- Ver.1.18 [障害E_本稼動_10595再] SCSK S.Niki MOD START
+--    AND    xrbb.unpaid_balance  = 0               -- 未払残高
+    AND EXISTS ( SELECT 'X'
+                 FROM   xxcok_backmargin_balance xbb  -- 販手残高テーブル
+                 WHERE  xbb.supplier_code  = xrbb.payment_code  -- 支払先コード
+                 AND    xbb.cust_code      = xrbb.cust_code     -- 顧客コード
+                 AND    xbb.closing_date   = xrbb.closing_date  -- 締め日
+                 AND    xbb.proc_type      = cv_proc_type1_upd  -- 処理区分("消込済")
+               )
+-- Ver.1.18 [障害E_本稼動_10595再] SCSK S.Niki MOD END
     ;
 --
   EXCEPTION
@@ -995,7 +1048,14 @@ AS
     , p_ref_base_code                 -- 問合せ担当拠点(入力パラメータ)
     , p_selling_base_code             -- 売上計上拠点(入力パラメータ)
     , p_target_disp                   -- 表示対象(入力パラメータ)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , p_payment_code                  -- 支払先コード(入力パラメータ)
+    , p_resv_payment                  -- 支払ステータス(入力パラメータ)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     , h_warnning_mark                 -- 警告マーク(ヘッダ出力)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , h_unpaid_elec_mark              -- 変動電気代未払マーク(ヘッダ出力)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     , payment_code                    -- 支払先コード
     , payment_name                    -- 支払先名
     , bank_no                         -- 銀行番号
@@ -1017,6 +1077,10 @@ AS
     , selling_base_code               -- 売上計上拠点コード
     , selling_base_name               -- 売上計上拠点名
     , warnning_mark                   -- 警告マーク
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , unpaid_elec_mark                -- 変動電気代未払マーク
+    , err_flag                        -- エラーフラグ
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     , cust_code                       -- 顧客コード
     , cust_name                       -- 顧客名
     , bm_this_month                   -- 当月BM
@@ -1024,6 +1088,9 @@ AS
     , unpaid_last_month               -- 前月までの未払
     , unpaid_balance                  -- 未払残高
     , resv_payment                    -- 支払保留
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , resv_payment_sort               -- 支払ステータス並び順
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     , payment_date                    -- 支払日
     , closing_date                    -- 締め日
     , selling_base_section_code       -- 地区コード（売上計上拠点）
@@ -1042,7 +1109,14 @@ AS
     , gv_ref_base_code                                       -- 問合せ担当拠点(入力パラメータ)
     , gv_selling_base_code                                   -- 売上計上拠点(入力パラメータ)
     , gv_target_disp_nm                                      -- 表示対象(入力パラメータ)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , gt_payment_code                                        -- 支払先コード(入力パラメータ)
+    , gv_resv_payment_nm                                     -- 支払ステータス(入力パラメータ)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     , gv_error_mark                                          -- 警告マーク(ヘッダ出力)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , gv_unpaid_elec_mark                                    -- 変動電気代未払マーク(ヘッダ出力)
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     , g_bm_balance_ttype(in_index).PAYMENT_CODE              -- 支払先コード
     , g_bm_balance_ttype(in_index).PAYMENT_NAME              -- 支払先名
 -- 2009/10/02 Ver.1.9 [障害E_T3_00630] SCS S.Moriyama UPD START
@@ -1070,6 +1144,10 @@ AS
     , g_bm_balance_ttype(in_index).SELLING_BASE_CODE         -- 売上計上拠点コード
     , g_bm_balance_ttype(in_index).SELLING_BASE_NAME         -- 売上計上拠点名
     , g_bm_balance_ttype(in_index).WARNNING_MARK             -- 警告マーク
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , NULL                                                   -- 変動電気代未払マーク
+    , NULL                                                   -- エラーフラグ
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     , g_bm_balance_ttype(in_index).CUST_CODE                 -- 顧客コード
     , g_bm_balance_ttype(in_index).CUST_NAME                 -- 顧客名
     , g_bm_balance_ttype(in_index).BM_THIS_MONTH             -- 当月BM
@@ -1077,6 +1155,9 @@ AS
     , g_bm_balance_ttype(in_index).UNPAID_LAST_MONTH         -- 前月までの未払
     , g_bm_balance_ttype(in_index).UNPAID_BALANCE            -- 未払残高
     , g_bm_balance_ttype(in_index).RESV_PAYMENT              -- 支払保留
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , NULL                                                   -- 支払ステータス並び順
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     , g_bm_balance_ttype(in_index).PAYMENT_DATE              -- 支払日
     , g_bm_balance_ttype(in_index).CLOSING_DATE              -- 締め日
     , g_bm_balance_ttype(in_index).SELLING_BASE_SECTION_CODE -- 地区コード（売上計上拠点）
@@ -1102,6 +1183,300 @@ AS
       ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
       ov_retcode := cv_status_error;
   END ins_worktable_data;
+--
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+--
+  /**********************************************************************************
+   * Procedure Name   : upd_worktable_data
+   * Description      : ワークテーブルデータ更新処理(A-12)
+   ***********************************************************************************/
+  PROCEDURE upd_worktable_data(
+    ov_errbuf                OUT VARCHAR2           -- エラー・メッセージ
+  , ov_retcode               OUT VARCHAR2           -- リターン・コード
+  , ov_errmsg                OUT VARCHAR2           -- ユーザー・エラー・メッセージ
+  )
+  IS
+    -- ===============================================
+    -- ローカル定数
+    -- ===============================================
+    cv_prg_name      CONSTANT VARCHAR2(18) := 'upd_worktable_data';    -- プログラム名
+    -- ===============================================
+    -- ローカル変数
+    -- ===============================================
+    lv_errbuf                VARCHAR2(5000) DEFAULT NULL;              -- エラー・メッセージ
+    lv_retcode               VARCHAR2(1)    DEFAULT cv_status_normal;  -- リターン・コード
+    lv_errmsg                VARCHAR2(5000) DEFAULT NULL;              -- ユーザー・エラー・メッセージ
+    lb_retcode               BOOLEAN        DEFAULT TRUE;              -- メッセージ出力関数戻り値
+    lv_electricity_type      VARCHAR2(1)    DEFAULT NULL;              -- 電気代区分
+    lv_err_flag              VARCHAR2(1)    DEFAULT NULL;              -- エラーフラグ
+    ln_worktable_cnt         NUMBER         DEFAULT 0;                 -- ワークテーブル件数
+    -- ===============================================
+    -- ローカルカーソル
+    -- ===============================================
+    -- 販手残高一覧データ
+    CURSOR l_worktable_cur
+    IS
+      SELECT  xrbb.payment_code            AS  payment_code       -- 支払先コード
+            , xrbb.cust_code               AS  cust_code          -- 顧客コード
+            , xrbb.warnning_mark           AS  warnning_mark      -- 警告マーク
+            , xrbb.electric_amt            AS  electric_amt       -- 電気料
+            , xrbb.resv_payment            AS  resv_payment       -- 支払ステータス
+      FROM    xxcok_rep_bm_balance  xrbb
+      WHERE   xrbb.request_id  = cn_request_id
+      ;
+--
+  BEGIN
+    -- ===============================================
+    -- ステータス初期化
+    -- ===============================================
+    ov_retcode := cv_status_normal;
+--
+    -- ===============================================
+    -- 1. 変動電気代未払フラグ更新
+    -- ===============================================
+    -- 販手残高一覧データをループ
+    FOR l_worktable_rec IN l_worktable_cur LOOP
+      --
+      ----------------------------
+      -- 電気代区分取得
+      ----------------------------
+      -- 最新の確定済み契約に紐付くSP専決書を取得
+      BEGIN
+        SELECT xsdh.electricity_type   AS electricity_type   -- 電気代区分
+        INTO   lv_electricity_type
+        FROM   xxcso_sp_decision_headers   xsdh       -- SP専決ヘッダ
+             , xxcso_contract_managements  xcm1       -- 契約管理テーブル
+        WHERE  xsdh.sp_decision_header_id  = xcm1.sp_decision_header_id
+        AND    xcm1.contract_management_id = ( SELECT MAX( xcm2.contract_management_id )
+                                               FROM   xxcso_contract_managements xcm2   -- 契約管理テーブル
+                                               WHERE  xcm2.install_account_id = xcm1.install_account_id
+                                               AND    xcm2.status             = ct_status_comp     -- 確定済
+                                               AND    xcm2.cooperate_flag     = ct_cooperate_comp  -- マスタ連携済
+                                             )
+        AND    xcm1.install_account_number = l_worktable_rec.cust_code    -- 対象の顧客コード
+        ;
+      --
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          -- 契約情報が取得できない場合、「0：電気代なし」を返却
+          lv_electricity_type := ct_electricity_type0;
+      END;
+      --
+      ----------------------------
+      -- 変動電気代未払マーク更新
+      ----------------------------
+      -- 変動電気代対象顧客かつ、BM1支払先コードかつ、電気代が0円の場合
+      IF ( lv_electricity_type = ct_electricity_type2 )
+        AND ( l_worktable_rec.electric_amt = 0 ) THEN
+        --
+        BEGIN
+          -- 変動電気代未払マークを更新する
+          UPDATE  xxcok_rep_bm_balance  xrbb
+          SET     xrbb.unpaid_elec_mark = gv_unpaid_elec_mark          -- 変動電気代未払マーク
+          WHERE   xrbb.request_id       = cn_request_id
+          AND     xrbb.payment_code     = l_worktable_rec.payment_code -- 対象の支払先コード
+          AND     xrbb.cust_code        = l_worktable_rec.cust_code    -- 対象の顧客コード
+          AND     EXISTS  ( SELECT 'X'
+                            FROM   xxcmm_cust_accounts xca
+                            WHERE  xca.contractor_supplier_code = xrbb.payment_code
+                            AND    xca.customer_code            = xrbb.cust_code
+                          )
+          ;
+        --
+        EXCEPTION
+          WHEN OTHERS THEN
+            -- 帳票ワークテーブル更新エラー
+            lv_errmsg  := xxccp_common_pkg.get_msg(
+                            iv_application  => cv_xxcok_appl_short_name
+                          , iv_name         => cv_msg_code_10535
+                          , iv_token_name1  => cv_token_errmsg
+                          , iv_token_value1 => SQLERRM
+                          );
+            RAISE global_process_expt;
+        END;
+      END IF;
+      --
+    END LOOP;
+    --
+    -- ===============================================
+    -- 2. エラーフラグ更新(支払先単位)
+    -- ===============================================
+    -- 販手条件エラーまたは変動電気代未払の場合、支払先単位にエラーフラグ更新
+    BEGIN
+      UPDATE  xxcok_rep_bm_balance  xrbb1
+      SET     xrbb1.err_flag    = cv_flag_y
+      WHERE   xrbb1.request_id  = cn_request_id
+      AND     EXISTS ( SELECT 'X'
+                       FROM   xxcok_rep_bm_balance  xrbb2
+                       WHERE  xrbb1.payment_code = xrbb2.payment_code
+                       AND  ( ( xrbb2.warnning_mark    IS NOT NULL )   -- 警告マーク
+                         OR   ( xrbb2.unpaid_elec_mark IS NOT NULL ) ) -- 変動電気代未払マーク
+                     )
+      ;
+    --
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- 帳票ワークテーブル更新エラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcok_appl_short_name
+                      , iv_name         => cv_msg_code_10535
+                      , iv_token_name1  => cv_token_errmsg
+                      , iv_token_value1 => SQLERRM
+                      );
+        RAISE global_process_expt;
+    END;
+    --
+    -- ===============================================
+    -- 3. 支払ステータス並び順更新
+    -- ===============================================
+    -- 支払ステータス名称から、値セットDFF1の「支払ステータス並び順」を設定
+    BEGIN
+      UPDATE  xxcok_rep_bm_balance   xrbb
+      SET     xrbb.resv_payment_sort = ( SELECT TO_NUMBER( ffv.attribute1 )  -- 支払ステータス並び順
+                                         FROM   fnd_flex_values       ffv
+                                              , fnd_flex_values_tl    ffvt
+                                              , fnd_flex_value_sets   ffvs
+                                         WHERE  xrbb.resv_payment        = ffvt.description
+                                         AND    ffv.flex_value_id        = ffvt.flex_value_id
+                                         AND    ffvt.language            = cv_ja
+                                         AND    ffvs.flex_value_set_id   = ffv.flex_value_set_id
+                                         AND    ffvs.flex_value_set_name = cv_set_name_rp         -- 支払ステータス
+                                       )
+      WHERE   xrbb.request_id        = cn_request_id
+      AND     xrbb.err_flag         IS NULL
+      ;
+    --
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- 帳票ワークテーブル更新エラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcok_appl_short_name
+                      , iv_name         => cv_msg_code_10535
+                      , iv_token_name1  => cv_token_errmsg
+                      , iv_token_value1 => SQLERRM
+                      );
+        RAISE global_process_expt;
+    END;
+    --
+    -- ===============================================
+    -- 4. 不要データ削除
+    -- ===============================================
+    IF ( gv_resv_payment_nm IS NOT NULL ) THEN
+      BEGIN
+        -- パラメータ：支払ステータスに合致しないレコードを削除
+        DELETE
+        FROM   xxcok_rep_bm_balance  xrbb
+        WHERE  NVL( xrbb.resv_payment ,'X' ) <> gv_resv_payment_nm  -- パラメータ：支払ステータス
+        AND    xrbb.request_id                = cn_request_id
+        ;
+      --
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- 帳票ワークテーブル削除エラー
+          lv_errmsg  := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcok_appl_short_name
+                        , iv_name         => cv_msg_code_10536
+                        , iv_token_name1  => cv_token_errmsg
+                        , iv_token_value1 => SQLERRM
+                        );
+          RAISE global_process_expt;
+      END;
+    END IF;
+    --
+    -- ===============================================
+    -- 5. 0件データ登録
+    -- ===============================================
+    -- 帳票ワークの件数をカウント
+    SELECT COUNT(*)
+    INTO   ln_worktable_cnt
+    FROM   xxcok_rep_bm_balance   xrbb
+    WHERE  xrbb.request_id      = cn_request_id
+    ;
+    -- 帳票ワーク件数が0件の場合、0件データを登録
+    IF ln_worktable_cnt = 0 THEN
+      -- 対象データなし
+      gn_target_cnt     := 0;
+      gn_index          := 1;
+      -- 項目のクリア
+      g_bm_balance_ttype( gn_index ).PAYMENT_CODE                := NULL;  -- 支払先コード
+      g_bm_balance_ttype( gn_index ).PAYMENT_NAME                := NULL;  -- 支払先名
+      g_bm_balance_ttype( gn_index ).BANK_NO                     := NULL;  -- 銀行番号
+      g_bm_balance_ttype( gn_index ).BANK_NAME                   := NULL;  -- 銀行名
+      g_bm_balance_ttype( gn_index ).BANK_BRANCH_NO              := NULL;  -- 銀行支店番号
+      g_bm_balance_ttype( gn_index ).BANK_BRANCH_NAME            := NULL;  -- 銀行支店名
+      g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE              := NULL;  -- 口座種別
+      g_bm_balance_ttype( gn_index ).BANK_ACCT_TYPE_NAME         := NULL;  -- 口座種別名
+      g_bm_balance_ttype( gn_index ).BANK_ACCT_NO                := NULL;  -- 口座番号
+      g_bm_balance_ttype( gn_index ).BANK_ACCT_NAME              := NULL;  -- 銀行口座名
+      g_bm_balance_ttype( gn_index ).REF_BASE_CODE               := NULL;  -- 問合せ担当拠点コード
+      g_bm_balance_ttype( gn_index ).REF_BASE_NAME               := NULL;  -- 問合せ担当拠点名
+      g_bm_balance_ttype( gn_index ).BM_PAYMENT_CODE             := NULL;  -- BM支払区分(コード値)
+      g_bm_balance_ttype( gn_index ).BM_PAYMENT_TYPE             := NULL;  -- BM支払区分
+      g_bm_balance_ttype( gn_index ).BANK_TRNS_FEE               := NULL;  -- 振込手数料
+      g_bm_balance_ttype( gn_index ).PAYMENT_STOP                := NULL;  -- 支払停止
+      g_bm_balance_ttype( gn_index ).SELLING_BASE_CODE           := NULL;  -- 売上計上拠点コード
+      g_bm_balance_ttype( gn_index ).SELLING_BASE_NAME           := NULL;  -- 売上計上拠点名
+      g_bm_balance_ttype( gn_index ).WARNNING_MARK               := NULL;  -- 警告マーク
+      g_bm_balance_ttype( gn_index ).CUST_CODE                   := NULL;  -- 顧客コード
+      g_bm_balance_ttype( gn_index ).CUST_NAME                   := NULL;  -- 顧客名
+      g_bm_balance_ttype( gn_index ).BM_THIS_MONTH               := NULL;  -- 当月BM
+      g_bm_balance_ttype( gn_index ).ELECTRIC_AMT                := NULL;  -- 電気料
+      g_bm_balance_ttype( gn_index ).UNPAID_LAST_MONTH           := NULL;  -- 前月までの未払
+      g_bm_balance_ttype( gn_index ).UNPAID_BALANCE              := NULL;  -- 未払残高
+      g_bm_balance_ttype( gn_index ).RESV_PAYMENT                := NULL;  -- 支払保留
+      g_bm_balance_ttype( gn_index ).PAYMENT_DATE                := NULL;  -- 支払日
+      g_bm_balance_ttype( gn_index ).CLOSING_DATE                := NULL;  -- 締め日
+      g_bm_balance_ttype( gn_index ).SELLING_BASE_SECTION_CODE   := NULL;  -- 地区コード
+--
+      -- ===============================================
+      -- 対象データなしメッセージ取得
+      -- ===============================================
+      gv_no_data_msg := xxccp_common_pkg.get_msg(
+                          iv_application  => cv_xxcok_appl_short_name
+                        , iv_name         => cv_msg_code_00001
+                        );
+      -- ===============================================
+      -- ワークテーブルデータ登録(A-7)
+      -- ===============================================
+      ins_worktable_data(
+          ov_errbuf                =>  lv_errbuf                -- エラーバッファ
+        , ov_retcode               =>  lv_retcode               -- リターンコード
+        , ov_errmsg                =>  lv_errmsg                -- エラーメッセージ
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        -- 帳票ワークテーブル登録エラー
+        lv_errmsg  := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_xxcok_appl_short_name
+                      , iv_name         => cv_msg_code_10537
+                      , iv_token_name1  => cv_token_errmsg
+                      , iv_token_value1 => lv_errbuf
+                      );
+        RAISE global_process_expt;
+      END IF;
+    END IF;
+--
+  EXCEPTION
+    -- *** 処理部共通例外ハンドラ ***
+    WHEN global_process_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数例外 ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外 ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外 ***
+    WHEN OTHERS THEN
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || SQLERRM, 1, 5000 );
+      ov_retcode := cv_status_error;
+  END upd_worktable_data;
+--
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
 --
   /**********************************************************************************
    * Procedure Name   : break_judge
@@ -2557,12 +2932,25 @@ AS
         RAISE global_process_expt;
       END IF;
 -- 2013/04/04 Ver.1.17 [障害E_本稼動_10595,10609] SCSK K.Nakamura ADD END
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+      -- ===============================================
+      -- ワークテーブルデータ更新(A-12)
+      -- ===============================================
+      upd_worktable_data(
+        ov_errbuf                =>  lv_errbuf                -- エラーバッファ
+      , ov_retcode               =>  lv_retcode               -- リターンコード
+      , ov_errmsg                =>  lv_errmsg                -- エラーメッセージ
+      );
+      IF ( lv_retcode = cv_status_error ) THEN
+        RAISE global_process_expt;
+      END IF;
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     END IF;
   EXCEPTION
     -- *** 処理部共通例外 ***
     WHEN global_process_expt THEN
       ov_errmsg  := lv_errmsg;
-      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errbuf, 1, 5000 );
+      ov_errbuf  := SUBSTRB( cv_pkg_name || cv_msg_cont || cv_prg_name || cv_msg_part || lv_errmsg, 1, 5000 );
       ov_retcode := cv_status_error;
     -- *** 共通関数例外 ***
     WHEN global_api_expt THEN
@@ -2591,6 +2979,10 @@ AS
   , iv_ref_base_code         IN  VARCHAR2 DEFAULT NULL -- 問合せ担当拠点
   , iv_selling_base_code     IN  VARCHAR2 DEFAULT NULL -- 売上計上拠点
   , iv_target_disp           IN  VARCHAR2 DEFAULT NULL -- 表示対象
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  , iv_payment_code          IN  VARCHAR2 DEFAULT NULL -- 支払先コード
+  , iv_resv_payment          IN  VARCHAR2 DEFAULT NULL -- 支払ステータス
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
   )
   IS
     -- ===============================================
@@ -2664,6 +3056,27 @@ AS
                  , iv_token_name1  => cv_token_target_disp
                  , iv_token_value1 => iv_target_disp
                  );
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    -- 支払先コード
+    lv_outmsg := xxccp_common_pkg.get_msg(
+                   iv_application  => cv_xxcok_appl_short_name
+                 , iv_name         => cv_msg_code_00094
+                 , iv_token_name1  => cv_token_payment_cd
+                 , iv_token_value1 => iv_payment_code
+                 );
+    lb_retcode := xxcok_common_pkg.put_message_f(
+                    in_which    => FND_FILE.LOG      --出力区分
+                  , iv_message  => lv_outmsg         --メッセージ
+                  , in_new_line => cn_number_0       --改行
+                  );
+    -- 支払ステータス
+    lv_outmsg := xxccp_common_pkg.get_msg(
+                   iv_application  => cv_xxcok_appl_short_name
+                 , iv_name         => cv_msg_code_00095
+                 , iv_token_name1  => cv_token_resv_payment
+                 , iv_token_value1 => iv_resv_payment
+                 );
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     lb_retcode := xxcok_common_pkg.put_message_f(
                     in_which    => FND_FILE.LOG      --出力区分
                   , iv_message  => lv_outmsg         --メッセージ
@@ -2756,6 +3169,17 @@ AS
       lv_profile_nm := cv_prof_error_mark;
       RAISE no_profile_expt;
     END IF;
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    -- ===============================================
+    -- プロファイル取得(残高一覧_変動電気代未払マーク見出し)
+    -- ===============================================
+    gv_unpaid_elec_mark := FND_PROFILE.VALUE( cv_prof_unpaid_elec_mark );
+    IF ( gv_unpaid_elec_mark IS NULL ) THEN
+      lv_profile_nm := cv_prof_unpaid_elec_mark;
+      RAISE no_profile_expt;
+    END IF;
+
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     -- ===============================================
     -- プロファイル取得(残高一覧_停止中見出し)
     -- ===============================================
@@ -2927,12 +3351,32 @@ AS
       AND   ffvv.flex_value          = iv_target_disp
       ;
     END IF;
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    -- =============================================
+    -- 入力パラメータの支払ステータス名取得
+    -- =============================================
+    IF ( iv_resv_payment IS NOT NULL ) THEN
+      SELECT ffvv.description  AS resv_payment_nm
+      INTO   gv_resv_payment_nm
+      FROM   fnd_flex_value_sets ffvs
+           , fnd_flex_values_vl  ffvv
+      WHERE  ffvs.flex_value_set_name = cv_set_name_rp  -- 支払ステータス
+      AND    ffvs.flex_value_set_id   = ffvv.flex_value_set_id
+      AND    ffvv.enabled_flag        = cv_flag_y
+      AND    ffvv.flex_value          = iv_resv_payment
+      ;
+    END IF;
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     -- ===============================================
     -- 入力パラメータの退避
     -- ===============================================
     gv_ref_base_code     := iv_ref_base_code;     -- 問合せ担当拠点
     gv_selling_base_code := iv_selling_base_code; -- 売上計上拠点
     gv_target_disp       := iv_target_disp;       -- 表示対象
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    gt_payment_code      := iv_payment_code;      -- 支払先コード
+    gt_resv_payment      := iv_resv_payment;      -- 支払ステータス
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
 --
   EXCEPTION
     --*** プロファイル値取得エラー ***
@@ -2981,6 +3425,10 @@ AS
   , iv_ref_base_code         IN  VARCHAR2  DEFAULT NULL -- 問合せ担当拠点
   , iv_selling_base_code     IN  VARCHAR2  DEFAULT NULL -- 売上計上拠点
   , iv_target_disp           IN  VARCHAR2  DEFAULT NULL -- 表示対象
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  , iv_payment_code          IN  VARCHAR2  DEFAULT NULL -- 支払先コード
+  , iv_resv_payment          IN  VARCHAR2  DEFAULT NULL -- 支払ステータス
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
   )
   IS
     -- ===============================================
@@ -3010,6 +3458,10 @@ AS
     , iv_ref_base_code         => iv_ref_base_code     -- 問合せ担当拠点
     , iv_selling_base_code     => iv_selling_base_code -- 売上計上拠点
     , iv_target_disp           => iv_target_disp       -- 表示対象
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , iv_payment_code          => iv_payment_code      -- 支払先コード
+    , iv_resv_payment          => iv_resv_payment      -- 支払ステータス
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     );
     IF ( lv_retcode = cv_status_error ) THEN
       RAISE global_process_expt;
@@ -3079,6 +3531,10 @@ AS
   , iv_ref_base_code         IN  VARCHAR2  -- 2:問合せ担当拠点
   , iv_selling_base_code     IN  VARCHAR2  -- 3:売上計上拠点
   , iv_target_disp           IN  VARCHAR2  -- 4:表示対象
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+  , iv_payment_code          IN  VARCHAR2  -- 5:支払先コード
+  , iv_resv_payment          IN  VARCHAR2  -- 6:支払ステータス
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
   )
   IS
     -- ===============================================
@@ -3119,6 +3575,10 @@ AS
     , iv_ref_base_code         => iv_ref_base_code     -- 問合せ担当拠点
     , iv_selling_base_code     => iv_selling_base_code -- 売上計上拠点
     , iv_target_disp           => iv_target_disp       -- 表示対象
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD START
+    , iv_payment_code          => iv_payment_code      -- 支払先コード
+    , iv_resv_payment          => iv_resv_payment      -- 支払ステータス
+-- Ver.1.18 [障害E_本稼動_10411] SCSK S.Niki ADD END
     );
     -- ===============================================
     -- エラー出力

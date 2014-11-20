@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_REP_BM_BALANCE
  * Description : îÃéËécçÇàÍóóí†ï[ÉèÅ[ÉNÉeÅ[ÉuÉã
- * Version     : 1.5
+ * Version     : 1.6
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -15,6 +15,7 @@
  *  2010/01/04    1.3   S.Moriyama       [E_ñ{â“ìÆ_00461]BMéxï•ãÊï™ÅiÉRÅ[ÉhílÅjí«â¡
  *  2011/04/28    1.4   S.Niki           [E_ñ{â“ìÆ_02100]å˚ç¿éÌï ÇÃåÖêîÇägí£
  *  2012/07/04    1.5   K.Onotsuka       [E_ñ{â“ìÆ_08365]éxï•ï€óØÇÃåÖêîÇägí£
+ *  2013/04/25    1.6   S.Niki           [E_ñ{â“ìÆ_10411]éxï•êÊÉRÅ[Éh,éxï•ÉXÉeÅ[É^ÉX,ïœìÆìdãCë„ñ¢ì¸óÕÉ}Å[ÉNí«â¡
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
@@ -23,7 +24,14 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
    P_REF_BASE_CODE              VARCHAR2(4),
    P_SELLING_BASE_CODE          VARCHAR2(4),
    P_TARGET_DISP                VARCHAR2(12),
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD START
+   P_PAYMENT_CODE               VARCHAR2(9),
+   P_RESV_PAYMENT               VARCHAR2(8),
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD END
    H_WARNNING_MARK              VARCHAR2(2),
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD START
+   H_UNPAID_ELEC_MARK           VARCHAR2(2),
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD END
    PAYMENT_CODE                 VARCHAR2(9),
    PAYMENT_NAME                 VARCHAR2(240),
    BANK_NO                      VARCHAR2(4),
@@ -48,6 +56,10 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
    SELLING_BASE_CODE            VARCHAR2(4),
    SELLING_BASE_NAME            VARCHAR2(240),
    WARNNING_MARK                VARCHAR2(2),
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD START
+   UNPAID_ELEC_MARK             VARCHAR2(2),
+   ERR_FLAG                     VARCHAR2(1),
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD END
    CUST_CODE                    VARCHAR2(9),
    CUST_NAME                    VARCHAR2(360),
    BM_THIS_MONTH                NUMBER,
@@ -58,6 +70,9 @@ CREATE TABLE XXCOK.XXCOK_REP_BM_BALANCE
 --   RESV_PAYMENT                 VARCHAR2(4),
    RESV_PAYMENT                 VARCHAR2(8),
 -- 2012/07/04 Ver.1.5 [E_ñ{â“ìÆ_08365] SCSK K.Onotsuka MOD END
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD START
+   RESV_PAYMENT_SORT            NUMBER,
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD END
    PAYMENT_DATE                 DATE,
    CLOSING_DATE                 DATE,
    SELLING_BASE_SECTION_CODE    VARCHAR2(5),
@@ -89,8 +104,18 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.P_SELLING_BASE_CODE       IS 'îÑè„å
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.P_TARGET_DISP             IS 'ï\é¶ëŒè€(ì¸óÕÉpÉâÉÅÅ[É^)'
 /
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.P_PAYMENT_CODE            IS 'éxï•êÊÉRÅ[Éh(ì¸óÕÉpÉâÉÅÅ[É^)'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.P_RESV_PAYMENT            IS 'éxï•ÉXÉeÅ[É^ÉX(ì¸óÕÉpÉâÉÅÅ[É^)'
+/
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.H_WARNNING_MARK           IS 'åxçêÉ}Å[ÉN(ÉwÉbÉ_èoóÕ)'
 /
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.H_UNPAID_ELEC_MARK        IS 'ïœìÆìdãCë„ñ¢ï•É}Å[ÉN(ÉwÉbÉ_èoóÕ)'
+/
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PAYMENT_CODE              IS 'éxï•êÊÉRÅ[Éh'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PAYMENT_NAME              IS 'éxï•êÊñº'
@@ -127,6 +152,12 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.SELLING_BASE_NAME         IS 'îÑè„å
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.WARNNING_MARK             IS 'åxçêÉ}Å[ÉN'
 /
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.UNPAID_ELEC_MARK          IS 'ïœìÆìdãCë„ñ¢ï•É}Å[ÉN'
+/
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.ERR_FLAG                  IS 'ÉGÉâÅ[ÉtÉâÉO'
+/
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CUST_CODE                 IS 'å⁄ãqÉRÅ[Éh'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CUST_NAME                 IS 'å⁄ãqñº'
@@ -141,6 +172,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.UNPAID_BALANCE            IS 'ñ¢ï•é
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.RESV_PAYMENT              IS 'éxï•ï€óØ'
 /
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.RESV_PAYMENT_SORT         IS 'éxï•ÉXÉeÅ[É^ÉXï¿Ç—èá'
+/
+-- Ver.1.6 [è·äQE_ñ{â“ìÆ_10411] SCSK S.Niki ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.PAYMENT_DATE              IS 'éxï•ì˙'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_REP_BM_BALANCE.CLOSING_DATE              IS 'í˜Çﬂì˙'
