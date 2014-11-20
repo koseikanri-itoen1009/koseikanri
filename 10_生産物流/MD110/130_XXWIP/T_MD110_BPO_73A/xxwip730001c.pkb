@@ -7,7 +7,7 @@ AS
  * Description      : 支払運賃データ自動作成
  * MD.050           : 運賃計算（トランザクション） T_MD050_BPO_730
  * MD.070           : 支払運賃データ自動作成 T_MD070_BPO_73A
- * Version          : 1.8
+ * Version          : 1.9
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -101,6 +101,7 @@ AS
  *  2008/08/04    1.6  Oracle 山根       内部課題#187対応
  *  2008/08/25    1.7  Oracle 野村       ST事前確認障害
  *  2008/09/12    1.8  Oracle 野村       TE080指摘事項15対応 区分設定見直対応
+ *  2008/10/21    1.9  Oracle 野村       T_S_572 統合#392対応
  *
  *****************************************************************************************/
 --
@@ -1357,10 +1358,17 @@ AS
 -- ##### 20080625 Ver.1.2 支給配送先対応 END   #####
           , xdec.payments_judgment_classe         -- 支払判断区分(運賃)
           , xoha.shipped_date                     -- 出荷日
-          , xoha.arrival_date                     -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--  着荷日を設定、NULLの場合は着荷予定日を設定
+--          , xoha.arrival_date                     -- 着荷日
+          , NVL(xoha.arrival_date, xoha.schedule_arrival_date)  -- 着荷日(着荷予定日)
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           , CASE xdec.payments_judgment_classe    -- 判断日
             WHEN gv_pay_judg_g THEN xoha.shipped_date -- 発日
-            WHEN gv_pay_judg_c THEN xoha.arrival_date -- 着日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--            WHEN gv_pay_judg_c THEN xoha.arrival_date -- 着日
+            WHEN gv_pay_judg_c THEN NVL(xoha.arrival_date, xoha.schedule_arrival_date) -- 着日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
             END
           , xoha.prod_class                       -- 商品区分
           , xoha.weight_capacity_class            -- 重量容積区分
@@ -1390,7 +1398,14 @@ AS
     WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
     AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
 -- ##### 20080717 Ver.1.5 変更要求96,98 START #####
-    AND   xoha.arrival_date IS NOT NULL                   -- 着荷日
+--
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--  着荷日が設定されていなくても、抽出対象とする。
+-- （着荷予定日もしくは着荷日が設定されていることが前提）
+    AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+      OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+--
     AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
 -- ##### 20080717 Ver.1.5 変更要求96,98 END   #####
     AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
@@ -1405,7 +1420,11 @@ AS
             AND (xoha.shipped_date >=  gd_target_date))         -- 出荷日
           OR
             ((xdec.payments_judgment_classe = gv_pay_judg_c)    -- 支払判断区分（着日）
-            AND (xoha.arrival_date >=  gd_target_date))         -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--            AND (xoha.arrival_date >=  gd_target_date))         -- 着荷日
+            AND (NVL(xoha.arrival_date, xoha.schedule_arrival_date)
+                                             >=  gd_target_date)) -- 着荷日(着荷予定日)
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           )
     AND (
 -- ##### 20080625 Ver.1.2 支給配送先対応 START #####
@@ -1663,6 +1682,9 @@ AS
     ln_num_of_cases   xxcmn_item_mst2_v.num_of_cases%TYPE;  -- ケース入り数
     ln_conv_unit      xxcmn_item_mst2_v.conv_unit%TYPE;     -- 入出庫換算単位
     ln_unit           xxcmn_item_mst2_v.unit%TYPE;          -- 重量
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+    ln_capacity       xxcmn_item_mst2_v.capacity%TYPE;      -- 容積
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
     ln_qty                           xxwip_deliverys.qty1%TYPE;             -- 個数
     ln_delivery_weight               xxwip_deliverys.delivery_weight1%TYPE; -- 重量
@@ -1762,10 +1784,16 @@ AS
                , ximv.num_of_cases    -- ケース入り数
                , ximv.conv_unit       -- 入出庫換算単位
                , ximv.unit            -- 重量
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+               , ximv.capacity        -- 容積
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           INTO   ln_item_id
                , ln_num_of_cases
                , ln_conv_unit
                , ln_unit
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+               , ln_capacity
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           FROM   xxcmn_item_mst2_v    ximv    -- OPM品目情報VIEW2
           WHERE  ximv.item_no = 
                  lt_order_line_inf_tab(ln_line_index).shipping_item_code -- 品目コード
@@ -1820,16 +1848,31 @@ AS
           AND (gt_order_inf_tab(ln_index).weight_capacity_class = gv_capacity )) THEN
           -- 上記算出の個数 × 小口重量
           ln_delivery_weight :=
-                ln_qty * gt_order_inf_tab(ln_index).small_weight;
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--                ln_qty * gt_order_inf_tab(ln_index).small_weight;
+                CEIL(ln_qty * gt_order_inf_tab(ln_index).small_weight);
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
         -- 上記以外
         ELSE
-          -- 重量 × 出荷実績数量（四捨五入）
-          ln_delivery_weight :=
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+          -- 重量容積区分＝「容積」の場合
+          IF (gt_order_inf_tab(ln_index).weight_capacity_class = gv_capacity) THEN
+            -- 容積 × 出荷実績数量（切上）×1000000
+            ln_delivery_weight :=
+                  CEIL(ln_capacity * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000000);
+--
+          -- 重量容積区分＝「重量」の場合
+          ELSE
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+            -- 重量 × 出荷実績数量（切上）
+            ln_delivery_weight :=
 -- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
 --                ROUND(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
-                CEIL(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
+                  CEIL(ln_unit * lt_order_line_inf_tab(ln_line_index).shipped_quantity / 1000);
 -- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
+
+          END IF;
         END IF;
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
@@ -1846,6 +1889,7 @@ AS
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：ケース入り数  ：' || TO_CHAR(ln_num_of_cases));
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：入出庫換算単位：' || ln_conv_unit);
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：重量          ：' || TO_CHAR(ln_unit));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：容積          ：' || TO_CHAR(ln_capacity));
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：***** 算出結果 *****');
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：個数         ：' || TO_CHAR(ln_qty));
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_order_line：重量         ：' || TO_CHAR(ln_delivery_weight));
@@ -1949,6 +1993,10 @@ AS
     lv_dellivary_classe       xxwip_delivery_lines.dellivary_classe%TYPE;       -- 配送区分
     ln_qty                    xxwip_delivery_lines.qty%TYPE;                    -- 個数
     ln_delivery_weight        xxwip_delivery_lines.delivery_weight%TYPE;        -- 重量
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+    ld_ship_date              xxwip_delivery_lines.ship_date%TYPE;              -- 出荷日
+    ld_arrival_date           xxwip_delivery_lines.arrival_date%TYPE;           -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
     ln_deliv_line_flg         VARCHAR2(1);      -- 受注明細アドオン 存在フラグ Y:有 N:無
 --
@@ -2002,12 +2050,20 @@ AS
               , xwdl.dellivary_classe       -- 配送区分
               , xwdl.qty                    -- 個数
               , xwdl.delivery_weight        -- 重量
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+              , xwdl.ship_date              -- 出荷日
+              , xwdl.arrival_date           -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
         INTO    lv_delivery_company_code
               , lv_whs_code
               , lv_shipping_address_code
               , lv_dellivary_classe
               , ln_qty
               , ln_delivery_weight
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+              , ld_ship_date                -- 出荷日
+              , ld_arrival_date             -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
         FROM   xxwip_delivery_lines xwdl    -- 運賃明細アドオン
         WHERE  xwdl.request_no = gt_order_inf_tab(ln_index).request_no; -- 依頼No
       EXCEPTION
@@ -2035,6 +2091,8 @@ AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：配送区分     ：' || lv_dellivary_classe);
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：個数         ：' || TO_CHAR(ln_qty));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：重量         ：' || TO_CHAR(ln_delivery_weight));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：出荷日       ：' || TO_CHAR(ld_ship_date    ,'YYYY/MM/DD'));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_order_deliv_line：着荷日       ：' || TO_CHAR(ld_arrival_date ,'YYYY/MM/DD'));
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
@@ -2147,11 +2205,15 @@ AS
         -- **************************************************
         -- ***  登録されている内容より再計算が必要な場合
         -- **************************************************
-        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量
+        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量、出庫日、入庫日
         IF ((gt_order_inf_tab(ln_index).result_freight_carrier_code  <> lv_delivery_company_code )
           OR (gt_order_inf_tab(ln_index).deliver_from                 <> lv_whs_code              )
           OR (gt_order_inf_tab(ln_index).result_deliver_to            <> lv_shipping_address_code )
           OR (gt_order_inf_tab(ln_index).result_shipping_method_code  <> lv_dellivary_classe      )
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+          OR (gt_order_inf_tab(ln_index).shipped_date  <>  ld_ship_date     )
+          OR (gt_order_inf_tab(ln_index).arrival_date  <>  ld_arrival_date  )
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           OR (gt_order_inf_tab(ln_index).qty                          <> ln_qty                   )
           OR (gt_order_inf_tab(ln_index).delivery_weight              <> ln_delivery_weight       )) THEN
 --
@@ -2359,10 +2421,16 @@ AS
             , xmrih.ship_to_locat_code                            -- 入庫先保管場所
             , xdec.payments_judgment_classe                       -- 支払判断区分(運賃)
             , xmrih.actual_ship_date                              -- 出庫実績日
-            , xmrih.actual_arrival_date                           -- 入庫実績日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--            , xmrih.actual_arrival_date                           -- 入庫実績日
+            , NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) -- 入庫実績日(入庫予定日)
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
             , CASE xdec.payments_judgment_classe                  -- 判断日
               WHEN gv_pay_judg_g  THEN xmrih.actual_ship_date     --   発日
-              WHEN gv_pay_judg_c  THEN xmrih.actual_arrival_date  --   着日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--              WHEN gv_pay_judg_c  THEN xmrih.actual_arrival_date  --   着日
+              WHEN gv_pay_judg_c  THEN NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date)  -- 着日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
               END
             , xmrih.item_class                                    -- 商品区分
             , xmrih.weight_capacity_class                         -- 重量容積区分
@@ -2388,7 +2456,13 @@ AS
           xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
     WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
 -- ##### 20080717 Ver.1.5 変更要求96,98 START #####
-    AND   xmrih.actual_arrival_date IS NOT NULL         -- 入庫実績日
+--
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--    AND   xmrih.actual_arrival_date IS NOT NULL         -- 入庫実績日
+    AND  (xmrih.actual_arrival_date IS NOT NULL           -- 入庫実績日
+      OR  xmrih.schedule_arrival_date  IS NOT NULL)       -- 入庫予定日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+--
     AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
 -- ##### 20080717 Ver.1.5 変更要求96,98 END   #####
     AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
@@ -2402,7 +2476,11 @@ AS
             AND (xmrih.actual_ship_date    >=  gd_target_date))   -- 出庫実績日
           OR
             ((xdec.payments_judgment_classe = gv_pay_judg_c)      -- 支払判断区分（着日）
-            AND (xmrih.actual_arrival_date >=  gd_target_date))   -- 入庫実績日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--            AND (xmrih.actual_arrival_date >=  gd_target_date))   -- 入庫実績日
+            AND (NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) 
+                                              >=  gd_target_date)) -- 入庫実績日(入庫予定日)
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           )
     AND (
           ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付
@@ -2654,6 +2732,9 @@ AS
     ln_num_of_cases   xxcmn_item_mst2_v.num_of_cases%TYPE;  -- ケース入り数
     ln_conv_unit      xxcmn_item_mst2_v.conv_unit%TYPE;     -- 入出庫換算単位
     ln_unit           xxcmn_item_mst2_v.unit%TYPE;          -- 重量
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+    ln_capacity       xxcmn_item_mst2_v.capacity%TYPE;      -- 容積
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
     ln_qty                     xxwip_deliverys.qty1%TYPE;             -- 個数
     ln_delivery_weight         xxwip_deliverys.delivery_weight1%TYPE; -- 重量
@@ -2755,6 +2836,9 @@ AS
                , ximv.num_of_cases    -- ケース入り数
                , ximv.conv_unit       -- 入出庫換算単位
                , ximv.unit            -- 重量
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+               , ximv.capacity        -- 容積
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
  -- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
 --         INTO   ln_item_id
          INTO   ln_item_no
@@ -2762,6 +2846,9 @@ AS
                , ln_num_of_cases
                , ln_conv_unit
                , ln_unit
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+               , ln_capacity
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           FROM   xxcmn_item_mst2_v    ximv    -- OPM品目情報VIEW2
           WHERE  ximv.item_id = lt_move_line_inf_tab(ln_line_index).item_id         -- 品目ID
           AND    gt_move_inf_tab(ln_index).judgement_date >= ximv.start_date_active -- 適用開始日
@@ -2818,16 +2905,30 @@ AS
           AND (gt_move_inf_tab(ln_index).weight_capacity_class = gv_capacity )) THEN
           -- 上記算出の個数 × 小口重量
           ln_delivery_weight :=
-                ln_qty * gt_move_inf_tab(ln_index).small_weight;
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--                ln_qty * gt_move_inf_tab(ln_index).small_weight;
+                CEIL(ln_qty * gt_move_inf_tab(ln_index).small_weight);
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
         -- 上記以外
         ELSE
-          -- 重量 × 出荷実績数量（四捨五入）
-          ln_delivery_weight :=
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+          -- 重量容積区分＝「容積」の場合
+          IF (gt_move_inf_tab(ln_index).weight_capacity_class = gv_capacity) THEN
+            -- 容積 × 出荷実績数量（切上）
+            ln_delivery_weight :=
+                CEIL(ln_capacity * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000000);
+--
+          -- 重量容積区分＝「重量」の場合
+          ELSE
+            -- 重量 × 出荷実績数量（切上）
+            ln_delivery_weight :=
 -- ##### 20080715 Ver.1.3 ST障害#452対応 START #####
 --                ROUND(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
                 CEIL(ln_unit * lt_move_line_inf_tab(ln_line_index).shipped_quantity / 1000);
 -- ##### 20080715 Ver.1.3 ST障害#452対応 END   #####
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
+          END IF;
         END IF;
 --
 --<><><><><><><><><><><><><><><><><> DEBUG START <><><><><><><><><><><><><><><><><><><><><><><>
@@ -2844,6 +2945,7 @@ AS
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：ケース入り数  ：' || TO_CHAR(ln_num_of_cases));
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：入出庫換算単位：' || ln_conv_unit);
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：重量          ：' || TO_CHAR(ln_unit));
+          FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：容積          ：' || TO_CHAR(ln_capacity));
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：+++++ 算出結果 +++++');
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：個数         ：' || TO_CHAR(ln_qty));
           FND_FILE.PUT_LINE(FND_FILE.LOG, 'get_move_line：重量         ：' || TO_CHAR(ln_delivery_weight));
@@ -2951,6 +3053,10 @@ AS
     lv_dellivary_classe       xxwip_delivery_lines.dellivary_classe%TYPE;       -- 配送区分
     ln_qty                    xxwip_delivery_lines.qty%TYPE;                    -- 個数
     ln_delivery_weight        xxwip_delivery_lines.delivery_weight%TYPE;        -- 重量
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+    ld_ship_date              xxwip_delivery_lines.ship_date%TYPE;              -- 出荷日
+    ld_arrival_date           xxwip_delivery_lines.arrival_date%TYPE;           -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
 --
     ln_deliv_line_flg         VARCHAR2(1);      -- 受注明細アドオン 存在フラグ Y:有 N:無
 --
@@ -3005,12 +3111,20 @@ AS
               , xwdl.dellivary_classe       -- 配送区分
               , xwdl.qty                    -- 個数
               , xwdl.delivery_weight        -- 重量
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+              , xwdl.ship_date              -- 出荷日
+              , xwdl.arrival_date           -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
         INTO    lv_delivery_company_code
               , lv_whs_code
               , lv_shipping_address_code
               , lv_dellivary_classe
               , ln_qty
               , ln_delivery_weight
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+              , ld_ship_date                -- 出荷日
+              , ld_arrival_date             -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
         FROM   xxwip_delivery_lines xwdl    -- 運賃明細アドオン
         WHERE  xwdl.request_no = gt_move_inf_tab(ln_index).mov_num; -- 移動番号
       EXCEPTION
@@ -3038,6 +3152,8 @@ AS
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：配送区分     ：' || lv_dellivary_classe);
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：個数         ：' || TO_CHAR(ln_qty));
         FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：重量         ：' || TO_CHAR(ln_delivery_weight));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：出荷日       ：' || TO_CHAR(ld_ship_date    ,'YYYY/MM/DD'));
+        FND_FILE.PUT_LINE(FND_FILE.LOG, 'set_move_deliv_line：着荷日       ：' || TO_CHAR(ld_arrival_date ,'YYYY/MM/DD'));
       END IF;
 --<><><><><><><><><><><><><><><><><> DEBUG END   <><><><><><><><><><><><><><><><><><><><><><><>
 --
@@ -3146,11 +3262,15 @@ AS
         -- **************************************************
         -- ***  登録されている内容より再計算が必要な場合
         -- **************************************************
-        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量
+        --   対象項目：運送業者、出庫倉庫、配送先コード、配送区分、個数、重量、出庫日、入庫日
         IF ((gt_move_inf_tab(ln_index).actual_freight_carrier_code <> lv_delivery_company_code )
           OR (gt_move_inf_tab(ln_index).shipped_locat_code   <> lv_whs_code              )
           OR (gt_move_inf_tab(ln_index).ship_to_locat_code   <> lv_shipping_address_code )
           OR (gt_move_inf_tab(ln_index).shipping_method_code <> lv_dellivary_classe      )
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+          OR (gt_move_inf_tab(ln_index).actual_ship_date     <> ld_ship_date    )
+          OR (gt_move_inf_tab(ln_index).actual_arrival_date  <> ld_arrival_date )
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
           OR (gt_move_inf_tab(ln_index).qty                  <> ln_qty                   )
           OR (gt_move_inf_tab(ln_index).delivery_weight      <> ln_delivery_weight       )) THEN
 --
@@ -3742,7 +3862,12 @@ AS
               xxwip_delivery_company         xdec     -- 運賃用運送業者アドオンマスタ
         WHERE xoha.latest_external_flag = 'Y'                 -- 最新フラグ 'Y'
         AND   xoha.shipped_date IS NOT NULL                   -- 出荷日
-        AND   xoha.arrival_date IS NOT NULL                   -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--        AND   xoha.arrival_date IS NOT NULL                   -- 着荷日
+-- （着荷予定日もしくは着荷日が設定されていることが前提）
+        AND   (xoha.arrival_date           IS NOT NULL    -- 着荷日
+          OR   xoha.schedule_arrival_date  IS NOT NULL)   -- 着荷予定日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
         AND   xoha.result_shipping_method_code IS NOT NULL    -- 配送区分_実績
         AND   xoha.result_freight_carrier_code IS NOT NULL    -- 運送業者_実績
         AND   xoha.delivery_no  IS NULL                       -- 配送No
@@ -3756,7 +3881,11 @@ AS
                 AND (xoha.shipped_date >=  gd_target_date))         -- 出荷日
               OR
                 ((xdec.payments_judgment_classe = gv_pay_judg_c)    -- 支払判断区分（着日）
-                AND (xoha.arrival_date >=  gd_target_date))         -- 着荷日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--                AND (xoha.arrival_date >=  gd_target_date))         -- 着荷日
+                AND (NVL(xoha.arrival_date, xoha.schedule_arrival_date)
+                                                 >=  gd_target_date)) -- 着荷日(着荷予定日)
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
               )
         -- 受注タイプ情報VIEW2
         AND   xoha.order_type_id       = xotv.transaction_type_id -- 受注タイプID
@@ -3784,7 +3913,11 @@ AS
         FROM  xxinv_mov_req_instr_headers    xmrih,     -- 移動依頼/指示ヘッダ(アドオン)
               xxwip_delivery_company         xdec       -- 運賃用運送業者アドオンマスタ
         WHERE xmrih.actual_ship_date IS NOT NULL            -- 出庫実績日
-        AND   xmrih.actual_arrival_date IS NOT NULL         -- 入庫実績日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--        AND   xmrih.actual_arrival_date IS NOT NULL         -- 入庫実績日
+        AND  (xmrih.actual_arrival_date IS NOT NULL           -- 入庫実績日
+          OR  xmrih.schedule_arrival_date  IS NOT NULL)       -- 入庫予定日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
         AND   xmrih.actual_shipping_method_code IS NOT NULL -- 配送区分_実績
         AND   xmrih.actual_freight_carrier_code IS NOT NULL -- 運送業者_実績
         AND   xmrih.delivery_no IS NULL                     -- 配送No
@@ -3797,7 +3930,11 @@ AS
                 AND (xmrih.actual_ship_date    >=  gd_target_date))   -- 出庫実績日
               OR
                 ((xdec.payments_judgment_classe = gv_pay_judg_c)      -- 支払判断区分（着日）
-                AND (xmrih.actual_arrival_date >=  gd_target_date))   -- 入庫実績日
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 START #####
+--                AND (xmrih.actual_arrival_date >=  gd_target_date))   -- 入庫実績日
+                AND (NVL(xmrih.actual_arrival_date, xmrih.schedule_arrival_date) 
+                                                  >=  gd_target_date)) -- 入庫実績日(入庫予定日)
+-- ##### 20081021 Ver.1.9 T_S_572 統合#392対応 END   #####
               )
        AND (
               ((xmrih.last_update_date    > gd_last_process_date)   -- 移動ヘッダ：前回処理日付

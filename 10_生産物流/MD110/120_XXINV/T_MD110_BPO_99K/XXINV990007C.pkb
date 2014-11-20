@@ -7,7 +7,7 @@ AS
  * Description      : 運賃情報取込処理のアップロード
  * MD.050           : ファイルアップロード            T_MD050_BPO_990
  * MD.070           : 運賃情報取込処理のアップロード  T_MD070_BPO_99K
- * Version          : 1.5
+ * Version          : 1.6
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -34,6 +34,7 @@ AS
  *  2008/05/28    1.3   Oracle 山根 一浩 変更要求No124対応
  *  2008/07/08    1.4   Oracle 山根 一浩 I_S_192対応
  *  2008/10/03    1.5   M.Nomura         T_S_577対応
+ *  2008/10/03    1.6   M.Nomura         統合#331対応
  *
  *****************************************************************************************/
 --
@@ -157,7 +158,10 @@ AS
   gv_invoice_no_l        CONSTANT NUMBER := 20;  -- 送り状No
   gv_delivery_classe_l   CONSTANT NUMBER := 2;   -- 配送区分
   gv_charged_amount_l    CONSTANT NUMBER := 7;   -- 請求運賃
-  gv_qty_l               CONSTANT NUMBER := 4;   -- 個数
+-- ##### 20081023 Ver.1.6 T_S_572 統合#331対応 START #####
+--  gv_qty_l               CONSTANT NUMBER := 4;   -- 個数
+  gv_qty_l               CONSTANT NUMBER := 9;   -- 個数
+-- ##### 20081023 Ver.1.6 T_S_572 統合#331対応 END   #####
   gv_weight_l            CONSTANT NUMBER := 6;   -- 重量
   gv_distance_l          CONSTANT NUMBER := 4;   -- 距離
   gv_many_rate_l         CONSTANT NUMBER := 7;   -- 諸料金
