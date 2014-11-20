@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOP005A01C(body)
  * Description      : 工場出荷計画
  * MD.050           : 工場出荷計画 MD050_COP_005_A01
- * Version          : 1.2
+ * Version          : 1.3
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2008/12/02    1.0   SCS Uda          新規作成
  *  2009/02/25    1.1   SCS Uda          結合テスト仕様変更（結合障害No.014）
  *  2009/04/07    1.2   SCS Uda          システムテスト障害対応（T1_0277、T1_0278、T1_0280、T1_0281、T1_0368）
+ *  2009/04/14    1.3   SCS Uda          システムテスト障害対応（T1_0542）
  *
  *****************************************************************************************/
 --
@@ -229,8 +230,8 @@ AS
   cv_source_rule            CONSTANT NUMBER        := 1;                        -- ソースルール
   cv_mrp_sourcing_rule      CONSTANT NUMBER        := 2;                        -- 物流構成表
   --翌週取得用コンスタント
-  cv_sunday                 CONSTANT VARCHAR2(100)        := '日曜';              -- 翌週開始日取得用
-  cv_saturday               CONSTANT VARCHAR2(100)        := '土曜';              -- 翌週終了日取得用
+  cv_sunday                 CONSTANT VARCHAR2(100)        := '日';              -- 翌週開始日取得用
+  cv_saturday               CONSTANT VARCHAR2(100)        := '土';              -- 翌週終了日取得用
   --プロファイル取得
   cv_master_org_id          CONSTANT VARCHAR2(20)  := 'XXCMN_MASTER_ORG_ID';           -- プロファイル取得用 マスタ組織
   cv_profile_name_mo_id     CONSTANT VARCHAR2(20)  := 'マスタ組織';                    -- プロファイル名 マスタ組織
@@ -997,6 +998,9 @@ AS
 --20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
     ln_item_status        xxcmm_system_items_b.item_status%TYPE;
 --20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
+--20090414_Ver1.2_T1_0542_SCS_Uda_ADD_START
+    ln_item_code          xxcmm_system_items_b.item_code%TYPE;
+--20090414_Ver1.2_T1_0542_SCS_Uda_ADD_END
 --
     -- *** ローカル・レコード ***
     lr_xwsp_rec     xxcop_wk_ship_planning%ROWTYPE := NULL;
@@ -1009,6 +1013,64 @@ AS
 --
 --###########################  固定部 END   ############################
 --
+--20090414_Ver1.2_T1_0542_SCS_Uda_ADD_START
+    --組織情報取得処理
+    xxcop_common_pkg2.get_org_info(
+      in_organization_id     =>   io_xwsp_rec.plant_org_id,  --   組織ID
+      ov_organization_code   =>   lv_organization_code,      --   組織コード
+      ov_whse_name           =>   lv_organization_name,      --   倉庫名
+      ov_errmsg              =>   lv_errmsg,                 --   エラー・メッセージ
+      ov_errbuf              =>   lv_errbuf,                 --   リターン・コード
+      ov_retcode             =>   lv_retcode                 --   ユーザー・エラー・メッセージ
+      );
+    IF lv_retcode = cv_status_error THEN
+      RAISE global_api_expt;
+    ELSIF lv_retcode = cv_status_warn THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_appl_cont
+                      ,iv_name         => cv_msg_00050
+                      ,iv_token_name1  => cv_msg_00050_token_1
+                      ,iv_token_value1 => io_xwsp_rec.plant_org_id
+                    );
+      RAISE internal_process_expt;
+    END IF;
+    --
+    -- 工場出荷ワーク組織情報セット
+    io_xwsp_rec.ship_org_id         := io_xwsp_rec.plant_org_id;  -- 出荷組織ID
+    io_xwsp_rec.plant_org_code      := lv_organization_code;      -- 工場組織コード
+    io_xwsp_rec.ship_org_code       := lv_organization_code;      -- 出荷組織コード
+    io_xwsp_rec.plant_org_name      := lv_organization_name;      -- 工場組織名称
+    io_xwsp_rec.ship_org_name       := lv_organization_name;      -- 出荷組織名称
+    --
+    --品目ステータス取得処理
+    SELECT xsib.item_status,msib.segment1
+    INTO   ln_item_status,ln_item_code
+    FROM  xxcmm_system_items_b  xsib
+         ,mtl_system_items_b    msib
+    WHERE xsib.item_status_apply_date     <= cd_sys_date
+    AND   xsib.item_code                   = msib.segment1
+    AND   msib.inventory_item_id           = io_xwsp_rec.inventory_item_id
+    AND   msib.organization_id             = to_number(fnd_profile.value(cv_master_org_id));
+    IF ln_item_status NOT IN (cn_xsib_status_temporary,cn_xsib_status_registered,cn_xsib_status_obsolete) THEN
+      lv_errmsg :=  xxccp_common_pkg.get_msg(
+                       iv_application  => cv_msg_appl_cont
+                      ,iv_name         => cv_msg_10042
+                      ,iv_token_name1  => cv_msg_10042_token_1
+                      ,iv_token_value1 => io_xwsp_rec.plant_org_code
+                      ,iv_token_name2  => cv_msg_10042_token_2
+                      ,iv_token_value2 => ln_item_code
+                      ,iv_token_name3  => cv_msg_10042_token_3
+                      ,iv_token_value3 => TO_CHAR(io_xwsp_rec.product_schedule_date,cv_date_format_slash)
+                      ,iv_token_name4  => cv_msg_10042_token_4
+                      ,iv_token_value4 => TO_CHAR(ln_item_status)
+                    );
+      FND_FILE.PUT_LINE(
+         which  => FND_FILE.LOG
+        ,buff   => lv_errmsg
+      );
+      RAISE item_status_expt;
+    END IF;
+--20090414_Ver1.2_T1_0542_SCS_Uda_ADD_END
     --品目情報取得処理
     xxcop_common_pkg2.get_item_info(
        in_inventory_item_id  =>   io_xwsp_rec.inventory_item_id  --   在庫品目ID
@@ -1045,60 +1107,62 @@ AS
     END IF;
     ln_product_schedule_qty := io_xwsp_rec.product_schedule_qty ;
     --
-    --組織情報取得処理
-    xxcop_common_pkg2.get_org_info(
-      in_organization_id     =>   io_xwsp_rec.plant_org_id,  --   組織ID
-      ov_organization_code   =>   lv_organization_code,      --   組織コード
-      ov_whse_name           =>   lv_organization_name,      --   倉庫名
-      ov_errmsg              =>   lv_errmsg,                 --   エラー・メッセージ
-      ov_errbuf              =>   lv_errbuf,                 --   リターン・コード
-      ov_retcode             =>   lv_retcode                 --   ユーザー・エラー・メッセージ
-      );
-    IF lv_retcode = cv_status_error THEN
-      RAISE global_api_expt;
-    ELSIF lv_retcode = cv_status_warn THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                       iv_application  => cv_msg_appl_cont
-                      ,iv_name         => cv_msg_00050
-                      ,iv_token_name1  => cv_msg_00050_token_1
-                      ,iv_token_value1 => io_xwsp_rec.plant_org_id
-                    );
-      RAISE internal_process_expt;
-    END IF;
-    --
-    -- 工場出荷ワーク組織情報セット
-    io_xwsp_rec.ship_org_id         := io_xwsp_rec.plant_org_id;  -- 出荷組織ID
-    io_xwsp_rec.plant_org_code      := lv_organization_code;      -- 工場組織コード
-    io_xwsp_rec.ship_org_code       := lv_organization_code;      -- 出荷組織コード
-    io_xwsp_rec.plant_org_name      := lv_organization_name;      -- 工場組織名称
-    io_xwsp_rec.ship_org_name       := lv_organization_name;      -- 出荷組織名称
-    --
---20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
-    SELECT item_status
-    INTO   ln_item_status
-    FROM  xxcmm_system_items_b
-    WHERE item_status_apply_date     <= cd_sys_date
-    AND   item_id                     = io_xwsp_rec.item_id;
-    IF ln_item_status NOT IN (cn_xsib_status_temporary,cn_xsib_status_registered,cn_xsib_status_obsolete) THEN
-      lv_errmsg :=  xxccp_common_pkg.get_msg(
-                       iv_application  => cv_msg_appl_cont
-                      ,iv_name         => cv_msg_10042
-                      ,iv_token_name1  => cv_msg_10042_token_1
-                      ,iv_token_value1 => io_xwsp_rec.plant_org_code
-                      ,iv_token_name2  => cv_msg_10042_token_2
-                      ,iv_token_value2 => io_xwsp_rec.item_no
-                      ,iv_token_name3  => cv_msg_10042_token_3
-                      ,iv_token_value3 => TO_CHAR(io_xwsp_rec.product_schedule_date,cv_date_format_slash)
-                      ,iv_token_name4  => cv_msg_10042_token_4
-                      ,iv_token_value4 => TO_CHAR(ln_item_status)
-                    );
-      FND_FILE.PUT_LINE(
-         which  => FND_FILE.LOG
-        ,buff   => lv_errmsg
-      );
-      RAISE item_status_expt;
-    END IF;
---20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
+--20090414_Ver1.2_T1_0542_SCS_Uda_DEL_START
+--    --組織情報取得処理
+--    xxcop_common_pkg2.get_org_info(
+--      in_organization_id     =>   io_xwsp_rec.plant_org_id,  --   組織ID
+--      ov_organization_code   =>   lv_organization_code,      --   組織コード
+--      ov_whse_name           =>   lv_organization_name,      --   倉庫名
+--      ov_errmsg              =>   lv_errmsg,                 --   エラー・メッセージ
+--      ov_errbuf              =>   lv_errbuf,                 --   リターン・コード
+--      ov_retcode             =>   lv_retcode                 --   ユーザー・エラー・メッセージ
+--      );
+--    IF lv_retcode = cv_status_error THEN
+--      RAISE global_api_expt;
+--    ELSIF lv_retcode = cv_status_warn THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_msg_appl_cont
+--                      ,iv_name         => cv_msg_00050
+--                      ,iv_token_name1  => cv_msg_00050_token_1
+--                      ,iv_token_value1 => io_xwsp_rec.plant_org_id
+--                    );
+--      RAISE internal_process_expt;
+--    END IF;
+--    --
+--    -- 工場出荷ワーク組織情報セット
+--    io_xwsp_rec.ship_org_id         := io_xwsp_rec.plant_org_id;  -- 出荷組織ID
+--    io_xwsp_rec.plant_org_code      := lv_organization_code;      -- 工場組織コード
+--    io_xwsp_rec.ship_org_code       := lv_organization_code;      -- 出荷組織コード
+--    io_xwsp_rec.plant_org_name      := lv_organization_name;      -- 工場組織名称
+--    io_xwsp_rec.ship_org_name       := lv_organization_name;      -- 出荷組織名称
+--    --
+----20090407_Ver1.2_T1_0368_SCS_Uda_ADD_START
+--    SELECT item_status
+--    INTO   ln_item_status
+--    FROM  xxcmm_system_items_b
+--    WHERE item_status_apply_date     <= cd_sys_date
+--    AND   item_id                     = io_xwsp_rec.item_id;
+--    IF ln_item_status NOT IN (cn_xsib_status_temporary,cn_xsib_status_registered,cn_xsib_status_obsolete) THEN
+--      lv_errmsg :=  xxccp_common_pkg.get_msg(
+--                       iv_application  => cv_msg_appl_cont
+--                      ,iv_name         => cv_msg_10042
+--                      ,iv_token_name1  => cv_msg_10042_token_1
+--                      ,iv_token_value1 => io_xwsp_rec.plant_org_code
+--                      ,iv_token_name2  => cv_msg_10042_token_2
+--                      ,iv_token_value2 => io_xwsp_rec.item_no
+--                      ,iv_token_name3  => cv_msg_10042_token_3
+--                      ,iv_token_value3 => TO_CHAR(io_xwsp_rec.product_schedule_date,cv_date_format_slash)
+--                      ,iv_token_name4  => cv_msg_10042_token_4
+--                      ,iv_token_value4 => TO_CHAR(ln_item_status)
+--                    );
+--      FND_FILE.PUT_LINE(
+--         which  => FND_FILE.LOG
+--        ,buff   => lv_errmsg
+--      );
+--      RAISE item_status_expt;
+--    END IF;
+----20090407_Ver1.2_T1_0368_SCS_Uda_ADD_END
+--20090414_Ver1.2_T1_0542_SCS_Uda_DEL_END
     -- 組織品目チェック処理
     xxcop_common_pkg2.chk_item_exists(
        in_inventory_item_id => io_xwsp_rec.inventory_item_id
