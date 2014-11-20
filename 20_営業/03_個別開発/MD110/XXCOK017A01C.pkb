@@ -7,7 +7,7 @@ AS
  * Description      : 「本振用FBデータ作成」にて支払対象となった
  *                     自販機販売手数料に関する仕訳を作成し、GLモジュールへ連携
  * MD.050           : GLインターフェイス（GL I/F） MD050_COK_017_A01
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -33,6 +33,7 @@ AS
  *  2009/05/25    1.3   M.Hiruta         [障害T1_1166] GLへ連携するデータの顧客コードの取得処理において
  *                                                     正確な顧客コードを取得できるよう変更
  *  2009/09/09    1.4   K.Yamaguchi      [障害0001327] 仕訳有効日付に実際の支払日を設定
+ *  2009/10/19    1.5   S.Moriyama       [障害E_T4_00044] 販売手数料マイナス連携対応
  *
  *****************************************************************************************/
 --
@@ -280,6 +281,9 @@ AS
             ,xbb.tax_code
             ,pvsa.bank_charge_bearer
             ,pvsa.payment_currency_code
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama ADD START
+    HAVING NVL( SUM( xbb.backmargin       ), 0 ) <> 0
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama ADD END
     ORDER BY xbb.supplier_code
             ,xbb.base_code
   ;
@@ -904,21 +908,25 @@ AS
           ,lt_supplier_site_code
           ,lt_payment_amt_tax
       FROM xxcok_backmargin_balance  xbb
-          ,po_vendors                pv
-          ,po_vendor_sites_all       pvsa
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama DEL START
+--          ,po_vendors                pv
+--          ,po_vendor_sites_all       pvsa
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama DEL END
       WHERE xbb.fb_interface_status         = cv_interface_status_fb
       AND   xbb.gl_interface_status         = cv_if_status_gl_before
       AND   xbb.supplier_code               = g_gl_interface_rec.supplier_code
       AND   xbb.supplier_site_code          = g_gl_interface_rec.supplier_site_code
-      AND   xbb.supplier_code               = pv.segment1
-      AND   xbb.supplier_site_code          = pvsa.vendor_site_code
-      AND   pvsa.hold_all_payments_flag     = cv_hold_pay_flag_n
-      AND   (   ( pvsa.inactive_date IS NULL )
-              OR( pvsa.inactive_date >= gd_payment_date ) )
-      AND   pvsa.attribute4 IN( cv_bm_payment_type1, cv_bm_payment_type2 )
--- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
-      AND   pvsa.org_id = gn_org_id
--- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama DEL START
+--      AND   xbb.supplier_code               = pv.segment1
+--      AND   xbb.supplier_site_code          = pvsa.vendor_site_code
+--      AND   pvsa.hold_all_payments_flag     = cv_hold_pay_flag_n
+--      AND   (   ( pvsa.inactive_date IS NULL )
+--              OR( pvsa.inactive_date >= gd_payment_date ) )
+--      AND   pvsa.attribute4 IN( cv_bm_payment_type1, cv_bm_payment_type2 )
+---- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--      AND   pvsa.org_id = gn_org_id
+---- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama DEL END
       GROUP BY xbb.supplier_code
               ,xbb.supplier_site_code
       ;
@@ -941,59 +949,94 @@ AS
       -- ====================================================
       -- 7. 銀行手数料振込拠点情報を取得
       -- ====================================================
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama UPD START
+--      SELECT base.base_code           AS base_code          -- 拠点コード
+--            ,base.supplier_code       AS supplier_code      -- 仕入先コード
+--            ,base.supplier_site_code  AS supplier_site_code -- 仕入先サイトコード
+--            ,base.payment_amt         AS payment_amt_max    -- 支払額（MAX）
+---- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--            ,base.cust_code           AS cust_code
+---- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--      INTO lt_base_code_max
+--          ,lt_supplier_code_max
+--          ,lt_supplier_site_code_max
+--          ,lt_payment_amt_max
+---- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--          ,lt_cust_code_max
+---- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--      FROM ( SELECT ROW_NUMBER() over (
+--                      ORDER BY SUM( xbb.payment_amt_tax ) DESC
+---- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--                              ,xbb.cust_code              ASC
+---- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--                              ,xbb.base_code              ASC
+--                    )                              AS row_num
+--                   ,xbb.base_code                  AS base_code
+--                   ,xbb.supplier_code              AS supplier_code
+--                   ,xbb.supplier_site_code         AS supplier_site_code
+--                   ,SUM( xbb.payment_amt_tax )     AS payment_amt
+---- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--                   ,xbb.cust_code                  AS cust_code
+---- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--             FROM xxcok_backmargin_balance  xbb
+--                 ,po_vendors                pv
+--                 ,po_vendor_sites_all       pvsa
+--             WHERE xbb.fb_interface_status     =  cv_interface_status_fb
+--             AND   xbb.gl_interface_status     =  cv_if_status_gl_before
+--             AND   xbb.supplier_code           =  g_gl_interface_rec.supplier_code
+--             AND   xbb.supplier_site_code      =  g_gl_interface_rec.supplier_site_code
+--             AND   xbb.supplier_code           =  pv.segment1
+--             AND   xbb.supplier_site_code      =  pvsa.vendor_site_code
+--             AND   pvsa.hold_all_payments_flag =  cv_hold_pay_flag_n
+--             AND   (   ( pvsa.inactive_date      IS NULL )
+--                     OR( pvsa.inactive_date      >= gd_payment_date ) )
+--             AND   pvsa.attribute4 IN( cv_bm_payment_type1, cv_bm_payment_type2 )
+---- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--             AND   pvsa.org_id                 = gn_org_id
+---- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--             GROUP BY xbb.base_code
+--                     ,xbb.supplier_code
+--                     ,xbb.supplier_site_code
+---- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--                     ,xbb.cust_code
+---- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
+--             ) base
+--      WHERE base.row_num = 1
+--      ;
       SELECT base.base_code           AS base_code          -- 拠点コード
             ,base.supplier_code       AS supplier_code      -- 仕入先コード
             ,base.supplier_site_code  AS supplier_site_code -- 仕入先サイトコード
             ,base.payment_amt         AS payment_amt_max    -- 支払額（MAX）
--- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
             ,base.cust_code           AS cust_code
--- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
       INTO lt_base_code_max
           ,lt_supplier_code_max
           ,lt_supplier_site_code_max
           ,lt_payment_amt_max
--- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
           ,lt_cust_code_max
--- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
-      FROM ( SELECT ROW_NUMBER() over (
+      FROM ( SELECT /*+ INDEX( xbb xxcok_backmargin_balance_n09 ) */
+                    ROW_NUMBER() over (
                       ORDER BY SUM( xbb.payment_amt_tax ) DESC
--- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
                               ,xbb.cust_code              ASC
--- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
                               ,xbb.base_code              ASC
                     )                              AS row_num
                    ,xbb.base_code                  AS base_code
                    ,xbb.supplier_code              AS supplier_code
                    ,xbb.supplier_site_code         AS supplier_site_code
                    ,SUM( xbb.payment_amt_tax )     AS payment_amt
--- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
                    ,xbb.cust_code                  AS cust_code
--- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
              FROM xxcok_backmargin_balance  xbb
-                 ,po_vendors                pv
-                 ,po_vendor_sites_all       pvsa
              WHERE xbb.fb_interface_status     =  cv_interface_status_fb
              AND   xbb.gl_interface_status     =  cv_if_status_gl_before
              AND   xbb.supplier_code           =  g_gl_interface_rec.supplier_code
              AND   xbb.supplier_site_code      =  g_gl_interface_rec.supplier_site_code
-             AND   xbb.supplier_code           =  pv.segment1
-             AND   xbb.supplier_site_code      =  pvsa.vendor_site_code
-             AND   pvsa.hold_all_payments_flag =  cv_hold_pay_flag_n
-             AND   (   ( pvsa.inactive_date      IS NULL )
-                     OR( pvsa.inactive_date      >= gd_payment_date ) )
-             AND   pvsa.attribute4 IN( cv_bm_payment_type1, cv_bm_payment_type2 )
--- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
-             AND   pvsa.org_id                 = gn_org_id
--- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
              GROUP BY xbb.base_code
                      ,xbb.supplier_code
                      ,xbb.supplier_site_code
--- Start 2009/05/25 Ver_1.3 T1_1166 M.Hiruta
                      ,xbb.cust_code
--- End   2009/05/25 Ver_1.3 T1_1166 M.Hiruta
              ) base
       WHERE base.row_num = 1
       ;
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama UPD END
 --
       -- ====================================================
       -- OUTパラメータ設定（仕入先単位）
@@ -1166,8 +1209,16 @@ AS
         ,it_corp_code                   -- 企業コード
         ,gv_aff7_preliminary1_dummy     -- 予備１
         ,gv_aff8_preliminary2_dummy     -- 予備２
-        ,it_entered_dr                  -- 借方金額
-        ,it_entered_cr                  -- 貸方金額
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama UPD START
+--        ,it_entered_dr                  -- 借方金額
+--        ,it_entered_cr                  -- 貸方金額
+        , CASE WHEN ( it_entered_dr > 0 AND it_entered_dr IS NOT NULL ) THEN it_entered_dr
+               WHEN ( it_entered_cr < 0 AND it_entered_cr IS NOT NULL ) THEN it_entered_cr * -1
+               ELSE NULL END
+        , CASE WHEN ( it_entered_cr > 0 AND it_entered_cr IS NOT NULL ) THEN it_entered_cr
+               WHEN ( it_entered_dr < 0 AND it_entered_dr IS NOT NULL ) THEN it_entered_dr * -1
+               ELSE NULL END
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama UPD END
         ,gv_batch_name                  -- バッチ名
         ,it_gl_name                     -- 仕訳名
         ,it_period_name                 -- 会計期間名
@@ -1221,6 +1272,7 @@ AS
   /**********************************************************************************
    * Procedure Name   : set_insert_info
    * Description      : 仕訳作成
+   *                    明細起票時残高金額が0以下の場合は勘定科目に関係なく貸借逆転で作成する
    ***********************************************************************************/
   PROCEDURE set_insert_info(
      ov_errbuf                     OUT VARCHAR2                                          -- エラー・メッセージ
@@ -1307,7 +1359,10 @@ AS
       -- ====================================================
       -- 販売手数料
       -- ====================================================
-      IF( g_gl_interface_rec.backmargin > 0 ) THEN
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama UPD START
+--      IF( g_gl_interface_rec.backmargin > 0 ) THEN
+      IF( g_gl_interface_rec.backmargin != 0 ) THEN
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama UPD END
         lt_department  := g_gl_interface_rec.base_code;     -- 拠点コード
         lt_account     := gv_aff3_vend_sales_commission;    -- 自販機販手
         lt_sub_account := gv_aff4_vend_sales_rebate;        -- 自販機リベート
@@ -1347,7 +1402,10 @@ AS
       -- ====================================================
       -- 電気料
       -- ====================================================
-      IF( g_gl_interface_rec.electric_amt > 0 ) THEN
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama UPD START
+--      IF( g_gl_interface_rec.electric_amt > 0 ) THEN
+      IF( g_gl_interface_rec.electric_amt != 0 ) THEN
+-- 2009/10/19 Ver.1.5 [障害E_T4_00044] SCS S.Moriyama UPD END
         lt_department  := g_gl_interface_rec.base_code;     -- 拠点コード
         lt_account     := gv_aff3_vend_sales_commission;    -- 自販機販手
         lt_sub_account := gv_aff4_vend_sales_elec_cost;     -- 自販機電気料
