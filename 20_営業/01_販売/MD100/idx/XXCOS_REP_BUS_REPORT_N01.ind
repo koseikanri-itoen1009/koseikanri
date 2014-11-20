@@ -1,0 +1,7 @@
+CREATE INDEX xxcos.xxcos_rep_bus_report_n01 ON xxcos.xxcos_rep_bus_report (
+  request_id    --要求ID
+ ,employee_num  --営業員コード
+ ,dlv_date      --納品日
+)
+TABLESPACE xxidx2
+/
