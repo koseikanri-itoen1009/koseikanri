@@ -1,0 +1,6 @@
+CREATE INDEX xxcok.xxcok_backmargin_balance_n11
+ON xxcok.xxcok_backmargin_balance (
+     amt_fix_status
+)
+TABLESPACE xxidx2
+/

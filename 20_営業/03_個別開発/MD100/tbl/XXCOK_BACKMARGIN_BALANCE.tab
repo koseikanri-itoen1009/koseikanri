@@ -3,7 +3,7 @@
  *
  * Table Name  : XXCOK_BACKMARGIN_BALANCE
  * Description : 販手残高テーブル
- * Version     : 1.1
+ * Version     : 1.2
  *
  * Change Record
  * ------------- ----- ---------------- ---------------------------------
@@ -11,6 +11,7 @@
  * ------------- ----- ---------------- ---------------------------------
  *  2009/01/15    1.0   T.Osada          新規作成
  *  2009/07/09    1.1   K.Yamaguchi      [障害0000515]STORAGE句追加
+ *  2009/12/16    1.2   K.Yamaguchi      [E_本稼動_00360]項目追加：atm_fix_status（金額確定ステータス）
  *
  ****************************************************************************************/
 CREATE TABLE XXCOK.XXCOK_BACKMARGIN_BALANCE
@@ -40,6 +41,9 @@ CREATE TABLE XXCOK.XXCOK_BACKMARGIN_BALANCE
    EDI_INTERFACE_DATE        DATE,
    GL_INTERFACE_STATUS       VARCHAR2(1),
    GL_INTERFACE_DATE         DATE,
+-- 2009/12/16 Ver.1.2 [E_本稼動_00360] SCS K.Yamaguchi ADD START
+   AMT_FIX_STATUS            VARCHAR2(1)    NOT NULL,
+-- 2009/12/16 Ver.1.2 [E_本稼動_00360] SCS K.Yamaguchi ADD END
    CREATED_BY                NUMBER(15,0)   NOT NULL,
    CREATION_DATE             DATE           NOT NULL,
    LAST_UPDATED_BY           NUMBER(15,0)   NOT NULL,
@@ -108,6 +112,10 @@ COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.GL_INTERFACE_STATUS    IS '連携
 /
 COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.GL_INTERFACE_DATE      IS '連携日（GL）'
 /
+-- 2009/12/16 Ver.1.2 [E_本稼動_00360] SCS K.Yamaguchi ADD START
+COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.AMT_FIX_STATUS         IS '金額確定ステータス'
+/
+-- 2009/12/16 Ver.1.2 [E_本稼動_00360] SCS K.Yamaguchi ADD END
 COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.CREATED_BY             IS '作成者'
 /
 COMMENT ON COLUMN XXCOK.XXCOK_BACKMARGIN_BALANCE.CREATION_DATE          IS '作成日'
