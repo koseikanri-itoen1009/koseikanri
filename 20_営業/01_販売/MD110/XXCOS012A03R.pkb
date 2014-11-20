@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS012A03R (body)
  * Description      : ピックリスト（出荷先・製品・販売先別）
  * MD.050           : ピックリスト（出荷先・製品・販売先別） MD050_COS_012_A03
- * Version          : 1.4
+ * Version          : 1.5
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -32,6 +32,15 @@ AS
  *  2009/04/06    1.3   N.Maeda          【ST障害No.T1_0086対応】
  *                                       非在庫品目を抽出対象より除外するよう変更。
  *  2009/06/05    1.4   T.Kitajima       [T1_1334]受注明細、EDI明細結合条件変更
+ *  2009/06/09    1.5   T.Kitajima       [T1_1374]拠点名(40byte)
+ *                                                チェーン店名(40byte)
+ *                                                倉庫名(50byte)
+ *                                                店舗コード(10byte)
+ *                                                品目コード(16byte)
+ *                                                品名(40byte)
+ *                                                に修正
+ *  2009/06/09    1.5   T.Kitajima       [T1_1375]入数が0の場合、ケース数に0設定、
+ *                                                バラ数に数量を設定する。
  *
  *****************************************************************************************/
 --
@@ -243,8 +252,12 @@ AS
   ct_data_type_code_shop    CONSTANT xxcos_edi_headers.data_type_code%TYPE
                                      := '12';                         --店舗別受注
   --換算率デフォルト
+--****************************** 2009/06/09 1.4 T.Kitajima MOD START ******************************--
+--  ct_conv_rate_default      CONSTANT mtl_uom_class_conversions.conversion_rate%TYPE
+--                                     := 1;                            --換算率
   ct_conv_rate_default      CONSTANT mtl_uom_class_conversions.conversion_rate%TYPE
-                                     := 1;                            --換算率
+                                     := 0;                            --換算率
+--****************************** 2009/06/09 1.4 T.Kitajima MOD  END  ******************************--
   --存在フラグ
   cv_exists_flag_yes        CONSTANT VARCHAR2(1)   := 'Y';            --存在あり
   cv_exists_flag_no         CONSTANT VARCHAR2(1)   := 'N';            --存在なし
@@ -267,6 +280,12 @@ AS
   cv_weekno_friday          CONSTANT VARCHAR2(1)   := '6';            --金曜日
   cv_weekno_saturday        CONSTANT VARCHAR2(1)   := '7';            --土曜日
 --
+--****************************** 2009/06/09 1.4 T.Kitajima MOD START ******************************--
+  --SUBSTR用
+  cn_substr_1               CONSTANT NUMBER        := 1;
+  cn_substr_16              CONSTANT NUMBER        := 16;
+  cn_substr_40              CONSTANT NUMBER        := 40;
+--****************************** 2009/06/09 1.4 T.Kitajima MOD  END  ******************************--
   -- ===============================
   -- ユーザー定義グローバル型
   -- ===============================
@@ -1496,11 +1515,19 @@ AS
       --
       g_rpt_data_tab(ln_idx).record_id                    := ln_record_id;
       g_rpt_data_tab(ln_idx).base_code                    := lt_key_base_code;
-      g_rpt_data_tab(ln_idx).base_name                    := lt_key_base_name;
+--****************************** 2009/06/09 1.4 T.Kitajima MOD START ******************************--
+--      g_rpt_data_tab(ln_idx).base_name                    := lt_key_base_name;
+      g_rpt_data_tab(ln_idx).base_name                    := SUBSTRB( lt_key_base_name, cn_substr_1, cn_substr_40 ); 
+                                                                           --拠点名を40バイトにカット
+--****************************** 2009/06/09 1.4 T.Kitajima MOD  END  ******************************--
       g_rpt_data_tab(ln_idx).whse_code                    := lt_key_subinventory;
       g_rpt_data_tab(ln_idx).whse_name                    := lt_key_subinventory_name;
       g_rpt_data_tab(ln_idx).chain_code                   := lt_key_chain_store_code;
-      g_rpt_data_tab(ln_idx).chain_name                   := lt_key_chain_store_name;
+--****************************** 2009/06/09 1.4 T.Kitajima MOD START ******************************--
+--      g_rpt_data_tab(ln_idx).chain_name                   := lt_key_chain_store_name;
+      g_rpt_data_tab(ln_idx).chain_name                   := SUBSTRB( lt_key_chain_store_name, cn_substr_1, cn_substr_40 );
+                                                                           --チェーン店名を40バイトにカット
+--****************************** 2009/06/09 1.4 T.Kitajima MOD  END  ******************************--
       g_rpt_data_tab(ln_idx).center_code                  := lt_key_deli_center_code;
       g_rpt_data_tab(ln_idx).center_name                  := lt_key_deli_center_name;
       g_rpt_data_tab(ln_idx).area_code                    := lt_key_edi_district_code;
@@ -1509,18 +1536,40 @@ AS
       g_rpt_data_tab(ln_idx).arrival_date                 := lt_key_request_date;
       g_rpt_data_tab(ln_idx).regular_sale_class_head      := SUBSTRB( gt_bargain_class_name, 1, 4 );
       --品目
-      g_rpt_data_tab(ln_idx).item_code                    := CASE
-                                                               WHEN ( lv_key_edi_item_err_flag =
-                                                                      cv_edi_item_err_flag_yes )
-                                                               THEN lt_key_item_code2
-                                                               ELSE lt_key_item_code
-                                                             END;
-      g_rpt_data_tab(ln_idx).item_name                    := CASE
-                                                               WHEN ( lv_key_edi_item_err_flag =
-                                                                      cv_edi_item_err_flag_yes )
-                                                               THEN lt_key_item_name2
-                                                               ELSE lt_key_item_name
-                                                             END;
+--****************************** 2009/06/09 1.4 T.Kitajima MOD START ******************************--
+--      g_rpt_data_tab(ln_idx).item_code                    := CASE
+--                                                               WHEN ( lv_key_edi_item_err_flag =
+--                                                                      cv_edi_item_err_flag_yes )
+--                                                               THEN lt_key_item_code2
+--                                                               ELSE lt_key_item_code
+--                                                             END;
+--      g_rpt_data_tab(ln_idx).item_name                    := CASE
+--                                                               WHEN ( lv_key_edi_item_err_flag =
+--                                                                      cv_edi_item_err_flag_yes )
+--                                                               THEN lt_key_item_name2
+--                                                               ELSE lt_key_item_name
+--                                                             END;
+      g_rpt_data_tab(ln_idx).item_code                    := SUBSTRB(
+                                                                    CASE
+                                                                      WHEN ( lv_key_edi_item_err_flag =
+                                                                             cv_edi_item_err_flag_yes )
+                                                                      THEN lt_key_item_code2
+                                                                      ELSE lt_key_item_code
+                                                                    END,
+                                                                    cn_substr_1,
+                                                                    cn_substr_16
+                                                                   ); --16バイトにカット
+      g_rpt_data_tab(ln_idx).item_name                    := SUBSTRB(
+                                                                    CASE
+                                                                      WHEN ( lv_key_edi_item_err_flag =
+                                                                             cv_edi_item_err_flag_yes )
+                                                                      THEN lt_key_item_name2
+                                                                      ELSE lt_key_item_name
+                                                                    END,
+                                                                    cn_substr_1,
+                                                                    cn_substr_40
+                                                                   ); --40バイトにカット
+--****************************** 2009/06/09 1.4 T.Kitajima MOD  END  ******************************--
       --配送順
       IF ( TO_CHAR( lt_key_request_date, cv_fmt_weekno )
                                         IN ( cv_weekno_monday, cv_weekno_wednesday, cv_weekno_friday ) )
@@ -1538,8 +1587,17 @@ AS
       g_rpt_data_tab(ln_idx).shop_name                    := lt_key_cust_store_name;
       --
       g_rpt_data_tab(ln_idx).content                      := lt_key_case_content;
-      g_rpt_data_tab(ln_idx).case_num                     := TRUNC( ln_quantity / lt_key_case_content );
-      g_rpt_data_tab(ln_idx).indivi                       := MOD( ln_quantity, lt_key_case_content );
+--****************************** 2009/06/09 1.4 T.Kitajima MOD START ******************************--
+--      g_rpt_data_tab(ln_idx).case_num                     := TRUNC( ln_quantity / lt_key_case_content );
+--      g_rpt_data_tab(ln_idx).indivi                       := MOD( ln_quantity, lt_key_case_content );
+      IF ( g_rpt_data_tab(ln_idx).content = 0 ) THEN
+        g_rpt_data_tab(ln_idx).case_num                   := 0;
+        g_rpt_data_tab(ln_idx).indivi                     := ln_quantity;
+      ELSE
+        g_rpt_data_tab(ln_idx).case_num                   := TRUNC( ln_quantity / lt_key_case_content );
+        g_rpt_data_tab(ln_idx).indivi                     := MOD( ln_quantity, lt_key_case_content );
+      END IF;
+--****************************** 2009/06/09 1.4 T.Kitajima MOD  END  ******************************--
       g_rpt_data_tab(ln_idx).quantity                     := ln_quantity;
       g_rpt_data_tab(ln_idx).entry_number                 := SUBSTRB( lt_key_slip_no, 1, 12 );
       g_rpt_data_tab(ln_idx).regular_sale_class_line      := SUBSTRB( lt_key_bargain_class_name, 1, 4 );
