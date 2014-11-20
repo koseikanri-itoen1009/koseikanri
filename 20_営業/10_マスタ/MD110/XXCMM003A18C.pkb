@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCMM003A18C(body)
  * Description      : 情報系連携IFデータ作成
  * MD.050           : MD050_CMM_003_A18_情報系連携IFデータ作成
- * Version          : 1.12
+ * Version          : 1.13
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -35,6 +35,7 @@ AS
  *  2009/12/02    1.10  Yutaka.Kuboshima 障害E_本稼動_00262の対応
  *  2009/12/25    1.11  Yutaka.Kuboshima 障害E_本稼動_00778の対応
  *  2010/01/08    1.12  Yutaka.Kuboshima 障害E_本稼動_00934の対応
+ *  2010/02/25    1.13  Yutaka.Kuboshima 障害E_本稼動_01660の対応
  *
  *****************************************************************************************/
 --
@@ -141,6 +142,9 @@ AS
   -- ===============================
   gv_process_date VARCHAR2(20);
   gn_nodate_err   NUMBER;
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add start by Yutaka.Kuboshima
+  gn_seisan_org_id NUMBER;
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add end by Yutaka.Kuboshima
 --
   /**********************************************************************************
    * Procedure Name   : init
@@ -173,6 +177,9 @@ AS
     cv_invalid_path  CONSTANT VARCHAR2(25) := 'CSV出力ディレクトリ';          --プロファイル取得失敗（ディレクトリ）
     cv_invalid_name  CONSTANT VARCHAR2(20) := 'CSV出力ファイル名';            --プロファイル取得失敗（ファイル名）
 --
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add start by Yutaka.Kuboshima
+    cv_seisan_ou     CONSTANT VARCHAR2(20) := 'ITOE-OU-MFG';                  --営業単位(生産OU)
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add start by Yutaka.Kuboshima
     -- *** ローカル変数 ***
     lv_file_chk     BOOLEAN;
     ln_file_size    NUMBER;
@@ -224,6 +231,15 @@ AS
     -- 業務日付取得処理
     gv_process_date := TO_CHAR(xxccp_common_pkg2.get_process_date, cv_fnd_date);
 --
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add start by Yutaka.Kuboshima
+    -- 生産OUの組織ID取得
+    SELECT hou.organization_id
+    INTO   gn_seisan_org_id
+    FROM   hr_operating_units hou
+    WHERE  hou.name = cv_seisan_ou
+      AND  ROWNUM   = 1
+    ;
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add end by Yutaka.Kuboshima
   EXCEPTION
     WHEN init_err_expt THEN                           --*** 初期処理例外 ***
       ov_errmsg  := lv_errmsg;
@@ -383,7 +399,9 @@ AS
     cv_organization       CONSTANT VARCHAR2(30)    := 'ORGANIZATION';           --オブジェクトタイプ(組織)
     cv_yosin_kbn          CONSTANT VARCHAR2(2)     := '13';                     --顧客区分・与信管理先顧客
     cv_urikake_kbn        CONSTANT VARCHAR2(2)     := '14';                     --顧客区分・売掛管理先顧客
-    cv_seisan_ou          CONSTANT VARCHAR2(20)    := 'ITOE-OU-MFG';            --営業単位(生産OU)
+-- 2010/02/25 Ver1.13 E_本稼動_01660 delete start by Yutaka.Kuboshima
+--    cv_seisan_ou          CONSTANT VARCHAR2(20)    := 'ITOE-OU-MFG';            --営業単位(生産OU)
+-- 2010/02/25 Ver1.13 E_本稼動_01660 delete start by Yutaka.Kuboshima
     cv_site_use_code      CONSTANT VARCHAR2(20)    := 'SITE_USE_CODE';          --参照タイプ(使用目的)
     cv_other_to           CONSTANT VARCHAR2(10)    := 'OTHER_TO';               --使用目的・その他
 -- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
@@ -406,6 +424,9 @@ AS
     cv_sp_kessai_sts      CONSTANT VARCHAR2(2)     := '25';                     --顧客ステータス・SP決裁済
 -- 2009/12/25 Ver1.11 E_本稼動_00778 add end by Yutaka.Kuboshima
 --
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add start by Yutaka.Kuboshima
+    cv_uesama_kbn         CONSTANT VARCHAR2(2)     := '12';                     --顧客区分・上様顧客
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add end by Yutaka.Kuboshima
     -- *** ローカル変数 ***
     lv_header_str                  VARCHAR2(2000)  := NULL;                     --ヘッダメッセージ格納用変数
     lv_output_str                  VARCHAR2(4095)  := NULL;                     --出力文字列格納用変数
@@ -767,7 +788,15 @@ AS
       AND     hca.cust_account_id         = hcas.cust_account_id           --顧客 = 顧客所在地：顧客ID
 -- 2009/05/12 Ver1.3 障害T1_0176 modify start by Yutaka.Kuboshima
 --      AND     hcsu.site_use_code          = cv_bill_to                     --使用目的 = 請求先
-      AND     hcsu.site_use_code         IN (cv_bill_to, cv_other_to)      --使用目的 = 請求先 OR その他
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify start by Yutaka.Kuboshima
+-- 顧客区分'10','12','14'の場合、請求先
+-- 上記以外の顧客区分の場合、その他を抽出条件とするよう修正
+--      AND     hcsu.site_use_code         IN (cv_bill_to, cv_other_to)      --使用目的 = 請求先 OR その他
+      AND  ( (NVL(hca.customer_class_code, cv_kokyaku_kbn) IN (cv_kokyaku_kbn, cv_uesama_kbn, cv_urikake_kbn)
+          AND hcsu.site_use_code          = cv_bill_to)
+        OR   (NVL(hca.customer_class_code, cv_kokyaku_kbn) NOT IN (cv_kokyaku_kbn, cv_uesama_kbn, cv_urikake_kbn)
+          AND hcsu.site_use_code          = cv_other_to) )
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify end by Yutaka.Kuboshima
 -- 2009/05/12 Ver1.3 障害T1_0176 modify end by Yutaka.Kuboshima
       AND     hcsu.payment_term_id        = rtmin.term_id (+)              --使用目的 = 支払条件：支払条件,支払条件ID
       AND     hcsu.payment_term_id        = rtsum.term_id (+)              --支払条件(締日・払日・サイト)
@@ -785,7 +814,20 @@ AS
       AND     hcsu.site_use_code          = flvsuc.lookup_code(+)
 -- 2009/05/12 Ver1.3 障害T1_0176 add end by Yutaka.Kuboshima
 -- 2009/05/21 Ver1.4 障害T1_1131 add start by Yutaka.Kuboshima
-      AND     hcsu.status                 = cv_a_flag
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify start by Yutaka.Kuboshima
+-- 使用目的の有効フラグの抽出条件を変更
+--      AND     hcsu.status                 = cv_a_flag
+      AND     hcsu.site_use_id            = (SELECT hcsu3.site_use_id
+                                             FROM   (SELECT hcsu2.site_use_id
+                                                           ,hcsu2.cust_acct_site_id
+                                                           ,hcsu2.site_use_code
+                                                     FROM   hz_cust_site_uses  hcsu2
+                                                     ORDER BY hcsu2.status) hcsu3
+                                             WHERE  hcsu.cust_acct_site_id = hcsu3.cust_acct_site_id
+                                               AND  hcsu.site_use_code     = hcsu3.site_use_code
+                                               AND  ROWNUM            = 1
+                                            )
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify end by Yutaka.Kuboshima
 -- 2009/05/21 Ver1.4 障害T1_1131 add end by Yutaka.Kuboshima
 --
 -- 2010/01/08 Ver1.12 E_本稼動_00934 add start by Yutaka.Kuboshima
@@ -821,13 +863,20 @@ AS
     -- 生産OU側顧客所在地取得カーソル
     CURSOR mfg_cust_acct_site_cur(p_cust_account_id IN NUMBER)
     IS
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify start by Yutaka.Kuboshima
+--      SELECT hcasa.attribute18 attribute18
+--      FROM hz_cust_acct_sites_all hcasa,
+--           hr_operating_units hou
+--      WHERE hcasa.org_id          = hou.organization_id
+--        AND hcasa.cust_account_id = p_cust_account_id
+--        AND hou.name              = cv_seisan_ou
+--        AND ROWNUM = 1;
       SELECT hcasa.attribute18 attribute18
-      FROM hz_cust_acct_sites_all hcasa,
-           hr_operating_units hou
-      WHERE hcasa.org_id          = hou.organization_id
+      FROM   hz_cust_acct_sites_all hcasa
+      WHERE hcasa.org_id          = gn_seisan_org_id
         AND hcasa.cust_account_id = p_cust_account_id
-        AND hou.name              = cv_seisan_ou
         AND ROWNUM = 1;
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify end by Yutaka.Kuboshima
     -- 生産OU側顧客所在地取得カーソルレコード型
     mfg_cust_acct_site_rec mfg_cust_acct_site_cur%ROWTYPE;
 --
@@ -841,6 +890,9 @@ AS
            hz_relationships hr
       WHERE hca.party_id            = hp.party_id
         AND hp.party_id             = hr.subject_id
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add start by Yutaka.Kuboshima
+        AND hr.subject_type         = cv_organization
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add end by Yutaka.Kuboshima
         AND hr.object_type          = cv_organization
         AND hr.object_id            = p_party_id
         AND hca.customer_class_code = cv_yosin_kbn
@@ -897,7 +949,7 @@ AS
     --連携日付の取得
     lv_coordinated_date := TO_CHAR(sysdate, cv_trans_date);
 --
-    --顧客一括更新情報カーソルループ
+    --情報系連携IFデータカーソルループ
     << cust_for_loop >>
     FOR cust_data_rec IN cust_data_cur
     LOOP
@@ -915,43 +967,62 @@ AS
         FROM   hz_cust_accounts                   hca,                        --顧客マスタ
                hz_cust_acct_sites                 hcas,                       --顧客所在地マスタ
                hz_cust_site_uses                  hcsu,                       --顧客使用目的マスタ
-               hz_party_sites                     hps,                        --パーティサイトマスタ
-               hz_locations                       hl                          --顧客事業所マスタ
+               hz_party_sites                     hps                         --パーティサイトマスタ
+-- 2010/02/25 Ver1.13 E_本稼動_01660 delete start by Yutaka.Kuboshima
+--               hz_locations                       hl                          --顧客事業所マスタ
+-- 2010/02/25 Ver1.13 E_本稼動_01660 delete end by Yutaka.Kuboshima
         WHERE  hcas.cust_acct_site_id = hcsu.cust_acct_site_id                --顧客サイトID
         AND    hca.cust_account_id    = hcas.cust_account_id                  --顧客ID
         AND    hcsu.site_use_code     = cv_bill_to
-        AND    hps.location_id        = hl.location_id
+-- 2010/02/25 Ver1.13 E_本稼動_01660 delete start by Yutaka.Kuboshima
+--        AND    hps.location_id        = hl.location_id
+-- 2010/02/25 Ver1.13 E_本稼動_01660 delete end by Yutaka.Kuboshima
         AND    hps.party_site_id      = hcas.party_site_id
-        AND    hcsu.site_use_id = (SELECT hcsun.bill_to_site_use_id
-                                  FROM    hz_cust_accounts        hcan,       --顧客マスタ
-                                          hz_cust_acct_sites      hcasn,      --顧客所在地マスタ
-                                          hz_cust_site_uses       hcsun,      --顧客使用目的マスタ
-                                          hz_party_sites          hpsn,       --パーティサイトマスタ
-                                          hz_locations            hln         --顧客事業所マスタ
-                                  WHERE   hcan.account_number     = cust_data_rec.account_number
-                                  AND     hcasn.cust_acct_site_id = hcsun.cust_acct_site_id
-                                  AND     hcan.cust_account_id    = hcasn.cust_account_id
-                                  AND     hcsun.site_use_code     = cv_ship_to
-                                  AND     hpsn.location_id        = hln.location_id
-                                  AND     hpsn.party_site_id      = hcasn.party_site_id
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify start by Yutaka.Kuboshima
+--
+--        AND    hcsu.site_use_id = (SELECT hcsun.bill_to_site_use_id
+--                                  FROM    hz_cust_accounts        hcan,       --顧客マスタ
+--                                          hz_cust_acct_sites      hcasn,      --顧客所在地マスタ
+--                                          hz_cust_site_uses       hcsun,      --顧客使用目的マスタ
+--                                          hz_party_sites          hpsn,       --パーティサイトマスタ
+--                                          hz_locations            hln         --顧客事業所マスタ
+--                                  WHERE   hcan.account_number     = cust_data_rec.account_number
+--                                  AND     hcasn.cust_acct_site_id = hcsun.cust_acct_site_id
+--                                  AND     hcan.cust_account_id    = hcasn.cust_account_id
+--                                  AND     hcsun.site_use_code     = cv_ship_to
+--                                  AND     hpsn.location_id        = hln.location_id
+--                                  AND     hpsn.party_site_id      = hcasn.party_site_id
+---- 2009/05/21 Ver1.4 障害T1_1131 add start by Yutaka.Kuboshima
+--                                  AND     hcsun.status            = cv_a_flag
+---- 2009/05/21 Ver1.4 障害T1_1131 add end by Yutaka.Kuboshima
+--                                  AND     hln.location_id         = (SELECT MIN(hpsiva.location_id)
+--                                                                    FROM    hz_cust_acct_sites hcasiva,
+--                                                                            hz_party_sites     hpsiva
+--                                                                    WHERE  hcasiva.cust_account_id = hcan.cust_account_id
+--                                                                    AND    hcasiva.party_site_id   = hpsiva.party_site_id
+--                                                                    AND    hpsiva.status           = cv_a_flag))      --ロケーションIDの最小値
+        AND    hcsu.site_use_id       = (SELECT hcsun.bill_to_site_use_id
+                                         FROM   hz_cust_acct_sites hcasn    --顧客所在地マスタ
+                                               ,hz_cust_site_uses  hcsun    --顧客使用目的マスタ
+                                         WHERE  hcasn.cust_acct_site_id = hcsun.cust_acct_site_id
+                                           AND  hcasn.cust_acct_site_id = cust_data_rec.cust_acct_site_id
+                                           AND  hcsun.site_use_code     = cv_ship_to
+                                           AND  hcsun.status            = cv_a_flag)
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify end by Yutaka.Kuboshima
 -- 2009/05/21 Ver1.4 障害T1_1131 add start by Yutaka.Kuboshima
-                                  AND     hcsun.status            = cv_a_flag
+        AND    hcsu.status            = cv_a_flag
 -- 2009/05/21 Ver1.4 障害T1_1131 add end by Yutaka.Kuboshima
-                                  AND     hln.location_id         = (SELECT MIN(hpsiva.location_id)
-                                                                    FROM    hz_cust_acct_sites hcasiva,
-                                                                            hz_party_sites     hpsiva
-                                                                    WHERE  hcasiva.cust_account_id = hcan.cust_account_id
-                                                                    AND    hcasiva.party_site_id   = hpsiva.party_site_id
-                                                                    AND    hpsiva.status           = cv_a_flag))      --ロケーションIDの最小値
--- 2009/05/21 Ver1.4 障害T1_1131 add start by Yutaka.Kuboshima
-        AND     hcsu.status            = cv_a_flag
--- 2009/05/21 Ver1.4 障害T1_1131 add end by Yutaka.Kuboshima
-        AND     hl.location_id         = (SELECT MIN(hpsiv.location_id)
-                                         FROM   hz_cust_acct_sites hcasiv,
-                                                hz_party_sites     hpsiv
-                                         WHERE  hcasiv.cust_account_id = hca.cust_account_id
-                                         AND    hcasiv.party_site_id   = hpsiv.party_site_id
-                                         AND    hpsiv.status             = cv_a_flag);      --ロケーションIDの最小値
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify start by Yutaka.Kuboshima
+--        AND     hl.location_id         = (SELECT MIN(hpsiv.location_id)
+--                                         FROM   hz_cust_acct_sites hcasiv,
+--                                                hz_party_sites     hpsiv
+--                                         WHERE  hcasiv.cust_account_id = hca.cust_account_id
+--                                         AND    hcasiv.party_site_id   = hpsiv.party_site_id
+--                                         AND    hpsiv.status             = cv_a_flag);      --ロケーションIDの最小値
+        AND    ROWNUM                 = 1
+        ;
+-- 2010/02/25 Ver1.13 E_本稼動_01660 modify start by Yutaka.Kuboshima
+--
       EXCEPTION
         --*** 対象レコードなしエラー ***
         WHEN NO_DATA_FOUND THEN
@@ -1009,9 +1080,12 @@ AS
           AND    hca.cust_account_id           = hcara.cust_account_id
           AND    hcara.attribute1              = cv_auto_ex_flag
 -- 2009/11/28 Ver1.8 障害 本稼動_00151 add start by Hiroshi.Oshida
-          AND    hcara.status                  = cv_a_flag;
+          AND    hcara.status                  = cv_a_flag
 -- 2009/11/28 Ver1.8 障害 本稼動_00151 add end by Hiroshi.Oshida
-          
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add start by Yutaka.Kuboshima
+          AND    ROWNUM                        = 1
+          ;
+-- 2010/02/25 Ver1.13 E_本稼動_01660 add end by Yutaka.Kuboshima
         EXCEPTION
           --*** 対象レコードなしエラー ***
           WHEN NO_DATA_FOUND THEN
