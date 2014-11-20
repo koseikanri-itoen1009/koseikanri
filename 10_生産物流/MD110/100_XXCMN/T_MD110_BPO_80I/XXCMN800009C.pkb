@@ -7,7 +7,7 @@ AS
  * Description      : 物流構成マスタインターフェース(Outbound)
  * MD.050           : マスタインタフェース T_MD050_BPO_800
  * MD.070           : 物流構成マスタインタフェース T_MD070_BPO_80I
- * Version          : 1.3
+ * Version          : 1.4
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -28,6 +28,7 @@ AS
  *  2008/05/01    1.1  Oracle 椎名 昭圭  変更要求#11対応
  *  2008/05/15    1.2  Oracle 椎名 昭圭  内部変更要求#62対応
  *  2008/06/12    1.3  Oracle 丸下       日付項目書式変更
+ *  2008/09/18    1.4  Oracle 大橋 孝郎  T_S_460,T_S_575対応
  *
  *****************************************************************************************/
 --
@@ -351,6 +352,9 @@ AS
     cv_xxcmn_d17    CONSTANT VARCHAR2(3)  := '900';
     cv_b_num        CONSTANT VARCHAR2(2)  := '00';
     cv_sep_com      CONSTANT VARCHAR2(1)  := ',';
+-- add start ver1.4
+    cv_crlf         CONSTANT VARCHAR2(1)  := CHR(13); -- 改行コード
+-- add end ver1.4
 --
     -- *** ローカル変数 ***
     lf_file_hand    UTL_FILE.FILE_TYPE;    -- ファイル・ハンドルの宣言
@@ -450,7 +454,10 @@ AS
                         || TO_CHAR(gt_logi_mst_tbl(i).start_date_active, 'YYYY/MM/DD')
                                                                     || cv_sep_com   -- 適用開始日
                         || TO_CHAR(gt_logi_mst_tbl(i).last_update_date, 'YYYY/MM/DD HH24:MI:SS')
-                        ;                                                           -- 更新日時
+-- mod start ver1.4
+--                        ;                                                           -- 更新日時
+                        || cv_crlf;                                                 -- 更新日時
+-- mod end ver1.4
 --
           -- CSVファイルへ出力する場合
           IF (iv_file_type = gv_csv_file) THEN
@@ -877,20 +884,26 @@ AS
       RAISE global_process_expt;
     END IF;
 --
-    -- ===============================
-    -- Workflow通知 (I-4)
-    -- ===============================
-    wf_notif(
-      iv_wf_ope_div,     -- 処理区分
-      iv_wf_class,       -- 対象
-      iv_wf_notification,-- 宛先
-      lv_errbuf,         -- エラー・メッセージ           --# 固定 #
-      lv_retcode,        -- リターン・コード             --# 固定 #
-      lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
+-- add start ver1.4
+    IF (gn_normal_cnt > 0) THEN
+-- add end ver1.4
+      -- ===============================
+      -- Workflow通知 (I-4)
+      -- ===============================
+      wf_notif(
+        iv_wf_ope_div,     -- 処理区分
+        iv_wf_class,       -- 対象
+        iv_wf_notification,-- 宛先
+        lv_errbuf,         -- エラー・メッセージ           --# 固定 #
+        lv_retcode,        -- リターン・コード             --# 固定 #
+        lv_errmsg);        -- ユーザー・エラー・メッセージ --# 固定 #
 --
-    IF (lv_retcode = gv_status_error) THEN
-      RAISE global_process_expt;
+      IF (lv_retcode = gv_status_error) THEN
+        RAISE global_process_expt;
+      END IF;
+-- add start ver1.4
     END IF;
+-- add end ver1.4
 --
   EXCEPTION
 --
