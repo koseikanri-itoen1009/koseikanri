@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
  * Package Name     : XXCSM002A11C(spec)
  * Description      : 商品計画リスト(時系列CS単位)出力
  * MD.050           : 商品計画リスト(時系列CS単位)出力 MD050_CSM_002_A11
- * Version          : 1.7
+ * Version          : 1.8
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -53,6 +53,7 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
  *  2009/02/26    1.5   SCS S.Son       [障害CT_062] 商品群計出力順不具合対応
  *  2009/05/07    1.6   SCS M.Ohtsuki   [障害T1_0858] 共通関数修正に伴うパラメータの追加
  *  2010/03/24    1.7   SCS N.Abe       [E_本稼動_01906] PT対応(ヒント句追加)
+ *  2010/04/26    1.8   SCS N.Abe       [E_本稼動_02367] 単位(本)以外も抽出する対応
  *
  *****************************************************************************************/
 --
@@ -182,8 +183,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
   cv_csm1_msg_10016           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10016';         -- 入力パラメータ取得メッセージ（階層）
   cv_csm1_msg_10017           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10017';         -- 入力パラメータ取得メッセージ（原価種別名）
   cv_csm1_msg_10122           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10122';         -- 商品計画データの入数値は0チェックメッセージ
-  cv_csm1_msg_10131           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10131';         -- 単位変換マスタに登録されていないメッセージ
-  cv_csm1_msg_10133           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10133';         -- 単位変換マスタに登録されている基準単位が「本」でないメッセージ
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--  cv_csm1_msg_10131           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10131';         -- 単位変換マスタに登録されていないメッセージ
+--  cv_csm1_msg_10133           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10133';         -- 単位変換マスタに登録されている基準単位が「本」でないメッセージ
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
 --//+ADD START 2009/02/10 CT008 T.Tsukino
   cv_csm1_msg_10001           CONSTANT VARCHAR2(100) := 'APP-XXCSM1-10001';         -- 対象データ0件メッセージ
 --//+ADD END 2009/02/10 CT008 T.Tsukino
@@ -223,8 +226,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
   lv_prf_cd_team                    CONSTANT VARCHAR2(100) := 'XXCOI1_ORGANIZATION_CODE';   -- XXCMN:在庫組織コード
   lv_prf_cd_price_e                 CONSTANT VARCHAR2(100) := 'XXCSM1_PLANLIST_ITEM_6';     -- XXCMN:営業原価
   lv_prf_cd_price_h                 CONSTANT VARCHAR2(100) := 'XXCSM1_PLANLIST_ITEM_7';     -- XXCMN:標準原価
-  lv_prf_cd_unit_hon                CONSTANT VARCHAR2(100) := 'XXCSM1_UNIT_ITEM_1';         -- XXCMN:本
-  lv_prf_cd_unit_cs                 CONSTANT VARCHAR2(100) := 'XXCSM1_UNIT_ITEM_2';         -- XXCMN:CS
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--  lv_prf_cd_unit_hon                CONSTANT VARCHAR2(100) := 'XXCSM1_UNIT_ITEM_1';         -- XXCMN:本
+--  lv_prf_cd_unit_cs                 CONSTANT VARCHAR2(100) := 'XXCSM1_UNIT_ITEM_2';         -- XXCMN:CS
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
 
   
 
@@ -240,8 +245,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
   lv_prf_cd_team_val                    VARCHAR2(100) ;                                 -- XXCMN:在庫組織コード
   lv_prf_cd_price_e_val                 VARCHAR2(100) ;                                 -- XXCMN:営業原価
   lv_prf_cd_price_h_val                 VARCHAR2(100) ;                                 -- XXCMN:標準原価
-  lv_prf_cd_unit_hon_val                VARCHAR2(100) ;                                 -- XXCMN:本
-  lv_prf_cd_unit_cs_val                 VARCHAR2(100) ;                                 -- XXCMN:CS
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--  lv_prf_cd_unit_hon_val                VARCHAR2(100) ;                                 -- XXCMN:本
+--  lv_prf_cd_unit_cs_val                 VARCHAR2(100) ;                                 -- XXCMN:CS
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
     
     /****************************************************************************
    * Procedure Name   : init
@@ -395,14 +402,16 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
                     name => lv_prf_cd_price_h
                    ,val  => lv_prf_cd_price_h_val
                    ); -- 標準原価
-    FND_PROFILE.GET(
-                    name => lv_prf_cd_unit_hon
-                   ,val  => lv_prf_cd_unit_hon_val
-                   ); -- 単位：本
-    FND_PROFILE.GET(
-                    name => lv_prf_cd_unit_cs
-                   ,val  => lv_prf_cd_unit_cs_val
-                   ); -- 単位：CS
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--    FND_PROFILE.GET(
+--                    name => lv_prf_cd_unit_hon
+--                   ,val  => lv_prf_cd_unit_hon_val
+--                   ); -- 単位：本
+--    FND_PROFILE.GET(
+--                    name => lv_prf_cd_unit_cs
+--                   ,val  => lv_prf_cd_unit_cs_val
+--                   ); -- 単位：CS
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
     
     -- =========================================================================
     -- プロファイル値取得に失敗した場合
@@ -440,12 +449,14 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
         -- 標準原価
     ELSIF (lv_prf_cd_price_h_val IS NULL) THEN
       lv_tkn_value := lv_prf_cd_price_h;
-        -- 単位：本
-    ELSIF (lv_prf_cd_unit_hon_val IS NULL) THEN
-      lv_tkn_value := lv_prf_cd_unit_hon;
-        -- 単位：CS
-    ELSIF (lv_prf_cd_unit_cs_val IS NULL) THEN
-      lv_tkn_value := lv_prf_cd_unit_cs;
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--        -- 単位：本
+--    ELSIF (lv_prf_cd_unit_hon_val IS NULL) THEN
+--      lv_tkn_value := lv_prf_cd_unit_hon;
+--        -- 単位：CS
+--    ELSIF (lv_prf_cd_unit_cs_val IS NULL) THEN
+--      lv_tkn_value := lv_prf_cd_unit_cs;
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
     END IF;
     
     -- エラーメッセージ取得
@@ -536,62 +547,64 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
 -- ===============================
     -- データ存在チェック用
     ln_counts                 NUMBER(1,0) := 0;
-    lb_loop_end               BOOLEAN     := FALSE;
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--    lb_loop_end               BOOLEAN     := FALSE;
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
 --//+ADD START 2009/02/10 CT008 T.Tsukino
 -- ===============================
 -- ローカル例外
 -- ===============================
     location_check_expt     EXCEPTION;
 --//+ADD END 2009/02/10 CT008 T.Tsukino
--- ============================================
---  単位変換マスタ情報の取得・カーソル
--- ============================================
-    CURSOR   
-        get_unit_info_cur(
-                          iv_item_no      IN VARCHAR2                      -- 商品コード
-                          )
-    IS
-      SELECT   
-           mucc.from_unit_of_measure              AS  unit_from                -- 基準単位(本)
-      FROM     
-           mtl_system_items_b                     msib                         -- 品目マスタ
-          ,mtl_uom_class_conversions              mucc                         -- 単位変換マスタ
-      WHERE    
-            mucc.inventory_item_id                 = msib.inventory_item_id    -- 品目ID
-      AND   msib.segment1                          = iv_item_no                -- 商品コード
-      AND   msib.organization_id                   = gv_org_id                 -- 在庫組織ID
-      AND   mucc.to_unit_of_measure                = lv_prf_cd_unit_cs_val     -- 変換後単位(CS)
-      ;
-
--- ============================================
---  商品コードの取得・カーソル
--- ============================================
-    CURSOR   
-        get_item_cd_cur(
-                          iv_kyoten_cd      IN VARCHAR2                      -- 拠点コード
-                          )
-    IS
-      SELECT 
-            xcgv.item_cd                          AS  item_cd                  -- 品目コード
-           ,xcgv.item_nm                          AS  item_nm                  -- 品目名称
-      FROM 
-           xxcsm_commodity_group4_v                xcgv                        -- 政策群４ビュー
-      WHERE    
-        EXISTS (
-          SELECT
-              'X'
-          FROM
-               xxcsm_item_plan_lines                  xipl                         -- 商品計画明細テーブル
-              ,xxcsm_item_plan_headers                xiph                         -- 商品計画ヘッダテーブル
-          WHERE
-               xipl.item_plan_header_id              = xiph.item_plan_header_id   -- 商品計画ヘッダID
-          AND  xipl.item_no                          = xcgv.item_cd               -- 商品コード
-          AND  xiph.plan_year                        = gn_taisyoym                -- 対象年度
-          AND  xiph.location_cd                      = iv_kyoten_cd               -- 拠点コード
-          AND  xipl.item_kbn                         <> '0'                       -- 商品区分(商品群以外)
-        )
-      ;
-      
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+---- ============================================
+----  単位変換マスタ情報の取得・カーソル
+---- ============================================
+--    CURSOR   
+--        get_unit_info_cur(
+--                          iv_item_no      IN VARCHAR2                      -- 商品コード
+--                          )
+--    IS
+--      SELECT   
+--           mucc.from_unit_of_measure              AS  unit_from                -- 基準単位(本)
+--      FROM     
+--           mtl_system_items_b                     msib                         -- 品目マスタ
+--          ,mtl_uom_class_conversions              mucc                         -- 単位変換マスタ
+--      WHERE    
+--            mucc.inventory_item_id                 = msib.inventory_item_id    -- 品目ID
+--      AND   msib.segment1                          = iv_item_no                -- 商品コード
+--      AND   msib.organization_id                   = gv_org_id                 -- 在庫組織ID
+--      AND   mucc.to_unit_of_measure                = lv_prf_cd_unit_cs_val     -- 変換後単位(CS)
+--      ;
+---- ============================================
+----  商品コードの取得・カーソル
+---- ============================================
+--    CURSOR   
+--        get_item_cd_cur(
+--                          iv_kyoten_cd      IN VARCHAR2                      -- 拠点コード
+--                          )
+--    IS
+--      SELECT 
+--            xcgv.item_cd                          AS  item_cd                  -- 品目コード
+--           ,xcgv.item_nm                          AS  item_nm                  -- 品目名称
+--      FROM 
+--           xxcsm_commodity_group4_v                xcgv                        -- 政策群４ビュー
+--      WHERE    
+--        EXISTS (
+--          SELECT
+--              'X'
+--          FROM
+--               xxcsm_item_plan_lines                  xipl                         -- 商品計画明細テーブル
+--              ,xxcsm_item_plan_headers                xiph                         -- 商品計画ヘッダテーブル
+--          WHERE
+--               xipl.item_plan_header_id              = xiph.item_plan_header_id   -- 商品計画ヘッダID
+--          AND  xipl.item_no                          = xcgv.item_cd               -- 商品コード
+--          AND  xiph.plan_year                        = gn_taisyoym                -- 対象年度
+--          AND  xiph.location_cd                      = iv_kyoten_cd               -- 拠点コード
+--          AND  xipl.item_kbn                         <> '0'                       -- 商品区分(商品群以外)
+--        )
+--      ;
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
 --##################  固定ステータス初期化部 START   ###################
   BEGIN
 --
@@ -663,56 +676,58 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
       RAISE location_check_expt;
 --//+UPD END 2009/02/10 CT008 T.Tsukino
     END IF;
-    -- 単位変換マスタでのチェック処理
-    <<get_item_cd_cur_loop>>
-    FOR rec_item_cd IN get_item_cd_cur(iv_kyoten_cd) LOOP
-        
-        <<get_unit_info_cur_loop>>
-        FOR rec_unit_info IN get_unit_info_cur(rec_item_cd.item_cd) LOOP
-            lb_loop_end := TRUE;
-            
-            -- 基準単位の判断(正常：本 異常：本以外)
-            IF ((rec_unit_info.unit_from IS NULL) OR (rec_unit_info.unit_from <> lv_prf_cd_unit_hon_val)) THEN
-                lv_errmsg := xxccp_common_pkg.get_msg(
-                            iv_application  => cv_xxcsm                    -- アプリケーション短縮名
-                            ,iv_name         => cv_csm1_msg_10133          -- メッセージコード
-                            ,iv_token_name1  => cv_tkn_kyotencd            -- トークンコード1（拠点コード）
-                            ,iv_token_value1 => iv_kyoten_cd               -- トークン値1
-                            ,iv_token_name2  => cv_tkn_item_cd             -- トークンコード2（商品コード）
-                            ,iv_token_value2 => rec_item_cd.item_cd        -- トークン値1
-                            ,iv_token_name3  => cv_tkn_item_nm             -- トークンコード3（商品名称）
-                            ,iv_token_value3 => rec_item_cd.item_nm        -- トークン値2
-                );
-                -- LOGに出力
-                fnd_file.put_line(
-                                  which  => FND_FILE.LOG
-                                 ,buff   => lv_errmsg || CHR(10)
-                                 );
-            END IF;
-        END LOOP get_unit_info_cur_loop;
-        
-        -- 単位変換マスタに存在しない場合
-        IF (lb_loop_end = FALSE) THEN
-            lv_errmsg := xxccp_common_pkg.get_msg(
-                        iv_application  => cv_xxcsm                    -- アプリケーション短縮名
-                        ,iv_name         => cv_csm1_msg_10131          -- メッセージコード
-                        ,iv_token_name1  => cv_tkn_kyotencd            -- トークンコード1（拠点コード）
-                        ,iv_token_value1 => iv_kyoten_cd               -- トークン値1
-                        ,iv_token_name2  => cv_tkn_item_cd             -- トークンコード2（商品コード）
-                        ,iv_token_value2 => rec_item_cd.item_cd        -- トークン値1
-                        ,iv_token_name3  => cv_tkn_item_nm             -- トークンコード3（商品名称）
-                        ,iv_token_value3 => rec_item_cd.item_nm        -- トークン値2
-            );
-            -- LOGに出力
-            fnd_file.put_line(
-                              which  => FND_FILE.LOG
-                             ,buff   => lv_errmsg || CHR(10)
-                             );
-        END IF;
-        
-        lb_loop_end := FALSE;
-        
-    END LOOP get_unit_info_cur_loop;    
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--    -- 単位変換マスタでのチェック処理
+--    <<get_item_cd_cur_loop>>
+--    FOR rec_item_cd IN get_item_cd_cur(iv_kyoten_cd) LOOP
+--        
+--        <<get_unit_info_cur_loop>>
+--        FOR rec_unit_info IN get_unit_info_cur(rec_item_cd.item_cd) LOOP
+--            lb_loop_end := TRUE;
+--            
+--            -- 基準単位の判断(正常：本 異常：本以外)
+--            IF ((rec_unit_info.unit_from IS NULL) OR (rec_unit_info.unit_from <> lv_prf_cd_unit_hon_val)) THEN
+--                lv_errmsg := xxccp_common_pkg.get_msg(
+--                            iv_application  => cv_xxcsm                    -- アプリケーション短縮名
+--                            ,iv_name         => cv_csm1_msg_10133          -- メッセージコード
+--                            ,iv_token_name1  => cv_tkn_kyotencd            -- トークンコード1（拠点コード）
+--                            ,iv_token_value1 => iv_kyoten_cd               -- トークン値1
+--                            ,iv_token_name2  => cv_tkn_item_cd             -- トークンコード2（商品コード）
+--                            ,iv_token_value2 => rec_item_cd.item_cd        -- トークン値1
+--                            ,iv_token_name3  => cv_tkn_item_nm             -- トークンコード3（商品名称）
+--                            ,iv_token_value3 => rec_item_cd.item_nm        -- トークン値2
+--                );
+--                -- LOGに出力
+--                fnd_file.put_line(
+--                                  which  => FND_FILE.LOG
+--                                 ,buff   => lv_errmsg || CHR(10)
+--                                 );
+--            END IF;
+--        END LOOP get_unit_info_cur_loop;
+--        
+--        -- 単位変換マスタに存在しない場合
+--        IF (lb_loop_end = FALSE) THEN
+--            lv_errmsg := xxccp_common_pkg.get_msg(
+--                        iv_application  => cv_xxcsm                    -- アプリケーション短縮名
+--                        ,iv_name         => cv_csm1_msg_10131          -- メッセージコード
+--                        ,iv_token_name1  => cv_tkn_kyotencd            -- トークンコード1（拠点コード）
+--                        ,iv_token_value1 => iv_kyoten_cd               -- トークン値1
+--                        ,iv_token_name2  => cv_tkn_item_cd             -- トークンコード2（商品コード）
+--                        ,iv_token_value2 => rec_item_cd.item_cd        -- トークン値1
+--                        ,iv_token_name3  => cv_tkn_item_nm             -- トークンコード3（商品名称）
+--                        ,iv_token_value3 => rec_item_cd.item_nm        -- トークン値2
+--            );
+--            -- LOGに出力
+--            fnd_file.put_line(
+--                              which  => FND_FILE.LOG
+--                             ,buff   => lv_errmsg || CHR(10)
+--                             );
+--        END IF;
+--        
+--        lb_loop_end := FALSE;
+--        
+--    END LOOP get_unit_info_cur_loop;    
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
 --
 --//+ADD START 2009/02/10 CT008 T.Tsukino
   EXCEPTION
@@ -732,33 +747,37 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
       ov_errmsg  := lv_errmsg;    
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_error;
-      -- ================================================
-      -- カーソルのクローズ
-      -- ================================================
-
-      IF (get_item_cd_cur%ISOPEN) THEN
-        CLOSE get_item_cd_cur;
-      END IF;
-      
-      IF (get_unit_info_cur%ISOPEN) THEN
-        CLOSE get_unit_info_cur;
-      END IF;
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--      -- ================================================
+--      -- カーソルのクローズ
+--      -- ================================================
+--
+--      IF (get_item_cd_cur%ISOPEN) THEN
+--        CLOSE get_item_cd_cur;
+--      END IF;
+--      
+--      IF (get_unit_info_cur%ISOPEN) THEN
+--        CLOSE get_unit_info_cur;
+--      END IF;
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
     -- *** OTHERS例外ハンドラ ***
     WHEN OTHERS THEN
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM,1,5000);
       ov_retcode := cv_status_error;
-      -- ================================================
-      -- カーソルのクローズ
-      -- ================================================
-
-      IF (get_item_cd_cur%ISOPEN) THEN
-        CLOSE get_item_cd_cur;
-      END IF;
-      
-      IF (get_unit_info_cur%ISOPEN) THEN
-        CLOSE get_unit_info_cur;
-      END IF;
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--      -- ================================================
+--      -- カーソルのクローズ
+--      -- ================================================
+--
+--      IF (get_item_cd_cur%ISOPEN) THEN
+--        CLOSE get_item_cd_cur;
+--      END IF;
+--      
+--      IF (get_unit_info_cur%ISOPEN) THEN
+--        CLOSE get_unit_info_cur;
+--      END IF;
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
 --
 --#####################################  固定部 END   ###########################
 --
@@ -1895,25 +1914,36 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
                  ,cn_bus_price,xcgv.now_business_cost
                  ,0)                                AS  base_price               -- 10:標準原価 20:営業原価
             ,NVL(xcgv.now_unit_price,0)             AS  con_price                -- 定価
-            ,NVL(mucc.conversion_rate,0)            AS  conversion               -- 入数
+-- == 2010/04/26 V1.8 Modified START ===============================================================
+--            ,NVL(mucc.conversion_rate,0)            AS  conversion               -- 入数
+            ,NVL(iimb.attribute11, 0)               AS  conversion               -- 入数
+-- == 2010/04/26 V1.8 Modified END   ===============================================================
       FROM     
             xxcsm_item_plan_lines                   xipl                         -- 商品計画明細テーブル
             ,xxcsm_item_plan_headers                xiph                         -- 商品計画ヘッダテーブル
             ,xxcsm_commodity_group4_v               xcgv                         -- 政策群４ビュー
-            ,mtl_system_items_b                     msib                         -- 品目マスタ
-            ,mtl_uom_class_conversions              mucc                         -- 単位変換マスタ
+-- == 2010/04/26 V1.8 Modified START ===============================================================
+--            ,mtl_system_items_b                     msib                         -- 品目マスタ
+--            ,mtl_uom_class_conversions              mucc                         -- 単位変換マスタ
+            ,ic_item_mst_b                          iimb                         -- OPM品目アドオン
+-- == 2010/04/26 V1.8 Modified END   ===============================================================
       WHERE    
              xipl.item_plan_header_id                = xiph.item_plan_header_id   -- 商品計画ヘッダID
       AND   xcgv.item_cd                             = xipl.item_no               -- 商品コード
-      AND   mucc.inventory_item_id                   = msib.inventory_item_id     -- 品目ID
-      AND   msib.segment1                            = xipl.item_no               -- 商品コード
-      AND   msib.organization_id                     = gv_org_id                 -- 在庫組織ID
+-- == 2010/04/26 V1.8 Modified START ===============================================================
+--      AND   mucc.inventory_item_id                   = msib.inventory_item_id     -- 品目ID
+--      AND   msib.segment1                            = xipl.item_no               -- 商品コード
+--      AND   msib.organization_id                     = gv_org_id                 -- 在庫組織ID
+      AND   xipl.item_no                             = iimb.item_no              -- 商品コード
+-- == 2010/04/26 V1.8 Modified END   ===============================================================
       AND   xiph.plan_year                           = gn_taisyoym               -- 対象年度
       AND   xiph.location_cd                         = iv_kyoten_cd              -- 拠点コード
       AND   xipl.item_kbn                            <> '0'                      -- 商品区分(商品群以外)
-      AND   xcgv.unit_of_issue                       = lv_prf_cd_unit_hon_val    -- 単位(本)
-      AND   mucc.from_unit_of_measure                = lv_prf_cd_unit_hon_val    -- 基準単位(本)
-      AND   mucc.to_unit_of_measure                  = lv_prf_cd_unit_cs_val     -- 変換後単位(CS)
+-- == 2010/04/26 V1.8 Deleted START ===============================================================
+--      AND   xcgv.unit_of_issue                       = lv_prf_cd_unit_hon_val    -- 単位(本)
+--      AND   mucc.from_unit_of_measure                = lv_prf_cd_unit_hon_val    -- 基準単位(本)
+--      AND   mucc.to_unit_of_measure                  = lv_prf_cd_unit_cs_val     -- 変換後単位(CS)
+-- == 2010/04/26 V1.8 Deleted END   ===============================================================
       GROUP BY
                xipl.month_no                       -- 月
               ,xcgv.group1_cd                      -- 商品群1桁コード
@@ -1923,7 +1953,10 @@ CREATE OR REPLACE PACKAGE BODY  XXCSM002A11C AS
               ,xcgv.item_cd                        -- 商品コード
               ,xcgv.item_nm                        -- 商品名称
               ,xcgv.now_unit_price                 -- 定価
-              ,mucc.conversion_rate                -- 入数
+-- == 2010/04/26 V1.8 Modified START ===============================================================
+--              ,mucc.conversion_rate                -- 入数
+              ,iimb.attribute11                    -- 入数
+-- == 2010/04/26 V1.8 Modified END   ===============================================================
               ,xcgv.now_item_cost                  -- 標準原価
               ,xcgv.now_business_cost              -- 標準原価
       ORDER BY 
