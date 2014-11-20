@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOI001A01C(body)
  * Description      : 生産物流システムから営業システムへの出荷依頼データの抽出・データ連携を行う
  * MD.050           : 入庫情報取得 MD050_COI_001_A01
- * Version          : 1.13
+ * Version          : 1.14
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -31,6 +31,8 @@ AS
  *  submain                メイン処理プロシージャ
  *  main                   コンカレント実行ファイル登録プロシージャ
  *  chk_period_status      在庫会計期間チェック(A-20)
+ *  del_detail_data        旧明細削除処理(A-21)
+ *  upd_old_data           旧情報出庫数量初期化処理(A-22)
  *
  * Change Record
  * ------------- ----- ---------------- -------------------------------------------------
@@ -56,6 +58,7 @@ AS
  *  2009/12/08    1.12  N.Abe            [E_本稼動_00308,E_本稼動_00312]削除データ処理順序の修正
  *                                       [E_本稼動_00374]削除データ登録方法の修正
  *  2009/12/14    1.13  H.Sasaki         [E_本稼動_00428]在庫会計期間CLOSE時の処理を修正
+ *  2009/12/18    1.14  H.Sasaki         [E_本稼動_00524]伝票日付違いの入庫情報編集内容を修正
  *
  *****************************************************************************************/
 --
@@ -270,6 +273,230 @@ AS
   TYPE g_detail_ttype IS TABLE OF g_detail_rtype INDEX BY BINARY_INTEGER ;
   g_detail_tab                    g_detail_ttype;
 --
+-- == 2009/12/18 V1.14 Added START ===============================================================
+  /**********************************************************************************
+   * Procedure Name   : del_detail_data（ループ部）
+   * Description      : 旧明細削除処理(A-21)
+   ***********************************************************************************/
+  PROCEDURE del_detail_data(
+      in_slip_cnt   IN NUMBER                                          -- 1.ループカウンタ
+    , iv_store_code IN VARCHAR2                                        -- 2.倉庫コード
+    , ov_errbuf    OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode   OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg    OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'del_detail_data';    -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    -- 明細情報を削除
+    -- ロック処理はサマリ情報の更新処理で実施
+    DELETE  FROM  xxcoi_storage_information   xsi
+    WHERE   xsi.slip_num          = gv_slip_num
+    AND     xsi.slip_date         = g_summary_tab ( in_slip_cnt ) .slip_date
+    AND     xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
+    AND     xsi.warehouse_code    = iv_store_code
+    AND     xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
+    AND     xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
+    AND     xsi.slip_type         = cv_slip_type
+    AND     xsi.summary_data_flag = cv_n_flag;
+--
+  EXCEPTION
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END del_detail_data;
+  --
+  /**********************************************************************************
+   * Procedure Name   : upd_old_data（ループ部）
+   * Description      : 旧情報出庫数量初期化処理(A-22)
+   ***********************************************************************************/
+  PROCEDURE upd_old_data(
+      in_slip_cnt   IN NUMBER                                          -- 1.ループカウンタ
+    , iv_store_code IN VARCHAR2                                        -- 2.倉庫コード
+    , ov_errbuf    OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
+    , ov_retcode   OUT VARCHAR2      --   リターン・コード             --# 固定 #
+    , ov_errmsg    OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
+  IS
+    -- ===============================
+    -- 固定ローカル定数
+    -- ===============================
+    cv_prg_name   CONSTANT VARCHAR2(100) := 'upd_old_data';    -- プログラム名
+--
+--#####################  固定ローカル変数宣言部 START   ########################
+--
+    lv_errbuf  VARCHAR2(5000);  -- エラー・メッセージ
+    lv_retcode VARCHAR2(1);     -- リターン・コード
+    lv_errmsg  VARCHAR2(5000);  -- ユーザー・エラー・メッセージ
+--
+--###########################  固定部 END   ####################################
+--
+    -- ===============================
+    -- ユーザー宣言部
+    -- ===============================
+    -- *** ローカル定数 ***
+--
+    -- *** ローカル変数 ***
+--
+    -- *** ローカル・カーソル ***
+    CURSOR  old_data_lock_cur
+    IS
+      SELECT  1
+      FROM    xxcoi_storage_information     xsi
+      WHERE   xsi.slip_num          = gv_slip_num
+      AND     xsi.slip_date        <> g_summary_tab ( in_slip_cnt ) .slip_date
+      AND     xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
+      AND     xsi.warehouse_code    = iv_store_code
+      AND     xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
+      AND     xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
+      AND     xsi.slip_type         = cv_slip_type
+      FOR UPDATE NOWAIT;
+
+    -- *** ローカル・レコード ***
+--
+  BEGIN
+--
+--##################  固定ステータス初期化部 START   ###################
+--
+    ov_retcode := cv_status_normal;
+--
+--###########################  固定部 END   ############################
+--
+    -- ***************************************
+    -- ***        実処理の記述             ***
+    -- ***       共通関数の呼び出し        ***
+    -- ***************************************
+--
+    OPEN  old_data_lock_cur;
+    --
+    IF (old_data_lock_cur%NOTFOUND) THEN
+      NULL;
+    ELSE
+      -- 同一の伝票番号、品目で伝票日付の異なるデータが存在する場合
+      -- 異なる伝票日付の出荷数量（ケース、バラ、総バラ）を初期化
+      UPDATE  xxcoi_storage_information   xsi
+      SET     ship_case_qty           =   0
+             ,ship_singly_qty         =   0
+             ,ship_summary_qty        =   0
+             ,last_updated_by         = cn_last_updated_by
+             ,last_update_date        = SYSDATE
+             ,last_update_login       = cn_last_update_login
+             ,request_id              = cn_request_id
+             ,program_application_id  = cn_program_application_id
+             ,program_id              = cn_program_id
+             ,program_update_date     = SYSDATE
+      WHERE   xsi.slip_num          = gv_slip_num
+      AND     xsi.slip_date        <> g_summary_tab ( in_slip_cnt ) .slip_date
+      AND     xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
+      AND     xsi.warehouse_code    = iv_store_code
+      AND     xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
+      AND     xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
+      AND     xsi.slip_type         = cv_slip_type;
+    END IF;
+    --
+    CLOSE old_data_lock_cur;
+    --
+--
+  EXCEPTION
+    WHEN lock_expt THEN
+      IF ( old_data_lock_cur%ISOPEN ) THEN
+        CLOSE old_data_lock_cur;
+      END IF;
+--
+      lv_errmsg   := xxccp_common_pkg.get_msg(
+                         iv_application  => cv_application
+                       , iv_name         => cv_lock_expt_err_msg
+                       , iv_token_name1  => cv_tkn_den_no
+                       , iv_token_value1 => gv_slip_num
+                     );
+      lv_errbuf := lv_errmsg;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_warn;
+      -- セーブポイントまでロールバック
+      ROLLBACK TO SAVEPOINT summary_point;
+--
+--#################################  固定例外処理部 START   ####################################
+--
+    -- *** 共通関数例外ハンドラ ***
+    WHEN global_api_expt THEN
+      IF ( old_data_lock_cur%ISOPEN ) THEN
+        CLOSE old_data_lock_cur;
+      END IF;
+--
+      ov_errmsg  := lv_errmsg;
+      ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
+      ov_retcode := cv_status_error;
+    -- *** 共通関数OTHERS例外ハンドラ ***
+    WHEN global_api_others_expt THEN
+      IF ( old_data_lock_cur%ISOPEN ) THEN
+        CLOSE old_data_lock_cur;
+      END IF;
+--
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+    -- *** OTHERS例外ハンドラ ***
+    WHEN OTHERS THEN
+      IF ( old_data_lock_cur%ISOPEN ) THEN
+        CLOSE old_data_lock_cur;
+      END IF;
+--
+      ov_errbuf  := cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||SQLERRM;
+      ov_retcode := cv_status_error;
+--
+--#####################################  固定部 END   ##########################################
+--
+  END upd_old_data;
+-- == 2009/12/18 V1.14 Added END   ===============================================================
   /**********************************************************************************
    * Procedure Name   : init
    * Description      : 初期処理(A-1)
@@ -770,19 +997,34 @@ AS
             , xca.dept_hht_div                 AS dept_hht_div        -- 百貨店用HHT区分
             , hl.province                      AS deliverly_code
             , imbc.attribute11                 AS case_in_qty         -- ケース入数
+-- == 2009/12/18 V1.14 Modified START ===============================================================
+--             , CASE WHEN xoha.req_status = gt_ship_status_result THEN
+--                 CASE WHEN otta.order_category_code = cv_order_type THEN
+--                   SUM( ROUND( xola.shipped_quantity, 2 ) )
+--                      WHEN otta.order_category_code = cv_return_type THEN
+--                   SUM( ROUND( xola.shipped_quantity, 2 ) * -1 )
+--                 END
+--               ELSE
+--                 CASE WHEN otta.order_category_code = cv_order_type THEN
+--                   SUM( ROUND( xola.quantity, 2 ) )
+--                      WHEN otta.order_category_code = cv_return_type THEN
+--                   SUM( ROUND( xola.quantity, 2 ) * -1 )
+--                 END
+--               END                              AS shipped_quantity    -- 出荷実績数量
             , CASE WHEN xoha.req_status = gt_ship_status_result THEN
                 CASE WHEN otta.order_category_code = cv_order_type THEN
-                  SUM( ROUND( xola.shipped_quantity, 2 ) )
+                  SUM( ROUND( NVL(xola.shipped_quantity, 0), 2 ) )
                      WHEN otta.order_category_code = cv_return_type THEN
-                  SUM( ROUND( xola.shipped_quantity, 2 ) * -1 )
+                  SUM( ROUND( NVL(xola.shipped_quantity, 0), 2 ) * -1 )
                 END
               ELSE
                 CASE WHEN otta.order_category_code = cv_order_type THEN
-                  SUM( ROUND( xola.quantity, 2 ) )
+                  SUM( ROUND( NVL(xola.quantity, 0), 2 ) )
                      WHEN otta.order_category_code = cv_return_type THEN
-                  SUM( ROUND( xola.quantity, 2 ) * -1 )
+                  SUM( ROUND( NVL(xola.quantity, 0), 2 ) * -1 )
                 END
               END                              AS shipped_quantity    -- 出荷実績数量
+-- == 2009/12/18 V1.14 Modified END   ===============================================================
       FROM    xxwsh_order_headers_all          xoha                   -- 受注ヘッダアドオン
             , xxwsh_order_lines_all            xola                   -- 受注明細アドオン
             , ic_item_mst_b                    imbc                   -- OPM品目マスタ（子）
@@ -1404,7 +1646,10 @@ AS
                                   , xola.order_header_id                AS  order_header_id             -- 受注ヘッダID
                                   , xola.order_line_id                  AS  order_line_id               -- 受注明細ID
                                   , otta.order_category_code            AS  order_category_code         -- 受注カテゴリ
-                                  , ROUND( xmld.actual_quantity, 2 )    AS  actual_quantity             -- 出荷実績数量
+-- == 2009/12/18 V1.14 Modified START ===============================================================
+--                                   , ROUND( xmld.actual_quantity, 2 )    AS  actual_quantity             -- 出荷実績数量
+                                  , ROUND( NVL(xmld.actual_quantity, 0), 2 )    AS  actual_quantity             -- 出荷実績数量
+-- == 2009/12/18 V1.14 Modified END   ===============================================================
                                   , xmld.lot_no                         AS  lot_no                      -- ロット番号
                                   , xola.request_item_id                AS  request_item_id             -- 品目ID
                                   , CASE  WHEN      xoha.req_status                   = gt_ship_status_close
@@ -2252,6 +2497,9 @@ AS
   PROCEDURE upd_summary_disp(
       in_slip_cnt   IN NUMBER                                          -- 1.ループカウンタ
     , iv_rowid      IN ROWID                                           -- 2.更新対象ROWID
+-- == 2009/12/18 V1.14 Added START ===============================================================
+    , iv_store_code IN VARCHAR2                                        -- 3.倉庫コード
+-- == 2009/12/18 V1.14 Added END   ===============================================================
     , ov_errbuf    OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
     , ov_retcode   OUT VARCHAR2      --   リターン・コード             --# 固定 #
     , ov_errmsg    OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2281,7 +2529,16 @@ AS
     IS
       SELECT xsi.rowid
       FROM   xxcoi_storage_information xsi
-      WHERE  xsi.rowid = iv_rowid
+-- == 2009/12/18 V1.14 Modified START ===============================================================
+--      WHERE  xsi.rowid = iv_rowid
+      WHERE  xsi.slip_num          = gv_slip_num
+      AND    xsi.slip_date         = g_summary_tab ( in_slip_cnt ) .slip_date
+      AND    xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
+      AND    xsi.warehouse_code    = iv_store_code
+      AND    xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
+      AND    xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
+      AND    xsi.slip_type         = cv_slip_type
+-- == 2009/12/18 V1.14 Modified END   ===============================================================
       FOR UPDATE NOWAIT
     ;
 --
@@ -2397,6 +2654,9 @@ AS
   PROCEDURE upd_summary_close(
       in_slip_cnt   IN NUMBER                                          -- 1.ループカウンタ
     , iv_rowid      IN ROWID                                           -- 2.更新対象ROWID
+-- == 2009/12/18 V1.14 Added START ===============================================================
+    , iv_store_code IN VARCHAR2                                        -- 3.倉庫コード
+-- == 2009/12/18 V1.14 Added END   ===============================================================
     , ov_errbuf    OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
     , ov_retcode   OUT VARCHAR2      --   リターン・コード             --# 固定 #
     , ov_errmsg    OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2426,7 +2686,16 @@ AS
     IS
       SELECT xsi.rowid
       FROM   xxcoi_storage_information xsi
-      WHERE  xsi.rowid = iv_rowid
+-- == 2009/12/18 V1.14 Modified START ===============================================================
+--       WHERE  xsi.rowid = iv_rowid
+      WHERE  xsi.slip_num          = gv_slip_num
+      AND    xsi.slip_date         = g_summary_tab ( in_slip_cnt ) .slip_date
+      AND    xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
+      AND    xsi.warehouse_code    = iv_store_code
+      AND    xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
+      AND    xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
+      AND    xsi.slip_type         = cv_slip_type
+-- == 2009/12/18 V1.14 Modified END   ===============================================================
       FOR UPDATE NOWAIT
     ;
 --
@@ -2538,6 +2807,9 @@ AS
   PROCEDURE upd_summary_results(
       in_slip_cnt   IN NUMBER                                          -- 1.ループカウンタ
     , iv_rowid      IN ROWID                                           -- 2.更新対象ROWID
+-- == 2009/12/18 V1.14 Added START ===============================================================
+    , iv_store_code IN VARCHAR2                                        -- 3.倉庫コード
+-- == 2009/12/18 V1.14 Added END   ===============================================================
     , ov_errbuf    OUT VARCHAR2      --   エラー・メッセージ           --# 固定 #
     , ov_retcode   OUT VARCHAR2      --   リターン・コード             --# 固定 #
     , ov_errmsg    OUT VARCHAR2 )    --   ユーザー・エラー・メッセージ --# 固定 #
@@ -2567,7 +2839,16 @@ AS
     IS
       SELECT xsi.rowid
       FROM   xxcoi_storage_information xsi
-      WHERE  xsi.rowid = iv_rowid
+-- == 2009/12/18 V1.14 Modified START ===============================================================
+--       WHERE  xsi.rowid = iv_rowid
+      WHERE  xsi.slip_num          = gv_slip_num
+      AND    xsi.slip_date         = g_summary_tab ( in_slip_cnt ) .slip_date
+      AND    xsi.base_code         = g_summary_tab ( in_slip_cnt ) .base_code
+      AND    xsi.warehouse_code    = iv_store_code
+      AND    xsi.parent_item_code  = g_summary_tab ( in_slip_cnt ) .parent_item_no
+      AND    xsi.item_code         = g_summary_tab ( in_slip_cnt ) .item_no
+      AND    xsi.slip_type         = cv_slip_type
+-- == 2009/12/18 V1.14 Modified END   ===============================================================
       FOR UPDATE NOWAIT
     ;
 --
@@ -4062,11 +4343,14 @@ AS
           END IF;
         END IF;
 --
+-- *************************************************************************************************
+--  サマリ情報の作成(START)
+-- *************************************************************************************************
         -- 伝票単位でのスキップ判定
         IF ( lb_slip_chk_status = TRUE ) THEN
-    -- ===============================
-    -- A-16.入庫情報サマリ存在確認
-    -- ===============================
+          -- ===============================
+          -- A-16.入庫情報サマリ存在確認
+          -- ===============================
           chk_summary_data(
               in_slip_cnt     => gn_slip_cnt                          -- 1.ループカウンタ
             , iv_store_code   => lt_store_code                        -- 2.倉庫コード
@@ -4081,22 +4365,22 @@ AS
             RAISE global_process_expt;
           END IF;
 --
-    -- ===============================
-    -- サマリ条件に合致するレコードの
-    -- 存在により分岐
-    -- ===============================
+          -- ==========================================
+          --  入出庫一時表にサマリデータが存在する場合
+          -- ==========================================
           IF ( lb_record_valid = TRUE ) THEN
 --
-    -- ===============================
-    -- 出荷依頼ステータスにより処理分岐
-    -- ===============================
             IF ( lt_req_status IS NULL ) THEN
-    -- ===============================
-    -- A-7.入庫情報サマリの更新
-    -- ===============================
+              -- ======================================
+              -- 入出庫一時表の出荷依頼ステータスがNULL
+              -- A-7.入庫情報サマリの更新
+              -- ======================================
               upd_summary_disp(
                   in_slip_cnt   => gn_slip_cnt                        -- 1.ループカウンタ
                 , iv_rowid      => lv_rowid                           -- 2.更新対象ROWID
+-- == 2009/12/18 V1.14 Added START ===============================================================
+                , iv_store_code => lt_store_code                      -- 3.倉庫コード
+-- == 2009/12/18 V1.14 Added END   ===============================================================
                 , ov_errbuf     => lv_errbuf                          -- エラー・メッセージ
                 , ov_retcode    => lv_retcode                         -- リターン・コード
                 , ov_errmsg     => lv_errmsg                          -- ユーザー・エラー・メッセージ
@@ -4108,12 +4392,16 @@ AS
                 lb_slip_chk_status := FALSE;
               END IF;
             ELSIF ( lt_req_status = gt_ship_status_close ) THEN
-    -- ===============================
-    -- A-8.入庫情報サマリの更新
-    -- ===============================
+              -- ======================================
+              -- 入出庫一時表の出荷依頼ステータスが03
+              -- A-8.入庫情報サマリの更新
+              -- ======================================
               upd_summary_close(
                   in_slip_cnt   => gn_slip_cnt                        -- 1.ループカウンタ
                 , iv_rowid      => lv_rowid                           -- 2.更新対象ROWID
+-- == 2009/12/18 V1.14 Added START ===============================================================
+                , iv_store_code => lt_store_code                      -- 3.倉庫コード
+-- == 2009/12/18 V1.14 Added END   ===============================================================
                 , ov_errbuf     => lv_errbuf                          -- エラー・メッセージ
                 , ov_retcode    => lv_retcode                         -- リターン・コード
                 , ov_errmsg     => lv_errmsg                          -- ユーザー・エラー・メッセージ
@@ -4125,12 +4413,16 @@ AS
                 lb_slip_chk_status := FALSE;
               END IF;
             ELSIF ( lt_req_status = gt_ship_status_result ) THEN
-    -- ===============================
-    -- A-9.入庫情報サマリの更新
-    -- ===============================
+              -- ======================================
+              -- 入出庫一時表の出荷依頼ステータスが04
+              -- A-9.入庫情報サマリの更新
+              -- ======================================
               upd_summary_results(
                   in_slip_cnt   => gn_slip_cnt                        -- 1.ループカウンタ
                 , iv_rowid      => lv_rowid                           -- 2.更新対象ROWID
+-- == 2009/12/18 V1.14 Added START ===============================================================
+                , iv_store_code => lt_store_code                      -- 3.倉庫コード
+-- == 2009/12/18 V1.14 Added END   ===============================================================
                 , ov_errbuf     => lv_errbuf                          -- エラー・メッセージ
                 , ov_retcode    => lv_retcode                         -- リターン・コード
                 , ov_errmsg     => lv_errmsg                          -- ユーザー・エラー・メッセージ
@@ -4142,10 +4434,34 @@ AS
                 lb_slip_chk_status := FALSE;
               END IF;
             END IF;
+            --
+-- == 2009/12/18 V1.14 Added START ===============================================================
+            IF (lb_slip_chk_status) THEN
+              -- ======================================
+              -- A-21.旧明細削除処理
+              -- ======================================
+              del_detail_data(
+                  in_slip_cnt   => gn_slip_cnt                        -- 1.ループカウンタ
+                , iv_store_code => lt_store_code                      -- 2.倉庫コード
+                , ov_errbuf     => lv_errbuf                          -- エラー・メッセージ
+                , ov_retcode    => lv_retcode                         -- リターン・コード
+                , ov_errmsg     => lv_errmsg                          -- ユーザー・エラー・メッセージ
+              );
+              IF ( lv_retcode = cv_status_error ) THEN
+                RAISE global_process_expt;
+              ELSIF ( lv_retcode = cv_status_warn ) THEN
+                gn_warn_cnt := gn_warn_cnt + 1;
+                lb_slip_chk_status := FALSE;
+              END IF;
+            END IF;
+-- == 2009/12/18 V1.14 Added END   ===============================================================
           ELSE
-    -- ===============================
-    -- 取得した伝票が入庫確認済かカウント
-    -- ===============================
+            -- ===========================================
+            --  入出庫一時表にサマリデータが存在しない場合
+            -- ===========================================
+            -- =========================================
+            -- 取得した伝票が入庫確認済かカウント
+            -- =========================================
             BEGIN
               SELECT COUNT(*)
               INTO   ln_store_check_cnt
@@ -4159,14 +4475,11 @@ AS
                 ln_store_check_cnt := 0;
             END;
 --
-    -- ===============================
-    -- 取得した伝票が実在し
-    -- 入庫確認済かにより分岐
-    -- ===============================
             IF ( ln_store_check_cnt > 0 ) THEN
-    -- ===============================
-    -- A-6.入庫情報サマリの登録
-    -- ===============================
+              -- =========================================
+              --  取得した伝票が入庫確認済の場合
+              --  A-6.入庫情報サマリの登録
+              -- =========================================
               ins_summary_confirmed(
                   in_slip_cnt               => gn_slip_cnt            -- 1.ループカウンタ
                 , iv_store_code             => lt_store_code          -- 2.倉庫コード
@@ -4181,9 +4494,10 @@ AS
                 RAISE global_process_expt;
               END IF;
             ELSE
-    -- ===============================
-    -- A-5.入庫情報サマリの登録
-    -- ===============================
+              -- =========================================
+              --  取得した伝票が入庫未確認の場合
+              --  A-5.入庫情報サマリの登録
+              -- =========================================
               ins_summary_unconfirmed(
                   in_slip_cnt               => gn_slip_cnt            -- 1.ループカウンタ
                 , iv_store_code             => lt_store_code          -- 2.倉庫コード
@@ -4199,13 +4513,41 @@ AS
               END IF;
             END IF;
           END IF;
+          --
+-- == 2009/12/18 V1.14 Added START ===============================================================
+          -- 伝票日付不一致データの出庫側数量初期化
+          IF (lb_slip_chk_status) THEN
+            -- ======================================
+            -- A-22.旧情報出庫数量初期化処理
+            -- ======================================
+            upd_old_data(
+                in_slip_cnt   => gn_slip_cnt                        -- 1.ループカウンタ
+              , iv_store_code => lt_store_code                      -- 2.倉庫コード
+              , ov_errbuf     => lv_errbuf                          -- エラー・メッセージ
+              , ov_retcode    => lv_retcode                         -- リターン・コード
+              , ov_errmsg     => lv_errmsg                          -- ユーザー・エラー・メッセージ
+            );
+            IF ( lv_retcode = cv_status_error ) THEN
+              RAISE global_process_expt;
+            ELSIF ( lv_retcode = cv_status_warn ) THEN
+              gn_warn_cnt := gn_warn_cnt + 1;
+              lb_slip_chk_status := FALSE;
+            END IF;
+          END IF;
+-- == 2009/12/18 V1.14 Added END   ===============================================================
         END IF;
+-- *************************************************************************************************
+--  サマリ情報の作成(END)
+-- *************************************************************************************************
 --
+-- *************************************************************************************************
+--  明細情報の作成(START)
+-- *************************************************************************************************
         -- 伝票単位でのスキップ判定
         IF ( lb_slip_chk_status = TRUE ) THEN
-    -- ===============================
-    -- A-3.入庫情報詳細の取得
-    -- ===============================
+          -- ===============================
+          -- A-3.入庫情報詳細の取得
+          -- ===============================
           get_detail_record(
               in_slip_cnt => gn_slip_cnt                              -- 1.ループカウンタ
             , ov_errbuf   => lv_errbuf                                -- エラー・メッセージ
@@ -4218,94 +4560,117 @@ AS
 --
           <<g_detail_tab_loop>>
           FOR gn_line_cnt IN 1..g_detail_tab.COUNT LOOP
-    -- ===============================
-    -- A-17.入庫情報詳細存在確認
-    -- ===============================
-            chk_detail_data(
-                in_line_cnt     => gn_line_cnt                        -- 1.ループカウンタ
-              , iv_store_code   => lt_store_code                      -- 2.倉庫コード
-              , ov_rowid        => lv_rowid                           -- 3.ROWID
-              , ot_req_status   => lt_req_status                      -- 4.出荷依頼ステータス
-              , ob_record_valid => lb_record_valid                    -- 5.TRUE:詳細レコード存在 FALSE:存在せず
-              , ov_errbuf       => lv_errbuf                          -- エラー・メッセージ
-              , ov_retcode      => lv_retcode                         -- リターン・コード
-              , ov_errmsg       => lv_errmsg                          -- ユーザー・エラー・メッセージ
+-- == 2009/12/18 V1.14 Deleted START ===============================================================
+--             -- ===============================
+--             -- A-17.入庫情報詳細存在確認
+--             -- ===============================
+--             chk_detail_data(
+--                 in_line_cnt     => gn_line_cnt                        -- 1.ループカウンタ
+--               , iv_store_code   => lt_store_code                      -- 2.倉庫コード
+--               , ov_rowid        => lv_rowid                           -- 3.ROWID
+--               , ot_req_status   => lt_req_status                      -- 4.出荷依頼ステータス
+--               , ob_record_valid => lb_record_valid                    -- 5.TRUE:詳細レコード存在 FALSE:存在せず
+--               , ov_errbuf       => lv_errbuf                          -- エラー・メッセージ
+--               , ov_retcode      => lv_retcode                         -- リターン・コード
+--               , ov_errmsg       => lv_errmsg                          -- ユーザー・エラー・メッセージ
+--             );
+--             IF ( lv_retcode = cv_status_error ) THEN
+--               RAISE global_process_expt;
+--             END IF;
+-- == 2009/12/18 V1.14 Deleted END   ===============================================================
+--
+-- == 2009/12/18 V1.14 Modified START ===============================================================
+--             IF ( lb_record_valid = TRUE ) THEN
+--               IF ( lt_req_status = gt_ship_status_result ) THEN
+--                 -- ===============================
+--                 -- A-12.入庫情報詳細の更新
+--                 -- ===============================
+--                 upd_detail_results(
+--                     in_line_cnt   => gn_line_cnt                      -- 1.ループカウンタ
+--                   , iv_rowid      => lv_rowid                         -- 2.更新対象ROWID
+--                   , iv_store_code => lt_store_code                    -- 3.倉庫コード
+--                   , iv_shop_code  => lt_shop_code                     -- 4.店舗コード
+--                   , ov_errbuf     => lv_errbuf                        -- エラー・メッセージ
+--                   , ov_retcode    => lv_retcode                       -- リターン・コード
+--                   , ov_errmsg     => lv_errmsg                        -- ユーザー・エラー・メッセージ
+--                 );
+--                 IF ( lv_retcode = cv_status_error ) THEN
+--                   RAISE global_process_expt;
+--                 ELSIF ( lv_retcode = cv_status_warn ) THEN
+--                   gn_warn_cnt := gn_warn_cnt + 1;
+--                   lb_slip_chk_status := FALSE;
+--                   -- 次伝票Noへ遷移
+--                   EXIT g_detail_tab_loop;
+--                 END IF;
+--               ELSE
+--                 -- ===============================
+--                 -- A-11.入庫情報詳細の更新
+--                 -- ===============================
+--                 upd_detail_close(
+--                     in_line_cnt   => gn_line_cnt                      -- 1.ループカウンタ
+--                   , iv_rowid      => lv_rowid                         -- 2.更新対象ROWID
+--                   , iv_store_code => lt_store_code                    -- 3.倉庫コード
+--                   , iv_shop_code  => lt_shop_code                     -- 4.店舗コード
+--                   , ov_errbuf     => lv_errbuf                        -- エラー・メッセージ
+--                   , ov_retcode    => lv_retcode                       -- リターン・コード
+--                   , ov_errmsg     => lv_errmsg                        -- ユーザー・エラー・メッセージ
+--                 );
+--                 IF ( lv_retcode = cv_status_error ) THEN
+--                   RAISE global_process_expt;
+--                 ELSIF ( lv_retcode = cv_status_warn ) THEN
+--                   gn_warn_cnt := gn_warn_cnt + 1;
+--                   lb_slip_chk_status := FALSE;
+--                   -- 次伝票Noへ遷移
+--                   EXIT g_detail_tab_loop;
+--                 END IF;
+--               END IF;
+--             ELSE
+--               -- ===============================
+--               -- A-10.入庫情報詳細の登録
+--               -- ===============================
+--               ins_detail_confirmed(
+--                   in_line_cnt               => gn_line_cnt            -- 1.ループカウンタ
+--                 , iv_store_code             => lt_store_code          -- 2.倉庫コード
+--                 , iv_shop_code              => lt_shop_code           -- 3.店舗コード
+--                 , it_auto_confirmation_flag => lt_auto_confirmation_flg
+--                                                                       -- 4.自動入庫確認フラグ
+--                 , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
+--                 , ov_retcode                => lv_retcode             -- リターン・コード
+--                 , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
+--               );
+--               IF ( lv_retcode = cv_status_error ) THEN
+--                 RAISE global_process_expt;
+--               END IF;
+--             END IF;
+--
+            -- ===============================
+            -- A-10.入庫情報詳細の登録
+            -- ===============================
+            ins_detail_confirmed(
+                in_line_cnt               => gn_line_cnt            -- 1.ループカウンタ
+              , iv_store_code             => lt_store_code          -- 2.倉庫コード
+              , iv_shop_code              => lt_shop_code           -- 3.店舗コード
+              , it_auto_confirmation_flag => lt_auto_confirmation_flg
+                                                                    -- 4.自動入庫確認フラグ
+              , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
+              , ov_retcode                => lv_retcode             -- リターン・コード
+              , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
             );
             IF ( lv_retcode = cv_status_error ) THEN
               RAISE global_process_expt;
             END IF;
---
-            IF ( lb_record_valid = TRUE ) THEN
-              IF ( lt_req_status = gt_ship_status_result ) THEN
-    -- ===============================
-    -- A-12.入庫情報詳細の更新
-    -- ===============================
-                upd_detail_results(
-                    in_line_cnt   => gn_line_cnt                      -- 1.ループカウンタ
-                  , iv_rowid      => lv_rowid                         -- 2.更新対象ROWID
-                  , iv_store_code => lt_store_code                    -- 3.倉庫コード
-                  , iv_shop_code  => lt_shop_code                     -- 4.店舗コード
-                  , ov_errbuf     => lv_errbuf                        -- エラー・メッセージ
-                  , ov_retcode    => lv_retcode                       -- リターン・コード
-                  , ov_errmsg     => lv_errmsg                        -- ユーザー・エラー・メッセージ
-                );
-                IF ( lv_retcode = cv_status_error ) THEN
-                  RAISE global_process_expt;
-                ELSIF ( lv_retcode = cv_status_warn ) THEN
-                  gn_warn_cnt := gn_warn_cnt + 1;
-                  lb_slip_chk_status := FALSE;
-                  -- 次伝票Noへ遷移
-                  EXIT g_detail_tab_loop;
-                END IF;
-              ELSE
-    -- ===============================
-    -- A-11.入庫情報詳細の更新
-    -- ===============================
-                upd_detail_close(
-                    in_line_cnt   => gn_line_cnt                      -- 1.ループカウンタ
-                  , iv_rowid      => lv_rowid                         -- 2.更新対象ROWID
-                  , iv_store_code => lt_store_code                    -- 3.倉庫コード
-                  , iv_shop_code  => lt_shop_code                     -- 4.店舗コード
-                  , ov_errbuf     => lv_errbuf                        -- エラー・メッセージ
-                  , ov_retcode    => lv_retcode                       -- リターン・コード
-                  , ov_errmsg     => lv_errmsg                        -- ユーザー・エラー・メッセージ
-                );
-                IF ( lv_retcode = cv_status_error ) THEN
-                  RAISE global_process_expt;
-                ELSIF ( lv_retcode = cv_status_warn ) THEN
-                  gn_warn_cnt := gn_warn_cnt + 1;
-                  lb_slip_chk_status := FALSE;
-                  -- 次伝票Noへ遷移
-                  EXIT g_detail_tab_loop;
-                END IF;
-              END IF;
-            ELSE
-    -- ===============================
-    -- A-10.入庫情報詳細の登録
-    -- ===============================
-              ins_detail_confirmed(
-                  in_line_cnt               => gn_line_cnt            -- 1.ループカウンタ
-                , iv_store_code             => lt_store_code          -- 2.倉庫コード
-                , iv_shop_code              => lt_shop_code           -- 3.店舗コード
-                , it_auto_confirmation_flag => lt_auto_confirmation_flg
-                                                                      -- 4.自動入庫確認フラグ
-                , ov_errbuf                 => lv_errbuf              -- エラー・メッセージ
-                , ov_retcode                => lv_retcode             -- リターン・コード
-                , ov_errmsg                 => lv_errmsg              -- ユーザー・エラー・メッセージ
-              );
-              IF ( lv_retcode = cv_status_error ) THEN
-                RAISE global_process_expt;
-              END IF;
-            END IF;
-    -- ===============================
-    -- A-13.受注明細アドオンの更新
-    -- ===============================
+-- == 2009/12/18 V1.14 Modified END   ===============================================================
+            --
+            -- ===============================
+            -- A-13.受注明細アドオンの更新
+            -- ===============================
             upd_order_lines(
                 in_line_cnt => gn_line_cnt                            -- 1.ループカウンタ
               , ov_errbuf   => lv_errbuf                              -- エラー・メッセージ
               , ov_retcode  => lv_retcode                             -- リターン・コード
               , ov_errmsg   => lv_errmsg                              -- ユーザー・エラー・メッセージ
             );
+            --
             IF ( lv_retcode = cv_status_error ) THEN
               RAISE global_process_expt;
             ELSIF ( lv_retcode = cv_status_warn ) THEN
@@ -4313,6 +4678,7 @@ AS
               -- 次伝票Noへ遷移
               EXIT g_detail_tab_loop;
             END IF;
+            --
           END LOOP g_detail_tab_loop;
         END IF;
 --
@@ -4330,7 +4696,11 @@ AS
           );
         END IF;
       END LOOP g_summary_tab_loop;
+-- *************************************************************************************************
+--  明細情報の作成(END)
+-- *************************************************************************************************
     ELSE
+      -- 対象サマリ情報０件の場合
       lv_retcode := cv_status_normal;
       lv_errmsg := xxccp_common_pkg.get_msg(
                        iv_application  => cv_application
