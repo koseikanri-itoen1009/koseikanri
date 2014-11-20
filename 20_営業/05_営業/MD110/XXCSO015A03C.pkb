@@ -8,7 +8,7 @@ AS
  *                      物件の情報を物件マスタに登録します。
  * MD.050           : MD050_自販機-EBSインタフェース：（IN）物件マスタ情報(IB)
  *                    2009/01/13 16:30
- * Version          : 1.5
+ * Version          : 1.7
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -42,6 +42,9 @@ AS
  *  2009-04-17    1.4   K.Satomura       【T1_0466対応】A-6の処理を削除
  *  2009-04-27    1.5   K.Satomura       【T1_0490対応】機器状態3を登録更新不正
  *  2009-05-01    1.6   Tomoko.Mori      T1_0897対応
+ *  2009-05-07    1.7   Tomoko.Mori      【T1_0439、0530対応】
+ *                                       自販機のみ顧客関連情報更新（T1_0439）
+ *                                       設置用物件コード不正エラーチェック（T1_0530）
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -132,6 +135,9 @@ AS
   cv_tkn_number_30        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00167';  -- (IN)物件マスタ情報連携済正常メッセージ
   cv_tkn_number_31        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00119';  -- データ削除エラーメッセージ
   cv_tkn_number_32        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00518';  -- データ抽出0件メッセージ
+/*20090507_mori_T1_0439 START*/
+  cv_tkn_number_33        CONSTANT VARCHAR2(100) := 'APP-XXCSO1-00569';  -- 設置用物件コード不正エラー
+/*20090507_mori_T1_0439 END*/
 --
   -- トークンコード
   cv_tkn_errmsg           CONSTANT VARCHAR2(20) := 'ERR_MSG';
@@ -184,6 +190,11 @@ AS
   cv_active               CONSTANT VARCHAR2(1)   := 'A';              -- ACTIVE
 --
   cv_encoded_f            CONSTANT VARCHAR2(1)   := 'F';              -- FALSE   
+/*20090507_mori_T1_0439 START*/
+--
+  cv_instance_type_vd     CONSTANT VARCHAR2(1) := '1';        -- インスタンスステータスタイプ（自販機）
+--
+/*20090507_mori_T1_0439 END*/
   -- DEBUG_LOG用メッセージ
   cv_debug_msg1           CONSTANT VARCHAR2(200) := '<< システム日付取得処理 >>';
   cv_debug_msg2           CONSTANT VARCHAR2(200) := 'od_sysdate = ';
@@ -2453,6 +2464,9 @@ AS
 --
     -- *** ローカル例外 ***
     skip_process_expt       EXCEPTION;
+  /*20090507_mori_T1_0530 START*/
+    shindai_chk_expt       EXCEPTION;
+  /*20090507_mori_T1_0530 END*/
 --    
   BEGIN
 --
@@ -2487,11 +2501,46 @@ AS
       WHERE  ciins.external_reference = lv_install_code
       ;
       io_inst_base_data_rec.new_old_flg := SUBSTR(lv_new_old_flag, 1, 1);
+    /*20090507_mori_T1_0530 START*/
+      -- 作業区分が「新台設置」、「新台代替」、かつ作業データの物件コード１が
+      -- 物件データの物件コードと一致であり、新古台フラグが'Y'以外である場合、
+      -- 既に存在する新古台以外の物件が新台として連携されているため、エラーとする。
+      IF (
+              (ln_job_kbn = cn_jon_kbn_1 OR ln_job_kbn = cn_jon_kbn_3)
+          AND (lv_install_code = NVL(lv_install_code1, ' '))
+          AND (NVL(io_inst_base_data_rec.new_old_flg, cv_flg_n) <> cv_flg_y)
+         ) THEN
+        RAISE shindai_chk_expt;
+      END IF;
+    /*20090507_mori_T1_0530 END*/
 --
       IF (lv_po_req_number < lv_last_po_req_number) THEN
-        RAISE skip_process_expt;
+        RAISE shindai_chk_expt;
       END IF;
     EXCEPTION
+    /*20090507_mori_T1_0530 START*/
+      -- 新台、新古台以外の物件が新台設置／新台代替として連携された場合
+      WHEN shindai_chk_expt THEN
+        -- エラーメッセージ作成
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                            -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_33                       -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_slip_num                        -- トークンコード1
+                       ,iv_token_value1 => io_inst_base_data_rec.slip_no          -- トークン値1
+                       ,iv_token_name2  => cv_tkn_slip_branch_num                 -- トークンコード2
+                       ,iv_token_value2 => io_inst_base_data_rec.slip_branch_no   -- トークン値2
+                       ,iv_token_name3  => cv_tkn_line_num                        -- トークンコード3
+                       ,iv_token_value3 => io_inst_base_data_rec.line_number      -- トークン値3
+                       ,iv_token_name4  => cv_tkn_work_kbn                        -- トークンコード4
+                       ,iv_token_value4 => io_inst_base_data_rec.job_kbn          -- トークン値4
+                       ,iv_token_name5  => cv_tkn_bukken1                         -- トークンコード5
+                       ,iv_token_value5 => io_inst_base_data_rec.install_code1    -- トークン値5
+                       ,iv_token_name6  => cv_tkn_account_num1                    -- トークンコード6
+                       ,iv_token_value6 => io_inst_base_data_rec.account_number1  -- トークン値6
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+    /*20090507_mori_T1_0530 END*/
       -- データなし
       WHEN NO_DATA_FOUND THEN
         -- 作業区分が「新台設置」、「新台代替」、かつ作業データの物件コード１が
@@ -5339,6 +5388,9 @@ AS
     cv_xca_business_low_type   CONSTANT  VARCHAR2(100)   := '顧客アドオンマスタの業態小分類';
     cv_xca_cnvs_date           CONSTANT  VARCHAR2(100)   := '顧客アドオンマスタの顧客獲得日';
     cv_up_cnvs_process         CONSTANT  VARCHAR2(100)   := '更新（顧客獲得日）';
+  /*20090507_mori_T1_0439 START*/
+    cv_instance_type_code      CONSTANT  VARCHAR2(100)   := 'インスタンスタイプコード';
+  /*20090507_mori_T1_0439 END*/
 --
     -- *** ローカル変数 ***
     ld_cnvs_date               DATE;                    -- 顧客獲得日
@@ -5361,6 +5413,9 @@ AS
     lv_last_job_cmpltn_date    VARCHAR2(20);            -- 最終作業完了日
     lb_goto_flg                BOOLEAN;                 -- 処理続けフラグ
     ld_actual_work_date        DATE;                    -- 実作業日
+  /*20090507_mori_T1_0439 START*/
+    lv_instance_type_code     csi_item_instances.instance_type_code%TYPE;       -- インスタンスタイプコード
+  /*20090507_mori_T1_0439 END*/
     
 --
     -- 戻り値格納用
@@ -5379,6 +5434,9 @@ AS
     -- *** ローカル例外 ***
     skip_process_expt          EXCEPTION;
     update_error_expt          EXCEPTION;
+  /*20090507_mori_T1_0439 START*/
+    instance_type_expt         EXCEPTION;  -- 対象物件が自販機以外である場合
+  /*20090507_mori_T1_0439 END*/
 --    
   BEGIN
 --
@@ -5402,6 +5460,37 @@ AS
     lv_account_num2       := io_inst_base_data_rec.account_number2;
     ld_actual_work_date   := TO_DATE(io_inst_base_data_rec.actual_work_date,'YYYY/MM/DD');
     lb_goto_flg           := FALSE;
+  /*20090507_mori_T1_0439 START*/
+    -- 対象物件のインスタンスタイプコード取得
+    BEGIN
+      SELECT ciins.instance_type_code  instance_type_code             -- インスタンスタイプコード
+      INTO   lv_instance_type_code                                    -- インスタンスタイプコード
+      FROM   csi_item_instances ciins                                 -- 物件マスタ
+      WHERE  ciins.external_reference = lv_install_code
+      ;
+--
+      -- 対象物件が自販機以外である場合、以降の処理を行わない
+      IF (lv_instance_type_code <> cv_instance_type_vd) THEN
+        RAISE instance_type_expt;
+      END IF;
+    EXCEPTION
+      WHEN instance_type_expt THEN
+        RAISE instance_type_expt;
+      WHEN OTHERS THEN
+        lv_errmsg := xxccp_common_pkg.get_msg(
+                        iv_application  => cv_app_name                  -- アプリケーション短縮名
+                       ,iv_name         => cv_tkn_number_19             -- メッセージコード
+                       ,iv_token_name1  => cv_tkn_task_nm               -- トークンコード1
+                       ,iv_token_value1 => cv_instance_type_code        -- トークン値1
+                       ,iv_token_name2  => cv_tkn_bukken                -- トークンコード2
+                       ,iv_token_value2 => lv_install_code              -- トークン値2
+                       ,iv_token_name3  => cv_tkn_errmsg                -- トークンコード3
+                       ,iv_token_value3 => SQLERRM                      -- トークン値3
+                     );
+        lv_errbuf := lv_errmsg;
+        RAISE skip_process_expt;
+    END;
+  /*20090507_mori_T1_0439 END*/
 --
     -- 作業区分が「1.新台設置」、「3.新台代替」、「2. 旧台設置」、または「4.旧台代替」で、
     -- 物件データの物件コードが作業データの物件コード１(新設置先)と同一の場合、
@@ -6346,6 +6435,13 @@ AS
       ov_errmsg  := lv_errmsg;
       ov_errbuf  := SUBSTRB(cv_pkg_name||cv_msg_cont||cv_prg_name||cv_msg_part||lv_errbuf,1,5000);
       ov_retcode := cv_status_warn;
+  /*20090507_mori_T1_0439 START*/
+--
+    -- *** 自販機以外スキップ処理例外ハンドラ ***
+    WHEN instance_type_expt THEN
+      -- 処理なし
+      NULL;
+  /*20090507_mori_T1_0439 END*/
 --
 --#################################  固定例外処理部 START   ####################################
 --
