@@ -7,7 +7,7 @@ AS
  * Package Name     : XXCFF017A05C(body)
  * Description      : 自販機減価償却振替
  * MD.050           : MD050_CFF_017_A05_自販機減価償却振替
- * Version          : 1.0
+ * Version          : 1.1
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -26,6 +26,7 @@ AS
  *  Date          Ver.  Editor           Description
  * ------------- ----- ---------------- -------------------------------------------------
  *  2014/08/01    1.0   SCSK川元善博     新規作成
+ *  2014/11/07    1.1   SCSK小路恭弘     E_本稼動_12563
  *
  *****************************************************************************************/
 --
@@ -438,6 +439,9 @@ AS
     -- ユーザー宣言部
     -- ===============================
     -- *** ローカル定数 ***
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD START
+    cv_flag_on           CONSTANT VARCHAR2(1)  := 'Y';
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD END
 --
     -- *** ローカル変数 ***
 --
@@ -501,7 +505,12 @@ AS
       ,xvoh.department_code                          AS segment2              -- 部門コード
       ,gv_account_vending                            AS segment3              -- 科目コード
       ,gv_sub_account_vending                        AS segment4              -- 補助科目コード
-      ,xvoh.customer_code                            AS segment5              -- 顧客コード
+-- 2014/11/07 Ver.1.1 Y.Shouji MOD START
+--      ,xvoh.customer_code                            AS segment5              -- 顧客コード
+      ,(CASE WHEN les_class_v.vd_cust_flag = cv_flag_on THEN
+                  xvoh.customer_code ELSE cv_ptnr_cd_dammy END)
+                                                     AS segment5              -- 顧客コード
+-- 2014/11/07 Ver.1.1 Y.Shouji MOD END
       ,cv_busi_cd_dammy                              AS segment6              -- 企業コード
       ,cv_project_dammy                              AS segment7              -- 予備1
       ,cv_future_dammy                               AS segment8              -- 予備2
@@ -521,6 +530,9 @@ AS
       ,fa_distribution_history fdh
       ,gl_code_combinations    gcc
       ,xxcff_vd_object_headers xvoh
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD START
+      ,xxcff_lease_class_v     les_class_v   -- リース種別ビュー
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD END
     WHERE
         fdd.asset_id            = fab.asset_id
     AND fdd.book_type_code      = gv_fixed_assets_books
@@ -533,6 +545,9 @@ AS
     AND fdd.deprn_source_code   = 'D'
     AND fdp.period_name         = gv_period_name
     AND fab.tag_number          = xvoh.object_code
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD START
+    AND xvoh.lease_class        = les_class_v.lease_class_code
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD END
     UNION ALL
     SELECT
        'NEW'                                       AS status                -- ステータス
@@ -548,7 +563,12 @@ AS
       ,xvoh.department_code                        AS segment2              -- 部門コード
       ,gv_account_vending                          AS segment3              -- 科目コード
       ,gv_sub_account_vending                      AS segment4              -- 補助科目コード
-      ,xvoh.customer_code                          AS segment5              -- 顧客コード
+-- 2014/11/07 Ver.1.1 Y.Shouji MOD START
+--      ,xvoh.customer_code                          AS segment5              -- 顧客コード
+      ,(CASE WHEN les_class_v.vd_cust_flag = cv_flag_on THEN
+                  xvoh.customer_code ELSE cv_ptnr_cd_dammy END)
+                                                   AS segment5              -- 顧客コード
+-- 2014/11/07 Ver.1.1 Y.Shouji MOD END
       ,cv_busi_cd_dammy                            AS segment6              -- 企業コード
       ,cv_project_dammy                            AS segment7              -- 予備1
       ,cv_future_dammy                             AS segment8              -- 予備2
@@ -592,6 +612,9 @@ AS
       ,fa_distribution_history fdh
       ,gl_code_combinations    gcc
       ,xxcff_vd_object_headers xvoh
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD START
+      ,xxcff_lease_class_v     les_class_v   -- リース種別ビュー
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD END
     WHERE
         fab.asset_id            = fb.asset_id
     AND fb.book_type_code       = gv_fixed_assets_books
@@ -616,6 +639,9 @@ AS
            AND fds.book_type_code = gv_fixed_assets_books
            AND fdp.period_name    = gv_period_name)
     AND fab.tag_number          = xvoh.object_code
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD START
+    AND xvoh.lease_class        = les_class_v.lease_class_code
+-- 2014/11/07 Ver.1.1 Y.Shouji ADD END
     ;
 --
     -- 件数設定
