@@ -6,7 +6,7 @@ WHENEVER SQLERROR EXIT FAILURE ROLLBACK;
 WHENEVER OSERROR EXIT FAILURE ROLLBACK;
 
 CREATE OR REPLACE PACKAGE JTF_PF_CONV_PKG AS
-/* $Header: jtfpfconvpkgs.pls 115.15 2004/12/17 20:09:01 sywong noship $ */
+/* $Header: jtfpfconvpkgs.pls 115.18 2008/04/28 15:52:24 rlandows noship $ */
 /*===========================================================================+
  |               Copyright (c) 2002 Oracle Corporation                       |
  |                  Redwood Shores, California, USA                          |
@@ -41,7 +41,7 @@ CREATE OR REPLACE PACKAGE JTF_PF_CONV_PKG AS
   PROCEDURE migrate_data_raw;
   PROCEDURE clean_data(start_date DATE);
   PROCEDURE purge_data(start_date DATE);
-  PROCEDURE purge_data(ERRBUF OUT VARCHAR2, RETCODE OUT NUMBER , start_date IN DATE);
+  PROCEDURE purge_data(ERRBUF OUT VARCHAR2, RETCODE OUT NUMBER , start_date_v IN varchar2); --6991900
   PROCEDURE multiply_data(days NUMBER);
 
   -- PROCEDURE uploadAllNewPfObjects(qname VARCHAR2);
