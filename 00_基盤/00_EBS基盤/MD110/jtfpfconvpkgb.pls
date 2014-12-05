@@ -7,7 +7,7 @@ WHENEVER SQLERROR EXIT FAILURE ROLLBACK;
 WHENEVER OSERROR EXIT FAILURE ROLLBACK;
 
 CREATE OR REPLACE PACKAGE BODY JTF_PF_CONV_PKG AS
-/* $Header: jtfpfconvpkgb.pls 115.27 2006/09/11 09:40:46 pchallag noship $ */
+/* $Header: jtfpfconvpkgb.pls 115.28 2008/04/28 15:52:43 rlandows noship $ */
 /*===========================================================================+
  |               Copyright (c) 2002 Oracle Corporation                       |
  |                  Redwood Shores, California, USA                          |
@@ -33,7 +33,8 @@ CREATE OR REPLACE PACKAGE BODY JTF_PF_CONV_PKG AS
  |    14-Apr-2002     Modified  navkumar                                     |
  |                       added a suite OF PL/SQL FUNCTIONS and procedures    |
  |    11-Apr-2002     Created   bsanghav                                     |
- |    17-Feb-2010     Modified  SCS T.Kitagawa                               |
+ |    31-Jul-2014     Modified  SCSK S.Takahashi                             |
+ |                              HWリプレース対応(リプレース_00007)           |
  |                              BUG:9365233 increased variable to 4000 and   |
  |                              protected against an overrun                 |
  |___________________________________________________________________________|*/
@@ -615,9 +616,12 @@ CREATE OR REPLACE PACKAGE BODY JTF_PF_CONV_PKG AS
 	COMMIT;
   END;
 
-  PROCEDURE PURGE_DATA(ERRBUF OUT VARCHAR2, RETCODE OUT NUMBER, start_date IN DATE) IS
+  --6991900, changed date parameter to varchar2
+  PROCEDURE PURGE_DATA(ERRBUF OUT VARCHAR2, RETCODE OUT NUMBER, start_date_v IN varchar2) IS
 	PRAGMA AUTONOMOUS_TRANSACTION;
+        start_date date;
   BEGIN
+        start_date := FND_CONC_DATE.STRING_TO_DATE(start_date_v);
         PURGE_DATA(START_DATE);
   EXCEPTION
     WHEN OTHERS
@@ -676,7 +680,7 @@ CREATE OR REPLACE PACKAGE BODY JTF_PF_CONV_PKG AS
 		COMMIT;
 	END LOOP;
   END;
--- ##### 20100217 本番#1609対応 START #####
+-- ##2014/07/31 S.Takahashi Mod Start
 --  Function GROUP_CONCAT ( list IN JTF_PF_TABLETYPE, separator VARCHAR2)
 --  RETURN  VARCHAR2 IS
 --    ret VARCHAR2(1000) :='';
@@ -714,7 +718,7 @@ CREATE OR REPLACE PACKAGE BODY JTF_PF_CONV_PKG AS
       RETURN ret;
     END IF;
   END;
--- ##### 20100217 本番#1609対応 END #####
+-- ##2014/07/31 S.Takahashi Mod End
 END;
 /
 COMMIT;
