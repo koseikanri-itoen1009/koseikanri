@@ -5,7 +5,7 @@
 ## Program Name     : AZZZEXECONCSUB                                            ##
 ## Description      : EBSコンカレント用汎用スクリプト                           ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.5                                                       ##
+## Version          : 1.6                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -35,6 +35,7 @@
 ##  2009/08/19    1.4   Masayuki.Sano    障害番号[0000835]                      ##
 ##                                       ・一時ファイル名変更                   ##
 ##  2009/11/23    1.5   Shigeto.NIki     ・一時ファイルパス修正                 ##
+##  2014/08/13    1.6   Atsushi.Uchida   [HWリプレイス対応]環境依存値の修正     ##
 ##                                                                              ##
 ##################################################################################
 
@@ -43,13 +44,23 @@
 ################################################################################
 
 ## 変数定義
-#L_shellpath="/uspg/jp1/zb/shl/T1"            #2009/08/19 Ver1.4 DEL
-L_logpath="/var/log/jp1/PEBSITO"              #ログファイルパス[環境依存値]
+# 2014/08/13 Ver.1.6 Atsushi.Uchida ADD START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`       #シェルの格納ディレクトリ
+# 2014/08/13 Ver.1.6 Atsushi.Uchida ADD END
 
+#L_shellpath="/uspg/jp1/zb/shl/T1"            #2009/08/19 Ver1.4 DEL
+# 2014/08/13 Ver.1.6 Atsushi.Uchida mod START
+#L_logpath="/var/log/jp1/PEBSITO"              #ログファイルパス[環境依存値]
+L_logpath="/var/log/jp1/${L_envname}" #ログファイルパス
+# 2014/08/13 Ver.1.6 Atsushi.Uchida mod END
+
+# 2014/08/13 Ver.1.6 Atsushi.Uchida mod START
 # 2009/11/23 Ver.1.5 Shigeto.Niki mod START
 #L_tmppath="$COMMON_TOP/temp"                     #一時ファイルパス[環境依存値]
-L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"        #一時ファイルパス[環境依存値]
+#L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"        #一時ファイルパス[環境依存値]
+L_tmppath="/ebs/${L_envname}/${L_envname}comn/temp"        #一時ファイルパス[環境依存値]
 # 2009/11/23 Ver.1.5 Shigeto.Niki mod END
+# 2014/08/13 Ver.1.6 Atsushi.Uchida mod END
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
