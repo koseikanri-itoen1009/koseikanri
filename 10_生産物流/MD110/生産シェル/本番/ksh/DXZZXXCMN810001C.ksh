@@ -12,6 +12,8 @@
 ##                      品目マスタ更新(日次)_呼出パラメータ｢起動区分｣追加     ##
 ##                    Oracle    椎名 昭圭    2009/03/13 1.0.3  本番#1315対応  ##
 ##                    SCS丸下 2009/04/02 要求ID取得位置変更                   ##
+##                    SCSK      髙橋 昭太    2014/08/05 1.0.4                 ##
+##                        リプレース_00004対応                                ##
 ##                                                                            ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
@@ -29,8 +31,16 @@
 ################################################################################
 
 ## 変数定義
-L_shellpath="/uspg/jp1/dx/shl/PEBSITO"
-L_logpath="/var/EBS/jp1/PEBSITO/log"
+#2014/08/05 ADD Ver.1.0.4 by Shota Takahashi START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #シェルの格納ディレクトリ
+#2014/08/05 ADD Ver.1.0.4 by Shota Takahashi END
+
+#2014/08/05 MOD Ver.1.0.4 by Shota Takahashi START
+#L_shellpath="/uspg/jp1/dx/shl/PEBSITO"
+#L_logpath="/var/EBS/jp1/PEBSITO/log"
+L_shellpath="/uspg/jp1/dx/shl/${L_envname}"
+L_logpath="/var/EBS/jp1/${L_envname}/log"
+#2014/08/05 MOD Ver.1.0.4 by Shota Takahashi END
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
