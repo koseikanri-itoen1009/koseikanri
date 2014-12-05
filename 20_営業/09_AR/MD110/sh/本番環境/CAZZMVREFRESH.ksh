@@ -5,7 +5,7 @@
 ## Program Name     : CAZZMVREFRESH                                             ##
 ## Description      : マテリアライズドビューリフレッシュ機能                    ##
 ## MD.070           : MD070_IPO_COP_シェル                                      ##
-## Version          : 1.0                                                       ##
+## Version          : 1.1                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -18,6 +18,7 @@
 ##  Date          Ver.  Editor           Description                            ##
 ## ------------- ----- ---------------- ----------------------------------------##
 ##  2010/10/13    1.0   S.Niki           新規作成                               ##
+##  2014/08/05    1.1   S.Takahashi      リプレース_00004対応                   ##
 ##                                                                              ##
 ##################################################################################
 
@@ -26,8 +27,14 @@
 ################################################################################
 
 # 環境依存値
-L_logpath="/var/log/jp1/PEBSITO"                #ログファイルパス
+#2014/08/05 ADD Ver.1.1 by Shota Takahashi START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #シェルの格納ディレクトリ
+#2014/08/05 ADD Ver.1.1 by Shota Takahashi END
 
+#2014/08/05 MOD Ver.1.1 by Shota Takahashi START
+#L_logpath="/var/log/jp1/T4"                     #ログファイルパス
+L_logpath="/var/log/jp1/${L_envname}"           #ログファイルパス
+#2014/08/05 MOD Ver.1.1 by Shota Takahashi END
 C_return_norm=0                                 #正常終了
 C_return_error=8                                #異常終了
 C_oracle_user="apps"                            #Oracleユーザ
