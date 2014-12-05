@@ -12,6 +12,8 @@
 ##                    SCS佐野 2009/04/28 ST環境用のパラメータへ変更           ##
 ##                    SCS仁木 2009/06/17 CONCSUB要求待ち時間変更(60秒→1秒)   ##
 ##                    SCS佐野 2009/08/19 一時ファイル名変更                   ##
+##                    SCSK      髙橋 昭太    2014/08/05 1.0.5                 ##
+##                        リプレース_00004対応                                ##
 ##                                                                            ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
@@ -34,9 +36,18 @@
 ################################################################################
 
 ## 変数定義
+#2014/08/05 ADD Ver.1.0.5 by Shota Takahashi START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #シェルの格納ディレクトリ
+#2014/08/05 ADD Ver.1.0.5 by Shota Takahashi END
+
 #L_shellpath="/uspg/jp1/zb/shl/PEBSITO"                             #2009/08/19 DEL
-L_logpath="/var/EBS/jp1/PEBSITO/log"  #ログファイルパス[環境依存値]
-L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"   #一時ファイルパス[環境依存値] #2009/08/19 Add
+
+#2014/08/05 MOD Ver.1.0.5 by Shota Takahashi START
+#L_logpath="/var/EBS/jp1/PEBSITO/log"  #ログファイルパス[環境依存値]
+#L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"   #一時ファイルパス[環境依存値] #2009/08/19 Add
+L_logpath="/var/EBS/jp1/${L_envname}/log"
+L_tmppath="/ebs/${L_envname}/${L_envname}comn/temp"  #一時ファイルパス[環境依存値]
+#2014/08/05 MOD Ver.1.0.5 by Shota Takahashi END
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
