@@ -8,6 +8,7 @@
 ##        作成者  ：  Oracle    鈴木 雄大    2008/07/16 1.0.1                 ##
 ##        更新履歴：  Oracle    鈴木 雄大    2008/07/16 1.0.1                 ##
 ##                        初版                                                ##
+##                    SCSK内田 2014/08/13 [HWリプレイス対応]環境依存値の修正  ##
 ##                                                                            ##
 ##    [戻り値]                                                                ##
 ##        0     正常                                                          ##
@@ -23,9 +24,18 @@
 ################################################################################
 
 ## 変数定義
-L_shellpath="/uspg/jp1/dx/shl/PEBSITO"
-L_logpath="/var/EBS/jp1/PEBSITO/log"
-L_shellname="/uspg/jp1/zb/shl/PEBSITO/ZBZZIFFILE_BACKUP.ksh"
+#2014/08/13 ADD START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #シェルの格納ディレクトリ
+#2014/08/13 ADD END
+
+# 2014/08/13 MOD START
+#L_shellpath="/uspg/jp1/dx/shl/PEBSITO"
+#L_logpath="/var/EBS/jp1/PEBSITO/log"
+#L_shellname="/uspg/jp1/zb/shl/PEBSITO/ZBZZIFFILE_BACKUP.ksh"
+L_shellpath="/uspg/jp1/dx/shl/${L_envname}"
+L_logpath="/var/EBS/jp1/${L_envname}/log"
+L_shellname="/uspg/jp1/zb/shl/${L_envname}/ZBZZIFFILE_BACKUP.ksh"
+# 2014/08/13 MOD END
 L_bkfilename="/hulft/outbound/TDXFAM_KYOTEN/TDXFAM_KYOTEN.csv"
 L_bkfirname="/ebsif/outbound/TDXFAM_KYOTEN/backup"
 
