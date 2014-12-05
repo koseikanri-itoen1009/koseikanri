@@ -5,7 +5,7 @@
 ## Program Name     : ALZZMVREFRESH                                             ##
 ## Description      : マテリアライズドビューリフレッシュ機能                    ##
 ## MD.070           : MD070_IPO_COP_シェル                                      ##
-## Version          : 1.0                                                       ##
+## Version          : 1.2                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -19,6 +19,7 @@
 ## ------------- ----- ---------------- ----------------------------------------##
 ##  2009/12/02    1.0   SCS.Kikuchi      新規作成                               ##
 ##  2009/12/14    1.1   SCS.Kikuchi      障害E_T4_00474対応                     ##
+##  2014/08/13    1.2   SCSK.Uchida      [HWリプレイス対応]環境依存値の修正     ##
 ##                                                                              ##
 ##################################################################################
 
@@ -27,7 +28,14 @@
 ################################################################################
 
 # 環境依存値
-L_logpath="/var/log/jp1/PEBSITO"                     #ログファイルパス
+# 2014/08/13 Ver.1.2 Atsushi.Uchida add START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #シェルの格納ディレクトリ
+# 2014/08/13 Ver.1.2 Atsushi.Uchida add END
+
+# 2014/08/13 Ver.1.2 Atsushi.Uchida mod START
+#L_logpath="/var/log/jp1/PEBSITO"                     #ログファイルパス
+L_logpath="/var/log/jp1/${L_envname}"           #ログファイルパス
+# 2014/08/13 Ver.1.2 Atsushi.Uchida mod END
 
 C_return_norm=0                                 #正常終了
 C_return_error=8                                #異常終了
