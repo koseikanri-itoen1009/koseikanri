@@ -57,7 +57,10 @@ CREATE OR REPLACE VIEW APPS.XXSKY_入出庫予実_発日_V
 ,数量３１日
 )
 AS
-SELECT  SIOT.yyyymm                    AS yyyymm                   --年月
+SELECT  --Add 2014/12/02 E_本稼動_12685 PT対応 Start
+        /*+ OPTIMIZER_FEATURES_ENABLE('10.2.0.3') */
+        --Add 2014/12/02 E_本稼動_12685 PT対応 End
+        SIOT.yyyymm                    AS yyyymm                   --年月
        ,CASE WHEN SIOT.in_out_kbn = 1 THEN '入庫'    --入出庫区分コードが1:入庫
              WHEN SIOT.in_out_kbn = 2 THEN '出庫'    --入出庫区分コードが2:出庫
              ELSE SIOT.in_out_kbn
