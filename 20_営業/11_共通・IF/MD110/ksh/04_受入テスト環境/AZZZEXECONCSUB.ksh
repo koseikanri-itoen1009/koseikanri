@@ -5,7 +5,7 @@
 ## Program Name     : AZZZEXECONCSUB                                            ##
 ## Description      : EBSコンカレント用汎用スクリプト                           ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.4                                                       ##
+## Version          : 1.5                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -34,6 +34,7 @@
 ##                                           (デフォルト60秒→1秒)              ##
 ##  2009/08/19    1.4   Masayuki.Sano    障害番号[0000835]                      ##
 ##                                       ・一時ファイル名変更                   ##
+##  2014/08/05    1.5   Shota.Takahashi  リプレース_00004対応                   ##
 ##                                                                              ##
 ##################################################################################
 
@@ -42,9 +43,17 @@
 ################################################################################
 
 ## 変数定義
+#2014/08/05 ADD Ver.1.5 by Shota Takahashi START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`       #シェルの格納ディレクトリ
+#2014/08/05 ADD Ver.1.5 by Shota Takahashi END
+
 #L_shellpath="/uspg/jp1/zb/shl/T1"                                  #2009/08/19 Ver1.4 DEL
-L_logpath="/var/log/jp1/T4"           #ログファイルパス[環境依存値]
-L_tmppath="/var/tmp"                  #一時ファイルパス[環境依存値] #2009/08/19 Ver1.4 Add
+#2014/08/05 UPDATE Ver.1.5 by Shota Takahashi START
+#L_logpath="/var/log/jp1/T4"           #ログファイルパス[環境依存値]
+#L_tmppath="/var/tmp"                  #一時ファイルパス[環境依存値] #2009/08/19 Ver1.4 Add
+L_logpath="/var/log/jp1/${L_envname}" #ログファイルパス
+L_tmppath="/tmp"
+#2014/08/05 UPDATE Ver.1.5 by Shota Takahashi End
 
 L_cmd=${0}
 L_cmdname=`/bin/basename ${L_cmd}`
