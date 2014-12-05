@@ -5,7 +5,7 @@
 ## Program Name     : ZBZZEXINBOUND                                             ##
 ## Description      : EDIシステム用I/F連携機能（INBOUND)                        ##
 ## MD.070           : MD070_IPO_CCP_シェル                                      ##
-## Version          : 1.13                                                      ##
+## Version          : 1.14                                                      ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -53,6 +53,7 @@
 ##                                         SQL-Loader動作不正対応               ##
 ##  2010/09/21    1.13  Nobuo.Koyama     障害番号[E_本稼動_04934]               ##
 ##                                         SANサーバファイル存在チェック追加    ##
+##  2014/11/25    1.14  Daisuke.Nemoto      [HWリプレイス対応]環境依存値の修正  ##
 ##                                                                              ##
 ##################################################################################
                                                                                 
@@ -62,14 +63,24 @@
 ##                                 変数定義                                   ##
 ################################################################################
 
+#2014/11/25 ADD Ver.1.14 BY Daisuke.Nemoto START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #シェルの格納ディレクトリ
+#2014/11/25 ADD Ver.1.14 BY Daisuke.Nemoto END
+
 C_appl_name="XXCCP"                #アプリケーション短縮名
 C_program_id="ZBZZEXINBOUND"       #プログラムID
-L_logpath="/var/log/jp1/PEBSITO"   #ログファイルパス[環境依存値]
+#2014/11/25 ADD Ver.1.14 BY Daisuke.Nemoto START
+#L_logpath="/var/log/jp1/PEBSITO"   #ログファイルパス[環境依存値]
+L_logpath="/var/log/jp1/${L_envname}"                             #ログファイルパス
+#2014/11/25 ADD Ver.1.14 BY Daisuke.Nemoto END
 
+#2014/11/25 ADD Ver.1.14 BY Daisuke.Nemoto START
 # 2009/11/23 Ver.1.11 Shigeto.Niki mod START
 #L_tmppath="$COMMON_TOP/temp"       #一時ファイルパス[環境依存値]
-L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"       #一時ファイルパス[環境依存値]
+#L_tmppath="/ebs/PEBSITO/PEBSITOcomn/temp"       #一時ファイルパス[環境依存値]
+L_tmppath="/ebs/${L_envname}/${L_envname}comn/temp"       #一時ファイルパス[環境依存値]
 # 2009/11/23 Ver.1.11 Shigeto.Niki mod END
+#2014/11/25 ADD Ver.1.14 BY Daisuke.Nemoto END
 
 # 戻り値
 #2009/04/06 UPDATE BY Masayuki.Sano Ver.1.5 Start
