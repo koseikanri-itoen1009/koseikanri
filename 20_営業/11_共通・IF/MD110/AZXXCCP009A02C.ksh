@@ -5,7 +5,7 @@
 ## Program Name     : AZXXCCP009A02C                                            ##
 ## Description      : 対向システムジョブ状況更新処理                            ##
 ## MD.050           : 対向システムジョブ状況更新処理 <MD050_CCP_009_A02>        ##
-## Version          : 1.4                                                       ##
+## Version          : 1.5                                                       ##
 ##                                                                              ##
 ## Parameter List                                                               ##
 ## -------- ----------------------------------------------------------          ##
@@ -34,6 +34,7 @@
 ##                                         CONCSUB要求待ち時間変更              ##
 ##                                           (デフォルト15秒→1秒)              ##
 ##  2009/11/23    1.4   Shigeto.Niki     ログ出力先修正                         ##
+##  2014/08/05    1.5   Shota.Takahashi  リプレース_00004対応                   ##
 ##################################################################################
 
 ################################################################################
@@ -46,9 +47,16 @@ L_conc_appl="XXCCP"                  #コンカレント：アプリケーション短縮名
 L_conc_name="XXCCP009A02C"           #コンカレント：プログラム短縮名
 # 2009/03/04 Ver.1.1 Koji.Oomata add START
 
+# 2014/08/05 Ver.1.5 Shota.Takahashi add START
+L_envname=`echo $(cd $(dirname $0) && pwd)|sed -e "s/.*\///"`     #シェルの格納ディレクトリ
+# 2014/08/05 Ver.1.5 Shota.Takahashi add END
+
 # 2009/11/23 Ver.1.4 Shigeto.Niki mod START
 #L_logpath="/var/tmp/jp1/log"
-L_logpath="/var/log/jp1/PEBSITO"
+# 2014/08/05 Ver.1.5 Shota.Takahashi mod START
+#L_logpath="/var/log/jp1/PEBSITO"
+L_logpath="/var/log/jp1/${L_envname}"                             #ログファイルパス
+# 2014/08/05 Ver.1.5 Shota.Takahashi mod END
 # 2009/11/23 Ver.1.4 Shigeto.Niki mod END
 
 L_cmd=${0}
