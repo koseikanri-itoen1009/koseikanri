@@ -7,7 +7,7 @@ AS
  * Description      : 受払残高表（Ⅰ）製品
  * MD.050/070       : 月次〆切処理帳票Issue1.0 (T_MD050_BPO_770)
  *                    月次〆切処理帳票Issue1.0 (T_MD070_BPO_77B)
- * Version          : 1.35
+ * Version          : 1.36
  *
  * Program List
  * -------------------------- ----------------------------------------------------------
@@ -70,7 +70,7 @@ AS
  *  2009/03/05    1.33  Y.Yamamoto       本番障害1274対応
  *  2009/04/08    1.34  A.Shiina         本番障害1387対応
  *  2009/05/29    1.35  Marushita        本番障害1511対応
- *
+ *  2014/10/16    1.36  H.Itou           E_本稼動_12321対応
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -978,7 +978,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod Start
+--            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div))) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -999,6 +1002,10 @@ AS
             ,iimb.item_no                     item_code
             ,ximb.item_short_name             item_name
       FROM   ic_tran_cmp                      itc
+-- v1.36 Add Start
+            ,ic_adjs_jnl                      iaj
+            ,ic_jrnl_mst                      ijm
+-- v1.36 Add End
             ,ic_item_mst_b                    iimb
             ,xxcmn_item_mst_b                 ximb
             ,ic_lots_mst                      ilm
@@ -1015,6 +1022,12 @@ AS
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+-- v1.36 Add Start
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- v1.36 Add End
       AND    ilm.item_id             = itc.item_id
       AND    ilm.lot_id              = itc.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -1041,6 +1054,33 @@ AS
 -- 2009/03/05 Y.Yamamoto #1274 add start
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
+-- v1.36 Add Start
+      GROUP BY
+             iwm.whse_code                    -- h_whse_code
+            ,iwm.whse_name                    -- h_whse_name
+            ,itc.item_id                      -- item_id
+            ,itc.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itc.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,ijm.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -2218,7 +2258,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
             ,itp.lot_id                       lot_id
-            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- v1.36 Mod Start
+--            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -2289,6 +2332,33 @@ AS
 -- 2009/03/05 Y.Yamamoto #1274 add start
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
+-- v1.36 Add Start
+      GROUP BY
+             iwm.whse_code                    -- h_whse_code
+            ,iwm.whse_name                    -- h_whse_name
+            ,itp.item_id                      -- item_id
+            ,itp.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itp.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,rsl.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
@@ -3441,7 +3511,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod Start
+--            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div))) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -3462,6 +3535,10 @@ AS
             ,iimb.item_no                     item_code
             ,ximb.item_short_name             item_name
       FROM   ic_tran_cmp                      itc
+-- v1.36 Add Start
+            ,ic_adjs_jnl                      iaj
+            ,ic_jrnl_mst                      ijm
+-- v1.36 Add End
             ,ic_item_mst_b                    iimb
             ,xxcmn_item_mst_b                 ximb
             ,ic_lots_mst                      ilm
@@ -3478,6 +3555,12 @@ AS
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+-- v1.36 Add Start
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- v1.36 Add End
       AND    ilm.item_id             = itc.item_id
       AND    ilm.lot_id              = itc.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -3505,6 +3588,33 @@ AS
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
+-- v1.36 Add Start
+      GROUP BY
+             iwm.whse_code                    -- h_whse_code
+            ,iwm.whse_name                    -- h_whse_name
+            ,itc.item_id                      -- item_id
+            ,itc.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itc.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,ijm.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -4694,7 +4804,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
             ,itp.lot_id                       lot_id
-            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- v1.36 Mod Start
+--            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -4766,6 +4879,33 @@ AS
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
+-- v1.36 Add Start
+      GROUP BY
+             iwm.whse_code                    -- h_whse_code
+            ,iwm.whse_name                    -- h_whse_name
+            ,itp.item_id                      -- item_id
+            ,itp.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itp.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,rsl.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
@@ -5927,7 +6067,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod Start
+--            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div))) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -5948,6 +6091,10 @@ AS
             ,iimb.item_no                     item_code
             ,ximb.item_short_name             item_name
       FROM   ic_tran_cmp                      itc
+-- v1.36 Add Start
+            ,ic_adjs_jnl                      iaj
+            ,ic_jrnl_mst                      ijm
+-- v1.36 Add End
             ,ic_item_mst_b                    iimb
             ,xxcmn_item_mst_b                 ximb
             ,ic_lots_mst                      ilm
@@ -5964,6 +6111,12 @@ AS
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+-- v1.36 Add Start
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- v1.36 Add End
       AND    ilm.item_id             = itc.item_id
       AND    ilm.lot_id              = itc.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -5991,6 +6144,33 @@ AS
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
+-- v1.36 Add Start
+      GROUP BY
+             iwm.whse_code                    -- h_whse_code
+            ,iwm.whse_name                    -- h_whse_name
+            ,itc.item_id                      -- item_id
+            ,itc.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itc.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,ijm.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -7180,7 +7360,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
             ,itp.lot_id                       lot_id
-            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- v1.36 Mod Start
+--            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -7252,6 +7435,33 @@ AS
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
       AND    mcb3.segment1           = lt_crowd_code
+-- v1.36 Add Start
+      GROUP BY
+             iwm.whse_code                    -- h_whse_code
+            ,iwm.whse_name                    -- h_whse_name
+            ,itp.item_id                      -- item_id
+            ,itp.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itp.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,rsl.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
@@ -8416,7 +8626,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod Start
+--            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div))) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -8437,6 +8650,10 @@ AS
             ,iimb.item_no                     item_code
             ,ximb.item_short_name             item_name
       FROM   ic_tran_cmp                      itc
+-- v1.36 Add Start
+            ,ic_adjs_jnl                      iaj
+            ,ic_jrnl_mst                      ijm
+-- v1.36 Add End
             ,ic_item_mst_b                    iimb
             ,xxcmn_item_mst_b                 ximb
             ,ic_lots_mst                      ilm
@@ -8453,6 +8670,12 @@ AS
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+-- v1.36 Add Start
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- v1.36 Add End
       AND    ilm.item_id             = itc.item_id
       AND    ilm.lot_id              = itc.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -8481,6 +8704,33 @@ AS
 -- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itc.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- v1.36 Add Start
+      GROUP BY
+             iwm.whse_code                    -- h_whse_code
+            ,iwm.whse_name                    -- h_whse_name
+            ,itc.item_id                      -- item_id
+            ,itc.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itc.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,ijm.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -9682,7 +9932,10 @@ AS
             ,iwm.whse_name                    h_whse_name
             ,itp.item_id                      item_id
             ,itp.lot_id                       lot_id
-            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- v1.36 Mod Start
+--            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -9755,6 +10008,33 @@ AS
 -- 2009/03/05 Y.Yamamoto #1274 add end
       AND    itp.whse_code           = ir_param.locat_code
       AND    mcb3.segment1           = lt_crowd_code
+-- v1.36 Add Start
+      GROUP BY
+             iwm.whse_code                    -- h_whse_code
+            ,iwm.whse_name                    -- h_whse_name
+            ,itp.item_id                      -- item_id
+            ,itp.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itp.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,rsl.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
@@ -10928,7 +11208,10 @@ AS
             ,NULL                             h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod Start
+--            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div))) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -10949,6 +11232,10 @@ AS
             ,iimb.item_no                     item_code
             ,ximb.item_short_name             item_name
       FROM   ic_tran_cmp                      itc
+-- v1.36 Add Start
+            ,ic_adjs_jnl                      iaj
+            ,ic_jrnl_mst                      ijm
+-- v1.36 Add End
             ,ic_item_mst_b                    iimb
             ,xxcmn_item_mst_b                 ximb
             ,ic_lots_mst                      ilm
@@ -10967,6 +11254,12 @@ AS
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+-- v1.36 Add Start
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- v1.36 Add End
       AND    ilm.item_id             = itc.item_id
       AND    ilm.lot_id              = itc.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -10993,6 +11286,31 @@ AS
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
+-- v1.36 Add Start
+      GROUP BY
+             itc.item_id                      -- item_id
+            ,itc.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itc.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,ijm.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -12194,7 +12512,10 @@ AS
             ,NULL                             h_whse_name
             ,itp.item_id                      item_id
             ,itp.lot_id                       lot_id
-            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- v1.36 Mod Start
+--            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -12267,6 +12588,31 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
+-- v1.36 Add Start
+      GROUP BY
+             itp.item_id                      -- item_id
+            ,itp.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itp.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,rsl.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
@@ -13442,7 +13788,10 @@ AS
             ,NULL                             h_whse_name
             ,itc.item_id                      item_id
             ,itc.lot_id                       lot_id
-            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod Start
+--            ,itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+            ,SUM(itc.trans_qty * ABS(TO_NUMBER(xrpm.rcv_pay_div))) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -13463,6 +13812,10 @@ AS
             ,iimb.item_no                     item_code
             ,ximb.item_short_name             item_name
       FROM   ic_tran_cmp                      itc
+-- v1.36 Add Start
+            ,ic_adjs_jnl                      iaj
+            ,ic_jrnl_mst                      ijm
+-- v1.36 Add End
             ,ic_item_mst_b                    iimb
             ,xxcmn_item_mst_b                 ximb
             ,ic_lots_mst                      ilm
@@ -13481,6 +13834,12 @@ AS
       AND    itc.reason_code         = gv_reason_code_adji_po
       AND    itc.trans_date >= FND_DATE.STRING_TO_DATE(gv_exec_start,gc_char_dt_format)
       AND    itc.trans_date <= FND_DATE.STRING_TO_DATE(gv_exec_end,gc_char_dt_format)
+-- v1.36 Add Start
+      AND    iaj.trans_type          = itc.doc_type
+      AND    iaj.doc_id              = itc.doc_id
+      AND    iaj.doc_line            = itc.doc_line
+      AND    ijm.journal_id          = iaj.journal_id
+-- v1.36 Add End
       AND    ilm.item_id             = itc.item_id
       AND    ilm.lot_id              = itc.lot_id
       AND    iimb.item_id            = ilm.item_id
@@ -13508,6 +13867,31 @@ AS
       AND    iwm.whse_code           = itc.whse_code
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
+-- v1.36 Add Start
+      GROUP BY
+             itc.item_id                      -- item_id
+            ,itc.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itc.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,ijm.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
       -- ----------------------------------------------------
       -- ADJI :経理受払区分在庫調整(浜岡)
@@ -14721,7 +15105,10 @@ AS
             ,NULL                             h_whse_name
             ,itp.item_id                      item_id
             ,itp.lot_id                       lot_id
-            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+-- v1.36 Mod Start
+--            ,itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div) trans_qty
+            ,SUM(itp.trans_qty * TO_NUMBER(xrpm.rcv_pay_div)) trans_qty
+-- v1.36 Mod End
             ,iimb.attribute15                 cost_mng_clss
             ,iimb.lot_ctl                     lot_ctl
             ,xlc.unit_ploce                   actual_unit_price
@@ -14795,6 +15182,31 @@ AS
       AND    iwm.whse_code           = itp.whse_code
       AND    iwm.attribute1          = '0'
 -- 2009/03/05 Y.Yamamoto #1274 add end
+-- v1.36 Add Start
+      GROUP BY
+             itp.item_id                      -- item_id
+            ,itp.lot_id                       -- lot_id
+            ,iimb.attribute15                 -- cost_mng_clss
+            ,iimb.lot_ctl                     -- lot_ctl
+            ,xlc.unit_ploce                   -- actual_unit_price
+            ,CASE WHEN INSTR(xrpm.break_col_02,gc_break_col) = 0
+                  THEN ''
+                  WHEN xrpm.rcv_pay_div = gc_rcv_pay_div_in
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  WHEN xrpm.dealings_div_name = gv_dealings_name_po
+                  THEN SUBSTR(xrpm.break_col_02,1,INSTR(xrpm.break_col_02,gc_break_col)-1)
+                  ELSE SUBSTR(xrpm.break_col_02,INSTR(xrpm.break_col_02,gc_break_col)+1)
+             END                              -- column_no
+            ,xrpm.rcv_pay_div                 -- rcv_pay_div
+            ,itp.trans_date                   -- trans_date
+            ,mcb3.segment1                    -- crowd_code
+            ,SUBSTR(mcb3.segment1, 1, 3)      -- crowd_low
+            ,SUBSTR(mcb3.segment1, 1, 2)      -- crowd_mid
+            ,SUBSTR(mcb3.segment1, 1, 1)      -- crowd_high
+            ,iimb.item_no                     -- item_code
+            ,ximb.item_short_name             -- item_name
+            ,rsl.attribute1                   -- 受入返品実績アドオン.取引ID
+-- v1.36 Add End
       UNION ALL
     -- ----------------------------------------------------
     -- OMSO1 :経理受払区分受注関連 (製品出荷,有償)
