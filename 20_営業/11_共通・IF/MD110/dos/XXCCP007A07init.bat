@@ -19,7 +19,7 @@ REM スキーマPASSを環境変数へ設定します。
 set CONNECT_PASSWORD=itoen
 
 REM PROACTIVE DB SIDを環境変数へ設定します。
-set NET_SERVICE=PEBSITO
+set NET_SERVICE=AEBSITO
 
 REM ネットワークドライブ割当
 set LOG_DRIVE=\\itoenfile\8770\夜間バッチ管理
