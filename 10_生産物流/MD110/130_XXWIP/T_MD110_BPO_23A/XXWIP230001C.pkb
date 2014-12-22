@@ -6,9 +6,9 @@ AS
  *
  * Package Name     : xxwip230001c(body)
  * Description      : 生産帳票機能（生産依頼書兼生産指図書）
- * MD.050/070       : 生産帳票機能（生産依頼書兼生産指図書）Issue1.0  (T_MD050_BPO_230)
+ * MD.050/070       : 生産帳票機能（生産依頼書兼生産指図書）Issue1.1  (T_MD050_BPO_230)
  *                    生産帳票機能（生産依頼書兼生産指図書）          (T_MD070_BPO_23A)
- * Version          : 1.10
+ * Version          : 1.11
  *
  * Program List
  * ---------------------------- ----------------------------------------------------------
@@ -44,6 +44,7 @@ AS
  *  2009/01/16    1.8   Daisuke  Nihei      本番障害#1032対応 生産指図書を「確定済」でも出力する
  *  2009/02/02    1.9   Daisuke  Nihei      本番障害#1111対応
  *  2009/02/04    1.10  Yasuhisa Yamamoto   本番障害#4対応 ランク３出力対応
+ *  2014/10/27    1.11  Naoki    Miyamoto   本番障害#12524改善対応　生産指図書の明細に本数、端数を追加
  *****************************************************************************************/
 --
 --#######################  固定グローバル定数宣言部 START   #######################
@@ -96,14 +97,22 @@ AS
   gv_date_format3               CONSTANT VARCHAR2(50) := 'YYYY/MM/DD';                         -- 日付フォーマット
   gv_line_type_kbn_genryou      CONSTANT VARCHAR2(10) := '-1';
   gv_line_type_kbn_seizouhin    CONSTANT VARCHAR2(10) := '1';
-  gv_tonyu_title                CONSTANT VARCHAR2(50) := '投　入';
-  gv_utikomi_title              CONSTANT VARCHAR2(50) := '＜打　込＞';
+-- 2014/10/27 v1.11 N.Miyamoto MOD START
+--  gv_tonyu_title                CONSTANT VARCHAR2(50) := '投　入';
+--  gv_utikomi_title              CONSTANT VARCHAR2(50) := '＜打　込＞';
+  gv_tonyu_title                CONSTANT VARCHAR2(50) := '投入';
+  gv_utikomi_title              CONSTANT VARCHAR2(50) := '＜打込＞';
+-- 2014/10/27 v1.11 N.Miyamoto MOD END
   gv_sizai_title                CONSTANT VARCHAR2(50) := '＜投入資材＞';
   gv_utikomi_kbn_utikomi        CONSTANT VARCHAR2(1)  := 'Y';
   gv_seizouhin_kbn_drink        CONSTANT VARCHAR2(1)  := '3';
   gv_yotei_kbn_mov              CONSTANT VARCHAR2(1)  := '1';                                      -- 予定区分（移動）
   gv_yotei_kbn_tonyu            CONSTANT VARCHAR2(1)  := '4';                                      -- 予定区分（投入）
   gv_ontyu                      CONSTANT VARCHAR2(10) := '御中';
+-- 2014/10/27 v1.11 N.Miyamoto ADD START
+  gv_hasuu_ari                  CONSTANT VARCHAR2(2)  := '○';              --総数/入数に端数がある
+  gv_hasuu_nashi                CONSTANT VARCHAR2(2)  := '　';              --総数/入数に端数がない
+-- 2014/10/27 v1.11 N.Miyamoto ADD END
 --
   gv_err_input_date_from        CONSTANT VARCHAR2(20) := '入力日時（FROM）';                       -- 入力日時（FROM）
   gv_err_input_date_to          CONSTANT VARCHAR2(20) := '入力日時（TO）';                         -- 入力日時（TO）
@@ -651,6 +660,9 @@ AS
 -- 2008/10/28 v1.7 D.Nihei ADD START
     lt_material_detail_id     gme_material_details.material_detail_id%TYPE;  -- 退避用生産原料詳細ID
 -- 2008/10/28 v1.7 D.Nihei ADD END
+-- 2014/10/27 v1.11 N.Miyamoto ADD START
+    ln_honsu_wk               NUMBER DEFAULT 0;
+-- 2014/10/27 v1.11 N.Miyamoto ADD END
 --
     -- *** ローカル・例外処理 ***
     no_data_expt            EXCEPTION ;           -- 取得レコードなし
@@ -973,6 +985,32 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_stock';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_tonyu_data(i).l_stock ;
+-- 2014/10/27 v1.11 N.Miyamoto ADD START
+        -- 端数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_frac';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        --在庫入数が0ではない、かつ総数÷在庫入数の余りが0
+        IF ( NVL(it_tonyu_data(i).l_stock, 0) <> 0 ) THEN
+          IF ( MOD(it_tonyu_data(i).l_total, TO_NUMBER(it_tonyu_data(i).l_stock)) <> 0 ) THEN
+             gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_ari ;
+          ELSE
+           gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_nashi ;
+          END IF;
+        ELSE
+         gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_nashi ;
+        END IF;
+        -- 本数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_qty';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        IF ( NVL(it_tonyu_data(i).l_stock, 0) <> 0 ) THEN         --在庫入数が0またはNULLでない場合のみ計算を行う
+          ln_honsu_wk := TRUNC(it_tonyu_data(i).l_total / TO_NUMBER(it_tonyu_data(i).l_stock), 3);  --総数÷在庫入数
+        ELSE
+          ln_honsu_wk := 0;                                       --在庫入数が0またはNULLの場合は本数0で出力
+        END IF;
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(ln_honsu_wk) ;
+-- 2014/10/27 v1.11 N.Miyamoto ADD END
         -- 総数
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'tonyu_total';
@@ -1073,6 +1111,32 @@ AS
         gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_stock';
         gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
         gt_xml_data_table(gl_xml_idx).tag_value := it_utikomi_data(i).l_stock;
+-- 2014/10/27 v1.11 N.Miyamoto ADD START
+        -- 端数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_frac';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        --在庫入数が0ではない、かつ総数÷在庫入数の余りが0
+        IF ( NVL(it_utikomi_data(i).l_stock, 0) <> 0 ) THEN
+          IF ( MOD(it_utikomi_data(i).l_total, TO_NUMBER(it_utikomi_data(i).l_stock)) <> 0 ) THEN
+             gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_ari ;
+          ELSE
+           gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_nashi ;
+          END IF;
+        ELSE
+         gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_nashi ;
+        END IF;
+        -- 本数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_qty';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        IF ( NVL(it_utikomi_data(i).l_stock, 0) <> 0 ) THEN         --在庫入数が0またはNULLでない場合のみ計算を行う
+          ln_honsu_wk := TRUNC(it_utikomi_data(i).l_total / TO_NUMBER(it_utikomi_data(i).l_stock), 3);
+        ELSE
+          ln_honsu_wk := 0;                                         --在庫入数が0またはNULLの場合は本数0で出力
+        END IF;
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(ln_honsu_wk) ;
+-- 2014/10/27 v1.11 N.Miyamoto ADD END
         -- 総数
         gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
         gt_xml_data_table(gl_xml_idx).tag_name  := 'utikomi_total';
@@ -1141,6 +1205,32 @@ AS
       gt_xml_data_table(gl_xml_idx).tag_name  := 'sizai_hinmk_nm';
       gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
       gt_xml_data_table(gl_xml_idx).tag_value := it_sizai_data(i).l_item_nm;
+-- 2014/10/27 v1.11 N.Miyamoto ADD START
+        -- 端数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'sizai_frac';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        --在庫入数が0ではない、かつ総数÷在庫入数の余りが0
+        IF ( NVL(it_sizai_data(i).l_stock, 0) <> 0 ) THEN
+          IF ( MOD(it_sizai_data(i).l_total, TO_NUMBER(it_sizai_data(i).l_stock)) <> 0 ) THEN
+             gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_ari ;
+          ELSE
+           gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_nashi ;
+          END IF;
+        ELSE
+         gt_xml_data_table(gl_xml_idx).tag_value := gv_hasuu_nashi ;
+        END IF;
+        -- 本数
+        gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
+        gt_xml_data_table(gl_xml_idx).tag_name  := 'sizai_qty';
+        gt_xml_data_table(gl_xml_idx).tag_type  := 'D' ;
+        IF ( NVL(it_sizai_data(i).l_stock, 0) <> 0 ) THEN         --在庫入数が0またはNULLでない場合のみ計算を行う
+          ln_honsu_wk := TRUNC(it_sizai_data(i).l_total / TO_NUMBER(it_sizai_data(i).l_stock), 3);
+        ELSE
+          ln_honsu_wk := 0;                                       --在庫入数が0またはNULLの場合は本数0で出力
+        END IF;
+        gt_xml_data_table(gl_xml_idx).tag_value := TO_CHAR(ln_honsu_wk) ;
+-- 2014/10/27 v1.11 N.Miyamoto ADD END
       -- 総数
       gl_xml_idx := gt_xml_data_table.COUNT + 1 ;
       gt_xml_data_table(gl_xml_idx).tag_name  := 'sizai_total';
@@ -1371,7 +1461,11 @@ AS
             ,ximv.item_short_name     AS item_desc1         -- 品目名称
 -- 2008/10/28 v1.7 D.Nihei MOD START 統合障害#499
 --            ,gmd.attribute6           AS attribute6         -- 在庫入数
-            ,ilm.attribute6           AS attribute6         -- 在庫入数
+-- 2014/10/27 v1.11 N.Miyamoto MOD START
+--            ,ilm.attribute6           AS attribute6         -- 在庫入数
+            ,NVL(ilm.attribute6, ximv.num_of_cases)
+                                      AS num_of_cases       -- 在庫入数
+-- 2014/10/27 v1.11 N.Miyamoto MOD END
 -- 2008/10/28 v1.7 D.Nihei MOD END
 -- 2008/05/23 D.Nihei MOD START
 --            ,xmd.instructions_qty     AS trans_qty          -- 総数
@@ -1511,7 +1605,11 @@ AS
 --            ,gmd.attribute11          AS attribute11        -- 製造日
 --            ,gmd.attribute6           AS attribute6         -- 在庫入数
             ,ilm.attribute1           AS attribute1         -- 製造日
-            ,ilm.attribute6           AS attribute6         -- 在庫入数
+-- 2014/10/27 v1.11 N.Miyamoto MOD START
+--            ,ilm.attribute6           AS attribute6         -- 在庫入数
+            ,NVL(ilm.attribute6, ximv.num_of_cases)
+                                      AS num_of_cases       -- 在庫入数
+-- 2014/10/27 v1.11 N.Miyamoto MOD END
 -- 2008/10/28 v1.7 D.Nihei MOD END
 -- 2009/02/02 v1.9 D.Nihei MOD START 
 --            ,itp.trans_qty            AS trans_qty          -- 総数
