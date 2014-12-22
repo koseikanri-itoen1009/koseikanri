@@ -7,7 +7,7 @@ AS
  * Description      : édì¸é¿ê—ï\çÏê¨
  * MD.050/070       : åééüÅYêÿèàóùÅiåoóùÅjIssue1.0(T_MD050_BPO_770)
  *                    åééüÅYêÿèàóùÅiåoóùÅjIssue1.0(T_MD070_BPO_77E)
- * Version          : 1.18
+ * Version          : 1.19
  *
  * Program List
  * -------------------- ------------------------------------------------------------
@@ -49,6 +49,7 @@ AS
  *  2009/07/09    1.16  Marushita        ñ{î‘#1574ëŒâû
  *  2012/03/23    1.17  Y.Horikawa       E_ñ{â“ìÆ_09257ëŒâûÅiE_ñ{â“ìÆ_08924ëŒâûÅj
  *  2013/06/27    1.18  S.Niki           E_ñ{â“ìÆ_10839ëŒâûÅiè¡îÔê≈ëùê≈ëŒâûÅj
+ *  2014/10/14    1.19  H.Itou           E_ñ{â“ìÆ_12321ëŒâû
  *****************************************************************************************/
 --
 --#######################  å≈íËÉOÉçÅ[ÉoÉãíËêîêÈåæïî START   #######################
@@ -1522,16 +1523,24 @@ AS
 -- 2012/03/23 v1.17 Mod Start
 --      || '            ,ROUND(NVL(pla.attribute8, 0) '
 --      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
-      || '            ,SUM(ROUND(NVL(pla.attribute8, 0)'
-      || '              * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
+-- v1.19 Mod Start
+--      || '            ,SUM(ROUND(NVL(pla.attribute8, 0)'
+--      || '              * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
+      || '            ,ROUND(NVL(pla.attribute8, 0)'
+      || '              * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS purchases_price '
+-- v1.19 Mod End
 -- 2012/03/23 v1.17 Mod End
 -- 2008/11/13 v1.8 UPDATE END
 --      || '             ,NVL(plla.attribute2, :para_zero) AS powder_price '
 -- 2012/03/23 v1.17 Mod Start
 --      || '            ,ROUND(NVL(pla.unit_price, :para_zero) '
 --      || '             * (NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
-      || '            ,SUM(ROUND(NVL(pla.unit_price, :para_zero) '
-      || '             * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
+-- v1.19 Mod Start
+--      || '            ,SUM(ROUND(NVL(pla.unit_price, :para_zero) '
+--      || '             * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
+      || '            ,ROUND(NVL(pla.unit_price, :para_zero) '
+      || '             * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS powder_price '
+-- v1.19 Mod End
 -- 2012/03/23 v1.17 Mod End
 --      || '             ,NVL(plla.attribute4, :para_zero) AS commission_price '
 -- 2008/12/06 MOD START
@@ -1543,61 +1552,98 @@ AS
 --      || '            ,TO_NUMBER(NVL(plla.attribute8, :para_zero)) AS assessment '
       || '            ,CASE plla.attribute3 '
       || '               WHEN ''1'' THEN '
-      || '                 SUM(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0))) '
+-- v1.19 Mod Start
+--      || '                 SUM(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0))) '
+      || '                 TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) '
+-- v1.19 Mod End
       || '               WHEN ''2'' THEN '
-      || '                 SUM(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 )) '
+-- v1.19 Mod Start
+--      || '                 SUM(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 )) '
+      || '                 TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) '
+-- v1.19 Mod End
       || '               ELSE '
       || '                 0 '
       || '             END AS commission_price '                                -- å˚ëKã‡äz
       || '            ,CASE plla.attribute6 '
       || '               WHEN ''1'' THEN '
-      || '                 SUM(TRUNC( NVL(plla.attribute7,0) * NVL(itp.trans_qty, 0))) '
+-- v1.19 Mod Start
+--      || '                 SUM(TRUNC( NVL(plla.attribute7,0) * NVL(itp.trans_qty, 0))) '
+      || '                 TRUNC( NVL(plla.attribute7,0) * SUM(NVL(itp.trans_qty, 0))) '
+-- v1.19 Mod End
       || '               WHEN ''2'' THEN '
-      || '                 SUM(TRUNC((pla.attribute8 * NVL(itp.trans_qty, 0) '
-      || '                           - pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute1,0) / 100) '
-      || '                           * NVL(plla.attribute7,0) / 100)) '
+-- v1.19 Mod Start
+--      || '                 SUM(TRUNC((pla.attribute8 * NVL(itp.trans_qty, 0) '
+--      || '                           - pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute1,0) / 100) '
+--      || '                           * NVL(plla.attribute7,0) / 100)) '
+      || '                 TRUNC((pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) '
+      || '                           - pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute1,0) / 100) '
+      || '                           * NVL(plla.attribute7,0) / 100) '
+-- v1.19 Mod End
       || '               ELSE '
       || '                 0 '
       || '             END AS assessment '                                      -- ïäâ€ã‡äz
       || '            ,CASE plla.attribute3 '
       || '               WHEN ''1'' THEN '
--- v1.18 MOD START
---      || '                 SUM(ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
-      || '                 SUM(ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+-- v1.19 Mod Start
+---- v1.18 MOD START
+----      || '                 SUM(ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
+--      || '                 SUM(ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                 ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '               WHEN ''2'' THEN '
--- v1.18 MOD START
---      || '                 SUM(ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
-      || '                 SUM(ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+-- v1.19 Mod Start
+---- v1.18 MOD START
+----      || '                 SUM(ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
+--      || '                 SUM(ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                 ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '               ELSE '
       || '                 0 '
       || '             END AS commission_tax '                                  -- å˚ëKè¡îÔê≈ã‡äz
       || '            ,CASE plla.attribute3 '
       || '               WHEN ''1'' THEN '
-      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
--- v1.18 MOD START
---      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
---      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
-      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100) '
-      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+-- v1.19 Mod Start
+--      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+---- v1.18 MOD START
+----      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
+----      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * :para_lkup_code / 100)) '
+--      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+--      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * NVL(itp.trans_qty, 0)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                 ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+      || '                 * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+      || '                 - ROUND(TRUNC( NVL(plla.attribute4, 0) * SUM(NVL(itp.trans_qty, 0))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '               WHEN ''2'' THEN '
-      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
--- v1.18 MOD START
---      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
---      || '                 - ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
-      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100) '
-      || '                 - ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+-- v1.19 Mod Start
+--      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+---- v1.18 MOD START
+----      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100) '
+----      || '                 - ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * :para_lkup_code / 100)) '
+--      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+--      || '                 - ROUND(TRUNC( pla.attribute8 * NVL(itp.trans_qty, 0) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                 ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+      || '                 * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+      || '                 - ROUND(TRUNC( pla.attribute8 * SUM(NVL(itp.trans_qty, 0)) * NVL(plla.attribute4, 0) / 100 ) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '               ELSE '
-      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
--- v1.18 MOD START
---      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100)) '
-      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+-- v1.19 Mod Start
+--      || '                 SUM(ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+---- v1.18 MOD START
+----      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * :para_lkup_code / 100)) '
+--      || '                 * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div)) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                 ROUND(ROUND(NVL(pla.unit_price, :para_zero) '
+      || '                 * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '             END AS payment_tax '                                     -- éxï•è¡îÔê≈ã‡äz
-      || '            ,SUM(ROUND(NVL(xsupv.stnd_unit_price,0) * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS j_amt '
+-- v1.19 Mod Start
+--      || '            ,SUM(ROUND(NVL(xsupv.stnd_unit_price,0) * NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS j_amt '
+      || '            ,ROUND(NVL(xsupv.stnd_unit_price,0) * SUM(NVL(itp.trans_qty, 0) * TO_NUMBER(xrpm.rcv_pay_div))) AS j_amt '
+-- v1.19 Mod End
 -- 2012/03/23 v1.17 Mod End
 -- 2008/12/06 MOD END
 -- 2008/11/29 v1.10 UPDATE END
@@ -1820,6 +1866,10 @@ AS
                     || '         ,plla.attribute4 '
                     || '         ,plla.attribute6 '
                     || '         ,plla.attribute7 '
+-- v1.19 Add Start
+                    || '         ,rsl.attribute1 '
+                    || '         ,xlv2v.lookup_code '
+-- v1.19 Add End
                     || '         ,plla.attribute1 ';
 -- 2012/03/23 v1.17 Add End
 --
@@ -1855,8 +1905,12 @@ AS
 --      || '      ,ROUND(NVL(xrrt.unit_price, 0) '
 --      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
       || '             ,SUM(NVL(itc.trans_qty, 0)) * ABS(TO_NUMBER(xrpm.rcv_pay_div)) AS trans_qty '
-      || '             ,SUM(ROUND(NVL(xrrt.unit_price, 0) '
-      || '                * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
+-- v1.19 Mod Start
+--      || '             ,SUM(ROUND(NVL(xrrt.unit_price, 0) '
+--      || '                * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
+      || '             ,ROUND(NVL(xrrt.unit_price, 0) '
+      || '                * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS purchases_price '
+-- v1.19 Mod End
 -- 2012/03/23 v1.17 Mod End
 -- 2008/11/13 v1.8 UPDATE START
 -- 2008/11/29 v1.10 UPDATE START
@@ -1864,8 +1918,12 @@ AS
 -- 2012/03/23 v1.17 Mod Start
 --      || '      ,ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
 --      || '        * (NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS powder_price '
-      || '             ,SUM(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
-      || '                * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS powder_price '
+-- v1.19 Mod Start
+--      || '             ,SUM(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+--      || '                * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS powder_price '
+      || '             ,ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '                * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS powder_price '
+-- v1.19 Mod End
 -- 2012/03/23 v1.17 Mod End
 --      || '           ,TO_CHAR(NVL(xrrt.kousen_rate_or_unit_price, :para_zero)) AS commission_price '
 -- 2012/03/23 v1.17 Mod Start
@@ -1877,69 +1935,112 @@ AS
 ----2009/07/09 MOD END
       || '             ,CASE xrrt.kousen_type '
       || '                WHEN ''1'' THEN '
-      || '                  SUM(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
-      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) '
+-- v1.19 Mod Start
+--      || '                  SUM(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+--      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) '
+      || '                  TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+      || '                  * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) '
+-- v1.19 Mod End
       || '                WHEN ''2'' THEN '
-      || '                  SUM(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
-      || '                  * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) '
+-- v1.19 Mod Start
+--      || '                  SUM(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
+--      || '                  * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) '
+      || '                  TRUNC( xrrt.unit_price * SUM(NVL(itc.trans_qty, 0)) '
+      || '                  * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) '
+-- v1.19 Mod End
       || '                ELSE '
       || '                  0 '
       || '                END AS commission_price '                                       -- å˚ëKã‡äz
       || '             ,CASE xrrt.fukakin_type '
       || '                WHEN ''1'' THEN '
-      || '                  SUM(TRUNC( NVL(xrrt.fukakin_rate_or_unit_price, 0) * ABS(NVL(itc.trans_qty, 0))) * -1) '
+-- v1.19 Mod Start
+--      || '                  SUM(TRUNC( NVL(xrrt.fukakin_rate_or_unit_price, 0) * ABS(NVL(itc.trans_qty, 0))) * -1) '
+      || '                  TRUNC( NVL(xrrt.fukakin_rate_or_unit_price, 0) * ABS(SUM(NVL(itc.trans_qty, 0)))) * -1 '
+-- v1.19 Mod End
       || '                WHEN ''2'' THEN '
-      || '                  SUM(TRUNC((xrrt.unit_price * ABS(NVL(itc.trans_qty, 0)) '
-      || '                            - xrrt.unit_price * ABS(NVL(itc.trans_qty, 0)) * NVL(xrrt.kobiki_rate,0) / 100) '
-      || '                            * NVL(xrrt.fukakin_rate_or_unit_price,0) / 100) * -1) '
+-- v1.19 Mod Start
+--      || '                  SUM(TRUNC((xrrt.unit_price * ABS(NVL(itc.trans_qty, 0)) '
+--      || '                            - xrrt.unit_price * ABS(NVL(itc.trans_qty, 0)) * NVL(xrrt.kobiki_rate,0) / 100) '
+--      || '                            * NVL(xrrt.fukakin_rate_or_unit_price,0) / 100) * -1) '
+      || '                  TRUNC((xrrt.unit_price * ABS(SUM(NVL(itc.trans_qty, 0))) '
+      || '                            - xrrt.unit_price * ABS(SUM(NVL(itc.trans_qty, 0))) * NVL(xrrt.kobiki_rate,0) / 100) '
+      || '                            * NVL(xrrt.fukakin_rate_or_unit_price,0) / 100) * -1 '
+-- v1.19 Mod End
       || '                ELSE '
       || '                  0 '
       || '              END AS assessment '                                             -- ïäâ€ã‡äz
       || '             ,CASE xrrt.kousen_type '
       || '                WHEN ''1'' THEN '
-      || '                  SUM(ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
--- v1.18 MOD START
---      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
-      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+-- v1.19 Mod Start
+--      || '                  SUM(ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+---- v1.18 MOD START
+----      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+--      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                  ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '                WHEN ''2'' THEN '
-      || '                  SUM(ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
--- v1.18 MOD START
---      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
-      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+-- v1.19 Mod Start
+--      || '                  SUM(ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
+---- v1.18 MOD START
+----      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+--      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                  ROUND(TRUNC( xrrt.unit_price * SUM(NVL(itc.trans_qty, 0)) '
+      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '                ELSE '
       || '                  0 '
       || '              END AS commission_tax '                                         -- å˚ëKè¡îÔê≈ã‡äz
       || '             ,CASE xrrt.kousen_type '
       || '                WHEN ''1'' THEN '
-      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
--- v1.18 MOD START
---      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+-- v1.19 Mod Start
+--      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+---- v1.18 MOD START
+----      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+----      || '                  - ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
+----      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+--      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
 --      || '                  - ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
---      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
-      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+--      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                  ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '                  * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
       || '                  - ROUND(TRUNC(NVL(xrrt.kousen_rate_or_unit_price, 0) '
-      || '                    * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+      || '                    * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '                WHEN ''2'' THEN '
-      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
--- v1.18 MOD START
---      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+-- v1.19 Mod Start
+--      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+---- v1.18 MOD START
+----      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100) '
+----      || '                  - ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
+----      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+--      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
 --      || '                  - ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
---      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
-      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
-      || '                  - ROUND(TRUNC( xrrt.unit_price * NVL(itc.trans_qty, 0) '
-      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+--      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                  ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '                  * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+      || '                  - ROUND(TRUNC( xrrt.unit_price * SUM(NVL(itc.trans_qty, 0)) '
+      || '                    * NVL(xrrt.kousen_rate_or_unit_price, 0) / 100 * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '                ELSE '
-      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
--- v1.18 MOD START
---      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
-      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
--- v1.18 MOD END
+-- v1.19 Mod Start
+--      || '                  SUM(ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+---- v1.18 MOD START
+----      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * :para_lkup_code / 100)) '
+--      || '                  * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div))) * TO_NUMBER(xlv2v.lookup_code) / 100)) '
+---- v1.18 MOD END
+      || '                  ROUND(ROUND(NVL(xrrt.kobki_converted_unit_price, :para_zero) '
+      || '                  * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) * TO_NUMBER(xlv2v.lookup_code) / 100) '
+-- v1.19 Mod End
       || '              END AS payment_tax '                                            -- éxï•è¡îÔê≈ã‡äz
-      || '             ,SUM(ROUND(NVL(xsupv.stnd_unit_price,0) * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS j_amt '
+-- v1.19 Mod Start
+--      || '             ,SUM(ROUND(NVL(xsupv.stnd_unit_price,0) * NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS j_amt '
+      || '             ,ROUND(NVL(xsupv.stnd_unit_price,0) * SUM(NVL(itc.trans_qty, 0) * ABS(TO_NUMBER(xrpm.rcv_pay_div)))) AS j_amt '
+-- v1.19 Mod End
 -- 2012/03/23 v1.17 Mod End
 -- 2008/11/29 v1.10 UPDATE END
 -- 2008/10/28 H.Itou Mod Start T_S_524ëŒâû(çƒëŒâû)
@@ -2152,6 +2253,10 @@ AS
                 || '         ,xrrt.department_code '
                 || '         ,xl.location_short_name '
                 || '         ,xvv.segment1 '
+-- v1.19 Add Start
+                || '         ,ijm.attribute1 '
+                || '         ,xlv2v.lookup_code '
+-- v1.19 Add End
                 || '         ,xvv.vendor_short_name ';
 -- 2012/03/23 v1.17 Add End
 --
