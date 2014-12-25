@@ -6,7 +6,7 @@ AS
  * Package Name     : XXCOS001A07C (body)
  * Description      : 入出庫一時表、納品ヘッダ・明細テーブルのデータの抽出を行う
  * MD.050           : VDコラム別取引データ抽出 (MD050_COS_001_A07)
- * Version          : 1.17
+ * Version          : 1.18
  *
  * Program List
  * ---------------------- ----------------------------------------------------------
@@ -45,6 +45,7 @@ AS
  *  2010/02/03    1.15  N.Maeda          [E_本稼動_01441]入出庫データ連携時VDコラム取引用ヘッダ作成条件修正
  *  2010/03/18    1.16  S.Miyakoshi      [E_本稼動_01907]顧客使用目的、顧客所在地からの抽出時に有効条件追加
  *  2012/04/24    1.17  Y.Horikawa       [E_本稼動_09440]「売上値引金額」「売上消費税額」のマッピング不正の修正
+ *  2014/10/16    1.18  Y.Enokido        [E_本稼動_09378]納品者の有効チェックを行う
  *
  *****************************************************************************************/
 --
@@ -163,6 +164,9 @@ AS
   cv_msg_mo          CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00047';       -- MO:営業単位
   cv_data_loc        CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-00184';     -- 対象データロック中
 --****************************** 2009/05/29 1.9 T.Kitajima ADD  END  ******************************
+--****************************** 2014/10/16 1.18 MOD START ******************************
+  cv_empl_effect     CONSTANT VARCHAR2(20)  := 'APP-XXCOS1-10367';       -- 納品者コード有効性チェック
+--****************************** 2014/10/16 1.18 MOD END   ******************************
   -- トークン
   cv_tkn_table       CONSTANT VARCHAR2(20)  := 'TABLE_NAME';             -- テーブル名
   cv_tkn_tab         CONSTANT VARCHAR2(20)  := 'TABLE';                  -- テーブル名
@@ -190,6 +194,12 @@ AS
   cv_digestion_ln_number CONSTANT VARCHAR2(20)  := 'DIGESTION_LN_NUMBER';  -- 枝番
   cv_invoice_no      CONSTANT VARCHAR2(20)  := 'INVOICE_NO';           -- HHT伝票番号
 --******************** 2009/07/17 Ver1.11  N.Maeda ADD  END  ******************************************
+--****************************** 2014/10/16 1.18 MOD START ******************************
+  cv_hht_invoice_no  CONSTANT VARCHAR2(20)  := 'HHT_INVOICE_NO';       -- HHT伝票No.
+  cv_customer_number CONSTANT VARCHAR2(20)  := 'CUSTOMER_NUMBER';      -- 顧客コード
+  cv_dlv_by_code     CONSTANT VARCHAR2(20)  := 'DLV_BY_CODE';          -- 納品者コード
+  cv_dlv_date        CONSTANT VARCHAR2(20)  := 'DLV_DATE';             -- 納品日
+--****************************** 2014/10/16 1.18 MOD END   ******************************
 --
   -- クイックコードタイプ
   cv_qck_typ_tax     CONSTANT VARCHAR2(30)  := 'XXCOS1_CONSUMPTION_TAX_CLASS';    -- 消費税区分
@@ -244,6 +254,11 @@ AS
      ,order_no_hht        xxcos_dlv_headers.order_no_hht%TYPE                 -- 受注No.(HHT)
      ,digestion_ln_number xxcos_dlv_headers.digestion_ln_number%TYPE          -- 枝番
      ,hht_invoice_no      xxcos_dlv_headers.hht_invoice_no%TYPE               -- 伝票No.HHT
+--****************************** 2014/10/16 1.18 MOD START ******************************
+     ,customer_number     xxcos_dlv_headers.customer_number%TYPE              -- 顧客コード
+     ,dlv_by_code         xxcos_dlv_headers.dlv_by_code%TYPE                  -- 納品者コード
+     ,dlv_date            xxcos_dlv_headers.dlv_date%TYPE                     -- 納品日
+--****************************** 2014/10/16 1.18 MOD END   ******************************
     );
   TYPE g_tab_inv_data_type IS TABLE OF g_get_inv_data_type INDEX BY PLS_INTEGER;
 --
@@ -2229,6 +2244,12 @@ AS
     lt_data_count                      NUMBER;
     lt_dlv_line_count                  NUMBER;
 -- ******************* 2009/07/17 Ver1.11 N.Maeda ADD  END  ******************************************--
+--****************************** 2014/10/16 1.18 MOD START ******************************
+    lt_inv_customer_number             xxcos_dlv_headers.customer_number%TYPE;            -- 顧客コード
+    lt_inv_dlv_by_code                 xxcos_dlv_headers.dlv_by_code%TYPE;                -- 納品者コード
+    lt_inv_dlv_date                    xxcos_dlv_headers.dlv_date%TYPE;                   -- 納品日
+    lt_inv_dlv_date_yyyymmdd           VARCHAR2(10);                                      -- 納品日（メッセージ出力用）
+--****************************** 2014/10/16 1.18 MOD END   ******************************
 --
     -- *** ローカル・カーソル ***
 -- ******************* 2009/07/17 Ver1.11 N.Maeda ADD START ******************************************--
@@ -2245,6 +2266,11 @@ AS
             ,head.order_no_hht               order_no_hht              -- 受注No.(HHT)
             ,head.digestion_ln_number        digestion_ln_number       -- 枝番
             ,head.hht_invoice_no             hht_invoice_no            -- HHT伝票No.
+--****************************** 2014/10/16 1.18 MOD START ******************************
+            ,head.customer_number            customer_number           -- 顧客コード
+            ,head.dlv_by_code                dlv_by_code               -- 納品者コード
+            ,head.dlv_date                   dlv_date                  -- 納品日
+--****************************** 2014/10/16 1.18 MOD END   ******************************
       FROM   xxcos_dlv_headers  head         -- 納品ヘッダ
             ,xxcos_dlv_lines    line         -- 納品明細テーブル
       WHERE  head.order_no_hht         = line.order_no_hht         -- ヘッダ.受注No.(HHT)＝明細.受注No.(HHT)
@@ -2389,6 +2415,12 @@ AS
 --
     -- *** ローカル・レコード ***
 --
+--****************************** 2014/10/16 1.18 MOD START ******************************
+    ln_rs_cnt              NUMBER;
+    --納品者コード例外
+    dlv_by_code_expt       EXCEPTION;
+--****************************** 2014/10/16 1.18 MOD END   ******************************
+--
 --
   BEGIN
 --
@@ -2401,6 +2433,9 @@ AS
     -- 抽出件数初期化
     on_target_cnt   := 0;
     on_target_cnt_l := 0;
+--****************************** 2014/10/16 1.18 MOD START ******************************
+    ln_rs_cnt       := 0;
+--****************************** 2014/10/16 1.18 MOD END   ******************************
 --******************** 2009/05/07 Ver1.8  N.Maeda ADD START ******************************************
     ln_vd_data_count:= 0;
 --******************** 2009/05/07 Ver1.8  N.Maeda ADD  END  ******************************************
@@ -2428,6 +2463,11 @@ AS
       lt_inv_order_no_hht          := gt_inv_data_tab(i).order_no_hht;         -- 受注No.(HHT)
       lt_inv_digestion_ln_number   := gt_inv_data_tab(i).digestion_ln_number;  -- 枝番
       lt_inv_hht_invoice_no        := gt_inv_data_tab(i).hht_invoice_no;       -- HHT伝票NO.
+--****************************** 2014/10/16 1.18 MOD START ******************************
+      lt_inv_customer_number       := gt_inv_data_tab(i).customer_number;      -- 顧客コード
+      lt_inv_dlv_by_code           := gt_inv_data_tab(i).dlv_by_code;          -- 納品者コード
+      lt_inv_dlv_date              := gt_inv_data_tab(i).dlv_date;             -- 納品日
+--****************************** 2014/10/16 1.18 MOD END   ******************************
 --
       BEGIN
         -- ===================
@@ -2444,6 +2484,30 @@ AS
 --
           --ロック済みキーデータ
           lt_lock_brak_order_no_hht := lt_inv_order_no_hht;
+--****************************** 2014/10/16 1.18 MOD START ******************************
+          -- 抽出件数初期化
+          ln_rs_cnt       := 0;
+          BEGIN
+            SELECT COUNT(1)
+            INTO   ln_rs_cnt
+            FROM   xxcos_rs_info2_v  xriv
+            WHERE  xriv.employee_number                                   =  lt_inv_dlv_by_code
+            AND    NVL(xriv.effective_start_date      ,lt_inv_dlv_date)  <=  lt_inv_dlv_date
+            AND    NVL(xriv.effective_end_date        ,lt_inv_dlv_date)  >=  lt_inv_dlv_date
+            AND    NVL(xriv.per_effective_start_date  ,lt_inv_dlv_date)  <=  lt_inv_dlv_date
+            AND    NVL(xriv.per_effective_end_date    ,lt_inv_dlv_date)  >=  lt_inv_dlv_date
+            AND    NVL(xriv.paa_effective_start_date  ,lt_inv_dlv_date)  <=  lt_inv_dlv_date
+            AND    NVL(xriv.paa_effective_end_date    ,lt_inv_dlv_date)  >=  lt_inv_dlv_date
+            ;
+          EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+              NULL;
+          END;
+          --
+          IF (ln_rs_cnt = 0 ) THEN
+            RAISE dlv_by_code_expt;
+          END IF;
+--****************************** 2014/10/16 1.18 MOD END   ******************************
           --添え字のカウントアップ
           lt_data_count := lt_data_count + 1;
 --
@@ -2623,6 +2687,29 @@ AS
                          iv_token_value2  => lt_inv_hht_invoice_no);    --HHT伝票NO.
           FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
           FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
+--****************************** 2014/10/16 1.18 MOD START ******************************
+--
+        WHEN dlv_by_code_expt THEN
+          -- エラーメッセージを追加すること
+          gn_warn_cnt := gn_warn_cnt + 1;
+          -- 表示用にDATE型をVARCHAR型へ
+          lt_inv_dlv_date_yyyymmdd  := TO_CHAR(lt_inv_dlv_date,'YYYY/MM/DD');
+          -- 納品者コード有効性チェック・メッセージ
+          lv_errmsg := xxccp_common_pkg.get_msg(
+                         iv_application   => cv_application,                             --アプリケーション短縮名
+                         iv_name          => cv_empl_effect,                             --メッセージコード
+                         iv_token_name1   => cv_hht_invoice_no,                          -- トークンコード1
+                         iv_token_value1  => lt_inv_hht_invoice_no,                      -- HHT伝票No.
+                         iv_token_name2   => cv_customer_number,                         -- トークンコード2
+                         iv_token_value2  => lt_inv_customer_number,                     -- 顧客コード
+                         iv_token_name3   => cv_dlv_by_code,                             -- トークンコード3
+                         iv_token_value3  => lt_inv_dlv_by_code,                         -- 納品者コード
+                         iv_token_name4   => cv_dlv_date,                                -- トークンコード4
+                         iv_token_value4  => lt_inv_dlv_date_yyyymmdd);                  -- 納品日（メッセージ出力用）
+          FND_FILE.PUT_LINE(FND_FILE.OUTPUT,lv_errmsg);
+          FND_FILE.PUT_LINE(FND_FILE.LOG,lv_errmsg);
+--
+--****************************** 2014/10/16 1.18 MOD END   ******************************
       END;
 --
     END LOOP get_inv_loop;
